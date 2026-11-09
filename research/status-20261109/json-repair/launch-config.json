@@ -1,0 +1,161 @@
+{
+ "cwd": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o",
+ "base_env": {},
+ "commands": [
+  {
+   "name": "bench-run-hit",
+   "argv": [
+    "/home/user/pystachy/pystachy",
+    "run",
+    "/home/user/pystachy/bench/json_repair/bench.py",
+    "0"
+   ],
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+   },
+   "expect": "bench"
+  },
+  {
+   "name": "bench-cached-exe",
+   "argv": [
+    "/home/user/pystachy/bench/json_repair/bench.py",
+    "0"
+   ],
+   "executable": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache/program-v2/78013cd8de8629cd-64b62b2b4e5436ae.exe",
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+   },
+   "expect": "bench"
+  },
+  {
+   "name": "bench-aot",
+   "argv": [
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/exe/bench",
+    "0"
+   ],
+   "expect": "bench"
+  },
+  {
+   "name": "bench-cpython-port",
+   "argv": [
+    "/usr/local/bin/python3.13",
+    "/home/user/pystachy/bench/json_repair/bench.py",
+    "0"
+   ],
+   "env": {
+    "PYTHONPATH": "/home/user/pystachy/ports",
+    "PYTHONPYCACHEPREFIX": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/pycache"
+   },
+   "expect": "bench"
+  },
+  {
+   "name": "bench-cpython-upstream",
+   "argv": [
+    "/usr/local/bin/python3.13",
+    "/home/user/pystachy/bench/json_repair/bench.py",
+    "0"
+   ],
+   "env": {
+    "PYTHONPATH": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/upstream",
+    "PYTHONPYCACHEPREFIX": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/pycache"
+   },
+   "expect": "bench"
+  },
+  {
+   "name": "cli-run-hit",
+   "argv": [
+    "/home/user/pystachy/pystachy",
+    "run",
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/jr_cli.py",
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/input.json"
+   ],
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+   },
+   "expect": "cli"
+  },
+  {
+   "name": "cli-cached-exe",
+   "argv": [
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/jr_cli.py",
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/input.json"
+   ],
+   "executable": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache/program-v2/87c6ef00e94aa459-30cc3e573cd21a28.exe",
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+   },
+   "expect": "cli"
+  },
+  {
+   "name": "cli-cpython-port",
+   "argv": [
+    "/usr/local/bin/python3.13",
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/jr_cli.py",
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/input.json"
+   ],
+   "env": {
+    "PYTHONPATH": "/home/user/pystachy/ports",
+    "PYTHONPYCACHEPREFIX": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/pycache"
+   },
+   "expect": "cli"
+  },
+  {
+   "name": "hello-run-hit",
+   "argv": [
+    "/home/user/pystachy/pystachy",
+    "run",
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/hello/hello.py"
+   ],
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+   },
+   "expect": "hello"
+  },
+  {
+   "name": "hello-cached-exe",
+   "argv": [
+    "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/hello/hello.py"
+   ],
+   "executable": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache/program-v2/4efda156a98549b7-dbda52ae801bc031.exe",
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+   },
+   "expect": "hello"
+  },
+  {
+   "name": "compiler-version",
+   "argv": [
+    "/home/user/pystachy/pystachy",
+    "--version"
+   ]
+  },
+  {
+   "name": "bin-true",
+   "argv": [
+    "/bin/true"
+   ]
+  },
+  {
+   "name": "bench-run-uncached-jit",
+   "argv": [
+    "/home/user/pystachy/pystachy",
+    "run",
+    "/home/user/pystachy/bench/json_repair/bench.py",
+    "0"
+   ],
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache",
+    "PYSTACHY_PROGRAM_CACHE": "0"
+   },
+   "expect": "bench",
+   "reps": 5
+  }
+ ]
+}

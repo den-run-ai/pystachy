@@ -1,0 +1,56 @@
+self	old-on-old	1	4.377148518 0
+self	new-on-new	1	5.240764336 0
+self	new-on-old	1	4.477640291 0
+self	old-on-old	2	4.670770033 0
+self	new-on-new	2	5.143750408 0
+self	new-on-old	2	4.489879171 0
+self	old-on-old	3	4.772984743 0
+self	new-on-new	3	4.921929377 0
+self	new-on-old	3	4.473159461 0
+selflines	old-on-old	790172	new-on-new	878455	new-on-old	789595
+case	tests/programs/apps/port_json_repair_escape.py	.233434027 0	35415	.245653518 0	38944	.224141850 0	35712
+case	tests/programs/apps/port_json_repair_depth.py	.261679139 0	35602	.257760950 0	39135	.242138587 0	35903
+case	tests/programs/upstream/upstream_tomllib_data.py	.379920891 0	90906	.376565119 0	91228	.361277950 0	91067
+case	tests/programs/upstream/upstream_itertools.py	.299466124 0	123587	.360321935 0	123516	.341570236 0	123516
+case	tests/programs/apps/port_wcwidth_core.py	.155352203 0	13664	.075626378 0	13663	.073921613 0	13663
+case	tests/programs/library/lib_tomllib_dynamic.py	.384487003 0	94133	.367022381 0	94449	.382227172 0	94288
+case	tests/programs/apps/example_route.py	.198238921 0	49379	.196853204 0	49505	.191109156 0	49328
+case	tests/programs/classes/dataclass_generic_field.py	.025795567 0	925	.024977196 0	927	.025268958 0	927
+case	tests/programs/classes/object_reversed.py	.010044913 0	1733	.009940462 0	1736	.010335478 0	1736
+case	tests/programs/classes/special_deferred_print.py	.006807647 0	509	.007024963 0	512	.006785627 0	512
+case	tests/programs/containers/star_rebound.py	.006900883 0	921	.007534899 0	925	.006694712 0	925
+case	tests/programs/exceptions/exc_class_cause_unread.py	.004233380 0	224	.004265310 0	238	.004195270 0	238
+case	tests/programs/exceptions/exc_exit_optnone.py	.004414710 0	143	.004053006 0	145	.004111713 0	145
+case	tests/programs/exceptions/exc_finally_deep.py	.005672813 0	775	.005991412 0	777	.005747467 0	777
+case	tests/programs/exceptions/exc_init_result.py	.005134883 0	466	.008042390 0	474	.005159935 0	474
+case	tests/programs/exceptions/exit_optional_code.py	.005373095 0	553	.005238228 0	555	.005835891 0	555
+case	tests/programs/generators/gen_cm_gc.py	.011490616 0	2120	.012152668 0	2124	.011768136 0	2124
+case	tests/programs/generators/gen_more.py	.006785593 0	1613	.006493665 0	1617	.006779324 0	1617
+case	tests/programs/imports/module_function_global.py	.004478789 0	284	.005827770 0	286	.004779840 0	286
+case	tests/programs/inference/any_mutation.py	.009402875 0	1167	.008082433 0	1170	.008267995 0	1170
+case	tests/programs/inference/dynany_cmp_getattr_default.py	.005509160 0	628	.005156396 0	642	.005419258 0	642
+case	tests/programs/inference/dynany_identity_call_none.py	.005046679 0	637	.005313532 0	639	.004890239 0	639
+case	tests/programs/inference/dynany_identity_call_returns.py	.006561916 0	755	.012821928 0	769	.006247518 0	769
+case	tests/programs/inference/dynany_identity_chained.py	.005923718 0	309	.009865509 0	323	.010073673 0	323
+case	tests/programs/inference/dynany_init_varargs.py	.005121952 0	250	.009556644 0	253	.010586737 0	253
+case	tests/programs/inference/dynany_method_read.py	.008069579 0	1472	.007447312 0	1526	.007643971 0	1526
+case	tests/programs/inference/dynany_numeric_promoted_protocol.py	.006370201 0	667	.005850992 0	673	.005831660 0	673
+case	tests/programs/inference/dynany_numeric_protocols.py	.007434834 0	1332	.008618390 0	1347	.007717516 0	1347
+case	tests/programs/io/file_not_readable.py	.004686397 0	66	.004377615 0	68	.004448402 0	68
+case	tests/programs/io/symlink_main.py	.004737513 0	82	.005985316 0	84	.004488966 0	84
+case	tests/programs/language/builtin_hash.py	.011965773 0	1601	.008787076 0	1604	.011406103 0	1604
+case	tests/programs/library/lib_operator_methodcaller_keywords.py	.012381393 0	1233	.012149868 0	1236	.012418509 0	1236
+case	tests/programs/library/nt_basic.py	.012141762 0	3285	.011715390 0	3300	.011642874 0	3300
+case	tests/programs/library/os_normcase.py	.004561989 0	171	.004371621 0	173	.004416661 0	173
+case	tests/programs/numbers/mpz_division.py	.011522152 0	2020	.011427590 0	2022	.011230635 0	2022
+case	tests/programs/numbers/python_int_varargs.py	.017307559 0	4212	.016687745 0	4215	.016273808 0	4215
+case	tests/programs/optional/optional_back_fn.py	.005060429 0	125	.005160575 0	127	.005011932 0	127
+case	tests/programs/runtime/memory_error_uncaught.py	.005855268 0	125	.004877575 0	127	.006175174 0	127
+case	tests/programs/runtime/rt_syntaxerror_bare.py	.004464180 0	58	.004502494 0	60	.004200050 0	60
+case	tests/programs/runtime/rt_utf8_strict.py	.005836320 0	290	.005404359 0	292	.005409142 0	292
+case	tests/programs/strings/repr_deep_classes.py	.005596054 0	389	.005355076 0	403	.005275299 0	403
+case	tests/programs/strings/str_replace_costly.py	.007811090 0	606	.006855017 0	608	.006452136 0	608
+case	tests/programs/syntax/syntax_annotations_uncompiled.py	.004726630 0	54	.004463645 0	56	.004748817 0	56
+case	tests/programs/upstream/upstream_micropython_int_big_mod.py	.006370219 0	434	.004909906 0	436	.004657447 0	436
+case	tests/programs/upstream/upstream_posixpath_strings.py	.027184326 0	3612	.023732304 0	3614	.024360185 0	3614
+case	tests/programs/upstream/upstream_textwrap_field_rebind.py	.367395615 0	56434	.329643374 0	56544	.314844227 0	56399

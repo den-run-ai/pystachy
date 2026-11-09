@@ -1,0 +1,3734 @@
+{
+ "cpu": 2,
+ "reps": 40,
+ "warmups": 3,
+ "config": {
+  "cwd": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o",
+  "base_env": {},
+  "commands": [
+   {
+    "name": "bench-run-hit",
+    "argv": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/home/user/pystachy/bench/json_repair/bench.py",
+     "0"
+    ],
+    "env": {
+     "PYSTACHY_PATH": "/home/user/pystachy/ports",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+    },
+    "expect": "bench"
+   },
+   {
+    "name": "bench-cached-exe",
+    "argv": [
+     "/home/user/pystachy/bench/json_repair/bench.py",
+     "0"
+    ],
+    "executable": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache/program-v2/78013cd8de8629cd-64b62b2b4e5436ae.exe",
+    "env": {
+     "PYSTACHY_PATH": "/home/user/pystachy/ports",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+    },
+    "expect": "bench"
+   },
+   {
+    "name": "bench-aot",
+    "argv": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/exe/bench",
+     "0"
+    ],
+    "expect": "bench"
+   },
+   {
+    "name": "bench-cpython-port",
+    "argv": [
+     "/usr/local/bin/python3.13",
+     "/home/user/pystachy/bench/json_repair/bench.py",
+     "0"
+    ],
+    "env": {
+     "PYTHONPATH": "/home/user/pystachy/ports",
+     "PYTHONPYCACHEPREFIX": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/pycache"
+    },
+    "expect": "bench"
+   },
+   {
+    "name": "bench-cpython-upstream",
+    "argv": [
+     "/usr/local/bin/python3.13",
+     "/home/user/pystachy/bench/json_repair/bench.py",
+     "0"
+    ],
+    "env": {
+     "PYTHONPATH": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/upstream",
+     "PYTHONPYCACHEPREFIX": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/pycache"
+    },
+    "expect": "bench"
+   },
+   {
+    "name": "cli-run-hit",
+    "argv": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/jr_cli.py",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/input.json"
+    ],
+    "env": {
+     "PYSTACHY_PATH": "/home/user/pystachy/ports",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+    },
+    "expect": "cli"
+   },
+   {
+    "name": "cli-cached-exe",
+    "argv": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/jr_cli.py",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/input.json"
+    ],
+    "executable": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache/program-v2/87c6ef00e94aa459-30cc3e573cd21a28.exe",
+    "env": {
+     "PYSTACHY_PATH": "/home/user/pystachy/ports",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+    },
+    "expect": "cli"
+   },
+   {
+    "name": "cli-cpython-port",
+    "argv": [
+     "/usr/local/bin/python3.13",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/jr_cli.py",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cli/input.json"
+    ],
+    "env": {
+     "PYTHONPATH": "/home/user/pystachy/ports",
+     "PYTHONPYCACHEPREFIX": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/pycache"
+    },
+    "expect": "cli"
+   },
+   {
+    "name": "hello-run-hit",
+    "argv": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/hello/hello.py"
+    ],
+    "env": {
+     "PYSTACHY_PATH": "/home/user/pystachy/ports",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+    },
+    "expect": "hello"
+   },
+   {
+    "name": "hello-cached-exe",
+    "argv": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/hello/hello.py"
+    ],
+    "executable": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache/program-v2/4efda156a98549b7-dbda52ae801bc031.exe",
+    "env": {
+     "PYSTACHY_PATH": "/home/user/pystachy/ports",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+    },
+    "expect": "hello"
+   },
+   {
+    "name": "compiler-version",
+    "argv": [
+     "/home/user/pystachy/pystachy",
+     "--version"
+    ]
+   },
+   {
+    "name": "bin-true",
+    "argv": [
+     "/bin/true"
+    ]
+   },
+   {
+    "name": "bench-run-uncached-jit",
+    "argv": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/home/user/pystachy/bench/json_repair/bench.py",
+     "0"
+    ],
+    "env": {
+     "PYSTACHY_PATH": "/home/user/pystachy/ports",
+     "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache",
+     "PYSTACHY_PROGRAM_CACHE": "0"
+    },
+    "expect": "bench",
+    "reps": 5
+   }
+  ]
+ },
+ "summary": {
+  "bench-run-hit": {
+   "n": 40,
+   "median_wall_ms": 37.754103500105884,
+   "min_wall_ms": 35.256888000049,
+   "p25_ms": 36.90410625000595,
+   "p75_ms": 39.35298200008219,
+   "max_wall_ms": 50.81674100006239,
+   "median_cpu_ms": 37.406499999999994,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "fda726646e5c6b34"
+  },
+  "bench-cached-exe": {
+   "n": 40,
+   "median_wall_ms": 1.4584430000468274,
+   "min_wall_ms": 1.326043000062782,
+   "p25_ms": 1.4159935000179757,
+   "p75_ms": 1.5001740000002428,
+   "max_wall_ms": 1.626815000008719,
+   "median_cpu_ms": 1.2285,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "fda726646e5c6b34"
+  },
+  "bench-aot": {
+   "n": 40,
+   "median_wall_ms": 1.4055469999902925,
+   "min_wall_ms": 1.2433260001216695,
+   "p25_ms": 1.3686555000163025,
+   "p75_ms": 1.4696732501420229,
+   "max_wall_ms": 1.6985839999961172,
+   "median_cpu_ms": 1.2000000000000002,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "fda726646e5c6b34"
+  },
+  "bench-cpython-port": {
+   "n": 40,
+   "median_wall_ms": 32.76500499998747,
+   "min_wall_ms": 29.18940399990788,
+   "p25_ms": 30.917103749914077,
+   "p75_ms": 33.45113749998063,
+   "max_wall_ms": 35.06575699998393,
+   "median_cpu_ms": 32.1305,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "fda726646e5c6b34"
+  },
+  "bench-cpython-upstream": {
+   "n": 40,
+   "median_wall_ms": 38.753811999981735,
+   "min_wall_ms": 33.93633699988641,
+   "p25_ms": 36.114669249968756,
+   "p75_ms": 40.96039899985726,
+   "max_wall_ms": 42.20152700008839,
+   "median_cpu_ms": 38.44599999999999,
+   "median_maxrss_kib": 16950.0,
+   "stdout_sha_prefix": "fda726646e5c6b34"
+  },
+  "cli-run-hit": {
+   "n": 40,
+   "median_wall_ms": 39.3470525000339,
+   "min_wall_ms": 36.58750299996427,
+   "p25_ms": 38.684260999900744,
+   "p75_ms": 40.10029625004563,
+   "max_wall_ms": 47.37191200001689,
+   "median_cpu_ms": 38.9925,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "c4e58a815060f97b"
+  },
+  "cli-cached-exe": {
+   "n": 40,
+   "median_wall_ms": 1.584309999884681,
+   "min_wall_ms": 1.3975970000501547,
+   "p25_ms": 1.5440977499565633,
+   "p75_ms": 1.6763987500780786,
+   "max_wall_ms": 2.098935000049096,
+   "median_cpu_ms": 1.341,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "c4e58a815060f97b"
+  },
+  "cli-cpython-port": {
+   "n": 40,
+   "median_wall_ms": 36.573360499915,
+   "min_wall_ms": 32.263626999792905,
+   "p25_ms": 34.122750750100295,
+   "p75_ms": 38.114344999996774,
+   "max_wall_ms": 43.77715500004342,
+   "median_cpu_ms": 36.254999999999995,
+   "median_maxrss_kib": 16534.0,
+   "stdout_sha_prefix": "c4e58a815060f97b"
+  },
+  "hello-run-hit": {
+   "n": 40,
+   "median_wall_ms": 36.59432749998359,
+   "min_wall_ms": 33.966267000096195,
+   "p25_ms": 35.82006924995085,
+   "p75_ms": 37.48340300006703,
+   "max_wall_ms": 49.75025199996708,
+   "median_cpu_ms": 36.259,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "5891b5b522d5df08"
+  },
+  "hello-cached-exe": {
+   "n": 40,
+   "median_wall_ms": 1.2261404999662773,
+   "min_wall_ms": 1.0775890000331856,
+   "p25_ms": 1.1891529999275008,
+   "p75_ms": 1.2926762499887445,
+   "max_wall_ms": 1.5970730000844924,
+   "median_cpu_ms": 0.9810000000000001,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "5891b5b522d5df08"
+  },
+  "compiler-version": {
+   "n": 40,
+   "median_wall_ms": 1.8592195000337597,
+   "min_wall_ms": 1.6571700000440615,
+   "p25_ms": 1.7838060001054146,
+   "p75_ms": 1.8908155000758597,
+   "max_wall_ms": 2.2690170001169463,
+   "median_cpu_ms": 1.6484999999999999,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "3d7c3e78dc35a1b0"
+  },
+  "bin-true": {
+   "n": 40,
+   "median_wall_ms": 0.9524024999336689,
+   "min_wall_ms": 0.8469849999528378,
+   "p25_ms": 0.9228607500517683,
+   "p75_ms": 0.9890052498917612,
+   "max_wall_ms": 1.1924230000204261,
+   "median_cpu_ms": 0.7554999999999998,
+   "median_maxrss_kib": 16192.0,
+   "stdout_sha_prefix": "e3b0c44298fc1c14"
+  },
+  "bench-run-uncached-jit": {
+   "n": 5,
+   "median_wall_ms": 948.1414560000303,
+   "min_wall_ms": 934.3248220000078,
+   "p25_ms": 941.1345385000232,
+   "p75_ms": 972.9457710000133,
+   "max_wall_ms": 985.432972000126,
+   "median_cpu_ms": 940.8199999999999,
+   "median_maxrss_kib": 76348,
+   "stdout_sha_prefix": "fda726646e5c6b34"
+  }
+ },
+ "samples": {
+  "bench-run-hit": [
+   {
+    "wall": 0.03665310900009899,
+    "user": 0.022865,
+    "sys": 0.013547,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.040418879000071684,
+    "user": 0.025901,
+    "sys": 0.013510999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.038385163999919314,
+    "user": 0.016149,
+    "sys": 0.021942,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03996271699998033,
+    "user": 0.023281,
+    "sys": 0.016183,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.04016976599996269,
+    "user": 0.025259,
+    "sys": 0.014554,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03872815299996546,
+    "user": 0.022646,
+    "sys": 0.015823999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.05081674100006239,
+    "user": 0.04487,
+    "sys": 0.00558,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.036003865000111546,
+    "user": 0.017246,
+    "sys": 0.018549,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03725991500004966,
+    "user": 0.015196,
+    "sys": 0.021653,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.036177683000005345,
+    "user": 0.020399,
+    "sys": 0.015467999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.035256888000049,
+    "user": 0.015808,
+    "sys": 0.019219999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03969276199995875,
+    "user": 0.031862999999999995,
+    "sys": 0.007031,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03990040400003636,
+    "user": 0.015371999999999999,
+    "sys": 0.024235,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0407945900001323,
+    "user": 0.023549999999999998,
+    "sys": 0.016292,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03793119400006617,
+    "user": 0.011375,
+    "sys": 0.02622,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03777304200002618,
+    "user": 0.010556999999999999,
+    "sys": 0.02694,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03707302299994808,
+    "user": 0.019708,
+    "sys": 0.01712,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03643819600006282,
+    "user": 0.014325,
+    "sys": 0.021863,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03812898200021664,
+    "user": 0.027642999999999997,
+    "sys": 0.010218,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.038352744999883726,
+    "user": 0.012964999999999999,
+    "sys": 0.025064,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.036598301000140054,
+    "user": 0.025285,
+    "sys": 0.011077,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.037778005000063786,
+    "user": 0.013835,
+    "sys": 0.023613,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.037423543999921094,
+    "user": 0.017454,
+    "sys": 0.019722999999999997,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0366632650000156,
+    "user": 0.009726,
+    "sys": 0.026694,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03692686199997297,
+    "user": 0.018508,
+    "sys": 0.018161999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.037596351000047434,
+    "user": 0.010039,
+    "sys": 0.027304,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.04064394499982882,
+    "user": 0.03304,
+    "sys": 0.007306999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03930460700007643,
+    "user": 0.018181,
+    "sys": 0.020626,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.038786915000173394,
+    "user": 0.031597,
+    "sys": 0.006959,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.039369107000084114,
+    "user": 0.013992,
+    "sys": 0.025123,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.038055072000133805,
+    "user": 0.014783,
+    "sys": 0.023018999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03717207999989114,
+    "user": 0.015893,
+    "sys": 0.021089999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03754919199991491,
+    "user": 0.015316999999999999,
+    "sys": 0.021965,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03723463200003607,
+    "user": 0.023457,
+    "sys": 0.013472999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.036896521000016946,
+    "user": 0.014376,
+    "sys": 0.022241,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03754128200012019,
+    "user": 0.021226,
+    "sys": 0.016005,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03672771400010788,
+    "user": 0.025238,
+    "sys": 0.011269999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.04201719399998183,
+    "user": 0.031383999999999995,
+    "sys": 0.010312,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03773516500018559,
+    "user": 0.019355999999999998,
+    "sys": 0.018009,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.036261701000057656,
+    "user": 0.016527,
+    "sys": 0.019500999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "bench-cached-exe": [
+   {
+    "wall": 0.0013714259998778289,
+    "user": 0.0011769999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015698600000177976,
+    "user": 0.001282,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014695930001380475,
+    "user": 0.001225,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014865919999920152,
+    "user": 0.001243,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001626815000008719,
+    "user": 0.001361,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014867359998333995,
+    "user": 0.001233,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014033939999080758,
+    "user": 0.001133,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001326043000062782,
+    "user": 0.001139,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013683729998774652,
+    "user": 0.00116,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013577529998656246,
+    "user": 0.0011409999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013315729997884773,
+    "user": 0.0011359999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015133429999423242,
+    "user": 0.0012569999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015541390000635147,
+    "user": 0.001277,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014973239999562793,
+    "user": 0.001281,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001381440000159273,
+    "user": 0.001219,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014759089999643038,
+    "user": 0.00121,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015011240000148973,
+    "user": 0.0,
+    "sys": 0.0012699999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014162889999624895,
+    "user": 0.0012289999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014181709998410952,
+    "user": 0.001214,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015181530000063503,
+    "user": 0.001243,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014568620001682575,
+    "user": 0.001233,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014552850000200124,
+    "user": 0.001228,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014649489999101206,
+    "user": 0.0012519999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014215890000741638,
+    "user": 0.001119,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014158950000364712,
+    "user": 0.001157,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001453434000040943,
+    "user": 0.001205,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0016200869999920542,
+    "user": 0.001339,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014836309999282093,
+    "user": 0.001297,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015181579999534733,
+    "user": 0.001298,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015688640000917076,
+    "user": 0.001295,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014358699997956137,
+    "user": 0.001215,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014742809999006568,
+    "user": 0.0012339999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001452909999898111,
+    "user": 0.0,
+    "sys": 0.001206,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013916330001393362,
+    "user": 0.001173,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001436996999927942,
+    "user": 0.0011849999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001503414000126213,
+    "user": 0.0012649999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001418726000110837,
+    "user": 0.001212,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014600239999253972,
+    "user": 0.0012309999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014706189999742492,
+    "user": 0.0012309999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013892160000068543,
+    "user": 0.0011639999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "bench-aot": [
+   {
+    "wall": 0.0014342590000069322,
+    "user": 0.001175,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001429066000127932,
+    "user": 0.001241,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014765299999908166,
+    "user": 0.001254,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015200230000118609,
+    "user": 0.0012699999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001440429000012955,
+    "user": 0.001228,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014036170000508719,
+    "user": 0.001201,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012941200000113895,
+    "user": 0.0011279999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012630800001716125,
+    "user": 0.0010999999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013761870000053023,
+    "user": 0.001196,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001267853999934232,
+    "user": 0.001101,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012433260001216695,
+    "user": 0.001078,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013897630001338257,
+    "user": 0.001188,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015147760000218113,
+    "user": 0.001266,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001453342000104385,
+    "user": 0.0012109999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013444090000120923,
+    "user": 0.0011799999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014470990001882456,
+    "user": 0.001236,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013586119998763024,
+    "user": 0.0011899999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013153130000773672,
+    "user": 0.0011459999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013768460000846972,
+    "user": 0.0012029999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014751170001545688,
+    "user": 0.00129,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014026929998181004,
+    "user": 0.001193,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014399689998754184,
+    "user": 0.001271,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014437019999604672,
+    "user": 0.001273,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013102819998493942,
+    "user": 0.001135,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001321038000014596,
+    "user": 0.0011409999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0016604209999968589,
+    "user": 0.001367,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001558631000079913,
+    "user": 0.001348,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015550320001693763,
+    "user": 0.001366,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0016985839999961172,
+    "user": 0.001467,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001488980999965861,
+    "user": 0.001267,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013802470000428002,
+    "user": 0.0011949999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001413437000110207,
+    "user": 0.001176,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013884169998163998,
+    "user": 0.001186,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015195480000329553,
+    "user": 0.0,
+    "sys": 0.0013319999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014284979999956704,
+    "user": 0.00124,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013860599999588885,
+    "user": 0.001183,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013661450000199693,
+    "user": 0.001179,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013819040000271343,
+    "user": 0.001188,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013999579998653644,
+    "user": 0.001199,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014074769999297132,
+    "user": 0.001215,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "bench-cpython-port": [
+   {
+    "wall": 0.03271716299991567,
+    "user": 0.028038999999999998,
+    "sys": 0.003984,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03395597899998393,
+    "user": 0.018668999999999998,
+    "sys": 0.014724,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.033926248999932795,
+    "user": 0.022428,
+    "sys": 0.011214,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03317253099999107,
+    "user": 0.021970999999999997,
+    "sys": 0.010985,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03377295799987223,
+    "user": 0.025124999999999998,
+    "sys": 0.008374999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.033865247999983694,
+    "user": 0.029422,
+    "sys": 0.004203,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.033448952000071586,
+    "user": 0.023953,
+    "sys": 0.007267,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.029361346000086996,
+    "user": 0.029134,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.030971252999961507,
+    "user": 0.026921999999999998,
+    "sys": 0.003846,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03049892900003215,
+    "user": 0.022677,
+    "sys": 0.007559,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.02918940399990788,
+    "user": 0.020708999999999998,
+    "sys": 0.008283,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.034123687999908725,
+    "user": 0.030022,
+    "sys": 0.0037579999999999996,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03487628099992435,
+    "user": 0.034415,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03096118800021941,
+    "user": 0.030736,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.030094768000026306,
+    "user": 0.026085,
+    "sys": 0.0036839999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03076134900015859,
+    "user": 0.030427,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.030427146999954857,
+    "user": 0.030203999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03028789500012863,
+    "user": 0.018802,
+    "sys": 0.011281,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.031057496999892464,
+    "user": 0.026345999999999998,
+    "sys": 0.004391,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.031360782999854564,
+    "user": 0.031051,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.030957096000065576,
+    "user": 0.030713999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.030745628999966357,
+    "user": 0.030421,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03082128100004411,
+    "user": 0.026237999999999997,
+    "sys": 0.004373,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.030903772999863577,
+    "user": 0.026774,
+    "sys": 0.003832,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.033055535000130476,
+    "user": 0.023297,
+    "sys": 0.008206999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03474580300007801,
+    "user": 0.026799999999999997,
+    "sys": 0.007657,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03506575699998393,
+    "user": 0.026083,
+    "sys": 0.008694,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.033315232999939326,
+    "user": 0.029334,
+    "sys": 0.0036739999999999997,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03396464799993737,
+    "user": 0.018588999999999998,
+    "sys": 0.014979999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03317081000000144,
+    "user": 0.021939999999999998,
+    "sys": 0.010969999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03285190200017496,
+    "user": 0.028510999999999998,
+    "sys": 0.004005,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.032812847000059264,
+    "user": 0.028508,
+    "sys": 0.004072,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.033005060000050435,
+    "user": 0.032687,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03258077800001047,
+    "user": 0.032344,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.032246252999811986,
+    "user": 0.02402,
+    "sys": 0.008006,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.032460576000175934,
+    "user": 0.028206,
+    "sys": 0.004029,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03173234800010505,
+    "user": 0.027580999999999998,
+    "sys": 0.00394,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03296402000000853,
+    "user": 0.025328999999999997,
+    "sys": 0.007207,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.033451865999950314,
+    "user": 0.029072999999999998,
+    "sys": 0.004153,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03290468099999089,
+    "user": 0.032625,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "bench-cpython-upstream": [
+   {
+    "wall": 0.040019913999913115,
+    "user": 0.035220999999999995,
+    "sys": 0.003932,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.03882139500001358,
+    "user": 0.034261,
+    "sys": 0.004287,
+    "maxrss_kib": 16952,
+    "status": 0
+   },
+   {
+    "wall": 0.041911247999905754,
+    "user": 0.036941999999999996,
+    "sys": 0.004144,
+    "maxrss_kib": 16952,
+    "status": 0
+   },
+   {
+    "wall": 0.04220152700008839,
+    "user": 0.040104,
+    "sys": 0.0,
+    "maxrss_kib": 16952,
+    "status": 0
+   },
+   {
+    "wall": 0.041000633999829006,
+    "user": 0.036626,
+    "sys": 0.004077,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.04170293099991795,
+    "user": 0.041081,
+    "sys": 0.0,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.03584349299990208,
+    "user": 0.027669,
+    "sys": 0.007921,
+    "maxrss_kib": 17020,
+    "status": 0
+   },
+   {
+    "wall": 0.03393633699988641,
+    "user": 0.033734,
+    "sys": 0.0,
+    "maxrss_kib": 16936,
+    "status": 0
+   },
+   {
+    "wall": 0.03584184500004994,
+    "user": 0.035567999999999995,
+    "sys": 0.0,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.035574303999965196,
+    "user": 0.026503,
+    "sys": 0.008834,
+    "maxrss_kib": 16916,
+    "status": 0
+   },
+   {
+    "wall": 0.03414049000002706,
+    "user": 0.030163,
+    "sys": 0.00377,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.04125164299989592,
+    "user": 0.036642999999999995,
+    "sys": 0.004097,
+    "maxrss_kib": 16980,
+    "status": 0
+   },
+   {
+    "wall": 0.04109717999995155,
+    "user": 0.032654999999999997,
+    "sys": 0.008163,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.03507475600008547,
+    "user": 0.030427,
+    "sys": 0.004351,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.03613982199999555,
+    "user": 0.031896,
+    "sys": 0.003987,
+    "maxrss_kib": 17008,
+    "status": 0
+   },
+   {
+    "wall": 0.035415392999993855,
+    "user": 0.031262,
+    "sys": 0.003907,
+    "maxrss_kib": 16952,
+    "status": 0
+   },
+   {
+    "wall": 0.03657202900012635,
+    "user": 0.036337999999999995,
+    "sys": 0.0,
+    "maxrss_kib": 16952,
+    "status": 0
+   },
+   {
+    "wall": 0.03654842700007066,
+    "user": 0.036338999999999996,
+    "sys": 0.0,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.037385988000096404,
+    "user": 0.02601,
+    "sys": 0.011146999999999999,
+    "maxrss_kib": 16980,
+    "status": 0
+   },
+   {
+    "wall": 0.03612118599994574,
+    "user": 0.035719,
+    "sys": 0.0,
+    "maxrss_kib": 16936,
+    "status": 0
+   },
+   {
+    "wall": 0.036915959999987535,
+    "user": 0.032604,
+    "sys": 0.004075,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.03611249699997643,
+    "user": 0.035588,
+    "sys": 0.0,
+    "maxrss_kib": 16936,
+    "status": 0
+   },
+   {
+    "wall": 0.035966814999937924,
+    "user": 0.027732,
+    "sys": 0.007935,
+    "maxrss_kib": 17008,
+    "status": 0
+   },
+   {
+    "wall": 0.03580644800013033,
+    "user": 0.031617,
+    "sys": 0.003952,
+    "maxrss_kib": 16980,
+    "status": 0
+   },
+   {
+    "wall": 0.0371796329998233,
+    "user": 0.027932,
+    "sys": 0.008211,
+    "maxrss_kib": 16952,
+    "status": 0
+   },
+   {
+    "wall": 0.03688938800019059,
+    "user": 0.032573,
+    "sys": 0.004071,
+    "maxrss_kib": 16988,
+    "status": 0
+   },
+   {
+    "wall": 0.041039618000013434,
+    "user": 0.04068,
+    "sys": 0.0,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.041457985000079134,
+    "user": 0.037036,
+    "sys": 0.004116,
+    "maxrss_kib": 16988,
+    "status": 0
+   },
+   {
+    "wall": 0.04050760999984959,
+    "user": 0.040229,
+    "sys": 0.0,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.041454882999914844,
+    "user": 0.036888,
+    "sys": 0.0041199999999999995,
+    "maxrss_kib": 17020,
+    "status": 0
+   },
+   {
+    "wall": 0.04208946200014907,
+    "user": 0.041818999999999995,
+    "sys": 0.0,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.03947809399983271,
+    "user": 0.03532,
+    "sys": 0.0039239999999999995,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.03868622899994989,
+    "user": 0.034078,
+    "sys": 0.004266,
+    "maxrss_kib": 17012,
+    "status": 0
+   },
+   {
+    "wall": 0.03885146199991141,
+    "user": 0.030038,
+    "sys": 0.008582,
+    "maxrss_kib": 16924,
+    "status": 0
+   },
+   {
+    "wall": 0.03897700200013787,
+    "user": 0.034866999999999995,
+    "sys": 0.0038079999999999998,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.03909922799994092,
+    "user": 0.034949999999999995,
+    "sys": 0.0038829999999999997,
+    "maxrss_kib": 16952,
+    "status": 0
+   },
+   {
+    "wall": 0.03799730399987311,
+    "user": 0.030226999999999997,
+    "sys": 0.007555999999999999,
+    "maxrss_kib": 16952,
+    "status": 0
+   },
+   {
+    "wall": 0.03902423199997429,
+    "user": 0.034461,
+    "sys": 0.004292,
+    "maxrss_kib": 16948,
+    "status": 0
+   },
+   {
+    "wall": 0.04029867600002035,
+    "user": 0.035544,
+    "sys": 0.003998,
+    "maxrss_kib": 16980,
+    "status": 0
+   },
+   {
+    "wall": 0.04083969399994203,
+    "user": 0.032239,
+    "sys": 0.007944999999999999,
+    "maxrss_kib": 17012,
+    "status": 0
+   }
+  ],
+  "cli-run-hit": [
+   {
+    "wall": 0.038728127000013046,
+    "user": 0.02707,
+    "sys": 0.011394,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03916234899998017,
+    "user": 0.018823,
+    "sys": 0.020090999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.04147230499984289,
+    "user": 0.028679999999999997,
+    "sys": 0.012131,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.04008941300003244,
+    "user": 0.014888,
+    "sys": 0.024558999999999997,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.039936799000088286,
+    "user": 0.022425,
+    "sys": 0.017157,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.039780540000037945,
+    "user": 0.017539,
+    "sys": 0.021903,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03821233600001506,
+    "user": 0.014632,
+    "sys": 0.023257999999999997,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03704000800007634,
+    "user": 0.022681999999999997,
+    "sys": 0.013977999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03866963899986331,
+    "user": 0.018623999999999998,
+    "sys": 0.019738,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03717095399997561,
+    "user": 0.021595,
+    "sys": 0.015337,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03658750299996427,
+    "user": 0.01908,
+    "sys": 0.017202,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.04117771200003517,
+    "user": 0.018223,
+    "sys": 0.022359,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.04165943799989691,
+    "user": 0.019299999999999998,
+    "sys": 0.021743,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03810436799994932,
+    "user": 0.011234,
+    "sys": 0.026451,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03939361299990196,
+    "user": 0.027013,
+    "sys": 0.012019,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03808502399988356,
+    "user": 0.022271,
+    "sys": 0.01555,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.038024336000034964,
+    "user": 0.020635999999999998,
+    "sys": 0.017127,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.038119982999887725,
+    "user": 0.025258,
+    "sys": 0.012537999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03874131599991415,
+    "user": 0.020477,
+    "sys": 0.017995999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03945869900007892,
+    "user": 0.019082,
+    "sys": 0.020093,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03916760499987504,
+    "user": 0.020263,
+    "sys": 0.018592,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.039353131000098074,
+    "user": 0.020831,
+    "sys": 0.018179999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.039174444000082076,
+    "user": 0.029823,
+    "sys": 0.009078,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.038519683999993504,
+    "user": 0.020576,
+    "sys": 0.017553,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03931815999999344,
+    "user": 0.011186999999999999,
+    "sys": 0.027802,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03943103200003861,
+    "user": 0.028429,
+    "sys": 0.010721,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.04117729499989764,
+    "user": 0.026515,
+    "sys": 0.014346999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.04737191200001689,
+    "user": 0.02895,
+    "sys": 0.017145,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.04146415499985778,
+    "user": 0.01714,
+    "sys": 0.023996999999999997,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.04644273700000667,
+    "user": 0.023743999999999998,
+    "sys": 0.018653,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.04137077300015335,
+    "user": 0.019655,
+    "sys": 0.021339999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.038962139999966894,
+    "user": 0.029053,
+    "sys": 0.009656,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03928698499998973,
+    "user": 0.014709999999999999,
+    "sys": 0.024281999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03970805299991298,
+    "user": 0.010443,
+    "sys": 0.029005999999999997,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03942250199997943,
+    "user": 0.020472,
+    "sys": 0.018521,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03939419200014527,
+    "user": 0.017103999999999998,
+    "sys": 0.02189,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03874820000010004,
+    "user": 0.019271,
+    "sys": 0.019212999999999997,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.04010392400005003,
+    "user": 0.018195,
+    "sys": 0.021433,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03934097399996972,
+    "user": 0.020857,
+    "sys": 0.017977999999999997,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.045929950999834546,
+    "user": 0.019451,
+    "sys": 0.022300999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "cli-cached-exe": [
+   {
+    "wall": 0.001503344999946421,
+    "user": 0.0012699999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015966539999681117,
+    "user": 0.001375,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001605841000127839,
+    "user": 0.0013809999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0016852900000685622,
+    "user": 0.0014299999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0016227019998495962,
+    "user": 0.0013759999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0016130540000176552,
+    "user": 0.0013089999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.002098935000049096,
+    "user": 0.00178,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014295119999587769,
+    "user": 0.0012209999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015423259999352013,
+    "user": 0.0013009999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013975970000501547,
+    "user": 0.0011949999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0014236920001167164,
+    "user": 0.001205,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001720717999887711,
+    "user": 0.001398,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001730124000005162,
+    "user": 0.0014629999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001550468000004912,
+    "user": 0.0013269999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001537513999892326,
+    "user": 0.001312,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001558766000016476,
+    "user": 0.001339,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015277930001502682,
+    "user": 0.001325,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015868430000409717,
+    "user": 0.001354,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015935439998884249,
+    "user": 0.001367,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0017705730001580378,
+    "user": 0.001524,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015833129998554796,
+    "user": 0.001343,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0016497250001066277,
+    "user": 0.0,
+    "sys": 0.001415,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0016175030000340485,
+    "user": 0.0014,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014679260000320937,
+    "user": 0.001241,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015804619999926217,
+    "user": 0.001333,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015832600001886021,
+    "user": 0.001261,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018667570000161504,
+    "user": 0.0015609999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001791209999964849,
+    "user": 0.0014789999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001704828000129055,
+    "user": 0.0,
+    "sys": 0.001424,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001622456999939459,
+    "user": 0.0013679999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001735458999974071,
+    "user": 0.0014609999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015538489999471494,
+    "user": 0.0013449999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001866060000111247,
+    "user": 0.001575,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001579972999934398,
+    "user": 0.001279,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.00155937499994252,
+    "user": 0.001295,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015284179999071057,
+    "user": 0.0012879999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015494130000206496,
+    "user": 0.001331,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.00157354399993892,
+    "user": 0.001304,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015853069999138825,
+    "user": 0.001322,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0014439569999922242,
+    "user": 0.0012159999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "cli-cpython-port": [
+   {
+    "wall": 0.03623604500012334,
+    "user": 0.028020999999999997,
+    "sys": 0.007982999999999999,
+    "maxrss_kib": 16540,
+    "status": 0
+   },
+   {
+    "wall": 0.03647860699993544,
+    "user": 0.036271,
+    "sys": 0.0,
+    "maxrss_kib": 16572,
+    "status": 0
+   },
+   {
+    "wall": 0.038538586999948166,
+    "user": 0.030563999999999997,
+    "sys": 0.007659999999999999,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.037512794999884136,
+    "user": 0.032213,
+    "sys": 0.004026,
+    "maxrss_kib": 16520,
+    "status": 0
+   },
+   {
+    "wall": 0.03905757400002585,
+    "user": 0.030344,
+    "sys": 0.007751,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.03861848199994711,
+    "user": 0.034075999999999995,
+    "sys": 0.003833,
+    "maxrss_kib": 16520,
+    "status": 0
+   },
+   {
+    "wall": 0.04203382800005784,
+    "user": 0.034128,
+    "sys": 0.007584,
+    "maxrss_kib": 16540,
+    "status": 0
+   },
+   {
+    "wall": 0.03374248799991619,
+    "user": 0.022319,
+    "sys": 0.011151999999999999,
+    "maxrss_kib": 16528,
+    "status": 0
+   },
+   {
+    "wall": 0.0340743700000985,
+    "user": 0.02963,
+    "sys": 0.004232,
+    "maxrss_kib": 16572,
+    "status": 0
+   },
+   {
+    "wall": 0.032263626999792905,
+    "user": 0.02402,
+    "sys": 0.008006,
+    "maxrss_kib": 16564,
+    "status": 0
+   },
+   {
+    "wall": 0.04377715500004342,
+    "user": 0.037663999999999996,
+    "sys": 0.0,
+    "maxrss_kib": 16572,
+    "status": 0
+   },
+   {
+    "wall": 0.0406251639999482,
+    "user": 0.03515,
+    "sys": 0.004038,
+    "maxrss_kib": 16544,
+    "status": 0
+   },
+   {
+    "wall": 0.03900312600012512,
+    "user": 0.034866999999999995,
+    "sys": 0.003874,
+    "maxrss_kib": 16564,
+    "status": 0
+   },
+   {
+    "wall": 0.03355149499998333,
+    "user": 0.029651,
+    "sys": 0.0037059999999999997,
+    "maxrss_kib": 16536,
+    "status": 0
+   },
+   {
+    "wall": 0.03286500000012893,
+    "user": 0.028512,
+    "sys": 0.004083,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.03373420399998395,
+    "user": 0.02095,
+    "sys": 0.01257,
+    "maxrss_kib": 16536,
+    "status": 0
+   },
+   {
+    "wall": 0.0339520380000522,
+    "user": 0.022494,
+    "sys": 0.011247,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.033596970999951736,
+    "user": 0.033387,
+    "sys": 0.0,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.03288151500009917,
+    "user": 0.028575,
+    "sys": 0.004082,
+    "maxrss_kib": 16528,
+    "status": 0
+   },
+   {
+    "wall": 0.034374007999986134,
+    "user": 0.030358,
+    "sys": 0.0037939999999999996,
+    "maxrss_kib": 16540,
+    "status": 0
+   },
+   {
+    "wall": 0.034780889999865394,
+    "user": 0.030654999999999998,
+    "sys": 0.0038309999999999998,
+    "maxrss_kib": 16520,
+    "status": 0
+   },
+   {
+    "wall": 0.034460391000038726,
+    "user": 0.021407,
+    "sys": 0.012820999999999999,
+    "maxrss_kib": 16564,
+    "status": 0
+   },
+   {
+    "wall": 0.034376798000039344,
+    "user": 0.02984,
+    "sys": 0.0042699999999999995,
+    "maxrss_kib": 16564,
+    "status": 0
+   },
+   {
+    "wall": 0.03376389000004565,
+    "user": 0.029321,
+    "sys": 0.004188,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.03736001400011446,
+    "user": 0.032980999999999996,
+    "sys": 0.004122,
+    "maxrss_kib": 16524,
+    "status": 0
+   },
+   {
+    "wall": 0.03426789300010569,
+    "user": 0.030268,
+    "sys": 0.003783,
+    "maxrss_kib": 16536,
+    "status": 0
+   },
+   {
+    "wall": 0.037213099999917176,
+    "user": 0.036955,
+    "sys": 0.0,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.038850255999932415,
+    "user": 0.034688,
+    "sys": 0.003855,
+    "maxrss_kib": 16544,
+    "status": 0
+   },
+   {
+    "wall": 0.03818434400000115,
+    "user": 0.033701999999999996,
+    "sys": 0.004212,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.04056081399994582,
+    "user": 0.031383999999999995,
+    "sys": 0.006573,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.03721880900002361,
+    "user": 0.028762,
+    "sys": 0.00811,
+    "maxrss_kib": 16564,
+    "status": 0
+   },
+   {
+    "wall": 0.037904347999983656,
+    "user": 0.033795,
+    "sys": 0.003766,
+    "maxrss_kib": 16524,
+    "status": 0
+   },
+   {
+    "wall": 0.03631529800009048,
+    "user": 0.036057,
+    "sys": 0.0,
+    "maxrss_kib": 16528,
+    "status": 0
+   },
+   {
+    "wall": 0.03666811399989456,
+    "user": 0.028328,
+    "sys": 0.008093,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.03577652800004216,
+    "user": 0.023694999999999997,
+    "sys": 0.011854,
+    "maxrss_kib": 16532,
+    "status": 0
+   },
+   {
+    "wall": 0.03607888100009404,
+    "user": 0.031803,
+    "sys": 0.003987,
+    "maxrss_kib": 16564,
+    "status": 0
+   },
+   {
+    "wall": 0.036934803999884025,
+    "user": 0.032593,
+    "sys": 0.0040739999999999995,
+    "maxrss_kib": 16564,
+    "status": 0
+   },
+   {
+    "wall": 0.037563883999837344,
+    "user": 0.028974,
+    "sys": 0.008296,
+    "maxrss_kib": 16536,
+    "status": 0
+   },
+   {
+    "wall": 0.03704130100004477,
+    "user": 0.033125,
+    "sys": 0.0036799999999999997,
+    "maxrss_kib": 16544,
+    "status": 0
+   },
+   {
+    "wall": 0.037118211999995765,
+    "user": 0.032767,
+    "sys": 0.004095,
+    "maxrss_kib": 16528,
+    "status": 0
+   }
+  ],
+  "hello-run-hit": [
+   {
+    "wall": 0.03511981199994807,
+    "user": 0.01465,
+    "sys": 0.020260999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.035523854000075517,
+    "user": 0.017244,
+    "sys": 0.018047999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03648547200009489,
+    "user": 0.015752,
+    "sys": 0.020409999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03598961300008341,
+    "user": 0.017505,
+    "sys": 0.01823,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03740420200006156,
+    "user": 0.017091,
+    "sys": 0.019964,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03699020399994879,
+    "user": 0.013708,
+    "sys": 0.022986,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.04975025199996708,
+    "user": 0.024485,
+    "sys": 0.024641,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03467095199994219,
+    "user": 0.01567,
+    "sys": 0.018668,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03686737900011394,
+    "user": 0.016042999999999998,
+    "sys": 0.018851,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.033966267000096195,
+    "user": 0.013091,
+    "sys": 0.020666999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03841984100017726,
+    "user": 0.01487,
+    "sys": 0.022559,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0374519810000038,
+    "user": 0.019412,
+    "sys": 0.017696,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0384375490000366,
+    "user": 0.013753,
+    "sys": 0.023979999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.034847830999979124,
+    "user": 0.01367,
+    "sys": 0.020946,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03596333499990578,
+    "user": 0.015702999999999998,
+    "sys": 0.019969999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03615724200017212,
+    "user": 0.016954,
+    "sys": 0.018914999999999998,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.035969453999996404,
+    "user": 0.01678,
+    "sys": 0.01885,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03482968699995581,
+    "user": 0.016031,
+    "sys": 0.018428,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03610903799994958,
+    "user": 0.017331,
+    "sys": 0.018297,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.03698365400009607,
+    "user": 0.01554,
+    "sys": 0.021117999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03580781699997715,
+    "user": 0.027294,
+    "sys": 0.008154999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.036222395000095275,
+    "user": 0.022564999999999998,
+    "sys": 0.013146999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03651409300005071,
+    "user": 0.010556,
+    "sys": 0.025685,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.035519854000085616,
+    "user": 0.017912,
+    "sys": 0.017314,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03842332400017767,
+    "user": 0.013049,
+    "sys": 0.024968999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03920683300020755,
+    "user": 0.018063,
+    "sys": 0.020649,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.037279546999798185,
+    "user": 0.019,
+    "sys": 0.017904,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0378956049999033,
+    "user": 0.024072,
+    "sys": 0.013489,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03873770700010937,
+    "user": 0.028728,
+    "sys": 0.009467999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.037493877000088105,
+    "user": 0.016877,
+    "sys": 0.020253999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.037084823999975924,
+    "user": 0.014587999999999999,
+    "sys": 0.022248,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.036563677000003736,
+    "user": 0.010015,
+    "sys": 0.026261999999999997,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03662497799996345,
+    "user": 0.023629999999999998,
+    "sys": 0.012747,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.036748831999830145,
+    "user": 0.027861,
+    "sys": 0.008505,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03870444899985159,
+    "user": 0.0215,
+    "sys": 0.016578,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.035856825999871944,
+    "user": 0.014067,
+    "sys": 0.021415999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.03784721199986052,
+    "user": 0.028787,
+    "sys": 0.008525,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.036949176000007355,
+    "user": 0.02658,
+    "sys": 0.009951,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.035539400999823556,
+    "user": 0.024395999999999998,
+    "sys": 0.010806999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.034740647000035096,
+    "user": 0.013479999999999999,
+    "sys": 0.020978999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "hello-cached-exe": [
+   {
+    "wall": 0.0011226829999486654,
+    "user": 0.0009339999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001126786999975593,
+    "user": 0.000932,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0011462340000889526,
+    "user": 0.0009549999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0011480450000362907,
+    "user": 0.0009469999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001216557000134344,
+    "user": 0.000959,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012496790000113833,
+    "user": 0.001005,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0015392450000035751,
+    "user": 0.001214,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0011193200000434445,
+    "user": 0.0,
+    "sys": 0.000931,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0011207120001017756,
+    "user": 0.000905,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012452509997729067,
+    "user": 0.000963,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012158460001501226,
+    "user": 0.000959,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012006489998839243,
+    "user": 0.00095,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013255329999992682,
+    "user": 0.000985,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0011613619999479852,
+    "user": 0.000966,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012483559999054705,
+    "user": 0.0010299999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0013770740001746162,
+    "user": 0.001163,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0011941760001263901,
+    "user": 0.000993,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001213344000007055,
+    "user": 0.000979,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0012170119998700102,
+    "user": 0.001011,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.00123368999993545,
+    "user": 0.001001,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015420849999827624,
+    "user": 0.0010069999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013393269998687174,
+    "user": 0.001078,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0012629670000023907,
+    "user": 0.001035,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001189120999924853,
+    "user": 0.0009739999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0012485829997785913,
+    "user": 0.0009739999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001324865000015052,
+    "user": 0.00106,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013013420000334008,
+    "user": 0.0010659999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013247669999145728,
+    "user": 0.001099,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0013632059999508783,
+    "user": 0.001084,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0012438179999207932,
+    "user": 0.0009889999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0015970730000844924,
+    "user": 0.001132,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0011935479999465315,
+    "user": 0.00094,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0011668709998957638,
+    "user": 0.000944,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0012307419999615377,
+    "user": 0.0,
+    "sys": 0.000983,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0012666789998547756,
+    "user": 0.001055,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0012322089999088348,
+    "user": 0.001011,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001197916999899462,
+    "user": 0.0009599999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001221538999971017,
+    "user": 0.000966,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0011892489999354439,
+    "user": 0.0009559999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0010775890000331856,
+    "user": 0.0009,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "compiler-version": [
+   {
+    "wall": 0.001767780000136554,
+    "user": 0.00158,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0018649529999947845,
+    "user": 0.0,
+    "sys": 0.001682,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0018941050000194082,
+    "user": 0.001697,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001820579999957772,
+    "user": 0.0,
+    "sys": 0.001625,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0018071830002099887,
+    "user": 0.001619,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0018546389999301027,
+    "user": 0.001663,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0022690170001169463,
+    "user": 0.0019909999999999997,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0017017419997955585,
+    "user": 0.001531,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001699479000080828,
+    "user": 0.001535,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0016571700000440615,
+    "user": 0.001488,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0017883509999592206,
+    "user": 0.001583,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0018769790001442743,
+    "user": 0.0,
+    "sys": 0.0016899999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0020038019999901735,
+    "user": 0.0017959999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0018789130001550802,
+    "user": 0.001707,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0017822910001541459,
+    "user": 0.001615,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001892787000087992,
+    "user": 0.001691,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001833123999858799,
+    "user": 0.0,
+    "sys": 0.0016489999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0017510609998225846,
+    "user": 0.0015739999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0018616740001107246,
+    "user": 0.0,
+    "sys": 0.001674,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0018834669999705511,
+    "user": 0.001713,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018849010000394628,
+    "user": 0.001696,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018834530001186067,
+    "user": 0.0017009999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0017822659999637835,
+    "user": 0.0016179999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0019377599999188533,
+    "user": 0.001599,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018564470001365407,
+    "user": 0.0,
+    "sys": 0.001645,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0020292949998292897,
+    "user": 0.0018319999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.002003187999889633,
+    "user": 0.001772,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0019630099998266815,
+    "user": 0.0,
+    "sys": 0.001753,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0019467179999992368,
+    "user": 0.001738,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018786590001127479,
+    "user": 0.001648,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001864934000195717,
+    "user": 0.001658,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018522020000091288,
+    "user": 0.0016569999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018282519999957003,
+    "user": 0.0,
+    "sys": 0.001642,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001749346999986301,
+    "user": 0.0015539999999999998,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0020219800001086696,
+    "user": 0.0017749999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001846169000145892,
+    "user": 0.001583,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018567649999567948,
+    "user": 0.001609,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0018778480000491982,
+    "user": 0.00164,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0017672420001417777,
+    "user": 0.001536,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0017298170000685786,
+    "user": 0.0,
+    "sys": 0.0015049999999999998,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "bin-true": [
+   {
+    "wall": 0.0009015659998112824,
+    "user": 0.000723,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009116759999869828,
+    "user": 0.0007329999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009296549999362469,
+    "user": 0.000734,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009323919998678321,
+    "user": 0.000754,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009452059998693585,
+    "user": 0.000763,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009456020000015997,
+    "user": 0.0007549999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0011924230000204261,
+    "user": 0.0009069999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0008504999998422136,
+    "user": 0.000665,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0008751670000037848,
+    "user": 0.000667,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0008877389998360741,
+    "user": 0.000669,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009390719999373687,
+    "user": 0.0,
+    "sys": 0.0007549999999999999,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009549510000397277,
+    "user": 0.0006969999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009594079999715177,
+    "user": 0.0007639999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.000971351999851322,
+    "user": 0.000802,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009742849999838654,
+    "user": 0.0008049999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.001010660000019925,
+    "user": 0.000834,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009354250000797038,
+    "user": 0.000762,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.0009498539998276101,
+    "user": 0.0007329999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16064,
+    "status": 0
+   },
+   {
+    "wall": 0.000955443999828276,
+    "user": 0.00078,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009569940000346833,
+    "user": 0.000789,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009916619999330578,
+    "user": 0.0007559999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009850700000697543,
+    "user": 0.0,
+    "sys": 0.0008089999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009683680000307504,
+    "user": 0.0,
+    "sys": 0.0007959999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0011309569999866653,
+    "user": 0.000683,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0008699599998180929,
+    "user": 0.000695,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0010691680001855275,
+    "user": 0.0,
+    "sys": 0.0008709999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.001124045000096885,
+    "user": 0.000792,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009903169998324302,
+    "user": 0.000798,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.000994090999938635,
+    "user": 0.0008049999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009683199998562486,
+    "user": 0.00074,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009616649999770743,
+    "user": 0.000761,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009154189999662776,
+    "user": 0.0007329999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.000911069999801839,
+    "user": 0.0007279999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009214110000357323,
+    "user": 0.000687,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009955630000604287,
+    "user": 0.0,
+    "sys": 0.0007689999999999999,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0010899080000399408,
+    "user": 0.0008089999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009272100000998762,
+    "user": 0.000749,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009375849999742059,
+    "user": 0.0007549999999999999,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0009463549999964016,
+    "user": 0.0,
+    "sys": 0.000767,
+    "maxrss_kib": 16192,
+    "status": 0
+   },
+   {
+    "wall": 0.0008469849999528378,
+    "user": 0.000686,
+    "sys": 0.0,
+    "maxrss_kib": 16192,
+    "status": 0
+   }
+  ],
+  "bench-run-uncached-jit": [
+   {
+    "wall": 0.985432972000126,
+    "user": 0.9153819999999999,
+    "sys": 0.063937,
+    "maxrss_kib": 76268,
+    "status": 0
+   },
+   {
+    "wall": 0.9481414560000303,
+    "user": 0.869595,
+    "sys": 0.071225,
+    "maxrss_kib": 76348,
+    "status": 0
+   },
+   {
+    "wall": 0.9604585699999006,
+    "user": 0.8825949999999999,
+    "sys": 0.059423,
+    "maxrss_kib": 76216,
+    "status": 0
+   },
+   {
+    "wall": 0.9343248220000078,
+    "user": 0.8694339999999999,
+    "sys": 0.059595999999999996,
+    "maxrss_kib": 76372,
+    "status": 0
+   },
+   {
+    "wall": 0.9479442550000385,
+    "user": 0.8736459999999999,
+    "sys": 0.05262,
+    "maxrss_kib": 76456,
+    "status": 0
+   }
+  ]
+ }
+}

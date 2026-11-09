@@ -1,0 +1,45 @@
+{
+ "first_builds_seconds": {
+  "bench.py (empty cache: includes runtime cache)": 10.896,
+  "facade.py": 5.154,
+  "scaling.py": 4.945
+ },
+ "warm_bench_build_seconds": [
+  5.19,
+  5.039,
+  5.242,
+  5.272
+ ],
+ "warm_bench_build_note": "4th run with PYSTACHY_TIMING=1; all four executables byte-identical to the timed exe/bench",
+ "timing_stages_seconds": {
+  "program.cache_lookup": 7.377e-06,
+  "program.load": 0.057726459,
+  "program.prepare": 0.015759713,
+  "program.attempt": 0.142520298,
+  "program.discover": 0.034995337,
+  "program.analysis": 0.00432491,
+  "program.optimize": 0.008995865,
+  "program.finalize": 0.003000869,
+  "program.lower": 0.017579635,
+  "program.frontend": 0.247351948,
+  "runtime.cache_lookup": 0.000187925,
+  "program.llvm_link": 0.193515213,
+  "program.llvm_optimize": 2.488593579,
+  "program.late_inline": 0.145104557,
+  "program.codegen": 2.150485169,
+  "program.link": 0.036760992,
+  "driver.total": 5.265513254
+ },
+ "first_jit_use_seconds": 5.583,
+ "first_program_cache_fill_seconds": {
+  "bench.py": 11.983,
+  "hello.py": 0.383,
+  "jr_cli.py": 3.784
+ },
+ "command": "PYSTACHY_HOME=/home/user/pystachy PYSTACHY_CACHE=$SCR/cache PYSTACHY_PATH=/home/user/pystachy/ports /home/user/pystachy/pystachy build /home/user/pystachy/bench/json_repair/bench.py -o $SCR/build-timing/bench-N",
+ "2nov": {
+  "bench.py (empty cache)": 13.27,
+  "facade.py": 6.74,
+  "scaling.py": 6.65
+ }
+}

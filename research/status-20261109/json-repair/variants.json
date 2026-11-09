@@ -1,0 +1,183 @@
+{
+ "variants": [
+  {
+   "name": "upstream-cpython",
+   "source": "/home/user/pystachy",
+   "commands": {
+    "bench": [
+     "/usr/local/bin/python3.13",
+     "/home/user/pystachy/bench/json_repair/bench.py"
+    ],
+    "facade": [
+     "/usr/local/bin/python3.13",
+     "/home/user/pystachy/bench/json_repair/facade.py"
+    ],
+    "scaling": [
+     "/usr/local/bin/python3.13",
+     "/home/user/pystachy/bench/json_repair/scaling.py"
+    ]
+   },
+   "env": {
+    "PYTHONPATH": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/upstream",
+    "PYTHONPYCACHEPREFIX": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/pycache"
+   },
+   "identity": {
+    "json_repair": "0.64.1 PyPI wheel json_repair-0.64.1-py3-none-any.whl sha256 1e1022f8d9b5a24433f7e28c2ee5c4ef42256e11ff0eef8abf7cad17fc8b9e0a (matches PyPI digest; all 22 sources match tests/upstream/json_repair/manifest.json, ace9b23c)",
+    "python": "3.13.18"
+   }
+  },
+  {
+   "name": "port-cpython",
+   "source": "/home/user/pystachy",
+   "commands": {
+    "bench": [
+     "/usr/local/bin/python3.13",
+     "/home/user/pystachy/bench/json_repair/bench.py"
+    ],
+    "facade": [
+     "/usr/local/bin/python3.13",
+     "/home/user/pystachy/bench/json_repair/facade.py"
+    ],
+    "scaling": [
+     "/usr/local/bin/python3.13",
+     "/home/user/pystachy/bench/json_repair/scaling.py"
+    ]
+   },
+   "env": {
+    "PYTHONPATH": "/home/user/pystachy/ports",
+    "PYTHONPYCACHEPREFIX": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/pycache"
+   },
+   "identity": {
+    "python": "3.13.18"
+   }
+  },
+  {
+   "name": "port-aot",
+   "source": "/home/user/pystachy",
+   "commands": {
+    "bench": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/exe/bench"
+    ],
+    "facade": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/exe/facade"
+    ],
+    "scaling": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/exe/scaling"
+    ]
+   },
+   "env": {},
+   "identity": {
+    "llvm": "18.1.3",
+    "compiler": "main ce8c887f (v0.4.0-alpha.1) sources; ./pystachy sha256 1218b23de272dcdf7769d18af16193ac340af5c188232cfbae1bae1d8a9e59df"
+   }
+  },
+  {
+   "name": "port-jit",
+   "source": "/home/user/pystachy",
+   "commands": {
+    "bench": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/home/user/pystachy/bench/json_repair/bench.py"
+    ],
+    "facade": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/home/user/pystachy/bench/json_repair/facade.py"
+    ],
+    "scaling": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/home/user/pystachy/bench/json_repair/scaling.py"
+    ]
+   },
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+   },
+   "identity": {
+    "llvm": "18.1.3",
+    "compiler": "main ce8c887f (v0.4.0-alpha.1)",
+    "program_cache": "disabled by the runner (PYSTACHY_PROGRAM_CACHE=0)"
+   }
+  }
+ ],
+ "cases": [
+  {
+   "name": "mixed-2000",
+   "probe": "bench",
+   "args": [
+    "200"
+   ]
+  },
+  {
+   "name": "valid-facade-16000",
+   "probe": "facade",
+   "args": [
+    "valid",
+    "4000"
+   ]
+  },
+  {
+   "name": "malformed-facade-1600",
+   "probe": "facade",
+   "args": [
+    "malformed",
+    "400"
+   ]
+  },
+  {
+   "name": "serialized-malformed-1600",
+   "probe": "facade",
+   "args": [
+    "serialized-malformed",
+    "400"
+   ]
+  },
+  {
+   "name": "valid-long-4000x2000",
+   "probe": "scaling",
+   "args": [
+    "valid",
+    "4000",
+    "2000"
+   ]
+  },
+  {
+   "name": "escaped-2000x3",
+   "probe": "scaling",
+   "args": [
+    "escaped",
+    "2000",
+    "3"
+   ]
+  },
+  {
+   "name": "unicode-2000x100",
+   "probe": "scaling",
+   "args": [
+    "unicode",
+    "2000",
+    "100"
+   ]
+  },
+  {
+   "name": "comma-1000x20",
+   "probe": "scaling",
+   "args": [
+    "comma",
+    "1000",
+    "20"
+   ]
+  },
+  {
+   "name": "logs-1000x200",
+   "probe": "scaling",
+   "args": [
+    "logs",
+    "1000",
+    "200"
+   ]
+  }
+ ]
+}

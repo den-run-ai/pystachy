@@ -1,0 +1,299 @@
+{
+ "scope": "Whole-process AOT callgrind instructions with the 2 Nov args, today's exe/* vs 2 Nov release_candidate (ec442a20 compiler AND port); fallback = inclusive pthread_getattr_np",
+ "command": "taskset -c 2 valgrind --tool=callgrind --callgrind-out-file=NAME.today.cg $SCR/exe/PROGRAM ARGS (see $SCR/scripts/cg.sh)",
+ "workloads": [
+  {
+   "workload": "mixed records",
+   "args": [
+    "200",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 105426027,
+   "today_fallback": 110883,
+   "today_instructions": 105315144,
+   "2nov_instructions": 117873127,
+   "change_percent": -10.7
+  },
+  {
+   "workload": "valid objects",
+   "args": [
+    "valid",
+    "4000",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 100705340,
+   "today_fallback": 113152,
+   "today_instructions": 100592188,
+   "2nov_instructions": 99396295,
+   "change_percent": 1.2
+  },
+  {
+   "workload": "malformed objects",
+   "args": [
+    "malformed",
+    "400",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 122597504,
+   "today_fallback": 113152,
+   "today_instructions": 122484352,
+   "2nov_instructions": 136014346,
+   "change_percent": -9.9
+  },
+  {
+   "workload": "serialized malformed objects",
+   "args": [
+    "serialized-malformed",
+    "400",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 135288718,
+   "today_fallback": 0,
+   "today_instructions": 135288718,
+   "2nov_instructions": 148756551,
+   "change_percent": -9.1
+  },
+  {
+   "workload": "long valid string",
+   "args": [
+    "valid",
+    "4000",
+    "20",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 3002082,
+   "today_fallback": 110842,
+   "today_instructions": 2891240,
+   "2nov_instructions": 2725602,
+   "change_percent": 6.1
+  },
+  {
+   "workload": "escaped newlines",
+   "args": [
+    "escaped",
+    "2000",
+    "20",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 53321619,
+   "today_fallback": 110842,
+   "today_instructions": 53210777,
+   "2nov_instructions": 288042314,
+   "change_percent": -81.5
+  },
+  {
+   "workload": "non-ASCII malformed text",
+   "args": [
+    "unicode",
+    "2000",
+    "20",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 25983972,
+   "today_fallback": 110842,
+   "today_instructions": 25873130,
+   "2nov_instructions": 60537046,
+   "change_percent": -57.3
+  },
+  {
+   "workload": "comma-dense text",
+   "args": [
+    "comma",
+    "1000",
+    "20",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 168842202,
+   "today_fallback": 110842,
+   "today_instructions": 168731360,
+   "2nov_instructions": 233959074,
+   "change_percent": -27.9
+  },
+  {
+   "workload": "logged repair",
+   "args": [
+    "logs",
+    "1000",
+    "20",
+    "1",
+    "0"
+   ],
+   "today_callgrind_total": 1835583,
+   "today_fallback": 110842,
+   "today_instructions": 1724741,
+   "2nov_instructions": 9204449,
+   "change_percent": -81.3
+  }
+ ],
+ "per_repair_valid_long_today": {
+  "I(0 rounds)": 827397,
+  "I(220 rounds)": 24795753,
+  "per_repair": 108947.07272727272
+ },
+ "same_host_rebuilds": {
+  "ec442a20_rebuild": {
+   "mixed": {
+    "total": 117829900,
+    "fallback": 0,
+    "instructions": 117829900
+   },
+   "valid": {
+    "total": 99577907,
+    "fallback": 113075,
+    "instructions": 99464832
+   },
+   "malformed": {
+    "total": 136013805,
+    "fallback": 0,
+    "instructions": 136013805
+   },
+   "serialized": {
+    "total": 148871879,
+    "fallback": 113075,
+    "instructions": 148758804
+   },
+   "validlong": {
+    "total": 2838299,
+    "fallback": 110861,
+    "instructions": 2727438
+   },
+   "escaped": {
+    "total": 288046353,
+    "fallback": 0,
+    "instructions": 288046353
+   },
+   "unicode": {
+    "total": 60541098,
+    "fallback": 0,
+    "instructions": 60541098
+   },
+   "comma": {
+    "total": 234071748,
+    "fallback": 110861,
+    "instructions": 233960887
+   },
+   "logs": {
+    "total": 9319931,
+    "fallback": 110861,
+    "instructions": 9209070
+   }
+  },
+  "ce8c887_compiler_on_ec442a20_port": {
+   "mixed": {
+    "total": 118702670,
+    "fallback": 110852,
+    "instructions": 118591818
+   },
+   "valid": {
+    "total": 100664106,
+    "fallback": 110869,
+    "instructions": 100553237
+   },
+   "malformed": {
+    "total": 137360608,
+    "fallback": 110869,
+    "instructions": 137249739
+   },
+   "serialized": {
+    "total": 150303392,
+    "fallback": 110869,
+    "instructions": 150192523
+   },
+   "validlong": {
+    "total": 2753986,
+    "fallback": 0,
+    "instructions": 2753986
+   },
+   "escaped": {
+    "total": 288542273,
+    "fallback": 110876,
+    "instructions": 288431397
+   },
+   "unicode": {
+    "total": 60010431,
+    "fallback": 110876,
+    "instructions": 59899555
+   },
+   "comma": {
+    "total": 237732240,
+    "fallback": 0,
+    "instructions": 237732240
+   },
+   "logs": {
+    "total": 9490640,
+    "fallback": 110876,
+    "instructions": 9379764
+   }
+  },
+  "ce8c887": {
+   "mixed": {
+    "total": 105426027,
+    "fallback": 110883,
+    "instructions": 105315144
+   },
+   "valid": {
+    "total": 100705340,
+    "fallback": 113152,
+    "instructions": 100592188
+   },
+   "malformed": {
+    "total": 122597504,
+    "fallback": 113152,
+    "instructions": 122484352
+   },
+   "serialized": {
+    "total": 135288718,
+    "fallback": 0,
+    "instructions": 135288718
+   },
+   "validlong": {
+    "total": 3002082,
+    "fallback": 110842,
+    "instructions": 2891240
+   },
+   "escaped": {
+    "total": 53321619,
+    "fallback": 110842,
+    "instructions": 53210777
+   },
+   "unicode": {
+    "total": 25983972,
+    "fallback": 110842,
+    "instructions": 25873130
+   },
+   "comma": {
+    "total": 168842202,
+    "fallback": 110842,
+    "instructions": 168731360
+   },
+   "logs": {
+    "total": 1835583,
+    "fallback": 110842,
+    "instructions": 1724741
+   }
+  },
+  "note": "ec442a20 compiler bootstrapped in $SCR/old (stage-2 IR 792,790 lines, as recorded on 2 Nov); its AOT counts match the 2 Nov release_candidate counts within 0.07%; outputs identical",
+  "per_repair": {
+   "valid-long": {
+    "ec442a20": 108786.96818181819,
+    "ce8c887": 108947.07272727272
+   },
+   "valid-facade": {
+    "ec442a20": 6183.1485,
+    "ce8c887": 6246.3480625
+   },
+   "startup_instructions_scaling_valid_0_rounds": {
+    "ec442a20": 667637,
+    "ce8c887": 827397
+   }
+  }
+ }
+}

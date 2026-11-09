@@ -1,0 +1,50 @@
+heavy.sh: slot 2 acquired at 01:53:11 for: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/ci-time/scripts/cache_miss.sh 46
+warm-miss	0.651201047 0
+warm-hit	0.049269187 0
+other-miss	0.477815166 0
+tests/programs/apps/port_json_repair_escape.py	1.024403778 0	1.407714260 0	0.054692015 0
+tests/programs/apps/port_json_repair_depth.py	0.990059800 0	1.410319132 0	0.068639380 0
+tests/programs/upstream/upstream_tomllib_data.py	2.440116745 0	2.691359690 0	0.046555095 0
+tests/programs/upstream/upstream_itertools.py	4.354180542 0	4.535958243 0	0.069584677 0
+tests/programs/apps/port_wcwidth_core.py	0.366003459 0	0.690588737 0	0.045023106 0
+tests/programs/library/lib_tomllib_dynamic.py	2.349693987 0	2.764066894 0	0.044414729 0
+tests/programs/apps/example_route.py	1.205025703 0	1.521774149 0	0.057830249 0
+tests/programs/classes/dataclass_generic_field.py	0.076168033 0	0.456515652 0	0.044404664 0
+tests/programs/classes/object_reversed.py	0.078210316 0	0.434113551 0	0.042003448 0
+tests/programs/classes/special_deferred_print.py	0.052165751 0	0.405003766 0	0.041054354 0
+tests/programs/containers/star_rebound.py	0.068215836 0	0.434169917 0	0.039970380 0
+tests/programs/exceptions/exc_class_cause_unread.py	0.039921535 0	0.383770382 0	0.039679769 0
+tests/programs/exceptions/exc_exit_optnone.py	0.035648315 0	0.432977844 0	0.042910576 0
+tests/programs/exceptions/exc_finally_deep.py	0.055987988 0	0.436534751 0	0.043331519 0
+tests/programs/exceptions/exc_init_result.py	0.057977638 0	0.454991459 0	0.043066840 0
+tests/programs/exceptions/exit_optional_code.py	0.053969882 4	0.413626345 4	0.041160741 4
+tests/programs/generators/gen_cm_gc.py	0.107668595 0	0.487822433 0	0.043240173 0
+tests/programs/generators/gen_more.py	0.089798395 0	0.526113861 0	0.044496752 0
+tests/programs/imports/module_function_global.py	0.044976373 0	0.432289331 0	0.039714200 0
+tests/programs/inference/any_mutation.py	0.063046800 0	0.419549462 0	0.044679744 0
+tests/programs/inference/dynany_cmp_getattr_default.py	0.047308601 0	0.438592036 0	0.042056132 0
+tests/programs/inference/dynany_identity_call_none.py	0.056414215 0	0.479190110 0	0.040473412 0
+tests/programs/inference/dynany_identity_call_returns.py	0.054945911 0	0.418863812 0	0.042787416 0
+tests/programs/inference/dynany_identity_chained.py	0.044850602 0	0.396180141 0	0.040098231 0
+tests/programs/inference/dynany_init_varargs.py	0.044747378 0	0.435304592 0	0.048635407 0
+tests/programs/inference/dynany_method_read.py	0.073882330 0	0.496818308 0	0.049459375 0
+tests/programs/inference/dynany_numeric_promoted_protocol.py	0.058579834 0	0.550488467 0	0.042596200 0
+tests/programs/inference/dynany_numeric_protocols.py	0.070960934 0	0.463327266 0	0.048512800 0
+tests/programs/io/file_not_readable.py	0.037438612 1	0.417875066 1	0.048804313 1
+tests/programs/io/symlink_main.py	0.040237029 0	0.419954443 0	0.042382047 0
+tests/programs/language/builtin_hash.py	0.076473880 0	0.481002315 0	0.041823584 0
+tests/programs/library/lib_operator_methodcaller_keywords.py	0.063863626 0	0.486233749 0	0.042170297 0
+tests/programs/library/nt_basic.py	0.124891627 1	0.534364444 1	0.056276721 1
+tests/programs/library/os_normcase.py	0.061980671 1	0.455933914 1	0.043142207 1
+tests/programs/numbers/mpz_division.py	0.129912444 0	0.619345652 0	0.060075622 0
+tests/programs/numbers/python_int_varargs.py	0.132159117 0	0.535490306 0	0.044101213 0
+tests/programs/optional/optional_back_fn.py	0.041756105 0	0.420164019 0	0.044097118 0
+tests/programs/runtime/memory_error_uncaught.py	0.046218132 1	0.441668057 1	0.048696804 1
+tests/programs/runtime/rt_syntaxerror_bare.py	0.035056607 1	0.412286986 1	0.043559587 1
+tests/programs/runtime/rt_utf8_strict.py	0.048331163 0	0.468347603 0	0.041756142 0
+tests/programs/strings/repr_deep_classes.py	0.061803111 0	0.437311997 0	0.050419614 0
+tests/programs/strings/str_replace_costly.py	0.239301666 0	0.615533915 0	0.206922609 0
+tests/programs/syntax/syntax_annotations_uncompiled.py	0.038843622 0	0.403064881 0	0.040740853 0
+tests/programs/upstream/upstream_micropython_int_big_mod.py	0.045266538 0	0.397751081 0	0.037221814 0
+tests/programs/upstream/upstream_posixpath_strings.py	0.128881478 0	0.499927419 0	0.038529354 0
+tests/programs/upstream/upstream_textwrap_field_rebind.py	1.300872121 0	1.695125239 0	0.041853785 0

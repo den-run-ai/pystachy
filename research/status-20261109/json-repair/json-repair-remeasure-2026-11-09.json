@@ -1,0 +1,2634 @@
+{
+ "schema": 1,
+ "measured_utc_date": "2026-11-09",
+ "scope": "Re-measurement of the nine json_repair workloads of release-candidate-2026-11-02.json on main ce8c887f (v0.4.0-alpha.1), plus program-cache-hit launch profiling. Local only; nothing committed or pushed.",
+ "host": {
+  "cpu_model": "Intel(R) Xeon(R) Processor @ 2.30GHz",
+  "cpu_family_model_stepping": "CPU family: 6;Model: 173;Stepping: 1",
+  "kernel": "6.18.44-fc-v310",
+  "platform": "Linux-6.18.44-fc-v310-x86_64-with-glibc2.39",
+  "vcpus": 4,
+  "note": "Different host from 2 Nov (Intel Xeon Processor @ 2.10GHz, Linux-6.18.44-fc-v185); absolute times are not directly comparable."
+ },
+ "identities": {
+  "checkout_head": "a6f2956f97ab0562996dfb6371835d93b8dee8c3",
+  "checkout_note": "HEAD adds only research/ commits on top of ce8c887f; `git diff --quiet ce8c887f HEAD -- . ':(exclude)research'` succeeds.",
+  "compiler_sha256": "1218b23de272dcdf7769d18af16193ac340af5c188232cfbae1bae1d8a9e59df",
+  "compiler_version": "pystachy v0.4.0-alpha.1 (commit unknown)",
+  "llvm": "LLVM version 18.1.3",
+  "python3.13": "Python 3.13.18",
+  "python3.13_sha256": "3fff8e682225671f0ab9659e9a0f540f7c81491352004fc1397b16f57bed56ca",
+  "python3.13_sha256_matches_2nov": true,
+  "upstream": {
+   "source": "PyPI wheel json_repair-0.64.1-py3-none-any.whl (pip download json-repair==0.64.1 --no-deps --only-binary=:all:)",
+   "wheel_sha256": "1e1022f8d9b5a24433f7e28c2ee5c4ef42256e11ff0eef8abf7cad17fc8b9e0a",
+   "pypi_published_sha256": "1e1022f8d9b5a24433f7e28c2ee5c4ef42256e11ff0eef8abf7cad17fc8b9e0a",
+   "metadata_version": "0.64.1",
+   "sources_vs_manifest": "all 22 json_repair sources byte-identical to tests/upstream/json_repair/manifest.json (ace9b23c)",
+   "unchanged_during_campaigns": true
+  },
+  "aot_probe_sha256": {
+   "bench": "b33a4a09ce3768f6af0ba64aae3b189f045eb3148cbd9dac81642cd2ef5f99c7",
+   "facade": "374a8848bd4800acd4493a9c86330fdbbf4e1abdba4f7da68d77a3720f13842b",
+   "scaling": "12a0b78785e85588b51b7eccd3ddc415eea14892f5b17d4402f6e5186694da86"
+  },
+  "aot_probe_bytes": {
+   "bench": 460808,
+   "facade": 460976,
+   "scaling": 443088
+  }
+ },
+ "baseline": {
+  "file": "/home/user/pystachy/bench/json_repair/results/release-candidate-2026-11-02.json",
+  "commit": "ec442a20",
+  "summary_per_repair_seconds": {
+   "mixed-2000": {
+    "upstream-cpython": 4.0396964000009915e-05,
+    "port-cpython": 3.401746650001769e-05,
+    "port-aot": 7.585311499994418e-06,
+    "port-jit": 9.061639000009336e-06
+   },
+   "valid-facade-16000": {
+    "upstream-cpython": 1.9130558124995645e-06,
+    "port-cpython": 1.93482000000067e-06,
+    "port-aot": 6.984359375010741e-07,
+    "port-jit": 1.0404231875007497e-06
+   },
+   "malformed-facade-1600": {
+    "upstream-cpython": 6.335365500000023e-05,
+    "port-cpython": 5.94429412499764e-05,
+    "port-aot": 1.0858666250008752e-05,
+    "port-jit": 1.2482928125017167e-05
+   },
+   "serialized-malformed-1600": {
+    "upstream-cpython": 7.603782374999923e-05,
+    "port-cpython": 6.275247312499843e-05,
+    "port-aot": 1.2372537500002778e-05,
+    "port-jit": 1.3643105625007479e-05
+   },
+   "valid-long-4000x2000": {
+    "upstream-cpython": 1.3338919000005945e-05,
+    "port-cpython": 1.418948650000118e-05,
+    "port-aot": 9.480639499997779e-06,
+    "port-jit": 9.770110999994586e-06
+   },
+   "escaped-2000x3": {
+    "upstream-cpython": 0.4159588463333345,
+    "port-cpython": 0.009401225999994267,
+    "port-aot": 0.0022301673333326257,
+    "port-jit": 0.0024294736666661265
+   },
+   "unicode-2000x100": {
+    "upstream-cpython": 0.0004535218199998781,
+    "port-cpython": 0.0004638506999998526,
+    "port-aot": 0.0002732721400002447,
+    "port-jit": 0.00029223380000019004
+   },
+   "comma-1000x20": {
+    "upstream-cpython": 0.004869882900001699,
+    "port-cpython": 0.006539283749999925,
+    "port-aot": 0.0012748699500008342,
+    "port-jit": 0.00143333704999975
+   },
+   "logs-1000x200": {
+    "upstream-cpython": 0.00016985748500005114,
+    "port-cpython": 0.00016883158500007766,
+    "port-aot": 4.961300499999766e-05,
+    "port-jit": 4.828456500007405e-05
+   }
+  }
+ },
+ "campaigns": {
+  "campaign1": {
+   "raw_runner_output": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/campaign1.json",
+   "command": "python3.13 /home/user/pystachy/tools/json_repair_bench.py /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/variants.json --cpu 2 --pairs 5 --batches 5 --warmups 2 --output /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/campaign1.json",
+   "variants_config": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/variants.json",
+   "processes": 180,
+   "witnesses_equal_2nov": true,
+   "per_repair": {
+    "mixed-2000": {
+     "upstream-cpython": {
+      "per_repair_seconds": 2.7693512999974247e-05,
+      "process_medians_seconds": [
+       0.05695361900006901,
+       0.056078589000094325,
+       0.05538702599994849,
+       0.05529854700000669,
+       0.05453629800001636
+      ],
+      "spread_percent": 4.4
+     },
+     "port-cpython": {
+      "per_repair_seconds": 2.252953600003593e-05,
+      "process_medians_seconds": [
+       0.04592074599997886,
+       0.04591446100005214,
+       0.045059072000071865,
+       0.043944797999984075,
+       0.04361192699991534
+      ],
+      "spread_percent": 5.1
+     },
+     "port-aot": {
+      "per_repair_seconds": 4.6976519999475385e-06,
+      "process_medians_seconds": [
+       0.009489664000057019,
+       0.009395303999895077,
+       0.009725974999923892,
+       0.009300994999989598,
+       0.009301257000061014
+      ],
+      "spread_percent": 4.5
+     },
+     "port-jit": {
+      "per_repair_seconds": 5.687831999978243e-06,
+      "process_medians_seconds": [
+       0.011519336999981533,
+       0.011362523000002511,
+       0.011822593000033521,
+       0.011307046999945669,
+       0.011375663999956487
+      ],
+      "spread_percent": 4.5
+     }
+    },
+    "valid-facade-16000": {
+     "upstream-cpython": {
+      "per_repair_seconds": 1.3542230624992157e-06,
+      "process_medians_seconds": [
+       0.02219238099996801,
+       0.021617865999928654,
+       0.022223130000043056,
+       0.021667568999987452,
+       0.021630984000012177
+      ],
+      "spread_percent": 2.8
+     },
+     "port-cpython": {
+      "per_repair_seconds": 1.2676057500016213e-06,
+      "process_medians_seconds": [
+       0.025927688000024318,
+       0.02028169200002594,
+       0.020199277999950027,
+       0.020057759999986047,
+       0.02053646399997433
+      ],
+      "spread_percent": 28.9
+     },
+     "port-aot": {
+      "per_repair_seconds": 4.791370624985802e-07,
+      "process_medians_seconds": [
+       0.008713764999924933,
+       0.00943437000000813,
+       0.007666192999977284,
+       0.007608677999996871,
+       0.007600304999982654
+      ],
+      "spread_percent": 23.9
+     },
+     "port-jit": {
+      "per_repair_seconds": 6.717753749967415e-07,
+      "process_medians_seconds": [
+       0.010269281999967461,
+       0.011063194000030308,
+       0.010748405999947863,
+       0.010634514000003037,
+       0.010843475999990915
+      ],
+      "spread_percent": 7.4
+     }
+    },
+    "malformed-facade-1600": {
+     "upstream-cpython": {
+      "per_repair_seconds": 4.56068943749699e-05,
+      "process_medians_seconds": [
+       0.07591203100002986,
+       0.07286144099998637,
+       0.07297103099995184,
+       0.07209033200001613,
+       0.07467998499998885
+      ],
+      "spread_percent": 5.2
+     },
+     "port-cpython": {
+      "per_repair_seconds": 3.9060275000011304e-05,
+      "process_medians_seconds": [
+       0.0627405909999652,
+       0.06249644000001808,
+       0.06205114399995182,
+       0.07562040599998454,
+       0.060168350000026294
+      ],
+      "spread_percent": 24.7
+     },
+     "port-aot": {
+      "per_repair_seconds": 6.709268124964751e-06,
+      "process_medians_seconds": [
+       0.013728220000075453,
+       0.011777272000017547,
+       0.010720881999986887,
+       0.010734828999943602,
+       0.010481235000042943
+      ],
+      "spread_percent": 30.2
+     },
+     "port-jit": {
+      "per_repair_seconds": 8.130969999982085e-06,
+      "process_medians_seconds": [
+       0.013009551999971336,
+       0.013107085999990886,
+       0.013061235999998644,
+       0.01280701100006354,
+       0.012775185000009515
+      ],
+      "spread_percent": 2.6
+     }
+    },
+    "serialized-malformed-1600": {
+     "upstream-cpython": {
+      "per_repair_seconds": 4.87456475000414e-05,
+      "process_medians_seconds": [
+       0.07799303600006624,
+       0.0771498280000742,
+       0.07889998200005266,
+       0.0778136160000713,
+       0.0784868959999585
+      ],
+      "spread_percent": 2.2
+     },
+     "port-cpython": {
+      "per_repair_seconds": 4.1338486874948896e-05,
+      "process_medians_seconds": [
+       0.06655437799997799,
+       0.06608334200006993,
+       0.06614157899991824,
+       0.06452712100008284,
+       0.0726059979999718
+      ],
+      "spread_percent": 12.2
+     },
+     "port-aot": {
+      "per_repair_seconds": 7.710990000049377e-06,
+      "process_medians_seconds": [
+       0.012664208000046528,
+       0.012154960000088977,
+       0.011888757999940935,
+       0.01261650499998268,
+       0.012337584000079005
+      ],
+      "spread_percent": 6.3
+     },
+     "port-jit": {
+      "per_repair_seconds": 9.011220000019193e-06,
+      "process_medians_seconds": [
+       0.01441795200003071,
+       0.014322801000048457,
+       0.014476062999960959,
+       0.01445105200002672,
+       0.014258720000043468
+      ],
+      "spread_percent": 1.5
+     }
+    },
+    "valid-long-4000x2000": {
+     "upstream-cpython": {
+      "per_repair_seconds": 6.264254999962304e-06,
+      "process_medians_seconds": [
+       0.012567284999931871,
+       0.012503203999926882,
+       0.01262288099997022,
+       0.012528509999924609,
+       0.01252489900002729
+      ],
+      "spread_percent": 1.0
+     },
+     "port-cpython": {
+      "per_repair_seconds": 6.212817999994513e-06,
+      "process_medians_seconds": [
+       0.012425635999989026,
+       0.012363822999986951,
+       0.012533430999951634,
+       0.012415187999977206,
+       0.015184298999997736
+      ],
+      "spread_percent": 22.7
+     },
+     "port-aot": {
+      "per_repair_seconds": 6.660354500013455e-06,
+      "process_medians_seconds": [
+       0.013364576000071793,
+       0.013320709000026909,
+       0.013734806000002209,
+       0.012991644999942764,
+       0.012877960999958304
+      ],
+      "spread_percent": 6.4
+     },
+     "port-jit": {
+      "per_repair_seconds": 6.882665499972518e-06,
+      "process_medians_seconds": [
+       0.013653503000000455,
+       0.013802711999915118,
+       0.013183679000007942,
+       0.013955704000068181,
+       0.013765330999945036
+      ],
+      "spread_percent": 5.6
+     }
+    },
+    "escaped-2000x3": {
+     "upstream-cpython": {
+      "per_repair_seconds": 0.2993608406666605,
+      "process_medians_seconds": [
+       0.9038583290000588,
+       0.9004595359999712,
+       0.8903482210000675,
+       0.8945210420000649,
+       0.8980825219999815
+      ],
+      "spread_percent": 1.5
+     },
+     "port-cpython": {
+      "per_repair_seconds": 0.00037026933330253087,
+      "process_medians_seconds": [
+       0.0011005540000041947,
+       0.0011594580000746646,
+       0.0011108079999075926,
+       0.0011264470000469373,
+       0.0011019569999461964
+      ],
+      "spread_percent": 5.3
+     },
+     "port-aot": {
+      "per_repair_seconds": 0.0001942970000072819,
+      "process_medians_seconds": [
+       0.0006219709999868428,
+       0.0005791500000214,
+       0.000637322999978096,
+       0.0005611169999610865,
+       0.0005828910000218457
+      ],
+      "spread_percent": 13.1
+     },
+     "port-jit": {
+      "per_repair_seconds": 0.00024424566667372954,
+      "process_medians_seconds": [
+       0.000736743000061324,
+       0.000720996000040941,
+       0.0006654600000501887,
+       0.0007473050000044168,
+       0.0007327370000211886
+      ],
+      "spread_percent": 11.2
+     }
+    },
+    "unicode-2000x100": {
+     "upstream-cpython": {
+      "per_repair_seconds": 0.00031948208000017077,
+      "process_medians_seconds": [
+       0.031948208000017075,
+       0.03176713599998493,
+       0.032529346000046644,
+       0.031876922000037666,
+       0.03405590399995617
+      ],
+      "spread_percent": 7.2
+     },
+     "port-cpython": {
+      "per_repair_seconds": 1.65700000002289e-05,
+      "process_medians_seconds": [
+       0.0016626089999363103,
+       0.0016141890000653802,
+       0.0016570000000228902,
+       0.0015666780000174185,
+       0.0016921139999794832
+      ],
+      "spread_percent": 7.6
+     },
+     "port-aot": {
+      "per_repair_seconds": 7.46703900006196e-05,
+      "process_medians_seconds": [
+       0.007467039000061959,
+       0.007276046000015413,
+       0.007827810999970097,
+       0.00731484300001739,
+       0.007484017000024323
+      ],
+      "spread_percent": 7.4
+     },
+     "port-jit": {
+      "per_repair_seconds": 9.165854999992007e-05,
+      "process_medians_seconds": [
+       0.009165854999992007,
+       0.0090973239999812,
+       0.01433724700007133,
+       0.008997174000000996,
+       0.009306562000006124
+      ],
+      "spread_percent": 58.3
+     }
+    },
+    "comma-1000x20": {
+     "upstream-cpython": {
+      "per_repair_seconds": 0.003461132099999986,
+      "process_medians_seconds": [
+       0.07837613399999555,
+       0.06922264199999972,
+       0.06920871599993461,
+       0.06903344900001684,
+       0.07039060299996436
+      ],
+      "spread_percent": 13.5
+     },
+     "port-cpython": {
+      "per_repair_seconds": 0.00441539290000037,
+      "process_medians_seconds": [
+       0.08891622800001642,
+       0.08779247500001475,
+       0.08678963300008036,
+       0.0883078580000074,
+       0.09106124199990973
+      ],
+      "spread_percent": 4.8
+     },
+     "port-aot": {
+      "per_repair_seconds": 0.0006416004500010786,
+      "process_medians_seconds": [
+       0.012572667999961595,
+       0.012633301999926516,
+       0.012832009000021571,
+       0.012857641999971747,
+       0.013562893999960579
+      ],
+      "spread_percent": 7.7
+     },
+     "port-jit": {
+      "per_repair_seconds": 0.000723548700000265,
+      "process_medians_seconds": [
+       0.017926682000052097,
+       0.014443844999959765,
+       0.014431560000048194,
+       0.014496626000095603,
+       0.014470974000005299
+      ],
+      "spread_percent": 24.2
+     }
+    },
+    "logs-1000x200": {
+     "upstream-cpython": {
+      "per_repair_seconds": 0.00012544913999988693,
+      "process_medians_seconds": [
+       0.02562199999999848,
+       0.025420803999963937,
+       0.02505219300007866,
+       0.024596461999976782,
+       0.025089827999977388
+      ],
+      "spread_percent": 4.1
+     },
+     "port-cpython": {
+      "per_repair_seconds": 1.412768499960748e-05,
+      "process_medians_seconds": [
+       0.0029222499999832507,
+       0.0028632049999259834,
+       0.0028255369999214963,
+       0.002811257999951522,
+       0.002799210000034691
+      ],
+      "spread_percent": 4.4
+     },
+     "port-aot": {
+      "per_repair_seconds": 5.53991499998574e-06,
+      "process_medians_seconds": [
+       0.0011324139999260296,
+       0.0010610030000179904,
+       0.001176702999941881,
+       0.0010719279999875653,
+       0.001107982999997148
+      ],
+      "spread_percent": 10.4
+     },
+     "port-jit": {
+      "per_repair_seconds": 6.840854999836665e-06,
+      "process_medians_seconds": [
+       0.0014116799999328578,
+       0.001368170999967333,
+       0.0014426740000317295,
+       0.001339976999929604,
+       0.001363470999990568
+      ],
+      "spread_percent": 7.5
+     }
+    }
+   }
+  },
+  "campaign2": {
+   "raw_runner_output": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/campaign2.json",
+   "command": "python3.13 /home/user/pystachy/tools/json_repair_bench.py /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/variants.json --cpu 2 --pairs 5 --batches 5 --warmups 2 --output /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/campaign2.json",
+   "variants_config": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/variants.json",
+   "processes": 180,
+   "witnesses_equal_2nov": true,
+   "per_repair": {
+    "mixed-2000": {
+     "upstream-cpython": {
+      "per_repair_seconds": 2.7510554499997397e-05,
+      "process_medians_seconds": [
+       0.05408728199995494,
+       0.056447759999969094,
+       0.055021108999994794,
+       0.05498155099996893,
+       0.05684750600005373
+      ],
+      "spread_percent": 5.0
+     },
+     "port-cpython": {
+      "per_repair_seconds": 2.236766250001665e-05,
+      "process_medians_seconds": [
+       0.04343889599999784,
+       0.04441155200004232,
+       0.0447353250000333,
+       0.045421903999908864,
+       0.04585990700002185
+      ],
+      "spread_percent": 5.4
+     },
+     "port-aot": {
+      "per_repair_seconds": 4.588655499958349e-06,
+      "process_medians_seconds": [
+       0.008872076999978162,
+       0.009135173000004215,
+       0.009496832999957405,
+       0.009177310999916699,
+       0.00961953099999846
+      ],
+      "spread_percent": 8.1
+     },
+     "port-jit": {
+      "per_repair_seconds": 5.6473509999932505e-06,
+      "process_medians_seconds": [
+       0.01056391600002371,
+       0.011705709000011666,
+       0.0112947019999865,
+       0.01088308800001414,
+       0.012575792000006913
+      ],
+      "spread_percent": 17.8
+     }
+    },
+    "valid-facade-16000": {
+     "upstream-cpython": {
+      "per_repair_seconds": 1.3379759375027333e-06,
+      "process_medians_seconds": [
+       0.020487962999936826,
+       0.02247268400003577,
+       0.021407615000043734,
+       0.020753688000013426,
+       0.021624416999998175
+      ],
+      "spread_percent": 9.3
+     },
+     "port-cpython": {
+      "per_repair_seconds": 1.2784170625010915e-06,
+      "process_medians_seconds": [
+       0.019565758999988248,
+       0.020475616999988233,
+       0.020603279999932056,
+       0.01942457400002695,
+       0.020454673000017465
+      ],
+      "spread_percent": 5.8
+     },
+     "port-aot": {
+      "per_repair_seconds": 4.862466250017406e-07,
+      "process_medians_seconds": [
+       0.0073206920000075115,
+       0.007779946000027849,
+       0.007635275999973601,
+       0.007850555000004533,
+       0.007832171000018207
+      ],
+      "spread_percent": 6.8
+     },
+     "port-jit": {
+      "per_repair_seconds": 6.861186874971281e-07,
+      "process_medians_seconds": [
+       0.010915548999946623,
+       0.011214648000077432,
+       0.01097789899995405,
+       0.01076480899996568,
+       0.011667521999925157
+      ],
+      "spread_percent": 8.2
+     }
+    },
+    "malformed-facade-1600": {
+     "upstream-cpython": {
+      "per_repair_seconds": 4.560457187501754e-05,
+      "process_medians_seconds": [
+       0.07287208800005374,
+       0.07269898000004105,
+       0.07296731500002807,
+       0.07800555500000428,
+       0.07345447299996977
+      ],
+      "spread_percent": 7.3
+     },
+     "port-cpython": {
+      "per_repair_seconds": 3.884325437503833e-05,
+      "process_medians_seconds": [
+       0.06177403299989237,
+       0.07348159999992276,
+       0.06177478999995856,
+       0.0627891000000318,
+       0.062149207000061324
+      ],
+      "spread_percent": 18.8
+     },
+     "port-aot": {
+      "per_repair_seconds": 6.814084375008633e-06,
+      "process_medians_seconds": [
+       0.01047088600000734,
+       0.010242612999945777,
+       0.010976147000064884,
+       0.011231256000087342,
+       0.010902535000013813
+      ],
+      "spread_percent": 9.1
+     },
+     "port-jit": {
+      "per_repair_seconds": 8.216754374998914e-06,
+      "process_medians_seconds": [
+       0.013146806999998262,
+       0.012372262999974737,
+       0.012908012000025337,
+       0.014302168999961395,
+       0.013981972999999925
+      ],
+      "spread_percent": 14.7
+     }
+    },
+    "serialized-malformed-1600": {
+     "upstream-cpython": {
+      "per_repair_seconds": 5.0105170000023236e-05,
+      "process_medians_seconds": [
+       0.07758242500005963,
+       0.08972474400002284,
+       0.07870060100003684,
+       0.08016827200003718,
+       0.08720553499995276
+      ],
+      "spread_percent": 15.1
+     },
+     "port-cpython": {
+      "per_repair_seconds": 4.2020298750031774e-05,
+      "process_medians_seconds": [
+       0.06541366999999809,
+       0.0664856600000121,
+       0.06723247800005083,
+       0.06773145700003624,
+       0.06992307000007258
+      ],
+      "spread_percent": 6.7
+     },
+     "port-aot": {
+      "per_repair_seconds": 7.383819375021971e-06,
+      "process_medians_seconds": [
+       0.011749664000035409,
+       0.011814111000035155,
+       0.011741078000000016,
+       0.013443024999901354,
+       0.011870157999965159
+      ],
+      "spread_percent": 14.4
+     },
+     "port-jit": {
+      "per_repair_seconds": 8.9252537500073e-06,
+      "process_medians_seconds": [
+       0.014129142000001593,
+       0.014373189000025377,
+       0.014186638000069252,
+       0.015067914999917775,
+       0.01428040600001168
+      ],
+      "spread_percent": 6.6
+     }
+    },
+    "valid-long-4000x2000": {
+     "upstream-cpython": {
+      "per_repair_seconds": 6.383415000016157e-06,
+      "process_medians_seconds": [
+       0.012017465999974775,
+       0.012766830000032314,
+       0.012836985999911121,
+       0.01264689399999952,
+       0.01283401299997422
+      ],
+      "spread_percent": 6.4
+     },
+     "port-cpython": {
+      "per_repair_seconds": 6.264779999980874e-06,
+      "process_medians_seconds": [
+       0.012221773000078429,
+       0.012679097000045658,
+       0.01256535899995015,
+       0.01251056699993569,
+       0.012529559999961748
+      ],
+      "spread_percent": 3.6
+     },
+     "port-aot": {
+      "per_repair_seconds": 6.703838500015991e-06,
+      "process_medians_seconds": [
+       0.012871923999909995,
+       0.013407677000031981,
+       0.013578614000039124,
+       0.014276983000058863,
+       0.013331799000070532
+      ],
+      "spread_percent": 10.5
+     },
+     "port-jit": {
+      "per_repair_seconds": 6.713122999997267e-06,
+      "process_medians_seconds": [
+       0.012330934000033267,
+       0.013663053000072978,
+       0.013293561000068621,
+       0.013801236000063,
+       0.013426245999994535
+      ],
+      "spread_percent": 11.0
+     }
+    },
+    "escaped-2000x3": {
+     "upstream-cpython": {
+      "per_repair_seconds": 0.30209538633334887,
+      "process_medians_seconds": [
+       0.8796720020000066,
+       0.8949561119999316,
+       0.9343224190000683,
+       0.9062861590000466,
+       0.9087832230000004
+      ],
+      "spread_percent": 6.0
+     },
+     "port-cpython": {
+      "per_repair_seconds": 0.00037951000001612556,
+      "process_medians_seconds": [
+       0.0010871399999814457,
+       0.0011252159999912692,
+       0.0011385300000483767,
+       0.001200767000000269,
+       0.0011645360000329674
+      ],
+      "spread_percent": 10.0
+     },
+     "port-aot": {
+      "per_repair_seconds": 0.00019374766664744433,
+      "process_medians_seconds": [
+       0.0005120609999949011,
+       0.0005682869999645845,
+       0.0006063729999823408,
+       0.000613229999999021,
+       0.000581242999942333
+      ],
+      "spread_percent": 17.4
+     },
+     "port-jit": {
+      "per_repair_seconds": 0.0002442556666816624,
+      "process_medians_seconds": [
+       0.0006633720000763788,
+       0.0007436289999986911,
+       0.0007327670000449871,
+       0.0006929029999582781,
+       0.0007352160000664298
+      ],
+      "spread_percent": 11.0
+     }
+    },
+    "unicode-2000x100": {
+     "upstream-cpython": {
+      "per_repair_seconds": 0.0003136904500001947,
+      "process_medians_seconds": [
+       0.03079187200000888,
+       0.031316966999952456,
+       0.03168256499998279,
+       0.03172638299997743,
+       0.03136904500001947
+      ],
+      "spread_percent": 3.0
+     },
+     "port-cpython": {
+      "per_repair_seconds": 1.678606999917065e-05,
+      "process_medians_seconds": [
+       0.0016722960000379317,
+       0.001728409000065767,
+       0.001678606999917065,
+       0.0017431060000490106,
+       0.0016669229999024537
+      ],
+      "spread_percent": 4.5
+     },
+     "port-aot": {
+      "per_repair_seconds": 7.661822000045505e-05,
+      "process_medians_seconds": [
+       0.007234785000036936,
+       0.007661822000045504,
+       0.007671795999954156,
+       0.007712351999998646,
+       0.007500848000063343
+      ],
+      "spread_percent": 6.2
+     },
+     "port-jit": {
+      "per_repair_seconds": 9.047699000007014e-05,
+      "process_medians_seconds": [
+       0.009237983999923927,
+       0.009047699000007015,
+       0.009005031000015151,
+       0.009052891999999702,
+       0.008742092000034063
+      ],
+      "spread_percent": 5.5
+     }
+    },
+    "comma-1000x20": {
+     "upstream-cpython": {
+      "per_repair_seconds": 0.003374407249998512,
+      "process_medians_seconds": [
+       0.07024466600000778,
+       0.06526286100006473,
+       0.06616751199999271,
+       0.06880101700005525,
+       0.06748814499997025
+      ],
+      "spread_percent": 7.4
+     },
+     "port-cpython": {
+      "per_repair_seconds": 0.004451871349999692,
+      "process_medians_seconds": [
+       0.09014919899993856,
+       0.09111605200007489,
+       0.08877182200001243,
+       0.08903742699999384,
+       0.08752659100002802
+      ],
+      "spread_percent": 4.0
+     },
+     "port-aot": {
+      "per_repair_seconds": 0.000642835799999375,
+      "process_medians_seconds": [
+       0.019879456000012397,
+       0.013423950999936096,
+       0.0128567159999875,
+       0.012649467999949593,
+       0.012751669000067523
+      ],
+      "spread_percent": 56.2
+     },
+     "port-jit": {
+      "per_repair_seconds": 0.0007436307499972372,
+      "process_medians_seconds": [
+       0.014872614999944744,
+       0.014345617000003585,
+       0.01776489799999581,
+       0.014423773999965306,
+       0.015020178999975542
+      ],
+      "spread_percent": 23.0
+     }
+    },
+    "logs-1000x200": {
+     "upstream-cpython": {
+      "per_repair_seconds": 0.00012496067500023856,
+      "process_medians_seconds": [
+       0.02725322399999186,
+       0.02409724099993582,
+       0.024254033000033814,
+       0.02499213500004771,
+       0.02505328899997039
+      ],
+      "spread_percent": 12.6
+     },
+     "port-cpython": {
+      "per_repair_seconds": 1.4305975000183935e-05,
+      "process_medians_seconds": [
+       0.002915409000024738,
+       0.002887127999997574,
+       0.0028033989999585174,
+       0.002861195000036787,
+       0.0028403910000633914
+      ],
+      "spread_percent": 3.9
+     },
+     "port-aot": {
+      "per_repair_seconds": 5.657995000092342e-06,
+      "process_medians_seconds": [
+       0.0011451860000306624,
+       0.0010850919999256803,
+       0.0011731360000339919,
+       0.0011091439999972863,
+       0.0011315990000184684
+      ],
+      "spread_percent": 7.8
+     },
+     "port-jit": {
+      "per_repair_seconds": 6.808305000163272e-06,
+      "process_medians_seconds": [
+       0.0014007220000848974,
+       0.0013304679999919244,
+       0.0013930439999967348,
+       0.001313519000063934,
+       0.0013616610000326546
+      ],
+      "spread_percent": 6.4
+     }
+    }
+   }
+  }
+ },
+ "same_host_ab": {
+  "variants_config": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/variants-ab.json",
+  "note": "ec442a20 compiler bootstrapped in $SCR/old; aot-ce8c887-on-ec442a20-port isolates compiler/runtime/lib changes; another session fetched into the shared .git at 03:22Z, and A/B spreads were larger than the main campaigns'",
+  "runs": {
+   "ab": {
+    "raw_runner_output": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/ab.json",
+    "processes": 225,
+    "witnesses_equal_2nov": true,
+    "per_repair": {
+     "mixed-2000": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 5.704555000079381e-06,
+       "process_medians_seconds": [
+        0.011272673999883409,
+        0.011146518000032302,
+        0.014650671000026705,
+        0.011605984999960128,
+        0.011409110000158762
+       ],
+       "spread_percent": 30.7
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 5.180657999972027e-06,
+       "process_medians_seconds": [
+        0.010361315999944054,
+        0.011579601999983424,
+        0.01029629799995746,
+        0.010295973999973285,
+        0.01046666299998833
+       ],
+       "spread_percent": 12.4
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 4.723442999988947e-06,
+       "process_medians_seconds": [
+        0.009611016999997446,
+        0.009812131999979101,
+        0.009446885999977894,
+        0.009102031999873361,
+        0.009395965000067008
+       ],
+       "spread_percent": 7.5
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 6.461382499992396e-06,
+       "process_medians_seconds": [
+        0.012668154000039067,
+        0.012998408999919775,
+        0.013028622999854633,
+        0.012897955999960686,
+        0.012922764999984793
+       ],
+       "spread_percent": 2.8
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 5.899280499988891e-06,
+       "process_medians_seconds": [
+        0.01143149400013499,
+        0.016157508000105736,
+        0.012228682000113622,
+        0.01179856099997778,
+        0.011427996000065832
+       ],
+       "spread_percent": 40.1
+      }
+     },
+     "valid-facade-16000": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 5.120236250064636e-07,
+       "process_medians_seconds": [
+        0.010634468000034758,
+        0.008164090999798645,
+        0.007163971999943897,
+        0.008192378000103417,
+        0.008516460000009829
+       ],
+       "spread_percent": 42.4
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 4.575924999983272e-07,
+       "process_medians_seconds": [
+        0.009827152000070782,
+        0.007321479999973235,
+        0.006698894999999538,
+        0.007787650999944162,
+        0.007193436999841651
+       ],
+       "spread_percent": 42.7
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 4.748981249917961e-07,
+       "process_medians_seconds": [
+        0.009422911000001477,
+        0.00699985000005654,
+        0.007598369999868737,
+        0.007918106000033731,
+        0.007002037999882305
+       ],
+       "spread_percent": 31.9
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 7.173693125110958e-07,
+       "process_medians_seconds": [
+        0.01342488999989655,
+        0.010982003999970402,
+        0.01120847600009256,
+        0.01322679000008975,
+        0.011477909000177533
+       ],
+       "spread_percent": 21.3
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 7.282261250054489e-07,
+       "process_medians_seconds": [
+        0.01275686200006021,
+        0.011348221000162084,
+        0.00962039600017306,
+        0.011651618000087183,
+        0.013978067999914856
+       ],
+       "spread_percent": 37.4
+      }
+     },
+     "malformed-facade-1600": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 7.828954999951066e-06,
+       "process_medians_seconds": [
+        0.01248089999990043,
+        0.012408915999913006,
+        0.014813825999908659,
+        0.01602116499998374,
+        0.012526327999921705
+       ],
+       "spread_percent": 28.8
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 7.4515549999887296e-06,
+       "process_medians_seconds": [
+        0.012011945000040214,
+        0.011743955999918398,
+        0.011922487999981968,
+        0.01239599299992733,
+        0.011736935000044468
+       ],
+       "spread_percent": 5.5
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 6.607015625093027e-06,
+       "process_medians_seconds": [
+        0.010622541999964596,
+        0.010571225000148843,
+        0.009697649999907298,
+        0.010639057999924262,
+        0.010338738999962516
+       ],
+       "spread_percent": 8.9
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 8.965176249944306e-06,
+       "process_medians_seconds": [
+        0.014693798999815044,
+        0.014247242999999798,
+        0.013743642000008549,
+        0.014528779000102077,
+        0.01434428199991089
+       ],
+       "spread_percent": 6.6
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 8.375718750102123e-06,
+       "process_medians_seconds": [
+        0.013401150000163398,
+        0.013776495000001887,
+        0.016578546999880928,
+        0.013189992999969036,
+        0.013279762000138362
+       ],
+       "spread_percent": 25.3
+      }
+     },
+     "serialized-malformed-1600": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 8.430966874897195e-06,
+       "process_medians_seconds": [
+        0.013907491000054506,
+        0.013489546999835511,
+        0.013147224000022106,
+        0.01483140999994248,
+        0.013260813999977472
+       ],
+       "spread_percent": 12.5
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 8.491801875010196e-06,
+       "process_medians_seconds": [
+        0.013777755000091929,
+        0.013586883000016314,
+        0.013235803000043234,
+        0.013346326999908342,
+        0.014941098999997848
+       ],
+       "spread_percent": 12.6
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 7.578140000106259e-06,
+       "process_medians_seconds": [
+        0.011947839000185922,
+        0.012244688999999198,
+        0.011965333000034661,
+        0.012125024000170015,
+        0.012480071000027237
+       ],
+       "spread_percent": 4.4
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 9.806815625097442e-06,
+       "process_medians_seconds": [
+        0.015588167000032627,
+        0.015920588999961183,
+        0.01568662099998619,
+        0.015690905000155908,
+        0.018924895999816727
+       ],
+       "spread_percent": 21.3
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 9.011263125131564e-06,
+       "process_medians_seconds": [
+        0.014418021000210501,
+        0.0144605870000305,
+        0.0143984480000654,
+        0.014590433999956076,
+        0.014393438000070091
+       ],
+       "spread_percent": 1.4
+      }
+     },
+     "valid-long-4000x2000": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 7.273608499986039e-06,
+       "process_medians_seconds": [
+        0.013991638000106832,
+        0.016734293000126854,
+        0.020135258999971484,
+        0.01376438799979951,
+        0.014547216999972079
+       ],
+       "spread_percent": 43.8
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 6.406408500083671e-06,
+       "process_medians_seconds": [
+        0.012698858000021573,
+        0.013079303000040454,
+        0.012467131999983394,
+        0.012812817000167342,
+        0.013896918000000369
+       ],
+       "spread_percent": 11.2
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 6.434661000071173e-06,
+       "process_medians_seconds": [
+        0.01249622399996042,
+        0.012869322000142347,
+        0.01370209300011993,
+        0.01245339399997647,
+        0.013457992999974522
+       ],
+       "spread_percent": 9.7
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 7.3836305000440915e-06,
+       "process_medians_seconds": [
+        0.014857914999993227,
+        0.014067239000041809,
+        0.014767261000088183,
+        0.014333325000052355,
+        0.022335612000006222
+       ],
+       "spread_percent": 56.0
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 6.762626000067939e-06,
+       "process_medians_seconds": [
+        0.013394425999877058,
+        0.013695427000129712,
+        0.013525252000135879,
+        0.013238197999953627,
+        0.01356660499982354
+       ],
+       "spread_percent": 3.4
+      }
+     },
+     "escaped-2000x3": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 0.0015054876666151056,
+       "process_medians_seconds": [
+        0.0044963020000068354,
+        0.004378509000162012,
+        0.005918334999932995,
+        0.0045164629998453165,
+        0.004654302000062671
+       ],
+       "spread_percent": 34.1
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 0.0014776116666628998,
+       "process_medians_seconds": [
+        0.0045267830000739195,
+        0.0044328349999886996,
+        0.004310549000138053,
+        0.004342126999972606,
+        0.004554758000040238
+       ],
+       "spread_percent": 5.5
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 0.00021486533334306537,
+       "process_medians_seconds": [
+        0.0007083860000420827,
+        0.0006445960000291961,
+        0.0006098270000620687,
+        0.0006441280002036365,
+        0.0006531100000302104
+       ],
+       "spread_percent": 15.3
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 0.0017397870000574283,
+       "process_medians_seconds": [
+        0.005222257000013997,
+        0.005206010999927457,
+        0.00520182900004329,
+        0.0052193610001722845,
+        0.005256839999901786
+       ],
+       "spread_percent": 1.1
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 0.0002420203333410124,
+       "process_medians_seconds": [
+        0.0007049399998777517,
+        0.0007260610000230372,
+        0.0008080300001438445,
+        0.0007223799998428149,
+        0.0008719200000086857
+       ],
+       "spread_percent": 23.0
+      }
+     },
+     "unicode-2000x100": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 0.00016483975000028295,
+       "process_medians_seconds": [
+        0.015334048000113398,
+        0.016073668999979418,
+        0.017019910000044547,
+        0.016483975000028295,
+        0.017273294999995414
+       ],
+       "spread_percent": 11.8
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 0.0001800939700001436,
+       "process_medians_seconds": [
+        0.01577033799981109,
+        0.018070636000175,
+        0.0238987539999016,
+        0.01713248700002623,
+        0.01800939700001436
+       ],
+       "spread_percent": 45.1
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 7.642605999990338e-05,
+       "process_medians_seconds": [
+        0.007100373999946896,
+        0.008566985000015848,
+        0.007642605999990337,
+        0.007072792999906596,
+        0.00786389500012774
+       ],
+       "spread_percent": 19.6
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 0.00018998678999878393,
+       "process_medians_seconds": [
+        0.019534588999931657,
+        0.018998678999878393,
+        0.01875885999993443,
+        0.01820474800001648,
+        0.019392291999793088
+       ],
+       "spread_percent": 7.0
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 8.972158999995372e-05,
+       "process_medians_seconds": [
+        0.00919812400002229,
+        0.0088894089999485,
+        0.008972158999995372,
+        0.008778479000056905,
+        0.009099830999957703
+       ],
+       "spread_percent": 4.7
+      }
+     },
+     "comma-1000x20": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 0.0008924166499923558,
+       "process_medians_seconds": [
+        0.01782737000007728,
+        0.0178557770000225,
+        0.017848332999847116,
+        0.017678026000112368,
+        0.018507056000089506
+       ],
+       "spread_percent": 4.6
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 0.0008807642000078885,
+       "process_medians_seconds": [
+        0.017157838999992236,
+        0.01727300499987905,
+        0.01781734799988044,
+        0.01761528400015777,
+        0.018713262999881408
+       ],
+       "spread_percent": 8.8
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 0.0006393944500018734,
+       "process_medians_seconds": [
+        0.012787889000037467,
+        0.012760339000124077,
+        0.0149919850000515,
+        0.012856008999960977,
+        0.012717973999997412
+       ],
+       "spread_percent": 17.8
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 0.0010703469999953086,
+       "process_medians_seconds": [
+        0.021654172000125982,
+        0.02140693999990617,
+        0.026740059000076144,
+        0.019631435000064812,
+        0.020144258000073023
+       ],
+       "spread_percent": 33.2
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 0.0007265334000067014,
+       "process_medians_seconds": [
+        0.014530668000134028,
+        0.014529505999917092,
+        0.014571331000070131,
+        0.014561609000111275,
+        0.014447194000013042
+       ],
+       "spread_percent": 0.9
+      }
+     },
+     "logs-1000x200": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 2.9537730000583906e-05,
+       "process_medians_seconds": [
+        0.005822648000048503,
+        0.005925067000134732,
+        0.005907546000116781,
+        0.005707773000040106,
+        0.005925665999939156
+       ],
+       "spread_percent": 3.7
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 2.7962180000713486e-05,
+       "process_medians_seconds": [
+        0.0055426220001209,
+        0.005592436000142698,
+        0.005623582999987775,
+        0.005545780000147715,
+        0.005623335000109364
+       ],
+       "spread_percent": 1.4
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 5.8333549998224045e-06,
+       "process_medians_seconds": [
+        0.0011465190000308212,
+        0.0012206960000185063,
+        0.0010803689999647759,
+        0.0011864040000091336,
+        0.0011666709999644809
+       ],
+       "spread_percent": 12.0
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 3.240954000034435e-05,
+       "process_medians_seconds": [
+        0.00648190800006887,
+        0.006425058999866451,
+        0.006500316999790812,
+        0.006429993999972794,
+        0.006516777000115326
+       ],
+       "spread_percent": 1.4
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 6.923094999820023e-06,
+       "process_medians_seconds": [
+        0.00137162700002591,
+        0.001393454999970345,
+        0.0013846189999640046,
+        0.001397293999843896,
+        0.00134164300015982
+       ],
+       "spread_percent": 4.0
+      }
+     }
+    },
+    "command": "python3.13 /home/user/pystachy/tools/json_repair_bench.py /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/variants-ab.json --cpu 2 --pairs 5 --batches 5 --warmups 2 --output /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/ab.json"
+   },
+   "ab2": {
+    "raw_runner_output": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/ab2.json",
+    "processes": 225,
+    "witnesses_equal_2nov": true,
+    "per_repair": {
+     "mixed-2000": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 5.6304314999806595e-06,
+       "process_medians_seconds": [
+        0.01165562799997133,
+        0.010867998000094303,
+        0.011036298999897554,
+        0.011260862999961319,
+        0.011287376999916887
+       ],
+       "spread_percent": 7.0
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 5.244763499945293e-06,
+       "process_medians_seconds": [
+        0.010832004000121742,
+        0.010939119999875402,
+        0.010309308999921996,
+        0.010489526999890586,
+        0.010448926999970354
+       ],
+       "spread_percent": 6.0
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 4.604815999982748e-06,
+       "process_medians_seconds": [
+        0.010265904000107184,
+        0.009209631999965495,
+        0.00937290199999552,
+        0.008947219999981826,
+        0.008973094000111814
+       ],
+       "spread_percent": 14.3
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 6.583209499922304e-06,
+       "process_medians_seconds": [
+        0.013009208999847033,
+        0.01652136999996401,
+        0.016486387999975705,
+        0.013166418999844609,
+        0.012641867000183993
+       ],
+       "spread_percent": 29.5
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 5.6768559999227365e-06,
+       "process_medians_seconds": [
+        0.011406867999994574,
+        0.011049761000094804,
+        0.011198775999901045,
+        0.011536104000015257,
+        0.011353711999845473
+       ],
+       "spread_percent": 4.3
+      }
+     },
+     "valid-facade-16000": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 5.431462499956296e-07,
+       "process_medians_seconds": [
+        0.008546358000103282,
+        0.008690339999930075,
+        0.008357867000086117,
+        0.009150030999990122,
+        0.013572689999818977
+       ],
+       "spread_percent": 60.0
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 5.246569375003673e-07,
+       "process_medians_seconds": [
+        0.007741005999832851,
+        0.007895850999830145,
+        0.008484383999984857,
+        0.008394511000005878,
+        0.01338033699994412
+       ],
+       "spread_percent": 67.2
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 4.847598750075122e-07,
+       "process_medians_seconds": [
+        0.0074597380000795965,
+        0.007437059000039881,
+        0.007756158000120195,
+        0.008997120000003633,
+        0.008176316999879418
+       ],
+       "spread_percent": 20.1
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 7.934911874940554e-07,
+       "process_medians_seconds": [
+        0.012695858999904885,
+        0.0124088769998707,
+        0.012959919999957492,
+        0.011305433999950765,
+        0.017024301999981617
+       ],
+       "spread_percent": 45.0
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 7.863499374991534e-07,
+       "process_medians_seconds": [
+        0.01322084299999915,
+        0.012581598999986454,
+        0.012568019999889657,
+        0.012228615999902104,
+        0.013044832000105089
+       ],
+       "spread_percent": 7.9
+      }
+     },
+     "malformed-facade-1600": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 7.932538750026197e-06,
+       "process_medians_seconds": [
+        0.012692062000041915,
+        0.012275129000045126,
+        0.01466630000004443,
+        0.016556168999841248,
+        0.012450641999976142
+       ],
+       "spread_percent": 33.7
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 7.4729637499615365e-06,
+       "process_medians_seconds": [
+        0.011856413000032262,
+        0.011956741999938458,
+        0.011333839000144508,
+        0.01212347800014868,
+        0.012079236000090532
+       ],
+       "spread_percent": 6.6
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 6.480424375041593e-06,
+       "process_medians_seconds": [
+        0.010290357000030781,
+        0.01078929799996331,
+        0.01036867900006655,
+        0.010215515000027153,
+        0.010795379999990473
+       ],
+       "spread_percent": 5.6
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 9.020553750076487e-06,
+       "process_medians_seconds": [
+        0.01456394999991062,
+        0.014181557000028988,
+        0.014164266000079806,
+        0.014856254000051194,
+        0.01443288600012238
+       ],
+       "spread_percent": 4.8
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 8.1146631249851e-06,
+       "process_medians_seconds": [
+        0.01391210399992815,
+        0.012981230999912441,
+        0.012634076999802346,
+        0.01298346099997616,
+        0.013405313000021124
+       ],
+       "spread_percent": 9.8
+      }
+     },
+     "serialized-malformed-1600": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 8.329045000010638e-06,
+       "process_medians_seconds": [
+        0.013172715000109747,
+        0.017151040000044304,
+        0.013437028999987888,
+        0.012861513999951057,
+        0.01332647200001702
+       ],
+       "spread_percent": 32.2
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 8.247461249908382e-06,
+       "process_medians_seconds": [
+        0.013195937999853413,
+        0.013018672999805858,
+        0.013238598000043567,
+        0.012914114000068366,
+        0.01337723200003893
+       ],
+       "spread_percent": 3.5
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 7.391714375017955e-06,
+       "process_medians_seconds": [
+        0.012045490999980757,
+        0.011826743000028728,
+        0.01142660599998635,
+        0.011755911999898672,
+        0.011998837000191998
+       ],
+       "spread_percent": 5.2
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 9.699347500031762e-06,
+       "process_medians_seconds": [
+        0.016133754999827943,
+        0.015377808999801346,
+        0.015518956000050821,
+        0.014904274999935296,
+        0.017221086000063224
+       ],
+       "spread_percent": 14.9
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 8.943021250047422e-06,
+       "process_medians_seconds": [
+        0.014308834000075876,
+        0.013965114000029644,
+        0.015359497000190458,
+        0.014202735000026223,
+        0.014536462000023676
+       ],
+       "spread_percent": 9.7
+      }
+     },
+     "valid-long-4000x2000": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 7.1609699999726215e-06,
+       "process_medians_seconds": [
+        0.014321939999945243,
+        0.014826985999889075,
+        0.024584313000104885,
+        0.01418281700011903,
+        0.013984857999957967
+       ],
+       "spread_percent": 74.0
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 6.560451500035924e-06,
+       "process_medians_seconds": [
+        0.013120903000071849,
+        0.013032934999955614,
+        0.013410432999990007,
+        0.013117619000013292,
+        0.013150867000149447
+       ],
+       "spread_percent": 2.9
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 6.598523999969075e-06,
+       "process_medians_seconds": [
+        0.013179825999941386,
+        0.01288234100002228,
+        0.013641632999906506,
+        0.013332040000022971,
+        0.01319704799993815
+       ],
+       "spread_percent": 5.8
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 7.35940100003063e-06,
+       "process_medians_seconds": [
+        0.01642445599986786,
+        0.01471880200006126,
+        0.015474921999839353,
+        0.01450782300003084,
+        0.013840166999898429
+       ],
+       "spread_percent": 17.6
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 6.684114999984558e-06,
+       "process_medians_seconds": [
+        0.013344884999924034,
+        0.013979456000015489,
+        0.013651251000055709,
+        0.013368229999969117,
+        0.013262524000083431
+       ],
+       "spread_percent": 5.4
+      }
+     },
+     "escaped-2000x3": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 0.001486420333321803,
+       "process_medians_seconds": [
+        0.004459260999965409,
+        0.004388333999941096,
+        0.0045752460000585415,
+        0.004561829000067519,
+        0.0044194619999871065
+       ],
+       "spread_percent": 4.2
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 0.0014860143333711069,
+       "process_medians_seconds": [
+        0.004381554000019605,
+        0.004583328000080655,
+        0.004583275999948455,
+        0.004458043000113321,
+        0.004265723999878901
+       ],
+       "spread_percent": 7.1
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 0.00020611900004041672,
+       "process_medians_seconds": [
+        0.0006183570001212502,
+        0.000639170000113154,
+        0.0006128509999143716,
+        0.0006472120001035364,
+        0.0005918649999330228
+       ],
+       "spread_percent": 9.0
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 0.001705001666626534,
+       "process_medians_seconds": [
+        0.005115004999879602,
+        0.0050669639999796345,
+        0.00526733299989246,
+        0.005183910999903674,
+        0.0049928850000924285
+       ],
+       "spread_percent": 5.4
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 0.00023364133335235238,
+       "process_medians_seconds": [
+        0.0007066699999995762,
+        0.0006646699998782424,
+        0.0006969280000248546,
+        0.0007017969999196794,
+        0.0007009240000570571
+       ],
+       "spread_percent": 6.0
+      }
+     },
+     "unicode-2000x100": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 0.00016451189999997951,
+       "process_medians_seconds": [
+        0.01612389499996425,
+        0.01645118999999795,
+        0.017236482000043907,
+        0.017356646999814984,
+        0.014546243000040704
+       ],
+       "spread_percent": 17.1
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 0.00016900644000088504,
+       "process_medians_seconds": [
+        0.016530196000076103,
+        0.016900644000088505,
+        0.017851340999868626,
+        0.01787217200012492,
+        0.015154719000065597
+       ],
+       "spread_percent": 16.1
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 7.318363999957e-05,
+       "process_medians_seconds": [
+        0.007159938000086186,
+        0.0073183639999570005,
+        0.007795339999802309,
+        0.007739071000059994,
+        0.0064114770000287535
+       ],
+       "spread_percent": 18.9
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 0.0001855392800007394,
+       "process_medians_seconds": [
+        0.018553928000073938,
+        0.018493897000098514,
+        0.019254929999988235,
+        0.019201132000034704,
+        0.017991147999964596
+       ],
+       "spread_percent": 6.8
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 9.04615400008879e-05,
+       "process_medians_seconds": [
+        0.00904615400008879,
+        0.008887005999895337,
+        0.009257320999950025,
+        0.009189441999978953,
+        0.00824906100001499
+       ],
+       "spread_percent": 11.1
+      }
+     },
+     "comma-1000x20": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 0.0008941744500020832,
+       "process_medians_seconds": [
+        0.017344598999898153,
+        0.017883489000041664,
+        0.018414952000057383,
+        0.017844360000026427,
+        0.01923931300007098
+       ],
+       "spread_percent": 10.6
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 0.0008591307000074266,
+       "process_medians_seconds": [
+        0.017182614000148533,
+        0.017005101999984618,
+        0.01771332699991035,
+        0.017473148999897603,
+        0.017083224999851154
+       ],
+       "spread_percent": 4.1
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 0.0006204286999945907,
+       "process_medians_seconds": [
+        0.012249748000158434,
+        0.012408573999891814,
+        0.013346766000040589,
+        0.012605799999846568,
+        0.012331522999829758
+       ],
+       "spread_percent": 8.8
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 0.001011821249994682,
+       "process_medians_seconds": [
+        0.019785207000040828,
+        0.01957441599984122,
+        0.02102779400001964,
+        0.020236424999893643,
+        0.020342460999927425
+       ],
+       "spread_percent": 7.2
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 0.0007399072499993054,
+       "process_medians_seconds": [
+        0.014656153000032646,
+        0.014798144999986107,
+        0.015376645000060307,
+        0.014803100999870367,
+        0.014613373000202046
+       ],
+       "spread_percent": 5.2
+      }
+     },
+     "logs-1000x200": {
+      "aot-ec442a20": {
+       "per_repair_seconds": 2.9182839999748466e-05,
+       "process_medians_seconds": [
+        0.005830170000081125,
+        0.005836567999949693,
+        0.0059324610001567635,
+        0.005821228000058909,
+        0.005887657999892326
+       ],
+       "spread_percent": 1.9
+      },
+      "aot-ce8c887-on-ec442a20-port": {
+       "per_repair_seconds": 2.77185849995476e-05,
+       "process_medians_seconds": [
+        0.00550577599983626,
+        0.00556718699999692,
+        0.005513358000143853,
+        0.00554371699990952,
+        0.005605779000006805
+       ],
+       "spread_percent": 1.8
+      },
+      "aot-ce8c887": {
+       "per_repair_seconds": 5.903270000544581e-06,
+       "process_medians_seconds": [
+        0.001109445000111009,
+        0.001180654000108916,
+        0.0012516220001543843,
+        0.0011875679999775457,
+        0.0011570249998840154
+       ],
+       "spread_percent": 12.0
+      },
+      "jit-ec442a20": {
+       "per_repair_seconds": 3.2382965000579136e-05,
+       "process_medians_seconds": [
+        0.006476593000115827,
+        0.006669372000033036,
+        0.006421912999940105,
+        0.006395968999868273,
+        0.006587558999854082
+       ],
+       "spread_percent": 4.2
+      },
+      "jit-ce8c887": {
+       "per_repair_seconds": 6.830734999994092e-06,
+       "process_medians_seconds": [
+        0.0013756350001585815,
+        0.0013465639999594714,
+        0.0013622310000300786,
+        0.0013758760001110204,
+        0.0013661469999988185
+       ],
+       "spread_percent": 2.1
+      }
+     }
+    },
+    "command": "python3.13 /home/user/pystachy/tools/json_repair_bench.py /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/variants-ab.json --cpu 2 --pairs 5 --batches 5 --warmups 2 --output /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/ab2.json"
+   }
+  }
+ },
+ "launch": {
+  "raw": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/results/launch1.json",
+  "config": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/launch-config.json",
+  "command": "python3.13 /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/scripts/launch.py /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/launch-config.json --cpu 2 --reps 40 --warmups 3",
+  "summary": {
+   "bench-run-hit": {
+    "n": 40,
+    "median_wall_ms": 37.754103500105884,
+    "min_wall_ms": 35.256888000049,
+    "p25_ms": 36.90410625000595,
+    "p75_ms": 39.35298200008219,
+    "max_wall_ms": 50.81674100006239,
+    "median_cpu_ms": 37.406499999999994,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "fda726646e5c6b34"
+   },
+   "bench-cached-exe": {
+    "n": 40,
+    "median_wall_ms": 1.4584430000468274,
+    "min_wall_ms": 1.326043000062782,
+    "p25_ms": 1.4159935000179757,
+    "p75_ms": 1.5001740000002428,
+    "max_wall_ms": 1.626815000008719,
+    "median_cpu_ms": 1.2285,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "fda726646e5c6b34"
+   },
+   "bench-aot": {
+    "n": 40,
+    "median_wall_ms": 1.4055469999902925,
+    "min_wall_ms": 1.2433260001216695,
+    "p25_ms": 1.3686555000163025,
+    "p75_ms": 1.4696732501420229,
+    "max_wall_ms": 1.6985839999961172,
+    "median_cpu_ms": 1.2000000000000002,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "fda726646e5c6b34"
+   },
+   "bench-cpython-port": {
+    "n": 40,
+    "median_wall_ms": 32.76500499998747,
+    "min_wall_ms": 29.18940399990788,
+    "p25_ms": 30.917103749914077,
+    "p75_ms": 33.45113749998063,
+    "max_wall_ms": 35.06575699998393,
+    "median_cpu_ms": 32.1305,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "fda726646e5c6b34"
+   },
+   "bench-cpython-upstream": {
+    "n": 40,
+    "median_wall_ms": 38.753811999981735,
+    "min_wall_ms": 33.93633699988641,
+    "p25_ms": 36.114669249968756,
+    "p75_ms": 40.96039899985726,
+    "max_wall_ms": 42.20152700008839,
+    "median_cpu_ms": 38.44599999999999,
+    "median_maxrss_kib": 16950.0,
+    "stdout_sha_prefix": "fda726646e5c6b34"
+   },
+   "cli-run-hit": {
+    "n": 40,
+    "median_wall_ms": 39.3470525000339,
+    "min_wall_ms": 36.58750299996427,
+    "p25_ms": 38.684260999900744,
+    "p75_ms": 40.10029625004563,
+    "max_wall_ms": 47.37191200001689,
+    "median_cpu_ms": 38.9925,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "c4e58a815060f97b"
+   },
+   "cli-cached-exe": {
+    "n": 40,
+    "median_wall_ms": 1.584309999884681,
+    "min_wall_ms": 1.3975970000501547,
+    "p25_ms": 1.5440977499565633,
+    "p75_ms": 1.6763987500780786,
+    "max_wall_ms": 2.098935000049096,
+    "median_cpu_ms": 1.341,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "c4e58a815060f97b"
+   },
+   "cli-cpython-port": {
+    "n": 40,
+    "median_wall_ms": 36.573360499915,
+    "min_wall_ms": 32.263626999792905,
+    "p25_ms": 34.122750750100295,
+    "p75_ms": 38.114344999996774,
+    "max_wall_ms": 43.77715500004342,
+    "median_cpu_ms": 36.254999999999995,
+    "median_maxrss_kib": 16534.0,
+    "stdout_sha_prefix": "c4e58a815060f97b"
+   },
+   "hello-run-hit": {
+    "n": 40,
+    "median_wall_ms": 36.59432749998359,
+    "min_wall_ms": 33.966267000096195,
+    "p25_ms": 35.82006924995085,
+    "p75_ms": 37.48340300006703,
+    "max_wall_ms": 49.75025199996708,
+    "median_cpu_ms": 36.259,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "5891b5b522d5df08"
+   },
+   "hello-cached-exe": {
+    "n": 40,
+    "median_wall_ms": 1.2261404999662773,
+    "min_wall_ms": 1.0775890000331856,
+    "p25_ms": 1.1891529999275008,
+    "p75_ms": 1.2926762499887445,
+    "max_wall_ms": 1.5970730000844924,
+    "median_cpu_ms": 0.9810000000000001,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "5891b5b522d5df08"
+   },
+   "compiler-version": {
+    "n": 40,
+    "median_wall_ms": 1.8592195000337597,
+    "min_wall_ms": 1.6571700000440615,
+    "p25_ms": 1.7838060001054146,
+    "p75_ms": 1.8908155000758597,
+    "max_wall_ms": 2.2690170001169463,
+    "median_cpu_ms": 1.6484999999999999,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "3d7c3e78dc35a1b0"
+   },
+   "bin-true": {
+    "n": 40,
+    "median_wall_ms": 0.9524024999336689,
+    "min_wall_ms": 0.8469849999528378,
+    "p25_ms": 0.9228607500517683,
+    "p75_ms": 0.9890052498917612,
+    "max_wall_ms": 1.1924230000204261,
+    "median_cpu_ms": 0.7554999999999998,
+    "median_maxrss_kib": 16192.0,
+    "stdout_sha_prefix": "e3b0c44298fc1c14"
+   },
+   "bench-run-uncached-jit": {
+    "n": 5,
+    "median_wall_ms": 948.1414560000303,
+    "min_wall_ms": 934.3248220000078,
+    "p25_ms": 941.1345385000232,
+    "p75_ms": 972.9457710000133,
+    "max_wall_ms": 985.432972000126,
+    "median_cpu_ms": 940.8199999999999,
+    "median_maxrss_kib": 76348,
+    "stdout_sha_prefix": "fda726646e5c6b34"
+   }
+  },
+  "user_sys_median_ms": {
+   "bench-run-hit": {
+    "user": 18.3445,
+    "sys": 18.355499999999996
+   },
+   "bench-cached-exe": {
+    "user": 1.2265,
+    "sys": 0.0
+   },
+   "bench-aot": {
+    "user": 1.1975,
+    "sys": 0.0
+   },
+   "bench-cpython-port": {
+    "user": 27.251499999999997,
+    "sys": 4.0505
+   },
+   "bench-cpython-upstream": {
+    "user": 34.664,
+    "sys": 4.0344999999999995
+   },
+   "cli-run-hit": {
+    "user": 20.3675,
+    "sys": 18.5565
+   },
+   "cli-cached-exe": {
+    "user": 1.3319999999999999,
+    "sys": 0.0
+   },
+   "cli-cpython-port": {
+    "user": 30.609499999999997,
+    "sys": 4.0889999999999995
+   },
+   "hello-run-hit": {
+    "user": 16.9155,
+    "sys": 18.882999999999996
+   },
+   "hello-cached-exe": {
+    "user": 0.9764999999999999,
+    "sys": 0.0
+   },
+   "compiler-version": {
+    "user": 1.6119999999999999,
+    "sys": 0.0
+   },
+   "bin-true": {
+    "user": 0.737,
+    "sys": 0.0
+   },
+   "bench-run-uncached-jit": {
+    "user": 873.646,
+    "sys": 59.596
+   }
+  },
+  "pystachy_timing_hit_median_ms": {
+   "program.cache_lookup": 33.218284000000004,
+   "driver.prepare_run": 33.276585
+  },
+  "native_replay_phases_median_ms": {
+   "preamble: tool magic, llvm listdir, /proc/cpuinfo": 0.14750000000000002,
+   "cache dir admission: 2 sh + 2 stat processes": 3.4635,
+   "bucket lock file check: 1 sh": 0.7535000000000001,
+   "manifest read + FNV + unpack": 5.48,
+   "validate 25 source records": 1.245,
+   "validate 61 probe records": 0.203,
+   "validate 244 static records": 1.08,
+   "validate 6800 layout records": 15.4825,
+   "executable FNV hash": 0.818,
+   "executable -x check: 1 sh": 0.876,
+   "LRU touch: sh + touch": 1.4909999999999999,
+   "whole lookup_in (separately, for comparison)": 27.6445
+  },
+  "native_replay_note": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/probe/hitprobe.py, built by ./pystachy build with PYSTACHY_PATH=/home/user/pystachy: the compiler's own cached_run/program_cache/cache_toolchain functions replayed in lookup order, 20 measured repeats, CPU 2",
+  "strace_c_hit": [
+   "% time     seconds  usecs/call     calls    errors syscall",
+   "------ ----------- ----------- --------- --------- ----------------",
+   " 94.68    0.035004           1     33793       409 newfstatat",
+   "  1.84    0.000681          68        10           execve",
+   "  1.51    0.000559           0       796           readlink",
+   "  0.56    0.000207           0       306           read",
+   "  0.47    0.000172           1       164       134 access",
+   "  0.16    0.000059           0       130           mmap"
+  ]
+ },
+ "hit_timeline": {
+  "command": "strace -f --seccomp-bpf -ttt -e trace=execve,openat,vfork,clone,clone3,wait4,flock,exit_group (3 hits, CPU 2); stat calls untraced",
+  "files": [
+   "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/logs/hit-timeline-1.strace",
+   "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/logs/hit-timeline-2.strace",
+   "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/logs/hit-timeline-3.strace"
+  ],
+  "phases_ms_median": {
+   "exec to /proc/cpuinfo read (compiler start, driver, tool checks)": 1.74,
+   "cache-dir admission and lock-file checks (3 sh, 2 stat) to flock": 5.01,
+   "manifest open to first source read (717 KB read, FNV, unpack, stage cleanup)": 6.6,
+   "25 sources reread + FNV": 1.2,
+   "61 probes, 244 statics, 6,800 layout candidates": 18.7,
+   "executable hash, [ -x ] sh, sh+touch, exec": 3.38,
+   "cached program runs bench.py 0 and exits": 1.43
+  },
+  "total_ms": 38.06,
+  "strace_c": "33,793 newfstatat (409 errors), 796 readlink, 306 read, 74 openat, 10 execve (compiler, 5 sh, 2 stat, touch, program) per hit",
+  "child_processes": [
+   "sh (dir check) + stat",
+   "sh (dir check) + stat",
+   "sh [ -O lock ]",
+   "sh [ -x exe ]",
+   "sh + touch (LRU)"
+  ],
+  "manifest_records": {
+   "bench.py": {
+    "bytes": 717124,
+    "source": 25,
+    "probe": 61,
+    "static": 244,
+    "layout": 6800
+   },
+   "hello.py": {
+    "bytes": 706501,
+    "source": 1,
+    "probe": 4,
+    "static": 244,
+    "layout": 6800
+   },
+   "jr_cli.py": {
+    "bytes": 728901,
+    "source": 36,
+    "probe": 116,
+    "static": 244,
+    "layout": 6800
+   }
+  },
+  "callgrind_replay_note": "callgrind of the native replay (2 lookups): manifest _document 65% of instructions (fnv 45%: per-character ord()/UTF-8 text indexing; file read/decode 19%; _unpack 15%); snapshot() 12% (float repr of mtime/ctime ...). Under valgrind the real compiler bypasses the cache (/proc/self/exe is valgrind), so the replay probe was profiled instead."
+ },
+ "build": {
+  "first_builds_seconds": {
+   "bench.py (empty cache: includes runtime cache)": 10.896,
+   "facade.py": 5.154,
+   "scaling.py": 4.945
+  },
+  "warm_bench_build_seconds": [
+   5.19,
+   5.039,
+   5.242,
+   5.272
+  ],
+  "warm_bench_build_note": "4th run with PYSTACHY_TIMING=1; all four executables byte-identical to the timed exe/bench",
+  "timing_stages_seconds": {
+   "program.cache_lookup": 7.377e-06,
+   "program.load": 0.057726459,
+   "program.prepare": 0.015759713,
+   "program.attempt": 0.142520298,
+   "program.discover": 0.034995337,
+   "program.analysis": 0.00432491,
+   "program.optimize": 0.008995865,
+   "program.finalize": 0.003000869,
+   "program.lower": 0.017579635,
+   "program.frontend": 0.247351948,
+   "runtime.cache_lookup": 0.000187925,
+   "program.llvm_link": 0.193515213,
+   "program.llvm_optimize": 2.488593579,
+   "program.late_inline": 0.145104557,
+   "program.codegen": 2.150485169,
+   "program.link": 0.036760992,
+   "driver.total": 5.265513254
+  },
+  "first_jit_use_seconds": 5.583,
+  "first_program_cache_fill_seconds": {
+   "bench.py": 11.983,
+   "hello.py": 0.383,
+   "jr_cli.py": 3.784
+  },
+  "command": "PYSTACHY_HOME=/home/user/pystachy PYSTACHY_CACHE=$SCR/cache PYSTACHY_PATH=/home/user/pystachy/ports /home/user/pystachy/pystachy build /home/user/pystachy/bench/json_repair/bench.py -o $SCR/build-timing/bench-N",
+  "2nov": {
+   "bench.py (empty cache)": 13.27,
+   "facade.py": 6.74,
+   "scaling.py": 6.65
+  }
+ },
+ "callgrind": {
+  "scope": "Whole-process AOT callgrind instructions with the 2 Nov args, today's exe/* vs 2 Nov release_candidate (ec442a20 compiler AND port); fallback = inclusive pthread_getattr_np",
+  "command": "taskset -c 2 valgrind --tool=callgrind --callgrind-out-file=NAME.today.cg $SCR/exe/PROGRAM ARGS (see $SCR/scripts/cg.sh)",
+  "workloads": [
+   {
+    "workload": "mixed records",
+    "args": [
+     "200",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 105426027,
+    "today_fallback": 110883,
+    "today_instructions": 105315144,
+    "2nov_instructions": 117873127,
+    "change_percent": -10.7
+   },
+   {
+    "workload": "valid objects",
+    "args": [
+     "valid",
+     "4000",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 100705340,
+    "today_fallback": 113152,
+    "today_instructions": 100592188,
+    "2nov_instructions": 99396295,
+    "change_percent": 1.2
+   },
+   {
+    "workload": "malformed objects",
+    "args": [
+     "malformed",
+     "400",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 122597504,
+    "today_fallback": 113152,
+    "today_instructions": 122484352,
+    "2nov_instructions": 136014346,
+    "change_percent": -9.9
+   },
+   {
+    "workload": "serialized malformed objects",
+    "args": [
+     "serialized-malformed",
+     "400",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 135288718,
+    "today_fallback": 0,
+    "today_instructions": 135288718,
+    "2nov_instructions": 148756551,
+    "change_percent": -9.1
+   },
+   {
+    "workload": "long valid string",
+    "args": [
+     "valid",
+     "4000",
+     "20",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 3002082,
+    "today_fallback": 110842,
+    "today_instructions": 2891240,
+    "2nov_instructions": 2725602,
+    "change_percent": 6.1
+   },
+   {
+    "workload": "escaped newlines",
+    "args": [
+     "escaped",
+     "2000",
+     "20",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 53321619,
+    "today_fallback": 110842,
+    "today_instructions": 53210777,
+    "2nov_instructions": 288042314,
+    "change_percent": -81.5
+   },
+   {
+    "workload": "non-ASCII malformed text",
+    "args": [
+     "unicode",
+     "2000",
+     "20",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 25983972,
+    "today_fallback": 110842,
+    "today_instructions": 25873130,
+    "2nov_instructions": 60537046,
+    "change_percent": -57.3
+   },
+   {
+    "workload": "comma-dense text",
+    "args": [
+     "comma",
+     "1000",
+     "20",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 168842202,
+    "today_fallback": 110842,
+    "today_instructions": 168731360,
+    "2nov_instructions": 233959074,
+    "change_percent": -27.9
+   },
+   {
+    "workload": "logged repair",
+    "args": [
+     "logs",
+     "1000",
+     "20",
+     "1",
+     "0"
+    ],
+    "today_callgrind_total": 1835583,
+    "today_fallback": 110842,
+    "today_instructions": 1724741,
+    "2nov_instructions": 9204449,
+    "change_percent": -81.3
+   }
+  ],
+  "per_repair_valid_long_today": {
+   "I(0 rounds)": 827397,
+   "I(220 rounds)": 24795753,
+   "per_repair": 108947.07272727272
+  },
+  "same_host_rebuilds": {
+   "ec442a20_rebuild": {
+    "mixed": {
+     "total": 117829900,
+     "fallback": 0,
+     "instructions": 117829900
+    },
+    "valid": {
+     "total": 99577907,
+     "fallback": 113075,
+     "instructions": 99464832
+    },
+    "malformed": {
+     "total": 136013805,
+     "fallback": 0,
+     "instructions": 136013805
+    },
+    "serialized": {
+     "total": 148871879,
+     "fallback": 113075,
+     "instructions": 148758804
+    },
+    "validlong": {
+     "total": 2838299,
+     "fallback": 110861,
+     "instructions": 2727438
+    },
+    "escaped": {
+     "total": 288046353,
+     "fallback": 0,
+     "instructions": 288046353
+    },
+    "unicode": {
+     "total": 60541098,
+     "fallback": 0,
+     "instructions": 60541098
+    },
+    "comma": {
+     "total": 234071748,
+     "fallback": 110861,
+     "instructions": 233960887
+    },
+    "logs": {
+     "total": 9319931,
+     "fallback": 110861,
+     "instructions": 9209070
+    }
+   },
+   "ce8c887_compiler_on_ec442a20_port": {
+    "mixed": {
+     "total": 118702670,
+     "fallback": 110852,
+     "instructions": 118591818
+    },
+    "valid": {
+     "total": 100664106,
+     "fallback": 110869,
+     "instructions": 100553237
+    },
+    "malformed": {
+     "total": 137360608,
+     "fallback": 110869,
+     "instructions": 137249739
+    },
+    "serialized": {
+     "total": 150303392,
+     "fallback": 110869,
+     "instructions": 150192523
+    },
+    "validlong": {
+     "total": 2753986,
+     "fallback": 0,
+     "instructions": 2753986
+    },
+    "escaped": {
+     "total": 288542273,
+     "fallback": 110876,
+     "instructions": 288431397
+    },
+    "unicode": {
+     "total": 60010431,
+     "fallback": 110876,
+     "instructions": 59899555
+    },
+    "comma": {
+     "total": 237732240,
+     "fallback": 0,
+     "instructions": 237732240
+    },
+    "logs": {
+     "total": 9490640,
+     "fallback": 110876,
+     "instructions": 9379764
+    }
+   },
+   "ce8c887": {
+    "mixed": {
+     "total": 105426027,
+     "fallback": 110883,
+     "instructions": 105315144
+    },
+    "valid": {
+     "total": 100705340,
+     "fallback": 113152,
+     "instructions": 100592188
+    },
+    "malformed": {
+     "total": 122597504,
+     "fallback": 113152,
+     "instructions": 122484352
+    },
+    "serialized": {
+     "total": 135288718,
+     "fallback": 0,
+     "instructions": 135288718
+    },
+    "validlong": {
+     "total": 3002082,
+     "fallback": 110842,
+     "instructions": 2891240
+    },
+    "escaped": {
+     "total": 53321619,
+     "fallback": 110842,
+     "instructions": 53210777
+    },
+    "unicode": {
+     "total": 25983972,
+     "fallback": 110842,
+     "instructions": 25873130
+    },
+    "comma": {
+     "total": 168842202,
+     "fallback": 110842,
+     "instructions": 168731360
+    },
+    "logs": {
+     "total": 1835583,
+     "fallback": 110842,
+     "instructions": 1724741
+    }
+   },
+   "note": "ec442a20 compiler bootstrapped in $SCR/old (stage-2 IR 792,790 lines, as recorded on 2 Nov); its AOT counts match the 2 Nov release_candidate counts within 0.07%; outputs identical",
+   "per_repair": {
+    "valid-long": {
+     "ec442a20": 108786.96818181819,
+     "ce8c887": 108947.07272727272
+    },
+    "valid-facade": {
+     "ec442a20": 6183.1485,
+     "ce8c887": 6246.3480625
+    },
+    "startup_instructions_scaling_valid_0_rounds": {
+     "ec442a20": 667637,
+     "ce8c887": 827397
+    }
+   }
+  }
+ },
+ "notes": {
+  "not_reproduced_exactly": [
+   "Different host: Intel Xeon Processor @ 2.30GHz (family 6 model 173), kernel 6.18.44-fc-v310, vs 2.10GHz / fc-v185 on 2 Nov. Upstream CPython (identical python3.13 sha256 and upstream source bytes) ran 26-36% faster per repair (52-53% on the 8 KB valid string), so raw percentage changes mix host and software.",
+   "Upstream came from the PyPI 0.64.1 wheel (sha256 matches PyPI; 22 sources match the ace9b23c manifest) rather than a git checkout, so the runner's source identity for that variant is the Pystachy checkout (probe scripts); the wheel was hashed before/after separately.",
+   "CPython variants used PYTHONPYCACHEPREFIX in scratch and the JIT used PYSTACHY_CACHE in scratch, to keep the checkout unmodified; neither is inside the timed loops.",
+   "The runner now sets PYSTACHY_PROGRAM_CACHE=0 for every process (the program cache did not exist on 2 Nov), so port-jit remains lli ORC JIT.",
+   "The 150-process size sweep was not repeated; the nine workloads (180 processes) were run twice.",
+   "The checkout's HEAD a6f2956f adds only research/ commits to ce8c887f."
+  ]
+ }
+}

@@ -1,0 +1,200 @@
+{
+ "variants": [
+  {
+   "name": "aot-ec442a20",
+   "source": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old",
+   "commands": {
+    "bench": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old-exe/bench"
+    ],
+    "facade": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old-exe/facade"
+    ],
+    "scaling": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old-exe/scaling"
+    ]
+   },
+   "env": {},
+   "identity": {
+    "compiler": "ec442a20 bootstrapped in scratch (stage 2)",
+    "port": "ec442a20"
+   }
+  },
+  {
+   "name": "aot-ce8c887-on-ec442a20-port",
+   "source": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old",
+   "commands": {
+    "bench": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/newc-oldport-exe/bench"
+    ],
+    "facade": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/newc-oldport-exe/facade"
+    ],
+    "scaling": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/newc-oldport-exe/scaling"
+    ]
+   },
+   "env": {},
+   "identity": {
+    "compiler": "ce8c887 (./pystachy)",
+    "port": "ec442a20"
+   }
+  },
+  {
+   "name": "aot-ce8c887",
+   "source": "/home/user/pystachy",
+   "commands": {
+    "bench": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/exe/bench"
+    ],
+    "facade": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/exe/facade"
+    ],
+    "scaling": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/exe/scaling"
+    ]
+   },
+   "env": {},
+   "identity": {
+    "compiler": "ce8c887 (./pystachy)",
+    "port": "ce8c887"
+   }
+  },
+  {
+   "name": "jit-ec442a20",
+   "source": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old",
+   "commands": {
+    "bench": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old/bench/json_repair/bench.py"
+    ],
+    "facade": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old/bench/json_repair/facade.py"
+    ],
+    "scaling": [
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old/pystachy",
+     "run",
+     "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old/bench/json_repair/scaling.py"
+    ]
+   },
+   "env": {
+    "PYSTACHY_PATH": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/old-cache"
+   },
+   "identity": {
+    "compiler": "ec442a20",
+    "port": "ec442a20"
+   }
+  },
+  {
+   "name": "jit-ce8c887",
+   "source": "/home/user/pystachy",
+   "commands": {
+    "bench": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/home/user/pystachy/bench/json_repair/bench.py"
+    ],
+    "facade": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/home/user/pystachy/bench/json_repair/facade.py"
+    ],
+    "scaling": [
+     "/home/user/pystachy/pystachy",
+     "run",
+     "/home/user/pystachy/bench/json_repair/scaling.py"
+    ]
+   },
+   "env": {
+    "PYSTACHY_PATH": "/home/user/pystachy/ports",
+    "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/jrbench.m0G3mp2o/cache"
+   },
+   "identity": {
+    "compiler": "ce8c887",
+    "port": "ce8c887"
+   }
+  }
+ ],
+ "cases": [
+  {
+   "name": "mixed-2000",
+   "probe": "bench",
+   "args": [
+    "200"
+   ]
+  },
+  {
+   "name": "valid-facade-16000",
+   "probe": "facade",
+   "args": [
+    "valid",
+    "4000"
+   ]
+  },
+  {
+   "name": "malformed-facade-1600",
+   "probe": "facade",
+   "args": [
+    "malformed",
+    "400"
+   ]
+  },
+  {
+   "name": "serialized-malformed-1600",
+   "probe": "facade",
+   "args": [
+    "serialized-malformed",
+    "400"
+   ]
+  },
+  {
+   "name": "valid-long-4000x2000",
+   "probe": "scaling",
+   "args": [
+    "valid",
+    "4000",
+    "2000"
+   ]
+  },
+  {
+   "name": "escaped-2000x3",
+   "probe": "scaling",
+   "args": [
+    "escaped",
+    "2000",
+    "3"
+   ]
+  },
+  {
+   "name": "unicode-2000x100",
+   "probe": "scaling",
+   "args": [
+    "unicode",
+    "2000",
+    "100"
+   ]
+  },
+  {
+   "name": "comma-1000x20",
+   "probe": "scaling",
+   "args": [
+    "comma",
+    "1000",
+    "20"
+   ]
+  },
+  {
+   "name": "logs-1000x200",
+   "probe": "scaling",
+   "args": [
+    "logs",
+    "1000",
+    "200"
+   ]
+  }
+ ]
+}
