@@ -24,7 +24,7 @@ from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -1502,7 +1502,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         # As with int literals, equal constants in one compiled module share an object.
         # Key by exact IEEE bits: 0.0 and -0.0 are distinct constants, while 1.5 and 15e-1
         # share one. A computed float (including NaN) is not a literal and stays a new box.
-        g = "@dbf." + self.curfn.mod + "$" + v.v
+        g = "@dbf." + self.curfn.mod + "$" + float_slot(v.v).replace("-", "m")
         if g not in self.dynboxes:
             self.dynboxes[g] = True
             d = Data("dynfloat", g)

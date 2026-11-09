@@ -9,7 +9,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Val
 from src.pystachy_compiler.llvm_abi import llstr
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import CTYPES, DYNTYPE_LL, GENCLEAN, GENCMD, GENDONE, GENNAME, GENRUN, GENSTATE, GLUE, LIBS, LINKDL, OBJECTC, RANGEC, RECURSION_BRANCH, RTDATA, RTSYM, STR_HEADER_SIZE, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_DEPTH_TYPE, TBAA_FIELDS, TBAA_FLOOR, TBAA_FLOOR_TYPE, TBAA_LEN, TBAA_LIMIT, TBAA_LIMIT_TYPE, TBAA_NAMES, TBAA_SIZES
-from src.pystachy_compiler.utils import RtFn, lt, runtime_decl, typestr
+from src.pystachy_compiler.utils import RtFn, float_slot, lt, runtime_decl, typestr
 
 # pystachy run on Linux, which loads the runtime as a shared library (the driver's RTSO, #704): a
 # constructor, which the driver adds to the program's module, that hands the library the program's
@@ -238,7 +238,7 @@ def const_slot(v: Val) -> str:
     if v.t == "int":
         return v.v
     if v.t == "float":
-        return f"bitcast (double {v.v} to i64)"
+        return float_slot(v.v)
     if v.t == "bool":
         return "1" if v.v == "true" else "0"
     if v.v == "null":
@@ -320,7 +320,7 @@ def lower_data(d: Data) -> str:
     if d.kind == "dynfloat":
         # A float literal's dynamic value: preserve the exact bits in its i64 payload and
         # retain its address as object identity, including separate positive/negative zero.
-        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 bitcast (double {d.items[0].v} to i64)}}, align 8"
+        return f"{d.name} = internal constant {{ptr, i64}} {{ptr {d.refs[0]}, i64 {float_slot(d.items[0].v)}}}, align 8"
     if d.kind == "classfields":
         # the fields of an object's __dict__ in their order: name, type descriptor, byte offset in
         # the class's layout (d.text) and that of its "is assigned" flag (-1: always assigned)

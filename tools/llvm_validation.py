@@ -214,7 +214,9 @@ def interpreter_module(source, expected):
         for row, (a, b) in enumerate(itertools.product(values, repeat=2)):
             floating = name == "affine"
             kind = "double" if floating else "i64"
-            args = ["0x" + struct.pack(">d", x).hex().upper() if floating else str(x) for x in (a, b)]
+            # a double's exact bits without LLVM's hexadecimal form, which LLVM 23 deprecates
+            args = [f"bitcast (i64 {struct.unpack('>q', struct.pack('>d', x))[0]} to double)" if floating
+                    else str(x) for x in (a, b)]
             lines += [f"case{index}:",
                       f"  %r{index} = call {kind} @f.{name}({kind} {args[0]}, {kind} {args[1]})"]
             wanted = expected[name][row]

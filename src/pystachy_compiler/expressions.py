@@ -48,6 +48,7 @@ from src.pystachy_compiler.utils import (
     disjoint_sets,
     elem,
     fbits,
+    fconst,
     fmt_index,
     folds,
     folded_int,
@@ -2260,15 +2261,15 @@ def gen_numkey(self, v: Val, t: str) -> list[str]:
         fv = self.as_float(v).v
         if not v.v.startswith("%") and -9007199254740992 <= int(v.v) <= 9007199254740992:
             return [fv, "true"]
-        inr = self.scalar_cmp('olt', Val(fv, 'float'), Val('0x43E0000000000000', 'float'))  # (2**63, where an int's float may round to)
+        inr = self.scalar_cmp('olt', Val(fv, 'float'), Val(fbits('9223372036854775808.0'), 'float'))  # (2**63, where an int's float may round to)
         back = self.select(inr, Val(self.scalar_cast('fptosi', Val(fv, 'float'), 'int'), "int"), Val("0", "int"))
         exact = self.num_cmp("==", Val(back, "int"), Val(v.v, "int")).v
         return [fv, self.scalar('and', [Val(inr, 'bool'), Val(exact, 'bool')])]
     iv = v.v
     ok = "true"
     if v.t == "float":
-        lo = self.scalar_cmp('oge', Val(v.v, 'float'), Val('0xC3E0000000000000', 'float'))
-        inr = self.scalar('and', [Val(lo, 'bool'), Val(self.scalar_cmp('olt', Val(v.v, 'float'), Val('0x43E0000000000000', 'float')), 'bool')])
+        lo = self.scalar_cmp('oge', Val(v.v, 'float'), Val(fbits('-9223372036854775808.0'), 'float'))
+        inr = self.scalar('and', [Val(lo, 'bool'), Val(self.scalar_cmp('olt', Val(v.v, 'float'), Val(fbits('9223372036854775808.0'), 'float')), 'bool')])
         iv = self.select(inr, Val(self.scalar_cast('fptosi', Val(v.v, 'float'), 'int'), "int"), Val("0", "int"))
         back = self.scalar_cast('sitofp', Val(iv, 'int'), 'float')
         ok = self.scalar('and', [Val(inr, 'bool'), Val(self.scalar_cmp('oeq', Val(back, 'float'), Val(v.v, 'float')), 'bool')])
@@ -2442,7 +2443,7 @@ def gen_list_const(self, n: Node, vals: list[Val], t: str) -> Val:
         if e.kind == "unary" and e.s == "-":
             e = e.kids[0]
         v = vals[j]
-        ok = (e.kind == "int" and v.t == "int" and v.lit and int_fits(v.v)) or (e.kind == "float" and v.t == "float" and v.lit and v.v.startswith("0x")) or (e.kind in ["True", "False"] and v.t == "bool" and v.v in ["true", "false"])
+        ok = (e.kind == "int" and v.t == "int" and v.lit and int_fits(v.v)) or (e.kind == "float" and v.t == "float" and v.lit and fconst(v.v)) or (e.kind in ["True", "False"] and v.t == "bool" and v.v in ["true", "false"])
         if not ok or v.t != elem(t):
             return Val("", "")
     key = t + "(" + ",".join([v.v for v in vals]) + ")"
@@ -2490,7 +2491,7 @@ def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
                 v = self.expr(n.kids[i], "")  # (its 64-bit literal, as it is but where the module promotes)
             ok = v.t == "int" and v.lit and int_fits(v.v) and (vals[i].t != BIG or v.v != TSLOT_BIG)
         elif x.kind == "float":
-            ok = v.t == "float" and v.v.startswith("0x")
+            ok = v.t == "float" and fconst(v.v)
         elif x.kind == "str":
             ok = v.t == "str" and v.v.startswith("@s.")
         elif x.kind == "bytes":
