@@ -45,6 +45,11 @@ The expanded corpus passes **837/837** under pristine and adapted CPython
 These results cover the recorded combinations; the separate Unicode audit checks
 the five corrected character predicates across every Unicode code point.
 
+CI replays the corpus natively in JIT and AOT (the `example-cli` verification step)
+and through the CPython companion extension under GC stress (the `ffi` step). The
+extension replay needs the pinned CPython as its oracle; under another interpreter
+the FFI report lists it as skipped, which CI's FFI coverage check rejects.
+
 ## Replay
 
 From the repository root, with CPython 3.13.16 on `PATH`:

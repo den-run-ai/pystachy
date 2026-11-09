@@ -47,7 +47,8 @@
 #                  unstressed, whose IR gc-ir shows to be the stressed compiler's
 #   benchmarks     bench/*.py print exactly what CPython prints, JIT and AOT; timings recorded
 #   example-cli    real example command lines match CPython's status/stdout/stderr, JIT and AOT;
-#                  existing JSON repair process cases and agent loopback-HTTP checks also pass
+#                  existing JSON repair process cases and agent loopback-HTTP checks also pass, and
+#                  the recorded JSON repair corpus replays natively, JIT and AOT
 #   rtcheck        tools/rtcheck.py: runtime.py, run by CPython, gives what CPython's str methods and
 #                  math functions give on random inputs
 #   re-fuzz        tools/re_fuzz.py: lib/re, run by CPython, compiles random patterns to the code and
