@@ -1,24 +1,24 @@
 ## Native runtime coverage
 
-Commit `39fc6de3379600dcd40a92d603e5f493aa55cbcc`: lines **94.8%** (7393 of 7797) and branches **84.6%** (7915 of 9358) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.0%, regions 91.3%. `pys_init` ran 4751 times: the program runs whose profiles were written.
+Commit `56678df4c667afb4c9b35d854e97cdc9f5c0c3f7`: lines **94.7%** (7444 of 7862) and branches **84.9%** (8007 of 9436) of `runtime.c` (with the `ryu/` and `mpz/` files it includes), `pyembed.c` and `pyext.c`, as clang's source-based coverage counts them; functions 96.0%, regions 91.5%. `pys_init` ran 4773 times: the program runs whose profiles were written.
 Programs built by the native compiler against an instrumented runtime; `runtime.py`, compiled by Pystachy, is not measured, nor are the C probes. The compiler's own coverage is the [hosted compiler coverage](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md).
 
 | Suite | Runs | Checks | Time |
 |---|---|---|---:|
-| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 6847 passed, 0 failed | 2154 s |
-| ffi | `tests/ffi/run.sh`, AOT and extension modules | 148 passed, 0 failed | 144 s |
+| corpus | `tests/run.sh`, JIT and AOT (6 shards) | 6869 passed, 0 failed | 1919 s |
+| ffi | `tests/ffi/run.sh`, AOT and extension modules | 148 passed, 0 failed | 141 s |
 
 | File | Lines | Missed | Lines % | Branches | Missed | Branches % | Functions % | Regions % |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | `mpz/mpz.c` | 362 | 2 | 99.4% | 380 | 10 | 97.4% | 100.0% | 99.1% |
 | `pyembed.c` | 357 | 17 | 95.2% | 400 | 135 | 66.2% | 96.9% | 84.9% |
 | `pyext.c` | 128 | 10 | 92.2% | 142 | 41 | 71.1% | 100.0% | 83.9% |
-| `runtime.c` | 6478 | 275 | 95.8% | 8306 | 1249 | 85.0% | 96.9% | 91.3% |
+| `runtime.c` | 6543 | 289 | 95.6% | 8384 | 1235 | 85.3% | 96.8% | 91.5% |
 | `ryu/common.h` | 66 | 46 | 30.3% | 6 | 6 | 0.0% | 44.4% | 23.5% |
 | `ryu/d2s.c` | 284 | 13 | 95.4% | 118 | 2 | 98.3% | 71.4% | 98.3% |
 | `ryu/d2s_intrinsics.h` | 84 | 41 | 51.2% | 2 | 0 | 100.0% | 69.2% | 76.5% |
 | `ryu/d2s_small_table.h` | 38 | 0 | 100.0% | 4 | 0 | 100.0% | 100.0% | 100.0% |
-| **Total** | 7797 | 404 | **94.8%** | 9358 | 1443 | **84.6%** | 96.0% | 91.3% |
+| **Total** | 7862 | 418 | **94.7%** | 9436 | 1429 | **84.9%** | 96.0% | 91.5% |
 
 `runtime.c` by section (the comments that start them):
 
@@ -34,12 +34,12 @@ Programs built by the native compiler against an instrumented runtime; `runtime.
 | lists | 3056 | 774 | 99.5% | 1016 | 86.2% | 103 | 98.1% |
 | dicts: CPython's compact ordered layout | 3969 | 473 | 100.0% | 586 | 93.0% | 104 | 100.0% |
 | sets: CPython's setobject.c | 4624 | 65 | 100.0% | 92 | 95.7% | 11 | 100.0% |
-| dynamic values | 4729 | 1263 | 96.4% | 1700 | 87.4% | 179 | 98.9% |
+| dynamic values | 4729 | 1263 | 97.5% | 1700 | 90.4% | 179 | 99.4% |
 | formatting: f"{x:spec}" | 6257 | 66 | 100.0% | 158 | 87.3% | 5 | 100.0% |
-| I/O and process | 6336 | 929 | 87.8% | 1184 | 74.1% | 120 | 88.3% |
-| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 7513 | 322 | 93.2% | 376 | 75.3% | 61 | 98.4% |
-| the time module: clocks and sleep | 7982 | 51 | 98.0% | 50 | 48.0% | 11 | 90.9% |
-| select: a POSIX integer-descriptor subset | 8042 | 73 | 87.7% | 62 | 71.0% | 2 | 100.0% |
-| the errno module: the platform's error numbers | 8122 | 4 | 50.0% | 4 | 75.0% | 1 | 100.0% |
-| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 8398 | 276 | 92.4% | 364 | 65.1% | 31 | 96.8% |
-| tables | 8711 | 92 | 98.9% | 102 | 83.3% | 17 | 94.1% |
+| I/O and process | 6336 | 994 | 85.7% | 1262 | 72.7% | 125 | 87.2% |
+| exceptions: table-driven unwinding (the Itanium C++ ABI's) | 7612 | 322 | 93.2% | 376 | 75.3% | 61 | 98.4% |
+| the time module: clocks and sleep | 8081 | 51 | 98.0% | 50 | 48.0% | 11 | 90.9% |
+| select: a POSIX integer-descriptor subset | 8141 | 73 | 87.7% | 62 | 71.0% | 2 | 100.0% |
+| the errno module: the platform's error numbers | 8221 | 4 | 50.0% | 4 | 75.0% | 1 | 100.0% |
+| temporary directories: tempfile.mkdtemp, os.remove, os.rmdir | 8497 | 276 | 92.4% | 364 | 65.1% | 31 | 96.8% |
+| tables | 8810 | 92 | 98.9% | 102 | 83.3% | 17 | 94.1% |
