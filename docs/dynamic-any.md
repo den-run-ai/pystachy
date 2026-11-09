@@ -445,6 +445,7 @@ cleanup and yielded mutable values.
 | `iter()` | Preserves an iterator's identity. A custom `__iter__` may return a generator or an iterator without its own `__iter__`. |
 | `next()` | Advances the original state; evaluates its default before advancement. |
 | `for`, membership fallback, `any()`, `all()` and reductions | Consume items lazily. `__contains__` takes precedence over iteration. |
+| `zip()` | Takes one item of each argument in turn, as CPython does: a `__next__` cannot change an item already taken from an earlier argument. Stops at the first exhausted argument without advancing later ones. |
 | Builtin iterators | Retain their containers and observe mutations as they advance. They stay exhausted after first exhaustion; user iterators may resume after `StopIteration`. |
 | `reversed()` | Supports boxed lists, tuples, dicts, strings and ranges, and objects defining `__reversed__`. |
 | Range iteration | Uses constant storage even when the range is too large to materialize. |
@@ -479,9 +480,9 @@ not invoke the body.
 
 Coverage: `dynany_iteration.py`, `dynany_iter_builtins.py`, `dynany_iter_range.py`,
 `dynany_iter_errors.py`, `dynany_iter_object.py`, `dynany_iter_sequence_fast.py`,
-`dynany_iter_key.py`, `dynany_iter_unused.py` and `dynany_generator_*.py` in
-`tests/programs/inference/`. The [iteration benchmark](../bench/smoke/README.md)
-checks laziness and checksums before timing.
+`dynany_iter_key.py`, `dynany_iter_unused.py`, `dynany_zip_*.py` and
+`dynany_generator_*.py` in `tests/programs/inference/`. The
+[iteration benchmark](../bench/smoke/README.md) checks laziness and checksums before timing.
 
 ## Operations
 

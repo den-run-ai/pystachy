@@ -1045,9 +1045,11 @@ class Loader:
                 return p + "/__init__.py"
             if program_cache.tracked_exists(p + ".py"):
                 return p + ".py"
+        # the portions of a namespace package: directories, also through symbolic links; CPython
+        # ignores any other file of that name, such as a text file without the .py suffix
         found: list[str] = []
         for d in dirs:
-            if program_cache.tracked_exists(d + "/" + base):
+            if program_cache.tracked_isdir(d + "/" + base):
                 found.append(d + "/" + base)
         return ":".join(found)
 

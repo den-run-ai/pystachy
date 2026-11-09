@@ -25,6 +25,16 @@ BUILD_ENV: list[str] = [
     "LD_AUDIT", "LD_RUN_PATH", "LD_HWCAP_MASK", "GLIBC_TUNABLES",
     "LDEMULATION", "GNUTARGET",
 ]
+# Settings that change what a miss builds, or whether it builds at all. A hit
+# must reproduce uncached results and errors, and an empty value can differ
+# from an unset one (PYSTACHY_JIT_INLINE= is rejected), so the key spells each
+# as its environment entry, NAME=VALUE, or as NAME alone when it is unset.
+# docs/program-cache.md classifies every setting a compilation reads.
+KEYED_ENV: list[str] = [
+    "PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_DEBUG_LINES",
+    "PYSTACHY_RUNTIME_C_CACHE", "PYSTACHY_PATH", "PYSTACHY_PROGRAM_CACHE_INPUTS",
+    "PATH", "HOME", "XDG_CONFIG_HOME",
+]
 CPU_FIELDS: list[str] = [
     "vendor_id", "cpu family", "model", "model name", "stepping", "flags",
     "CPU implementer", "CPU architecture", "CPU variant", "CPU part",
@@ -206,12 +216,15 @@ def prepare(cmd: str, source: str, me: str, home: str, dirs: list[str], llvm: st
         if len(cpu) == 0:
             trace("bypass CPU identity unavailable")
             return ("", "", "")
-        fields = ["jit-executable-v2", source, os.getcwd(), me, os.path.realpath(me),
+        fields = ["jit-executable-v3", source, os.getcwd(), me, os.path.realpath(me),
                   home, os.path.realpath(home), llvm, os.path.realpath(llvm)]
         for d in dirs:
             fields += [d, os.path.realpath(d)]
-        for k in ["PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_PATH", "PATH", "HOME", "XDG_CONFIG_HOME", "PYSTACHY_PROGRAM_CACHE_INPUTS"]:
-            fields += [k, os.getenv(k, "")]
+        # BUILD_ENV's nonempty values bypassed above. Tools treat an empty one
+        # as set too: GNU ld rejects GNUTARGET= and adds a RUNPATH for LD_RUN_PATH=.
+        for k in KEYED_ENV + BUILD_ENV:
+            v = os.getenv(k, "\0")  # (no environment value holds a NUL: unset)
+            fields.append(k if v == "\0" else k + "=" + v)
         fields += [line for line in cpu]
         # Length delimiters keep arbitrary source/import path spelling distinct.
         context = "".join([str(len(x)) + ":" + x for x in fields])
