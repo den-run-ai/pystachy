@@ -308,7 +308,10 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "-self-check")) selfcheck = 1;
     else if (!strncmp(a, "-dlopen=", 8)) {
       /* (lli's loadDylibs: before anything else, where the JIT's process symbols find them) */
-      if (LLVMLoadLibraryPermanently(a + 8)) fail(dlerror(), NULL);
+      if (LLVMLoadLibraryPermanently(a + 8)) {
+        const char *why = dlerror();
+        fail(why ? why : a + 8, why ? NULL : "cannot be loaded");
+      }
     } else if (!strncmp(a, "-extra-object=", 14)) objects[nobj++] = a + 14;
     else if (!strncmp(a, "-extra-archive=", 15)) archives[nar++] = a + 15;
     else llvmopts[nllvm++] = argv[i];
