@@ -1,0 +1,95 @@
+import sys
+
+
+def run(label: str, f) -> None:
+    try:
+        v = f()
+        print(label, "ok", v)
+    except MemoryError as e:
+        print(label, "MemoryError")
+    except OverflowError as e:
+        print(label, "OverflowError")
+    except Exception as e:
+        print(label, type(e).__name__, e)
+
+
+def main(z: int) -> None:
+    big = 2**62 + z
+    huge = 2**62 - 1 + 2**62 - z
+    mid = 2**40 + z
+    neg = -(2**62) - z
+    s3 = "abc" * (z + 1)
+    b3 = b"abc" * (z + 1)
+    l3 = [1, 2, 3] * (z + 1)
+    run("str*big", lambda: len(s3 * big))
+    run("str*huge", lambda: len(s3 * huge))
+    run("str*neg", lambda: len(s3 * neg))
+    run("bytes*big", lambda: len(b3 * big))
+    run("bytes*huge", lambda: len(b3 * huge))
+    run("list*neg", lambda: len(l3 * neg))
+    run("bytes(huge)", lambda: len(bytes(huge)))
+    run("bytes(neg)", lambda: len(bytes(neg)))
+    run("expandtabs", lambda: len("\t\t\t".expandtabs(huge)))
+    run("expandtabs2", lambda: len(("\t" * 10).expandtabs(big)))
+    run("bytes.ljust", lambda: len(b3.ljust(huge)))
+    run("bytes.zfill", lambda: len(b3.zfill(huge)))
+    run("list.extend self", lambda: len(l3 + l3 * 3))
+    xs = [1, 2, 3]
+    run("insert big", lambda: (xs.insert(huge, 9), xs.insert(-huge - 1, 8), xs)[2])
+    run("pop big", lambda: xs.pop(huge))
+    run("pop negbig", lambda: xs.pop(-huge - 1))
+    run("idx big", lambda: xs[huge])
+    run("idx min", lambda: xs[-huge - 1])
+    run("slice big", lambda: xs[-huge - 1 : huge : huge])
+    run("slice negstep", lambda: xs[huge : -huge - 1 : -huge - 1])
+    run("slice step min", lambda: xs[:: -huge - 1])
+    run("slice0", lambda: xs[::z])
+    run("str slice big", lambda: s3[-huge - 1 : huge : huge - 1])
+    run("str slice neg", lambda: s3[huge : -huge - 1 : -huge])
+    run("bytes slice", lambda: b3[-huge - 1 : huge : 2])
+    run("range len", lambda: len(range(-huge - 1, huge)))
+    run("range len2", lambda: len(range(0, huge, 1)))
+    run("range idx", lambda: range(-huge - 1, huge, 3)[huge // 4])
+    run("range last", lambda: range(-huge - 1, huge, huge)[-1])
+    run("range step big", lambda: list(range(0, huge, big)))
+    run("range neg step", lambda: list(range(huge, -huge - 1, -big)))
+    run("range contains", lambda: (huge - 1 in range(-huge - 1, huge, 2), -huge - 1 in range(-huge - 1, huge, huge)))
+    run("range count", lambda: (range(0, huge, 3).count(huge - 1), range(0, huge, 3).index(3 * mid)))
+    run("range reversed", lambda: list(reversed(range(huge - 2, huge)))[0])
+    run("sum range", lambda: sum(range(2**32 + z, 2**32 + 5)))
+    run("enumerate start", lambda: list(enumerate("ab", huge)))
+    run("round digits", lambda: round(1.5, huge))
+    run("round digits neg", lambda: round(1.5, -huge - 1))
+    run("fmt width", lambda: len(f"{z:>{10**7}}"))
+    run("fmt prec", lambda: len(f"{1.5:.{10**7}f}"))
+    run("fmt prec2", lambda: len(f"{1.5:.{10**7}e}"))
+    run("fmt prec3", lambda: len(f"{1.5:.{10**7}g}"))
+    run("fmt str prec", lambda: len(f"{s3:.{huge}}"))
+    run("hex big", lambda: (bytes(3).hex("-", huge), bytes(3).hex("-", -huge - 1)))
+    run("fromhex", lambda: bytes.fromhex("a b" if z else "ab c"))
+    run("chr", lambda: (chr(0x10FFFF + z), ord(chr(0xD800)), len(chr(0x10FFFF))))
+    run("chr big", lambda: chr(huge))
+    run("chr neg", lambda: chr(neg))
+    run("str.split maxsplit", lambda: ("a b c".split(None, huge), "a b c".split(" ", -huge - 1), "a b c".rsplit(None, neg)))
+    run("str.find big", lambda: (s3.find("b", huge), s3.find("b", -huge - 1, huge), s3.rfind("b", neg, big), s3.count("b", neg, huge), s3.index("c", -huge - 1)))
+    run("startswith big", lambda: (s3.startswith("a", huge), s3.startswith("", huge), s3.endswith("c", neg, huge), s3.startswith("a", -huge - 1, -huge - 1)))
+    run("str.replace count", lambda: ("aaa".replace("a", "b", huge), "aaa".replace("a", "b", -huge - 1), "aaa".replace("a", "b", z)))
+    run("list.index big", lambda: (l3.index(2, -huge - 1, huge), l3.index(2, neg), l3.count(2)))
+    run("list.index miss", lambda: l3.index(2, huge))
+    run("tuple*", lambda: len((1, 2) * 3))
+    run("dict.fromkeys", lambda: len(dict.fromkeys(range(5 + z), 0)))
+    run("divmod", lambda: divmod(-huge - 1, -1 - z + z))
+    run("pow mod", lambda: pow(huge, huge, huge - 2))
+    run("bit ops", lambda: ((huge << 0) >> 63, (-huge - 1) >> 63, (-huge - 1) >> 64, 1 << 62, (z + 1) << 63))
+    run("int str base", lambda: int("z" * 12, 36))
+    run("int str base2", lambda: int("z" * 13, 36))
+    run("int str long", lambda: int("0" * 100000 + "7"))
+    run("int str ws", lambda: int(" " * 100000 + "7" + " " * 1000))
+    run("float str long", lambda: float("0" * 100000 + "7." + "0" * 100000))
+    run("float str e", lambda: float("1e" + "0" * 1000 + "5"))
+    run("float str digits", lambda: float("1" * 400))
+    run("float str small", lambda: float("0." + "0" * 400 + "1"))
+    run("repr deep", lambda: len(repr([[[[[[[[[[z]]]]]]]]]])))
+
+
+main(len(sys.argv) - 1)

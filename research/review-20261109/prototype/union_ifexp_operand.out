@@ -1,0 +1,15 @@
+6 8 8 1 qx px
+1.5 2.5 4 10
+6 8 9 16 30 35
+6 3.0 [3, 2] ['s', 3]
+90 90 30 9
+6 6 ['cond', 'then', 'right', 'cond', 'else', 'right']
+ZeroDivisionError integer division or modulo by zero
+10 's!'
+{'n': 6, 's': 'x!'} 10 6 3.5 -1.5 [4, 'a', 'xx'] [1, 'a', 'yy'] (4, 2)
+True int float str
+5 17 13 0.5 0.0 0.75
+abx abcabc  3.0 -0.0
+0 7 7 3 3 0 0 1
+0 0 1 3133743414 2527385718
+[exit 0]

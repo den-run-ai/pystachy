@@ -1,0 +1,69 @@
+diff --git a/runtime.c b/runtime.c
+index c6e16bb..ce341ff 100644
+--- a/runtime.c
++++ b/runtime.c
+@@ -2916,7 +2916,16 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
+   __builtin_unreachable();   /* the compiler permits only the builtin value descriptors above */
+ }
+ static int eqpair(I a, I b, const char *x, const char *y) { return eqpair_depth(a, b, x, y, 0); }
+-I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
++I pys_eq(I a, I b, Str *d) {
++  /* PROTOTYPE: a str (descriptor "s") compares without the descriptor walk: eqv's own answer for 's' */
++  if (d->s[0] == 's') {
++    if (a == b) return 1;
++    if (!a || !b) return 0;
++    Str *x = (Str *)a, *y = (Str *)b;
++    return x->len == y->len && !memcmp(x->s, y->s, x->len);
++  }
++  return eqv(a, b, d->s);
++}
+ I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
+ /* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
+    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
+@@ -3439,7 +3448,21 @@ List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items a
+   }
+   r->len = n > 0 ? m * n : 0; return r;
+ }
+-I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i; return -1; }
++/* PROTOTYPE: the items of a list of ints or bools without a companion (no item past 64 bits, no
++   identity boxes), and of strs, compare as eqitem compares them, without its descriptor walk */
++static inline int scalar_items(List *l, const char *d) { return (d[0] == 'i' || d[0] == 'b') && !d[1] && !l->ids ? 1 : d[0] == 's' && !d[1] && !l->ids ? 2 : 0; }
++static inline int str_item_eq(I a, I b) {
++  if (a == b) return 1;
++  if (!a || !b) return 0;
++  Str *x = (Str *)a, *y = (Str *)b;
++  return x->len == y->len && !memcmp(x->s, y->s, x->len);
++}
++I pys_list_find(List *l, I v, Str *d) {
++  int k = scalar_items(l, d->s);
++  if (k == 1) { I n = l->len, *a = l->a; for (I i = 0; i < n; i++) if (a[i] == v) return i; return -1; }
++  if (k == 2) { for (I i = 0; i < l->len; i++) if (str_item_eq(l->a[i], v)) return i; return -1; }
++  for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i; return -1;
++}
+ I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
+   for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m ? big_eq(m, v, vd->s) : eqpair(l->a[i], v, d->s, vd->s)) return i; }
+   return -1;
+@@ -3447,6 +3470,9 @@ I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
+ static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
+   if (st < 0 && (st += l->len) < 0) st = 0;
+   if (en < 0 && (en += l->len) < 0) en = 0;
++  int k = scalar_items(l, d);
++  if (k == 1) { for (I j = st; j < en && j < l->len; j++) if (l->a[j] == v) return j; return -1; }
++  if (k == 2) { for (I j = st; j < en && j < l->len; j++) if (str_item_eq(l->a[j], v)) return j; return -1; }
+   for (I j = st; j < en && j < l->len; j++) if (!lbig(l, j) && eqitem(l->a[j], v, d)) return j;
+   return -1;
+ }
+@@ -3464,7 +3490,12 @@ I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /*
+   if (i < 0) not_in_list(x, xd->s);
+   return i;
+ }
+-I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s); return c; }
++I pys_list_count(List *l, I v, Str *d) {
++  I c = 0; int k = scalar_items(l, d->s);
++  if (k == 1) { I n = l->len, *a = l->a; for (I i = 0; i < n; i++) c += a[i] == v; return c; }
++  if (k == 2) { for (I i = 0; i < l->len; i++) c += str_item_eq(l->a[i], v); return c; }
++  for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s); return c;
++}
+ void pys_list_remove(List *l, I v, Str *d) {
+   I i = pys_list_find(l, v, d);
+   if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
