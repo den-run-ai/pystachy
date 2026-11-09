@@ -5,7 +5,7 @@ from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, 
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
-from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val
+from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
@@ -2810,7 +2810,7 @@ def gen_fgep(self, o: Val, i: int) -> str:
     op.k = i
     op.a = [o]
     self.put(op, 1)
-    r = f"%t{op.r[0]}"
+    r = tmpname(op.r[0])
     self.fn.fa[r] = True
     return r
 

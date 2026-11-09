@@ -8,7 +8,7 @@ from src.pystachy_compiler.analysis import all_imports, collect, defines, module
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
-from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS
+from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS, one_nums_intact
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import RENAMED, short
 from src.pystachy_compiler.specs import (
@@ -1308,6 +1308,8 @@ def gen_program(self, mods: list[Mod]) -> str:
         self.dispatch(op)  # (each program defines them: runtime.py calls them like runtime.c)
     ir = self.lower_module()
     timing_end(phase + ".lower", started)
+    if not one_nums_intact():
+        fail("internal error: an op changed the shared list of its number (one_num)", 0)
     RENAMED.clear()  # (the program's classes': runtime.py, which the driver may compile next, has none)
     return ir
 

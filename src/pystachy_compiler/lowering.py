@@ -1,7 +1,7 @@
 """Lowering component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
-from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val
+from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.lower_module import const_slot, struct_types
 from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
@@ -184,7 +184,7 @@ def gen_tuple_rets(self) -> None:
         for b in fn.blocks:
             for i in b.code:
                 if i.op == "call" and i.s in fns and len(i.r) == 1:
-                    calls[f"%t{i.r[0]}"] = i.s
+                    calls[tmpname(i.r[0])] = i.s
                 for j in range(len(i.a)):
                     if i.op != "tuple.load" or j != 0:
                         used[i.a[j].v] = True
@@ -206,7 +206,7 @@ def fresh_rets(fn: IFn) -> dict[str, bool]:
         made: dict[str, bool] = {}
         for i in b.code:
             if i.op == "alloc.fixed" and i.t == t:
-                made[f"%t{i.r[0]}"] = True
+                made[tmpname(i.r[0])] = True
             elif i.op == "ret.none" or (i.op == "ret" and (len(i.a) != 1 or (i.a[0].v not in made and not (i.a[0].v.startswith("@tc.") and i.a[0].t == t)))):
                 return {}
             elif i.op == "ret":
@@ -275,34 +275,34 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         if i.s == "length.range":
             metadata += f", !range !{STRLEN_RANGE}"
         if op == "mach.load":
-            o.append(f"  %t{i.r[0]} = load {lt(i.t)}, ptr {i.a[0].v}{metadata}")
+            o.append(f"  {tmpname(i.r[0])} = load {lt(i.t)}, ptr {i.a[0].v}{metadata}")
         else:
             o.append(f"  store {lt(i.a[1].t)} {i.a[1].v}, ptr {i.a[0].v}{metadata}")
     elif op == "mach.addr":
-        o.append(f"  %t{i.r[0]} = getelementptr{' inbounds' if i.k == 1 else ''} {lt(i.s)}, ptr {i.a[0].v}, i64 {i.a[1].v}")
+        o.append(f"  {tmpname(i.r[0])} = getelementptr{' inbounds' if i.k == 1 else ''} {lt(i.s)}, ptr {i.a[0].v}, i64 {i.a[1].v}")
     elif op == "mem.load":
-        o.append(f"  %t{i.r[0]} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
+        o.append(f"  {tmpname(i.r[0])} = load {'ptr' if i.t == 'None' else lt(i.t)}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
     elif op == "mem.store":
         v = i.a[1]
         o.append(f"  store {'ptr' if v.t == 'None' else lt(v.t)} {v.v}, ptr {i.a[0].v}{self.ftags.get(i.a[0].v, '')}")
     elif op == "field.addr":
         self.rangeused = self.rangeused or i.a[0].t == RANGEC
         self.objectused = self.objectused or i.a[0].t == OBJECTC
-        o.append(f"  %t{i.r[0]} = getelementptr %C.{i.a[0].t}, ptr {i.a[0].v}, i32 0, i32 {i.k}")
+        o.append(f"  {tmpname(i.r[0])} = getelementptr %C.{i.a[0].t}, ptr {i.a[0].v}, i32 0, i32 {i.k}")
         if "fieldtbaa" in self.opts:
-            self.ftags[f"%t{i.r[0]}"] = self.field_tag(i.a[0].t, i.k)
+            self.ftags[tmpname(i.r[0])] = self.field_tag(i.a[0].t, i.k)
     elif op == "alloc.fixed":
         self.rangeused = self.rangeused or i.t == RANGEC
         self.objectused = self.objectused or i.t == OBJECTC
         size = str(8 * tslots(i.t)) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
-        if f"%t{i.r[0]}" not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
-            o.append(f"  %t{i.r[0]} = {self.alloc_call(size, i.t)}")
+        if tmpname(i.r[0]) not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
+            o.append(f"  {tmpname(i.r[0])} = {self.alloc_call(size, i.t)}")
     elif op == "vtuple.make":
         # The runtime VTuple layout is a length followed by 8-byte item slots.
         # Keep the scanned allocator and its GC boundary, including for scalar
         # items. References remain native pointer operands live across that call.
         # Address and bool-widening temporaries belong only to this emitter.
-        p = f"%t{i.r[0]}"
+        p = tmpname(i.r[0])
         o.append(f"  {p} = {self.alloc_call(str(8 * (len(i.a) + 1)), i.t)}")
         o.append(f"  store i64 {len(i.a)}, ptr {p}")
         for k in range(len(i.a)):
@@ -317,45 +317,45 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "tuple.store" and i.a[0].v in self.vtuples:
         self.vslots[f"{i.a[0].v} {i.k}"] = i.a[1].v  # (the slot its ret returns)
     elif op == "tuple.load" and i.a[0].v in self.vaggs:
-        o.append(f"  %t{i.r[1]} = extractvalue {self.vaggs[i.a[0].v]} {i.a[0].v}, {i.k}")
+        o.append(f"  {tmpname(i.r[1])} = extractvalue {self.vaggs[i.a[0].v]} {i.a[0].v}, {i.k}")
     elif op == "tuple.load" or op == "tuple.store":
-        o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 {i.k}")
+        o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr {i.a[0].v}, i64 {i.k}")
         if op == "tuple.load":
-            o.append(f"  %t{i.r[1]} = load i64, ptr %t{i.r[0]}")
+            o.append(f"  {tmpname(i.r[1])} = load i64, ptr {tmpname(i.r[0])}")
         else:
-            o.append(f"  store i64 {i.a[1].v}, ptr %t{i.r[0]}")
+            o.append(f"  store i64 {i.a[1].v}, ptr {tmpname(i.r[0])}")
     elif op == "slot.pack":
         v = i.a[0]
         c = f"bitcast double {v.v} to i64" if v.t == "float" else f"zext i1 {v.v} to i64" if v.t == "bool" else f"bitcast i64 {v.v} to i64" if v.t == "int" else f"ptrtoint ptr {v.v} to i64"
-        o.append(f"  %t{i.r[0]} = {c}")
+        o.append(f"  {tmpname(i.r[0])} = {c}")
     elif op == "slot.unpack":
         v = i.a[0]
         c = f"bitcast i64 {v.v} to double" if i.t == "float" else f"trunc i64 {v.v} to i1" if i.t == "bool" else f"bitcast i64 {v.v} to i64" if i.t == "int" else f"inttoptr i64 {v.v} to ptr"
-        o.append(f"  %t{i.r[0]} = {c}")
+        o.append(f"  {tmpname(i.r[0])} = {c}")
     elif op == "union.tag":
-        o.append(f"  %t{i.r[0]} = load i64, ptr {i.a[0].v}")
+        o.append(f"  {tmpname(i.r[0])} = load i64, ptr {i.a[0].v}")
     elif op == "num.cast":
         v = i.a[0]
         c = f"zext i1 {v.v} to i64" if i.t == "int" else f"uitofp i1 {v.v} to double" if v.t == "bool" else f"sitofp i64 {v.v} to double"
-        o.append(f"  %t{i.r[0]} = {c}")
+        o.append(f"  {tmpname(i.r[0])} = {c}")
     elif op == "num.cmp":
         v = i.a[0]
         c = f"icmp {ICMP[i.s]} i64" if v.t == "int" else f"fcmp {FCMP[i.s]} double"
-        o.append(f"  %t{i.r[0]} = {c} {v.v}, {i.a[1].v}")
+        o.append(f"  {tmpname(i.r[0])} = {c} {v.v}, {i.a[1].v}")
     elif op == "int.ucmp":
-        o.append(f"  %t{i.r[0]} = icmp u{ICMP[i.s][1:]} i64 {i.a[0].v}, {i.a[1].v}")
+        o.append(f"  {tmpname(i.r[0])} = icmp u{ICMP[i.s][1:]} i64 {i.a[0].v}, {i.a[1].v}")
     elif op == "ptr.cmp":
-        o.append(f"  %t{i.r[0]} = icmp {ICMP[i.s]} ptr {i.a[0].v}, {i.a[1].v}")
+        o.append(f"  {tmpname(i.r[0])} = icmp {ICMP[i.s]} ptr {i.a[0].v}, {i.a[1].v}")
     elif op == "union.payload" or op == "union.raw" or op == "dyn.payload":
-        o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
-        o.append(f"  %t{i.r[1]} = load i64, ptr %t{i.r[0]}")
+        o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr {i.a[0].v}, i64 1")
+        o.append(f"  {tmpname(i.r[1])} = load i64, ptr {tmpname(i.r[0])}")
     elif op == "dyn.type":
-        o.append(f"  %t{i.r[0]} = load ptr, ptr {i.a[0].v}")
+        o.append(f"  {tmpname(i.r[0])} = load ptr, ptr {i.a[0].v}")
     elif op == "big.make":
-        o.append(f"  %t{i.r[0]} = insertvalue {{i64, ptr}} undef, i64 {i.a[0].v}, 0")
-        o.append(f"  %t{i.r[1]} = insertvalue {{i64, ptr}} %t{i.r[0]}, ptr {i.a[1].v}, 1")
+        o.append(f"  {tmpname(i.r[0])} = insertvalue {{i64, ptr}} undef, i64 {i.a[0].v}, 0")
+        o.append(f"  {tmpname(i.r[1])} = insertvalue {{i64, ptr}} {tmpname(i.r[0])}, ptr {i.a[1].v}, 1")
     elif op == "big.lo" or op == "big.hi":
-        o.append(f"  %t{i.r[0]} = extractvalue {{i64, ptr}} {i.a[0].v}, {0 if op == 'big.lo' else 1}")
+        o.append(f"  {tmpname(i.r[0])} = extractvalue {{i64, ptr}} {i.a[0].v}, {0 if op == 'big.lo' else 1}")
     elif op == "br":
         o.append(f"  br label %{i.b[0]}")
     elif op == "cbr":
@@ -365,16 +365,16 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "check":
         o.append(f"  br i1 {i.a[0].v}, label %{fn.cold[i.x if i.x != '' else i.s]}, label %{i.b[0]}")
     elif op == "phi":
-        o.append(f"  %t{i.r[0]} = phi {lt(i.t)} {', '.join([f'[{i.a[j].v}, %{i.b[j]}]' for j in range(len(i.a))])}")
+        o.append(f"  {tmpname(i.r[0])} = phi {lt(i.t)} {', '.join([f'[{i.a[j].v}, %{i.b[j]}]' for j in range(len(i.a))])}")
     elif op == "ovf":
         r = i.r
-        o.append(f"  %t{r[0]} = call {{i64, i1}} @llvm.{CHECKED[i.s]}.with.overflow.i64(i64 {i.a[0].v}, i64 {i.a[1].v})")
-        o.append(f"  %t{r[1]} = extractvalue {{i64, i1}} %t{r[0]}, 0")
-        o.append(f"  %t{r[2]} = extractvalue {{i64, i1}} %t{r[0]}, 1")
+        o.append(f"  {tmpname(r[0])} = call {{i64, i1}} @llvm.{CHECKED[i.s]}.with.overflow.i64(i64 {i.a[0].v}, i64 {i.a[1].v})")
+        o.append(f"  {tmpname(r[1])} = extractvalue {{i64, i1}} {tmpname(r[0])}, 0")
+        o.append(f"  {tmpname(r[2])} = extractvalue {{i64, i1}} {tmpname(r[0])}, 1")
     elif op == "select":
         x = i.a[1]
         y = i.a[2]
-        o.append(f"  %t{i.r[0]} = select i1 {i.a[0].v}, {lt(x.t)} {x.v}, {lt(y.t)} {y.v}")
+        o.append(f"  {tmpname(i.r[0])} = select i1 {i.a[0].v}, {lt(x.t)} {x.v}, {lt(y.t)} {y.v}")
     elif op == "ret" and len(i.a) > 0 and i.a[0].v.startswith("@tc.") and i.a[0].v in self.vtuples:
         # a constant tuple's slots and its address, by value (tupleret: vagg). Its promoting int
         # items are 64-bit literals (Gen.tuple_const): their Mpz words, past the items, are 0
@@ -410,18 +410,18 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # resume's leaving calls the module's helper, which LLVM inlines. Closed recursion's
         # entry checks the depth its caller passed and counts in a register, and its
         # restorations go: the word stays as the cycle's outermost call found it
-        if fn.f.ll in self.rdpass and i.s == "recursion.enter" and len(i.r) == 1 and f"%t{i.r[0]}" == fn.rdepth:
-            o.append(f"  %t{i.r[0]} = {self.invoke('call i64 @pys.recursion.check(i64 %rd)', i)}")
+        if fn.f.ll in self.rdpass and i.s == "recursion.enter" and len(i.r) == 1 and tmpname(i.r[0]) == fn.rdepth:
+            o.append(f"  {tmpname(i.r[0])} = {self.invoke('call i64 @pys.recursion.check(i64 %rd)', i)}")
         elif fn.f.ll in self.rdpass and i.s == "recursion.restore":
             return
         elif i.s == "recursion.restore" and len(i.b) == 0:
             o.append(f"  store i64 {i.a[0].v}, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
         elif i.s == "recursion.depth" and len(i.b) == 0:
-            o.append(f"  %t{i.r[0]} = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
+            o.append(f"  {tmpname(i.r[0])} = load i64, ptr @pys_recursion_state, !tbaa !{TBAA_DEPTH}")
         else:
             ll = self.rtfns[i.s].ll
             c = self.invoke(f"call {ll[0]} @pys.{i.s}({', '.join([ll[j + 1] + ' ' + i.a[j].v for j in range(len(i.a))])})", i)
-            o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
+            o.append("  " + c if ll[0] == "void" else f"  {tmpname(i.r[0])} = {c}")
             if i.s == "recursion.enter":
                 self.entries = True
             elif i.s == "recursion.resume":
@@ -440,24 +440,24 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
             h = self.holes[i.k]
             vs[0] = f"i64 {self.key_kind(targs(h)[0] if is_dict(h) else selem(h), is_dict(h)) if h != '' else '0'}"
         c = self.invoke(f"call {ll[0]} @{f.sym}({', '.join(vs)})", i)
-        o.append("  " + c if ll[0] == "void" else f"  %t{i.r[0]} = {c}")
+        o.append("  " + c if ll[0] == "void" else f"  {tmpname(i.r[0])} = {c}")
     elif op == "call" and i.s in self.rdpass and fn.f.ll in self.rdpass:
         # (closed recursion: a call within the cycle gives the callee's body this function's depth)
         c = self.invoke(f"call {lt(i.t)} @r.{i.s[1:]}({', '.join([lt(v.t) + ' ' + v.v for v in i.a] + ['i64 ' + fn.rdepth])})", i)
-        o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
-    elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} %t{i.r[0]}" in self.vcalls:
+        o.append("  " + c if i.t == "None" else f"  {tmpname(i.r[0])} = {c}")
+    elif op == "call" and len(i.r) == 1 and f"{fn.f.ll} {tmpname(i.r[0])}" in self.vcalls:
         # the slots of the tuple a function returns, by value, to tuple.loads alone (tupleret)
         agg = vagg(self.vrets[i.s], i.s in self.vconst)
         args = ", ".join([lt(v.t) + " " + v.v for v in i.a])
-        o.append(f"  %t{i.r[0]} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
-        self.vaggs[f"%t{i.r[0]}"] = agg
+        o.append(f"  {tmpname(i.r[0])} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
+        self.vaggs[tmpname(i.r[0])] = agg
     elif op == "call":
         c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
-        o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
+        o.append("  " + c if i.t == "None" else f"  {tmpname(i.r[0])} = {c}")
     elif op == "icall":
         # a Callable's code (operand 0), called with its env and the arguments
         c = self.invoke(f"call {lt(i.t)} {i.a[0].v}({', '.join([lt(v.t) + ' ' + v.v for v in i.a[1:]])})", i)
-        o.append("  " + c if i.t == "None" else f"  %t{i.r[0]} = {c}")
+        o.append("  " + c if i.t == "None" else f"  {tmpname(i.r[0])} = {c}")
     elif op == "init":
         o.append("  " + self.invoke(f"call void @init.{i.s}()", i))
     elif op == "empty.kind":
@@ -465,30 +465,30 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # return can resolve the hole; an outer caller types an unresolved result.
         t = self.holes[i.k] if i.k > 0 else i.a[0].t
         kind = self.key_kind(targs(t)[0] if is_dict(t) else selem(t), is_dict(t), True) if t != "" else "0"
-        o.append(f"  %t{i.r[0]} = getelementptr i64, ptr {i.a[0].v}, i64 1")
-        o.append(f"  store i64 {kind}, ptr %t{i.r[0]}")
+        o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr {i.a[0].v}, i64 1")
+        o.append(f"  store i64 {kind}, ptr {tmpname(i.r[0])}")
     elif op == "list.len":
-        o.append(f"  %t{i.r[0]} = load i64, ptr {i.a[0].v}")
+        o.append(f"  {tmpname(i.r[0])} = load i64, ptr {i.a[0].v}")
     elif op == "list.load":
         # the item of a list at an index within its length (listget): l->a[index], as runtime.c
         # lays a List out ({len, cap, a}), in the 8-byte slot pys_list_get would have returned
         r = i.r
-        o.append(f"  %t{r[1]} = getelementptr inbounds {{i64, i64, ptr}}, ptr {i.a[0].v}, i64 0, i32 2")
-        o.append(f"  %t{r[2]} = load ptr, ptr %t{r[1]}")
-        o.append(f"  %t{r[3]} = getelementptr inbounds i64, ptr %t{r[2]}, i64 {i.a[1].v}")
-        o.append(f"  %t{r[0]} = load i64, ptr %t{r[3]}")
+        o.append(f"  {tmpname(r[1])} = getelementptr inbounds {{i64, i64, ptr}}, ptr {i.a[0].v}, i64 0, i32 2")
+        o.append(f"  {tmpname(r[2])} = load ptr, ptr {tmpname(r[1])}")
+        o.append(f"  {tmpname(r[3])} = getelementptr inbounds i64, ptr {tmpname(r[2])}, i64 {i.a[1].v}")
+        o.append(f"  {tmpname(r[0])} = load i64, ptr {tmpname(r[3])}")
     elif op == "landing":
         r = i.r
-        o.append(f"  %t{r[0]} = landingpad {{ ptr, i32 }} catch ptr null")
-        o.append(f"  %t{r[1]} = extractvalue {{ ptr, i32 }} %t{r[0]}, 0")
-        o.append(f"  store ptr %t{r[1]}, ptr {i.a[0].v}")
+        o.append(f"  {tmpname(r[0])} = landingpad {{ ptr, i32 }} catch ptr null")
+        o.append(f"  {tmpname(r[1])} = extractvalue {{ ptr, i32 }} {tmpname(r[0])}, 0")
+        o.append(f"  store ptr {tmpname(r[1])}, ptr {i.a[0].v}")
         o.append(f"  br label %{i.b[0]}")
     elif op == "throw":
         o.append(f"  call void @pys_throw(ptr {i.a[0].v})")
         o.append("  unreachable")
     elif op == "exc.match":
-        o.append(f"  %t{i.r[0]} = call i64 @pys_exc_in(ptr {i.a[0].v}, ptr {i.a[1].v})")
-        o.append(f"  %t{i.r[1]} = icmp ne i64 %t{i.r[0]}, 0")
+        o.append(f"  {tmpname(i.r[0])} = call i64 @pys_exc_in(ptr {i.a[0].v}, ptr {i.a[1].v})")
+        o.append(f"  {tmpname(i.r[1])} = icmp ne i64 {tmpname(i.r[0])}, 0")
     elif op == "gen.start":
         # a switched-resume coroutine: its frame (coro.size bytes, from pys_alloc unless
         # CoroElide puts it in its caller's frame: coro.alloc false) and promise, zeroed but for
@@ -517,32 +517,32 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # here runs code of its), suspend
         o.append(f"  store i64 {i.a[0].v}, ptr %coro.promise")
         if len(i.a) > 1:
-            o.append(f"  %t{i.r[0]}.hi = getelementptr i64, ptr %coro.promise, i64 {GENVALP}")
-            o.append(f"  store ptr {i.a[1].v}, ptr %t{i.r[0]}.hi")
-        o.append(f"  %t{i.r[0]} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
-        o.append(f"  store i64 {i.k}, ptr %t{i.r[0]}")
-        o.append(f"  %t{i.r[1]} = call i8 @llvm.coro.suspend(token none, i1 false)")
-        o.append(f"  switch i8 %t{i.r[1]}, label %coro.ret [i8 0, label %{i.b[0]} i8 1, label %coro.cleanup]")
+            o.append(f"  {tmpname(i.r[0])}.hi = getelementptr i64, ptr %coro.promise, i64 {GENVALP}")
+            o.append(f"  store ptr {i.a[1].v}, ptr {tmpname(i.r[0])}.hi")
+        o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
+        o.append(f"  store i64 {i.k}, ptr {tmpname(i.r[0])}")
+        o.append(f"  {tmpname(i.r[1])} = call i8 @llvm.coro.suspend(token none, i1 false)")
+        o.append(f"  switch i8 {tmpname(i.r[1])}, label %coro.ret [i8 0, label %{i.b[0]} i8 1, label %coro.cleanup]")
     elif op == "gen.ret":
         # the value returned, finished; then the final suspend, which LLVM requires to be one
-        o.append(f"  %t{i.r[0]} = getelementptr i64, ptr %coro.promise, i64 {GENRET}")
+        o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr %coro.promise, i64 {GENRET}")
         if len(i.a) > 0:
-            o.append(f"  store i64 {i.a[0].v}, ptr %t{i.r[0]}")
+            o.append(f"  store i64 {i.a[0].v}, ptr {tmpname(i.r[0])}")
         elif fn.f.gret == "dyn":
             # A bare return/fallthrough yields None, a real box in an Any
             # return channel. The final type may be inferred after this op.
-            o.append(f"  store ptr {self.rtdata('pys_dyn_none_box')}, ptr %t{i.r[0]}")
+            o.append(f"  store ptr {self.rtdata('pys_dyn_none_box')}, ptr {tmpname(i.r[0])}")
         if len(i.a) > 1:
-            o.append(f"  %t{i.r[0]}.hi = getelementptr i64, ptr %coro.promise, i64 {GENRETP}")
-            o.append(f"  store ptr {i.a[1].v}, ptr %t{i.r[0]}.hi")
-        o.append(f"  %t{i.r[1]} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
-        o.append(f"  store i64 {GENDONE}, ptr %t{i.r[1]}")
+            o.append(f"  {tmpname(i.r[0])}.hi = getelementptr i64, ptr %coro.promise, i64 {GENRETP}")
+            o.append(f"  store ptr {i.a[1].v}, ptr {tmpname(i.r[0])}.hi")
+        o.append(f"  {tmpname(i.r[1])} = getelementptr i64, ptr %coro.promise, i64 {GENSTATE}")
+        o.append(f"  store i64 {GENDONE}, ptr {tmpname(i.r[1])}")
         o.append("  br label %coro.final")
     elif op == "gen.promise":
         if len(i.a) == 0:
-            o.append(f"  %t{i.r[0]} = getelementptr i64, ptr %coro.promise, i64 0")
+            o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr %coro.promise, i64 0")
         else:
-            o.append(f"  %t{i.r[0]} = call ptr @llvm.coro.promise(ptr {i.a[0].v}, i32 8, i1 false)")
+            o.append(f"  {tmpname(i.r[0])} = call ptr @llvm.coro.promise(ptr {i.a[0].v}, i32 8, i1 false)")
     elif op == "gen.resume":
         o.append("  " + self.invoke(f"call void @llvm.coro.resume(ptr {i.a[0].v})", i))
     elif op == "gen.drop" and not self.rtmode and i.a[0].t not in self.genplain:
@@ -602,10 +602,10 @@ def gen_eh_ir(self, fn: IFn) -> None:
                 i = Ins("rt", "exc", "exc.new")
                 i.line = t.line
                 i.a = [t.a[0], t.a[1], Val("null", "str")]
-                i.r = [fn.n]
+                i.r = one_num(fn.n)
                 self.runtime("pys_exc_new")
                 code.append(i)
-                ex = f"%t{fn.n}"
+                ex = tmpname(fn.n)
             st = Ins("mach.store", "", "")
             st.line = t.line
             st.a = [Val(lp.a[0].v, "%ptr"), Val(ex, "%ptr")]
@@ -655,5 +655,5 @@ def gen_lower_scalar(self, i: Ins) -> None:
         s = i.s + " " + lt(a.t) + " " + a.v + " to " + lt(i.t)
     else:
         s = ("fcmp" if a.t == "float" else "icmp") + " " + i.s + " " + lt(a.t) + " " + a.v + ", " + i.a[1].v
-    self.out.append(f"  %t{i.r[0]} = {s}")
+    self.out.append(f"  {tmpname(i.r[0])} = {s}")
 
