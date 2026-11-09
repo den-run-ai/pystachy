@@ -1,4 +1,4 @@
-# PR ledger, 2026-11-09 (19:05 UTC)
+# PR ledger, 2026-11-09 (19:20 UTC)
 
 Main is `f60df76d`: v0.4.0-alpha.2 merged at 14:19 UTC and its release gate is green. The tag and
 publication are left to the maintainer. Every PR below needs the maintainer's explicit go-ahead to
@@ -6,7 +6,7 @@ merge.
 
 ## Ready to merge
 
-All have green CI at their heads and a Codex review there with no findings, except where noted.
+All have green CI at their heads and a Codex review there with no findings.
 
 | PR | Change | Head | CI | Codex |
 |---|---|---|---|---|
@@ -19,34 +19,28 @@ All have green CI at their heads and a Codex review there with no findings, exce
 | #1193 | Halve the objects gc-self's collections mark (470 s → 292 s; Refs #1181) | `41452c39` | 18/18 | clean |
 | #1194 | Accept `encoding`/`errors` by name in `bytes.decode`/`str.encode` | `97448add` | 18/18 | clean |
 | #1196 | LLVM 18–23: `coro.end` form, `fmod` NaN, decimal floats, LLVM 23 `forceattrs`; defaults unchanged | `725383d2` | 18/18 | clean |
-| #1197 | #1178: move the PR program-cache probe out of the near-limit `contracts` job | `574ef783` | 18/18; `contracts` 6.7 min, worker 0 8.9 min | requested 19:03 UTC |
+| #1197 | #1178: move the PR program-cache probe out of the near-limit `contracts` job | `574ef783` | 18/18; `contracts` 6.7 min, worker 0 8.9 min | clean |
 
 Merge order: #1188 → #1189 → #1192, and #1191 → #1195. Merge #1197 before #1192: the
 afternoon's `contracts` jobs took 13.7 (#1195) and 14.0 (#1192) of their 15 minutes on slower
 runners, about 4 minutes of it the probe that #1197 moves. The others are independent.
 
-## Before merging: the missing DCO check
+## Landing
 
-From about 16:00 to 18:00 UTC both `pull_request_target` workflows, **Submission format** (a
-required status) and **DCO**, failed at startup on every PR event, for example
-[run 42656162019](https://github.com/den-run-ai/pystachy/actions/runs/42656162019). A startup
-failure cannot be rerun.
+The maintainer approved merging all ten. They land through #1198, which merges each reviewed head
+in the order above (one conflict: `driver.py`'s JIT late passes take #1196's `LATE_PASSES` before
+#1188's `-O0` critical-edge split), so that main's CI runs once on a tree PR CI tested. #1189,
+#1192 and #1195 now target main, so GitHub marks every PR merged when #1198 lands, as `56678df4`
+did for #1172 through #1177.
 
-- Submission format: #1190, #1191, #1193 and #1194 got the status when their bodies were updated
-  with their CI results.
-- DCO (`DCO certified (fork pull requests)`, required; skipped, which passes, for this
-  repository's own branches) runs only on a push or a reopen, so #1190, #1191, #1193, #1194, #1195
-  and #1196 still lack it. Merging main into each before it merges, which validates it against the
-  new main anyway, runs it. #1188, #1189 and #1192 have it.
-- #1197, opened at 18:27, lacks it too: its DCO run concluded `skipped` without creating the job,
-  unlike #1188's and #1192's, and a rerun at 19:05 did the same
-  ([run 42674246285](https://github.com/den-run-ai/pystachy/actions/runs/42674246285)). If a fresh
-  push's run also creates no job, running the job for every PR and skipping only its step would
-  keep the check present.
+An earlier version of this ledger said a missing `DCO certified` check blocked six PRs. The
+maintainer confirmed DCO is not required; that inference from GitHub's `blocked` state, made
+without access to the branch protection settings, was wrong.
 
-GitHub also marked #1192's first CI attempt's bootstrap jobs `abandoned` although both passed, so
-no test jobs were created. Re-running all jobs kept that state; re-running failed jobs rebuilt the
-bootstrap, and the run passed.
+The 16:00-18:00 UTC `pull_request_target` outage left #1190, #1191, #1193 and #1194 without the
+Submission format status; updating their bodies with their CI results restored it. GitHub also
+marked #1192's first CI attempt's bootstrap `abandoned` although both jobs passed; re-running
+failed jobs rebuilt it, and the run passed.
 
 ## Drafts for the maintainer to file upstream
 
