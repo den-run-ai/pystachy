@@ -6,7 +6,8 @@ never reach it, and a small live helper reaches it inlined into its caller, unle
 PYSTACHY_JIT_INLINE=0 turns the JIT's inliner off (#211).
 Unused loop feedback must also disappear after SSA promotion, while live loop results
 and side effects remain. The same boundary checks cover opt-in MCJIT -O0 code generation
-(#430), including argv, exception unwinding, coroutine lowering, GC stress and signal status.
+(#430), including argv, exception unwinding, values that a loop passes to an except clause,
+coroutine lowering, GC stress and signal status.
 """
 import argparse
 import os
@@ -150,6 +151,8 @@ def main():
         arguments = ["space here", "'quoted$argument`"]
         expected = run([sys.executable, str(source), *arguments], env)
         coroutine_expected = run([sys.executable, str(coroutine)], env)
+        handler = ROOT / "tests/programs/exceptions/exc_handler_loop_values.py"
+        handler_expected = run([sys.executable, str(handler)], env)
         for spec in commands:
             label, command = spec.split("=", 1)
             cmd = shlex.split(command)
@@ -210,6 +213,12 @@ def main():
                     raise RuntimeError(f"{label}: codegen={mode} coroutine output/finally differs under GC stress")
                 if re.search(r"\b(?:call|invoke)\b[^\n]*@llvm\.coro\.", capture.read_text()):
                     raise RuntimeError(f"{label}: codegen={mode} unlowered coroutine operation reached lli")
+                # (values a loop passes to an except clause: -O0 PHI elimination needs the critical
+                # edges that the driver splits for it, docs/internals.md)
+                if run(cmd + ["run", str(handler)], selected) != handler_expected:
+                    raise RuntimeError(f"{label}: codegen={mode} values reaching an except clause differ")
+                if mode == "0" and "_crit_edge" not in capture.read_text():
+                    raise RuntimeError(f"{label}: codegen=0 reached lli without split critical edges")
                 flags = invocation.read_text().splitlines()
                 if ("-jit-kind=mcjit" in flags) != (mode == "0") or ("-O0" in flags) != (mode == "0"):
                     raise RuntimeError(f"{label}: codegen={mode} selected unexpected lli flags: {flags}")
@@ -224,7 +233,7 @@ def main():
                                           timeout=60, check=False)
                 if rejected.returncode == 0 or rejected.stdout or b"PYSTACHY_JIT_CODEGEN:" not in rejected.stderr or invocation.exists():
                     raise RuntimeError(f"{label}: invalid codegen={invalid!r} was not rejected before lli")
-            print(f"{label}: default ORC and opt-in MCJIT -O0 preserve argv, callback exceptions, GC stress and SIGTERM; invalid modes rejected")
+            print(f"{label}: default ORC and opt-in MCJIT -O0 preserve argv, callback exceptions, except-clause values, GC stress and SIGTERM; invalid modes rejected")
     return 0
 
 
