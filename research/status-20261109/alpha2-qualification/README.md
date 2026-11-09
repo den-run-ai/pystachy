@@ -1,13 +1,13 @@
 # Alpha.2 qualification stopped at a validation blocker
 
-Snapshot: 2026-11-09 06:42 UTC. This is research/validation evidence, not release-ready evidence. Keep this directory off main.
+Final snapshot: 2026-11-09 06:45 UTC. This is research/validation evidence, not release-ready evidence. Keep this directory off main.
 
 ## Outcome and public state
 
 - Merged [#1170](https://github.com/den-run-ai/pystachy/pull/1170) with an expected-head check after fresh current-main CI and Codex review. Main is `d6b9b3f18bc5adf0da021da46f74c9837be0c604`.
 - [Full main CI](https://github.com/den-run-ai/pystachy/actions/runs/42571513169) passed: 68 successful jobs and two expected skips. Installation, Packages, Lint and Performance smoke also passed on that commit.
 - [Draft #1187](https://github.com/den-run-ai/pystachy/pull/1187) preserves the fixes for #1183/#1184, VERSION and alpha.2 notes. Head: `52da3b8ffd394f124697dfaadb0d0e55108866a7`; tree: `0e84b32e17da9091f5d7dba9b36dcda1cea749f9`; base: the main commit above.
-- At this snapshot, [candidate CI](https://github.com/den-run-ai/pystachy/actions/runs/42571593239) has 14 successful jobs and one active contracts job at native program-cache invalidation/execution. Its aggregate gate is not yet complete. Lint, Performance smoke and Submission format passed; DCO is an expected same-repository skip. Codex completed review of the exact head without findings; no review threads remain.
+- [Candidate CI](https://github.com/den-run-ai/pystachy/actions/runs/42571593239) finished successfully with all 16 jobs passing, including the aggregate gate. Lint, Performance smoke and Submission format passed; DCO is an expected same-repository skip. Codex completed review of the exact head without findings; no review threads remain. These successes do not resolve the missing full local IR qualification.
 - No alpha.2 tag was present at the stop snapshot. No release workflow, native/Docker publication or PyPI publication was started. The PR remains draft even if its remaining CI becomes green.
 
 ## Prepared changes
@@ -50,7 +50,7 @@ These observations indicate a validation-environment integrity problem. Stale fi
 - `partial-times.txt`: incomplete timing records including failed harness calls; not performance evidence.
 - `native-bootstrap.log`, `jitfdprobe.log`, `launch-before.json`, `launch-after.json`: focused local evidence.
 
-All local validation processes and monitoring have stopped. GitHub CI was left running without cancellations.
+All local validation processes and monitoring have stopped. GitHub CI was left intact and subsequently completed successfully; no jobs were canceled.
 
 ## Resume condition
 
