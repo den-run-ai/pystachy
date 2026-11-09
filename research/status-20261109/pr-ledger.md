@@ -37,7 +37,12 @@ failure cannot be rerun.
 - DCO (`DCO certified (fork pull requests)`, required; skipped, which passes, for this
   repository's own branches) runs only on a push or a reopen, so #1190, #1191, #1193, #1194, #1195
   and #1196 still lack it. Merging main into each before it merges, which validates it against the
-  new main anyway, runs it. #1188, #1189, #1192 and #1197 have it.
+  new main anyway, runs it. #1188, #1189 and #1192 have it.
+- #1197, opened at 18:27, lacks it too: its DCO run concluded `skipped` without creating the job,
+  unlike #1188's and #1192's, and a rerun at 19:05 did the same
+  ([run 42674246285](https://github.com/den-run-ai/pystachy/actions/runs/42674246285)). If a fresh
+  push's run also creates no job, running the job for every PR and skipping only its step would
+  keep the check present.
 
 GitHub also marked #1192's first CI attempt's bootstrap jobs `abandoned` although both passed, so
 no test jobs were created. Re-running all jobs kept that state; re-running failed jobs rebuilt the
