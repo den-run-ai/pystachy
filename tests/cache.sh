@@ -21,7 +21,8 @@
 #   - On Linux, the JIT runner (lljit.c) is built at first use beside the runtime, with the real lli's
 #     libLLVM, used then, built again when lljit.c changes (the new entry replaces the old); lli runs
 #     the program, silently, where the runner may not be executed, cannot be built (which later runs
-#     do not try again), is not wanted (PYSTACHY_JIT_LAUNCHER=lli) or lli is a script.
+#     do not try again), is removed before the run becomes it, is not wanted
+#     (PYSTACHY_JIT_LAUNCHER=lli) or lli is a script.
 #   - With a tool whose times have not settled, run and ext build a runtime (and glue) of their own,
 #     which they use, and publish nothing.
 #   - The compiler is found through PATH as the shell finds it, past a directory and a file that is
@@ -76,7 +77,8 @@ C0="invalid literal for int() with base 10: 'x'"; C1="INVALID literal for int() 
 : > "$T/jbuilt"
 # The wrappers: llvm-as counts the builds; llvm-link fails (CACHE_FAIL) or runs edit.sh (CACHE_EDIT)
 # when it links the runtime (not a program: --only-needed); opt kills the compiler once it has written
-# the runtime's bitcode (CACHE_KILL), and the shell that ran opt, unless that shell exec'd it; lli
+# the runtime's bitcode (CACHE_KILL), and the shell that ran opt, unless that shell exec'd it, or
+# removes the cached JIT runner once it has run (CACHE_RM_RUNNER: after the run's check of it); lli
 # notes how it takes the runtime, as a library (so) or as machine code it links (o); clang counts the JIT
 # runner's builds (and $T/llvmj has them, with the real lli, whose libLLVM the runner links)
 for t in clang llvm-as llvm-link opt lli; do
@@ -85,7 +87,8 @@ for t in clang llvm-as llvm-link opt lli; do
     llvm-as) hook="echo >> '$T/built'" ;;
     llvm-link) hook="if [ \"\$1\" != --only-needed ]; then [ -z \"\$CACHE_FAIL\" ] || exit 1; [ -z \"\$CACHE_EDIT\" ] || sh '$T/edit.sh'; fi" ;;
     opt) hook="if [ \"\$1\" = -O2 ] && [ -n \"\$CACHE_KILL\" ]; then '$real' \"\$@\"; p=\$PPID
-  case \$(ps -o comm= -p \$p) in sh | dash | bash) p=\"\$p \$(ps -o ppid= -p \$p)\" ;; esac; kill -9 \$p; exit 1; fi" ;;
+  case \$(ps -o comm= -p \$p) in sh | dash | bash) p=\"\$p \$(ps -o ppid= -p \$p)\" ;; esac; kill -9 \$p; exit 1; fi
+if [ -n \"\$CACHE_RM_RUNNER\" ]; then '$real' \"\$@\" || exit; rm -f '$B'/lljit-*-????????????????; exit 0; fi" ;;
     lli) hook="kind=o; for arg do case \"\$arg\" in -dlopen=/dev/fd/[0-9]*) kind=so ;; esac; done; echo \"\$kind\" >> '$T/loaded'" ;;
     clang) hook="case \" \$* \" in *'/lljit.c '*) echo >> '$T/jbuilt' ;; esac"; realdir=$(dirname "$real") ;;
     *) hook=: ;;
@@ -311,6 +314,9 @@ if [ "$(uname)" = Linux ]; then
   jrun "and later runs do not build it again" lli.build 0
   cp "$T/lljit.c" "$H/lljit.c" || exit 1
   jrun "lljit.c repaired: built and used again" lljit 1
+  # a runner removed after the run checked it (as another run publishing a newer one removes it)
+  jrun "a runner removed before the run becomes it: lli runs the same bitcode" lli.removed 0 CACHE_RM_RUNNER=1
+  jrun "the next run builds it again" lljit 1
   jrun "PYSTACHY_JIT_LAUNCHER=lli: lli runs the program" lli.forced 0 PYSTACHY_JIT_LAUNCHER=lli
   jrun "an lli that is a script, as a wrapper may be: lli runs the program" lli.no-libLLVM 0 LLVM="$T/llvm"
   if [ "$(runners)" = 1 ]; then ok "one runner in the cache"; else bad "$(runners) runners in the cache, not 1"; fi

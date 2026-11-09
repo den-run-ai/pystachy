@@ -1364,9 +1364,14 @@ def main() -> None:
                 for p in [jmain if llcobj else bc, useso if useso != "" else useo] + ([peo[1]] if embed else []) + ([jobj] if llcobj else []):
                     inputs.append(open(p, "rb"))
                 # and the JIT runner, run from its descriptor: a run that publishes another runner
-                # removes this one's file, which then still runs
+                # removes this one's file, which then still runs. Removed before (since opt's shell
+                # found it), lli runs the same bitcode, at ORC's own level of code generation
                 if lljit != "":
-                    pinned.append(open(lljit, "rb"))
+                    try:
+                        pinned.append(open(lljit, "rb"))
+                    except OSError:
+                        lljit = ""
+                        timing_end("program.jit_runner.lli.removed", timing_start())
                 for stream in reserved + inputs + pinned:
                     os.set_inheritable(stream.fileno(), True)
                 gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
