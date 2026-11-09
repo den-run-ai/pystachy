@@ -1,6 +1,10 @@
-"""Loader preprocessing preserves scope while avoiding work on irrelevant trees."""
+"""Loader preprocessing and import resolution match their independent controls."""
+from importlib.machinery import PathFinder
+import os
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -15,6 +19,54 @@ from src.pystachy_compiler.syntax import mk, names_in
 
 def parsed(source):
     return Parser(Lexer(source, 1).file()).module()
+
+
+class ImportFileKindTests(unittest.TestCase):
+    @staticmethod
+    def candidate(path, kind, target):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if kind == "directory":
+            path.mkdir()
+        elif kind == "fifo":
+            os.mkfifo(path)
+        else:
+            path.symlink_to(target)
+
+    def test_source_candidates_follow_cpython_regular_file_rule(self):
+        kinds = ["directory", "symlink"] + (["fifo"] if hasattr(os, "mkfifo") else [])
+        for suffix in ("chosen.py", "chosen/__init__.py"):
+            for kind in kinds:
+                with self.subTest(candidate=suffix, kind=kind), tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    first, last = root / "first", root / "last"
+                    first.mkdir()
+                    last.mkdir()
+                    target = root / "target.py"
+                    target.write_text("VALUE = 31\n")
+                    (last / "chosen.py").write_text("VALUE = 32\n")
+                    self.candidate(first / suffix, kind, target)
+                    directories = [str(first), str(last)]
+                    expected = PathFinder.find_spec("chosen", directories)
+                    self.assertIsNotNone(expected)
+                    self.assertEqual(loader.Loader(directories).filepath("chosen"), expected.origin)
+
+    def test_ffi_nonregular_candidates_do_not_hide_the_builtin(self):
+        root = Path(__file__).resolve().parent.parent
+        kinds = ["directory"] + (["fifo"] if hasattr(os, "mkfifo") else [])
+        for suffix in ("ffi.py", "ffi/__init__.py"):
+            for kind in kinds:
+                with self.subTest(candidate=suffix, kind=kind), tempfile.TemporaryDirectory() as temporary:
+                    work = Path(temporary)
+                    source = work / "main.py"
+                    source.write_text('import ffi\nprint("ok")\n')
+                    self.candidate(work / suffix, kind, work / "unused.py")
+                    environment = {key: value for key, value in os.environ.items()
+                                   if not key.startswith("PYSTACHY_")}
+                    environment["PYSTACHY_HOME"] = str(root)
+                    result = subprocess.run([sys.executable, str(root / "pystachy.py"), "ir", str(source)],
+                                            env=environment, capture_output=True, timeout=10)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode())
+                    self.assertIn(b"define i32 @main(", result.stdout)
 
 
 class BindingTargetTests(unittest.TestCase):
