@@ -24,7 +24,7 @@ Run these from the repository root:
 | `make typecheck` | Run mypy on the Python compiler and its entry point; no native build needed. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
 | `make test-cache` | Check runtime build-cache reuse, invalidation and failed-build handling with both compilers. |
-| `make test-program-cache` | Check default native program reuse, source/toolchain invalidation, fresh execution, concurrency, eviction and failure recovery. |
+| `make test-program-cache` | Check default native program reuse, source/toolchain invalidation, setting keys, fresh execution, concurrency, eviction and failure recovery. |
 | `make test-ffi` | Check C calls, FFI diagnostics, embedded CPython (`pyobj`) and CPython extension modules. |
 | `make check-ir` | Check the typed IR and its LLVM lowering across the compiler corpus. |
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
