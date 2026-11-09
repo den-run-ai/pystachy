@@ -6611,8 +6611,6 @@ static int lost;                       /* bit i: descriptor i (stdin, stdout, st
                                           the whole run, even once open() reuses the descriptor (pys_input_lost) */
 static void stack_floor(int mapped);   /* the native stack's floor (see the recursion depth) */
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
-  for (int i = 0; i < 3; i++) if (fcntl(i, F_GETFD) < 0) lost |= 1 << i;   /* (CPython's is_valid_fd), before
-                                                                               anything opens a file */
   gc_init(sb, roots, nroots);
   stack_floor(0);
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
@@ -6626,6 +6624,8 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
   std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
   std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
   std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
+  for (int i = 0; i < 3; i++) if (fcntl(i, F_GETFD) < 0) lost |= 1 << i;   /* (CPython's is_valid_fd): once pystachy
+                                       run's start-up above is done, and before the program opens a file */
   struct stat st;
   if (!isatty(1) && !fstat(1, &st)) setbuf1(&std_out, st.st_blksize > 1 ? st.st_blksize : 8192);
   signal(SIGPIPE, SIG_IGN);            /* as CPython: a closed pipe is an error, not a signal, */
