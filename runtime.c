@@ -6606,7 +6606,89 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
 I pys_jit(void) { return jit; }
+static int lost;                       /* bit i: descriptor i (stdin, stdout, stderr) was not open when the program
+                                          started. CPython's sys.stdin, sys.stdout or sys.stderr is None then, for
+                                          the whole run, even once open() reuses the descriptor (pys_input_lost) */
 static void stack_floor(int mapped);   /* the native stack's floor (see the recursion depth) */
+static int handoff_number(const char **p, unsigned long max, unsigned long *v) {   /* decimal digits, at most max */
+  const char *s = *p; unsigned long x = 0;
+  if (*s < '0' || *s > '9') return 0;
+  for (; *s >= '0' && *s <= '9'; s++) if ((x = x * 10 + (unsigned long)(*s - '0')) > max) return 0;
+  *v = x; *p = s; return 1;
+}
+static void jitdump_remove(const char *dir) {   /* LLVM's perf jitdump, dir/.debug/jit/llvm-IR-jit-DATE-XXXXXX/jit-PID.dump
+                                                   (PerfJITEventListener.cpp), then each directory once empty: nothing
+                                                   else, and no link followed */
+  char path[PATH_MAX], dump[32];
+  snprintf(dump, sizeof dump, "jit-%ld.dump", (long)getpid());   /* (lli's process, the program's) */
+  if (snprintf(path, sizeof path, "%s/.debug/jit", dir) >= (int)sizeof path) return;
+  int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+  DIR *d = fd < 0 ? NULL : fdopendir(fd);
+  if (d) {
+    for (struct dirent *e; (e = readdir(d));) {
+      if (strncmp(e->d_name, "llvm-IR-jit-", 12)) continue;
+      int sub = openat(dirfd(d), e->d_name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+      if (sub >= 0) { unlinkat(sub, dump, 0); close(sub); }
+      unlinkat(dirfd(d), e->d_name, AT_REMOVEDIR);
+    }
+    closedir(d);
+  } else if (fd >= 0) close(fd);
+  rmdir(path);
+  path[strlen(path) - 4] = 0;            /* (dir/.debug) */
+  rmdir(path);
+  rmdir(dir);
+}
+/* pystachy run: lli runs the program in its own process, where LLVM's start-up replaced the dispositions of
+   the signals it handles (llvm/lib/Support/Unix/Signals.inc: IntSigs, KillSigs, InfoSigs and SIGPIPE) with
+   handlers of its own, which print lli's stack (SIGQUIT's, then let the program run on), ignore SIGUSR1,
+   and hide an inherited ignored SIGINT from pys_init's test. The driver (driver.py, where it becomes lli)
+   hands the program what it needs to start as a built one does, in PYSTACHY_JIT_HANDOFF="MASK;FD,...;DIR",
+   consumed here before any of the program's code runs and removed from the environment, so that no child
+   sees it:
+   - MASK: the standard signals the driver ignored, bit s-1 for signal s. An exec keeps ignored signals
+     ignored and sets caught ones to their defaults, so these are all that lli inherited: each signal that
+     LLVM caught is ignored or default again (lli's crash handlers dropped: the program dies by the signal);
+   - FD,...: the descriptors the driver opened for lli, its inputs (the program's bitcode, the runtime and
+     the embedding's object) and /dev/null on each standard stream that the caller had closed, which then
+     neither the inputs nor lli's own files could take. All are closed: the program and its children see
+     the caller's descriptors;
+   - DIR: MCJIT's private directory for LLVM's perf jitdump (JITDUMPDIR), removed with the dump. lli keeps
+     writing it through its own close-on-exec descriptor, which it closes at exit.
+   A value not of that form is ignored as a whole; LLVM's handlers are dropped all the same. */
+__attribute__((minsize)) static void jit_handoff(void) {
+  static const int llvm[] = {SIGHUP, SIGINT, SIGTERM, SIGUSR2, SIGILL, SIGTRAP, SIGABRT, SIGFPE, SIGBUS, SIGSEGV, SIGQUIT,
+                             SIGSYS, SIGXCPU, SIGXFSZ, SIGPIPE, SIGUSR1
+#ifdef SIGEMT
+                             , SIGEMT
+#endif
+#ifdef SIGINFO
+                             , SIGINFO
+#endif
+  };
+  const char *p = getenv("PYSTACHY_JIT_HANDOFF"), *dir = 0;
+  unsigned long ign = 0, fd;
+  int fds[8], n = 0;
+  if (p) {
+    int ok = handoff_number(&p, 0x7fffffffUL, &ign) && *p++ == ';';
+    if (ok && *p != ';')
+      for (;;) {
+        if (n == 8 || !handoff_number(&p, INT_MAX, &fd)) { ok = 0; break; }
+        fds[n++] = (int)fd;
+        if (*p != ',') break;
+        p++;
+      }
+    if (ok && *p++ == ';') dir = p;
+    else { ign = 0; n = 0; }
+  }
+  for (int i = 0; i < n; i++) close(fds[i]);
+  if (dir && *dir) { jitdump_remove(dir); unsetenv("JITDUMPDIR"); }
+  for (size_t i = 0; i < sizeof llvm / sizeof *llvm; i++) {
+    struct sigaction sa;
+    if (!sigaction(llvm[i], 0, &sa) && sa.sa_handler != SIG_IGN && sa.sa_handler != SIG_DFL)
+      signal(llvm[i], llvm[i] < 32 && ign >> (llvm[i] - 1) & 1 ? SIG_IGN : SIG_DFL);
+  }
+  unsetenv("PYSTACHY_JIT_HANDOFF");
+}
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
   gc_init(sb, roots, nroots);
   stack_floor(0);
@@ -6614,13 +6696,12 @@ __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **root
   char *a0 = getenv("PYSTACHY_ARGV0");  /* pystachy run: sys.argv[0] is the script, as in CPython */
   jit = a0 != 0;
   if (a0 && argc) { args->a[0] = (I)cstr(a0); unsetenv("PYSTACHY_ARGV0"); }
-  if (a0) {                            /* and lli's crash handlers, which print lli's stack, are dropped: the */
-    int sig[] = {SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT};   /* program dies by the signal, as when built */
-    for (int i = 0; i < 5; i++) signal(sig[i], SIG_DFL);
-  }
+  if (a0) jit_handoff();               /* and it starts with the caller's descriptors and signal dispositions */
   std_in.f = stdin; std_in.rd = 1; std_in.nl = 2; std_in.std = 1;   /* CPython's stdin: newline="\n" */
   std_out.f = stdout; std_out.wr = 1; std_out.std = 1;
   std_err.f = stderr; std_err.wr = 1; std_err.std = 1;
+  for (int i = 0; i < 3; i++) if (fcntl(i, F_GETFD) < 0) lost |= 1 << i;   /* (CPython's is_valid_fd): once pystachy
+                                       run's start-up above is done, and before the program opens a file */
   struct stat st;
   if (!isatty(1) && !fstat(1, &st)) setbuf1(&std_out, st.st_blksize > 1 ? st.st_blksize : 8192);
   signal(SIGPIPE, SIG_IGN);            /* as CPython: a closed pipe is an error, not a signal, */
@@ -6664,10 +6745,18 @@ File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
 void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
 void pys_file_flush(File *f);
 void pys_flush(void) { pys_file_flush(&std_out); }
-Str *pys_input(Str *prompt) {          /* CPython: the prompt, if given, is written to sys.stdout, which is then
-                                          flushed (a failure is ignored); then a line from sys.stdin */
+void pys_input_lost(void) {            /* input()'s first check, as CPython's: RuntimeError if sys.stdin, sys.stdout or
+                                          sys.stderr is None, lost at startup (in that order). Embedded or hosted by
+                                          CPython, Pystachy's input() is Python's (in_hook), which checks Python's */
+  if (lost && !in_hook)
+    pys_fail(lost & 1 ? "RuntimeError: lost sys.stdin" : lost & 2 ? "RuntimeError: lost sys.stdout" : "RuntimeError: lost sys.stderr");
+}
+Str *pys_input(Str *prompt) {          /* CPython: the standard streams are checked (pys_input_lost); the prompt, if
+                                          given, is written to sys.stdout, which is then flushed (a failure is
+                                          ignored); then a line from sys.stdin */
   char *line = 0; size_t cap = 0;
   if (in_hook) return in_hook(0, prompt, 0);   /* (Python's input(), with its sys.stdin and sys.stdout) */
+  pys_input_lost();
   io_in();
   if (prompt) put1(&std_out, prompt->s, prompt->len);
   if (!std_out.closed && !std_out.kept) flush1(&std_out);
@@ -7187,6 +7276,16 @@ void pys_set_inheritable(I fd, I inheritable) {
   int flags = fcntl((int)fd, F_GETFD);
   if (flags < 0 || fcntl((int)fd, F_SETFD, inheritable ? flags & ~FD_CLOEXEC : flags | FD_CLOEXEC) < 0)
     ioerr(errno);
+}
+/* lib/_pystachy_cache.py's private ignored_signals(), for the driver's JIT launch: the standard signals
+   this process ignores, bit s-1 for signal s, which the program that lli runs restores (jit_handoff) */
+I pys_ignored_signals(void) {
+  I m = 0;
+  for (int s = 1; s < 32; s++) {
+    struct sigaction sa;
+    if (!sigaction(s, 0, &sa) && sa.sa_handler == SIG_IGN) m |= (I)1 << (s - 1);
+  }
+  return m;
 }
 /* Private native-program cache primitives: no wait and no diagnostics. Retain
    only descriptors we allocated; inherited descriptors belong to the caller.

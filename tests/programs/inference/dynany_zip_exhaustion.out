@@ -1,0 +1,33 @@
+list shorter, list first 7 4
+list shorter, list first 8 3
+list shorter, list first calls 2
+list shorter, list second 4 7
+list shorter, list second 3 8
+list shorter, list second calls 3
+iterator shorter, list first 7 0
+iterator shorter, list first calls 2
+iterator shorter, list second 0 7
+iterator shorter, list second calls 2
+empty list first calls 0
+empty list second calls 1
+middle exhausted 4 0 4
+middle exhausted calls 5
+last exhausted calls 3
+list emptied 7 9
+list emptied 8 8
+list emptied calls 2
+list emptied, list second 9 7
+list emptied, list second calls 2
+tuple 1 1
+tuple 2 0
+str a 4
+str b 3
+str c 2
+calls 6
+range 10 4
+range 15 3
+calls 2
+enumerate 5 1
+enumerate 6 0
+calls 3
+[exit 0]

@@ -52,8 +52,9 @@ def workload_inputs(source, home):
     for path, snapshot in program_cache.PROBES.items():
         if not program_cache._probe_matches(path, snapshot):
             raise RuntimeError(f"workload import resolution changed while capturing inputs: {path}")
-        exists, realpath = program_cache._unpack(snapshot)
-        probes[os.path.abspath(path)] = {"exists": exists == "1", "realpath": realpath}
+        # The kind is "d" (a directory), "f" (a regular file), "o" (another file) or "0".
+        kind, realpath = program_cache._unpack(snapshot)
+        probes[os.path.abspath(path)] = {"exists": kind != "0", "kind": kind, "realpath": realpath}
     if not program_cache.VALID[0]:
         raise RuntimeError("workload inputs changed while resolving imports")
     return {"files": files, "probes": probes, "search_path": dirs,

@@ -240,14 +240,36 @@ def _record(table: dict[str, str], path: str, snapshot: str) -> None:
         table[path] = snapshot
 
 
-def tracked_exists(path: str) -> bool:
-    result = os.path.exists(path)
+def _kind(path: str) -> str:
+    # What import resolution can tell apart at path, following symbolic links as
+    # CPython's path finder does: a directory, a regular file, another existing
+    # file (a FIFO, a device) or nothing. A missing path costs one system call.
+    if not os.path.exists(path):
+        return "0"
+    if os.path.isdir(path):
+        return "d"
+    return "f" if os.path.isfile(path) else "o"
+
+
+def tracked_kind(path: str) -> str:
+    # Callers decide from the kind recorded here, never from another look at the
+    # path, so any change that could resolve an import differently (a namespace
+    # directory replaced by a file, a module appearing) invalidates the entry.
+    kind = _kind(path)
     if ACTIVE[0]:
         try:
-            _record(PROBES, path, _pack(["1" if result else "0", os.path.realpath(path)]))
+            _record(PROBES, path, _pack([kind, os.path.realpath(path)]))
         except (OSError, ValueError):
             VALID[0] = False
-    return result
+    return kind
+
+
+def tracked_exists(path: str) -> bool:
+    return tracked_kind(path) != "0"
+
+
+def tracked_isdir(path: str) -> bool:
+    return tracked_kind(path) == "d"
 
 
 def track_source(path: str, text: str) -> None:
@@ -270,8 +292,7 @@ def _source_matches(path: str, snapshot: str) -> bool:
 
 def _probe_matches(path: str, snapshot: str) -> bool:
     fields = _unpack(snapshot)
-    return (len(fields) == 2 and fields[0] in ["0", "1"]
-            and os.path.exists(path) == (fields[0] == "1") and os.path.realpath(path) == fields[1])
+    return len(fields) == 2 and fields[0] == _kind(path) and os.path.realpath(path) == fields[1]
 
 
 def _static_matches(path: str, snapshot: str) -> bool:

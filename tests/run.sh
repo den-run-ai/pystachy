@@ -4,7 +4,9 @@
 # JIT-run and AOT-compiled; where CPython wrote to stderr, the last line (NAME.err) must match too,
 # and where it wrote none (no NAME.err), the program must write none either; an AOT build writes
 # none. Stdin comes from NAME.in; where NAME.full exists, stdout is /dev/full (writing it fails);
-# where NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh).
+# where NAME.path exists, it is PYSTACHY_PATH (as PYTHONPATH was for tests/record.sh). A program
+# named *_closed_stdin, *_closed_stdout or *_closed_stderr starts with that descriptor closed, for
+# which CPython's sys.stdin, sys.stdout or sys.stderr is None.
 # A test program dies by no signal but SIGTERM and SIGINT: bash as sh reports a death by another
 # one with the process ID (and "core dumped" or not, by ulimit -c: 0 here, so that no core file
 # lands in the tree). Every case runs on an 8 MiB stack (ulimit -s 8192, CI's and the usual size),
@@ -83,6 +85,8 @@ SIG=" $(grep -lE 'kill -INT|KeyboardInterrupt' "$@" | while read -r f; do printf
 program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the path without .py)
   b=${1%.py}; n=${b##*/}; in=/dev/null; [ -f "$b.in" ] && in="$b.in"
   o=1; [ -f "$b.full" ] && o=3
+  si=0 se=2                            # (<&$si >&$o 2>&$se: "-" closes that descriptor)
+  case $n in *_closed_stdin) si=- ;; *_closed_stdout) o=- ;; *_closed_stderr) se=- ;; esac
   mp=$PYSTACHY_PATH
   if [ -f "$b.path" ]; then
     mp=$(sh tests/prepare_path.sh "$1" "$T") || {
@@ -94,10 +98,10 @@ program() { # tests/programs/AREA/NAME.py, its sidecars B.in, B.out... (B: the p
     # pystachy run writes before it becomes the program goes to $n.err: it must be nothing too)
     : > "$T/$n.build"; : > "$T/$n.err"
     if [ $mode = jit ]; then
-      (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
+      (PYSTACHY_PATH=$mp $PYS run "$1" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     else
       PYSTACHY_PATH=$mp $PYS build "$1" -o "$T/$n.exe" 2> "$T/$n.build" &&
-        ($XENV "$T/$n.exe" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
+        ($XENV "$T/$n.exe" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.$mode" 2> "$T/$n.err"
     fi
     if cmp -s "$T/$n.$mode" "$b.out" && [ ! -s "$T/$n.build" ] &&
       if [ -f "$b.err" ]; then [ "$(tail -1 "$T/$n.err")" = "$(cat "$b.err")" ]; else [ ! -s "$T/$n.err" ]; fi; then

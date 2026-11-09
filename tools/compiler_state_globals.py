@@ -18,7 +18,7 @@ LOOKUP = set("""
 analysis.BINDERS builtins.FSPRIMS
 ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
-cached_run.BUILD_ENV cached_run.CPU_FIELDS
+cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
 cache_toolchain.SYSTEM_INPUTS
 driver.COMPILER_SOURCES driver.CPUID driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
@@ -95,7 +95,7 @@ WRITERS = {
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
     "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
-    "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_exists",
+    "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_kind",
                             "program_cache.track_source", "program_cache.track_static", "program_cache.track_layout"},
     # _record(table, ...) also inserts snapshots into these three tables. That
     # parameter-mediated effect is outside this scan; register only the observed

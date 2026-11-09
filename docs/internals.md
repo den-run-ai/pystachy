@@ -437,6 +437,16 @@ which no shared library can name: the library holds stand-ins that call through 
 constructor the driver adds to the program's IR sets before `main` (`RTSO` in the driver).
 Where the library cannot be linked or cached, or a run may not execute it (a cache on a file
 system mounted `noexec`, also one mounted so after the library was cached), `lli` links the object.
+The driver becomes `lli` in the same process, which gets the program's bitcode, the runtime and
+the embedding's object as descriptors of files the driver has already removed; `/dev/null` holds
+each standard stream that the caller closed, so that neither these nor `lli`'s own files take
+one. `lli`'s start-up also replaces the dispositions of the signals LLVM handles, an inherited
+ignored SIGINT among them, with handlers of its own. Before any of the program's code runs, the
+runtime closes those descriptors, restores each signal that LLVM caught to the disposition the
+driver had (ignored or default), and removes MCJIT's dump directory (below). It reads this from
+`PYSTACHY_JIT_HANDOFF`, which it then removes from the environment (`jit_handoff` in `runtime.c`).
+The program and its children see the caller's descriptors and dispositions, as cached and built
+programs do; [`tools/jitfdprobe.py`](../tools/jitfdprobe.py) compares both with CPython's.
 A module that holds generators (coroutines, which `lli` cannot run before they are
 lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
@@ -594,7 +604,12 @@ errors and recovery under finite and unlimited host limits, with program GC stre
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
 keeps ORC and its normal code generation. This choice does not change the IR cleanup
-or inlining pipeline, and does not affect `build` or `ext`.
+or inlining pipeline, and does not affect `build` or `ext`. Where LLVM is built with perf
+support, as Ubuntu's is, `lli`'s MCJIT writes a perf jitdump on every run, which no option
+turns off. The driver gives it a private directory (`JITDUMPDIR`, unless the environment sets
+one), which the runtime removes before the program starts; `lli` keeps the removed dump's
+close-on-exec descriptor open until it exits, the one descriptor that such a program has and
+CPython does not.
 
 The [native program cache](program-cache.md) is enabled by default for supported
 native Linux CLI runs. Validated hits execute a previously linked JIT-tier
@@ -728,19 +743,21 @@ are required before promotion. `make verify` keeps the standard tier.
 |---|---|
 | `PYSTACHY_LLVM` | Override the LLVM tool directory (Linux 18, macOS 20); standard apt/Homebrew locations are discovered before falling back to `PATH` |
 | `PYSTACHY_HOME` | Directory holding the runtime and `lib/`; set by the installed launcher |
-| `PYSTACHY_CACHE` | Runtime cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
+| `PYSTACHY_CACHE` | Runtime and program cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |
+| `PYSTACHY_LIBPYTHON` | The CPython 3.12+ shared library that a program importing `pyobj` [embeds](ffi.md#calling-cpython) |
 | `PYSTACHY_RUNTIME_C_CACHE=1` | Opt in to Linux default-flag C-runtime bitcode reuse across compiler producers; `0` (default) disables it |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
 | `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
-| `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime cache key. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
+| `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime and program cache keys. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
 | `PYSTACHY_IRFX=1` | Print function effect summaries to stderr |
+| `PYSTACHY_UNICODE_AUDIT=1` | Compile the [Unicode audit](language/compatibility.md#unicode-audit) checks into the program and its imported library code |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` selects MCJIT `-O0`; `2` (default) keeps ORC code generation |
-| `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported |
+| `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |
 | `PYSTACHY_PROGRAM_CACHE_TRACE=1` | Print cache decisions and frontend entry to stderr |
 | `PYSTACHY_PROGRAM_CACHE_INPUTS` | Additional files whose changes invalidate the program cache, separated by `:` |
 | `PYSTACHY_GC_STRESS=N` | Collect every N allocations |
