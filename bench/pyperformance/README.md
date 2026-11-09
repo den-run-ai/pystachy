@@ -216,7 +216,6 @@ blockers than its first error, and a newer compiler may have removed one.
 | `async_generators`, `coroutines` | `async def` | same |
 | `async_tree`, `asyncio_tcp` | no `asyncio` module | `socket` imports the missing `_socket` |
 | `base64` | no `base64` module | `random.randbytes()` needs `int.to_bytes()` |
-| `bpe_tokeniser` | field `_decoder` needs a type annotation | field `_decoder` needs a type annotation |
 | `concurrent_imap` | no `multiprocessing` module | `signal` imports the missing `_signal` |
 | `crypto_pyaes` | no `pyaes` module (third-party) | same |
 | `decimal_factorial`, `decimal_pi`, `telco` | no `decimal` module | `contextvars` imports the missing `_contextvars` |
@@ -275,6 +274,7 @@ at that revision.
 | Benchmark | First error of the upstream file |
 |---|---|
 | `barnes_hut` | field `particles` needs a type annotation |
+| `bpe_tokeniser` | field `_decoder` needs a type annotation |
 | `chaos` | class attribute `__rmul__` needs a type annotation |
 | `comprehensions` | empty `widgets` list needs a type annotation |
 | `fannkuch`, `generators`, `nbody`, `nqueens`, `regex_v8`, `spectral_norm`, `unpack_sequence` | none |
