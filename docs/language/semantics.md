@@ -30,7 +30,8 @@ Loops can consume ranges, lists, strings, dictionaries, sets, files, homogeneous
 NamedTuples, supported objects, and dictionary `items()`, `keys()` and `values()`.
 `enumerate(..., start=...)`, `zip()` and `reversed()` work in supported contexts.
 A dictionary or set whose size changes while its iterator is active raises `RuntimeError`.
-`zip()` creates its operands' iterators in order, before iteration starts.
+`zip()` creates its operands' iterators in order, before iteration starts, then takes one
+item of each in turn and stops at the first exhausted one.
 
 Restrictions on nested iterator-like expressions, snapshots and mutation are listed in
 [compatibility](compatibility.md).
