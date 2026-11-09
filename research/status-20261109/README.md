@@ -23,6 +23,12 @@ passed all 20 PR checks and a Codex review with no findings:
 | #1176 | #1165, #50; part of #1167 | One start-up handoff; MCJIT keeps `lli`'s own close-on-exec dump descriptor. |
 | #1177 | GC identity weights | Now also the maintainer's integration branch for #1172–#1176. |
 
+The maintainer merged #1177 as `56678df4`, whose tree equals `6ae42170`'s; GitHub marked
+#1172-#1176 merged. All seven main workflows passed (CI: 68 jobs, plus 2 PR-only skips). Hosted
+coverage reached 95.7%/92.2% (projection 95.7%/92.3%), native runtime 94.7% lines and 84.9%
+branches. `gc-ir` took 493/637 s on x86-64 (replay: 630/634 s) and 6.4/6.4 minutes on ARM64;
+`ubsan-0` took 13.7 minutes on a `znver3` runner, the closest job to the cap (#1179).
+
 Cross-PR checks: #1174 and #1176 were built and tested merged (closed stdin, stdout and stderr
 match CPython under ORC, MCJIT and hosted JIT); #1176 documents `JITDUMPDIR` so #1171's settings
 test passes after merging main. Agents' pushes kept PR CI to two runs at a time; the stacked
