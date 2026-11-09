@@ -1,0 +1,3 @@
+fallback: no module extless_ns.plain
+extless_ns.mod
+[exit 0]

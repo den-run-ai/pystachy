@@ -3,7 +3,8 @@
 # program tests/programs/AREA/NAME.py (tests/corpus.sh): NAME.out is stdout followed by "[exit N]";
 # NAME.err, kept only where CPython wrote to stderr, is the last line it wrote there. NAME.in, if
 # present, is stdin; if NAME.full exists, stdout is /dev/full (so NAME.out holds only the exit
-# status); if NAME.path exists, it is PYTHONPATH (tests/run.sh makes it PYSTACHY_PATH).
+# status); if NAME.path exists, it is PYTHONPATH (tests/run.sh makes it PYSTACHY_PATH). A program
+# named *_closed_stdin, *_closed_stdout or *_closed_stderr starts with that descriptor closed.
 # CPython's environment holds PATH and that PYTHONPATH, nothing else of the caller's: FORCE_COLOR
 # would color its tracebacks, the caller's PYTHONPATH add modules, PYTHONUNBUFFERED change what
 # reaches a stdout the program shares with os.system's commands. Without LANG and LC_*, the locale
@@ -43,9 +44,11 @@ cpython() {
   n=${1##*/}
   in=/dev/null; [ -f "$1.in" ] && in="$1.in"
   o=1; [ -f "$1.full" ] && o=3
+  si=0 se=2                            # (<&$si >&$o 2>&$se: "-" closes that descriptor)
+  case $n in *_closed_stdin) si=- ;; *_closed_stdout) o=- ;; *_closed_stderr) se=- ;; esac
   mp=
   if [ -f "$1.path" ]; then mp=$(sh tests/prepare_path.sh "$1.py" "$T") || exit 1; fi
-  (env -i PATH="$PATH" ${mp:+"PYTHONPATH=$mp"} "$PY" "$1.py" a1 a2 < "$in" >&$o; echo "[exit $?]") > "$T/$n.out" 2> "$T/$n.stderr"
+  (env -i PATH="$PATH" ${mp:+"PYTHONPATH=$mp"} "$PY" "$1.py" a1 a2 < "$in" <&$si >&$o 2>&$se; echo "[exit $?]") > "$T/$n.out" 2> "$T/$n.stderr"
 }
 
 if [ "$1" != --check ]; then

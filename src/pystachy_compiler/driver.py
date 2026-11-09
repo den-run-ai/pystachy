@@ -15,6 +15,12 @@ from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
 from src.pystachy_compiler.syntax import LAMBDAS
 from src.pystachy_compiler.utils import optimizations, timing_end, timing_start
+try:
+    # A native-only primitive; the CPython-hosted compiler asks its signal module.
+    from _pystachy_cache import ignored_signals as native_ignored_signals  # type: ignore[import-not-found]
+except ImportError:
+    def native_ignored_signals() -> int:
+        return 0
 
 
 JOINS = 8  # the passes after the first that a program's joins may take (see compile_program)
@@ -438,6 +444,20 @@ def publish_retained_ir(path: str, source: str, output: str, ir: str, own: str) 
         os.rmdir(staging)
 
 
+def ignored_signals() -> int:
+    # The standard signals this process ignores, bit s-1 for signal s. An exec keeps them ignored
+    # and sets caught ones to their defaults, so these are all that lli inherits before LLVM's
+    # handlers replace them, for the program's runtime to restore (runtime.c's jit_handoff).
+    if sys.implementation.name != "pystachy":
+        import signal
+        mask = 0
+        for number in range(1, 32):
+            if signal.getsignal(number) == signal.SIG_IGN:
+                mask |= 1 << (number - 1)
+        return mask
+    return native_ignored_signals()
+
+
 def aot_optimization() -> str:
     value = os.getenv("PYSTACHY_AOT_OPT", "2")
     if value != "0" and value != "1" and value != "2":
@@ -471,6 +491,7 @@ def main() -> None:
     retained = retained_ir_path(cmd, diagnostics.SRC, argv[3:])
     aotopt = aot_optimization() if cmd == "build" else "2"
     jitflags = ""
+    mcjit = False
     if cmd == "run":
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
         if codegen != "0" and codegen != "2":
@@ -483,6 +504,7 @@ def main() -> None:
             # lli's default ORC path ignores -O0 in LLVM 18. MCJIT honors it; keep this
             # startup/execution tradeoff opt-in, independently of the IR inlining budget.
             jitflags += " -jit-kind=mcjit -O0"
+            mcjit = True
     if cmd == "check":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         Parser(Lexer(f.read(), 1).file()).module()
@@ -1126,27 +1148,36 @@ def main() -> None:
             for p in [ll, obj, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c"] + [g[3] for g in glue]:
                 if os.path.exists(p):
                     os.remove(p)
-            # Reserve any closed standard streams while opening the JIT inputs,
-            # then restore them before exec. The input fds are always at least 3.
+            # Each standard stream the caller closed holds /dev/null until the program starts, so
+            # that neither the inputs (always at least 3) nor lli's own files (MCJIT's perf jitdump)
+            # take it. Before any of its code runs, the program's runtime closes these and the
+            # inputs, restores the signal dispositions that LLVM's handlers replaced in lli and
+            # removes MCJIT's dump directory (PYSTACHY_JIT_HANDOFF, runtime.c's jit_handoff): the
+            # program and its children see the caller's descriptors and dispositions.
             reserved = []
             inputs = []
+            dump = ""
             try:
-                try:
-                    for i in range(3):
-                        stream = open(os.devnull, "rb")
-                        if stream.fileno() >= 3:
-                            stream.close()
-                            break
-                        reserved.append(stream)
-                    for p in [bc, useso if useso != "" else useo] + ([peo[1]] if embed else []):
-                        inputs.append(open(p, "rb"))
-                finally:
-                    for stream in reserved:
+                for i in range(3):
+                    stream = open(os.devnull, "r+b")
+                    if stream.fileno() >= 3:
                         stream.close()
-                for stream in inputs:
+                        break
+                    reserved.append(stream)
+                for p in [bc, useso if useso != "" else useo] + ([peo[1]] if embed else []):
+                    inputs.append(open(p, "rb"))
+                for stream in reserved + inputs:
                     os.set_inheritable(stream.fileno(), True)
                 gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
                 env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
+                if mcjit and os.getenv("JITDUMPDIR") is None:
+                    # LLVM's MCJIT always writes a perf jitdump where LLVM has perf support (as
+                    # Ubuntu's does), under JITDUMPDIR or else TMPDIR: here a private directory.
+                    # An explicit JITDUMPDIR keeps LLVM's own behavior.
+                    dump = tempfile.mkdtemp()
+                    env += f"JITDUMPDIR={q(dump)} "
+                handoff = str(ignored_signals()) + ";" + ",".join([str(stream.fileno()) for stream in reserved + inputs]) + ";" + dump
+                env += f"PYSTACHY_JIT_HANDOFF={q(handoff)} "
                 # Embedding also loads libpython and the pyembed machine code.
                 pe = "".join([" -dlopen=" + q(x) for x in LIBS]) + (" -extra-object=/dev/fd/" + str(inputs[2].fileno()) if embed else "")
                 rt = (" -dlopen=" if useso != "" else " -extra-object=") + "/dev/fd/" + str(inputs[1].fileno())
@@ -1166,8 +1197,13 @@ def main() -> None:
                 timing_end("driver.prepare_run", total)
                 os.execv("/bin/sh", ["sh", "-c", run])
             finally:
-                for stream in inputs:
+                for stream in reserved + inputs:
                     stream.close()
+                if dump != "":
+                    try:
+                        os.rmdir(dump)
+                    except OSError:
+                        pass
     for p in [ll, bc, obj, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)

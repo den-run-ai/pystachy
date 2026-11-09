@@ -44,7 +44,7 @@ object alone to `lli`. Program arguments, standard streams, status, signals and
 | Input | Check |
 |---|---|
 | Main program and imported Python files | Hash the text actually consumed, and reread it on every hit. Size and mtime alone never validate source. |
-| Import resolution | Replay positive and negative file/package/namespace probes, including resolved paths. A new shadowing module invalidates the entry. |
+| Import resolution | Replay positive and negative file/package/namespace probes, including each candidate's kind (directory, regular file, other file or missing) and resolved path. A new shadowing module, or a namespace directory replaced by a file, invalidates the entry. |
 | Compiler, runtime and LLVM | Record resolved files, content hashes and size/mtime/ctime snapshots. Settled unchanged static files can reuse their hashes. |
 | Default native toolchain | Hash consumed C headers, shared libraries and GNU linker's CRT/library/script inputs. Snapshot existing and absent header, GCC, linker, loader and Clang configuration search candidates. |
 | Compilation choices | Include source spelling, working directory, import paths, CPU features and the [settings](#settings) compilation reads. |
@@ -79,7 +79,7 @@ nor the default (an empty `PYSTACHY_JIT_INLINE` is rejected, for example).
 | Keyed | `PYSTACHY_OPT`, `PYSTACHY_JIT_INLINE`, `PYSTACHY_DEBUG_LINES`, `PYSTACHY_RUNTIME_C_CACHE`, `PYSTACHY_PATH`, `PYSTACHY_PROGRAM_CACHE_INPUTS`; `PATH`, `HOME` and `XDG_CONFIG_HOME`, which select tools and Clang's user configuration |
 | Keyed through the directory selected, as spelled and resolved | `PYSTACHY_HOME`; `PYSTACHY_LLVM`, where an empty value searches `PATH` and bypasses the cache |
 | Bypass when not empty, otherwise keyed. These add compiler, linker or loader inputs, and tools treat an empty value as set: GNU ld rejects an empty `GNUTARGET` | `CPATH`, `C_INCLUDE_PATH`, `CPLUS_INCLUDE_PATH`, `OBJC_INCLUDE_PATH`, `LIBRARY_PATH`, `COMPILER_PATH`, `GCC_EXEC_PREFIX`, `SDKROOT`, `CCC_OVERRIDE_OPTIONS`, `CLANG_CONFIG_FILE_SYSTEM_DIR`, `CLANG_CONFIG_FILE_USER_DIR`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `LD_RUN_PATH`, `LD_HWCAP_MASK`, `GLIBC_TUNABLES`, `LDEMULATION`, `GNUTARGET` |
-| Bypass | `PYSTACHY_CFLAGS`, `PYSTACHY_IRCHECK`, `PYSTACHY_IRFX` or `PYSTACHY_UNICODE_AUDIT` when not empty; `PYSTACHY_JIT_CODEGEN` other than unset or `2`; `PYSTACHY_PROGRAM_CACHE` other than unset, empty or `1`; `PYSTACHY_LIBPYTHON`, read only for programs that embed CPython, which bypass the cache |
+| Bypass | `PYSTACHY_CFLAGS`, `PYSTACHY_IRCHECK`, `PYSTACHY_IRFX` or `PYSTACHY_UNICODE_AUDIT` when not empty; `PYSTACHY_JIT_CODEGEN` other than unset or `2`, with `JITDUMPDIR`, which only that MCJIT launch reads; `PYSTACHY_PROGRAM_CACHE` other than unset, empty or `1`; `PYSTACHY_LIBPYTHON`, read only for programs that embed CPython, which bypass the cache |
 | Read by each execution | `PYSTACHY_GC_STRESS_PROGRAM`, `PYSTACHY_GC`, `PYSTACHY_GC_STRESS`, `PYSTACHY_GC_MIN`, locale variables and the program's own environment. The collector settings also govern the compiler's process without changing its output |
 | No effect on the executable | `PYSTACHY_CACHE` (location), `PYSTACHY_PROGRAM_CACHE_TRACE`, `PYSTACHY_TIMING` (the stages this launch ran), `PYSTACHY_PROGRAM_CACHE_LOCK` (internal fallback), `TMPDIR`, `TEMP` and `TMP` (scratch space); `PYSTACHY_AOT_OPT` (read by `build` only) |
 

@@ -1,0 +1,6 @@
+dict 000 1
+RuntimeError: dictionary changed size during iteration
+set element3 1
+RuntimeError: Set changed size during iteration
+list item0 1
+[exit 0]

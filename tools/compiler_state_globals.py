@@ -95,7 +95,7 @@ WRITERS = {
     "names.RENAMED": {"program.gen_program", "driver.compile_program"},
     "names.ENUMCLASSES": {"loader.Loader.program", "loader.enum_classes"},
     "program_cache.ACTIVE": {"program_cache.start", "program_cache.stop"},
-    "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_exists",
+    "program_cache.VALID": {"program_cache.start", "program_cache._record", "program_cache.tracked_kind",
                             "program_cache.track_source", "program_cache.track_static", "program_cache.track_layout"},
     # _record(table, ...) also inserts snapshots into these three tables. That
     # parameter-mediated effect is outside this scan; register only the observed

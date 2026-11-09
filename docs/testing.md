@@ -84,6 +84,7 @@ fails `make check-recordings` and a whole-corpus `tests/run.sh` instead of being
 | `NAME.in`, when present | Input supplied to the program. |
 | `NAME.path`, when present | Module path: `PYTHONPATH` for the recording, `PYSTACHY_PATH` for the compiled test. |
 | `NAME.full`, when present | Send stdout to `/dev/full` to check failed writes. |
+| `NAME` ending in `_closed_stdin`, `_closed_stdout` or `_closed_stderr` | Start the program with that descriptor closed; CPython's `sys.stdin`, `sys.stdout` or `sys.stderr` is then `None`. |
 
 An AOT build's diagnostics are kept separate from the program's stderr and must be empty.
 The runner enables `PYSTACHY_IRCHECK=1` unless explicitly overridden.
@@ -151,8 +152,10 @@ check complements the full opt-in corpus sweep, `make dynany-optin`), `make dict
 store's `-O2` code, plain or not, the allocations `allocelide` lets `-O2` delete and those it
 keeps, with the objects they hold, and the allocation window between collections that
 `PYSTACHY_GC_MIN` sets).
-`make jitprobe` also checks inherited descriptor preservation, closed stdin, shared/object
-runtime inputs, embedding, temporary cleanup and native program-cache miss/hit launches.
+`make jitprobe` also compares JIT launches with CPython: inherited descriptors, the program's
+and its child's whole descriptor tables, closed standard streams, inherited SIGINT dispositions
+(sent once the program waits), shared/object runtime inputs, MCJIT, embedding, temporary
+cleanup, failed exec and native program-cache miss/hit and AOT launches.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 
@@ -228,7 +231,7 @@ five suites, each under a coverage.py context of its name:
 | `corpus` | The differential, rejection and deviation suite, JIT and AOT (`tests/run.sh`, as `make test-py` does). |
 | `ffi` | `tests/ffi/run.sh`, JIT and AOT: C calls, FFI diagnostics, embedded CPython and extension modules. |
 | `cache` | `tests/cache.sh`: the runtime cache's rules and the driver's search for LLVM and for itself. |
-| `unit` | The compiler's unit tests, `tools/test_typed*.py` and `tools/test_function_summaries.py`. |
+| `unit` | The compiler's unit tests, `tools/test_typed*.py` and `tools/test_function_summaries.py`, and those of code that the hosted corpus does not run: the native program cache's (`tools/test_program_cache*.py`, `tools/test_cached_run*.py`, `tools/test_cache_toolchain.py`), `--emit-ir`'s (`tools/test_retained_ir.py`), the C runtime cache's (`tools/test_runtime_c_cache.py`), `tools/test_ctypes_schema.py` and `tools/test_source_lines.py`. |
 | `ir` | `tools/check_ir.sh` on the programs the corpus does not compile: `pystachy.py` and `runtime.py`, as the bootstrap's first stage compiles them, the benchmarks and the `tests/ir/` probes with their effect, call, attribute and TBAA contracts. |
 
 `FILES="..."` selects corpus cases and runs the corpus alone; `COVERAGE_SUITES` names the
@@ -248,7 +251,10 @@ counts both together. None of it measures `runtime.c`, `runtime.py`, `lib/` or t
 programs, which run as native code ([native runtime coverage](#native-runtime-coverage)
 measures `runtime.c`'s). The native compiler's runs in `make verify` (its own bootstrap stages,
 the sanitizer, Python-free and collector-stress stages) add nothing to it either, though they
-run the same compiler code.
+run the same compiler code. The [native program cache](program-cache.md) (`program_cache.py`,
+`cached_run.py`, `cache_toolchain.py`) serves only the native compiler: `pystachy run` under
+CPython bypasses it, so only the `unit` suite measures it, and what only a native run reaches
+(recording a miss's toolchain inputs, launching a cached program) stays unmeasured.
 
 [`.coveragerc`](../.coveragerc) holds the settings. Each compiler process starts through a
 launcher that counts it and writes its own data file. `pystachy run` replaces its process with
@@ -640,19 +646,12 @@ execution partition, order and sample unchanged. Each partition covers the full
 corpus; the aggregate requires both identity halves and every execution shard.
 The PR profile retains its sparse selection. Weight changes affect placement and
 order, never coverage or stress intervals.
-The GC table's `reserve W0 W1` row supplies initial weights before balancing identity
-cases. The current table retains the reserve and partition from the earlier combined
-identity/JIT schedule; separating the jobs does not rebalance or remove cases. Values
-use the table's weight units, and a missing table or reserve row means zero reserve.
-The table records the original calculation and compiler revision.
-The initial GC table profiles all 4,144 cases at `99f3451e` with the native compiler,
-collection every 1,000 allocations and `PYSTACHY_IRCHECK=1`. It uses CPU time from
-one stressed compilation per case, scaled to the median corpus program; its header
-records the compiler and profile hashes. These baseline costs guide placement;
-they do not measure combined CI job duration. JIT samples also enable the IR
-checker through `tests/run.sh`'s default. Subsequent refreshes use the oracle's
-measured wall times, including both unstressed and stressed compilations and their
-comparison.
+A GC table `reserve W0 W1` row would supply initial weights before balancing identity
+cases, in the table's weight units; a missing table or reserve row means zero reserve.
+The current table has none. Its header names the commit and CI run whose x86-64 and
+ARM64 `gc-ir-N-times.log` files it was refreshed from: each case's wall time for both
+compilations and their comparison, scaled to the median corpus program. JIT samples
+also enable the IR checker through `tests/run.sh`'s default.
 Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
 both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
 execution timings describe different work and should not be mixed into that table.
