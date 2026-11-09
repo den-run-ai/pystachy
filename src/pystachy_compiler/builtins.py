@@ -178,6 +178,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if (self.curfn.mod != "_pystachy_cache" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_cache.py") or args):
             self.err(f"name '{name}' is not defined")
         return Val(self.rt("pys_cache_lock_fd", "i64", []), "int")
+    if name == "__pys_ignored_signals":
+        if (self.curfn.mod != "_pystachy_cache" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_cache.py") or args):
+            self.err(f"name '{name}' is not defined")
+        return Val(self.rt("pys_ignored_signals", "i64", []), "int")
     if name == "__pys_cache_file_hash":
         if (self.curfn.mod != "_pystachy_cache" or not lib_source(self.curfn.node.line, self.libdir, "_pystachy_cache.py") or
                 len(args) != 2 or any([a.kind in ["kw", "starred", "dstar"] for a in args])):
@@ -900,6 +904,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         vals.append(self.expr(self.parse_expr(DEFAULTS[key]), ""))
         key = f"{name}({','.join([v.t for v in vals])})"
     if name == "input" and len(vals) == 1 and vals[0].t != "str":
+        # CPython converts the prompt only to write it, after checking its standard streams: one
+        # lost at startup raises before the prompt's __str__ runs (pys_input checks them again)
+        self.rt("pys_input_lost", "void", [])
         vals[0] = self.to_str(vals[0])
         key = "input(str)"
     if name == "input" and len(vals) == 0:

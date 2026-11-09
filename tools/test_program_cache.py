@@ -123,6 +123,60 @@ class ProgramCacheTests(unittest.TestCase):
         candidate.rmdir()
         self.assertEqual(self.lookup(), "")
 
+    def test_probe_kinds_follow_symlinks_as_cpython_import_does(self):
+        # Only a directory, also through a symbolic link, is a namespace portion (#1166).
+        directory = self.root / "portion"
+        directory.mkdir()
+        plain = self.root / "plainname"
+        plain.write_text("not a module\n")
+        fifo = self.root / "fifo"
+        os.mkfifo(fifo)
+        linked_directory = self.root / "linked-portion"
+        linked_directory.symlink_to(directory, target_is_directory=True)
+        linked_file = self.root / "linked-plainname"
+        linked_file.symlink_to(plain)
+        dangling = self.root / "dangling"
+        dangling.symlink_to(self.root / "nowhere")
+        kinds = {directory: "d", linked_directory: "d", plain: "f", linked_file: "f",
+                 fifo: "o", dangling: "0", self.root / "missing": "0"}
+        for path, kind in kinds.items():
+            with self.subTest(path=path.name):
+                self.assertEqual(pc.tracked_kind(str(path)), kind)
+                self.assertEqual(pc.tracked_isdir(str(path)), kind == "d")
+                self.assertEqual(pc.tracked_exists(str(path)), kind != "0")
+        self.assertTrue(pc.VALID[0])
+        self.assertEqual(pc._unpack(pc.PROBES[str(linked_directory)]), ["d", str(directory.resolve())])
+        target = self.publish()
+        self.assertEqual(self.lookup(), str(target))
+
+    def test_candidate_changing_kind_misses(self):
+        # A file, a directory or nothing at one candidate path (with one resolved path)
+        # can each resolve an import differently: every flip misses, and restoring hits.
+        candidate = self.root / "plainname"
+
+        def make(kind):
+            if candidate.is_dir():
+                candidate.rmdir()
+            elif candidate.exists():
+                candidate.unlink()
+            if kind == "file":
+                candidate.write_text("not a module\n")
+            elif kind == "directory":
+                candidate.mkdir()
+
+        for before, after in (("file", "directory"), ("directory", "file"), ("missing", "file"),
+                              ("missing", "directory"), ("file", "missing"), ("directory", "missing")):
+            with self.subTest(before=before, after=after):
+                make(before)
+                pc.start()
+                self.assertEqual(pc.tracked_isdir(str(candidate)), before == "directory")
+                target = self.publish()
+                self.assertEqual(self.lookup(), str(target))
+                make(after)
+                self.assertEqual(self.lookup(), "")
+                make(before)
+                self.assertEqual(self.lookup(), str(target))
+
     def test_symlink_directory_retarget_misses_even_for_identical_text(self):
         first = self.root / "first"
         second = self.root / "second"

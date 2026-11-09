@@ -1862,8 +1862,10 @@ def gen_for_seq(self, tgt: Node, seqs: list[Val], mode: str, body: list[Node], s
     # the next sequence's __next__ runs (which may change it), as zip() takes them
     nexts = len([s for s in seqs if self.is_iterator(s.t)]) > 0
     c = self.stop_catch() if nexts else None
-    # (so is a generator's, before another resumes it: zip(g, g) takes two of its items)
-    now = nexts or len([s for s in seqs if is_gen(s.t)]) > 0
+    # (so is a generator's, before another resumes it: zip(g, g) takes two of its items; and so
+    # is every sequence's in a zip() with a dynamic value, whose next item may come from user
+    # code, a __next__ or a generator, that changes an earlier sequence: #1164)
+    now = nexts or len([s for s in seqs if is_gen(s.t)]) > 0 or (len(seqs) > 1 and len([s for s in seqs if s.t == "dyniter"]) > 0)
     lc = self.label()
     ls = self.label()
     le = self.label()

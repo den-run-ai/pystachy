@@ -262,6 +262,7 @@ or generator/async initializers retain eager formatting
 | `sys.warnoptions` | `[]`; `PYTHONWARNINGS` and `PYTHONDEVMODE` are ignored. Extension modules use the host's value. |
 | `sys.prefix`, `base_prefix`, `exec_prefix`, `base_exec_prefix` | The build-time Pystachy home, also in AOT executables; no virtual-environment distinction. `gettext` finds no bundled catalog there. |
 | `sys.version_info` | One shared immutable tuple for CPython 3.13.16. Attributes/comparisons work, but `str()`/`repr()` show `(3, 13, 16, 'final', 0)`. |
+| `sys.stdin`, `sys.stdout`, `sys.stderr` | Always files. When descriptor 0, 1 or 2 is closed at startup, CPython's stream is `None` for the whole run. `input()` raises CPython's `RuntimeError: lost sys.stdin` (`stdout`, `stderr`); other uses reach the closed descriptor, or the file a later `open()` gets with that number. Reading `sys.stdin` raises `OSError` or reads that file, and `print()` can raise `OSError` or write there. In CPython the stream methods raise `AttributeError`, and `print()` treats a `None` file as `sys.stdout`, writing nothing if that is `None` too. |
 
 ### Memory and resource lifetime
 
