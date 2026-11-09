@@ -1,0 +1,8 @@
+Full IR qualification completed for `52da3b8f` against main `d6b9b3f1` (Linux x86-64, LLVM 18.1.3, local ext4, compilers built with `make`, both fixed points reached).
+
+- Unchanged `make irsame REF=d6b9b3f1`: 264 of 4,354 differ, all from #527. 251 are IR cases whose 307 differing line pairs are string constants holding the compiler home's real path; each is byte-identical after rewriting that path together with its byte length, array size and character count. 13 are rejections whose messages spell `build/ref/lib/` where the oracle keeps ambiguous text raw; each matches after replacing those `FILE.py:LINE` prefixes. No exit-status differences.
+- Same-commit baseline (main against main, equal-length homes): the same 264 cases and lines.
+- Each compiler with its own home at one real path: 4,354 of 4,354 byte-identical (raw IR, messages, exit status), with no normalization.
+- Integrity: checkout and home inventories unchanged across runs; reruns identical (full corpus twice, 441 cases three times).
+
+Not run: `irsame-py`, `--check` mode. Evidence: <link to published evidence>.

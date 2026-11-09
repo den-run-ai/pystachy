@@ -1,0 +1,4 @@
+IR-differing cases with line lists: A 251 B 251 O2 251
+A == B (masked lines, per case, in order): True
+A == O2 (masked lines, per case, in order): True
+distinct masked old-side lines: 101

@@ -1,0 +1,865 @@
+=== tests/programs/apps/byte_bpe.py
+< @s.81 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.81 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/example_linediff.py
+< @s.132 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.132 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/example_mailmerge.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/example_montecarlo.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/apps/example_route.py
+< @s.117 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.117 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/example_route_empty.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/example_suggest.py
+< @s.114 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.114 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/example_urlstats.py
+< @s.95 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.95 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_json_repair_cli.py
+< @s.104 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.104 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_roman_cli.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_roman_convert.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_roman_validate.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_sgp4_api.py
+< @s.94 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.94 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_sgp4_verify.py
+< @s.94 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.94 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_sortedcontainers_api.py
+< @s.62 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'insort' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.62 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'insort' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/apps/port_sortedcontainers_index.py
+< @s.62 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'insort' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.62 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'insort' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/apps/port_tomli_w_ini2toml.py
+< @s.34 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.34 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_tomli_w_tables.py
+< @s.26 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.26 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/apps/port_tomli_w_values.py
+< @s.26 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.26 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/classes/private_name_intrinsics.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/containers/range_value.py
+< @s.130 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.130 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/containers/tuple_runtime_regex.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/generators/iter_review.py
+< @s.209 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.209 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/imports/import_alias_ready_struct.py
+< @s.34 = private unnamed_addr global {i64, i64, i64, [96 x i8]} {i64 95, i64 0, i64 96, [96 x i8] c"cannot import name 'calcsize' from 'struct' (/home/user/wt/alpha2-qual/build/ref/lib/struct.py)\00"}, align 8
+> @s.34 = private unnamed_addr global {i64, i64, i64, [86 x i8]} {i64 85, i64 0, i64 86, [86 x i8] c"cannot import name 'calcsize' from 'struct' (/home/user/wt/alpha2-qual/lib/struct.py)\00"}, align 8
+=== tests/programs/imports/import_builtin_exc_alias_attr.py
+< @s.93 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.93 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/imports/import_builtin_submodule.py
+< @s.47 = private unnamed_addr global {i64, i64, i64, [110 x i8]} {i64 109, i64 0, i64 110, [110 x i8] c"cannot import name 'abc' from 'collections' (/home/user/wt/alpha2-qual/build/ref/lib/collections/__init__.py)\00"}, align 8
+> @s.47 = private unnamed_addr global {i64, i64, i64, [100 x i8]} {i64 99, i64 0, i64 100, [100 x i8] c"cannot import name 'abc' from 'collections' (/home/user/wt/alpha2-qual/lib/collections/__init__.py)\00"}, align 8
+=== tests/programs/imports/import_conditional_closures.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/imports/import_conditional_function.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/imports/import_conditional_nested_def.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/imports/import_module_attr_same_name.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/imports/module_doc.py
+< @s.93 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.93 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/language/walrus.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_argv.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_choice_error.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_conversion.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_conversion_order.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_dest.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_dormant.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_equal_schemas.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_help.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_missing_value.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_namespace.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_nargs.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_numeric_choices.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_python_int.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_python_int_eq.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_required.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_schema_builtin_names.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_schema_numeric_choices.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_scopes.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_shadow.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_token_abbrev.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_token_unicode.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_type_error.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_unknown.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_argparse_version.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_bisect.py
+< @s.17 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'insort' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.17 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'insort' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/library/lib_datetime_datetime.py
+< @s.359 = private unnamed_addr global {i64, i64, i64, [95 x i8]} {i64 94, i64 0, i64 95, [95 x i8] c"cannot import name 'UTC' from 'datetime' (/home/user/wt/alpha2-qual/build/ref/lib/datetime.py)\00"}, align 8
+> @s.359 = private unnamed_addr global {i64, i64, i64, [85 x i8]} {i64 84, i64 0, i64 85, [85 x i8] c"cannot import name 'UTC' from 'datetime' (/home/user/wt/alpha2-qual/lib/datetime.py)\00"}, align 8
+=== tests/programs/library/lib_datetime_time.py
+< @s.249 = private unnamed_addr global {i64, i64, i64, [95 x i8]} {i64 94, i64 0, i64 95, [95 x i8] c"cannot import name 'UTC' from 'datetime' (/home/user/wt/alpha2-qual/build/ref/lib/datetime.py)\00"}, align 8
+> @s.249 = private unnamed_addr global {i64, i64, i64, [85 x i8]} {i64 84, i64 0, i64 85, [85 x i8] c"cannot import name 'UTC' from 'datetime' (/home/user/wt/alpha2-qual/lib/datetime.py)\00"}, align 8
+=== tests/programs/library/lib_difflib.py
+< @s.85 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.85 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_difflib_grouped.py
+< @s.85 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.85 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_difflib_unified.py
+< @s.85 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.85 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum.py
+< @s.13 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.13 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_any.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_base_lookup.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_flag.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_flag_bits.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_flag_numeric_lookup.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_flag_width.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_import.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_intflag.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_missing.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_mixin.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_plain_isinstance.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_reflected.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_enum_values.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_flag_base_lookup.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_fnmatch.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_fnmatch_raw_bytes.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_fnmatch_unicode_ranges.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_gettext.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.155 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"/home/user/wt/alpha2-qual/build/ref\00"}, align 8
+> @s.155 = private unnamed_addr global {i64, i64, i64, [26 x i8]} {i64 25, i64 0, i64 26, [26 x i8] c"/home/user/wt/alpha2-qual\00"}, align 8
+=== tests/programs/library/lib_glob.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_html.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_html_entities.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_html_parser.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_html_parser_positions.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_itertools_gc.py
+< @s.119 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.119 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== tests/programs/library/lib_itertools_generators.py
+< @s.136 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.136 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== tests/programs/library/lib_itertools_module.py
+< @s.92 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.92 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== tests/programs/library/lib_itertools_range.py
+< @s.188 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.188 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== tests/programs/library/lib_itertools_terminating.py
+< @s.156 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.156 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== tests/programs/library/lib_logging.py
+< @s.108 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.108 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.222 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.222 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_logging_config.py
+< @s.108 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.108 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.222 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.222 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_logging_int_min.py
+< @s.108 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.108 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.222 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.222 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_logging_make_record.py
+< @s.108 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.108 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.222 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.222 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_logging_stderr.py
+< @s.108 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.108 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.222 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.222 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_pathlib.py
+< @s.138 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.138 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.366 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'Path' from 'pathlib' (/home/user/wt/alpha2-qual/build/ref/lib/pathlib.py)\00"}, align 8
+< @s.367 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'PurePath' from 'pathlib' (/home/user/wt/alpha2-qual/build/ref/lib/pathlib.py)\00"}, align 8
+> @s.366 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'Path' from 'pathlib' (/home/user/wt/alpha2-qual/lib/pathlib.py)\00"}, align 8
+> @s.367 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'PurePath' from 'pathlib' (/home/user/wt/alpha2-qual/lib/pathlib.py)\00"}, align 8
+=== tests/programs/library/lib_pathlib_glob_case.py
+< @s.138 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.138 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.287 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'Path' from 'pathlib' (/home/user/wt/alpha2-qual/build/ref/lib/pathlib.py)\00"}, align 8
+> @s.287 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'Path' from 'pathlib' (/home/user/wt/alpha2-qual/lib/pathlib.py)\00"}, align 8
+=== tests/programs/library/lib_random.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/library/lib_random_distributions.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/library/lib_random_sequences.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/library/lib_random_triangular_ints.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/library/lib_re.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_annotations.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_bounds.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_branch_filter.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_branch_runs.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_cache.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_cache_churn.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_charset.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_class_span.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_codepoints.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_first.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_flat.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_groups.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_ignorecase_repeat.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_inline_flags.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_lines.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_prefilter.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_purge.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_raw_subject.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_repeat_prefix.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_reuse.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_unicode_memo.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_re_utf8_overlong.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_shlex.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_shlex_upstream.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_string.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_string_formatter.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_string_formatter_mixed.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_string_formatter_subclass.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_string_template_kwargs.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_struct.py
+< @s.93 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'Struct' from 'struct' (/home/user/wt/alpha2-qual/build/ref/lib/struct.py)\00"}, align 8
+> @s.93 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'Struct' from 'struct' (/home/user/wt/alpha2-qual/lib/struct.py)\00"}, align 8
+< @s.95 = private unnamed_addr global {i64, i64, i64, [96 x i8]} {i64 95, i64 0, i64 96, [96 x i8] c"cannot import name 'calcsize' from 'struct' (/home/user/wt/alpha2-qual/build/ref/lib/struct.py)\00"}, align 8
+< @s.96 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'pack' from 'struct' (/home/user/wt/alpha2-qual/build/ref/lib/struct.py)\00"}, align 8
+< @s.97 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'unpack' from 'struct' (/home/user/wt/alpha2-qual/build/ref/lib/struct.py)\00"}, align 8
+> @s.95 = private unnamed_addr global {i64, i64, i64, [86 x i8]} {i64 85, i64 0, i64 86, [86 x i8] c"cannot import name 'calcsize' from 'struct' (/home/user/wt/alpha2-qual/lib/struct.py)\00"}, align 8
+> @s.96 = private unnamed_addr global {i64, i64, i64, [82 x i8]} {i64 81, i64 0, i64 82, [82 x i8] c"cannot import name 'pack' from 'struct' (/home/user/wt/alpha2-qual/lib/struct.py)\00"}, align 8
+> @s.97 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'unpack' from 'struct' (/home/user/wt/alpha2-qual/lib/struct.py)\00"}, align 8
+=== tests/programs/library/lib_textwrap.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_textwrap_codepoints.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_textwrap_whitespace.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_threading.py
+< @s.94 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.94 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_tomllib.py
+< @s.79 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.79 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.257 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+< @s.258 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.259 = private unnamed_addr global {i64, i64, i64, [110 x i8]} {i64 109, i64 0, i64 110, [110 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.260 = private unnamed_addr global {i64, i64, i64, [107 x i8]} {i64 106, i64 0, i64 107, [107 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+> @s.257 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+> @s.258 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.259 = private unnamed_addr global {i64, i64, i64, [100 x i8]} {i64 99, i64 0, i64 100, [100 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.260 = private unnamed_addr global {i64, i64, i64, [97 x i8]} {i64 96, i64 0, i64 97, [97 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+=== tests/programs/library/lib_tomllib_dynamic.py
+< @s.79 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.79 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.257 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+< @s.258 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.259 = private unnamed_addr global {i64, i64, i64, [110 x i8]} {i64 109, i64 0, i64 110, [110 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.260 = private unnamed_addr global {i64, i64, i64, [107 x i8]} {i64 106, i64 0, i64 107, [107 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+> @s.257 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+> @s.258 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.259 = private unnamed_addr global {i64, i64, i64, [100 x i8]} {i64 99, i64 0, i64 100, [100 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.260 = private unnamed_addr global {i64, i64, i64, [97 x i8]} {i64 96, i64 0, i64 97, [97 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+=== tests/programs/library/lib_tomllib_uncaught.py
+< @s.79 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.79 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.257 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+< @s.258 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.259 = private unnamed_addr global {i64, i64, i64, [110 x i8]} {i64 109, i64 0, i64 110, [110 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.260 = private unnamed_addr global {i64, i64, i64, [107 x i8]} {i64 106, i64 0, i64 107, [107 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+> @s.257 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+> @s.258 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.259 = private unnamed_addr global {i64, i64, i64, [100 x i8]} {i64 99, i64 0, i64 100, [100 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.260 = private unnamed_addr global {i64, i64, i64, [97 x i8]} {i64 96, i64 0, i64 97, [97 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+=== tests/programs/library/lib_types_mappingproxy.py
+< @s.57 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.57 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_types_mappingproxy_opaque.py
+< @s.23 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.23 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_unicodedata_chars.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_urllib_parse.py
+< @s.95 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.95 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_urllib_parse_cache.py
+< @s.95 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.95 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_warnings.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_warnings_main_filter.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_warnings_objects.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_warnings_options.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_warnings_skip_prefixes.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/lib_weakref.py
+< @s.17 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.17 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_callback.py
+< @s.25 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.25 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_callback_dead_ref.py
+< @s.21 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.21 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_callback_nested.py
+< @s.28 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.28 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_callback_order.py
+< @s.23 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.23 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_callback_raise.py
+< @s.22 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.22 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_dead.py
+< @s.25 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.25 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_dead_eq.py
+< @s.91 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.91 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.118 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.118 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_eq.py
+< @s.92 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.92 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.105 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.105 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_module.py
+< @s.18 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.18 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+< @s.20 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.20 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.44 = private unnamed_addr global {i64, i64, i64, [93 x i8]} {i64 92, i64 0, i64 93, [93 x i8] c"cannot import name 'ref' from 'weakref' (/home/user/wt/alpha2-qual/build/ref/lib/weakref.py)\00"}, align 8
+< @s.45 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'ReferenceType' from 'weakref' (/home/user/wt/alpha2-qual/build/ref/lib/weakref.py)\00"}, align 8
+> @s.44 = private unnamed_addr global {i64, i64, i64, [83 x i8]} {i64 82, i64 0, i64 83, [83 x i8] c"cannot import name 'ref' from 'weakref' (/home/user/wt/alpha2-qual/lib/weakref.py)\00"}, align 8
+> @s.45 = private unnamed_addr global {i64, i64, i64, [93 x i8]} {i64 92, i64 0, i64 93, [93 x i8] c"cannot import name 'ReferenceType' from 'weakref' (/home/user/wt/alpha2-qual/lib/weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_star.py
+< @s.1 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.1 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+< @s.3 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.3 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.37 = private unnamed_addr global {i64, i64, i64, [93 x i8]} {i64 92, i64 0, i64 93, [93 x i8] c"cannot import name 'ref' from 'weakref' (/home/user/wt/alpha2-qual/build/ref/lib/weakref.py)\00"}, align 8
+< @s.38 = private unnamed_addr global {i64, i64, i64, [103 x i8]} {i64 102, i64 0, i64 103, [103 x i8] c"cannot import name 'ReferenceType' from 'weakref' (/home/user/wt/alpha2-qual/build/ref/lib/weakref.py)\00"}, align 8
+< @s.39 = private unnamed_addr global {i64, i64, i64, [97 x i8]} {i64 96, i64 0, i64 97, [97 x i8] c"cannot import name 'WeakSet' from 'weakref' (/home/user/wt/alpha2-qual/build/ref/lib/weakref.py)\00"}, align 8
+> @s.37 = private unnamed_addr global {i64, i64, i64, [83 x i8]} {i64 82, i64 0, i64 83, [83 x i8] c"cannot import name 'ref' from 'weakref' (/home/user/wt/alpha2-qual/lib/weakref.py)\00"}, align 8
+> @s.38 = private unnamed_addr global {i64, i64, i64, [93 x i8]} {i64 92, i64 0, i64 93, [93 x i8] c"cannot import name 'ReferenceType' from 'weakref' (/home/user/wt/alpha2-qual/lib/weakref.py)\00"}, align 8
+> @s.39 = private unnamed_addr global {i64, i64, i64, [87 x i8]} {i64 86, i64 0, i64 87, [87 x i8] c"cannot import name 'WeakSet' from 'weakref' (/home/user/wt/alpha2-qual/lib/weakref.py)\00"}, align 8
+=== tests/programs/library/lib_weakref_transition.py
+< @s.26 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.26 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/library/re_specialize.py
+< @s.166 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.166 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/re_specialize_recursion.py
+< @s.105 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.105 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/library/sys_prefix.py
+< @s.2 = private unnamed_addr global {i64, i64, i64, [36 x i8]} {i64 35, i64 0, i64 36, [36 x i8] c"/home/user/wt/alpha2-qual/build/ref\00"}, align 8
+> @s.2 = private unnamed_addr global {i64, i64, i64, [26 x i8]} {i64 25, i64 0, i64 26, [26 x i8] c"/home/user/wt/alpha2-qual\00"}, align 8
+=== tests/programs/numbers/mpz_cpython_long_bitops.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/numbers/mpz_cpython_long_division.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/numbers/mpz_cpython_text.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/optimizations/opt_alloc_held_cohort.py
+< @s.2 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.2 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/optimizations/opt_alloc_held_fields.py
+< @s.0 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.0 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/optimizations/opt_alloc_held_tuple.py
+< @s.0 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.0 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/programs/reflection/reflect_formatter.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/reflection/types_generic_alias.py
+< @s.13 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'FunctionType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.13 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'FunctionType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.15 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+< @s.16 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.15 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+> @s.16 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/reflection/types_generic_alias_constants.py
+< @s.4 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.4 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/reflection/types_generic_alias_subscripts.py
+< @s.8 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.8 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/strings/unicode_library_codepoints.py
+< @s.125 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.125 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+< @s.340 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.340 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_argparse_options.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_builtin_min_max_sum.py
+< @s.93 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.93 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_builtin_zip_sorted.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_contextlib_locks.py
+< @s.94 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.94 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_copy_extracted.py
+< @s.4 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.4 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+< @s.6 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.6 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_copy_extracted_any.py
+< @s.4 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.4 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+< @s.6 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.6 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_counter.py
+< @s.37 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.37 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+< @s.66 = private unnamed_addr global {i64, i64, i64, [97 x i8]} {i64 96, i64 0, i64 97, [97 x i8] c"cannot import name 'randrange' from 'random' (/home/user/wt/alpha2-qual/build/ref/lib/random.py)\00"}, align 8
+< @s.67 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'seed' from 'random' (/home/user/wt/alpha2-qual/build/ref/lib/random.py)\00"}, align 8
+> @s.66 = private unnamed_addr global {i64, i64, i64, [87 x i8]} {i64 86, i64 0, i64 87, [87 x i8] c"cannot import name 'randrange' from 'random' (/home/user/wt/alpha2-qual/lib/random.py)\00"}, align 8
+> @s.67 = private unnamed_addr global {i64, i64, i64, [82 x i8]} {i64 81, i64 0, i64 82, [82 x i8] c"cannot import name 'seed' from 'random' (/home/user/wt/alpha2-qual/lib/random.py)\00"}, align 8
+=== tests/programs/upstream/upstream_dict_methods.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_difflib_context.py
+< @s.85 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.85 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_float_format.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_fnmatch.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_functools_cache.py
+< @s.26 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name '_CacheInfo' from 'functools' (/home/user/wt/alpha2-qual/build/ref/lib/functools.py)\00"}, align 8
+> @s.26 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name '_CacheInfo' from 'functools' (/home/user/wt/alpha2-qual/lib/functools.py)\00"}, align 8
+=== tests/programs/upstream/upstream_glob_escape.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_heapq_extracted.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_html_parser.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_int_arith.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_int_format.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_itertools.py
+< @s.115 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.115 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+< @s.153 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.153 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== tests/programs/upstream/upstream_math_sums.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_ordered_dict.py
+< @s.37 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.37 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+< @s.66 = private unnamed_addr global {i64, i64, i64, [95 x i8]} {i64 94, i64 0, i64 95, [95 x i8] c"cannot import name 'shuffle' from 'random' (/home/user/wt/alpha2-qual/build/ref/lib/random.py)\00"}, align 8
+< @s.67 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'seed' from 'random' (/home/user/wt/alpha2-qual/build/ref/lib/random.py)\00"}, align 8
+> @s.66 = private unnamed_addr global {i64, i64, i64, [85 x i8]} {i64 84, i64 0, i64 85, [85 x i8] c"cannot import name 'shuffle' from 'random' (/home/user/wt/alpha2-qual/lib/random.py)\00"}, align 8
+> @s.67 = private unnamed_addr global {i64, i64, i64, [82 x i8]} {i64 81, i64 0, i64 82, [82 x i8] c"cannot import name 'seed' from 'random' (/home/user/wt/alpha2-qual/lib/random.py)\00"}, align 8
+=== tests/programs/upstream/upstream_positional_only_arg_extracted.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_random.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_re_errors.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_re_flags.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_re_match.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_re_sub.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_re_tests.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_re_tests_perl.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_shlex_punctuation.py
+< @s.151 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.151 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_slice_steps.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_sort_extracted.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/programs/upstream/upstream_string_formatter.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_textwrap_field_rebind.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_textwrap_indent.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_textwrap_layout.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_textwrap_unicode.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_textwrap_wrap.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/programs/upstream/upstream_tomllib_data.py
+< @s.79 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.79 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.257 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+< @s.258 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.259 = private unnamed_addr global {i64, i64, i64, [110 x i8]} {i64 109, i64 0, i64 110, [110 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.260 = private unnamed_addr global {i64, i64, i64, [107 x i8]} {i64 106, i64 0, i64 107, [107 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+> @s.257 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+> @s.258 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.259 = private unnamed_addr global {i64, i64, i64, [100 x i8]} {i64 99, i64 0, i64 100, [100 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.260 = private unnamed_addr global {i64, i64, i64, [97 x i8]} {i64 96, i64 0, i64 97, [97 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+=== tests/programs/upstream/upstream_tomllib_misc.py
+< @s.173 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.173 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.257 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+< @s.258 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.259 = private unnamed_addr global {i64, i64, i64, [110 x i8]} {i64 109, i64 0, i64 110, [110 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+< @s.260 = private unnamed_addr global {i64, i64, i64, [107 x i8]} {i64 106, i64 0, i64 107, [107 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/build/ref/lib/tomllib/_re.py)\00"}, align 8
+> @s.257 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+> @s.258 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'RE_DATETIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.259 = private unnamed_addr global {i64, i64, i64, [100 x i8]} {i64 99, i64 0, i64 100, [100 x i8] c"cannot import name 'RE_LOCALTIME' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+> @s.260 = private unnamed_addr global {i64, i64, i64, [97 x i8]} {i64 96, i64 0, i64 97, [97 x i8] c"cannot import name 'RE_NUMBER' from 'tomllib._re' (/home/user/wt/alpha2-qual/lib/tomllib/_re.py)\00"}, align 8
+=== tests/programs/upstream/upstream_weakref.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.78 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/deviations/dynany_class_construct_deferred.py
+< @s.79 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.79 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_datetime.py
+< @s.291 = private unnamed_addr global {i64, i64, i64, [95 x i8]} {i64 94, i64 0, i64 95, [95 x i8] c"cannot import name 'UTC' from 'datetime' (/home/user/wt/alpha2-qual/build/ref/lib/datetime.py)\00"}, align 8
+> @s.291 = private unnamed_addr global {i64, i64, i64, [85 x i8]} {i64 84, i64 0, i64 85, [85 x i8] c"cannot import name 'UTC' from 'datetime' (/home/user/wt/alpha2-qual/lib/datetime.py)\00"}, align 8
+=== tests/deviations/lib_fnmatch_byte_boundaries.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_html_parser_names.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_itertools_hasattr.py
+< @s.34 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.34 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== tests/deviations/lib_itertools_protocol.py
+< @s.39 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.39 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== tests/deviations/lib_logging_exc_info.py
+< @s.108 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.108 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.222 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.222 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== tests/deviations/lib_markupbase_constructor.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_pathlib_unsupported.py
+< @s.138 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.138 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.217 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'Path' from 'pathlib' (/home/user/wt/alpha2-qual/build/ref/lib/pathlib.py)\00"}, align 8
+> @s.217 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'Path' from 'pathlib' (/home/user/wt/alpha2-qual/lib/pathlib.py)\00"}, align 8
+=== tests/deviations/lib_random.py
+< @s.32 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.32 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/deviations/lib_re.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_re_bounded_decoding.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_re_cache_policy.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_re_decoding.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_re_purge_decoding.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_re_release.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_shlex.py
+< @s.137 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.137 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_string.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_string_formatter_fields.py
+< @s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_types_mappingproxy_eq_other.py
+< @s.16 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.16 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_urllib_parse.py
+< @s.95 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.95 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_warnings_location.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_warnings_message_type.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/lib_weakref_all.py
+< @s.1 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.1 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+< @s.3 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.3 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== tests/deviations/python_int_limits.py
+< @s.33 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.33 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== tests/deviations/threading_start.py
+< @s.94 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.94 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== bench/itertools_loops.py
+< @s.61 = private unnamed_addr global {i64, i64, i64, [109 x i8]} {i64 108, i64 0, i64 109, [109 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_itertools.py)\00"}, align 8
+> @s.61 = private unnamed_addr global {i64, i64, i64, [99 x i8]} {i64 98, i64 0, i64 99, [99 x i8] c"cannot import name 'chain' from 'itertools' (/home/user/wt/alpha2-qual/lib/_pystachy_itertools.py)\00"}, align 8
+=== bench/pyperformance/bm_logging.py
+< @s.108 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.108 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+< @s.222 = private unnamed_addr global {i64, i64, i64, [104 x i8]} {i64 103, i64 0, i64 104, [104 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/build/ref/lib/_pystachy_weakref.py)\00"}, align 8
+> @s.222 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'ref' from '_weakref' (/home/user/wt/alpha2-qual/lib/_pystachy_weakref.py)\00"}, align 8
+=== bench/pyperformance/bpe_tokeniser.py
+< @s.81 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.81 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== bench/pyperformance/comprehensions.py
+< @s.10 = private unnamed_addr global {i64, i64, i64, [102 x i8]} {i64 101, i64 0, i64 102, [102 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.10 = private unnamed_addr global {i64, i64, i64, [92 x i8]} {i64 91, i64 0, i64 92, [92 x i8] c"cannot import name 'MappingProxyType' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== bench/pyperformance/json_loads.py
+< @s.47 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.47 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== bench/pyperformance/meteor_contest.py
+< @s.62 = private unnamed_addr global {i64, i64, i64, [94 x i8]} {i64 93, i64 0, i64 94, [94 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/build/ref/lib/bisect.py)\00"}, align 8
+> @s.62 = private unnamed_addr global {i64, i64, i64, [84 x i8]} {i64 83, i64 0, i64 84, [84 x i8] c"cannot import name 'bisect' from 'bisect' (/home/user/wt/alpha2-qual/lib/bisect.py)\00"}, align 8
+=== bench/pyperformance/regex_dna.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== bench/pyperformance/regex_effbot.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+=== bench/pyperformance/regex_v8.py
+< @s.76 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
+> @s.76 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8

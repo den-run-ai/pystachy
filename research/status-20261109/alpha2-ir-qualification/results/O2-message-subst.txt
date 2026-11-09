@@ -1,0 +1,29 @@
+tests/errors/inference/any_lru_cache.py	occurrences=3	at_line_start=1	elsewhere=2	identical_after=False	status=1/1
+tests/errors/library/lib_copy_callable_field.py	occurrences=3	at_line_start=1	elsewhere=2	identical_after=False	status=1/1
+tests/errors/library/lib_copy_deep_order.py	occurrences=2	at_line_start=1	elsewhere=1	identical_after=False	status=1/1
+tests/errors/library/lib_copy_getstate.py	occurrences=1	at_line_start=1	elsewhere=0	identical_after=True	status=1/1
+tests/errors/library/lib_copy_library_base.py	occurrences=1	at_line_start=1	elsewhere=0	identical_after=True	status=1/1
+tests/errors/library/lib_copy_library_class.py	occurrences=2	at_line_start=1	elsewhere=1	identical_after=False	status=1/1
+tests/errors/library/lib_csv_namedtuple_row.py	occurrences=1	at_line_start=1	elsewhere=0	identical_after=True	status=1/1
+tests/errors/library/lib_datetime_strptime.py	occurrences=1	at_line_start=1	elsewhere=0	identical_after=True	status=1/1
+tests/errors/library/lib_datetime_utcnow.py	occurrences=1	at_line_start=1	elsewhere=0	identical_after=True	status=1/1
+tests/errors/library/lib_enum_missing_result.py	occurrences=1	at_line_start=1	elsewhere=0	identical_after=True	status=1/1
+tests/errors/library/lib_functools_lambda.py	occurrences=4	at_line_start=1	elsewhere=3	identical_after=False	status=1/1
+tests/errors/library/lib_functools_unannotated.py	occurrences=3	at_line_start=1	elsewhere=2	identical_after=False	status=1/1
+tests/errors/library/lib_itertools_starmap_list.py	occurrences=2	at_line_start=1	elsewhere=1	identical_after=False	status=1/1
+6 of 13 byte-identical after replacing the spelled library prefix build/ref/lib/ -> lib/ at the start of the diagnostic line only
+tests/errors/inference/any_lru_cache.py	locations_rewritten=3	all_occurrences=3	identical_after=True
+tests/errors/library/lib_copy_callable_field.py	locations_rewritten=3	all_occurrences=3	identical_after=True
+tests/errors/library/lib_copy_deep_order.py	locations_rewritten=2	all_occurrences=2	identical_after=True
+tests/errors/library/lib_copy_getstate.py	locations_rewritten=1	all_occurrences=1	identical_after=True
+tests/errors/library/lib_copy_library_base.py	locations_rewritten=1	all_occurrences=1	identical_after=True
+tests/errors/library/lib_copy_library_class.py	locations_rewritten=2	all_occurrences=2	identical_after=True
+tests/errors/library/lib_csv_namedtuple_row.py	locations_rewritten=1	all_occurrences=1	identical_after=True
+tests/errors/library/lib_datetime_strptime.py	locations_rewritten=1	all_occurrences=1	identical_after=True
+tests/errors/library/lib_datetime_utcnow.py	locations_rewritten=1	all_occurrences=1	identical_after=True
+tests/errors/library/lib_enum_missing_result.py	locations_rewritten=1	all_occurrences=1	identical_after=True
+tests/errors/library/lib_functools_lambda.py	locations_rewritten=4	all_occurrences=4	identical_after=True
+tests/errors/library/lib_functools_unannotated.py	locations_rewritten=3	all_occurrences=3	identical_after=True
+tests/errors/library/lib_itertools_starmap_list.py	locations_rewritten=2	all_occurrences=2	identical_after=True
+contexts before the prefix (last chars): {'': 13, 'r the call at ': 12}
+13 of 13 byte-identical after replacing build/ref/lib/ -> lib/ in FILE.py:LINE source locations only (every occurrence is one)

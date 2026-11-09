@@ -1,0 +1,5 @@
+O1 verdict: ['264 of 4354 differ'] O2 verdict: ['264 of 4354 differ']
+O1 shows 3 DIFF blocks; O2 shows 264
+tests/programs/apps/byte_bpe.py O1 block is a prefix of O2's full block: True (10 of 10 lines)
+tests/programs/apps/example_linediff.py O1 block is a prefix of O2's full block: True (10 of 10 lines)
+tests/programs/apps/example_mailmerge.py O1 block is a prefix of O2's full block: True (10 of 10 lines)

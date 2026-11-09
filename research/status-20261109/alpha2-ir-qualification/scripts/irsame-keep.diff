@@ -1,0 +1,58 @@
+--- /home/user/wt/alpha2-qual/tools/irsame.sh	2026-11-09 13:26:55.116508996 +0000
++++ /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/alpha2-qual.tqelyE/scripts/irsame-keep.sh	2026-11-09 13:36:24.584203395 +0000
+@@ -27,7 +27,9 @@
+ # is required, as in tests/run.sh. The report itself stays in input order.
+ # usage: tools/irsame.sh [--check] OLD NEW [FILE...]   (compiler commands, e.g. build/ref/pystachy
+ #        ./pystachy or "python3 pystachy.py"; make irsame REF=<commit> runs it against that commit's compiler)
+-cd "$(dirname "$0")/.." || exit 1
++# SCRATCH COPY (alpha.2 qualification): runs from IRSAME_ROOT, keeps every case directory in
++# IRSAME_KEEP (outputs, statuses, case name) and shows every difference in full. Invocations unchanged.
++cd "${IRSAME_ROOT:?set IRSAME_ROOT to the repository root}" || exit 1
+ HOW=ir
+ [ "${1:-}" != --check ] || { HOW=check; shift; }
+ [ $# -ge 2 ] || { echo "usage: tools/irsame.sh [--check] OLD NEW [FILE...]" >&2; exit 2; }
+@@ -126,9 +128,9 @@
+     '' | *[!0-9]*) echo "tools/irsame.sh: no case times (PYSTACHY_CASE_TIMES needs date +%s%N, GNU date's)" >&2; TIMES= ;;
+   esac
+ fi
+-SHOW=3
+-T=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-irsame.XXXXXX") || exit 1
+-trap 'rm -rf "$T"' EXIT
++SHOW=1000000
++T=${IRSAME_KEEP:?set IRSAME_KEEP to an existing empty directory}
++{ [ -d "$T" ] && [ -z "$(ls -A "$T")" ]; } || { echo "IRSAME_KEEP must be an existing empty directory" >&2; exit 2; }
+ trap 'exit 130' INT TERM
+ 
+ # same FILE DIR: compile FILE with both compilers in DIR; DIR/report says what differs (empty: nothing)
+@@ -148,6 +150,7 @@
+     PYSTACHY_PATH=$mp $OLD $how "$1" -o "$2/old.ll" > "$2/old.msg" 2>&1; a=$?
+     PYSTACHY_PATH=$mp $NEW $how "$1" -o "$2/new.ll" > "$2/new.msg" 2>&1; b=$?
+   fi
++  printf '%s\n' "$a" > "$2/old.status"; printf '%s\n' "$b" > "$2/new.status"; printf '%s\n' "$1" > "$2/case"
+   messages=0
+   if ! cmp -s "$2/old.msg" "$2/new.msg"; then
+     if ! normalize_messages "$OLD_LIB" "$2/old.msg" > "$2/old.normal.msg" ||
+@@ -159,20 +162,20 @@
+   {
+     [ $a = $b ] || echo "  exit status $a -> $b"
+     if [ $messages = 1 ]; then
+-      echo "  messages:"; diff -u "$2/old.normal.msg" "$2/new.normal.msg" | sed 1,2d | head -12
++      echo "  messages:"; diff -u "$2/old.normal.msg" "$2/new.normal.msg" | sed 1,2d
+     fi
+     if [ -f "$2/old.ll" ] && [ -f "$2/new.ll" ]; then
+       if ! cmp -s "$2/old.ll" "$2/new.ll"; then
+         l=$(diff "$2/old.ll" "$2/new.ll" | sed -n '1s/^\([0-9]*\).*/\1/p')
+         fn=$(head -n "${l:-0}" "$2/old.ll" | sed -n 's/^define [^@]*\(@[^(]*\)(.*/\1/p' | tail -1)
+-        echo "  IR${l:+ from line $l}${fn:+ (in $fn)}:"; diff -u "$2/old.ll" "$2/new.ll" | sed 1,2d | head -16
++        echo "  IR${l:+ from line $l}${fn:+ (in $fn)}:"; diff -u "$2/old.ll" "$2/new.ll" | sed 1,2d
+       fi
+     elif [ -f "$2/old.ll" ] || [ -f "$2/new.ll" ]; then
+       echo "  IR written by only one compiler"
+     fi
+   } > "$2/report.part"
+   mv "$2/report.part" "$2/report"
+-  rm -f "$2/old.ll" "$2/new.ll"
++  : # (outputs kept for analysis)
+ }
+ # a worker: each program whose directory it is the first to create (mkdir is atomic)
+ worker() {

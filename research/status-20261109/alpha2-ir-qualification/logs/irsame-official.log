@@ -1,0 +1,40 @@
+start 2026-11-09T13:37:18Z HEAD=52da3b8ffd394f124697dfaadb0d0e55108866a7 pystachy=0f431daaa63f86ed6cd58e293689aacdfaf7338c48a281f6662b2281694e3474
+heavy.sh: slot 2 acquired at 13:39:33 for: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/alpha2-qual.tqelyE/scripts/clean-env.sh make PY=/usr/local/bin/python3.13 irsame REF=d6b9b3f18bc5adf0da021da46f74c9837be0c604
+build/ref: building the compiler of d6b9b3f18bc5adf0da021da46f74c9837be0c604 (d6b9b3f18bc5adf0da021da46f74c9837be0c604)
+PYSTACHY_HOME= tools/irsame.sh build/ref/pystachy ./pystachy 
+DIFF tests/programs/apps/byte_bpe.py
+  IR from line 995:
+@@ -992,7 +992,7 @@
+ @s.78 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.79 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.80 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.81 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
++@s.81 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+ @s.82 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.83 = private unnamed_addr global {i64, i64, i64, [73 x i8]} {i64 72, i64 0, i64 73, [73 x i8] c"'s|'t|'re|'ve|'m|'ll|'d| ?[a-zA-Z]+| ?\5Cd+| ?[^\5Csa-zA-Z\5Cd]+|\5Cs+(?!\5CS)|\5Cs+\00"}, align 8
+ @s.84 = private unnamed_addr global {i64, i64, i64, [3 x i8]} {i64 2, i64 0, i64 3, [3 x i8] c"Li\00"}, align 8
+DIFF tests/programs/apps/example_linediff.py
+  IR from line 1060:
+@@ -1057,7 +1057,7 @@
+ @s.129 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.130 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.131 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.132 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
++@s.132 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+ @s.133 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.134 = private unnamed_addr global {i64, i64, i64, [18 x i8]} {i64 17, i64 0, i64 18, [18 x i8] c"get_close_matches\00"}, align 8
+ @s.135 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"ndiff\00"}, align 8
+DIFF tests/programs/apps/example_mailmerge.py
+  IR from line 992:
+@@ -989,7 +989,7 @@
+ @s.75 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"a\00"}, align 8
+ @s.76 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"u\00"}, align 8
+ @s.77 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"T3sis\00"}, align 8
+-@s.78 = private unnamed_addr global {i64, i64, i64, [98 x i8]} {i64 97, i64 0, i64 98, [98 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/build/ref/lib/types.py)\00"}, align 8
++@s.78 = private unnamed_addr global {i64, i64, i64, [88 x i8]} {i64 87, i64 0, i64 88, [88 x i8] c"cannot import name 'GenericAlias' from 'types' (/home/user/wt/alpha2-qual/lib/types.py)\00"}, align 8
+ @s.79 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c"ImportError\00"}, align 8
+ @s.80 = private unnamed_addr global {i64, i64, i64, [14 x i8]} {i64 13, i64 0, i64 14, [14 x i8] c"ascii_letters\00"}, align 8
+ @s.81 = private unnamed_addr global {i64, i64, i64, [16 x i8]} {i64 15, i64 0, i64 16, [16 x i8] c"ascii_lowercase\00"}, align 8
+264 of 4354 differ
+make: *** [Makefile:270: irsame] Error 1
+exit 2 at 2026-11-09T13:45:13Z

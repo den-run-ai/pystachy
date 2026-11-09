@@ -1,0 +1,39 @@
+#1187 (52da3b8f) with #1188 (4189a6a2, base main) and #1189 (69b3c95e, stacked on #1188)
+git merge-tree --write-tree, git 2.43.0; heads read live from GitHub (unchanged from local refs)
+
+#1187 + #1188: clean (tree be7603eade811cd16d917739a07a00fdef892986). #1188 changes only the JIT
+  opt pipeline for PYSTACHY_JIT_CODEGEN=0 (driver.py) plus a test and jitprobe; no `pystachy ir`
+  output change.
+
+#1187 + #1189 (includes #1188): 2 textual conflicts (tree 68da6db29ae147651c1874de7d8378184eb40d12)
+  1. src/pystachy_compiler/driver.py, main(): #1187 adds `jitinline = JIT_INLINE` and validates
+     PYSTACHY_JIT_INLINE before cache locks; #1189 renames `mcjit = False` to `llcobj = False` and
+     changes the codegen error to "is not 0 (llc -O0) or 2 (default ORC)".
+     Resolution: keep `llcobj = False`, `jitinline = JIT_INLINE`, #1189's error text, then #1187's
+     validation block. Elsewhere the merge is consistent: the auto-merged pipeline uses `jitinline`
+     (line ~1101) and no `lim`/`mcjit` use remains outside the conflict.
+  2. tools/program_cache_probe.py launch rows: #1187 adds a stray PYSTACHY_ARGV0 to the "MCJIT" row;
+     #1189 renames that row "-O0 code generation".
+     Resolution: ("-O0 code generation", {"PYSTACHY_JIT_CODEGEN": "0", "PYSTACHY_ARGV0": "/caller/not-the-compiler"})
+  Auto-merged and coherent: runtime.c (#1187 gates ARGV0 on PYSTACHY_JIT_HANDOFF; #1189's driver sets
+  PYSTACHY_JIT_HANDOFF on every JIT launch, format "MASK;FD,..." without DIR), docs/internals.md,
+  docs/testing.md, tools/test_jitfdprobe.py (#1187's new tests do not depend on MCJIT).
+  Not run: building or testing the merged trees.
+
+If #1188 and #1189 merge before #1187, docs/releases/v0.4.0-alpha.2.md needs:
+  - Remove the known issue "With LLVM perf support, opt-in `PYSTACHY_JIT_CODEGEN=0` (MCJIT) retains
+    LLVM's own close-on-exec jitdump descriptor ... tracked in #1167": #1189 removes MCJIT and
+    states "Fixes #1167" (verify #1167 is closed by that merge before claiming it fixed).
+  - Reword the #1176 bullet's "Remove the private MCJIT dump directory; the remaining LLVM-owned
+    descriptor is described below." (the forward reference would point at nothing).
+  - Add #1188: with PYSTACHY_JIT_CODEGEN=0, except clauses no longer read stale or unset values
+    from the loop whose call raised (Refs #430).
+  - Add #1189: PYSTACHY_JIT_CODEGEN=0 compiles with `llc -O0` and lli's ORC links the object,
+    replacing MCJIT; the invalid-value message now names "llc -O0" instead of "MCJIT". Its own
+    measurement: print(1) median startup 39 -> 56 ms in that opt-in mode (no release-wide
+    performance claim).
+  - #1187's head would change (main merged in): the byte-exact IR qualification here covers
+    52da3b8f vs d6b9b3f1 only. Rerun it on the new head against the new main before merging
+    (about 2 to 3 minutes per corpus pass on this machine with the scripts here). Neither #1188
+    nor #1189 changes `pystachy ir` lowering (#1189 adds an -O0-only constant), so no new IR
+    difference is expected, but that is a prediction, not evidence.

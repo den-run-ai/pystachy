@@ -1,0 +1,48 @@
+Counts (corpus: 4354 cases = tools/irsame.sh's list, corpus-list.txt sha256 7e6bf034...)
+Main d6b9b3f1 compiler sha256 92f4a6f3...; #1187 52da3b8f compiler sha256 0f431daa...
+
+Run                                   layout (OLD vs NEW home)                 verdict          time
+O1 make irsame REF=d6b9b3f1 (unchanged) W/build/ref (main) vs W (#1187)          264 of 4354      ~2 min corpus pass
+O2 instrumented, same layout           W/build/ref (main) vs W (#1187)          264 of 4354      133 s
+A  baseline, same commit               q/h0 (main) vs q/h1 (main), equal-length 264 of 4354      130 s
+B  candidate                           q/h0 (main) vs q/h1 (#1187), equal-length 264 of 4354      130 s
+S1, S2 subset reruns                   W/build/ref vs W, 441 cases              264 of 441 each  68-69 s
+
+Same-path byte-exact comparison (no normalization at all; each compiler with its own lib/,
+runtime.c, VERSION at the same real home path q/h1): main (run A, NEW) vs #1187 (run B, NEW):
+  4354 of 4354 identical in exit status, raw messages and raw IR (2469 IR outputs, 1885 rejections).
+  Confirmed by sha256 (analyze.py cross) and by cmp on the raw files.
+
+Differences of the ordinary oracle (O1 = O2): 264 cases, all category (a), path-only:
+  251 IR-only: 307 differing line pairs, all compiler string constants holding the home real path
+      (305 "cannot import name 'X' from 'M' (<home>/lib/M.py)", 2 sys.prefix constants in
+      library/lib_gettext.py and library/sys_prefix.py); 0 differing lines without a home path;
+      0 home-path occurrences outside string constants; messages and statuses raw-identical.
+      All 251 byte-identical after rewriting /home/user/wt/alpha2-qual/build/ref ->
+      /home/user/wt/alpha2-qual in those constants with their lengths (#527's scope).
+  13 diagnostics-only (rejections, exit 1 in both): the library prefix as spelled in FILE.py:LINE
+      source locations (build/ref/lib/ vs lib/; 25 occurrences: 13 at line start, 12 after
+      "for the call at"); the oracle keeps them raw because the text has in-word apostrophes.
+      All 13 byte-identical after replacing exactly those locations.
+  0 exit-status differences; 0 IR written by only one compiler.
+  (b) intended #1187 consequences: 0.  (c) unexplained: 0.
+Also: 58 further cases have raw message differences that the oracle's own normalization accepts;
+  all 58 are byte-identical after replacing the library prefix in FILE.py:LINE locations only
+  (in O2, A and B).
+
+Baseline A (same binary, same home contents, only the path differs): the same 264 cases with the
+  same kinds; per-case differing lines identical to O2's and B's once home paths and length fields
+  are masked (results/lines-equivalence.txt); all 264 byte-identical after the same-length
+  h0 -> h1 rewrite in A and in B.
+
+Environment integrity: inventories of W (9985 entries), q/h0, q/h1 and W/build/ref unchanged across
+  every run; every run completed all cases in corpus order; main's compiler at q/h0 gave
+  byte-identical outputs for all 4354 cases in runs A and B; the 441-case subset was identical
+  across O2, S1 and S2 for both compilers; O1's displayed blocks are prefixes of O2's reports.
+
+CI at 52da3b8f (GitHub, read 2026-11-09 ~13:40 UTC): 22 check runs, 21 success, 1 skipped
+  (DCO certified (fork pull requests), expected for a same-repository PR), 0 failed/cancelled/pending;
+  Submission format status success. CI run 42571593239: 16 jobs success incl. aggregate Verification.
+  Lint and Performance smoke success. Installation/Packages run only on main pushes.
+  Codex: review of 52da3b8 completed, "Didn't find any major issues"; 0 review threads, 0 reviews.
+  Head/base unchanged (52da3b8f on d6b9b3f1); main still d6b9b3f1; mergeable_state clean; draft.

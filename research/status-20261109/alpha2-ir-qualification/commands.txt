@@ -1,0 +1,79 @@
+Alpha.2 IR qualification of #1187: commands as run (2026-11-09, UTC)
+E = /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/alpha2-qual.tqelyE
+W = /home/user/wt/alpha2-qual (detached at #1187 head 52da3b8ffd394f124697dfaadb0d0e55108866a7, tree 0e84b32e17da9091f5d7dba9b36dcda1cea749f9)
+Main = d6b9b3f18bc5adf0da021da46f74c9837be0c604 (tree 254d339d941a0137eed27c40e41a0241bb8c7d8a)
+Machine: Linux 6.18.44 x86-64, 4 vCPU, ext4 (/dev/vda) for the checkout, homes and outputs;
+LLVM 18.1.3 (/usr/lib/llvm-18/bin); Python 3.13.18 for the hosted bootstrap stage (CI pins 3.13.16).
+Every command ran through heavy.sh (machine-wide slots) and scripts/clean-env.sh, which unsets every
+inherited PYSTACHY_* variable and sets PATH=/usr/lib/llvm-18/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin,
+PYSTACHY_JOBS=2, LC_ALL=C. Nothing in W's tracked tree changed (git status: only ignored build
+products: build/, pystachy, __pycache__/).
+
+1. Build #1187 (logs/build-pr.log)
+   cd W && heavy.sh clean-env.sh make PY=/usr/local/bin/python3.13
+   -> fixed point stage1 == stage2 == stage3 (878858 lines); rt1 == rt2 == rt3 (19907 lines)
+   -> ./pystachy sha256 0f431daaa63f86ed6cd58e293689aacdfaf7338c48a281f6662b2281694e3474
+
+2. Build main in a temporary detached worktree (logs/build-main.log; worktree removed afterwards)
+   git -C /home/user/pystachy worktree add --detach E/main-wt d6b9b3f1...
+   cd E/main-wt && heavy.sh clean-env.sh make PY=/usr/local/bin/python3.13
+   -> fixed point (878852 lines); rt1 == rt2 == rt3 (19907 lines)
+   -> ./pystachy sha256 92f4a6f39191eb1086ec42183bb7822170ab5c3e387f184b280dd0350be12aa9
+      (byte-identical to W/build/ref/pystachy, which `make irsame` built in step 3)
+
+3. Ordinary oracle, unchanged (logs/irsame-official.log)  = run O1
+   cd W && heavy.sh clean-env.sh make PY=/usr/local/bin/python3.13 irsame REF=d6b9b3f18bc5adf0da021da46f74c9837be0c604
+   -> "264 of 4354 differ" (irsame exit 1, make exit 2); first three shown: apps/byte_bpe.py,
+      apps/example_linediff.py, apps/example_mailmerge.py (ImportError string with the library path)
+
+4. Instrumented oracle: scripts/irsame-keep.sh = tools/irsame.sh with only the changes in
+   scripts/irsame-keep.diff (run from IRSAME_ROOT=W, keep every case directory with both IR files,
+   both message files, both exit statuses and the case name, print every difference in full).
+   Compiler invocations, PYSTACHY_PATH preparation, rt detection and message normalization unchanged.
+   scripts/run-pair.sh NAME KEEP OLD NEW: inventories W and both homes (scripts/manifest.py, sha256 of
+   every file) before and after, runs irsame-keep.sh with PYSTACHY_HOME= (as make irsame), checks all
+   4354 cases completed in corpus order (scripts/analyze.py collect, corpus-list.txt).
+   O2: run-pair.sh O2-official-layout E/o2t build/ref/pystachy ./pystachy        (same layout as O1)
+   Homes for the same-path design (equal-length real paths, no symlinks):
+     E/q/h0 = git archive of main + main's binary (92f4a6f3)
+     E/q/h1 = git archive of main + main's binary (run A), then replaced by
+              git archive of #1187 + #1187's binary (0f431daa) for run B (logs/swap.log)
+   A:  run-pair.sh A-main-h0-vs-main-h1 E/q/t E/q/h0/pystachy E/q/h1/pystachy   (same-commit baseline)
+   B:  run-pair.sh B-main-h0-vs-pr-h1   E/q/t E/q/h0/pystachy E/q/h1/pystachy   (candidate)
+   S1, S2: scripts/run-subset.sh (official layout, 441 cases: all 264 differing ones, pystachy.py,
+       runtime.py, the 12 rtmode cases, every 25th corpus case), twice
+   Each run: oracle.out, log (inventories, verdict, integrity) under E/q/runs/NAME.meta/
+
+5. Analysis (scripts/analyze.py, run with python3 -I; unit test: scripts/test_subst.py, 11/11 pass)
+   analyze.py summary RUN.json                          -> results/{O2,A,B}-summary.txt
+   analyze.py subst RUN_DIR RUN.json OLDHOME NEWHOME     -> results/{O2,A,B}-subst.tsv, -lines.txt
+       (#527 rewrite: home real path inside the compiler's string constants, updating byte length,
+        array sizes and ASCII character count together; any other line stays raw)
+   analyze.py cross A.json new B.json new                -> results/same-path-main-vs-pr.txt
+   analyze.py cross A.json old B.json old                -> results/rerun-main-h0.txt
+   independent cmp loop over raw files                   -> results/same-path-cmp.txt
+   diagnostics: results/O2-message-subst.txt, results/normalized-messages.txt
+   line equivalence across runs: results/lines-equivalence.txt
+   reruns: results/subset-reruns.txt; O1 vs O2 tie: results/O1-vs-O2.txt
+   per-case classification: classification.tsv
+
+6. GitHub (read only, MCP): #1187 get, get_check_runs (per_page 100), get_status, get_comments,
+   get_review_comments, get_reviews; #1188/#1189 get; main list_commits; #527 get/get_comments.
+
+7. Merge checks (read only): git merge-tree --write-tree 52da3b8f 4189a6a2 / 69b3c95e
+   -> merge-1188-1189.txt
+
+Evidence layout (E):
+  commands.txt, counts.txt, classification.tsv (264 rows, all category a), merge-1188-1189.txt
+  corpus-list.txt (4354 cases, oracle order), subset-list.txt (441)
+  logs/: build-pr.log, build-main.log, irsame-official.log (O1), runA/runB/runO2.log, subset-reruns.log, swap.log
+  results/: {O2,A,B}-summary.txt (every differing case and what differs), {O2,A,B}-subst.tsv,
+            {O2,A,B}-lines.txt (every differing raw IR line), O2-oracle-full-report.txt (all 264 full diffs),
+            O2-message-subst.txt, normalized-messages.txt, lines-equivalence.txt, same-path-*.txt,
+            rerun-main-h0.txt, subset-reruns.txt, O1-vs-O2.txt
+  differing-cases/: O2's 264 differing case directories (statuses, raw messages, oracle report; IR in the archive)
+  q/runs/*.json: sha256 of every output of every case, both compilers, all five runs (complete record)
+  q/runs/*.meta/: per-run log, inventories before/after (W, homes), full oracle output, case times
+  q/runs/{O2-official-layout,A-main-h0-vs-main-h1,B-main-h0-vs-pr-h1}.tar.gz: every raw output
+            (extract to rerun analyze.py subst/collect); S1/S2 raw outputs deleted (hashes kept in JSON)
+  q/h0, q/h1: the homes as used in run B (h0 main, h1 #1187); scripts/: every tool used

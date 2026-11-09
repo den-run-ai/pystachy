@@ -1,0 +1,15 @@
+start 2026-11-09T13:36:49Z HEAD=d6b9b3f18bc5adf0da021da46f74c9837be0c604 tree=254d339d941a0137eed27c40e41a0241bb8c7d8a
+heavy.sh: slot 1 acquired at 13:36:58 for: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/alpha2-qual.tqelyE/scripts/clean-env.sh make PY=/usr/local/bin/python3.13
+mkdir -p build
+PYSTACHY_AOT_OPT="2" /usr/local/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
+PYSTACHY_AOT_OPT=2 build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
+build/pystachy2 ir pystachy.py -o build/stage3.ll
+cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
+fixed point: stage1 == stage2 == stage3 (878852 lines of IR)
+/usr/local/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll
+build/pystachy1 rt runtime.py -o build/rt2.ll
+build/pystachy2 rt runtime.py -o build/rt3.ll
+cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (19907 lines)
+cp build/pystachy2 pystachy
+exit 0 at 2026-11-09T13:40:36Z
