@@ -122,7 +122,10 @@ python3.13 tests/upstream/json_repair/cli.py ./pystachy
   bounded windows for the earliest context-dependent terminator. Log text is
   sliced from the source only when requested. As before, at the start of an
   array item or object value the port skips a stray slash and recovers the
-  value that follows. Top-level comments resume the
+  value that follows. Upstream 0.64.1 through 0.64.8 drop that value instead:
+  `[/1,2]` repairs to `[2]` there and `[1, 2]` here, and `{"k":/42}` to
+  `{'k': ''}` there and `{'k': 42}` here. The replay corpus does not cover
+  this difference. Top-level comments resume the
   main parse loop so alternating comments and prose do not grow the native stack.
 
 The string-repair implementation remains upstream's roughly 900-line heuristic

@@ -17,6 +17,9 @@ against pristine upstream `ace9b23c`, on a shared 4-vCPU Linux x86-64 VM (Intel 
 and five measured batches each, pinned to one CPU. Values are medians of process medians.
 [All 330 processes, commands and source manifests](results/release-candidate-2026-11-02.json)
 are retained.
+Port changes merged on 4 November moved several of these workloads; a
+[9 November research re-measurement](https://github.com/den-run-ai/pystachy/blob/eed2912f204688c0b5244c04c72f480f9c98ef1f/research/status-20261109/json-repair/json-repair-remeasure-2026-11-09.json)
+on another host recorded them. The table remains the latest committed release measurement.
 
 | Workload, time per repair | Upstream, CPython | Port, CPython | Port, AOT | Port, JIT | AOT vs upstream |
 |---|---:|---:|---:|---:|---:|
@@ -43,6 +46,9 @@ scaling at both ends; values are AOT's speedup over upstream:
 - Upstream rebuilds brace state over the whole accumulated string after every escape, so
   its cost grows quadratically with escaped newlines. The port's incremental state alone
   is 44× faster on CPython at 2,000 escapes; AOT adds about 4×.
+- Upstream 0.64.4 made this linear, so the 187× applies to 0.64.1 through 0.64.3 only.
+  In an informal check on 9 November (CPython 3.13.18, `scaling.py`'s `escaped` input,
+  best of three, outputs checked), 2,000 escapes took 403 ms with 0.64.3 and 7.0 ms with 0.64.4.
 - Non-ASCII malformed text gains 1.4–1.7×. On an earlier alpha.4 candidate, `c3aaa068`, it
   gained nothing (0.91–1.01×): 41% of its instructions built the `JSONDecodeError` that the
   facade's first `json.loads()` attempt raises and discards, mostly `repr()` of the whole
