@@ -164,14 +164,11 @@ class CorpusShardTests(unittest.TestCase):
                                             text=True, capture_output=True, check=True, timeout=60)
                     self.assertCountEqual(result.stdout.splitlines(), cases)
 
-    def test_gc_reserve_has_valid_units_and_calibration_provenance(self):
+    def test_gc_table_reserves_no_jit_work_and_records_its_refresh(self):
+        # Identity halves run in their own jobs: a reserve row would leave one half heavier.
         text = (ROOT / "tests/gc_case_weights.txt").read_text()
-        rows = [line.split()[1:] for line in text.splitlines() if line.startswith("reserve ")]
-        self.assertEqual(len(rows), 1)
-        self.assertEqual(len(rows[0]), 2)
-        self.assertTrue(all(value.isascii() and value.isdigit() and len(value) <= 9 for value in rows[0]))
-        self.assertTrue(any(map(int, rows[0])))
-        self.assertRegex(text, r"(?m)^# Reserve calibration: [0-9a-f]{40}, full x86-64 CI run [0-9]+$")
+        self.assertEqual([line for line in text.splitlines() if line.split()[:1] == ["reserve"]], [])
+        self.assertRegex(text, r"(?m)^# Refreshed from [0-9a-f]{40}, CI run [0-9]+:$")
 
 
 class CaseWeightsToolTests(unittest.TestCase):

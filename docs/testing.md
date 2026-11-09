@@ -640,19 +640,12 @@ execution partition, order and sample unchanged. Each partition covers the full
 corpus; the aggregate requires both identity halves and every execution shard.
 The PR profile retains its sparse selection. Weight changes affect placement and
 order, never coverage or stress intervals.
-The GC table's `reserve W0 W1` row supplies initial weights before balancing identity
-cases. The current table retains the reserve and partition from the earlier combined
-identity/JIT schedule; separating the jobs does not rebalance or remove cases. Values
-use the table's weight units, and a missing table or reserve row means zero reserve.
-The table records the original calculation and compiler revision.
-The initial GC table profiles all 4,144 cases at `99f3451e` with the native compiler,
-collection every 1,000 allocations and `PYSTACHY_IRCHECK=1`. It uses CPU time from
-one stressed compilation per case, scaled to the median corpus program; its header
-records the compiler and profile hashes. These baseline costs guide placement;
-they do not measure combined CI job duration. JIT samples also enable the IR
-checker through `tests/run.sh`'s default. Subsequent refreshes use the oracle's
-measured wall times, including both unstressed and stressed compilations and their
-comparison.
+A GC table `reserve W0 W1` row would supply initial weights before balancing identity
+cases, in the table's weight units; a missing table or reserve row means zero reserve.
+The current table has none. Its header names the commit and CI run whose x86-64 and
+ARM64 `gc-ir-N-times.log` files it was refreshed from: each case's wall time for both
+compilations and their comparison, scaled to the median corpus program. JIT samples
+also enable the IR checker through `tests/run.sh`'s default.
 Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
 both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
 execution timings describe different work and should not be mixed into that table.
