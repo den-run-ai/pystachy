@@ -84,6 +84,7 @@ fails `make check-recordings` and a whole-corpus `tests/run.sh` instead of being
 | `NAME.in`, when present | Input supplied to the program. |
 | `NAME.path`, when present | Module path: `PYTHONPATH` for the recording, `PYSTACHY_PATH` for the compiled test. |
 | `NAME.full`, when present | Send stdout to `/dev/full` to check failed writes. |
+| `NAME` ending in `_closed_stdin`, `_closed_stdout` or `_closed_stderr` | Start the program with that descriptor closed; CPython's `sys.stdin`, `sys.stdout` or `sys.stderr` is then `None`. |
 
 An AOT build's diagnostics are kept separate from the program's stderr and must be empty.
 The runner enables `PYSTACHY_IRCHECK=1` unless explicitly overridden.
