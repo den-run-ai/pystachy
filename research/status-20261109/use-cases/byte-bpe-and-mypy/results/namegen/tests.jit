@@ -1,0 +1,6 @@
+ok test_candidate_suffixes
+ok test_exported_name
+ok test_make_module_translation_map
+ok test_name_generator
+ok test_name_generator_with_separate
+[exit 0]

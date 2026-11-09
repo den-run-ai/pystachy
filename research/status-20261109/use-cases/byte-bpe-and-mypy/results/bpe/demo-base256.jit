@@ -1,0 +1,6 @@
+Vocabulary: 256
+UTF-8 bytes: 10
+Tokens: [116, 97, 98, 9, 104, 101, 114, 101, 195, 169]
+Decoded: 'tab\thereé'
+Exact round trip: True
+[exit 0]

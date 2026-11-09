@@ -1,0 +1,42 @@
+heavy.sh: slot 2 acquired at 15:46:26 for: timeout 600 /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/scripts/bpe_spot.sh /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D
+compiler sha256 0f431daaa63f86ed6cd58e293689aacdfaf7338c48a281f6662b2281694e3474
+pystachy v0.4.0-alpha.2 (commit unknown)
+Python 3.13.18
+2026-11-09T15:46:26Z
+9775aff77bb52efc port
+ab44d9b2600ee956 pristine
+fdb3eaeccdc17cc9 r1_decoder_annotation
+cb9a5f4dad27be0c r2_errors_keyword
+fe9021606e5f9ce6 r3_enumerate_zip
+d6937f3b63d990a4 r4_ranks_annotation
+17e354a1b3c17105 r5_untyped_counter
+aot build status 0 (425736 bytes)
+demo custom adapted: identical to pristine CPython
+demo custom jit: identical to pristine CPython
+demo custom aot: identical to pristine CPython
+demo default adapted: identical to pristine CPython
+demo default jit: identical to pristine CPython
+demo default aot: identical to pristine CPython
+demo base256 adapted: identical to pristine CPython
+demo base256 jit: identical to pristine CPython
+demo base256 aot: identical to pristine CPython
+demo toosmall adapted: identical to pristine CPython
+demo toosmall jit: identical to pristine CPython
+demo toosmall aot: identical to pristine CPython
+Vocabulary: 1024
+UTF-8 bytes: 32
+Tokens: [72, 957, 111, 44, 469, 101, 98, 553, 105, 284, 33, 32, 230, 151, 165, 230, 156, 172, 232, 170, 158, 32, 240, 159, 166, 137]
+Decoded: 'Hello, Sebastian! 日本語 🦉'
+Exact round trip: True
+[exit 0]
+fixture jit: matches byte_bpe.out
+fixture aot: matches byte_bpe.out
+ir probe port: status 0; 
+ir probe pristine: status 1; /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/main/examples/byte_bpe/stages.py:19: error: class bpe_tokeniser.SimpleBytePairEncoding is not supported: cannot infer the type of field '_decoder'; annotate it (self._decoder: T = ...) 
+ir probe r1_decoder_annotation: status 1; /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/main/examples/byte_bpe/stages.py:19: error: class bpe_tokeniser.SimpleBytePairEncoding is not supported: cannot infer the type of field '_decoder'; annotate it (self._decoder: T = ...) 
+ir probe r2_errors_keyword: status 1; /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/variants/r2_errors_keyword/bpe_tokeniser.py:49: error: keyword arguments to bytes.decode() are not supported; pass them by position 
+ir probe r3_enumerate_zip: status 1; /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/variants/r3_enumerate_zip/bpe_tokeniser.py:65: error: zip() cannot be nested in enumerate() here; make it a list first, list(zip(...)) 
+ir probe r4_ranks_annotation: status 0; 
+ir probe r5_untyped_counter: status 1; /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/variants/r5_untyped_counter/bpe_tokeniser.py:105: error: Counter() does not bind its type variable '_T': no argument's type gives it; name it where the object goes (q: Counter[int] = Counter(...), a field or a parameter annotated so) or in the call (Counter[int](...)) (specializing collections.Counter(t
+2026-11-09T15:47:23Z
+exit 0

@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/main/examples/byte_bpe/demo.py", line 32, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/main/examples/byte_bpe/demo.py", line 19, in main
+    tokenizer = SimpleBytePairEncoding.train(training_data, vocab_size, BPE_PATTERN)
+  File "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/main/bench/pyperformance/bpe_tokeniser.py", line 53, in train
+    mergeable_ranks = bpe_train(data=training_data, vocab_size=vocab_size, pat_str=pat_str)
+  File "/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/main/bench/pyperformance/bpe_tokeniser.py", line 86, in bpe_train
+    raise ValueError("vocab_size must be at least 256, so we can encode all bytes")
+ValueError: vocab_size must be at least 256, so we can encode all bytes

@@ -1,0 +1,21 @@
+heavy.sh: slot 2 acquired at 16:05:52 for: timeout 600 /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/scripts/namegen_spot.sh /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/namegen-input/namegen.py: OK
+67f11d56288c6debbac4dfc14e4203f8c2590136bc9dd05f7429107fedd9a52c  /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentJ.UvKo0D/namegen-probe/namegen_probe.py
+aot build status 0
+namegen rounds=2 jit: identical to CPython (27 lines)
+namegen rounds=2 aot: identical to CPython (27 lines)
+namegen rounds=2000 jit: identical to CPython (27 lines)
+namegen rounds=2000 aot: identical to CPython (27 lines)
+checksum 350336448
+[exit 0]
+199684fce19402939ff91cc929efb95e55472f9fabc2820d1213e8b42bb0c794  /home/user/wt/devenv/lib/python3.13/site-packages/mypyc/test/test_namegen.py
+ok test_candidate_suffixes
+ok test_exported_name
+ok test_make_module_translation_map
+ok test_name_generator
+ok test_name_generator_with_separate
+[exit 0]
+upstream tests jit: identical to CPython
+upstream tests aot: identical to CPython
+2026-11-09T16:05:56Z
+exit 0

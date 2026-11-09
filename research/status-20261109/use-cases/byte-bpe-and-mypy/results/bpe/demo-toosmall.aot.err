@@ -1,0 +1,1 @@
+ValueError: vocab_size must be at least 256, so we can encode all bytes
