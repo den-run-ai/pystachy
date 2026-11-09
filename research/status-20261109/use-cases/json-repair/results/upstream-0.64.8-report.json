@@ -1,0 +1,76 @@
+{
+  "cases": 837,
+  "matched": 835,
+  "problems": [
+    {
+      "id": 170,
+      "input": "[1e+]",
+      "flags": {
+        "return_objects": true
+      },
+      "sources": [
+        "tests/test_parse_number.py:32 (test_parse_number_plus_outside_exponent)"
+      ],
+      "expected": {
+        "value": [
+          "list",
+          [
+            [
+              "str",
+              [
+                49,
+                101
+              ]
+            ]
+          ]
+        ]
+      },
+      "actual": {
+        "value": [
+          "list",
+          [
+            [
+              "int",
+              "1"
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": 171,
+      "input": "[1e-]",
+      "flags": {
+        "return_objects": true
+      },
+      "sources": [
+        "tests/test_parse_number.py:32 (test_parse_number_plus_outside_exponent)"
+      ],
+      "expected": {
+        "value": [
+          "list",
+          [
+            [
+              "str",
+              [
+                49,
+                101
+              ]
+            ]
+          ]
+        ]
+      },
+      "actual": {
+        "value": [
+          "list",
+          [
+            [
+              "int",
+              "1"
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

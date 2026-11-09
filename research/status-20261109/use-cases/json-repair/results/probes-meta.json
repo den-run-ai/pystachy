@@ -1,0 +1,476 @@
+{
+ "10000": {
+  "id": 10000,
+  "api": "repair_json",
+  "input": "{\"a\": /* comment */ 1}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u240"
+ },
+ "10001": {
+  "id": 10001,
+  "api": "repair_json",
+  "input": "{\"a\": // note\n \"x\", \"b\": 2}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u240"
+ },
+ "10002": {
+  "id": 10002,
+  "api": "repair_json",
+  "input": "{\"a\": /* c */ {\"b\": 1}}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u240"
+ },
+ "10003": {
+  "id": 10003,
+  "api": "repair_json",
+  "input": "{\"a\": # c\n true}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u240"
+ },
+ "10004": {
+  "id": 10004,
+  "api": "loads",
+  "input": "{\"a\" /* note */: 1}",
+  "flags": {},
+  "tag": "u240-1074"
+ },
+ "10005": {
+  "id": 10005,
+  "api": "loads",
+  "input": "{\"a\" /* note */: 1}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "u240-1074"
+ },
+ "10006": {
+  "id": 10006,
+  "api": "repair_json",
+  "input": "[1, /* comment */]",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u240"
+ },
+ "10007": {
+  "id": 10007,
+  "api": "loads",
+  "input": "{\"a\":0,\"a\":1}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "u246"
+ },
+ "10008": {
+  "id": 10008,
+  "api": "loads",
+  "input": "{\"a\":0,\"a\":1}",
+  "flags": {
+   "strict": true,
+   "skip_json_loads": true
+  },
+  "tag": "u246"
+ },
+ "10009": {
+  "id": 10009,
+  "api": "repair_json",
+  "input": "{\"path\": \"C:\\\\\"",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u247"
+ },
+ "10010": {
+  "id": 10010,
+  "api": "repair_json",
+  "input": "[\"R\\\\\"]",
+  "flags": {
+   "skip_json_loads": true,
+   "return_objects": true
+  },
+  "tag": "u247"
+ },
+ "10011": {
+  "id": 10011,
+  "api": "repair_json",
+  "input": "{}, {\"id\": 1}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u249"
+ },
+ "10012": {
+  "id": 10012,
+  "api": "repair_json",
+  "input": "[1], []",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u249"
+ },
+ "10013": {
+  "id": 10013,
+  "api": "loads",
+  "input": "{\"a\": 1,, \"b\": 2}",
+  "flags": {},
+  "tag": "u250"
+ },
+ "10014": {
+  "id": 10014,
+  "api": "loads",
+  "input": "{\"a\": 1,,2}",
+  "flags": {},
+  "tag": "u250"
+ },
+ "10015": {
+  "id": 10015,
+  "api": "loads",
+  "input": "{\"a\": 1,, \"b\": 2}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "u250"
+ },
+ "10016": {
+  "id": 10016,
+  "api": "repair_json",
+  "input": "{\"n\": 1e+}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u251"
+ },
+ "10017": {
+  "id": 10017,
+  "api": "repair_json",
+  "input": "[1e, 2]",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u251"
+ },
+ "10018": {
+  "id": 10018,
+  "api": "repair_json",
+  "input": "[1e+, 2]",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "u251"
+ },
+ "10019": {
+  "id": 10019,
+  "api": "repair_json",
+  "input": "\"\"",
+  "flags": {
+   "return_objects": false
+  },
+  "tag": "cb5b80e"
+ },
+ "10020": {
+  "id": 10020,
+  "api": "repair_json",
+  "input": "\"\"",
+  "flags": {
+   "logging": true,
+   "return_objects": true
+  },
+  "tag": "cb5b80e"
+ },
+ "10021": {
+  "id": 10021,
+  "api": "repair_json",
+  "input": "[/1,2]",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "slash"
+ },
+ "10022": {
+  "id": 10022,
+  "api": "repair_json",
+  "input": "[/abc]",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "slash"
+ },
+ "10023": {
+  "id": 10023,
+  "api": "repair_json",
+  "input": "{\"k\":/42}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "slash"
+ },
+ "10024": {
+  "id": 10024,
+  "api": "repair_json",
+  "input": "{\"k\":/ /*x*/true}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "slash"
+ },
+ "10025": {
+  "id": 10025,
+  "api": "loads",
+  "input": "{/* unclosed }",
+  "flags": {
+   "strict": true
+  },
+  "tag": "comment-unclosed"
+ },
+ "10026": {
+  "id": 10026,
+  "api": "loads",
+  "input": "{/* note */ \"a\" /* note */: 1 /* note */, /* note */ \"b\": 2 /* note */}",
+  "flags": {
+   "logging": true
+  },
+  "tag": "comment-boundary"
+ },
+ "10027": {
+  "id": 10027,
+  "api": "loads",
+  "input": "{/* note */ \"a\" /* note */: 1 /* note */, /* note */ \"b\": 2 /* note */}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "comment-boundary"
+ },
+ "10028": {
+  "id": 10028,
+  "api": "loads",
+  "input": "{// note\n \"a\" // note\n: 1 // note\n, // note\n \"b\": 2 // note\n}",
+  "flags": {
+   "logging": true
+  },
+  "tag": "comment-boundary"
+ },
+ "10029": {
+  "id": 10029,
+  "api": "loads",
+  "input": "{// note\n \"a\" // note\n: 1 // note\n, // note\n \"b\": 2 // note\n}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "comment-boundary"
+ },
+ "10030": {
+  "id": 10030,
+  "api": "loads",
+  "input": "{# note\n \"a\" # note\n: 1 # note\n, # note\n \"b\": 2 # note\n}",
+  "flags": {
+   "logging": true
+  },
+  "tag": "comment-boundary"
+ },
+ "10031": {
+  "id": 10031,
+  "api": "loads",
+  "input": "{# note\n \"a\" # note\n: 1 # note\n, # note\n \"b\": 2 # note\n}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "comment-boundary"
+ },
+ "10032": {
+  "id": 10032,
+  "api": "repair_json",
+  "input": "[fal",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "heur-fal"
+ },
+ "10033": {
+  "id": 10033,
+  "api": "repair_json",
+  "input": "{\"a\": fal",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "heur-fal"
+ },
+ "10034": {
+  "id": 10034,
+  "api": "repair_json",
+  "input": "{\"a\":1}{\"a\":2}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "heur-repeat"
+ },
+ "10035": {
+  "id": 10035,
+  "api": "repair_json",
+  "input": "{\"a\":1}{\"b\":2}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "heur-repeat"
+ },
+ "10036": {
+  "id": 10036,
+  "api": "repair_json",
+  "input": "{\"a\": \"\\ud83d\\ude00}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "heur-emoji"
+ },
+ "10037": {
+  "id": 10037,
+  "api": "repair_json",
+  "input": "{\"a\": \"x\\ud83d\\ude00y\"",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "heur-emoji"
+ },
+ "10038": {
+  "id": 10038,
+  "api": "repair_json",
+  "input": "{\"a\": \"\\ud83d\\ude00\"}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "heur-emoji-valid"
+ },
+ "10039": {
+  "id": 10039,
+  "api": "repair_json",
+  "input": "42",
+  "flags": {
+   "skip_json_loads": true,
+   "return_objects": true
+  },
+  "tag": "prim-root"
+ },
+ "10040": {
+  "id": 10040,
+  "api": "repair_json",
+  "input": "\"x\"",
+  "flags": {
+   "skip_json_loads": true,
+   "return_objects": true
+  },
+  "tag": "prim-root"
+ },
+ "10041": {
+  "id": 10041,
+  "api": "repair_json",
+  "input": "true",
+  "flags": {
+   "skip_json_loads": true,
+   "return_objects": true
+  },
+  "tag": "prim-root"
+ },
+ "10042": {
+  "id": 10042,
+  "api": "repair_json",
+  "input": "12345678901234567890",
+  "flags": {
+   "skip_json_loads": true,
+   "return_objects": true
+  },
+  "tag": "prim-root"
+ },
+ "10043": {
+  "id": 10043,
+  "api": "repair_json",
+  "input": "/* c */ 42",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "prim-prose"
+ },
+ "10044": {
+  "id": 10044,
+  "api": "repair_json",
+  "input": "The answer is 42",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "prim-prose"
+ },
+ "10045": {
+  "id": 10045,
+  "api": "repair_json",
+  "input": "42 // c",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "prim-prose"
+ },
+ "10046": {
+  "id": 10046,
+  "api": "loads",
+  "input": "[\u00e9]",
+  "flags": {},
+  "tag": "unicode"
+ },
+ "10047": {
+  "id": 10047,
+  "api": "loads",
+  "input": "{\u754c:1}",
+  "flags": {},
+  "tag": "unicode"
+ },
+ "10048": {
+  "id": 10048,
+  "api": "loads",
+  "input": "{\u00e9:, \u754c:2}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "unicode-strict"
+ },
+ "10049": {
+  "id": 10049,
+  "api": "loads",
+  "input": "\"\u754c\":1}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "unicode-strict"
+ },
+ "10050": {
+  "id": 10050,
+  "api": "loads",
+  "input": "{\u00e9:1}{\u754c:2}",
+  "flags": {
+   "strict": true
+  },
+  "tag": "unicode-strict"
+ },
+ "10051": {
+  "id": 10051,
+  "api": "repair_json",
+  "input": "{\"a\": 123456789012345678901234567890,}",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "wide"
+ },
+ "10052": {
+  "id": 10052,
+  "api": "repair_json",
+  "input": "[18446744073709551616, -9223372036854775809]",
+  "flags": {
+   "return_objects": true
+  },
+  "tag": "wide"
+ }
+}

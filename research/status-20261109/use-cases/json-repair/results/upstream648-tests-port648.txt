@@ -1,0 +1,529 @@
+.............................................FF.................F....... [ 22%]
+...................F.....FF....F.......FFF...........FF............FFFFF [ 44%]
+.FFFFFFFF.FFFFFFFFFF.................................................... [ 67%]
+...........................FFF...F..................................FF.. [ 89%]
+.................................                                        [100%]
+=================================== FAILURES ===================================
+E   assert '' == '""'
+      
+      - ""
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_json_repair.py:85: assert '' == '""'
+E   assert '' == '""'
+      
+      - ""
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_json_repair.py:85: assert '' == '""'
+E   TypeError: JSONParser._initial_container_has_non_comma_trailing_content() missing 1 required positional argument: 'source'
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_json_repair.py:227: TypeError: JSONParser._initial_container_has_non_comma_trailing_content() missing 1 required positional argument: 'source'
+E   TypeError: repair_json() got an unexpected keyword argument 'schema'
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:26: TypeError: repair_json() got an unexpected keyword argument 'schema'
+E   TypeError: repair_json() got an unexpected keyword argument 'schema'
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:47: TypeError: repair_json() got an unexpected keyword argument 'schema'
+E   TypeError: repair_json() got an unexpected keyword argument 'schema'
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:52: TypeError: repair_json() got an unexpected keyword argument 'schema'
+E   TypeError: repair_json() got an unexpected keyword argument 'schema'
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:73: TypeError: repair_json() got an unexpected keyword argument 'schema'
+E   assert 0 == 1
+     +  where 0 = len([])
+     +    where [] = <src.json_repair.json_parser.JSONParser object at 0x7f7081673a10>.logger
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:100: assert 0 == 1
+E   assert 0 == 1
+     +  where 0 = len([])
+     +    where [] = <src.json_repair.json_parser.JSONParser object at 0x7f7081673e30>.logger
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:100: assert 0 == 1
+E   assert 0 == 1
+     +  where 0 = len([])
+     +    where [] = <src.json_repair.json_parser.JSONParser object at 0x7f7081664310>.logger
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:100: assert 0 == 1
+E   assert 0 == 1
+     +  where 0 = len([])
+     +    where [] = <src.json_repair.json_parser.JSONParser object at 0x7f7081665de0>.logger
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:133: assert 0 == 1
+E   TypeError: repair_json() got an unexpected keyword argument 'schema'
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_comment.py:139: TypeError: repair_json() got an unexpected keyword argument 'schema'
+E   AssertionError: assert {'a': '1,', 'b': 2} == {'a': 1, 'b': 2}
+      
+      Omitting 1 identical items, use -vv to show
+      Differing items:
+      {'a': '1,'} != {'a': 1}
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        {
+      -     'a': 1,
+      +     'a': '1,',
+      ?          +  ++
+            'b': 2,
+        }
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:19: AssertionError: assert {'a': '1,', 'b': 2} == {'a': 1, 'b': 2}
+E   AssertionError: assert {'a': '1,', 'b': 2} == {'a': 1, 'b': 2}
+      
+      Omitting 1 identical items, use -vv to show
+      Differing items:
+      {'a': '1,'} != {'a': 1}
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        {
+      -     'a': 1,
+      +     'a': '1,',
+      ?          +  ++
+            'b': 2,
+        }
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:19: AssertionError: assert {'a': '1,', 'b': 2} == {'a': 1, 'b': 2}
+E   AssertionError: assert {'a': '1,,2'} == {'a': 1}
+      
+      Differing items:
+      {'a': '1,,2'} != {'a': 1}
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        {
+      -     'a': 1,
+      +     'a': '1,,2',
+      ?          +  ++++
+        }
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:27: AssertionError: assert {'a': '1,,2'} == {'a': 1}
+E   AssertionError: assert {'a': '1,,2', 'b': 3} == {'a': 1, 'b': 3}
+      
+      Omitting 1 identical items, use -vv to show
+      Differing items:
+      {'a': '1,,2'} != {'a': 1}
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        {
+      -     'a': 1,
+      +     'a': '1,,2',
+      ?          +  ++++
+            'b': 3,
+        }
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:36: AssertionError: assert {'a': '1,,2', 'b': 3} == {'a': 1, 'b': 3}
+E   AssertionError: assert {'a': '1,,2', 'b': 3} == {'a': 1, 'b': 3}
+      
+      Omitting 1 identical items, use -vv to show
+      Differing items:
+      {'a': '1,,2'} != {'a': 1}
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        {
+      -     'a': 1,
+      +     'a': '1,,2',
+      ?          +  ++++
+            'b': 3,
+        }
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:36: AssertionError: assert {'a': '1,,2', 'b': 3} == {'a': 1, 'b': 3}
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   AssertionError: assert [1, 'e', 2] == [1, 2]
+      
+      At index 1 diff: 'e' != 2
+      Left contains one more item: 2
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+            1,
+      +     'e',
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert [1, 'e', 2] == [1, 2]
+E   AssertionError: assert [1, 'E', 2] == [1, 2]
+      
+      At index 1 diff: 'E' != 2
+      Left contains one more item: 2
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+            1,
+      +     'E',
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert [1, 'E', 2] == [1, 2]
+E   AssertionError: assert ['1e', 2] == [1, 2]
+      
+      At index 0 diff: '1e' != 1
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+      -     1,
+      +     '1e',
+      ?     + ++
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert ['1e', 2] == [1, 2]
+E   AssertionError: assert ['1E', 2] == [1, 2]
+      
+      At index 0 diff: '1E' != 1
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+      -     1,
+      +     '1E',
+      ?     + ++
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert ['1E', 2] == [1, 2]
+E   AssertionError: assert ['1e', 2] == [1, 2]
+      
+      At index 0 diff: '1e' != 1
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+      -     1,
+      +     '1e',
+      ?     + ++
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert ['1e', 2] == [1, 2]
+E   AssertionError: assert [1, 'e', 2] == [1, 2]
+      
+      At index 1 diff: 'e' != 2
+      Left contains one more item: 2
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+            1,
+      +     'e',
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert [1, 'e', 2] == [1, 2]
+E   AssertionError: assert [1, 'E', 2] == [1, 2]
+      
+      At index 1 diff: 'E' != 2
+      Left contains one more item: 2
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+            1,
+      +     'E',
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert [1, 'E', 2] == [1, 2]
+E   AssertionError: assert ['1e', 2] == [1, 2]
+      
+      At index 0 diff: '1e' != 1
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+      -     1,
+      +     '1e',
+      ?     + ++
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert ['1e', 2] == [1, 2]
+E   AssertionError: assert ['1E', 2] == [1, 2]
+      
+      At index 0 diff: '1E' != 1
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+      -     1,
+      +     '1E',
+      ?     + ++
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert ['1E', 2] == [1, 2]
+E   AssertionError: assert ['1e', 2] == [1, 2]
+      
+      At index 0 diff: '1e' != 1
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+      -     1,
+      +     '1e',
+      ?     + ++
+            2,
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_number.py:75: AssertionError: assert ['1e', 2] == [1, 2]
+E   assert {'path': 'C:"'} == {'path': 'C:\\'}
+      
+      Differing items:
+      {'path': 'C:"'} != {'path': 'C:\\'}
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        {
+      -     'path': 'C:\\',
+      ?                ^^
+      +     'path': 'C:"',
+      ?                ^
+        }
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_string.py:521: assert {'path': 'C:"'} == {'path': 'C:\\'}
+E   assert ['R"]'] == ['R\\']
+      
+      At index 0 diff: 'R"]' != 'R\\'
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+      -     'R\\',
+      ?       ^^
+      +     'R"]',
+      ?       ^^
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_string.py:521: assert ['R"]'] == ['R\\']
+E   assert ['R"]'] == ['R\\\\']
+      
+      At index 0 diff: 'R"]' != 'R\\\\'
+      
+      Full diff: (-: missing in left side, +: extra in left side)
+        [
+      -     'R\\\\',
+      +     'R"]',
+        ]
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_string.py:521: assert ['R"]'] == ['R\\\\']
+E   NotImplementedError: file wrapper excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/src/json_repair/utils/string_file_wrapper.py:4: NotImplementedError: file wrapper excluded from the Pystachy port
+E   TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_string.py:659: TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+E   TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port648/tests/test_parse_string.py:671: TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+=========================== short test summary info ============================
+FAILED tests/test_json_repair.py::test_valid_empty_string_serializes_as_json[False] - assert '' == '""'
+  
+  - ""
+FAILED tests/test_json_repair.py::test_valid_empty_string_serializes_as_json[True] - assert '' == '""'
+  
+  - ""
+FAILED tests/test_json_repair.py::test_initial_container_trailing_content_rejects_mismatched_delimiters - TypeError: JSONParser._initial_container_has_non_comma_trailing_content() missing 1 required positional argument: 'source'
+FAILED tests/test_parse_comment.py::test_comment_before_schema_guided_object_value - TypeError: repair_json() got an unexpected keyword argument 'schema'
+FAILED tests/test_parse_comment.py::test_comment_before_schema_guided_array_item - TypeError: repair_json() got an unexpected keyword argument 'schema'
+FAILED tests/test_parse_comment.py::test_comment_before_schema_guided_array_end - TypeError: repair_json() got an unexpected keyword argument 'schema'
+FAILED tests/test_parse_comment.py::test_comment_does_not_consume_tuple_schema_position - TypeError: repair_json() got an unexpected keyword argument 'schema'
+FAILED tests/test_parse_comment.py::test_skipping_comments_with_empty_context_leaves_the_next_value_unparsed[/* comment */] - assert 0 == 1
+ +  where 0 = len([])
+ +    where [] = <src.json_repair.json_parser.JSONParser object at 0x7f7081673a10>.logger
+FAILED tests/test_parse_comment.py::test_skipping_comments_with_empty_context_leaves_the_next_value_unparsed[// comment\n] - assert 0 == 1
+ +  where 0 = len([])
+ +    where [] = <src.json_repair.json_parser.JSONParser object at 0x7f7081673e30>.logger
+FAILED tests/test_parse_comment.py::test_skipping_comments_with_empty_context_leaves_the_next_value_unparsed[# comment\n] - assert 0 == 1
+ +  where 0 = len([])
+ +    where [] = <src.json_repair.json_parser.JSONParser object at 0x7f7081664310>.logger
+FAILED tests/test_parse_comment.py::test_skipping_comments_leaves_a_standalone_slash_unconsumed - assert 0 == 1
+ +  where 0 = len([])
+ +    where [] = <src.json_repair.json_parser.JSONParser object at 0x7f7081665de0>.logger
+FAILED tests/test_parse_comment.py::test_comment_before_colon_with_nested_schema_preserves_string_contents - TypeError: repair_json() got an unexpected keyword argument 'schema'
+FAILED tests/test_parse_number.py::test_object_number_followed_by_empty_item[False] - AssertionError: assert {'a': '1,', 'b': 2} == {'a': 1, 'b': 2}
+  
+  Omitting 1 identical items, use -vv to show
+  Differing items:
+  {'a': '1,'} != {'a': 1}
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    {
+  -     'a': 1,
+  +     'a': '1,',
+  ?          +  ++
+        'b': 2,
+    }
+FAILED tests/test_parse_number.py::test_object_number_followed_by_empty_item[True] - AssertionError: assert {'a': '1,', 'b': 2} == {'a': 1, 'b': 2}
+  
+  Omitting 1 identical items, use -vv to show
+  Differing items:
+  {'a': '1,'} != {'a': 1}
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    {
+  -     'a': 1,
+  +     'a': '1,',
+  ?          +  ++
+        'b': 2,
+    }
+FAILED tests/test_parse_number.py::test_object_number_followed_by_consecutive_commas_and_digits - AssertionError: assert {'a': '1,,2'} == {'a': 1}
+  
+  Differing items:
+  {'a': '1,,2'} != {'a': 1}
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    {
+  -     'a': 1,
+  +     'a': '1,,2',
+  ?          +  ++++
+    }
+FAILED tests/test_parse_number.py::test_stray_number_after_consecutive_commas_preserves_next_key[False] - AssertionError: assert {'a': '1,,2', 'b': 3} == {'a': 1, 'b': 3}
+  
+  Omitting 1 identical items, use -vv to show
+  Differing items:
+  {'a': '1,,2'} != {'a': 1}
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    {
+  -     'a': 1,
+  +     'a': '1,,2',
+  ?          +  ++++
+        'b': 3,
+    }
+FAILED tests/test_parse_number.py::test_stray_number_after_consecutive_commas_preserves_next_key[True] - AssertionError: assert {'a': '1,,2', 'b': 3} == {'a': 1, 'b': 3}
+  
+  Omitting 1 identical items, use -vv to show
+  Differing items:
+  {'a': '1,,2'} != {'a': 1}
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    {
+  -     'a': 1,
+  +     'a': '1,,2',
+  ?          +  ++++
+        'b': 3,
+    }
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[False-{"value": 1e+10-expected0] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[False-{"value": -2.5E+3-expected1] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[False-[6.02e+23, 2-expected2] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[False-{"value": 1e+2, "next": true}-expected3] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[True-{"value": 1e+10-expected0] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[True-{"value": -2.5E+3-expected1] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[True-[6.02e+23, 2-expected2] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[True-{"value": 1e+2, "next": true}-expected3] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[False-e] - AssertionError: assert [1, 'e', 2] == [1, 2]
+  
+  At index 1 diff: 'e' != 2
+  Left contains one more item: 2
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+        1,
+  +     'e',
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[False-E] - AssertionError: assert [1, 'E', 2] == [1, 2]
+  
+  At index 1 diff: 'E' != 2
+  Left contains one more item: 2
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+        1,
+  +     'E',
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[False-e+] - AssertionError: assert ['1e', 2] == [1, 2]
+  
+  At index 0 diff: '1e' != 1
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+  -     1,
+  +     '1e',
+  ?     + ++
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[False-E-] - AssertionError: assert ['1E', 2] == [1, 2]
+  
+  At index 0 diff: '1E' != 1
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+  -     1,
+  +     '1E',
+  ?     + ++
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[False-e-] - AssertionError: assert ['1e', 2] == [1, 2]
+  
+  At index 0 diff: '1e' != 1
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+  -     1,
+  +     '1e',
+  ?     + ++
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[True-e] - AssertionError: assert [1, 'e', 2] == [1, 2]
+  
+  At index 1 diff: 'e' != 2
+  Left contains one more item: 2
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+        1,
+  +     'e',
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[True-E] - AssertionError: assert [1, 'E', 2] == [1, 2]
+  
+  At index 1 diff: 'E' != 2
+  Left contains one more item: 2
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+        1,
+  +     'E',
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[True-e+] - AssertionError: assert ['1e', 2] == [1, 2]
+  
+  At index 0 diff: '1e' != 1
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+  -     1,
+  +     '1e',
+  ?     + ++
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[True-E-] - AssertionError: assert ['1E', 2] == [1, 2]
+  
+  At index 0 diff: '1E' != 1
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+  -     1,
+  +     '1E',
+  ?     + ++
+        2,
+    ]
+FAILED tests/test_parse_number.py::test_dangling_exponent_is_consumed[True-e-] - AssertionError: assert ['1e', 2] == [1, 2]
+  
+  At index 0 diff: '1e' != 1
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+  -     1,
+  +     '1e',
+  ?     + ++
+        2,
+    ]
+FAILED tests/test_parse_string.py::test_parse_string_preserves_backslashes_before_quote[{"path": "C:\\\\"-expected0] - assert {'path': 'C:"'} == {'path': 'C:\\'}
+  
+  Differing items:
+  {'path': 'C:"'} != {'path': 'C:\\'}
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    {
+  -     'path': 'C:\\',
+  ?                ^^
+  +     'path': 'C:"',
+  ?                ^
+    }
+FAILED tests/test_parse_string.py::test_parse_string_preserves_backslashes_before_quote[["R\\\\"]-expected1] - assert ['R"]'] == ['R\\']
+  
+  At index 0 diff: 'R"]' != 'R\\'
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+  -     'R\\',
+  ?       ^^
+  +     'R"]',
+  ?       ^^
+    ]
+FAILED tests/test_parse_string.py::test_parse_string_preserves_backslashes_before_quote[["R\\\\\\\\"]-expected2] - assert ['R"]'] == ['R\\\\']
+  
+  At index 0 diff: 'R"]' != 'R\\\\'
+  
+  Full diff: (-: missing in left side, +: extra in left side)
+    [
+  -     'R\\\\',
+  +     'R"]',
+    ]
+FAILED tests/test_parse_string.py::test_parse_string_fast_path_string_wrapper_fallbacks - NotImplementedError: file wrapper excluded from the Pystachy port
+FAILED tests/test_parse_string.py::test_scan_string_body_keeps_closing_inline_container_character - TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+FAILED tests/test_parse_string.py::test_scan_string_body_closes_low_smart_quote_span_with_unicode_quote - TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+41 failed, 280 passed in 0.56s

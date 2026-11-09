@@ -1,0 +1,30 @@
+heavy.sh: slot 2 acquired at 15:50:36 for: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/native.sh
+== compiler: pystachy v0.4.0-alpha.2 (commit unknown) sha256 0f431daaa63f86ed
+PYSTACHY_CACHE=/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/cache
+PYSTACHY_HOME=/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/main
+PYSTACHY_JOBS=2
+PYSTACHY_PATH=/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/main/ports
+== AOT build
+[rc=0, 13.811665115 s] timeout 600 /home/user/wt/alpha2-qual/pystachy build /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/main/tests/upstream/json_repair/replay.py -o /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/run/replay-aot
+== AOT corpus
+[rc=0, .061688496 s] timeout 300 ./replay-aot inputs.jsonl
+837/837 match; 0 problems
+== AOT probes
+[rc=0, .005101975 s] timeout 120 ./replay-aot probes.jsonl
+53
+== JIT corpus
+[rc=0, 15.205487584 s] timeout 600 /home/user/wt/alpha2-qual/pystachy run /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/main/tests/upstream/json_repair/replay.py inputs.jsonl
+837/837 match; 0 problems
+== JIT probes
+[rc=0, .104568754 s] timeout 300 /home/user/wt/alpha2-qual/pystachy run /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/main/tests/upstream/json_repair/replay.py probes.jsonl
+53
+== extension build (the JSON verifier path)
+[rc=0, 8.707107199 s] timeout 600 /home/user/wt/alpha2-qual/pystachy ext examples/json_repair/_native.py -o /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/ext/pystachy_json_repair/_native.abi3.so
+== extension verifier
+Checking /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/ext/pystachy_json_repair/_native.abi3.so
+837/837 match; 0 problems
+[rc=0, .266777912 s] timeout 300 python3.13 -I /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/main/tests/upstream/json_repair/extension.py /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/ext
+== AOT corpus, GC stress every allocation (capped 240 s)
+[rc=0, 54.366855058 s] timeout 240 env PYSTACHY_GC_STRESS=1 ./replay-aot inputs.jsonl
+837/837 match; 0 problems
+== done

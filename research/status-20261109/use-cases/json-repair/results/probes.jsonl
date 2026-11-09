@@ -1,0 +1,53 @@
+{"id": 10000, "api": "repair_json", "input": "{\"a\": /* comment */ 1}", "flags": {"return_objects": true}}
+{"id": 10001, "api": "repair_json", "input": "{\"a\": // note\n \"x\", \"b\": 2}", "flags": {"return_objects": true}}
+{"id": 10002, "api": "repair_json", "input": "{\"a\": /* c */ {\"b\": 1}}", "flags": {"return_objects": true}}
+{"id": 10003, "api": "repair_json", "input": "{\"a\": # c\n true}", "flags": {"return_objects": true}}
+{"id": 10004, "api": "loads", "input": "{\"a\" /* note */: 1}", "flags": {}}
+{"id": 10005, "api": "loads", "input": "{\"a\" /* note */: 1}", "flags": {"strict": true}}
+{"id": 10006, "api": "repair_json", "input": "[1, /* comment */]", "flags": {"return_objects": true}}
+{"id": 10007, "api": "loads", "input": "{\"a\":0,\"a\":1}", "flags": {"strict": true}}
+{"id": 10008, "api": "loads", "input": "{\"a\":0,\"a\":1}", "flags": {"strict": true, "skip_json_loads": true}}
+{"id": 10009, "api": "repair_json", "input": "{\"path\": \"C:\\\\\"", "flags": {"return_objects": true}}
+{"id": 10010, "api": "repair_json", "input": "[\"R\\\\\"]", "flags": {"skip_json_loads": true, "return_objects": true}}
+{"id": 10011, "api": "repair_json", "input": "{}, {\"id\": 1}", "flags": {"return_objects": true}}
+{"id": 10012, "api": "repair_json", "input": "[1], []", "flags": {"return_objects": true}}
+{"id": 10013, "api": "loads", "input": "{\"a\": 1,, \"b\": 2}", "flags": {}}
+{"id": 10014, "api": "loads", "input": "{\"a\": 1,,2}", "flags": {}}
+{"id": 10015, "api": "loads", "input": "{\"a\": 1,, \"b\": 2}", "flags": {"strict": true}}
+{"id": 10016, "api": "repair_json", "input": "{\"n\": 1e+}", "flags": {"return_objects": true}}
+{"id": 10017, "api": "repair_json", "input": "[1e, 2]", "flags": {"return_objects": true}}
+{"id": 10018, "api": "repair_json", "input": "[1e+, 2]", "flags": {"return_objects": true}}
+{"id": 10019, "api": "repair_json", "input": "\"\"", "flags": {"return_objects": false}}
+{"id": 10020, "api": "repair_json", "input": "\"\"", "flags": {"logging": true, "return_objects": true}}
+{"id": 10021, "api": "repair_json", "input": "[/1,2]", "flags": {"return_objects": true}}
+{"id": 10022, "api": "repair_json", "input": "[/abc]", "flags": {"return_objects": true}}
+{"id": 10023, "api": "repair_json", "input": "{\"k\":/42}", "flags": {"return_objects": true}}
+{"id": 10024, "api": "repair_json", "input": "{\"k\":/ /*x*/true}", "flags": {"return_objects": true}}
+{"id": 10025, "api": "loads", "input": "{/* unclosed }", "flags": {"strict": true}}
+{"id": 10026, "api": "loads", "input": "{/* note */ \"a\" /* note */: 1 /* note */, /* note */ \"b\": 2 /* note */}", "flags": {"logging": true}}
+{"id": 10027, "api": "loads", "input": "{/* note */ \"a\" /* note */: 1 /* note */, /* note */ \"b\": 2 /* note */}", "flags": {"strict": true}}
+{"id": 10028, "api": "loads", "input": "{// note\n \"a\" // note\n: 1 // note\n, // note\n \"b\": 2 // note\n}", "flags": {"logging": true}}
+{"id": 10029, "api": "loads", "input": "{// note\n \"a\" // note\n: 1 // note\n, // note\n \"b\": 2 // note\n}", "flags": {"strict": true}}
+{"id": 10030, "api": "loads", "input": "{# note\n \"a\" # note\n: 1 # note\n, # note\n \"b\": 2 # note\n}", "flags": {"logging": true}}
+{"id": 10031, "api": "loads", "input": "{# note\n \"a\" # note\n: 1 # note\n, # note\n \"b\": 2 # note\n}", "flags": {"strict": true}}
+{"id": 10032, "api": "repair_json", "input": "[fal", "flags": {"return_objects": true}}
+{"id": 10033, "api": "repair_json", "input": "{\"a\": fal", "flags": {"return_objects": true}}
+{"id": 10034, "api": "repair_json", "input": "{\"a\":1}{\"a\":2}", "flags": {"return_objects": true}}
+{"id": 10035, "api": "repair_json", "input": "{\"a\":1}{\"b\":2}", "flags": {"return_objects": true}}
+{"id": 10036, "api": "repair_json", "input": "{\"a\": \"\\ud83d\\ude00}", "flags": {"return_objects": true}}
+{"id": 10037, "api": "repair_json", "input": "{\"a\": \"x\\ud83d\\ude00y\"", "flags": {"return_objects": true}}
+{"id": 10038, "api": "repair_json", "input": "{\"a\": \"\\ud83d\\ude00\"}", "flags": {"return_objects": true}}
+{"id": 10039, "api": "repair_json", "input": "42", "flags": {"skip_json_loads": true, "return_objects": true}}
+{"id": 10040, "api": "repair_json", "input": "\"x\"", "flags": {"skip_json_loads": true, "return_objects": true}}
+{"id": 10041, "api": "repair_json", "input": "true", "flags": {"skip_json_loads": true, "return_objects": true}}
+{"id": 10042, "api": "repair_json", "input": "12345678901234567890", "flags": {"skip_json_loads": true, "return_objects": true}}
+{"id": 10043, "api": "repair_json", "input": "/* c */ 42", "flags": {"return_objects": true}}
+{"id": 10044, "api": "repair_json", "input": "The answer is 42", "flags": {"return_objects": true}}
+{"id": 10045, "api": "repair_json", "input": "42 // c", "flags": {"return_objects": true}}
+{"id": 10046, "api": "loads", "input": "[\u00e9]", "flags": {}}
+{"id": 10047, "api": "loads", "input": "{\u754c:1}", "flags": {}}
+{"id": 10048, "api": "loads", "input": "{\u00e9:, \u754c:2}", "flags": {"strict": true}}
+{"id": 10049, "api": "loads", "input": "\"\u754c\":1}", "flags": {"strict": true}}
+{"id": 10050, "api": "loads", "input": "{\u00e9:1}{\u754c:2}", "flags": {"strict": true}}
+{"id": 10051, "api": "repair_json", "input": "{\"a\": 123456789012345678901234567890,}", "flags": {"return_objects": true}}
+{"id": 10052, "api": "repair_json", "input": "[18446744073709551616, -9223372036854775809]", "flags": {"return_objects": true}}

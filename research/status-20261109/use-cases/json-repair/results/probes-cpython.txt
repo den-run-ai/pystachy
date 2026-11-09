@@ -1,0 +1,212 @@
+[u240] repair_json('{"a": /* comment */ 1}', {'return_objects': True}) DIFF
+    u0641    {'a': ''}
+    adapted  {'a': 1}
+    u0648    {'a': 1}
+[u240] repair_json('{"a": // note\n "x", "b": 2}', {'return_objects': True}) DIFF
+    u0641    {'a': '', 'x", "b': 2}
+    adapted  {'a': 'x', 'b': 2}
+    u0648    {'a': 'x', 'b': 2}
+[u240] repair_json('{"a": /* c */ {"b": 1}}', {'return_objects': True}) DIFF
+    u0641    {'a': '', 'b': 1}
+    adapted  {'a': {'b': 1}}
+    u0648    {'a': {'b': 1}}
+[u240] repair_json('{"a": # c\n true}', {'return_objects': True}) DIFF
+    u0641    {'a': ''}
+    adapted  {'a': True}
+    u0648    {'a': True}
+[u240-1074] loads('{"a" /* note */: 1}', {}) DIFF
+    u0641    {'a': 'note */: 1'}
+    adapted  {'a': 1}
+    u0648    {'a': 1}
+[u240-1074] loads('{"a" /* note */: 1}', {'strict': True}) DIFF
+    u0641    ValueError: Missing ':' after key in strict mode while parsing object.
+    adapted  {'a': 1}
+    u0648    {'a': 1}
+[u240] repair_json('[1, /* comment */]', {'return_objects': True}) DIFF
+    u0641    [1, '']
+    adapted  [1]
+    u0648    [1]
+[u246] loads('{"a":0,"a":1}', {'strict': True}) SAME
+    u0641    {'a': 1}
+    adapted  {'a': 1}
+    u0648    {'a': 1}
+[u246] loads('{"a":0,"a":1}', {'strict': True, 'skip_json_loads': True}) SAME
+    u0641    {'a': 1}
+    adapted  {'a': 1}
+    u0648    {'a': 1}
+[u247] repair_json('{"path": "C:\\\\"', {'return_objects': True}) DIFF
+    u0641    {'path': 'C:"'}
+    adapted  {'path': 'C:"'}
+    u0648    {'path': 'C:\\'}
+[u247] repair_json('["R\\\\"]', {'skip_json_loads': True, 'return_objects': True}) DIFF
+    u0641    ['R"]']
+    adapted  ['R"]']
+    u0648    ['R\\']
+[u249] repair_json('{}, {"id": 1}', {'return_objects': True}) SAME
+    u0641    {'id': 1}
+    adapted  {'id': 1}
+    u0648    {'id': 1}
+[u249] repair_json('[1], []', {'return_objects': True}) SAME
+    u0641    [1]
+    adapted  [1]
+    u0648    [1]
+[u250] loads('{"a": 1,, "b": 2}', {}) DIFF
+    u0641    {'a': '1,', 'b': 2}
+    adapted  {'a': '1,', 'b': 2}
+    u0648    {'a': 1, 'b': 2}
+[u250] loads('{"a": 1,,2}', {}) DIFF
+    u0641    {'a': '1,,2'}
+    adapted  {'a': '1,,2'}
+    u0648    {'a': 1}
+[u250] loads('{"a": 1,, "b": 2}', {'strict': True}) DIFF
+    u0641    {'a': '1,', 'b': 2}
+    adapted  {'a': '1,', 'b': 2}
+    u0648    ValueError: Consecutive commas after an object number in strict mode.
+[u251] repair_json('{"n": 1e+}', {'return_objects': True}) DIFF
+    u0641    {'n': '1e'}
+    adapted  {'n': '1e'}
+    u0648    {'n': 1}
+[u251] repair_json('[1e, 2]', {'return_objects': True}) DIFF
+    u0641    [1, 'e', 2]
+    adapted  [1, 'e', 2]
+    u0648    [1, 2]
+[u251] repair_json('[1e+, 2]', {'return_objects': True}) DIFF
+    u0641    ['1e', 2]
+    adapted  ['1e', 2]
+    u0648    [1, 2]
+[cb5b80e] repair_json('""', {'return_objects': False}) DIFF
+    u0641    ''
+    adapted  ''
+    u0648    '""'
+[cb5b80e] repair_json('""', {'logging': True, 'return_objects': True}) SAME
+    u0641    ('', [])
+    adapted  ('', [])
+    u0648    ('', [])
+[slash] repair_json('[/1,2]', {'return_objects': True}) DIFF
+    u0641    [2]
+    adapted  [1, 2]
+    u0648    [2]
+[slash] repair_json('[/abc]', {'return_objects': True}) DIFF
+    u0641    ['bc']
+    adapted  ['abc']
+    u0648    ['bc']
+[slash] repair_json('{"k":/42}', {'return_objects': True}) DIFF
+    u0641    {'k': ''}
+    adapted  {'k': 42}
+    u0648    {'k': ''}
+[slash] repair_json('{"k":/ /*x*/true}', {'return_objects': True}) DIFF
+    u0641    {'k': ''}
+    adapted  {'k': True}
+    u0648    {'k': ''}
+[comment-unclosed] loads('{/* unclosed }', {'strict': True}) SAME
+    u0641    ValueError: Parsed object is empty but contains extra characters in strict mode.
+    adapted  ValueError: Parsed object is empty but contains extra characters in strict mode.
+    u0648    ValueError: Parsed object is empty but contains extra characters in strict mode.
+[comment-boundary] loads('{/* note */ "a" /* note */: 1 /* note */, /* note */ "b": 2 /* note */}', {'logging': True}) DIFF
+    u0641    ({'a': 'note */: 1 /* note */', 'b': 2}, [{'text': 'Found block comment: /* note */, ignoring', 'context': '/* note */ "a" /* no'}, {'text': 'While pa
+    adapted  ({'a': 1, 'b': 2}, [{'text': 'Found block comment: /* note */, ignoring', 'context': '/* note */ "a" /* no'}, {'text': 'Found block comment: /* note *
+    u0648    ({'a': 1, 'b': 2}, [{'text': 'Found block comment: /* note */, ignoring', 'context': '/* note */ "a" /* no'}, {'text': 'Found block comment: /* note *
+[comment-boundary] loads('{/* note */ "a" /* note */: 1 /* note */, /* note */ "b": 2 /* note */}', {'strict': True}) DIFF
+    u0641    ValueError: Missing ':' after key in strict mode while parsing object.
+    adapted  {'a': 1, 'b': 2}
+    u0648    {'a': 1, 'b': 2}
+[comment-boundary] loads('{// note\n "a" // note\n: 1 // note\n, // note\n "b": 2 // note\n}', {'logging': True}) DIFF
+    u0641    ({'a': '', 'note': 1, 'b': 2}, [{'text': 'Found line comment: // note, ignoring', 'context': '{// note\n "a" // n'}, {'text': 'While parsing an object
+    adapted  ({'a': 1, 'b': 2}, [{'text': 'Found line comment: // note, ignoring', 'context': '{// note\n "a" // n'}, {'text': 'Found line comment: // note, ignori
+    u0648    ({'a': 1, 'b': 2}, [{'text': 'Found line comment: // note, ignoring', 'context': '{// note\n "a" // n'}, {'text': 'Found line comment: // note, ignori
+[comment-boundary] loads('{// note\n "a" // note\n: 1 // note\n, // note\n "b": 2 // note\n}', {'strict': True}) DIFF
+    u0641    ValueError: Missing ':' after key in strict mode while parsing object.
+    adapted  {'a': 1, 'b': 2}
+    u0648    {'a': 1, 'b': 2}
+[comment-boundary] loads('{# note\n "a" # note\n: 1 # note\n, # note\n "b": 2 # note\n}', {'logging': True}) DIFF
+    u0641    ({'a': 'note\n: 1 # note', 'b': 2}, [{'text': 'Found line comment: # note, ignoring', 'context': '{# note\n "a" # no'}, {'text': 'While parsing an obj
+    adapted  ({'a': 1, 'b': 2}, [{'text': 'Found line comment: # note, ignoring', 'context': '{# note\n "a" # no'}, {'text': 'Found line comment: # note, ignoring'
+    u0648    ({'a': 1, 'b': 2}, [{'text': 'Found line comment: # note, ignoring', 'context': '{# note\n "a" # no'}, {'text': 'Found line comment: # note, ignoring'
+[comment-boundary] loads('{# note\n "a" # note\n: 1 # note\n, # note\n "b": 2 # note\n}', {'strict': True}) DIFF
+    u0641    ValueError: Missing ':' after key in strict mode while parsing object.
+    adapted  {'a': 1, 'b': 2}
+    u0648    {'a': 1, 'b': 2}
+[heur-fal] repair_json('[fal', {'return_objects': True}) SAME
+    u0641    ['fal']
+    adapted  ['fal']
+    u0648    ['fal']
+[heur-fal] repair_json('{"a": fal', {'return_objects': True}) SAME
+    u0641    {'a': 'fal'}
+    adapted  {'a': 'fal'}
+    u0648    {'a': 'fal'}
+[heur-repeat] repair_json('{"a":1}{"a":2}', {'return_objects': True}) SAME
+    u0641    {'a': 2}
+    adapted  {'a': 2}
+    u0648    {'a': 2}
+[heur-repeat] repair_json('{"a":1}{"b":2}', {'return_objects': True}) SAME
+    u0641    [{'a': 1}, {'b': 2}]
+    adapted  [{'a': 1}, {'b': 2}]
+    u0648    [{'a': 1}, {'b': 2}]
+[heur-emoji] repair_json('{"a": "\\ud83d\\ude00}', {'return_objects': True}) SAME
+    u0641    {'a': '\ud83d\ude00'}
+    adapted  {'a': '\ud83d\ude00'}
+    u0648    {'a': '\ud83d\ude00'}
+[heur-emoji] repair_json('{"a": "x\\ud83d\\ude00y"', {'return_objects': True}) SAME
+    u0641    {'a': 'x\ud83d\ude00y'}
+    adapted  {'a': 'x\ud83d\ude00y'}
+    u0648    {'a': 'x\ud83d\ude00y'}
+[heur-emoji-valid] repair_json('{"a": "\\ud83d\\ude00"}', {'return_objects': True}) SAME
+    u0641    {'a': '😀'}
+    adapted  {'a': '😀'}
+    u0648    {'a': '😀'}
+[prim-root] repair_json('42', {'skip_json_loads': True, 'return_objects': True}) SAME
+    u0641    ''
+    adapted  ''
+    u0648    ''
+[prim-root] repair_json('"x"', {'skip_json_loads': True, 'return_objects': True}) SAME
+    u0641    ''
+    adapted  ''
+    u0648    ''
+[prim-root] repair_json('true', {'skip_json_loads': True, 'return_objects': True}) SAME
+    u0641    ''
+    adapted  ''
+    u0648    ''
+[prim-root] repair_json('12345678901234567890', {'skip_json_loads': True, 'return_objects': True}) SAME
+    u0641    ''
+    adapted  ''
+    u0648    ''
+[prim-prose] repair_json('/* c */ 42', {'return_objects': True}) SAME
+    u0641    ''
+    adapted  ''
+    u0648    ''
+[prim-prose] repair_json('The answer is 42', {'return_objects': True}) SAME
+    u0641    ''
+    adapted  ''
+    u0648    ''
+[prim-prose] repair_json('42 // c', {'return_objects': True}) SAME
+    u0641    ''
+    adapted  ''
+    u0648    ''
+[unicode] loads('[é]', {}) SAME
+    u0641    ['é']
+    adapted  ['é']
+    u0648    ['é']
+[unicode] loads('{界:1}', {}) SAME
+    u0641    {'界': 1}
+    adapted  {'界': 1}
+    u0648    {'界': 1}
+[unicode-strict] loads('{é:, 界:2}', {'strict': True}) SAME
+    u0641    ValueError: Parsed value is empty in strict mode while parsing object.
+    adapted  ValueError: Parsed value is empty in strict mode while parsing object.
+    u0648    ValueError: Parsed value is empty in strict mode while parsing object.
+[unicode-strict] loads('"界":1}', {'strict': True}) SAME
+    u0641    ValueError: Missing opening object brace in strict mode.
+    adapted  ValueError: Missing opening object brace in strict mode.
+    u0648    ValueError: Missing opening object brace in strict mode.
+[unicode-strict] loads('{é:1}{界:2}', {'strict': True}) SAME
+    u0641    ValueError: Multiple top-level JSON elements found in strict mode.
+    adapted  ValueError: Multiple top-level JSON elements found in strict mode.
+    u0648    ValueError: Multiple top-level JSON elements found in strict mode.
+[wide] repair_json('{"a": 123456789012345678901234567890,}', {'return_objects': True}) SAME
+    u0641    {'a': 123456789012345678901234567890}
+    adapted  {'a': 123456789012345678901234567890}
+    u0648    {'a': 123456789012345678901234567890}
+[wide] repair_json('[18446744073709551616, -9223372036854775809]', {'return_objects': True}) SAME
+    u0641    [18446744073709551616, -9223372036854775809]
+    adapted  [18446744073709551616, -9223372036854775809]
+    u0648    [18446744073709551616, -9223372036854775809]

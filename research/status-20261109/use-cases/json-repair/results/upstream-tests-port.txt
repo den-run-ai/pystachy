@@ -1,0 +1,43 @@
+.............................................................F.......... [ 29%]
+................FFFFFFFF................................................ [ 58%]
+...............................F..................................FF.... [ 87%]
+..............................                                           [100%]
+=================================== FAILURES ===================================
+E   TypeError: JSONParser._initial_container_has_non_comma_trailing_content() missing 1 required positional argument: 'source'
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/tests/test_json_repair.py:209: TypeError: JSONParser._initial_container_has_non_comma_trailing_content() missing 1 required positional argument: 'source'
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file API excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/json_repair.py:56: NotImplementedError: file API excluded from the Pystachy port
+E   NotImplementedError: file wrapper excluded from the Pystachy port
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/src/json_repair/utils/string_file_wrapper.py:4: NotImplementedError: file wrapper excluded from the Pystachy port
+E   TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/tests/test_parse_string.py:734: TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+E   TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+/tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/agentI-jsonrepair.IqW3dA/upt-port/tests/test_parse_string.py:746: TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+=========================== short test summary info ============================
+FAILED tests/test_json_repair.py::test_initial_container_trailing_content_rejects_mismatched_delimiters - TypeError: JSONParser._initial_container_has_non_comma_trailing_content() missing 1 required positional argument: 'source'
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[False-{"value": 1e+10-expected0] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[False-{"value": -2.5E+3-expected1] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[False-[6.02e+23, 2-expected2] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[False-{"value": 1e+2, "next": true}-expected3] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[True-{"value": 1e+10-expected0] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[True-{"value": -2.5E+3-expected1] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[True-[6.02e+23, 2-expected2] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_number.py::test_parse_number_positive_exponent[True-{"value": 1e+2, "next": true}-expected3] - NotImplementedError: file API excluded from the Pystachy port
+FAILED tests/test_parse_string.py::test_parse_string_fast_path_string_wrapper_fallbacks - NotImplementedError: file wrapper excluded from the Pystachy port
+FAILED tests/test_parse_string.py::test_scan_string_body_keeps_closing_inline_container_character - TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+FAILED tests/test_parse_string.py::test_scan_string_body_closes_low_smart_quote_span_with_unicode_quote - TypeError: StringParseState.__init__() got an unexpected keyword argument 'string_acc'. Did you mean 'string_tail'?
+12 failed, 234 passed in 0.45s
