@@ -469,13 +469,14 @@ It takes the part of `lli`'s command line that the driver uses (`-dlopen`, `-ext
 program's arguments) and runs the program as `lli`'s default ORC JIT does: JITLink, the
 process's symbols, the module's constructors in priority order before `main` and its destructors
 after it, `argv[0]` the input's name and `main`'s result as the exit status. Errors go to stderr
-as `lli`'s do, behind `lljit:`, with status 1. It differs in four ways: `-O0` to `-O3` select the
+as `lli`'s do, behind `lljit:`, with status 1. Code with debug information
+(`PYSTACHY_DEBUG_LINES=1`) is registered with debuggers and profilers through the GDB JIT
+interface, as `lli` registers it. The runner differs in four ways: `-O0` to `-O3` select the
 level of code generation (`lli`'s ORC generates code at `-O2` whatever `-O` says), so
 `PYSTACHY_JIT_CODEGEN=0` needs no `llc`; it installs none of LLVM's signal handlers, stack
-printer, debugger registration or perf listener; the process exits with the JIT's code still
-mapped; and an LLVM option that LLVM does not know is ignored rather than an error (the C API's
-parser reports none), so the driver passes only `-profile-guided-section-prefix=false`, which LLVM
-18 to 23 know.
+printer or perf listener; the process exits with the JIT's code still mapped; and an LLVM option
+that LLVM does not know is ignored rather than an error (the C API's parser reports none), so the
+driver passes only `-profile-guided-section-prefix=false`, which LLVM 18 to 23 know.
 
 The driver builds the runner at first use, as it builds the runtime: the selected toolchain's
 `clang` compiles `lljit.c`, which declares the part of the C API it calls, so no LLVM headers are
@@ -486,10 +487,11 @@ order, `argv`, a C library call, the exit status and a destructor. This takes ab
 The runner is cached beside the runtime as `lljit-<L>-<K>`, keyed by the bytes of `lljit.c` and
 the files of `lli`, `clang` and that `libLLVM` (path, size and times), which `lljit-<L>-<K0>.llvm`
 names with its version; a newer entry replaces the old. The driver runs the runner from a
-descriptor it opened, so a concurrent run that publishes another runner cannot remove it first.
-LLVM 18 to 23 on x86-64 and AArch64 Linux get the runner. Otherwise `lli` runs the program,
-silently: on macOS, whose LLVM the runner is untested with; for a toolchain without a shared
-`libLLVM` or of another version (and while `ldd` cannot be run); after a failed build or self-check, which is cached as
+descriptor it opens just before, so that a concurrent run that publishes another runner cannot
+remove it then; one removed earlier leaves the same bitcode to `lli`. LLVM 18 to 23 on x86-64
+and AArch64 Linux get the runner. Otherwise `lli` runs the program, silently: on macOS, whose
+LLVM the runner is untested with; for a toolchain without a shared `libLLVM` or of another
+version (and while `ldd` cannot be run); after a failed build or self-check, which is cached as
 `lljit-<L>-<K>.fail` with its log, so later runs go to `lli` at once; for a cache that cannot be
 written, tools that have not settled, or a runner that the run may not execute (a cache mounted
 `noexec`); and with `PYSTACHY_JIT_LAUNCHER=lli`. `PYSTACHY_TIMING=1` names the outcome
