@@ -7,8 +7,11 @@ measurements and drafts under the maintainer's direction.
 ## Issues and pull requests
 
 The six issues drafted on 8 November were filed as #1164–#1169. Agents fixed them in separate
-worktrees. #1171–#1175 passed CI before they were marked ready, and Codex found nothing on them;
-#1176 and #1177 were still in CI when this was written.
+worktrees, and #1171 merged as `e81bdb0c`. The maintainer then stacked #1172–#1177 in that order
+on `e81bdb0c`, each merging its predecessors. Each stacked head's tree equals a clean merge of
+its own and its predecessors' branch tips onto `e81bdb0c`, checked locally. Every stacked head
+passed all 20 PR checks and a Codex review with no findings:
+`51bde21a`, `bcd0771a`, `c0d639d2`, `fb91d1aa`, `338fde17` and `6ae42170`.
 
 | PR | Fixes | Notes |
 |---|---|---|
@@ -22,7 +25,8 @@ worktrees. #1171–#1175 passed CI before they were marked ready, and Codex foun
 
 Cross-PR checks: #1174 and #1176 were built and tested merged (closed stdin, stdout and stderr
 match CPython under ORC, MCJIT and hosted JIT); #1176 documents `JITDUMPDIR` so #1171's settings
-test passes after merging main. PR CI was kept to two runs at a time.
+test passes after merging main. Agents' pushes kept PR CI to two runs at a time; the stacked
+verification ran six at once.
 
 ## Coverage regression
 
@@ -41,7 +45,8 @@ of x86-64 jobs and run 1.34× slower than `znver4`: ubsan 12.7, python-int-optin
 python-free 12.2, gc-ir-1 12.1, PR native-aot 13.8, PR contracts 13.5, Variants' slowest shard
 14.1 minutes. Growth since 2 November: 401 new corpus cases at 2.4× an existing case's cost
 (72%), existing cases 10.7% slower, AOT builds 19% slower, and `gc-self` growing with the square
-of compiler size. #1177 rebalances `gc-ir`; the four `issue-ci-time-*` drafts cover the rest.
+of compiler size. #1177 rebalances `gc-ir`; #1178–#1181 cover the rest.
+The six stacked PR runs peaked at 14.3 minutes (#1172's `contracts`); Lint took 8.0–13.7.
 Data and scripts: [ci-time/](ci-time/).
 
 ## JSON-repair throughput on `ce8c887`
