@@ -1,0 +1,37 @@
+int True False False True False False True False False
+bool False True False True False False True False False
+float False False True True False False True False False
+str False False False False False False True False False
+none False False False True True False True False False
+ints False False False True False True True False False
+mixed False False False True False True True False False
+dict False False False True False False False False False
+tuple False False False True False False True True False
+point False False False True False False True False True
+double False False False True False False True False False
+triple False False False True False False True False False
+gen False False False True False False True False False
+gen2 False False False True False False True False False
+listiter False False False True False False True False False
+listiter2 False False False True False False True False False
+tupleiter False False False True False False True False False
+int bool False True
+ints mixed True False
+mixed ints True False
+double triple True False
+gen gen2 True False
+listiter listiter2 True False
+listiter tupleiter False True
+point point True False
+dict tuple False True
+none int False True
+double gen False True
+int False False False False False False False True True
+str False False False False False True False False False
+none False False False True False False False False True
+ints True False False False True False False False True
+mixed True False False False True False False False True
+dict False True False False False False False False True
+tuple False False True False False False False False True
+point False False False False False False False False True
+[exit 0]

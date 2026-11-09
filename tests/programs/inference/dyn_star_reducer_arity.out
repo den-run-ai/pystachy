@@ -1,0 +1,29 @@
+0
+TypeError: zero() takes 0 positional arguments but 1 was given
+TypeError: zero() takes 0 positional arguments but 2 were given
+TypeError: zero() takes 0 positional arguments but 3 were given
+TypeError: one() missing 1 required positional argument: 'a'
+1
+TypeError: one() takes 1 positional argument but 2 were given
+TypeError: one() takes 1 positional argument but 3 were given
+TypeError: two() missing 2 required positional arguments: 'a' and 'b'
+TypeError: two() missing 1 required positional argument: 'b'
+3
+TypeError: two() takes 2 positional arguments but 3 were given
+TypeError: three() missing 3 required positional arguments: 'a', 'b', and 'c'
+TypeError: three() missing 2 required positional arguments: 'b' and 'c'
+TypeError: three() missing 1 required positional argument: 'c'
+6
+TypeError: keyed() missing 1 required positional argument: 'a'
+TypeError: keyed() missing 1 required keyword-only argument: 'k'
+TypeError: keyed() takes 1 positional argument but 2 were given
+TypeError: keyed() takes 1 positional argument but 3 were given
+TypeError: Box.pair() missing 2 required positional arguments: 'a' and 'b'
+TypeError: Box.pair() missing 1 required positional argument: 'b'
+3
+TypeError: Box.pair() takes 3 positional arguments but 4 were given
+TypeError: keyed() missing 1 required positional argument: 'a'
+6
+TypeError: keyed() takes 1 positional argument but 2 positional arguments (and 1 keyword-only argument) were given
+TypeError: keyed() takes 1 positional argument but 3 positional arguments (and 1 keyword-only argument) were given
+[exit 0]
