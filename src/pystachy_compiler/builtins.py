@@ -2438,6 +2438,17 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         return self.bytes_method(o, m, args)
     if (o.t == "str" or o.t == "bytes") and m == "replace" and len(args) == 3 and args[2].kind == "kw" and args[2].s == "count":
         args = args[:2] + [args[2].kids[0]]  # (count may be given by name, as of Python 3.13)
+    if ((o.t == "bytes" and m == "decode") or (o.t == "str" and m == "encode")) and len(args) > 0 and args[-1].kind == "kw":
+        # encoding and errors may be given by name. Named in that order they become positional, with
+        # encoding's default (UTF-8) before errors alone; another order, which the arguments are
+        # evaluated in, a repeated or another name stay rejected below
+        named = [a.s for a in args if a.kind == "kw"]
+        npos = len(args) - len(named)
+        if named == ["errors"] and npos <= 1:
+            pos = args[:npos] if npos == 1 else [mk("str", "utf-8", args[-1].line, [])]
+            args = pos + [args[-1].kids[0]]
+        elif npos == 0 and (named == ["encoding"] or named == ["encoding", "errors"]):
+            args = [a.kids[0] for a in args]
     for a in args:
         if a.kind == "kw":
             self.err(f"keyword arguments to {tname(o.t)}.{m}() are not supported; pass them by position")
