@@ -611,9 +611,13 @@ CPU of the runtime's target triple, which the module carries. ORC runs only an I
 constructors, so `lli`'s main module holds the program's target and, with the shared runtime
 library, the constructor that hands it the program's callbacks (`OBJHOOKS_MAIN` in
 `lower_module.py`). `llc` is one more process, which tiny programs notice
-(`program.jit_codegen` in the [stage timings](#compiler-stage-timings)). This choice does not
-change the IR cleanup or inlining pipeline, bypasses the [program cache](program-cache.md), and
-does not affect `build` or `ext`.
+(`program.jit_codegen` in the [stage timings](#compiler-stage-timings)). This choice keeps the IR
+cleanup and inlining pipeline, except that it splits critical edges last: LLVM's `-O0` PHI
+elimination (seen in 18, 20 and 23) otherwise lowers a landing pad's PHI with the copies of an
+identical PHI in the call's normal successor, which follow the call, so an `except` clause read
+values that its loop never set or had changed since. `make jitprobe` runs
+`tests/programs/exceptions/exc_handler_loop_values.py` in both modes. The choice bypasses the
+[program cache](program-cache.md) and does not affect `build` or `ext`.
 
 The [native program cache](program-cache.md) is enabled by default for supported
 native Linux CLI runs. Validated hits execute a previously linked JIT-tier
