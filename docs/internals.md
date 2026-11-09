@@ -668,8 +668,8 @@ keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shar
 puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
 `pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
 what instcombine can prove unused, and the same last `forceattrs` and `always-inline` passes
-then inline the calls left. Each pops the runtime's free list of its class (`pys_fl`, a constant slot once
-inlined) and calls `pys_gc_slow` for everything else. The runtime's own code
+then inline the calls left. Each pops the runtime's free list of its class (`pys_fl`, a
+constant slot once inlined) and calls `pys_gc_slow` for everything else. The runtime's own code
 (`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
 objects that never escape compile to no allocation, that objects a list keeps do,
 that a build with `PYSTACHY_CFLAGS=-O0` still takes the late step, and that an object and

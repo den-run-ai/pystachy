@@ -3,8 +3,8 @@
 Choose a native release package, the Docker image, a GitHub source install with
 pip or uv, or a manual source build. The compiler uses **LLVM 18 on Linux /
 LLVM 20 on macOS** ([other releases](#other-llvm-releases)). Docker includes LLVM,
-and GitHub source installs can fetch it on first use. The native release package and Docker image run the compiler
-without Python.
+and GitHub source installs can fetch it on first use. The native release package and
+Docker image run the compiler without Python.
 
 ## Native release packages
 
