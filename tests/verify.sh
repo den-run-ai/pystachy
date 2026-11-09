@@ -98,14 +98,14 @@
 #                  specialization breadth and the signature bytes specializations retain under
 #                  256 MiB / ten CPU seconds, with short diagnostics;
 #                  finite controls and reuse at the retained-instance boundary still compile
-#   jit-dead-code  tools/test_lljit.py: the JIT runner (lljit.c) is built and cached once, falls back
-#                  to lli where it cannot be, and keeps lli's contract on small C programs;
-#                  tools/jitprobe.py: unused functions never reach the runner or lli, and a small
-#                  helper reaches them inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime
-#                  callbacks still execute as in CPython, with both compilers, both runners and both
-#                  levels of code generation; jitfdprobe.py preserves inherited pipes, CPython's
-#                  descriptor tables and SIGINT dispositions across both runners, shared/object
-#                  runtime, -O0 code generation, embedding, cached and AOT launches
+#   jit-dead-code  tools/jitprobe.py: unused functions never reach the JIT runner (lljit.c) or lli,
+#                  and a small helper reaches them inlined (not with PYSTACHY_JIT_INLINE=0); live code
+#                  and runtime callbacks still execute as in CPython, with both compilers, both
+#                  runners and both levels of code generation; jitfdprobe.py preserves inherited
+#                  pipes, CPython's descriptor tables and SIGINT dispositions across both runners,
+#                  shared/object runtime, -O0 code generation, embedding, cached and AOT launches;
+#                  tools/test_lljit.py: the runner is built and cached once, falls back to lli where
+#                  it cannot be, and keeps lli's contract on small C programs
 #   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
 #                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
 #                  its list stores none of their companion code; direct and imported opt-ins
@@ -1118,9 +1118,9 @@ contracts_d() {
 # ---- JIT dead code: inspect the actual execution module, without a timing threshold
 if want jit-dead-code; then
 L=$V/jit-dead-code.log; s=$(now); r=fail
-$PY -m unittest discover -s tools -p test_lljit.py > "$L" 2>&1 &&
-$PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" >> "$L" 2>&1 &&
-$PY tools/jitfdprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" >> "$L" 2>&1 && r=pass
+$PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 &&
+$PY tools/jitfdprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" >> "$L" 2>&1 &&
+$PY tools/test_lljit.py >> "$L" 2>&1 && r=pass
 step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"], "runners": ["lljit", "lli"]'
 fi
 
