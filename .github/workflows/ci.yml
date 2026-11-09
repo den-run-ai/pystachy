@@ -93,7 +93,7 @@ jobs:
       - name: Compare O1 temporary compiler with verified O2 bootstrap
         if: steps.plan.outputs.kind == 'code' && matrix.machine == 'x86_64'
         run: python3 tools/check_bootstrap_tier.py build/ci-bootstrap
-      - name: ARM64 installation, FFI and ABI smoke
+      - name: ARM64 installation, FFI, JIT runner and ABI smoke
         if: steps.plan.outputs.kind == 'code' && github.event_name == 'pull_request' && matrix.machine == 'aarch64'
         run: |
           cp build/verify/pystachy2 pystachy
@@ -106,6 +106,7 @@ jobs:
           python3 -m unittest discover -s tools -p test_stack_floor.py
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
           python3 -m unittest discover -s tools -p test_runtime_ubsan.py
+          python3 -m unittest discover -s tools -p test_lljit.py
           python3 tools/program_cache_probe.py --compiler ./pystachy --llvm "$PYSTACHY_LLVM" \
             --checks reuse semantics concurrency --output build/verify/arm-program-cache.json
       - name: Upload bootstrap report

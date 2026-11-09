@@ -488,7 +488,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 
 | PR work | Jobs | Coverage |
 |---|---:|---|
-| Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack and sanitizer linkage smoke. |
+| Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack, JIT runner and sanitizer linkage smoke. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
 | Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers. |
