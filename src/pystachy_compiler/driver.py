@@ -1105,7 +1105,12 @@ def main() -> None:
         # generations). Remove those after inlining and coroutine lowering are complete;
         # instcombine alone does not eliminate cycles with no externally used result.
         late = ",forceattrs,always-inline" if jir != ir else ""
-        fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){late}'" + (JITLATE if late != "" else "")
+        # LLVM's -O0 PHI elimination (seen in 18, 20 and 23) lowers a landing pad's PHI by reusing
+        # an identical PHI of the invoke's normal successor, whose copies follow the call: an except
+        # clause then read values its loop never set or had since changed. Splitting critical edges
+        # last gives such successors predecessors of their own, and the landing pad its own copies
+        split = ",function(break-crit-edges)" if mcjit else ""
+        fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){late}{split}'" + (JITLATE if late != "" else "")
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied
             # there), from which lli could map nothing: the shell that runs opt first asks whether this

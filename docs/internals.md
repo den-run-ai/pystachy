@@ -606,8 +606,13 @@ errors and recovery under finite and unlimited host limits, with program GC stre
 
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
-keeps ORC and its normal code generation. This choice does not change the IR cleanup
-or inlining pipeline, and does not affect `build` or `ext`. Where LLVM is built with perf
+keeps ORC and its normal code generation. This choice keeps the IR cleanup and inlining
+pipeline, except that it splits critical edges last: LLVM's `-O0` PHI elimination (seen in 18,
+20 and 23) otherwise lowers a landing pad's PHI with the copies of an identical PHI in the
+call's normal successor, which follow the call, so an `except` clause read values that its loop
+never set or had changed since. `make jitprobe` runs
+`tests/programs/exceptions/exc_handler_loop_values.py` in both modes. The choice does not
+affect `build` or `ext`. Where LLVM is built with perf
 support, as Ubuntu's is, `lli`'s MCJIT writes a perf jitdump on every run, which no option
 turns off. The driver gives it a private directory (`JITDUMPDIR`, unless the environment sets
 one), which the runtime removes before the program starts; `lli` keeps the removed dump's
