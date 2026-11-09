@@ -31,7 +31,7 @@ Run these from the repository root:
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
 | `make bench-pyperformance-check` | Check the pyperformance runner and the ported benchmarks' CPython/JIT/AOT output; no timing thresholds. |
-| `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases and the agent's loopback HTTP transport. |
+| `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases, a native replay of the JSON repair corpus and the agent's loopback HTTP transport. |
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
 
 For quick local feedback, activate the environment with the dependencies from
@@ -409,8 +409,11 @@ elapsed time are excluded, apart from the router's empty in-memory batch with it
 defined zero-time report.
 
 The step also invokes the existing `tests/upstream/json_repair/cli.py` checks (20
-process cases, including output-file effects, compared with CPython in JIT and AOT)
-and `examples/agent/http_smoke.py` with CPython, JIT and AOT launchers. The latter
+process cases, including output-file effects, compared with CPython in JIT and AOT),
+replays the 837 recorded calls of the [JSON repair corpus](../tests/upstream/json_repair/README.md)
+through native JIT and AOT builds of the port, each checked by `tools/json_repair_parity.py`
+against the recorded CPython outcomes, and runs
+`examples/agent/http_smoke.py` with CPython, JIT and AOT launchers. The latter
 validates five requests against a local HTTP server, the response transcript and
 the resulting workspace repair; it needs `curl` but no model service or credentials.
 This is deterministic transport and execution coverage, with no performance threshold.

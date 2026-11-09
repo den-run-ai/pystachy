@@ -148,8 +148,13 @@ else
         bad "ext client $c (CPython 3.$MINOR$FT, $abi)"; diff "$T/$c.src.cmp" "$T/$c.so.cmp" | head -10; tail -3 "$T/$c.so.cmp"
       fi
     done
-    # Replay the recorded schema-free corpus through the actual imported module.
-    if [ "$abi" = abi3 ] && [ "$("$PY" -c 'import platform; print(platform.python_version())')" = "$(cat .python-version)" ]; then
+    # Replay the recorded schema-free corpus through the actual imported module. Its oracle is the
+    # pinned CPython: under another one the replay is reported as skipped, which CI's
+    # FFI-coverage checks reject, rather than silently left out.
+    pyv=$("$PY" -c 'import platform; print(platform.python_version())')
+    if [ "$abi" = abi3 ] && [ "$pyv" != "$(cat .python-version)" ]; then
+      skipped="${skipped:+$skipped; }the CPython JSON repair extension replay (its oracle is CPython $(cat .python-version), not $pyv)"
+    elif [ "$abi" = abi3 ]; then
       pkg="$T/repair/pystachy_json_repair"
       if mkdir -p "$pkg" && cp examples/json_repair/pystachy_json_repair/__init__.py "$pkg/" &&
          PYSTACHY_PATH=ports $PYS ext examples/json_repair/_native.py -o "$pkg/_native.abi3.so" &&
