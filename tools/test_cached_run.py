@@ -2,6 +2,7 @@
 from contextlib import ExitStack
 import os
 from pathlib import Path
+import re
 import sys
 import tempfile
 import unittest
@@ -10,6 +11,11 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.pystachy_compiler import cached_run
+
+ROOT = Path(__file__).resolve().parent.parent
+# The settings a cached program's identity spells exactly (docs/program-cache.md).
+KEYED = ["PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_DEBUG_LINES", "PYSTACHY_RUNTIME_C_CACHE",
+         "PYSTACHY_PATH", "PYSTACHY_PROGRAM_CACHE_INPUTS", "PATH", "HOME", "XDG_CONFIG_HOME"]
 
 
 class DependencyInputsTests(unittest.TestCase):
@@ -169,10 +175,37 @@ class EligibilityTests(unittest.TestCase):
         self.assertNotEqual(baseline, self.prepare()[1])
         self.cwd.return_value = "/work"
         for key, value in [("PYSTACHY_OPT", "-all"), ("PYSTACHY_JIT_INLINE", "0"),
+                           ("PYSTACHY_DEBUG_LINES", "1"), ("PYSTACHY_RUNTIME_C_CACHE", "1"),
                            ("PYSTACHY_PROGRAM_CACHE_INPUTS", "/generated/config.json"),
-                           ("PYSTACHY_PATH", "/new/imports"), ("PATH", "/different/tools")]:
+                           ("PYSTACHY_PATH", "/new/imports"), ("PATH", "/different/tools"),
+                           ("HOME", "/other/home"), ("XDG_CONFIG_HOME", "/other/config")]:
             with self.subTest(key=key), patch.dict(os.environ, {key: value}):
                 self.assertNotEqual(baseline, self.prepare()[1])
+
+    def test_empty_settings_are_not_unset(self):
+        # #1168: uncached compilation rejects an empty PYSTACHY_JIT_INLINE or
+        # PYSTACHY_RUNTIME_C_CACHE, and GNU ld rejects an empty GNUTARGET. A hit
+        # stored without the setting must not serve such a launch.
+        seen = {self.prepare()[1]}
+        for key in KEYED + cached_run.BUILD_ENV:
+            with self.subTest(key=key), patch.dict(os.environ, {key: ""}):
+                context = self.prepare()[1]
+                self.assertTrue(context)
+                self.assertNotIn(context, seen)
+                seen.add(context)
+        self.assertEqual(sorted(KEYED), sorted(cached_run.KEYED_ENV))
+
+
+class SettingsDocumentationTests(unittest.TestCase):
+    def test_every_compiler_setting_is_classified(self):
+        # A setting read while compiling is keyed, bypasses the cache or is
+        # documented as one that leaves the executable unchanged.
+        names = set(cached_run.KEYED_ENV + cached_run.BUILD_ENV)
+        for path in (ROOT / "src/pystachy_compiler").glob("*.py"):
+            names.update(re.findall(r'os\.getenv\("([A-Z0-9_]+)"', path.read_text(encoding="utf-8")))
+        guide = (ROOT / "docs/program-cache.md").read_text(encoding="utf-8")
+        self.assertIn("PYSTACHY_DEBUG_LINES", names)
+        self.assertEqual(sorted(name for name in names if f"`{name}`" not in guide), [])
 
 
 class NativeLockTests(unittest.TestCase):

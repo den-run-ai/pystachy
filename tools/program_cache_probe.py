@@ -578,6 +578,31 @@ def check_bypass(p: Probe) -> None:
             "extension build did not bypass the program cache")
 
 
+def check_settings(p: Probe) -> None:
+    # #1168: a hit must reproduce what its settings compile, and their errors.
+    # Line tables get an entry of their own. An empty setting is not an unset
+    # one: it fails as uncached compilation does instead of reusing that entry.
+    source = p.source("settings", "def twice(n: int) -> int:\n    return n * 2\n\n\nprint(twice(21))\n")
+    expected = p.oracle(source)
+    p.pair(source, "settings prime", reference=expected)
+    before = set(p.entry_files())
+    p.pair(source, "line tables", reference=expected, changes={"PYSTACHY_DEBUG_LINES": "1"})
+    added = [path for path in set(p.entry_files()) - before if path.suffix == ".exe"]
+    p.check(len(added) == 1 and b".debug_line\0" in added[0].read_bytes(),
+            f"line tables: expected one new executable with .debug_line: {added}")
+    scratch = p.directory / "settings-tmp"
+    scratch.mkdir()
+    for key in ("PYSTACHY_JIT_INLINE", "PYSTACHY_RUNTIME_C_CACHE"):
+        # A rejected setting can leave the driver's temporary directory behind.
+        changes = {key: "", "TMPDIR": str(scratch)}
+        uncached = p.run(f"empty {key} uncached", source, changes={**changes, "PYSTACHY_PROGRAM_CACHE": "0"})
+        p.check(uncached.status == 1 and key.encode() in uncached.stderr,
+                f"uncached compilation accepted an empty {key}: {uncached.observable!r}")
+        result = p.run(f"empty {key}", source, changes=changes)
+        p.matches(result, uncached, f"empty {key}")
+        p.check("hit" not in result.events, f"empty {key}: a hit hid the uncached error")
+
+
 def check_tool_identity(p: Probe) -> None:
     source = p.source("tool", "print(71)\n")
     p.pair(source, "tool identity prime")
@@ -770,6 +795,7 @@ CHECKS = {
     "semantics": check_semantics,
     "corruption": check_corruption,
     "bypass": check_bypass,
+    "settings": check_settings,
     "tool": check_tool_identity,
     "compiler": check_compiler_identity,
     "runtime": check_runtime_identity,
