@@ -1,0 +1,180 @@
+{
+ "meta": {
+  "session": "prepare-speed",
+  "rounds": 5,
+  "cpu": "2",
+  "started": "2026-11-09T05:12:36",
+  "compiler": "/home/user/wt/llvm-versions/pystachy",
+  "tree_head": "56678df4c667afb4c9b35d854e97cdc9f5c0c3f7",
+  "llvm": {
+   "18": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+   "20": "Ubuntu clang version 20.1.8 (++20250804090239+87f0227cb601-1~exp1~20250804210352.139)",
+   "22": "Ubuntu clang version 22.1.8 (++20260714014902+ca7933e47d3a-1~exp1~20260714135019.80)",
+   "23": "Ubuntu clang version 23.1.6 (++20261108033755+c47d7823685a-1~exp1~20261108153854.96)"
+  },
+  "cpython": "Python 3.13.18",
+  "finished": "2026-11-09T05:14:04"
+ },
+ "results": {
+  "regex_effbot_20/18": {
+   "build_s_untimed_session": 5.25,
+   "output_matches_cpython": true,
+   "size_bytes": 409680
+  },
+  "regex_effbot_20/20": {
+   "build_s_untimed_session": 5.17,
+   "output_matches_cpython": true,
+   "size_bytes": 405664
+  },
+  "regex_effbot_20/22": {
+   "build_s_untimed_session": 5.06,
+   "output_matches_cpython": true,
+   "size_bytes": 404992
+  },
+  "regex_effbot_20/23": {
+   "build_s_untimed_session": 4.56,
+   "output_matches_cpython": true,
+   "size_bytes": 400896
+  },
+  "nbody_10/18": {
+   "build_s_untimed_session": 0.99,
+   "output_matches_cpython": true,
+   "size_bytes": 113816
+  },
+  "nbody_10/20": {
+   "build_s_untimed_session": 0.92,
+   "output_matches_cpython": true,
+   "size_bytes": 113896
+  },
+  "nbody_10/22": {
+   "build_s_untimed_session": 1.0,
+   "output_matches_cpython": true,
+   "size_bytes": 109800
+  },
+  "nbody_10/23": {
+   "build_s_untimed_session": 1.06,
+   "output_matches_cpython": true,
+   "size_bytes": 109760
+  },
+  "richards_20/18": {
+   "build_s_untimed_session": 1.42,
+   "output_matches_cpython": true,
+   "size_bytes": 137472
+  },
+  "richards_20/20": {
+   "build_s_untimed_session": 1.43,
+   "output_matches_cpython": true,
+   "size_bytes": 137488
+  },
+  "richards_20/22": {
+   "build_s_untimed_session": 1.48,
+   "output_matches_cpython": true,
+   "size_bytes": 137488
+  },
+  "richards_20/23": {
+   "build_s_untimed_session": 1.25,
+   "output_matches_cpython": true,
+   "size_bytes": 137488
+  },
+  "json_dumps_20/18": {
+   "build_s_untimed_session": 2.04,
+   "output_matches_cpython": true,
+   "size_bytes": 217824
+  },
+  "json_dumps_20/20": {
+   "build_s_untimed_session": 2.22,
+   "output_matches_cpython": true,
+   "size_bytes": 217928
+  },
+  "json_dumps_20/22": {
+   "build_s_untimed_session": 1.99,
+   "output_matches_cpython": true,
+   "size_bytes": 217928
+  },
+  "json_dumps_20/23": {
+   "build_s_untimed_session": 2.02,
+   "output_matches_cpython": true,
+   "size_bytes": 217928
+  },
+  "json_loads_2000/18": {
+   "build_s_untimed_session": 2.82,
+   "output_matches_cpython": true,
+   "size_bytes": 285440
+  },
+  "json_loads_2000/20": {
+   "build_s_untimed_session": 2.87,
+   "output_matches_cpython": true,
+   "size_bytes": 285520
+  },
+  "json_loads_2000/22": {
+   "build_s_untimed_session": 2.76,
+   "output_matches_cpython": true,
+   "size_bytes": 285520
+  },
+  "json_loads_2000/23": {
+   "build_s_untimed_session": 2.56,
+   "output_matches_cpython": true,
+   "size_bytes": 285472
+  },
+  "spectral_norm_10/18": {
+   "build_s_untimed_session": 0.86,
+   "output_matches_cpython": true,
+   "size_bytes": 96240
+  },
+  "spectral_norm_10/20": {
+   "build_s_untimed_session": 0.83,
+   "output_matches_cpython": true,
+   "size_bytes": 100416
+  },
+  "spectral_norm_10/22": {
+   "build_s_untimed_session": 0.86,
+   "output_matches_cpython": true,
+   "size_bytes": 96352
+  },
+  "spectral_norm_10/23": {
+   "build_s_untimed_session": 0.85,
+   "output_matches_cpython": true,
+   "size_bytes": 96352
+  },
+  "raytrace_4/18": {
+   "build_s_untimed_session": 1.32,
+   "output_matches_cpython": true,
+   "size_bytes": 122480
+  },
+  "raytrace_4/20": {
+   "build_s_untimed_session": 1.25,
+   "output_matches_cpython": true,
+   "size_bytes": 122560
+  },
+  "raytrace_4/22": {
+   "build_s_untimed_session": 1.34,
+   "output_matches_cpython": true,
+   "size_bytes": 122560
+  },
+  "raytrace_4/23": {
+   "build_s_untimed_session": 1.3,
+   "output_matches_cpython": true,
+   "size_bytes": 122560
+  },
+  "json_repair_bench_200/18": {
+   "build_s_untimed_session": 5.7,
+   "output_matches_cpython": true,
+   "size_bytes": 461448
+  },
+  "json_repair_bench_200/20": {
+   "build_s_untimed_session": 5.26,
+   "output_matches_cpython": true,
+   "size_bytes": 461520
+  },
+  "json_repair_bench_200/22": {
+   "build_s_untimed_session": 5.35,
+   "output_matches_cpython": true,
+   "size_bytes": 461520
+  },
+  "json_repair_bench_200/23": {
+   "build_s_untimed_session": 5.13,
+   "output_matches_cpython": true,
+   "size_bytes": 461520
+  }
+ }
+}

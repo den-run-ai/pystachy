@@ -96,6 +96,13 @@ releases and on an in-process LLJIT launcher. The [launcher evaluation](lljit-la
 recommends the `llc -O0` route now and the launcher later under #707. It also found that
 `-O0` code generation, main's `PYSTACHY_JIT_CODEGEN=0` included, gives an `except` clause
 stale or unset values from its loop: an LLVM PHI-elimination bug in LLVM 18, 20 and 23.
+#1188 splits critical edges before `-O0` code generation; with it the whole corpus passes under
+`PYSTACHY_JIT_CODEGEN=0` (4,501 cases).
+
+The [LLVM version evaluation](llvm-versions/report.md) advises against moving Linux to 20 or 22:
+23 compiles 6-16% faster with no faster code, but LLVM 22 and 23 reject Pystachy's
+`llvm.coro.end` declaration (every generator, and the bootstrap), and LLVM 20 and 22 lose
+`math.fmod`'s NaNs in Linux AOT builds.
 
 ## Release planning
 

@@ -1,0 +1,112 @@
+heavy.sh: slot 2 acquired at 05:15:39 for: make
+mkdir -p build
+PYSTACHY_AOT_OPT="2" /usr/local/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
+pystachy-timing	program.cache_lookup	0.000007690
+pystachy-timing	program.load	8.037077216
+pystachy-timing	program.prepare	1.424143487
+pystachy-timing	program.discover	13.754596516
+pystachy-timing	program.analysis	0.450834998
+pystachy-timing	program.optimize	1.687428877
+pystachy-timing	program.finalize	0.263954591
+pystachy-timing	program.lower	0.914015093
+pystachy-timing	program.attempt	26.533009622
+pystachy-timing	program.frontend	26.657868131
+pystachy-timing	runtime.cache_lookup	0.739226431
+pystachy-timing	runtime.load	0.162728596
+pystachy-timing	runtime.prepare	0.038603323
+pystachy-timing	runtime.discover	0.106464807
+pystachy-timing	runtime.analysis	0.004919551
+pystachy-timing	runtime.optimize	0.007240809
+pystachy-timing	runtime.finalize	0.003940758
+pystachy-timing	runtime.lower	0.015950129
+pystachy-timing	runtime.frontend	0.343564464
+pystachy-timing	runtime.c	2.870641518
+pystachy-timing	runtime.link_optimize	2.700275534
+pystachy-timing	runtime.llvm_build	5.571035509
+pystachy-timing	program.llvm_link	2.571516199
+pystachy-timing	program.llvm_optimize	36.346971711
+pystachy-timing	program.late_inline	3.471021375
+pystachy-timing	program.codegen	22.940062457
+pystachy-timing	program.link	0.066194306
+pystachy-timing	driver.total	99.183729420
+PYSTACHY_AOT_OPT=2 build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
+pystachy-timing	program.cache_lookup	0.000000959
+pystachy-timing	program.load	1.623223205
+pystachy-timing	program.prepare	0.777325666
+pystachy-timing	program.discover	1.322137092
+pystachy-timing	program.analysis	0.184084833
+pystachy-timing	program.optimize	0.552861179
+pystachy-timing	program.finalize	0.135545536
+pystachy-timing	program.lower	0.619975581
+pystachy-timing	program.attempt	5.215425913
+pystachy-timing	program.frontend	5.215437162
+pystachy-timing	runtime.cache_lookup	0.076516839
+pystachy-timing	runtime.load	0.029083184
+pystachy-timing	runtime.prepare	0.011289447
+pystachy-timing	runtime.discover	0.014087573
+pystachy-timing	runtime.analysis	0.004687211
+pystachy-timing	runtime.optimize	0.003892422
+pystachy-timing	runtime.finalize	0.003434120
+pystachy-timing	runtime.lower	0.007000972
+pystachy-timing	runtime.frontend	0.073656950
+pystachy-timing	runtime.c	2.843068909
+pystachy-timing	runtime.link_optimize	2.691786815
+pystachy-timing	runtime.llvm_build	5.534975730
+pystachy-timing	program.llvm_link	2.697360839
+pystachy-timing	program.llvm_optimize	34.963129962
+pystachy-timing	program.late_inline	2.887216383
+pystachy-timing	program.codegen	22.751105867
+pystachy-timing	program.link	0.066779875
+pystachy-timing	driver.total	74.432603861
+build/pystachy2 ir pystachy.py -o build/stage3.ll
+pystachy-timing	program.cache_lookup	0.000000922
+pystachy-timing	program.load	1.685706774
+pystachy-timing	program.prepare	0.675901341
+pystachy-timing	program.discover	1.264023093
+pystachy-timing	program.analysis	0.173554557
+pystachy-timing	program.optimize	0.526157998
+pystachy-timing	program.finalize	0.142623953
+pystachy-timing	program.lower	0.640224871
+pystachy-timing	program.attempt	5.108618242
+pystachy-timing	program.frontend	5.108631506
+pystachy-timing	driver.total	5.172832830
+cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
+fixed point: stage1 == stage2 == stage3 (878852 lines of IR)
+/usr/local/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll
+pystachy-timing	runtime.load	0.152443757
+pystachy-timing	runtime.prepare	0.033702505
+pystachy-timing	runtime.discover	0.093914498
+pystachy-timing	runtime.analysis	0.004367495
+pystachy-timing	runtime.optimize	0.005980988
+pystachy-timing	runtime.finalize	0.002718749
+pystachy-timing	runtime.lower	0.013801926
+pystachy-timing	runtime.frontend	0.310004671
+pystachy-timing	driver.total	0.310734559
+build/pystachy1 rt runtime.py -o build/rt2.ll
+pystachy-timing	runtime.load	0.028804367
+pystachy-timing	runtime.prepare	0.011523331
+pystachy-timing	runtime.discover	0.013674274
+pystachy-timing	runtime.analysis	0.002417304
+pystachy-timing	runtime.optimize	0.002336247
+pystachy-timing	runtime.finalize	0.001611005
+pystachy-timing	runtime.lower	0.005771803
+pystachy-timing	runtime.frontend	0.066801318
+pystachy-timing	driver.total	0.067983851
+build/pystachy2 rt runtime.py -o build/rt3.ll
+pystachy-timing	runtime.load	0.028457711
+pystachy-timing	runtime.prepare	0.011336238
+pystachy-timing	runtime.discover	0.013654404
+pystachy-timing	runtime.analysis	0.002171253
+pystachy-timing	runtime.optimize	0.002254722
+pystachy-timing	runtime.finalize	0.001611033
+pystachy-timing	runtime.lower	0.005738256
+pystachy-timing	runtime.frontend	0.065837066
+pystachy-timing	driver.total	0.067002434
+cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+fixed point: runtime.py's IR, rt1 == rt2 == rt3 (19907 lines)
+cp build/pystachy2 pystachy
+
+real	4m16.606s
+user	2m54.595s
+sys	0m3.372s
+EXIT=0

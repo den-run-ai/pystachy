@@ -1,0 +1,12 @@
+FAIL upstream_math_fmod (aot)
+1,2c1
+< CPython MathTests.testFmod: passed
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+AssertionError
+selected 43 cases
+85 passed, 1 failed
+elapsed 29.407s
+EXIT=1

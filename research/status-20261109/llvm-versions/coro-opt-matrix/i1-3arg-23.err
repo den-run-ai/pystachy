@@ -1,0 +1,3 @@
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: i1-3arg.ll: error: input module is broken!

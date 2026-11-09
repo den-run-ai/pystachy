@@ -1,0 +1,19 @@
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+Intrinsic has incorrect return type!
+ptr @llvm.coro.end
+/usr/lib/llvm-18/bin/opt: void-3arg.ll: error: input module is broken!

@@ -1,0 +1,749 @@
+FAIL gen_basic (jit)
+1,31c1
+< made, nothing run yet
+< countdown starts
+< got 3
+< got 2
+< got 1
+< countdown ends
+< even 0
+< even 2
+< even 4
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmppxqy1w9v/prog.ll: error: input module is broken!
+FAIL gen_basic (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_basic.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_bytes (jit)
+1,8c1
+< b'ABC' b'BC'
+< [b'abc', b'def', b'g'] b'ab-cd-ef'
+< b'x'
+< b'y'
+< b'z'
+< [104, 105]
+< 294 b'cd'
+< [exit 0]
+---
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp99wbgcep/prog.ll: error: input module is broken!
+FAIL gen_bytes (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_bytes.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_close (jit)
+1,29c1
+< 1
+< g1 finally
+< closed -1
+< closed twice
+< never started -1
+< ignoring
+< close: generator ignored GeneratorExit
+< after 2
+< -1
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpljdflvhd/prog.ll: error: input module is broken!
+FAIL gen_close (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_close.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_close_errors (jit)
+1,7c1
+< ignoring close
+< after break
+< caught ValueError('from body')
+< 7
+< after oops
+< end
+< [exit 0]
+---
+> [exit 1]
+  stderr: want 'KeyError: 'cleanup'', got '/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp9xie_ewz/prog.ll: error: input module is broken!'
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp9xie_ewz/prog.ll: error: input module is broken!
+FAIL gen_close_errors (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_close_errors.aot: No such file or directory
+  stderr: want 'KeyError: 'cleanup'', got ''
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_cm_gc (jit)
+1,49c1
+< 1
+< 1
+< 1
+< 1
+< 2
+< 2
+< 2
+< 2
+< 3
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp3bva4crh/prog.ll: error: input module is broken!
+FAIL gen_cm_gc (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_cm_gc.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_consumers (jit)
+1,43c1
+< 30 24 3.0
+< [0, 1, 4, 9] ['alice', 'bob', 'carol'] ['carol', 'bob', 'alice']
+<   produce 0
+<   produce 1
+< True
+<   produce 0
+< False
+<   produce 0
+<   produce 1
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp88gybds0/prog.ll: error: input module is broken!
+FAIL gen_consumers (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_consumers.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_expressions (jit)
+1,15c1
+<   eval 1
+<   eval 2
+< made
+< 100
+< [2000] []
+< 0 30 0
+< [2, 4] [3, 6]
+< lazy made
+<   eval 7
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmppc4z6rx4/prog.ll: error: input module is broken!
+FAIL gen_expressions (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_expressions.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_finally (jit)
+1,46c1
+<   open
+< full 0
+< full 1
+<   close
+<   open
+< partial 0
+< partial 1
+<   close
+< after break
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmphx1o6gfo/prog.ll: error: input module is broken!
+FAIL gen_finally (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_finally.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_gc (jit)
+1,2c1
+< 1365 906535 20000
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpgnqq6532/prog.ll: error: input module is broken!
+FAIL gen_gc (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_gc.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_iter_close (jit)
+1,31c1
+< 1
+< iter closed
+< after for
+< 3
+< reversed closed
+< after reversed
+< 0 1
+< iter closed
+< after enumerate
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpbsuu3fys/prog.ll: error: input module is broken!
+FAIL gen_iter_close (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_iter_close.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_iterators (jit)
+1,29c1
+< 60 6 6
+< [2, 3, 4] [1, 11]
+< 3 1 2 -1
+< (3, 1, 2) 3 3 True False True
+< 3 1 2
+< 0 10
+< 0 [10, 20]
+< [2, 3]
+< v 2
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpmjjgzl08/prog.ll: error: input module is broken!
+FAIL gen_iterators (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_iterators.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_module (jit)
+1,13c1
+< mods: init mods
+< mods.shapes: init mods.shapes
+< 3
+< True False
+< line a
+< line b
+< line c
+< ['a', 'b', 'c'] ['c', 'b', 'a']
+< [1, 2]
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpjm5kozhd/prog.ll: error: input module is broken!
+FAIL gen_module (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_module.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_more (jit)
+1,9c1
+< [0, 4, 8, 12] [0, 9, 18, 27]
+< [0, 1, 2] [3, 4] [0, 7, 8] [2, 3]
+< ['base']
+< ['child', 'more']
+< got 1
+< caught KeyError('inside')
+< after [] -1
+< 0 4
+< [exit 0]
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpwmexx4by/prog.ll: error: input module is broken!
+FAIL gen_more (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_more.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_next (jit)
+1,17c1
+<   yield 0
+<   yield 1
+< 0 1
+<   yield 2
+< 2 -1 -2
+< StopIteration
+< x y none
+< (0, 0) (1, 1) [(2, 4)]
+<   yield 0
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpcbnuw0ap/prog.ll: error: input module is broken!
+FAIL gen_next (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_next.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_optional (jit)
+1,13c1
+< 0 0
+< 1 1
+< 2 -1
+< [0, 1, 2, -1, -1]
+< False 0
+< True -5
+< truthy [0]
+< TypeError: 'NoneType' object is not iterable
+< TypeError: 'NoneType' object is not an iterator
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp0b1vjimg/prog.ll: error: input module is broken!
+FAIL gen_optional (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_optional.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_protocol_gc (jit)
+1,24c1
+< keeper 0 closing with 60 lists and 4 notes
+< keeper 1 closing with 60 lists and 4 notes
+< keeper 2 closing with 60 lists and 4 notes
+< ['stopped', 'stopped', 'stopped']
+< keeper 3 closing with 60 lists and 4 notes
+< keeper 4 closing with 60 lists and 4 notes
+< keeper 5 closing with 60 lists and 4 notes
+< keeper 6 closing with 60 lists and 4 notes
+< keeper 7 closing with 60 lists and 4 notes
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmppukg0rgu/prog.ll: error: input module is broken!
+FAIL gen_protocol_gc (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_protocol_gc.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_protocol_noeh (jit)
+1,8d0
+< 0
+< 5
+< 12
+< -1
+< a
+< x: None
+< b
+< []
+  stderr: want 'KeyError: 'end'', got '/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp1ndskqp9/prog.ll: error: input module is broken!'
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp1ndskqp9/prog.ll: error: input module is broken!
+FAIL gen_protocol_noeh (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_protocol_noeh.aot: No such file or directory
+  stderr: want 'KeyError: 'end'', got ''
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_pyperf (jit)
+1,2c1
+< 3000
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpyk6__s3f/prog.ll: error: input module is broken!
+FAIL gen_pyperf (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_pyperf.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_recursion_guard (jit)
+1,19c1
+< 0 3
+< 100 3
+< 19900 3
+< 0 40
+< 1 40
+< 2 40
+< 3 40
+< 3 40
+< 3 40
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpc_fc5vtn/prog.ll: error: input module is broken!
+FAIL gen_recursion_guard (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_recursion_guard.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_recursion_resume_limit (jit)
+1,21c1
+< 0
+< next: RecursionError
+< then finished
+< next: RecursionError
+< then finished
+< 0
+< send: RecursionError
+< then finished
+< 0
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpydl32alq/prog.ll: error: input module is broken!
+FAIL gen_recursion_resume_limit (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_recursion_resume_limit.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_reenter (jit)
+1d0
+< 1
+  stderr: want 'ValueError: generator already executing', got '/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp5q5ngy26/prog.ll: error: input module is broken!'
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp5q5ngy26/prog.ll: error: input module is broken!
+FAIL gen_reenter (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_reenter.aot: No such file or directory
+  stderr: want 'ValueError: generator already executing', got ''
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_reversed_method (jit)
+1,5c1
+< [2, 1] [1, 2]
+< 2
+< 1
+< [1, 2] 3
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp4yp1bxpb/prog.ll: error: input module is broken!
+FAIL gen_reversed_method (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_reversed_method.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_send (jit)
+1,36c1
+< 0.0
+< 10.0
+< 20.0
+< got None
+< 20.0
+< 15.0
+< can't send non-None value to a just-started generator
+< ready
+< echo a
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpvxpv3brk/prog.ll: error: input module is broken!
+FAIL gen_send (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_send.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_stopiteration (jit)
+1,6d0
+< got 1
+< RuntimeError: generator raised StopIteration
+< body 1
+< StopIteration: from the body
+< list: generator raised StopIteration
+< last 1
+  stderr: want 'RuntimeError: generator raised StopIteration', got '/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpr_bkljas/prog.ll: error: input module is broken!'
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpr_bkljas/prog.ll: error: input module is broken!
+FAIL gen_stopiteration (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_stopiteration.aot: No such file or directory
+  stderr: want 'RuntimeError: generator raised StopIteration', got ''
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_stopiteration_uncaught (jit)
+1,2d0
+< 0
+< 1
+  stderr: want 'RuntimeError: generator raised StopIteration', got '/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp4nvh7l4h/prog.ll: error: input module is broken!'
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmp4nvh7l4h/prog.ll: error: input module is broken!
+FAIL gen_stopiteration_uncaught (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_stopiteration_uncaught.aot: No such file or directory
+  stderr: want 'RuntimeError: generator raised StopIteration', got ''
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_stored (jit)
+1,19c1
+<   produce 0
+< first loop 0
+<   produce 1
+< first loop 1
+<   produce 2
+<   produce 0
+<   produce 1
+<   produce 2
+< resumed at 2
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmphnsnvoor/prog.ll: error: input module is broken!
+FAIL gen_stored (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_stored.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_throw (jit)
+1,45c1
+< 1
+< caught boom
+< throw gives 10
+< 11
+< finally
+< done
+< 1
+< finally
+< propagated KeyError('k')
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpy1vcgx14/prog.ll: error: input module is broken!
+FAIL gen_throw (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_throw.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_tree (jit)
+1,5c1
+< [0, 1, 2, 3, 4, 5, 6]
+< [2, 1, 2, 0, 2, 1, 2]
+< 21 (2, 6) True False
+< 1999000 2000
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpux2yg4rr/prog.ll: error: input module is broken!
+FAIL gen_tree (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_tree.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_walrus_loop (jit)
+1,15c1
+< first a0
+< first b0
+< 321
+< closed a
+< a1 ['a2', 'a3', 'a4']
+< closed b
+< b1 ['b2', 'b3', 'b4']
+< got c0
+< got c1
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmph45kh5bg/prog.ll: error: input module is broken!
+FAIL gen_walrus_loop (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_walrus_loop.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_with (jit)
+1,26c1
+< line one
+< line two
+< line three
+< line four
+<   finally, file closed: False
+<   after with
+< first one
+<   finally, file closed: False
+< inner file x
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpr2izknhw/prog.ll: error: input module is broken!
+FAIL gen_with (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_with.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_yield_from (jit)
+1,10c1
+< [-1, 0, 1, 2, 10, 20, 0, 100, 10, 11, 7, 8, 5, 6, 99]
+< -1
+< 0
+< inner said: stopped at x
+< inner said: all digits
+< [1, 2, -1] [4, -1]
+< [0, 0, 1, 300]
+< ['a', 'b', 'y', 'z']
+< [0, 1, 2, 3, 4, 5] 20100
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpgfah16no/prog.ll: error: input module is broken!
+FAIL gen_yield_from (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_yield_from.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_yield_from_close (jit)
+1,11c1
+< got 1
+< noisy closing
+< tolerant caught KeyError('cleanup')
+< tolerant ends
+< after break
+< wraps_stubborn finally
+< after stubborn
+< noisy closing
+< caught ValueError('body')
+  stderr: want 'KeyError: 'cleanup'', got '/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpg2sw13w9/prog.ll: error: input module is broken!'
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpg2sw13w9/prog.ll: error: input module is broken!
+FAIL gen_yield_from_close (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_yield_from_close.aot: No such file or directory
+  stderr: want 'KeyError: 'cleanup'', got ''
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_yield_from_forms (jit)
+1,12c1
+< [0, 1, 2, 10, 8, 6, 8, 7, 1, 2, 5, 6, 0, 0, 2]
+< [(0, 'x'), (1, 'y'), (5, 'p'), (6, 'q')]
+< kept 99
+< [0, 0, 2, 2]
+< [(0, 'x'), (0, 'y'), (1, 'x'), (1, 'y')]
+< [1, 2]
+< ['0a', '0b', '2a', '2b']
+< value None
+< [0, 1]
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpntljc7zq/prog.ll: error: input module is broken!
+FAIL gen_yield_from_forms (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_yield_from_forms.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_yield_from_protocol (jit)
+1,32c1
+< inner got 0
+< inner received a
+< inner got 1
+< inner received b
+< inner got 2
+< inner caught v
+< after ValueError
+< inner finally
+< inner returned 2
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpskuypm5g/prog.ll: error: input module is broken!
+FAIL gen_yield_from_protocol (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_yield_from_protocol.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL gen_yield_from_stored (jit)
+1,12c1
+< x 0
+< x 1
+< x 2
+< -1 -1
+< 0
+< y 1
+< caught
+< -1
+< z 10
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpdux0k1_t/prog.ll: error: input module is broken!
+FAIL gen_yield_from_stored (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/gen_yield_from_stored.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL iterator_items_gen (jit)
+1,16c1
+< 1
+< 2
+< closed
+< after break
+< 4
+< 5
+< closed
+< after end
+< closed
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpq460018k/prog.ll: error: input module is broken!
+FAIL iterator_items_gen (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/iterator_items_gen.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+FAIL nestcomp_stmtexpr (jit)
+1,2c1
+< ok
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/opt: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/tmpze2oxl2t/prog.ll: error: input module is broken!
+FAIL nestcomp_stmtexpr (aot)
+diff: /tmp/claude-0/-home-user-pystachy/b0f95023-79a1-5e08-b42b-506118072379/scratchpad/llvmver.NWwbC2/tmp/pystachy-tests.UTEK9a/nestcomp_stmtexpr.aot: No such file or directory
+  build's stderr:
+intrinsic return type expected void, but got i1
+declare i1 @llvm.coro.end(ptr, i1, token)
+/usr/lib/llvm-23/bin/llvm-link: error: linked module is broken!
+selected 52 cases
+30 passed, 74 failed
+elapsed 11.439s
+EXIT=1
