@@ -658,15 +658,17 @@ collections that clear weak references, close dropped files and release `ffi.tra
 can come later than without `allocelide`. `runtime.c` keeps `pys_new` out of line so that
 `-O2` still sees those calls. Each surviving allocation then gets the allocator's fast path
 back: `build` optimizes the linked module to bitcode, and one `opt` run then inlines `pys_new`
-into the calls that are left. Its `forceattrs` pass first swaps `pys_new`'s `noinline` (and the
+into the calls that are left. Its `forceattrs` passes first swap `pys_new`'s `noinline` (and the
 `optnone` of a runtime compiled at `-O0`) for `alwaysinline` (the driver's `LATE_INLINE`), then
-`always-inline` inlines it. Clang then compiles the module without optimizing it again.
+`always-inline` inlines it. There are two (`LATE_PASSES`): LLVM 23 adds a forced attribute before
+it removes one and no longer adds `alwaysinline` beside `noinline` or `optnone`, so its first
+pass only removes them. Clang then compiles the module without optimizing it again.
 `ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
 keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shared runtime,
 puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
 `pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
-what instcombine can prove unused, and a last `forceattrs,always-inline` step then inlines the
-calls left. Each pops the runtime's free list of its class (`pys_fl`, a constant slot once
+what instcombine can prove unused, and the same last `forceattrs` and `always-inline` passes
+then inline the calls left. Each pops the runtime's free list of its class (`pys_fl`, a constant slot once
 inlined) and calls `pys_gc_slow` for everything else. The runtime's own code
 (`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
 objects that never escape compile to no allocation, that objects a list keeps do,

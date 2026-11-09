@@ -28,9 +28,13 @@ JOINS = 8  # the passes after the first that a program's joins may take (see com
 # -O2 has deleted the allocations whose objects nothing keeps, opt's forceattrs makes runtime.c's
 # out-of-line pys_new always inline, and always-inline puts it, the allocator's fast path, into each
 # call that -O2 left. A runtime compiled with PYSTACHY_CFLAGS=-O0 gives pys_new optnone as well,
-# which LLVM allows only beside noinline: forceattrs removes both
-LATE_INLINE = ("-force-remove-attribute=pys_new:noinline -force-remove-attribute=pys_new:optnone"
+# which LLVM allows only beside noinline: forceattrs removes both, optnone first. LLVM 23's
+# forceattrs adds an attribute before it removes one, skips alwaysinline beside noinline or optnone,
+# and keeps noinline beside optnone, so the first of two passes removes them and the second adds
+# alwaysinline (where LLVM 18 to 22 do all in the first): LATE_PASSES
+LATE_INLINE = ("-force-remove-attribute=pys_new:optnone -force-remove-attribute=pys_new:noinline"
                " -force-attribute=pys_new:alwaysinline")
+LATE_PASSES = "forceattrs,forceattrs,always-inline"
 
 # Every hosted component contributes to runtime-cache identity and startup trust.
 COMPILER_SOURCES: list[str] = [
@@ -222,7 +226,7 @@ CPUID: list[str] = ["vendor_id", "cpu family", "model", "model name", "stepping"
                     "CPU variant", "CPU part", "CPU revision", "Features"]
 # The JIT tier's allocations: the program's module carries the allocator's fast path for pys_alloc
 # and pys_new (lower_module's jit_alloc and JITFAST), both noinline through the cleanup pipeline,
-# whose last step inlines them, as LATE_INLINE does for AOT builds
+# whose last step inlines them, as LATE_INLINE does for AOT builds (with LATE_PASSES, for LLVM 23)
 JITLATE = (" -force-remove-attribute=pys_new:noinline -force-attribute=pys_new:alwaysinline"
            " -force-remove-attribute=pys_alloc:noinline -force-attribute=pys_alloc:alwaysinline")
 
@@ -1012,7 +1016,7 @@ def main() -> None:
         # (allocelide: pys_new stays visible through -O2, then the late step inlines it and hides it
         # as the rest)
         public = f"{entry}{ext}" + (",pys_new" if newalloc else "")
-        inline = (f" && {llvm}opt -passes='forceattrs,always-inline,internalize,globaldce' {LATE_INLINE}"
+        inline = (f" && {llvm}opt -passes='{LATE_PASSES},internalize,globaldce' {LATE_INLINE}"
                   f" -internalize-public-api-list={entry}{ext} {q(bc)} -o {q(bc)}") if newalloc else ""
         code = timed_sh("extension.backend", f"{llvm}llvm-link {q(ll)} {q(glue[1][2])} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
                   + f" && {llvm}opt -passes='internalize,default<O2>' -internalize-public-api-list={public} {q(bc)} -o {q(bc)}" + inline
@@ -1029,7 +1033,7 @@ def main() -> None:
         if code == 0 and newalloc:
             code = timed_sh("program.llvm_optimize", f"{llvm}clang -O{aotopt} -c -emit-llvm {q(bc)} -o {q(obc)} -Wno-unused-command-line-argument{ccflags}")
         if code == 0 and newalloc:
-            code = timed_sh("program.late_inline", f"{llvm}opt -passes=forceattrs,always-inline {LATE_INLINE} {q(obc)} -o {q(lbc)}")
+            code = timed_sh("program.late_inline", f"{llvm}opt -passes={LATE_PASSES} {LATE_INLINE} {q(obc)} -o {q(lbc)}")
         if code == 0:
             cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}"
             code = timed_sh("program.codegen" if newalloc else "program.optimize_codegen", cc + f" -o {q(obj)} -Wno-unused-command-line-argument{ccflags}")
@@ -1100,7 +1104,7 @@ def main() -> None:
         # SSA promotion can leave unused feedback cycles (including numeric identity
         # generations). Remove those after inlining and coroutine lowering are complete;
         # instcombine alone does not eliminate cycles with no externally used result.
-        late = ",forceattrs,always-inline" if jir != ir else ""
+        late = "," + LATE_PASSES if jir != ir else ""
         fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){late}'" + (JITLATE if late != "" else "")
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied

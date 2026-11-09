@@ -9,7 +9,8 @@ returning i1 that LLVM 18 to 21 define. Generators call the older two-argument f
 which each release upgrades to its own signature as it reads it.
 
 The text checks need no LLVM; with the driver's toolchain (PYSTACHY_LLVM, else its discovery),
-opt must also read each float spelling back as the same bits and lower a generator.
+opt must also read each float spelling back as the same bits and lower a generator, and the
+driver's late passes must inline the allocator's fast path, which LLVM 23's forceattrs changed.
 """
 import math
 import os
@@ -33,6 +34,29 @@ TEXTS = ["0.0", "-0.0", "1.0", "0.1", "-1.5", "1e-09", "1e+16", "1e22", "1e23", 
          "-9223372036854775808.0", "1e309", "-1e309", "inf", "-inf", "nan"]
 # a hexadecimal double (not part of a name or a string's text) or LLVM 23's f0x form
 HEXFLOAT = re.compile(r"(?<![\w.$\"-])f?0x[0-9A-Fa-f]{16}(?![\w.])")
+# the allocator's fast path, out of line, as runtime.c's pys_new reaches AOT's late step (noinline, and
+# optnone too from a runtime compiled at -O0) and as the JIT tier's JITFAST copies do
+ALLOCATOR = """@pys_fl = external global [80 x ptr]
+declare ptr @pys_gc_slow(i64, i64)
+define internal ptr @{name}(i64 %n) {attributes} {{
+  %s = icmp ult i64 %n, 136
+  br i1 %s, label %f, label %w
+f:
+  %h = getelementptr ptr, ptr @pys_fl, i64 %n
+  %p = load ptr, ptr %h
+  %z = icmp eq ptr %p, null
+  br i1 %z, label %w, label %o
+o:
+  ret ptr %p
+w:
+  %r = call ptr @pys_gc_slow(i64 %n, i64 0)
+  ret ptr %r
+}}
+define ptr @user() {{
+  %p = call ptr @{name}(i64 56)
+  ret ptr %p
+}}
+"""
 GENERATOR = ("def count(n: int):\n"
              "    i = 0\n"
              "    while i < n:\n"
@@ -60,11 +84,11 @@ def llvm_tool(name):
     return path if path and os.access(path, os.X_OK) else None
 
 
-def opt(module_text, passes):
+def opt(module_text, passes, options=()):
     with tempfile.TemporaryDirectory() as scratch:
         module = Path(scratch) / "module.ll"
         module.write_text(module_text)
-        return subprocess.run([llvm_tool("opt"), "-S", "-passes=" + passes, str(module), "-o", "-"],
+        return subprocess.run([llvm_tool("opt"), "-S", "-passes=" + passes, *options, str(module), "-o", "-"],
                               capture_output=True, text=True, timeout=120)
 
 
@@ -145,6 +169,20 @@ class LlvmReadsItTests(unittest.TestCase):
         self.assertIsNone(re.search(r"call .*@llvm\.coro\.end\(", run.stdout))
         self.assertIn("presplitcoroutine", ir)
         self.assertNotIn("presplitcoroutine", run.stdout)
+
+    def test_late_passes_inline_the_allocator_fast_path(self):
+        # LLVM 23's forceattrs adds before it removes and refuses alwaysinline beside noinline or
+        # optnone: the driver's LATE_PASSES run it twice, and LATE_INLINE removes optnone first
+        for name, attributes, options in [("pys_new", "noinline", driver.LATE_INLINE),
+                                          ("pys_new", "noinline optnone", driver.LATE_INLINE),
+                                          ("pys_new", "noinline", driver.JITLATE),
+                                          ("pys_alloc", "noinline", driver.JITLATE)]:
+            with self.subTest(name=name, attributes=attributes, options=options):
+                module = ALLOCATOR.format(name=name, attributes=attributes)
+                run = opt(module, driver.LATE_PASSES, options.split())
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertNotIn(f"call ptr @{name}(", run.stdout)
+                self.assertIn("call ptr @pys_gc_slow(i64 56, i64 0)", run.stdout)
 
 
 if __name__ == "__main__":
