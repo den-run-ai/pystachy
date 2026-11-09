@@ -24,7 +24,7 @@ Run these from the repository root:
 | `make typecheck` | Run mypy on the Python compiler and its entry point; no native build needed. |
 | `make check-recordings` | Check expected outputs, remaining deviations, unchanged upstream sources and test-tree hygiene. |
 | `make test-cache` | Check runtime build-cache reuse, invalidation and failed-build handling with both compilers. |
-| `make test-program-cache` | Check default native program reuse, source/toolchain invalidation, fresh execution, concurrency, eviction and failure recovery. |
+| `make test-program-cache` | Check default native program reuse, source/toolchain invalidation, setting keys, fresh execution, concurrency, eviction and failure recovery. |
 | `make test-ffi` | Check C calls, FFI diagnostics, embedded CPython (`pyobj`) and CPython extension modules. |
 | `make check-ir` | Check the typed IR and its LLVM lowering across the compiler corpus. |
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
@@ -84,6 +84,7 @@ fails `make check-recordings` and a whole-corpus `tests/run.sh` instead of being
 | `NAME.in`, when present | Input supplied to the program. |
 | `NAME.path`, when present | Module path: `PYTHONPATH` for the recording, `PYSTACHY_PATH` for the compiled test. |
 | `NAME.full`, when present | Send stdout to `/dev/full` to check failed writes. |
+| `NAME` ending in `_closed_stdin`, `_closed_stdout` or `_closed_stderr` | Start the program with that descriptor closed; CPython's `sys.stdin`, `sys.stdout` or `sys.stderr` is then `None`. |
 
 An AOT build's diagnostics are kept separate from the program's stderr and must be empty.
 The runner enables `PYSTACHY_IRCHECK=1` unless explicitly overridden.
