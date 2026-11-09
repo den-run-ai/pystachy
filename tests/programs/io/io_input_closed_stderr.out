@@ -1,0 +1,3 @@
+RuntimeError lost sys.stderr
+RuntimeError lost sys.stderr
+[exit 1]

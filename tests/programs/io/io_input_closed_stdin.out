@@ -1,0 +1,7 @@
+input() RuntimeError lost sys.stdin
+input(str) RuntimeError lost sys.stdin
+input(Prompt()) RuntimeError lost sys.stdin
+the file is descriptor 0: True
+input() after open() RuntimeError lost sys.stdin
+the file reads 'a line of the file\n'
+[exit 1]

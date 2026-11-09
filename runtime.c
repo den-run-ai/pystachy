@@ -6606,8 +6606,13 @@ static void setbuf1(File *f, I bs) {   /* CPython's write layers: 8 KiB of pendi
 }
 static int jit;                        /* pystachy run: the program runs in lli's process */
 I pys_jit(void) { return jit; }
+static int lost;                       /* bit i: descriptor i (stdin, stdout, stderr) was not open when the program
+                                          started. CPython's sys.stdin, sys.stdout or sys.stderr is None then, for
+                                          the whole run, even once open() reuses the descriptor (pys_input_lost) */
 static void stack_floor(int mapped);   /* the native stack's floor (see the recursion depth) */
 __attribute__((minsize)) void pys_init(int argc, char **argv, char *sb, I **roots, I nroots) {   /* first call of @main */
+  for (int i = 0; i < 3; i++) if (fcntl(i, F_GETFD) < 0) lost |= 1 << i;   /* (CPython's is_valid_fd), before
+                                                                               anything opens a file */
   gc_init(sb, roots, nroots);
   stack_floor(0);
   args = pys_list_new(argc); for (int i = 0; i < argc; i++) pys_list_append(args, (I)cstr(argv[i]));
@@ -6664,10 +6669,18 @@ File *pys_std(I i) { return i == 0 ? &std_in : i == 1 ? &std_out : &std_err; }
 void pys_write(Str *s, I fd) { io_in(); put1(fd == 2 ? &std_err : &std_out, s->s, s->len); io_out(); }
 void pys_file_flush(File *f);
 void pys_flush(void) { pys_file_flush(&std_out); }
-Str *pys_input(Str *prompt) {          /* CPython: the prompt, if given, is written to sys.stdout, which is then
-                                          flushed (a failure is ignored); then a line from sys.stdin */
+void pys_input_lost(void) {            /* input()'s first check, as CPython's: RuntimeError if sys.stdin, sys.stdout or
+                                          sys.stderr is None, lost at startup (in that order). Embedded or hosted by
+                                          CPython, Pystachy's input() is Python's (in_hook), which checks Python's */
+  if (lost && !in_hook)
+    pys_fail(lost & 1 ? "RuntimeError: lost sys.stdin" : lost & 2 ? "RuntimeError: lost sys.stdout" : "RuntimeError: lost sys.stderr");
+}
+Str *pys_input(Str *prompt) {          /* CPython: the standard streams are checked (pys_input_lost); the prompt, if
+                                          given, is written to sys.stdout, which is then flushed (a failure is
+                                          ignored); then a line from sys.stdin */
   char *line = 0; size_t cap = 0;
   if (in_hook) return in_hook(0, prompt, 0);   /* (Python's input(), with its sys.stdin and sys.stdout) */
+  pys_input_lost();
   io_in();
   if (prompt) put1(&std_out, prompt->s, prompt->len);
   if (!std_out.closed && !std_out.kept) flush1(&std_out);
