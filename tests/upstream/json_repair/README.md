@@ -44,7 +44,8 @@ letters, whitespace, surrogates, nonletters and all supported parsing modes.
 There is no silent exclusion or automatic known-failure allowance.
 
 The corpus passes **943/943** under pristine 0.64.8 and the adapted port on
-CPython 3.13.16, native JIT and native AOT.
+CPython 3.13.16, native JIT, native AOT, both native modes with program GC stress,
+and the CPython companion extension under GC stress.
 These results cover the recorded combinations; the separate Unicode audit checks
 the five corrected character predicates across every Unicode code point.
 
