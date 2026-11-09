@@ -1041,9 +1041,9 @@ class Loader:
             base = name[dot + 1 :]
         for d in dirs:
             p = d + "/" + base
-            if program_cache.tracked_exists(p + "/__init__.py"):
+            if program_cache.tracked_isfile(p + "/__init__.py"):
                 return p + "/__init__.py"
-            if program_cache.tracked_exists(p + ".py"):
+            if program_cache.tracked_isfile(p + ".py"):
                 return p + ".py"
         # the portions of a namespace package: directories, also through symbolic links; CPython
         # ignores any other file of that name, such as a text file without the .py suffix

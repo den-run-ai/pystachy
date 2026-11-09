@@ -447,6 +447,9 @@ ignored SIGINT among them, with handlers of its own. Before any of the program's
 runtime closes those descriptors, restores each signal that LLVM caught to the disposition the
 driver had (ignored or default), and removes MCJIT's dump directory (below). It reads this from
 `PYSTACHY_JIT_HANDOFF`, which it then removes from the environment (`jit_handoff` in `runtime.c`).
+The paired `PYSTACHY_ARGV0` supplies the source spelling for `sys.argv[0]` and is consumed too.
+Without the JIT handoff, an inherited `PYSTACHY_ARGV0` is ordinary environment data: it cannot
+replace the native compiler's, a cached program's or an AOT executable's argument zero.
 The program and its children see the caller's descriptors and dispositions, as cached and built
 programs do; [`tools/jitfdprobe.py`](../tools/jitfdprobe.py) compares both with CPython's.
 A module that holds generators (coroutines, which `lli` cannot run before they are
