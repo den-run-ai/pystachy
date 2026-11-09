@@ -19,4 +19,4 @@ Fix compiler cost, not the bound (#581). Measure collections, mark time and live
 
 ## Done when
 
-On a source-size sweep, gc-self time grows at most linearly, and it stays at or below 60% of its limit on `znver3`. Refs #41.
+On a source-size sweep, gc-self time grows at most linearly, and it stays at or below 60% of its limit on `znver3`. Refs #41. Prepared with Claude Code assistance.

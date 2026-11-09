@@ -2,7 +2,7 @@
 
 ## Problem
 
-About 46% of x86-64 jobs run on EPYC 7763 (`znver3`) runners, which are 1.34× slower than `znver4` runners. The per-group `platform.cpu` in three runs' reports shows this. On those runners, Nov 8 PR runs [42493253529](https://github.com/den-run-ai/pystachy/actions/runs/42493253529) and [42496378373](https://github.com/den-run-ai/pystachy/actions/runs/42496378373) took:
+About 46% of x86-64 jobs run on EPYC 7763 (`znver3`) runners, which are 1.34× slower than `znver4` runners. Reports' per-group `platform.cpu` shows this. On those runners, Nov 8 PR runs [42493253529](https://github.com/den-run-ai/pystachy/actions/runs/42493253529) and [42496378373](https://github.com/den-run-ai/pystachy/actions/runs/42496378373) took:
 
 | Job | Minutes |
 |---|---:|
@@ -23,4 +23,4 @@ Keep 20 jobs, every case and mode, and the bootstrap and aggregate checks. Optio
 
 ## Done when
 
-Across three PR runs, every PR job keeps at least 20% headroom on `znver3`, and docs/testing.md describes where the work runs. Refs #41.
+Across three PR runs, every PR job keeps at least 20% headroom on `znver3`, and docs/testing.md describes where the work runs. Refs #41. Prepared with Claude Code assistance.

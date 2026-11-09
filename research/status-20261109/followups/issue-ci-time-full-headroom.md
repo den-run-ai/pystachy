@@ -24,4 +24,4 @@ Main and manual coverage stays exhaustive. Candidates:
 
 ## Done when
 
-Over three main runs, each full-profile and Variants job keeps at least 20% headroom on `znver3`. Refs #41, #1083.
+Over three main runs, each full-profile and Variants job keeps at least 20% headroom on `znver3`. Refs #41, #1083. Prepared with Claude Code assistance.

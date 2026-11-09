@@ -64,16 +64,19 @@ against 1.46 ms for its executable alone, mostly re-statting about 6,800 toolcha
 helper processes and a 717 KB manifest ([draft](followups/cache-hit-overhead.md)). Results and
 configs: [json-repair/](json-repair/).
 
-## Follow-up drafts (not filed)
+## Follow-up issues
 
-All pass `tools/check_submission.py`: [followups/](followups/).
+Filed on 9 November from the drafts in [followups/](followups/), all passing `tools/check_submission.py`:
 
-- CI time: PR job headroom, full-profile and Variants headroom, per-case AOT/import cost, `gc-self` scaling.
-- `irsame`: library paths in IR strings make about 264 of 4,345 programs differ when nothing changed.
-- Closed standard streams as `None` (deviations #1174 documents).
-- Non-regular `NAME.py`/`__init__.py` crash or hang the compiler.
-- Rejected settings leak temporary directories; an inherited `PYSTACHY_ARGV0` breaks the compiler.
-- Program-cache hit overhead.
+- CI time, under tracker #41: #1178 PR job headroom, #1179 full-profile and Variants headroom,
+  #1180 per-case AOT/import cost (with #706 for runtime re-optimization), #1181 `gc-self` scaling.
+- #1182 closed standard streams as `None` (deviations #1174 documents).
+- #1183 non-regular `NAME.py`/`__init__.py` crash or hang the compiler.
+- #1184 rejected settings leak temporary directories; an inherited `PYSTACHY_ARGV0` breaks the compiler.
+- #1185 program-cache hit overhead.
+
+The `irsame` draft was not filed: #527 already tracks library paths in IR strings. They now make
+about 264 of 4,345 programs differ when nothing changed, against 194 at `9c8bc746`.
 
 ## Not run
 
