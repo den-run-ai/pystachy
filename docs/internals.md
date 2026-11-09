@@ -437,6 +437,16 @@ which no shared library can name: the library holds stand-ins that call through 
 constructor the driver adds to the program's IR sets before `main` (`RTSO` in the driver).
 Where the library cannot be linked or cached, or a run may not execute it (a cache on a file
 system mounted `noexec`, also one mounted so after the library was cached), `lli` links the object.
+The driver becomes `lli` in the same process, which gets the program's bitcode, the runtime and
+the embedding's object as descriptors of files the driver has already removed; `/dev/null` holds
+each standard stream that the caller closed, so that neither these nor `lli`'s own files take
+one. `lli`'s start-up also replaces the dispositions of the signals LLVM handles, an inherited
+ignored SIGINT among them, with handlers of its own. Before any of the program's code runs, the
+runtime closes those descriptors, restores each signal that LLVM caught to the disposition the
+driver had (ignored or default), and removes MCJIT's dump directory (below). It reads this from
+`PYSTACHY_JIT_HANDOFF`, which it then removes from the environment (`jit_handoff` in `runtime.c`).
+The program and its children see the caller's descriptors and dispositions, as cached and built
+programs do; [`tools/jitfdprobe.py`](../tools/jitfdprobe.py) compares both with CPython's.
 A module that holds generators (coroutines, which `lli` cannot run before they are
 lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
@@ -594,7 +604,12 @@ errors and recovery under finite and unlimited host limits, with program GC stre
 `PYSTACHY_JIT_CODEGEN=0` selects MCJIT with `-O0` code generation. This can reduce
 startup for large programs, but the generated code can run slower. The default (`2`)
 keeps ORC and its normal code generation. This choice does not change the IR cleanup
-or inlining pipeline, and does not affect `build` or `ext`.
+or inlining pipeline, and does not affect `build` or `ext`. Where LLVM is built with perf
+support, as Ubuntu's is, `lli`'s MCJIT writes a perf jitdump on every run, which no option
+turns off. The driver gives it a private directory (`JITDUMPDIR`, unless the environment sets
+one), which the runtime removes before the program starts; `lli` keeps the removed dump's
+close-on-exec descriptor open until it exits, the one descriptor that such a program has and
+CPython does not.
 
 The [native program cache](program-cache.md) is enabled by default for supported
 native Linux CLI runs. Validated hits execute a previously linked JIT-tier
