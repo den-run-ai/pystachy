@@ -1,9 +1,11 @@
-# PR ledger, 2026-11-09 (19:58 UTC)
+# PR ledger, 2026-11-09 (20:45 UTC)
 
 All ten PRs below landed on main at 19:56 UTC as `c1796654` ("Merge verified PRs #1188 through
 #1197", through #1198), with the maintainer's approval. Its second parent is `b1b21a75`, the tree
-PR CI passed 18/18 and Codex reviewed without findings; GitHub marks each PR merged. Main's CI on
-`c1796654` started at 19:56 UTC. The v0.4.0-alpha.2 tag and publication are still left to the
+PR CI passed 18/18 and Codex reviewed without findings; GitHub marks each PR merged. Main's gate on
+`c1796654` passed: CI 68/70 with the 2 PR-only jobs skipped as expected (longest job 12.4 min),
+and Packages, Installation, Lint, Variants, Coverage and Performance smoke. #1167 is closed: its
+last leftover went with MCJIT (#1189), and `jitfdprobe` passed on main on x86-64 and ARM64. The v0.4.0-alpha.2 tag and publication are still left to the
 maintainer.
 
 ## Landed
