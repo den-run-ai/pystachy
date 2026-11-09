@@ -106,7 +106,7 @@ def gen_modattr(self, path: str) -> Val:
     if path == "math.tau":
         return Val(fbits("6.283185307179586"), "float")
     if path == "math.nan":
-        return Val("0x7FF8000000000000", "float")
+        return Val(fbits("nan"), "float")
     if path == "typing.TYPE_CHECKING":
         return Val("false", "bool")
     if path in OSCONST:
@@ -1597,7 +1597,7 @@ def gen_comp_end(self, acc: str, comp: str) -> str:
     # fsum's end: the compensation is added where it is a finite number other than 0
     s = self.mload('float', acc)
     c = self.mload('float', comp)
-    fin = self.scalar_cmp('olt', Val(self.rt('fabs', 'double', [f'double {c}']), 'float'), Val('0x7FF0000000000000', 'float'))
+    fin = self.scalar_cmp('olt', Val(self.rt('fabs', 'double', [f'double {c}']), 'float'), Val(fbits('inf'), 'float'))
     nz = self.scalar_cmp('une', Val(c, 'float'), Val(fbits('0.0'), 'float'))
     use = self.scalar('and', [Val(nz, 'bool'), Val(fin, 'bool')])
     return self.select(use, Val(self.scalar('fadd', [Val(s, 'float'), Val(c, 'float')]), "float"), Val(s, "float"))

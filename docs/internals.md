@@ -132,6 +132,14 @@ Locals start in entry-block `alloca` slots. LLVM's `mem2reg` builds SSA form; ex
 also use explicit `phi` instructions. Each function's typed IR is released after lowering,
 while its effect summary remains available.
 
+The emitted LLVM text does not depend on the LLVM release, which the compiler never asks:
+LLVM 18 through 23 read it alike. A float constant is its shortest decimal, which reads back
+as the same bits, or the `bitcast` of its bits for an infinity or a NaN. LLVM 23 deprecates
+the hexadecimal form, and releases before 23 cannot read its `f0x` replacement. A generator's
+`llvm.coro.end` uses the older two-argument form, which each release upgrades to its own
+signature as it reads it: returning `i1` through LLVM 21 and `void` from LLVM 22. An LLVM 22
+or 23 built with assertions would stop at that upgrade; release builds complete it.
+
 <a id="one-value-model"></a>
 <a id="type-descriptors"></a>
 <a id="memory"></a>
@@ -707,16 +715,18 @@ collections that clear weak references, close dropped files and release `ffi.tra
 can come later than without `allocelide`. `runtime.c` keeps `pys_new` out of line so that
 `-O2` still sees those calls. Each surviving allocation then gets the allocator's fast path
 back: `build` optimizes the linked module to bitcode, and one `opt` run then inlines `pys_new`
-into the calls that are left. Its `forceattrs` pass first swaps `pys_new`'s `noinline` (and the
+into the calls that are left. Its `forceattrs` passes first swap `pys_new`'s `noinline` (and the
 `optnone` of a runtime compiled at `-O0`) for `alwaysinline` (the driver's `LATE_INLINE`), then
-`always-inline` inlines it. Clang then compiles the module without optimizing it again.
+`always-inline` inlines it. There are two (`LATE_PASSES`): LLVM 23 adds a forced attribute before
+it removes one and no longer adds `alwaysinline` beside `noinline` or `optnone`, so its first
+pass only removes them. Clang then compiles the module without optimizing it again.
 `ext` does the same between its `opt -O2` and its compilation. A module without `pys_new`
 keeps the single `clang -O2 -c` step. The JIT tier, which never inlines the shared runtime,
 puts its own copy of the fast path in the program's module (`lower_module.py`'s `JITFAST`): calls of
 `pys_new` and `pys_alloc` stay calls (`noinline`) through its cleanup pipeline, which deletes
-what instcombine can prove unused, and a last `forceattrs,always-inline` step then inlines the
-calls left. Each pops the runtime's free list of its class (`pys_fl`, a constant slot once
-inlined) and calls `pys_gc_slow` for everything else. The runtime's own code
+what instcombine can prove unused, and the same last `forceattrs` and `always-inline` passes
+then inline the calls left. Each pops the runtime's free list of its class (`pys_fl`, a
+constant slot once inlined) and calls `pys_gc_slow` for everything else. The runtime's own code
 (`runtime.py`) and generator frames call `pys_alloc`. `make aotprobe` checks that
 objects that never escape compile to no allocation, that objects a list keeps do,
 that a build with `PYSTACHY_CFLAGS=-O0` still takes the late step, and that an object and
@@ -804,7 +814,7 @@ are required before promotion. `make verify` keeps the standard tier.
 
 | Variable | Effect |
 |---|---|
-| `PYSTACHY_LLVM` | Override the LLVM tool directory (Linux 18, macOS 20); standard apt/Homebrew locations are discovered before falling back to `PATH` |
+| `PYSTACHY_LLVM` | Override the LLVM tool directory (defaults: Linux 18, macOS 20; Linux also [19 to 23](install.md#other-llvm-releases)); standard apt/Homebrew locations are discovered before falling back to `PATH` |
 | `PYSTACHY_HOME` | Directory holding the runtime and `lib/`; set by the installed launcher |
 | `PYSTACHY_CACHE` | Runtime and program cache directory; checkout default is `build/`, installed default is `${XDG_CACHE_HOME:-$HOME/.cache}/pystachy` |
 | `PYSTACHY_PATH` | Additional import directories, separated by `:` |

@@ -13,6 +13,7 @@ from unittest.mock import patch
 from src.pystachy_compiler import diagnostics, driver
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.loader import Loader
+from src.pystachy_compiler.utils import float_slot
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -68,10 +69,11 @@ class ScalarListConstantTests(unittest.TestCase):
         data = [d for d in g.consts if d.kind == "listdata"]
         self.assertEqual(len(data), 1)
         self.assertEqual([v.t for v in data[0].items], ["float"] * 36)
-        self.assertEqual([int(v.v, 16) for v in data[0].items[:6]],
-                         [0x8000000000000000, 0x0000000000000000, 0x7ff0000000000000,
-                          0xfff0000000000000, 0x0000000000000001, 0x8000000000000001])
-        self.assertIn("bitcast (double 0x8000000000000000 to i64)", ir)
+        bits = [0x8000000000000000, 0x0000000000000000, 0x7ff0000000000000,
+                0xfff0000000000000, 0x0000000000000001, 0x8000000000000001]
+        signed = [b - (1 << 64) if b >= 1 << 63 else b for b in bits]
+        self.assertEqual([int(float_slot(v.v)) for v in data[0].items[:6]], signed)
+        self.assertIn("[" + ", ".join(f"i64 {b}" for b in signed) + ", ", ir)
         integers = compile_source(literal_source(["-9223372036854775808", "9223372036854775807"] * 16))
         self.assertIn("i64 -9223372036854775808, i64 9223372036854775807", integers)
 

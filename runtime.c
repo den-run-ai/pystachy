@@ -1954,7 +1954,11 @@ __attribute__((no_builtin("pow"))) double pys_m_pow(double x, double y) {   /* (
   if (x == 0 && y < 0 && isfinite(y)) pys_fail("ValueError: math domain error");
   return mchk(pow(x, y), x, y, 1);
 }
-double pys_m_fmod(double x, double y) {
+/* no_builtin("fmod") keeps fmod a call of libm's. Once the guard below shows x is not infinite and y
+   not zero, LLVM 20 to 22 rewrite fmod(x, y) as an frem marked as never NaN, although a NaN x or y still
+   reaches it. Without the attribute the AOT tier inlines this function into the program, where
+   math.isnan() of the result then folds to false (LLVM 23 no longer marks it; see pys_fpow for pow) */
+__attribute__((no_builtin("fmod"))) double pys_m_fmod(double x, double y) {
   /* A NaN in either argument propagates even with an infinite dividend or zero divisor. */
   if ((isinf(x) || y == 0) && !isnan(x) && !isnan(y)) pys_fail("ValueError: math domain error");
   return fmod(x, y);
