@@ -466,6 +466,150 @@ def aot_optimization() -> str:
     return value
 
 
+# The LLVM versions whose C API lljit.c declares (two changes are gated at 21), for which the driver
+# builds Pystachy's JIT runner; another version runs lli. And what the runner's -self-check writes, at
+# each level of code generation it is checked at
+LLJIT_LLVM: list[str] = ["18", "19", "20", "21", "22", "23"]
+LLJIT_CHECK = "two\nlljit\n"
+
+
+def text_of(p: str) -> str:
+    # file p's text, "" if it cannot be read
+    try:
+        f = open(p, "r", encoding=RAW)
+        s = f.read()
+        f.close()
+        return s
+    except OSError:
+        return ""
+
+
+def jit_launcher(runner: str, home: str, cache: str, lli: str, clang: str, src: tuple[str, str], memo: dict[str, str],
+                 now: float, tmp: str, own: str, build: bool) -> tuple[str, str]:
+    # What runs a JIT program: (the JIT runner's path, "") or ("", the reason lli runs it). The runner is
+    # lljit.c, built at first use with the selected toolchain's clang, linked to the libLLVM that its lli
+    # loads, of an LLVM in LLJIT_LLVM, and cached beside the runtime as lljit-<L>-<K>: K is the fnv() of
+    # lljit.c's bytes and of the files of lli, clang and that libLLVM (through symbolic links), with their
+    # stat3(), and L of the names of lljit.c, lli and clang; publishing a runner removes the others of its
+    # L. lljit-<L>-<K0>.llvm, K0 being K without libLLVM, holds that libLLVM and its LLVM version, found
+    # once (ldd lli, lli --version), or why there is none ("- REASON"). A runner that cannot be built, or
+    # that fails its -self-check, leaves lljit-<L>-<K>.fail (what failed, then its log), and later runs
+    # go to lli at once; as for the runtime, nothing is published unless the tools are as they were and
+    # had settled. Without build (the program cache, whose miss builds an executable instead), nothing
+    # is found or built: a runner built before runs the cache's fallback. Nothing goes to stderr: the
+    # reason is the name of a PYSTACHY_TIMING record (main)
+    if runner != "auto":
+        return ("", "forced")
+    if PLATFORM != "linux":
+        return ("", "platform")  # (macOS keeps lli: the runner is untested there)
+    if src[1] == "":
+        return ("", "no-source")
+    st = [stat3(lli) if lli != "" else "", stat3(clang) if clang != "" else ""]
+    if "" in st:
+        return ("", "no-toolchain")
+    names = "\n".join([os.path.realpath(home + "/lljit.c"), os.path.realpath(lli), os.path.realpath(clang)])
+    lin = fnv(names)[8:]
+    base = fnv("\n".join(["lljit-v1", names] + st + [src[1]]))
+    stem = f"{cache}/lljit-{lin}-"
+    llvmf = stem + base + ".llvm"
+    # the complete entries of this L but those named, removed (no partial file: its run may yet use it)
+    old = f"{q(cache)}/lljit-{lin}-{'?' * 16}"
+    stable = settled(st[0], now) and settled(st[1], now)
+    found = text_of(llvmf).split("\n")[0]
+    if found == "":
+        if not build:
+            return ("", "program-cache")
+        # (ldd first: an lli that is a script, as a wrapper may be, is not run. A shell without ldd or
+        # sed, which may have them another time, finds nothing it keeps)
+        out = tmp + "/lljit.llvm"
+        code = sh(f"command -v ldd > /dev/null && command -v sed > /dev/null || exit 3; "
+                  f"l=$(ldd {q(lli)} 2> /dev/null | sed -n 's/^[[:space:]]*libLLVM[^ ]* => \\(.*\\) (0x[0-9a-f]*)$/\\1/p' | sed 1q); v=; "
+                  f"[ -z \"$l\" ] || v=$({q(lli)} --version 2> /dev/null | sed -n 's/.*LLVM version \\([0-9][0-9]*\\)\\..*/\\1/p' | sed 1q); "
+                  f"printf '%s\\n%s\\n' \"$v\" \"$l\" > {q(out)}")
+        got = text_of(out).split("\n") + ["", ""]
+        if os.path.exists(out):
+            os.remove(out)
+        if code != 0:
+            return ("", "no-ldd")
+        found = "- no-libLLVM" if got[1] == "" else f"{got[0]} {got[1]}" if got[0] in LLJIT_LLVM else "- llvm-version"
+        if stable and [stat3(lli), stat3(clang)] == st:
+            lp = f"{llvmf}.{os.getpid()}.{own}"
+            try:
+                f = open(lp, "w", encoding=RAW)
+                f.write(found + "\n")
+                f.close()
+                sh(f"mv -f {q(lp)} {q(llvmf)} 2> /dev/null")
+            except OSError:
+                pass  # (a cache that cannot be written: found again)
+            if os.path.exists(lp):
+                os.remove(lp)
+    if found.startswith("- "):
+        return ("", found[2:])
+    major = found.split(" ")[0]
+    lib = found[len(major) + 1 :]
+    real = os.path.realpath(lib)
+    lst = stat3(real)
+    if lst == "":
+        return ("", "no-libLLVM")
+    exe = stem + fnv(base + "\n" + real + "\n" + lst)
+    if os.path.isfile(exe):
+        return (exe, "")
+    failed = text_of(exe + ".fail").split("\n")[0]
+    if failed != "":
+        return ("", failed)
+    if not build:
+        return ("", "program-cache")
+    # the bytes hashed, compiled from a file of this run's
+    sb = hashed(home + "/lljit.c", memo, now, True)
+    if sb[1] != src[1]:
+        return ("", "unsettled")
+    c = tmp + "/lljit.c"
+    log = tmp + "/lljit.log"
+    chk = tmp + "/lljit.out"
+    part = f"{exe}.{os.getpid()}.{own}"
+    try:
+        f = open(c, "w", encoding=RAW, newline="")
+        f.write(sb[0])
+        f.close()
+        f = open(part, "w", encoding=RAW)  # (a cache that cannot be written gets no runner)
+        f.close()
+    except OSError:
+        for p in [c, part]:
+            if os.path.exists(p):
+                os.remove(p)
+        return ("", "cache")
+    # linked to that libLLVM, which its directory supplies before LD_LIBRARY_PATH's (DT_RPATH), then run
+    # at -O0 and -O2 on its own module: 1 if it cannot be built, 2 if it fails (126: it may not be
+    # executed there, as on a cache mounted noexec)
+    d = lib[: lib.rfind("/")] if "/" in lib else "."
+    started = timing_start()
+    code = sh(f"{{ {q(clang)} -O2 -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR={major} -w {q(c)} {q(lib)} -ldl -o {q(part)}"
+              f" -Xlinker --disable-new-dtags -Xlinker -rpath -Xlinker {q(d)} || exit 1; for o in -O0 -O2; do"
+              f" {q(part)} -profile-guided-section-prefix=false $o -self-check || exit 2; done > {q(chk)}; }} > {q(log)} 2>&1")
+    timing_end("runtime.jit_launcher_build", started)
+    why = "build" if code != 0 and code != 2 else "self-check" if code == 2 or text_of(chk) != LLJIT_CHECK + LLJIT_CHECK else ""
+    if stable and settled(lst, now) and [stat3(lli), stat3(clang), stat3(real)] == st + [lst]:
+        if why == "":
+            sh(f"{{ mv -f {q(part)} {q(exe)} && for f in {old} {old}.llvm {old}.fail; do case $f in {q(exe)} | {q(llvmf)}) ;; *) rm -f \"$f\" ;; esac; done; }} 2> /dev/null")
+        else:
+            fp = f"{exe}.fail.{os.getpid()}.{own}"
+            try:
+                f = open(fp, "w", encoding=RAW)
+                f.write(why + "\n" + text_of(log) + text_of(chk))
+                f.close()
+                sh(f"{{ mv -f {q(fp)} {q(exe + '.fail')} && for f in {old} {old}.llvm {old}.fail; do case $f in {q(exe + '.fail')} | {q(llvmf)}) ;; *) rm -f \"$f\" ;; esac; done; }} 2> /dev/null")
+            except OSError:
+                pass
+            if os.path.exists(fp):
+                os.remove(fp)
+    for p in [c, log, chk, part]:
+        if os.path.exists(p):
+            os.remove(p)
+    if why == "" and os.path.isfile(exe):
+        return (exe, "")
+    return ("", why if why != "" else "unsettled")
+
+
 def main() -> None:
     # the parser and the code generator recurse for each level of nesting (at most MAXNEST), a
     # dozen calls deep each: more than CPython's default limit of 1,000 calls when it runs this file
@@ -476,7 +620,7 @@ def main() -> None:
         print(compiler_version(compiler_home()))
         return
     if len(argv) < 3 or (argv[1] != "run" and argv[1] != "build" and argv[1] != "ext" and argv[1] != "ir" and argv[1] != "check" and argv[1] != "rt"):
-        print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC via lli)", file=sys.stderr)
+        print("usage: pystachy run FILE.py [ARGS...]   JIT-compile and run (LLVM ORC)", file=sys.stderr)
         print("       pystachy build FILE.py [-o EXE]  compile ahead of time to a native executable", file=sys.stderr)
         print("                    [--emit-ir RAW.ll] retain raw IR after a successful build", file=sys.stderr)
         print("       pystachy ext NAME.py [-o NAME.abi3.so]  compile to a CPython extension module (abi3, CPython 3.12+)", file=sys.stderr)
@@ -492,19 +636,25 @@ def main() -> None:
     retained = retained_ir_path(cmd, diagnostics.SRC, argv[3:])
     aotopt = aot_optimization() if cmd == "build" else "2"
     jitflags = ""
-    llcobj = False
+    codegen = "2"
+    runner = ""
     if cmd == "run":
+        # PYSTACHY_JIT_CODEGEN=0: -O0 code generation, which the JIT runner does itself, and for which
+        # lli's ORC, which ignores -O, links an object of llc's (below). Keep this startup/execution
+        # tradeoff opt-in, independently of the IR inlining budget.
         codegen = os.getenv("PYSTACHY_JIT_CODEGEN", "2")
         if codegen != "0" and codegen != "2":
-            fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (llc -O0) or 2 (default ORC)", 0)
+            fail(f"PYSTACHY_JIT_CODEGEN: {codegen} is not 0 (-O0 code generation) or 2 (the default)", 0)
+        # what runs the program (jit_launcher), read before the program cache, so that a hit rejects
+        # what a run without it rejects
+        runner = os.getenv("PYSTACHY_JIT_LAUNCHER", "auto")
+        if runner != "auto" and runner != "lli":
+            fail(f"PYSTACHY_JIT_LAUNCHER: {runner} is not auto (Pystachy's JIT runner where it can be built, else lli) or lli", 0)
         # cold functions (a function that only raises: cold noinline) stay in .text: where some
         # went to .text.unlikely, lli's ORC in LLVM 18 lost the landing pads that the inliner had
-        # moved into main, and a try statement there missed what it should have caught
+        # moved into main, and a try statement there missed what it should have caught (the JIT
+        # runner takes the same flag, and needs it as much)
         jitflags = " -profile-guided-section-prefix=false"
-        # lli's ORC ignores -O (it generates code at LLVM's default level): for -O0, llc compiles
-        # the program and ORC links its object (below). Keep this startup/execution tradeoff
-        # opt-in, independently of the IR inlining budget.
-        llcobj = codegen == "0"
     if cmd == "check":
         f = open(diagnostics.SRC, "r", encoding=RAW)
         Parser(Lexer(f.read(), 1).file()).module()
@@ -668,7 +818,9 @@ def main() -> None:
     # built with the files found, not after a second search
     tools = ["clang", "llvm-as", "llvm-link", "opt"]
     paths = [llvm + t for t in tools]
-    ask = [t for t in tools if llvm == ""]
+    # (and for pystachy run, the lli whose libLLVM the JIT runner links: jit_launcher)
+    lli = llvm + "lli" if cmd == "run" else ""
+    ask = [t for t in tools if llvm == ""] + (["lli"] if llvm == "" and cmd == "run" else [])
     comp = me if "/" in me or me.endswith(".py") else ""
     byname = comp == "" and not me.startswith("-")
     if byname:
@@ -688,6 +840,8 @@ def main() -> None:
         got = got + ["" for a in ask]
         if llvm == "":
             paths = got[: len(tools)]
+            if cmd == "run":
+                lli = got[len(tools)]
         if byname:
             comp = got[len(ask) - 1]
     now = time.time()
@@ -726,6 +880,8 @@ def main() -> None:
     rc = hashed(rtc, memo, now, False)
     rs = [hashed(home + "/" + p, memo, now, False) for p in RTPARTS]
     rp = hashed(rtpy, memo, now, False)
+    # (the JIT runner's source, hashed here so that runtime-py.hashes keeps its hash too)
+    rj = hashed(home + "/lljit.c", memo, now, False) if runner == "auto" and PLATFORM == "linux" else ("", "")
     rm = ("", "")
     if comp != "":
         rm = hashed(comp, memo, now, False)
@@ -1071,6 +1227,16 @@ def main() -> None:
                             os.remove(tp)
                         except OSError:
                             pass
+        # What runs the program: Pystachy's JIT runner where it can be built (jit_launcher), else lli,
+        # which with PYSTACHY_JIT_CODEGEN=0 links an object of llc's (below). PYSTACHY_TIMING names it
+        # (program.jit_runner.lljit, or program.jit_runner.lli.REASON)
+        lljit = ""
+        if code == 0:
+            looked = timing_start()
+            chosen = jit_launcher(runner, home, cache, lli, paths[0], rj, memo, now, tmp, own, pcroot == "")
+            lljit = chosen[0]
+            timing_end("program.jit_runner." + ("lljit" if lljit != "" else "lli." + chosen[1]), looked)
+        llcobj = codegen == "0" and lljit == ""
         jir = jit_alloc(ir)  # (with the allocator's fast path: JITFAST)
         if code == 0:
             f = open(ll, "w", encoding=RAW)
@@ -1107,21 +1273,30 @@ def main() -> None:
         # LLVM's -O0 PHI elimination (seen in 18, 20 and 23) lowers a landing pad's PHI by reusing
         # an identical PHI of the invoke's normal successor, whose copies follow the call: an except
         # clause then read values its loop never set or had since changed. Splitting critical edges
-        # last gives such successors predecessors of their own, and the landing pad its own copies
-        split = ",function(break-crit-edges)" if llcobj else ""
+        # last gives such successors predecessors of their own, and the landing pad its own copies,
+        # whichever program generates the code at -O0 (the JIT runner, or llc)
+        split = ",function(break-crit-edges)" if codegen == "0" else ""
         fast = f"{llvm}opt -passes='{passes},function(early-cse,adce){late}{split}'" + (JITLATE if late != "" else "")
         if code == 0:
             # the cache's library may lie on a file system mounted noexec since it was made (or copied
             # there), from which lli could map nothing: the shell that runs opt first asks whether this
             # run may execute it (Linux's access(X_OK) fails on such a mount), and exits 3 if not, when
-            # the program is written again without the callbacks' constructor, for lli to link the .o
-            code = timed_sh("program.jit_optimize", (f"[ -x {q(useso)} ] || exit 3; " if useso != "" else "") + f"{fast} {q(ll)} -o {q(bc)}")
-            if code == 3 and useso != "":
-                useso = ""
+            # the program is written again without the callbacks' constructor, for lli to link the .o.
+            # So with the JIT runner, which lies beside it: if this run may not execute it, opt's shell
+            # exits 4, and lli runs the program, with llc's object for PYSTACHY_JIT_CODEGEN=0
+            code = timed_sh("program.jit_optimize", (f"[ -x {q(useso)} ] || exit 3; " if useso != "" else "")
+                            + (f"[ -x {q(lljit)} ] || exit 4; " if lljit != "" else "") + f"{fast} {q(ll)} -o {q(bc)}")
+            while (code == 3 and useso != "") or (code == 4 and lljit != ""):
+                if code == 3:
+                    useso = ""
+                else:
+                    lljit = ""
+                    llcobj = codegen == "0"
+                    timing_end("program.jit_runner.lli.not-executable", timing_start())
                 f = open(ll, "w", encoding=RAW)
-                f.write(layout + jir)
+                f.write(layout + jir + (OBJHOOKS if useso != "" and not llcobj else ""))
                 f.close()
-                code = timed_sh("program.jit_optimize", f"{fast} {q(ll)} -o {q(bc)}")
+                code = timed_sh("program.jit_optimize", (f"[ -x {q(lljit)} ] || exit 4; " if lljit != "" else "") + f"{fast} {q(ll)} -o {q(bc)}")
         if code == 0:
             if pcroot != "":
                 # The ordinary JIT cleanup above already ran. Disable further
@@ -1159,7 +1334,7 @@ def main() -> None:
                     f.write(layout + (OBJHOOKS_MAIN if useso != "" else ""))
                     f.close()
         if code == 0:
-            # This process becomes lli with its inputs on allocated descriptors.
+            # This process becomes the JIT runner or lli, with its inputs on allocated descriptors.
             # Keep those files open while unlinking temporary artifacts; inherited
             # descriptors belong to the caller and must never be replaced.
             # PYSTACHY_GC_STRESS_PROGRAM: the program's own collection interval, apart from the
@@ -1172,10 +1347,11 @@ def main() -> None:
             # that neither the inputs (always at least 3) nor lli's own files take it. Before any
             # of its code runs, the program's runtime closes these and the inputs and restores the
             # signal dispositions that LLVM's handlers replaced in lli (PYSTACHY_JIT_HANDOFF,
-            # runtime.c's jit_handoff): the program and its children see the caller's descriptors
-            # and dispositions.
+            # runtime.c's jit_handoff; the JIT runner replaces none): the program and its children
+            # see the caller's descriptors and dispositions.
             reserved = []
             inputs = []
+            pinned = []
             try:
                 for i in range(3):
                     stream = open(os.devnull, "r+b")
@@ -1183,15 +1359,19 @@ def main() -> None:
                         stream.close()
                         break
                     reserved.append(stream)
-                # lli's main module (the program's bitcode, or the module beside llc's object), the
-                # runtime, the embedding's object and llc's object
+                # the main module (the program's bitcode, or with llc the module beside its object),
+                # the runtime, the embedding's object and llc's object
                 for p in [jmain if llcobj else bc, useso if useso != "" else useo] + ([peo[1]] if embed else []) + ([jobj] if llcobj else []):
                     inputs.append(open(p, "rb"))
-                for stream in reserved + inputs:
+                # and the JIT runner, run from its descriptor: a run that publishes another runner
+                # removes this one's file, which then still runs
+                if lljit != "":
+                    pinned.append(open(lljit, "rb"))
+                for stream in reserved + inputs + pinned:
                     os.set_inheritable(stream.fileno(), True)
                 gsp = os.getenv("PYSTACHY_GC_STRESS_PROGRAM", "")
                 env = f"PYSTACHY_GC_STRESS={q(gsp)} " if gsp != "" else ""
-                handoff = str(ignored_signals()) + ";" + ",".join([str(stream.fileno()) for stream in reserved + inputs])
+                handoff = str(ignored_signals()) + ";" + ",".join([str(stream.fileno()) for stream in reserved + inputs + pinned])
                 env += f"PYSTACHY_JIT_HANDOFF={q(handoff)} "
                 # Embedding also loads libpython and the pyembed machine code.
                 pe = "".join([" -dlopen=" + q(x) for x in LIBS]) + (" -extra-object=/dev/fd/" + str(inputs[2].fileno()) if embed else "")
@@ -1205,7 +1385,9 @@ def main() -> None:
                     archive = f"jit_rtlib=$({tc[0]} -print-libgcc-file-name{ccflags}) || exit 1; "
                     archive += '[ -f "$jit_rtlib" ] || { echo "cannot find compiler runtime archive: $jit_rtlib" >&2; exit 1; }; '
                     rt += ' -extra-archive="$jit_rtlib"'
-                run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {llvm}lli{jitflags}{pe}{rt}{prog} /dev/fd/{inputs[0].fileno()} {' '.join([q(a) for a in rest])}"
+                # (the runner's -O: its level of code generation, which lli's ORC does not take)
+                launch = f"/dev/fd/{pinned[0].fileno()} -O{codegen}" if lljit != "" else f"{llvm}lli"
+                run = f"unset PYSTACHY_PROGRAM_CACHE_LOCK; {archive}{env}PYSTACHY_ARGV0={q(diagnostics.SRC)} exec {launch}{jitflags}{pe}{rt}{prog} /dev/fd/{inputs[0].fileno()} {' '.join([q(a) for a in rest])}"
                 for p in [bc, jobj, jmain, parto, partso, peo[2]]:
                     if p != "" and os.path.exists(p):
                         os.remove(p)
@@ -1213,7 +1395,7 @@ def main() -> None:
                 timing_end("driver.prepare_run", total)
                 os.execv("/bin/sh", ["sh", "-c", run])
             finally:
-                for stream in reserved + inputs:
+                for stream in reserved + inputs + pinned:
                     stream.close()
     for p in [ll, bc, obj, jobj, jmain, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):

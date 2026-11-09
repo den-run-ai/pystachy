@@ -251,7 +251,7 @@ s.close()
 
 ```sh
 export PYSTACHY_LIBPYTHON=/usr/lib/x86_64-linux-gnu/libpython3.13.so.1.0
-./pystachy run jsondemo.py                    # JIT: lli loads that libpython
+./pystachy run jsondemo.py                    # JIT: the JIT runner (or lli) loads that libpython
 ./pystachy build jsondemo.py && ./jsondemo    # AOT: linked to it, with an rpath
 PYTHONPATH=tools/rt_cpython python3 jsondemo.py   # the twin under CPython
 ```
@@ -260,8 +260,8 @@ PYTHONPATH=tools/rt_cpython python3 jsondemo.py   # the twin under CPython
 functions it uses with `@extern("python")`, which only a module of Pystachy's `lib/`
 that imports `ffi` may do; such a module's C functions are called directly rather
 than looked up when their `def` runs. `python` means `$PYSTACHY_LIBPYTHON`, a shared
-libpython of CPython 3.12 or later: `pystachy run` has `lli` load it with the
-machine code of `pyembed.c`, and `pystachy build` links both, the library with an
+libpython of CPython 3.12 or later: `pystachy run` has its JIT runner (or `lli`) load it with
+the machine code of `pyembed.c`, and `pystachy build` links both, the library with an
 rpath. The driver rejects an unset variable or, by its file name, an older
 library. `pystachy ext` links no libpython: an extension module's `pyobj` uses the
 host interpreter.
@@ -512,8 +512,8 @@ Their checks and error messages are the comparison contract for native code;
 | Area | Behavior |
 |---|---|
 | Strings | UTF-8 storage inside Pystachy; lengths, indexing, slicing, iteration and search positions count code points. Invalid UTF-8 returned from C is kept as bytes in a string; the twin's decode raises `UnicodeDecodeError`. |
-| Process symbol lookup | `@extern("")` sees different libraries in CPython, `lli` and an AOT executable. Name a library explicitly. |
-| Library interposition | `lli`'s libraries can affect global bindings. JIT opens the named library with `RTLD_DEEPBIND` to bind its internal calls like AOT; CPython's process may still bind differently. |
+| Process symbol lookup | `@extern("")` sees different libraries in CPython, the JIT runner or `lli`, and an AOT executable. Name a library explicitly. |
+| Library interposition | The JIT runner's or `lli`'s libraries can affect global bindings. JIT opens the named library with `RTLD_DEEPBIND` to bind its internal calls like AOT; CPython's process may still bind differently. |
 | C output | Foreign stdio and subset `print` interleave according to their separate buffers and flushes. |
 | Float text | Conversions use the C locale even if foreign code changes `setlocale`; format type `n` also uses the C locale. |
 | Extension integers | Arguments or results outside signed 64-bit raise `OverflowError`, as the export twin does. Internal arithmetic remains checked. |
@@ -526,7 +526,7 @@ Their checks and error messages are the comparison contract for native code;
 | Output timing | The text keeps its order, but each runtime buffers its own output: a write that bypasses `sys.stdout` (`os.write`, a child process, C stdio) may meet it sooner or later than under CPython's single buffer. |
 | Caller frames | Python functions that read their caller's frame (`exec()` and `eval()` without globals, `globals()`, `locals()`, `vars()` and `dir()` without arguments, `sys._getframe()`) find no Python caller under `pyobj` and raise; the twin's calls come from its own frames. Pass `exec` and `eval` a globals dict. |
 | Embedded `sys.path[0]` | The script's directory under `pystachy run`, the executable's directory for an AOT build. |
-| JIT embedding | Under `pystachy run`, CPython loads extension modules with `RTLD_DEEPBIND` added to `sys.getdlopenflags()`, so that their libraries come before `lli`'s. AOT is the reference tier. |
+| JIT embedding | Under `pystachy run`, CPython loads extension modules with `RTLD_DEEPBIND` added to `sys.getdlopenflags()`, so that their libraries come before those of the JIT runner or `lli`. AOT is the reference tier. |
 | Hosted compiler | `python3 -m pystachy run` passes on the `LC_CTYPE=C.UTF-8` that its own CPython's PEP 538 coercion set ([#51](https://github.com/den-run-ai/pystachy/issues/51)); the native compiler passes the environment on unchanged. |
 | Exit order | The program's `atexit` callbacks run before CPython is finalized, so before Python's threads are joined and its own `atexit` handlers run; the twin keeps one registry for both. |
 | Ctrl-C while embedding | The program ends as on any Ctrl-C, without finalizing CPython: no Python `atexit` handlers, thread joins or buffered Python output. |

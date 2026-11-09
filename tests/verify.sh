@@ -98,10 +98,13 @@
 #                  specialization breadth and the signature bytes specializations retain under
 #                  256 MiB / ten CPU seconds, with short diagnostics;
 #                  finite controls and reuse at the retained-instance boundary still compile
-#   jit-dead-code  tools/jitprobe.py: unused functions never reach lli, and a small helper reaches it
-#                  inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime callbacks still
-#                  execute as in CPython, with both compilers; jitfdprobe.py preserves inherited
-#                  pipes, CPython's descriptor tables and SIGINT dispositions across shared/object
+#   jit-dead-code  tools/test_lljit.py: the JIT runner (lljit.c) is built and cached once, falls back
+#                  to lli where it cannot be, and keeps lli's contract on small C programs;
+#                  tools/jitprobe.py: unused functions never reach the runner or lli, and a small
+#                  helper reaches them inlined (not with PYSTACHY_JIT_INLINE=0); live code and runtime
+#                  callbacks still execute as in CPython, with both compilers, both runners and both
+#                  levels of code generation; jitfdprobe.py preserves inherited pipes, CPython's
+#                  descriptor tables and SIGINT dispositions across both runners, shared/object
 #                  runtime, -O0 code generation, embedding, cached and AOT launches
 #   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
 #                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
@@ -238,15 +241,15 @@ if [ "$PROFILE" = pr ]; then
   grep '^tests/programs/' "$V/pr-cases.log" > "$V/pr-programs.log"
   [ -s "$V/pr-programs.log" ] || { echo 'verify: empty PR program sample' >&2; exit 2; }
 fi
-cp runtime.c runtime.py "$V/home/"
-cp runtime.c runtime.py "$V/ubsan-home/"
+cp runtime.c runtime.py lljit.c "$V/home/"
+cp runtime.c runtime.py lljit.c "$V/ubsan-home/"
 cp -R lib ryu mpz "$V/home/"
 cp -R lib ryu mpz "$V/ubsan-home/"
 export PYSTACHY_HOME="$ROOT"
 # The steps set the knobs they test themselves: one left in the caller's environment would weaken a
 # step (PYSTACHY_GC=off: gc-stress collects nothing) or fail it falsely (PYSTACHY_OPT=-all), so they
 # are dropped, and the report lists them (PYSTACHY_LLVM and PYSTACHY_JOBS are kept)
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|AOT_OPT|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_CODEGEN|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|AOT_OPT|RUNTIME_C_CACHE|GC|GC_MIN|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|TIMING|OPT|JIT_INLINE|JIT_CODEGEN|JIT_LAUNCHER|PROGRAM_CACHE|PROGRAM_CACHE_TRACE|PROGRAM_CACHE_INPUTS|PROGRAM_CACHE_LOCK|UNICODE_AUDIT|DEBUG_LINES|ARGV0|CASE_TIMES))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "verify: ignoring $e=$(printenv "$e")"; unset "$e"; done
 LLVM=${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}
 
@@ -1115,9 +1118,10 @@ contracts_d() {
 # ---- JIT dead code: inspect the actual execution module, without a timing threshold
 if want jit-dead-code; then
 L=$V/jit-dead-code.log; s=$(now); r=fail
-$PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" > "$L" 2>&1 &&
+$PY -m unittest discover -s tools -p test_lljit.py > "$L" 2>&1 &&
+$PY tools/jitprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" >> "$L" 2>&1 &&
 $PY tools/jitfdprobe.py -c "hosted=$PY -m pystachy" -c "native=$V/pystachy2" >> "$L" 2>&1 && r=pass
-step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"]'
+step jit-dead-code $r "$s" "$L" ', "unused_functions": 35, "compilers": ["CPython-hosted", "stage2"], "runners": ["lljit", "lli"]'
 fi
 
 # ---- AOT dead code: the runtime's opt-in code in the executables, by symbol, without a size threshold

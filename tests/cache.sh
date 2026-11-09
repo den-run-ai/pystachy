@@ -18,6 +18,10 @@
 #     same one); the tools found through PATH too.
 #   - A failed llvm-link and a build killed after opt leave nothing that a later run uses.
 #   - pystachy ext caches its glue (pyembed.c, pyext.c) beside the runtime and uses it again.
+#   - On Linux, the JIT runner (lljit.c) is built at first use beside the runtime, with the real lli's
+#     libLLVM, used then, built again when lljit.c changes (the new entry replaces the old); lli runs
+#     the program, silently, where the runner may not be executed, cannot be built (which later runs
+#     do not try again), is not wanted (PYSTACHY_JIT_LAUNCHER=lli) or lli is a script.
 #   - With a tool whose times have not settled, run and ext build a runtime (and glue) of their own,
 #     which they use, and publish nothing.
 #   - The compiler is found through PATH as the shell finds it, past a directory and a file that is
@@ -41,11 +45,11 @@ unset PYSTACHY_PROGRAM_CACHE_TRACE PYSTACHY_PROGRAM_CACHE_INPUTS
 export PYSTACHY_PROGRAM_CACHE=0
 T=${TMPDIR:-/tmp}/pystachy-cache.$$
 rm -rf "$T"
-mkdir -p "$T/home" "$T/bin" "$T/llvm" "$T/tmp" "$T/d1/pystachy" "$T/d1/clang" "$T/d2" "$T/d3" "$T/d4" "$T/ryu" "$T/mpz" || exit 1
+mkdir -p "$T/home" "$T/bin" "$T/llvm" "$T/llvmj" "$T/tmp" "$T/d1/pystachy" "$T/d1/clang" "$T/d2" "$T/d3" "$T/d4" "$T/ryu" "$T/mpz" || exit 1
 trap 'rm -rf "$T"' EXIT
 H=$T/home
 B=$H/build
-cp runtime.c runtime.py pyembed.c pyext.c "$H/" && cp -R lib ryu mpz "$H/" && cp "$from" "$T/bin/$me" && cp "$from" "$T/base" || exit 1
+cp runtime.c runtime.py pyembed.c pyext.c lljit.c "$H/" && cp -R lib ryu mpz "$H/" && cp "$from" "$T/bin/$me" && cp "$from" "$T/base" || exit 1
 if [ -n "$PY" ] && [ -d src ]; then
   cp -R src "$T/bin/" && mkdir -p "$T/bin/lib" && cp lib/_pystachy_cache.py "$T/bin/lib/" || exit 1
 fi
@@ -69,10 +73,12 @@ P0="subsection not found"; P1="subsection NOT found"
 C0="invalid literal for int() with base 10: 'x'"; C1="INVALID literal for int() with base 10: 'x'"
 : > "$T/built"
 : > "$T/loaded"
+: > "$T/jbuilt"
 # The wrappers: llvm-as counts the builds; llvm-link fails (CACHE_FAIL) or runs edit.sh (CACHE_EDIT)
 # when it links the runtime (not a program: --only-needed); opt kills the compiler once it has written
 # the runtime's bitcode (CACHE_KILL), and the shell that ran opt, unless that shell exec'd it; lli
-# notes how it takes the runtime, as a library (so) or as machine code it links (o)
+# notes how it takes the runtime, as a library (so) or as machine code it links (o); clang counts the JIT
+# runner's builds (and $T/llvmj has them, with the real lli, whose libLLVM the runner links)
 for t in clang llvm-as llvm-link opt lli; do
   real=$(command -v "${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}$t") || { echo "tests/cache.sh: cannot find $t"; exit 1; }
   case $t in
@@ -81,12 +87,14 @@ for t in clang llvm-as llvm-link opt lli; do
     opt) hook="if [ \"\$1\" = -O2 ] && [ -n \"\$CACHE_KILL\" ]; then '$real' \"\$@\"; p=\$PPID
   case \$(ps -o comm= -p \$p) in sh | dash | bash) p=\"\$p \$(ps -o ppid= -p \$p)\" ;; esac; kill -9 \$p; exit 1; fi" ;;
     lli) hook="kind=o; for arg do case \"\$arg\" in -dlopen=/dev/fd/[0-9]*) kind=so ;; esac; done; echo \"\$kind\" >> '$T/loaded'" ;;
-    clang) hook=:; realdir=$(dirname "$real") ;;
+    clang) hook="case \" \$* \" in *'/lljit.c '*) echo >> '$T/jbuilt' ;; esac"; realdir=$(dirname "$real") ;;
     *) hook=: ;;
   esac
   printf '#!/bin/sh\n%s\nexec %s "$@"\n' "$hook" "'$real'" > "$T/llvm/$t" && chmod +x "$T/llvm/$t" || exit 1
 done
 ln -s llvm "$T/llvm2"
+for t in clang llvm-as llvm-link opt; do ln -s "../llvm/$t" "$T/llvmj/$t" || exit 1; done
+ln -s "$(command -v "${PYSTACHY_LLVM:+${PYSTACHY_LLVM%/}/}lli")" "$T/llvmj/lli" || exit 1
 ln -s ../bin/pystachy "$T/d3/pystachy"
 printf '#!/bin/sh\necho decoy\n' > "$T/d2/pystachy"
 cp pystachy.py "$T/d4/pystachy.py" && chmod +x "$T/d4/pystachy.py"
@@ -107,6 +115,7 @@ others() {
   for f in "$B"/*; do
     case ${f##*/} in
       runtime-py-*-????????????????.bc | runtime-py-*-????????????????.o | runtime-py-*-????????????????.so | runtime-py-*-????????????????.target | runtime-py-*-????????????????.py*.bc | runtime-py.hashes) ;;
+      lljit-*-???????????????? | lljit-*-????????????????.llvm | lljit-*-????????????????.fail) ;;
       *) printf '%s ' "${f##*/}" ;;
     esac
   done
@@ -266,6 +275,48 @@ if pys ext m.py -o so/m.abi3.so && [ "$(builds)" = "$b" ] && [ "$(glue)" = "$G" 
 else bad "pystachy ext again: $(($(builds) - b)) builds, glue: $(glue)"; fi
 same "$E" "the runtime's entries are the same"
 clean "no partial or temporary file is left"
+# the JIT runner (lljit.c), on Linux: built at first use beside the runtime with $T/llvmj's tools (those
+# of $T/llvm, whose runtime it finds, but the real lli, whose libLLVM the runner links), then used
+if [ "$(uname)" = Linux ]; then
+  tab=$(printf '\t')
+  jbuilds() { wc -l < "$T/jbuilt" | tr -d ' '; }
+  runners() { (cd "$B" && ls lljit-*-???????????????? 2> /dev/null) | wc -l | tr -d ' '; }
+  # jrun NAME RUNNER BUILDS [VAR=VALUE...]: pystachy run prog.py prints $out, and on stderr only the
+  # PYSTACHY_TIMING records, whose last program.jit_runner names RUNNER (lljit, or lli.REASON), after
+  # BUILDS builds of the runner and none of the runtime
+  jrun() {
+    j_name=$1; j_want=$2; j_n=$3; shift 3
+    j_b=$(jbuilds); j_r=$(builds)
+    j_got=$( (LLVM=$T/llvmj; for a; do export "${a?}"; done; PYSTACHY_TIMING=1 pys run prog.py) 2> "$T/jrun.err")
+    j_st=$?
+    j_run=$(sed -n "s/^pystachy-timing${tab}program\.jit_runner\.\([^$tab]*\)$tab.*/\1/p" "$T/jrun.err" | tail -n 1)
+    j_other=$(grep -cv "^pystachy-timing$tab" "$T/jrun.err")
+    j_b=$(($(jbuilds) - j_b)); j_r=$(($(builds) - j_r))
+    if [ "$j_st" = 0 ] && [ "$j_got" = "$out" ] && [ "$j_run" = "$j_want" ] && [ "$j_other" = 0 ] && [ "$j_b" = "$j_n" ] && [ "$j_r" = 0 ]; then ok "$j_name"
+    else bad "$j_name: exited $j_st, printed '$j_got' with $j_run after $j_b builds of the runner and $j_r of the runtime (expected $j_want after $j_n)"
+      grep -v "^pystachy-timing$tab" "$T/jrun.err" | head -5; fi
+  }
+  jrun "a first run builds the JIT runner beside the runtime, which runs the program" lljit 1
+  if [ "$(runners)" = 1 ]; then ok "one runner in the cache"; else bad "$(runners) runners in the cache, not 1"; fi
+  jrun "the next run uses it" lljit 0
+  printf '/* an edit */\n' >> "$H/lljit.c"
+  jrun "an edit of lljit.c: built again" lljit 1
+  if [ "$(runners)" = 1 ]; then ok "and the new runner replaces the old"; else bad "$(runners) runners in the cache, not 1"; fi
+  # a runner that the run may not execute, as on a file system mounted noexec since it was cached
+  chmod a-x "$B"/lljit-*-????????????????
+  jrun "a runner that the run may not execute: lli runs the program" lli.not-executable 0
+  chmod a+x "$B"/lljit-*-????????????????
+  cp "$H/lljit.c" "$T/lljit.c" && printf '#error a runner that cannot be built\n' >> "$H/lljit.c" || exit 1
+  jrun "a runner that cannot be built: lli runs the program, silently" lli.build 1
+  jrun "and later runs do not build it again" lli.build 0
+  cp "$T/lljit.c" "$H/lljit.c" || exit 1
+  jrun "lljit.c repaired: built and used again" lljit 1
+  jrun "PYSTACHY_JIT_LAUNCHER=lli: lli runs the program" lli.forced 0 PYSTACHY_JIT_LAUNCHER=lli
+  jrun "an lli that is a script, as a wrapper may be: lli runs the program" lli.no-libLLVM 0 LLVM="$T/llvm"
+  if [ "$(runners)" = 1 ]; then ok "one runner in the cache"; else bad "$(runners) runners in the cache, not 1"; fi
+  same "$E" "the runtime's entries are the same"
+  clean "no partial or temporary file is left"
+fi
 # a tool whose times have not settled (opt's mtime in the future): each run builds a runtime (and
 # glue) of its own, which it uses, publishes nothing and leaves nothing
 touch -t 203001010000 "$T/llvm/opt"

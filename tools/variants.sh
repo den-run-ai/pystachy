@@ -11,7 +11,9 @@
 #                    module, whose IR then runs as the compiler emitted it. The runtime's frames keep
 #                    every local in memory, which changes the dead words that the conservative
 #                    collector scans as roots (tools/runtime_coverage.sh's instrumented runtime is
-#                    another such variant, the one whose registers exposed open()'s retention)
+#                    another such variant, the one whose registers exposed open()'s retention). Its
+#                    JIT runs in lli (PYSTACHY_JIT_LAUNCHER=lli), the fallback of the JIT runner that
+#                    every other configuration uses
 # The caller's settings that the steps set, or that would change the tests, are dropped, as
 # tests/verify.sh drops them; each variant builds a runtime of its own, in a temporary cache. The
 # logs go to build/variants/ (so a checkout runs one at a time). Fails when a variant fails a test.
@@ -25,7 +27,7 @@ PYS=${COMPILER:-./pystachy}
 PY=${PY:-python3}
 MODES=${MODES:-jit aot}
 case $PYS in *" "*) ;; *) [ -x "$PYS" ] || { echo "tools/variants.sh: no compiler $PYS (make, or COMPILER=...)" >&2; exit 2; } ;; esac
-ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|UNICODE_AUDIT|ARGV0))=.*$/\1/p' | sort -u)
+ign=$(env | sed -nE 's/^(PYSTACHY_(PATH|CFLAGS|GC|GC_STRESS|GC_STRESS_PROGRAM|IRCHECK|IRFX|OPT|JIT_INLINE|JIT_CODEGEN|JIT_LAUNCHER|UNICODE_AUDIT|ARGV0))=.*$/\1/p' | sort -u)
 for e in $ign; do echo "tools/variants.sh: ignoring $e=$(printenv "$e")"; unset "$e"; done
 export PYSTACHY_HOME="$ROOT"
 W=$(mktemp -d "${TMPDIR:-/tmp}/pystachy-variants.XXXXXX") || exit 1
@@ -61,10 +63,11 @@ failed=
 for v in ${VARIANTS:-$all}; do
   case $v in
     opt-*) set=PYSTACHY_OPT=$(sed -n "s/^$v //p" "$W/rows") ;;
-    cflags-O0) set=PYSTACHY_CFLAGS=-O0 ;;
+    cflags-O0) set="PYSTACHY_CFLAGS=-O0 PYSTACHY_JIT_LAUNCHER=lli" ;;
   esac
   t0=$(date +%s)
-  env "$set" PYSTACHY_CACHE="$W/cache-$v" tests/run.sh "$PYS" "$MODES" "$@" > "$L/$v.log" 2>&1
+  # shellcheck disable=SC2086 # (one or two settings, VAR=VALUE each, which hold no space)
+  env $set PYSTACHY_CACHE="$W/cache-$v" tests/run.sh "$PYS" "$MODES" "$@" > "$L/$v.log" 2>&1
   st=$?
   echo "$v ($set; $MODES${VARIANTS_SHARD:+; shard $VARIANTS_SHARD}): $(tail -1 "$L/$v.log") in $(($(date +%s) - t0)) s"
   grep -v '^selected ' "$L/$v.log" | sed '$d' | head -40

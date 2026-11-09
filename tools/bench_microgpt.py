@@ -331,11 +331,11 @@ def main():
     if successful(top):
         repository = top["stdout"].strip()
         revision = execute(["git", "rev-parse", "HEAD"], repository, env, args.timeout)
-        status = execute(["git", "status", "--short", "--", "pystachy.py", "runtime.py", "runtime.c", "src", "lib", "pyembed.c", "pyext.c"], repository, env, args.timeout)
+        status = execute(["git", "status", "--short", "--", "pystachy.py", "runtime.py", "runtime.c", "src", "lib", "pyembed.c", "pyext.c", "lljit.c"], repository, env, args.timeout)
         report["compiler_git_revision"] = revision["stdout"].strip()
         report["compiler_git_status"] = status["stdout"].strip()
         root = Path(repository)
-        paths = [root / name for name in ("pystachy.py", "runtime.py", "runtime.c", "pyembed.c", "pyext.c")]
+        paths = [root / name for name in ("pystachy.py", "runtime.py", "runtime.c", "pyembed.c", "pyext.c", "lljit.c")]
         paths += list((root / "src").rglob("*.py")) + list((root / "lib").rglob("*.py"))
         report["compiler_source_hashes"] = {
             str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()

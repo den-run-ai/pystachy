@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Check JIT launches against CPython: inherited descriptors and SIGINT dispositions,
-closed standard streams, runtime variants, -O0 code generation, cleanup and native cache launches."""
+closed standard streams, runtime variants, -O0 code generation, cleanup and native cache launches,
+under Pystachy's JIT runner (lljit.c, built in each check's own cache, then wrapped) and under lli
+(PYSTACHY_JIT_LAUNCHER=lli)."""
 from __future__ import annotations
 
 import argparse
@@ -122,15 +124,18 @@ def track_open(path, *args, **kwargs):
     return stream
 builtins.open = track_open
 closed = [int(value) for value in os.environ["JITFD_CLOSED"].split(",") if value]
-llc = os.environ.get("PYSTACHY_JIT_CODEGEN") == "0"
+runner = os.environ.get("PYSTACHY_JIT_LAUNCHER") != "lli"
+llc = os.environ.get("PYSTACHY_JIT_CODEGEN") == "0" and not runner
 
 def fail_exec(path, arguments):
     assert path == "/bin/sh", path
     script = arguments[2]
     inputs = [int(value) for value in re.findall(r"/dev/fd/(\d+)", script)]
-    # (the shared runtime and lli's main module, and with -O0 code generation llc's object before it)
-    assert len(inputs) == (3 if llc else 2) and len(inputs) == len(set(inputs)), inputs
+    # (the shared runtime and the main module, with -O0 code generation llc's object before it with
+    # lli, and the JIT runner's own file, which runs from its descriptor)
+    assert len(inputs) == (3 if llc or runner else 2) and len(inputs) == len(set(inputs)), inputs
     assert bool(re.search(r" -extra-object=/dev/fd/\d+ /dev/fd/\d+ ", script)) == llc, script
+    assert bool(re.search(r"exec /dev/fd/\d+ -O[02] ", script)) == runner, script
     handoff = re.search(r"PYSTACHY_JIT_HANDOFF='(\d+);([\d,]*)' ", script)
     assert handoff, script
     listed = [int(value) for value in handoff.group(2).split(",")]
@@ -260,31 +265,64 @@ def main():
             temp.mkdir(parents=True)
             trace = base / "lli-inputs"
             report = base / "report"
-            for kind in ("shared", "object"):
+            environment_here = environment | {"TMPDIR": str(temp)}
+
+            def recorder(target):
+                # a wrapper of lli or of the JIT runner that records the inputs and levels of code
+                # generation it is given, each input the descriptor of a file of this run's that the
+                # driver has already removed, then runs it
+                return (f"#!{sys.executable}\nimport os, sys\n"
+                        f"with open({str(trace)!r}, 'w') as output:\n"
+                        " for value in sys.argv[1:]:\n"
+                        "  path = value.split('=', 1)[-1]\n"
+                        "  if value in ('-O0', '-O1', '-O2', '-O3'):\n"
+                        "   output.write(value + '\\n')\n"
+                        "  if path.startswith('/dev/fd/'):\n"
+                        "   output.write(value + '\\n')\n"
+                        "   target = os.readlink(path)\n"
+                        f"   if target.startswith({str(temp)!r}):\n"
+                        "    assert target.endswith(' (deleted)'), target\n"
+                        "    assert not os.path.exists(os.path.dirname(target)), target\n"
+                        f"os.execv({target!r}, [{target!r}, *sys.argv[1:]])\n")
+
+            # lli's (PYSTACHY_JIT_LAUNCHER=lli) and the JIT runner's (runner-*: the real lli, whose
+            # libLLVM it links), with the runtime as a shared library or, where clang may link none,
+            # as an object; each pair shares a runtime cache (the same tools), where the runner is
+            # built once, then wrapped (wrap)
+            for kind in ("shared", "object", "runner-shared", "runner-object"):
                 directory = base / kind
                 directory.mkdir()
                 for name, target in real.items():
-                    if name == "lli":
+                    if name == "lli" and not kind.startswith("runner-"):
                         wrapper = directory / name
-                        wrapper.write_text(
-                            f"#!{sys.executable}\nimport os, sys\n"
-                            f"with open({str(trace)!r}, 'w') as output:\n"
-                            " for value in sys.argv[1:]:\n"
-                            "  path = value.split('=', 1)[-1]\n"
-                            "  if path.startswith('/dev/fd/'):\n"
-                            "   output.write(value + '\\n')\n"
-                            "   target = os.readlink(path)\n"
-                            f"   if target.startswith({str(temp)!r}):\n"
-                            "    assert target.endswith(' (deleted)'), target\n"
-                            "    assert not os.path.exists(os.path.dirname(target)), target\n"
-                            f"os.execv({target!r}, [{target!r}, *sys.argv[1:]])\n")
+                        wrapper.write_text(recorder(target))
                         wrapper.chmod(0o755)
                     elif name == "clang" and kind == "object":
                         wrapper = directory / name
                         wrapper.write_text(f"#!/bin/sh\nfor arg do [ \"$arg\" != -shared ] || exit 1; done\nexec {shlex.quote(target)} \"$@\"\n")
                         wrapper.chmod(0o755)
+                    elif name == "clang" and kind == "runner-object":
+                        (directory / name).symlink_to(base / "object" / name)
                     else:
                         (directory / name).symlink_to(target)
+
+            def setting(kind):
+                runner = kind.startswith("runner-")
+                return environment_here | {"PYSTACHY_LLVM": str(base / kind), "PYSTACHY_JIT_LAUNCHER": "auto" if runner else "lli",
+                                           "PYSTACHY_CACHE": str(base / ("cache-" + kind.removeprefix("runner-")))}
+
+            def wrap(kind):
+                # the JIT runner that the driver built in this kind's cache, replaced with a recorder of
+                # it (the driver keys the cache by the runner's inputs, not by this file)
+                cache = base / ("cache-" + kind.removeprefix("runner-"))
+                built = [entry for entry in cache.iterdir() if re.fullmatch(r"lljit-[0-9a-f]{8}-[0-9a-f]{16}", entry.name)]
+                if len(built) != 1:
+                    raise AssertionError(f"{label}/{kind}: the JIT runner was not built once: {sorted(entry.name for entry in cache.iterdir())}")
+                if not built[0].read_bytes().startswith(b"#!"):
+                    original = base / (kind + "-lljit")
+                    shutil.move(str(built[0]), original)
+                    built[0].write_text(recorder(str(original)))
+                    built[0].chmod(0o755)
 
             def clean(what):
                 if any(temp.iterdir()):
@@ -331,57 +369,66 @@ def main():
                     [sys.executable, str(launch), "7,8,9,64", sys.executable, str(program), "7", "8", "9", "64"], env).stdout))
 
             checks = 0
-            environment_here = environment | {"TMPDIR": str(temp)}
-            for kind in ("shared", "object"):
-                env = environment_here | {"PYSTACHY_LLVM": str(base / kind), "PYSTACHY_CACHE": str(base / ("cache-" + kind))}
+            for kind in ("shared", "object", "runner-shared", "runner-object"):
+                runner = kind.startswith("runner-")
+                env = setting(kind)
                 for program in (source, embedded):
                     arguments = ["7", "8", "9", "64"]
                     expected = pipes(program, env)
-                    # (the first launch builds the runtime; -O0 code generation adds llc's object)
+                    # (the first launch builds the runtime and, in its runner kind, the JIT runner, which
+                    # is then wrapped; -O0 code generation adds llc's object with lli)
                     for attempt, codegen in enumerate(("2", "2", "0")):
                         what = f"{label}/{kind}/{program.stem}/{attempt}/codegen-{codegen}"
+                        trace.unlink(missing_ok=True)
                         result = run([sys.executable, str(launch), ",".join(arguments),
                                       *compiler, "run", str(program), *arguments], env | {"PYSTACHY_JIT_CODEGEN": codegen})
                         if normalized(result.stdout) != expected:
                             raise AssertionError(f"{what}: {result.stdout!r} != {expected!r}")
-                        inputs = trace.read_text().splitlines()
-                        runtime = "-dlopen=/dev/fd/" if kind == "shared" else "-extra-object=/dev/fd/"
-                        if not any(value.startswith(runtime) for value in inputs):
-                            raise AssertionError(f"runtime variant not exercised: {inputs}")
-                        objects = len([value for value in inputs if value.startswith("-extra-object=/dev/fd/")])
-                        if objects != (kind == "object") + (program == embedded) + (codegen == "0"):
-                            raise AssertionError(f"{what}: lli's inputs {inputs}")
                         clean(what)
                         checks += 1
-            # (the shared runtime's SIGINT cases follow; the object runtime's restores it the same way)
-            env = environment_here | {"PYSTACHY_LLVM": str(base / "object"), "PYSTACHY_CACHE": str(base / "cache-object")}
-            interrupt(f"{label}/object", "ignore", compiler + ["run", str(waiting)], env)
-            checks += 1
-            env = environment_here | {"PYSTACHY_LLVM": str(base / "shared"), "PYSTACHY_CACHE": str(base / "cache-shared")}
-            for descriptors, stress in [(list(range(3, 40)) + [64], ""), ([0, 7, 8, 9], ""),
-                                        ([7, 8, 9], "1"), ([7, 8, 9], "7")]:
-                compare(f"{label}/dense-or-stress", descriptors, env | {"PYSTACHY_GC_STRESS_PROGRAM": stress})
+                        if runner and attempt == 0 and program == source:
+                            wrap(kind)
+                            continue
+                        inputs = trace.read_text().splitlines()
+                        runtime = "-dlopen=/dev/fd/" if kind.endswith("shared") else "-extra-object=/dev/fd/"
+                        if not any(value.startswith(runtime) for value in inputs):
+                            raise AssertionError(f"{what}: runtime variant not exercised: {inputs}")
+                        objects = len([value for value in inputs if value.startswith("-extra-object=/dev/fd/")])
+                        levels = [value for value in inputs if value.startswith("-O")]
+                        if objects != kind.endswith("object") + (program == embedded) + (codegen == "0" and not runner) or \
+                                levels != ([f"-O{codegen}"] if runner else []):
+                            raise AssertionError(f"{what}: the JIT's inputs {inputs}")
+            for kind in ("shared", "runner-shared"):
+                # (the shared runtime's SIGINT cases follow; the object runtime's restores it the same way)
+                where = f"{label}/{kind}"
+                interrupt(f"{where}/object", "ignore", compiler + ["run", str(waiting)], setting(kind.replace("shared", "object")))
                 checks += 1
-            for descriptors, codegen in [([1, 2, 7, 8, 9], "2"), ([0, 1, 2, 7, 8, 9], "0")]:
-                compare(f"{label}/closed-codegen-{codegen}", descriptors, env, codegen=codegen)
-                checks += 1
-            for disposition, codegen, number in [("ignore", "2", signal.SIGINT), ("default", "2", signal.SIGINT),
-                                                 ("handler", "2", signal.SIGINT), ("ignore", "2", signal.SIGINT),
-                                                 ("ignore", "0", signal.SIGINT), ("default", "0", signal.SIGINT),
-                                                 ("ignore", "2", signal.SIGUSR1), ("ignore", "0", signal.SIGUSR1)]:
-                interrupt(f"{label}/codegen-{codegen}", disposition, compiler + ["run", str(waiting)],
-                          env | {"PYSTACHY_JIT_CODEGEN": codegen}, number)
-                checks += 1
-            if first:
-                # A failed exec closes the launch's descriptors, -O0 code generation's too.
-                for closed, codegen, disposition in [("", "2", "default"), ("0", "0", "ignore")]:
-                    result = run([sys.executable, str(launch), closed, sys.executable, str(failure), str(ROOT), str(source)],
-                                 env | {"JITFD_CLOSED": closed, "PYSTACHY_JIT_CODEGEN": codegen, "JITFD_SIGINT": disposition,
-                                        "JITFD_IGNORED": "1" if disposition == "ignore" else "0"})
-                    if result.stdout != b"failed exec closed inputs\n":
-                        raise AssertionError(f"failed exec cleanup: {result.stdout!r}")
-                    clean("failed exec")
+                env = setting(kind)
+                for descriptors, stress in [(list(range(3, 40)) + [64], ""), ([0, 7, 8, 9], ""),
+                                            ([7, 8, 9], "1"), ([7, 8, 9], "7")]:
+                    compare(f"{where}/dense-or-stress", descriptors, env | {"PYSTACHY_GC_STRESS_PROGRAM": stress})
                     checks += 1
+                for descriptors, codegen in [([1, 2, 7, 8, 9], "2"), ([0, 1, 2, 7, 8, 9], "0")]:
+                    compare(f"{where}/closed-codegen-{codegen}", descriptors, env, codegen=codegen)
+                    checks += 1
+                for disposition, codegen, number in [("ignore", "2", signal.SIGINT), ("default", "2", signal.SIGINT),
+                                                     ("handler", "2", signal.SIGINT), ("ignore", "2", signal.SIGINT),
+                                                     ("ignore", "0", signal.SIGINT), ("default", "0", signal.SIGINT),
+                                                     ("ignore", "2", signal.SIGUSR1), ("ignore", "0", signal.SIGUSR1)]:
+                    interrupt(f"{where}/codegen-{codegen}", disposition, compiler + ["run", str(waiting)],
+                              env | {"PYSTACHY_JIT_CODEGEN": codegen}, number)
+                    checks += 1
+                if first:
+                    # A failed exec closes the launch's descriptors, -O0 code generation's and the
+                    # runner's own too.
+                    for closed, codegen, disposition in [("", "2", "default"), ("0", "0", "ignore")]:
+                        result = run([sys.executable, str(launch), closed, sys.executable, str(failure), str(ROOT), str(source)],
+                                     env | {"JITFD_CLOSED": closed, "PYSTACHY_JIT_CODEGEN": codegen, "JITFD_SIGINT": disposition,
+                                            "JITFD_IGNORED": "1" if disposition == "ignore" else "0"})
+                        if result.stdout != b"failed exec closed inputs\n":
+                            raise AssertionError(f"{where}: failed exec cleanup: {result.stdout!r}")
+                        clean(f"{where}/failed exec")
+                        checks += 1
             if len(compiler) == 1 and Path(compiler[0]).is_file():
                 # Build overrides deliberately bypass the program cache; setup-python
                 # supplies LD_LIBRARY_PATH in CI. Keep this control eligible, as in
@@ -410,7 +457,7 @@ def main():
                     interrupt(f"{label}/aot", disposition, [str(executable)], env)
                     checks += 1
             return (f"{label}: inherited pipes and descriptor tables, closed standard streams, SIGINT dispositions,"
-                    " shared/object runtimes, -O0 code generation, embedding, cleanup and GC passed"), checks
+                    " shared/object runtimes, -O0 code generation, embedding, cleanup and GC passed, under the JIT runner and lli"), checks
 
         # A small bounded pool: each compiler's launches run in order, beside the other compiler's.
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:

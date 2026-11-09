@@ -152,10 +152,14 @@ check complements the full opt-in corpus sweep, `make dynany-optin`), `make dict
 store's `-O2` code, plain or not, the allocations `allocelide` lets `-O2` delete and those it
 keeps, with the objects they hold, and the allocation window between collections that
 `PYSTACHY_GC_MIN` sets).
-`make jitprobe` also compares JIT launches with CPython: inherited descriptors, the program's
-and its child's whole descriptor tables, closed standard streams, inherited SIGINT dispositions
-(sent once the program waits), shared/object runtime inputs, `-O0` code generation (`llc`'s
-objects), embedding, temporary cleanup, failed exec and native program-cache miss/hit and AOT
+`make jitprobe` also checks the [JIT runner](internals.md#the-jit-runner) on small C programs
+(`tools/test_lljit.py`: its first-use build, cache and `lli` fallback, constructors, `argv`,
+status, libraries, objects, archives, errors and signal dispositions; `PYSTACHY_TEST_LLJIT_LLVMS`
+adds toolchains of other LLVM versions), and compares JIT launches with CPython under the runner
+and under `lli`: inherited descriptors, the program's and its child's whole descriptor tables,
+closed standard streams, inherited SIGINT dispositions (sent once the program waits),
+shared/object runtime inputs, `-O0` code generation (the runner's, and `llc`'s objects for
+`lli`), embedding, temporary cleanup, failed exec and native program-cache miss/hit and AOT
 launches.
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
@@ -351,7 +355,7 @@ and AOT, in configurations that `make verify` does not test and that must change
 | Variant | Configuration |
 |---|---|
 | `opt-1` … `opt-6` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these six rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for fifteen passes (`tools/variants.sh`). |
-| `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. |
+| `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. Its JIT runs in `lli` (`PYSTACHY_JIT_LAUNCHER=lli`), the fallback of the [JIT runner](internals.md#the-jit-runner) that verification and the other variants use. |
 
 `make runtime-coverage` is another variant: clang's instrumentation changes the runtime's register
 allocation, and only that build showed `open()` keeping alive the writer it collected to close

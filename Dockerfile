@@ -21,7 +21,7 @@ RUN apt-get update \
 WORKDIR /src
 # Copy only the build/install inputs; credentials and unrelated files never enter
 # a layer even when present in the local checkout.
-COPY Makefile pystachy.py runtime.c runtime.py pyext.c pyembed.c LICENSE THIRD_PARTY_NOTICES VERSION ./
+COPY Makefile pystachy.py runtime.c runtime.py pyext.c pyembed.c lljit.c LICENSE THIRD_PARTY_NOTICES VERSION ./
 COPY src/ ./src/
 COPY lib/ ./lib/
 COPY ryu/ ./ryu/

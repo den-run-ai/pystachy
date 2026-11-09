@@ -7,6 +7,7 @@ deliberately removed to exercise discovery and the installed launcher's defaults
 import argparse
 import os
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -62,6 +63,11 @@ os.remove(path)
 os.rmdir(directory)
 print("removed", not os.path.exists(directory))
 '''
+
+
+def jit_runners(cache):
+    """The JIT runners (lljit.c, built at first use on Linux) in a runtime cache."""
+    return sorted(path.name for path in cache.glob("lljit-*") if re.fullmatch(r"lljit-[0-9a-f]{8}-[0-9a-f]{16}", path.name))
 
 
 def execute(command, directory, environment, *, timeout=180):
@@ -125,6 +131,12 @@ def smoke(compiler):
                 raise RuntimeError("installed native AOT output differs from CPython")
             print(f"installed JIT/AOT{' with GC stress' if stress else ''}: CPython output matches")
         cache = Path(environment["XDG_CACHE_HOME"]) / "pystachy"
+        # (without the program cache, which the native compiler uses by default on Linux, the JIT
+        # runs the program: on Linux, the JIT runner built from the installed lljit.c)
+        if execute([str(installed), "run", str(program)], work, dict(environment, PYSTACHY_PROGRAM_CACHE="0")) != expected:
+            raise RuntimeError("installed native JIT output differs from CPython without the program cache")
+        if sys.platform == "linux" and len(jit_runners(cache)) != 1:
+            raise RuntimeError(f"installed compiler did not build its JIT runner: {jit_runners(cache)}")
         if not cache.is_dir() or not list(cache.glob("runtime-*.bc")):
             raise RuntimeError(f"installed compiler did not populate its external cache: {cache}")
         if (prefix / "libexec/pystachy/build").exists():

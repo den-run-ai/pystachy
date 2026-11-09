@@ -214,6 +214,7 @@ streamprobe: pystachy
 
 # Inspect the bitcode passed to lli, then run it: dead functions must not reach code generation.
 jitprobe: pystachy
+	$(PY) -m unittest discover -s tools -p test_lljit.py
 	$(PY) tools/jitprobe.py
 	$(PY) tools/jitfdprobe.py
 
@@ -413,6 +414,8 @@ lint: lint-python
 	shellcheck -s sh -S warning $(wildcard tests/*.sh tests/ffi/*.sh tools/*.sh bench/*.sh)
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c tools/floatprobe.c pyext.c pyembed.c
 	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=18 lljit.c
+	$(LLVMBIN)clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=21 lljit.c
 
 clean:
 	rm -rf build pystachy

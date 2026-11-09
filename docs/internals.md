@@ -22,6 +22,7 @@ explains differential checks and bootstrap validation.
 | `tests/`, `tools/` | CPython comparisons, rejection cases, IR probes, fuzzers and validation tools |
 | `bench/`, `examples/` | Performance workloads and complete applications |
 | `pyext.c`, `pyembed.c` | CPython extension and embedding glue; see [foreign functions](ffi.md) |
+| `lljit.c` | The [JIT runner](#the-jit-runner) that `pystachy run` builds at first use and runs programs with on Linux |
 
 <a id="design-piece-by-piece"></a>
 
@@ -427,27 +428,29 @@ generator expressions emit the same typed IR and LLVM IR as before.
 `run` favors startup latency. LLVM removes unused internal functions, inlines the scalar
 recursion-accounting helpers, optionally inlines the program's
 own functions, performs SSA cleanup, and runs `early-cse` and `adce` to remove
-redundant computations and unused loop feedback before ORC JIT runs with the cached runtime.
-On Linux, `lli` loads the runtime as a shared library (`-dlopen`), which the driver links once
-from the cached runtime object and caches beside it; elsewhere `lli` links the object into each
+redundant computations and unused loop feedback before ORC JIT runs with the cached runtime,
+in Pystachy's [JIT runner](#the-jit-runner) where it can be built, else in `lli`.
+On Linux, the JIT loads the runtime as a shared library (`-dlopen`), which the driver links once
+from the cached runtime object and caches beside it; elsewhere it links the object into each
 run (`-extra-object`), which cost about 35 ms a run
 ([#704](https://github.com/den-run-ai/pystachy/issues/704)). The runtime calls back into the
 program for objects' `==`, ordering and `repr` (`pys_obj_eq`, `pys_obj_cmp`, `pys_obj_repr`),
 which no shared library can name: the library holds stand-ins that call through pointers, which a
 constructor the driver adds to the program's IR sets before `main` (`RTSO` in the driver).
 Where the library cannot be linked or cached, or a run may not execute it (a cache on a file
-system mounted `noexec`, also one mounted so after the library was cached), `lli` links the object.
-The driver becomes `lli` in the same process, which gets the program's bitcode (or `llc`'s object
-and a main module, below), the runtime and the embedding's object as descriptors of files the
-driver has already removed; `/dev/null` holds each standard stream that the caller closed, so that
-neither these nor `lli`'s own files take one. `lli`'s start-up also replaces the dispositions of
-the signals LLVM handles, an inherited ignored SIGINT among them, with handlers of its own. Before
-any of the program's code runs, the runtime closes those descriptors and restores each signal that
-LLVM caught to the disposition the driver had (ignored or default). It reads this from
-`PYSTACHY_JIT_HANDOFF`, which it then removes from the environment (`jit_handoff` in `runtime.c`).
-The program and its children see the caller's descriptors and dispositions, as cached and built
-programs do; [`tools/jitfdprobe.py`](../tools/jitfdprobe.py) compares both with CPython's.
-A module that holds generators (coroutines, which `lli` cannot run before they are
+system mounted `noexec`, also one mounted so after the library was cached), the JIT links the object.
+The driver becomes the runner or `lli` in the same process, which gets the program's bitcode (or
+`llc`'s object and a main module, below), the runtime and the embedding's object as descriptors of
+files the driver has already removed; `/dev/null` holds each standard stream that the caller
+closed, so that neither these nor `lli`'s own files take one. `lli`'s start-up also replaces the
+dispositions of the signals LLVM handles, an inherited ignored SIGINT among them, with handlers of
+its own; the runner sets none. Before any of the program's code runs, the runtime closes those
+descriptors and restores each signal that LLVM caught to the disposition the driver had (ignored
+or default). It reads this from `PYSTACHY_JIT_HANDOFF`, which it then removes from the environment
+(`jit_handoff` in `runtime.c`). The program and its children see the caller's descriptors and
+dispositions, as cached and built programs do; [`tools/jitfdprobe.py`](../tools/jitfdprobe.py)
+compares both with CPython's, under the runner and under `lli`.
+A module that holds generators (coroutines, which ORC cannot run before they are
 lowered) gets LLVM's coroutine passes around that pipeline:
 `coro-early`, `coro-split` in the bottom-up walk that inlines (with `coro-elide` after each
 function's cleanup), and `coro-cleanup`. The final `early-cse`/`adce` cleanup runs after
@@ -456,6 +459,42 @@ The default user-function inlining threshold is 20,000 lines of generated IR; la
 skip that pass. The scalar recursion-accounting helpers remain inlined, including with
 `PYSTACHY_JIT_INLINE=0`; the recursion entry follows the user-function threshold (see
 below). The precompiled runtime is not inlined into JIT code.
+
+### The JIT runner
+
+On Linux, `pystachy run` executes programs with Pystachy's JIT runner, [`lljit.c`](../lljit.c):
+an in-process LLJIT (ORC) launcher on LLVM's C API, which replaces `lli` where it can be built.
+It takes the part of `lli`'s command line that the driver uses (`-dlopen`, `-extra-object`,
+`-extra-archive`, LLVM options such as `-profile-guided-section-prefix=false`, the input and the
+program's arguments) and runs the program as `lli`'s default ORC JIT does: JITLink, the
+process's symbols, the module's constructors in priority order before `main` and its destructors
+after it, `argv[0]` the input's name and `main`'s result as the exit status. Errors go to stderr
+as `lli`'s do, behind `lljit:`, with status 1. It differs in four ways: `-O0` to `-O3` select the
+level of code generation (`lli`'s ORC generates code at `-O2` whatever `-O` says), so
+`PYSTACHY_JIT_CODEGEN=0` needs no `llc`; it installs none of LLVM's signal handlers, stack
+printer, debugger registration or perf listener; the process exits with the JIT's code still
+mapped; and an LLVM option that LLVM does not know is ignored rather than an error (the C API's
+parser reports none), so the driver passes only `-profile-guided-section-prefix=false`, which LLVM
+18 to 23 know.
+
+The driver builds the runner at first use, as it builds the runtime: the selected toolchain's
+`clang` compiles `lljit.c`, which declares the part of the C API it calls, so no LLVM headers are
+needed, and links it to the `libLLVM` that the toolchain's `lli` loads (`ldd lli`; `lli --version`
+gives the version, which selects the C API's variants for LLVM 18 to 20 or 21 and later). It
+then runs a module of its own at `-O0` and at `-O2` (`-self-check`): constructors in priority
+order, `argv`, a C library call, the exit status and a destructor. This takes about half a second.
+The runner is cached beside the runtime as `lljit-<L>-<K>`, keyed by the bytes of `lljit.c` and
+the files of `lli`, `clang` and that `libLLVM` (path, size and times), which `lljit-<L>-<K0>.llvm`
+names with its version; a newer entry replaces the old. The driver runs the runner from a
+descriptor it opened, so a concurrent run that publishes another runner cannot remove it first.
+LLVM 18 to 23 on x86-64 and AArch64 Linux get the runner. Otherwise `lli` runs the program,
+silently: on macOS, whose LLVM the runner is untested with; for a toolchain without a shared
+`libLLVM` or of another version (and while `ldd` cannot be run); after a failed build or self-check, which is cached as
+`lljit-<L>-<K>.fail` with its log, so later runs go to `lli` at once; for a cache that cannot be
+written, tools that have not settled, or a runner that the run may not execute (a cache mounted
+`noexec`); and with `PYSTACHY_JIT_LAUNCHER=lli`. `PYSTACHY_TIMING=1` names the outcome
+(`program.jit_runner.lljit` or `program.jit_runner.lli.REASON`). Program-cache hits and misses run
+no JIT; the cache's fallback uses a runner only if one was built before.
 
 <a id="native-recursion-depth"></a>
 
@@ -602,21 +641,23 @@ including 4 KiB and 64 KiB pages, and runs deep recursion in JIT and AOT under a
 errors and recovery under finite and unlimited host limits, with program GC stress.
 
 `PYSTACHY_JIT_CODEGEN=0` selects `-O0` code generation. This can reduce startup for large
-programs, but the generated code can run slower. The default (`2`) keeps ORC's own code
-generation. `lli`'s ORC ignores `-O` and generates code at LLVM's default level, so for `0` the
-driver runs the selected toolchain's `llc -O0` on the cleaned-up module, in position-independent
-code for ORC's JITLink, and `lli` links that object (`-extra-object`) as it links the runtime's.
-Neither tool is given `-mcpu`, and no function names a CPU: both generate code for the default
-CPU of the runtime's target triple, which the module carries. ORC runs only an IR module's
-constructors, so `lli`'s main module holds the program's target and, with the shared runtime
-library, the constructor that hands it the program's callbacks (`OBJHOOKS_MAIN` in
-`lower_module.py`). `llc` is one more process, which tiny programs notice
-(`program.jit_codegen` in the [stage timings](#compiler-stage-timings)). This choice keeps the IR
-cleanup and inlining pipeline, except that it splits critical edges last: LLVM's `-O0` PHI
-elimination (seen in 18, 20 and 23) otherwise lowers a landing pad's PHI with the copies of an
-identical PHI in the call's normal successor, which follow the call, so an `except` clause read
-values that its loop never set or had changed since. `make jitprobe` runs
-`tests/programs/exceptions/exc_handler_loop_values.py` in both modes. The choice bypasses the
+programs, but the generated code can run slower. The default (`2`) keeps ORC's own level of code
+generation, `-O2`. The [JIT runner](#the-jit-runner) generates the code at the level selected
+(`-O0`). `lli`'s ORC ignores `-O` and generates code at LLVM's default level, so for `0` with
+`lli` the driver runs the selected toolchain's `llc -O0` on the cleaned-up module, in
+position-independent code for ORC's JITLink, and `lli` links that object (`-extra-object`) as it
+links the runtime's. Neither the runner nor these tools are given a CPU, and no function names
+one: all generate code for the default CPU of the runtime's target triple, which the module
+carries. ORC runs only an IR module's constructors, so `lli`'s main module then holds the
+program's target and, with the shared runtime library, the constructor that hands it the
+program's callbacks (`OBJHOOKS_MAIN` in `lower_module.py`). `llc` is one more process, which tiny
+programs notice (`program.jit_codegen` in the [stage timings](#compiler-stage-timings)). This
+choice keeps the IR cleanup and inlining pipeline, except that it splits critical edges last, for
+the runner's `-O0` and `llc`'s alike: LLVM's `-O0` PHI elimination (seen in 18, 20 and 23)
+otherwise lowers a landing pad's PHI with the copies of an identical PHI in the call's normal
+successor, which follow the call, so an `except` clause read values that its loop never set or
+had changed since. `make jitprobe` runs `tests/programs/exceptions/exc_handler_loop_values.py` in
+both modes, under the runner and under `lli`. The choice bypasses the
 [program cache](program-cache.md) and does not affect `build` or `ext`.
 
 The [native program cache](program-cache.md) is enabled by default for supported
@@ -709,9 +750,14 @@ is one record. Failed commands retain their status and report elapsed time;
 a frontend failure can omit unfinished phases.
 
 `driver.total` ends when compilation finishes. For `run`, `driver.prepare_run`
-ends before execution and excludes application execution and ORC's code generation
-in `lli`. With `PYSTACHY_JIT_CODEGEN=0` it includes `llc`'s, recorded as
-`program.jit_codegen`. A program-cache hit reports lookup and preparation only. Set
+ends before execution and excludes application execution and ORC's code generation in
+the JIT runner or `lli`. `program.jit_runner.lljit` or `program.jit_runner.lli.REASON`
+names what runs the program (the [JIT runner](#the-jit-runner), or `lli` and why), and
+`runtime.jit_launcher_build` the runner's first-use build. The runner adds its own records
+after `driver.prepare_run`: `program.jit_load` (reading the bitcode) and `program.jit_codegen`
+(ORC's code generation and linking). With `lli` and `PYSTACHY_JIT_CODEGEN=0`,
+`program.jit_codegen` is `llc`'s, within `driver.prepare_run`. A program-cache hit reports
+lookup and preparation only. Set
 `PYSTACHY_PROGRAM_CACHE=0` to measure ordinary JIT preparation. Totals contain
 smaller intervals: do not add nested records together. Timing leaves stdout IR
 unchanged and reads no clock when disabled.
@@ -765,7 +811,8 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_UNICODE_AUDIT=1` | Compile the [Unicode audit](language/compatibility.md#unicode-audit) checks into the program and its imported library code |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
-| `PYSTACHY_JIT_CODEGEN=0\|2` | `0` compiles the program with `llc -O0` for ORC to link; `2` (default) keeps ORC's code generation |
+| `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |
+| `PYSTACHY_JIT_LAUNCHER=auto\|lli` | What runs `pystachy run`'s programs: `auto` (default), Pystachy's [JIT runner](#the-jit-runner) where it can be built, else `lli`; `lli` always `lli` |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |
 | `PYSTACHY_PROGRAM_CACHE_TRACE=1` | Print cache decisions and frontend entry to stderr |
 | `PYSTACHY_PROGRAM_CACHE_INPUTS` | Additional files whose changes invalidate the program cache, separated by `:` |
@@ -779,7 +826,7 @@ are required before promotion. `make verify` keeps the standard tier.
 For AddressSanitizer builds, set `ASAN_OPTIONS=detect_stack_use_after_return=0`: its fake stack
 is outside the collector's scanned stack. `PYSTACHY_CFLAGS=-fsanitize=address` instruments
 the C runtime and generated `runtime.py` code before caching; the final link adds the sanitizer
-runtime. For Linux JIT, preload the matching ASan shared runtime into `lli`, for example
+runtime. For Linux JIT, preload the matching ASan shared runtime into the JIT runner or `lli`, for example
 `LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so)` on x86-64. The compiler's
 LLVM toolchain must match that library. Small managed objects still share allocator arenas,
 so this is not complete managed-object bounds or reclaimed-memory coverage. UBSan continues

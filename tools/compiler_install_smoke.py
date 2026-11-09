@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 
-from install_smoke import PROGRAM, execute
+from install_smoke import PROGRAM, execute, jit_runners
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -61,6 +61,9 @@ def check_install(command, python, directory, environment, revision, *, provisio
     cache = Path(environment["XDG_CACHE_HOME"]) / "pystachy"
     if not list(cache.glob("runtime-*.bc")):
         raise RuntimeError(f"the installed compiler did not use its external cache: {cache}")
+    # (the package's lljit.c, built at first use where the JIT runner replaces lli: Linux)
+    if len(jit_runners(cache)) != (1 if sys.platform == "linux" else 0):
+        raise RuntimeError(f"the installed compiler's JIT runners: {jit_runners(cache)}")
     print(f"{command}: version, JIT, standalone AOT and external cache passed", flush=True)
 
 
