@@ -13,6 +13,10 @@ For Python modules, `import NAME` searches for `NAME/__init__.py` or `NAME.py` i
 2. Directories on `PYSTACHY_PATH`, separated by `:`.
 3. `lib/` beside the compiler.
 
+If none has either, the directories named `NAME`, also through symbolic links, are the portions
+of a namespace package, as in CPython. Any other file named `NAME`, such as a text file without
+the `.py` suffix, is not a module.
+
 Builtin modules such as `sys`, `os` and `math` are handled by the compiler. A program's own
 `ffi.py` takes precedence over the builtin `ffi` module. A file named like a module built into
 CPython, such as `_weakref.py` or `itertools.py`, is never imported, as CPython imports its own.

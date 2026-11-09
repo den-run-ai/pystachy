@@ -1070,7 +1070,8 @@ RUNTIME: dict[str, str] = {
     "personality": "%i32:%i32,%i32,int,%ptr,%ptr|I|",
     "init": "None:%i32,%ptr,%ptr,%ptr,int|A I|", "finish": "None:|U|", "exit_hook": "None:%ptr|I|", "frameaddress": "%ptr:%i32||llvm.frameaddress.p0",
     # files and the standard streams
-    "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
+    "write": "None:str,int|R I rF wF|", "input": "str:str|R A I rF wF|", "input_lost": "None:|R I|",
+    "open": "file:str,str,str,str,int|R A I rF|", "std": "file:int||",
     "file.read": "str:S,int|R A I rF wF|", "file.readline": "str:S|R A I rF wF|", "file.readlines": "list[str]:S|R A I rF wF|",
     "file.write": "int:S,str|R A I rF wF|", "file.put": "None:S,str|R A I rF wF|",
     "file.writelines": "None:S,list[str]|R A I rL rF wF|",
