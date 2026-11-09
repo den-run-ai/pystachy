@@ -1,5 +1,7 @@
-"""The descriptor probe's launcher and report comparison."""
+"""JIT setting rejection, the descriptor probe's launcher and report comparison."""
 
+import contextlib
+import io
 import os
 from pathlib import Path
 import signal
@@ -7,8 +9,62 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from jitfdprobe import BOOTSTRAP, normalized
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.pystachy_compiler import driver
+
+
+class CachePreparationReached(Exception):
+    pass
+
+
+class DriverSettingsTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory(prefix="pystachy-launch-settings-")
+        self.addCleanup(directory.cleanup)
+        self.source = Path(directory.name) / "program.py"
+        self.source.write_text("print(42)\n")
+        self.addCleanup(sys.setrecursionlimit, sys.getrecursionlimit())
+
+    def launch(self, value, command="run"):
+        arguments = [str(Path(driver.__file__).resolve().parents[2] / "pystachy.py"), command, str(self.source)]
+        with patch.object(sys, "argv", arguments), patch.dict(os.environ, {"PYSTACHY_JIT_INLINE": value}, clear=True), \
+                patch.object(driver.diagnostics, "SRC", ""), \
+                patch.object(driver.cached_run, "prepare", side_effect=CachePreparationReached):
+            driver.main()
+
+    def test_invalid_inline_settings_reject_before_cache_acquisition(self):
+        for value in ("", "invalid", "-1", "+1", " 1", "1.5"):
+            with self.subTest(value=value), contextlib.redirect_stderr(io.StringIO()) as error:
+                with self.assertRaises(SystemExit) as stopped:
+                    self.launch(value)
+                self.assertEqual(stopped.exception.code, 1)
+                self.assertIn("PYSTACHY_JIT_INLINE", error.getvalue())
+
+    def test_unicode_digits_keep_the_existing_int_conversion(self):
+        # Superscript two passes isdigit(), but int() raises ValueError.
+        with self.assertRaises(ValueError):
+            self.launch("\N{SUPERSCRIPT TWO}")
+        for value in ("0", "20000", "\N{ARABIC-INDIC DIGIT TWO}", "9" * 80):
+            with self.subTest(value=value), self.assertRaises(CachePreparationReached):
+                self.launch(value)
+
+    def test_hosted_integer_digit_limit_is_preserved_before_cache_acquisition(self):
+        previous = sys.get_int_max_str_digits()
+        try:
+            sys.set_int_max_str_digits(640)
+            with self.assertRaises(ValueError):
+                self.launch("9" * 641)
+        finally:
+            sys.set_int_max_str_digits(previous)
+
+    def test_other_compilation_commands_ignore_the_jit_setting(self):
+        for command in ("ir", "build", "ext"):
+            with self.subTest(command=command), self.assertRaises(CachePreparationReached):
+                self.launch("", command)
 
 
 @unittest.skipUnless(sys.platform == "linux", "the descriptor probe runs on Linux")
