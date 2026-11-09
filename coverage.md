@@ -1,18 +1,18 @@
 ## Hosted compiler coverage
 
-Commit `56678df4c667afb4c9b35d854e97cdc9f5c0c3f7`: statements **95.7%** (46176 of 48276) and branches **92.2%** (24130 of 26158); 94.5% together, coverage.py's total. 5 suites, 7195 processes measured.
+Commit `f60df76d2bcef35dd11142c5f1219ca3bc6f53f6`: statements **95.7%** (46180 of 48280) and branches **92.2%** (24130 of 26158); 94.5% together, coverage.py's total. 5 suites, 7195 processes measured.
 The statements and branches of `src/pystachy_compiler/`, run by CPython; not `runtime.c`, `runtime.py`, `lib/` or the compiled programs, which run as native code ([native runtime coverage](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)).
 
 | Suite | Runs | Checks | Processes | Time | Statements | Branches |
 |---|---|---|---:|---:|---:|---:|
-| corpus | `tests/run.sh`, JIT and AOT (8 shards) | 6869 passed, 0 failed | 6877 | 4945 s | 92.4% | 88.6% |
-| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 219 s | 49.2% | 41.6% |
-| cache | `tests/cache.sh` | 68 passed, 0 failed | 34 | 342 s | 27.2% | 17.9% |
-| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 452 tests, OK | 9 | 83 s | 52.4% | 45.2% |
+| corpus | `tests/run.sh`, JIT and AOT (8 shards) | 6869 passed, 0 failed | 6877 | 4089 s | 92.4% | 88.6% |
+| ffi | `tests/ffi/run.sh`, JIT and AOT | 194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program) | 175 | 228 s | 49.2% | 41.6% |
+| cache | `tests/cache.sh` | 68 passed, 0 failed | 34 | 214 s | 27.2% | 17.9% |
+| unit | `tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's, `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s | 452 tests, OK | 9 | 47 s | 52.4% | 45.2% |
 | ir | `tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts | the IR check and llvm-as accept the IR of 100 programs | 100 | 200 s | 60.2% | 53.4% |
 | **all** | | | **7195** | | **95.7%** | **92.2%** |
 
-The other suites run 1562 statements and 942 branches that the corpus does not.
+The other suites run 1563 statements and 942 branches that the corpus does not.
 
 | Module | Statements | Missed | Statements % | Branches | Missed | Branches % | Total | Corpus alone |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -29,7 +29,7 @@ The other suites run 1562 statements and 942 branches that the corpus does not.
 | `src/pystachy_compiler/ctypes_schema.py` | 221 | 2 | 99.1% | 122 | 2 | 98.4% | 98.8% | 37.3% |
 | `src/pystachy_compiler/declarations.py` | 2381 | 140 | 94.1% | 1610 | 133 | 91.7% | 93.2% | 92.5% |
 | `src/pystachy_compiler/diagnostics.py` | 84 | 8 | 90.5% | 20 | 1 | 95.0% | 91.3% | 91.3% |
-| `src/pystachy_compiler/driver.py` | 835 | 140 | 83.2% | 346 | 86 | 75.1% | 80.9% | 64.0% |
+| `src/pystachy_compiler/driver.py` | 837 | 140 | 83.3% | 346 | 86 | 75.1% | 80.9% | 64.1% |
 | `src/pystachy_compiler/dynamic.py` | 3934 | 228 | 94.2% | 2064 | 250 | 87.9% | 92.0% | 92.0% |
 | `src/pystachy_compiler/emission.py` | 550 | 16 | 97.1% | 180 | 13 | 92.8% | 96.0% | 94.1% |
 | `src/pystachy_compiler/exceptions.py` | 1263 | 42 | 96.7% | 622 | 39 | 93.7% | 95.7% | 95.7% |
@@ -52,7 +52,7 @@ The other suites run 1562 statements and 942 branches that the corpus does not.
 | `src/pystachy_compiler/optimizations.py` | 1247 | 22 | 98.2% | 788 | 31 | 96.1% | 97.4% | 96.8% |
 | `src/pystachy_compiler/parser.py` | 2091 | 104 | 95.0% | 1168 | 102 | 91.3% | 93.7% | 93.7% |
 | `src/pystachy_compiler/program.py` | 1039 | 37 | 96.4% | 758 | 37 | 95.1% | 95.9% | 95.0% |
-| `src/pystachy_compiler/program_cache.py` | 582 | 69 | 88.1% | 240 | 29 | 87.9% | 88.1% | 11.7% |
+| `src/pystachy_compiler/program_cache.py` | 584 | 69 | 88.2% | 240 | 29 | 87.9% | 88.1% | 11.8% |
 | `src/pystachy_compiler/reflection.py` | 2521 | 172 | 93.2% | 1330 | 168 | 87.4% | 91.2% | 91.1% |
 | `src/pystachy_compiler/scalar_ir.py` | 47 | 0 | 100.0% | 22 | 0 | 100.0% | 100.0% | 73.9% |
 | `src/pystachy_compiler/scope.py` | 534 | 4 | 99.3% | 294 | 7 | 97.6% | 98.7% | 98.7% |
