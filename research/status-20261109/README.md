@@ -77,7 +77,7 @@ configs: [json-repair/](json-repair/).
 
 ## Follow-up issues
 
-Filed on 9 November from the drafts in [followups/](followups/), all passing `tools/check_submission.py`:
+Filed on 9 November (UTC) from the drafts in [followups/](followups/), all passing `tools/check_submission.py`:
 
 - CI time, under tracker #41: #1178 PR job headroom, #1179 full-profile and Variants headroom,
   #1180 per-case AOT/import cost (with #706 for runtime re-optimization), #1181 `gc-self` scaling.
@@ -88,6 +88,13 @@ Filed on 9 November from the drafts in [followups/](followups/), all passing `to
 
 The `irsame` draft was not filed: #527 already tracks library paths in IR strings. They now make
 about 264 of 4,345 programs differ when nothing changed, against 194 at `9c8bc746`.
+
+## Release planning
+
+An agent mapped the 26 open PRs, 235 open issues and the milestones onto v0.4.0 releases, from
+live GitHub data and `git merge-tree` against `56678df4`, without changing GitHub:
+[release-plan.md](release-plan.md). Its proposed milestones, assignments and closures (#1154 and
+15 PRs) await the maintainer's decision.
 
 ## Not run
 
