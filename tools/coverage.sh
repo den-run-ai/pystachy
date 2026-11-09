@@ -6,7 +6,10 @@
 #   corpus  tests/run.sh's differential, rejection and deviation cases, JIT and AOT, or the FILEs given
 #   ffi     tests/ffi/run.sh, JIT and AOT (make test-ffi): C calls, CPython embedded, extension modules
 #   cache   tests/cache.sh (make test-cache): the cached runtime's rules, the driver's search for LLVM
-#   unit    the compiler's unit tests, tools/test_typed*.py and tools/test_function_summaries.py
+#   unit    the compiler's unit tests, tools/test_typed*.py and tools/test_function_summaries.py, and
+#           those of code that the hosted corpus does not run: the native program cache's (only the
+#           native compiler uses program_cache.py, cached_run.py and cache_toolchain.py), --emit-ir's,
+#           the C runtime cache's (driver.py), ctypes_schema.py's and source_lines.py's
 #   ir      tools/check_ir.sh (make check-ir) on the programs the corpus does not compile: pystachy.py
 #           and runtime.py (as the bootstrap's first stage compiles them), bench/ and the tests/ir/
 #           probes, with their effect, call, attribute and TBAA contracts
@@ -107,7 +110,11 @@ for s in $SUITES; do
     ffi) part ffi ffi null env PY="$PY" tests/ffi/run.sh "$W/ffi.run -m pystachy" "jit aot" ;;
     cache) part cache cache null env PY="$PY" tests/cache.sh "$W/cache.run -m pystachy" ;;
     unit)
-      part unit unit null sh -c '"$1" -m unittest discover -s tools -p "test_typed*.py" && "$1" -m unittest discover -s tools -p test_function_summaries.py' unit "$W/unit.run" ;;
+      # (each pattern in a process of its own, as Lint and make test-program-cache run them)
+      part unit unit null sh -c 'for p in "test_typed*.py" test_function_summaries.py "test_program_cache*.py" "test_cached_run*.py" \
+          test_cache_toolchain.py test_retained_ir.py test_runtime_c_cache.py test_ctypes_schema.py test_source_lines.py; do
+        "$1" -m unittest discover -s tools -p "$p" || exit 1
+      done' unit "$W/unit.run" ;;
     # (tools/check_ir.sh's own programs but the corpus's)
     ir) part ir ir null tools/check_ir.sh "$W/ir.run -m pystachy" pystachy.py runtime.py bench/*.py bench/pyperformance/*.py tests/ir/*.py ;;
   esac

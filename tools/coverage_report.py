@@ -37,7 +37,8 @@ SUITES = {  # what each suite runs, in the order the summary lists them
     "corpus": "`tests/run.sh`, JIT and AOT",
     "ffi": "`tests/ffi/run.sh`, JIT and AOT",
     "cache": "`tests/cache.sh`",
-    "unit": "`tools/test_typed*.py`, `tools/test_function_summaries.py`",
+    "unit": "`tools/test_typed*.py`, `tools/test_function_summaries.py`, the native program cache's,"
+            " `--emit-ir`'s, the C runtime cache's, `ctypes_schema.py`'s and `source_lines.py`'s",
     "ir": "`tools/check_ir.sh`: `pystachy.py`, `runtime.py`, `bench/`, the `tests/ir/` contracts",
 }
 RUNTIME_SUITES = {
