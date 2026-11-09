@@ -486,10 +486,10 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack and sanitizer linkage smoke. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
 | Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
-| Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers. |
+| Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles. |
-| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks, then native program-cache invalidation and execution. |
+| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks. |
 | Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
 | Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke. |
@@ -527,8 +527,9 @@ reports before running their existing sampled configurations in sequence. This k
 The compact cache/GC group finishes both parallel cache checks before starting its
 collector-stressed self-compilation, preserving the latter's ten-minute bound without
 three competing compiler processes.
-Native program-cache checks follow the contracts group's own checks, leaving
-the compact cache/GC group's budget for runtime-cache and compiler GC verification.
+Native program-cache checks run last in the first JIT worker, with the stage-2 compiler
+its corpus half restored: on EPYC 7763 runners the JIT workers took about 3.5 minutes,
+the contracts and cache/GC groups up to 13.5 (#1178).
 
 ### Full verification
 
