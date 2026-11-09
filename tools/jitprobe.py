@@ -164,6 +164,16 @@ def main():
         # Native program caching skips the lli wrapper even when filling an entry. The runner is
         # built in this probe's runtime cache, then wrapped (wrap_runner)
         cache = temp / "cache"
+        cache.mkdir()
+        # (seeded with the runtimes of the caller's cache, built from the same files: where the caller's
+        # runs warmed it, as verify's contracts do, none is built again here)
+        caller = Path(os.environ.get("PYSTACHY_CACHE") or ROOT / "build")
+        if caller.is_dir():
+            for entry in [*caller.glob("runtime-py-*"), caller / "runtime-py.hashes"]:
+                try:
+                    shutil.copy2(entry, cache / entry.name)
+                except OSError:
+                    pass  # (an entry being replaced, or none: built here)
         env = os.environ | {"PYSTACHY_PATH": str(temp), "PYSTACHY_PROGRAM_CACHE": "0", "PYSTACHY_CACHE": str(cache)}
         env.pop("PYSTACHY_JIT_INLINE", None)  # (the default's inliner is what is checked first)
         env.pop("PYSTACHY_JIT_CODEGEN", None)

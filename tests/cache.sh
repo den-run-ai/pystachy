@@ -299,6 +299,9 @@ if [ "$(uname)" = Linux ]; then
     else bad "$j_name: exited $j_st, printed '$j_got' with $j_run after $j_b builds of the runner and $j_r of the runtime (expected $j_want after $j_n)"
       grep -v "^pystachy-timing$tab" "$T/jrun.err" | head -5; fi
   }
+  # (the runs above with the real tools found through PATH built a runner of their own, under another
+  # name: removed, so that the cache holds this section's alone)
+  rm -f "$B"/lljit-*
   jrun "a first run builds the JIT runner beside the runtime, which runs the program" lljit 1
   if [ "$(runners)" = 1 ]; then ok "one runner in the cache"; else bad "$(runners) runners in the cache, not 1"; fi
   jrun "the next run uses it" lljit 0
