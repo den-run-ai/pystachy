@@ -402,6 +402,24 @@ except ImportError:
     p.write(last / "cache_ns" / "__init__.py", "# regular package takes priority\n")
     p.pair(namespace, "namespace becomes regular package", changes=env)
 
+    # Only a directory is a namespace portion (#1166). Probes record each candidate's
+    # kind, so a path that stays present but changes kind must miss.
+    extless = p.source("extensionless", '''try:
+    import plainname
+    print("imported")
+except ImportError:
+    print("fallback")
+''')
+    p.pair(extless, "missing extensionless candidate")
+    plain = p.write(extless.parent / "plainname", "not a module\n")
+    p.pair(extless, "extensionless file appears")
+    plain.unlink()
+    plain.mkdir()
+    p.pair(extless, "extensionless file becomes namespace directory")
+    plain.rmdir()
+    p.write(plain, "not a module\n")
+    p.pair(extless, "namespace directory becomes extensionless file")
+
     ffi = p.source("ffi-shadow", 'import ffi\nprint("ok")\n')
     ordinary = p.run("builtin ffi reference", ffi, changes={"PYSTACHY_PROGRAM_CACHE": "0"})
     p.check(ordinary.status == 0 and ordinary.stdout == b"ok\n", "builtin ffi reference failed")

@@ -44,7 +44,7 @@ object alone to `lli`. Program arguments, standard streams, status, signals and
 | Input | Check |
 |---|---|
 | Main program and imported Python files | Hash the text actually consumed, and reread it on every hit. Size and mtime alone never validate source. |
-| Import resolution | Replay positive and negative file/package/namespace probes, including resolved paths. A new shadowing module invalidates the entry. |
+| Import resolution | Replay positive and negative file/package/namespace probes, including each candidate's kind (directory, regular file, other file or missing) and resolved path. A new shadowing module, or a namespace directory replaced by a file, invalidates the entry. |
 | Compiler, runtime and LLVM | Record resolved files, content hashes and size/mtime/ctime snapshots. Settled unchanged static files can reuse their hashes. |
 | Default native toolchain | Hash consumed C headers, shared libraries and GNU linker's CRT/library/script inputs. Snapshot existing and absent header, GCC, linker, loader and Clang configuration search candidates. |
 | Compilation choices | Include source spelling, working directory, import paths, CPU features, optimization and inlining settings. |
