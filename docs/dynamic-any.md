@@ -52,9 +52,10 @@ For example, TOML's namespace flags use typed recursive nodes and integer sets;
 its document values can still contain arbitrary supported `parse_float` results.
 
 Before adding or widening a boundary, record its consumer, required operations,
-rejected static alternatives and ownership/identity contract. Preserve mutable
-aliases, callback timing, laziness, exception order, numeric identity and the
-supported ABI. Do not copy containers or introduce earlier rejections to make a
+rejected static alternatives and ownership/identity contract. `make check-fast`
+fails when a shipped `lib/` or `ports/` opt-in lacks an inventory row. Preserve
+mutable aliases, callback timing, laziness, exception order, numeric identity and
+the supported ABI. Do not copy containers or introduce earlier rejections to make a
 boundary appear static. JSON's recursive `JSONValue` is already a closed typed
 alternative when the application needs only its value set; it is not a substitute
 for an existing open mutable payload contract.
