@@ -1,0 +1,124 @@
+{
+  "id": 129983256196,
+  "run_id": 42859999475,
+  "workflow_name": "Performance smoke",
+  "head_branch": "codex/alpha3-netio-qualification",
+  "run_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/42859999475",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOU_6QTs8AAAAeQ5sWhA",
+  "head_sha": "b52facdc86115e818325c54b82ac6f4d846d83ff",
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/129983256196",
+  "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42859999475/job/129983256196",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-10T16:58:07Z",
+  "started_at": "2026-11-10T16:58:11Z",
+  "completed_at": "2026-11-10T17:08:58Z",
+  "name": "smoke",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-10T16:58:12Z",
+      "completed_at": "2026-11-10T16:58:13Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-10T16:58:13Z",
+      "completed_at": "2026-11-10T16:58:19Z"
+    },
+    {
+      "name": "Select baseline",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-10T16:58:19Z",
+      "completed_at": "2026-11-10T16:58:19Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-10T16:58:19Z",
+      "completed_at": "2026-11-10T16:58:21Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-10T16:58:21Z",
+      "completed_at": "2026-11-10T16:58:29Z"
+    },
+    {
+      "name": "Run tools/setup.sh --minimal",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-10T16:58:29Z",
+      "completed_at": "2026-11-10T16:58:34Z"
+    },
+    {
+      "name": "Paired performance smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-10T16:58:34Z",
+      "completed_at": "2026-11-10T17:08:53Z"
+    },
+    {
+      "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-10T17:08:53Z",
+      "completed_at": "2026-11-10T17:08:55Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 14,
+      "started_at": "2026-11-10T17:08:55Z",
+      "completed_at": "2026-11-10T17:08:55Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 15,
+      "started_at": "2026-11-10T17:08:55Z",
+      "completed_at": "2026-11-10T17:08:55Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 16,
+      "started_at": "2026-11-10T17:08:55Z",
+      "completed_at": "2026-11-10T17:08:55Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 17,
+      "started_at": "2026-11-10T17:08:55Z",
+      "completed_at": "2026-11-10T17:08:55Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/den-run-ai/pystachy/check-runs/129983256196",
+  "labels": [
+    "ubuntu-24.04"
+  ],
+  "runner_id": 1000077366,
+  "runner_name": "GitHub Actions 1000077366",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

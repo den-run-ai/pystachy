@@ -1,0 +1,115 @@
+{
+  "result": "pass",
+  "pr": 1217,
+  "published_head": "c355f3064ec48077abe2b2b17f81019fad49195d",
+  "published_tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+  "local_commit": "206a2c70a7c1ca52d7ec1836996ff0851b2de92f",
+  "local_tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+  "local_clean": true,
+  "workflow_run": 42860011761,
+  "job": 129989571236,
+  "artifact": 13784879644,
+  "artifact_zip_sha256": "d7ea89064f3289abe43d36c199ec3d9a66dd3f76a7b4d441b401d9fd4d7b3f5b",
+  "artifact_digest_match": true,
+  "platform": "macOS-15.8.2-arm64-arm-64bit-Mach-O",
+  "python": "3.13.16",
+  "mode_case_counts": {
+    "cpython_oracle": 12,
+    "cpython_bridge": 12,
+    "jit": 12,
+    "aot": 12,
+    "jit_gc": 12,
+    "aot_gc": 12
+  },
+  "gc_settings": {
+    "cpython_oracle": {},
+    "cpython_bridge": {},
+    "jit": {},
+    "aot": {},
+    "jit_gc": {
+      "PYSTACHY_GC_STRESS_PROGRAM": "1"
+    },
+    "aot_gc": {
+      "PYSTACHY_GC_STRESS": "1"
+    }
+  },
+  "drain_result": "pass",
+  "drain_scenario": "completion_order",
+  "drain_modes": [
+    "cpython_oracle",
+    "cpython_bridge",
+    "jit",
+    "aot",
+    "jit_gc",
+    "aot_gc"
+  ],
+  "source_checks": [
+    {
+      "path": "examples/netio/netio.c",
+      "reported_sha256": "722e7a8b714fe7787c6f63ce564b08260da97130cc7ff88dde89d8b9105ef620",
+      "local_sha256": "722e7a8b714fe7787c6f63ce564b08260da97130cc7ff88dde89d8b9105ef620",
+      "match": true
+    },
+    {
+      "path": "examples/netio/netio.h",
+      "reported_sha256": "cb008b4893980e6f52c11036138186f353b1edd41f601158bbe1490896aeaaf4",
+      "local_sha256": "cb008b4893980e6f52c11036138186f353b1edd41f601158bbe1490896aeaaf4",
+      "match": true
+    },
+    {
+      "path": "examples/netio/netio.py",
+      "reported_sha256": "893ad3096f4ee227bde46dddd9f6426cbf7faafd69dc95aa44ff151d2fe1c9be",
+      "local_sha256": "893ad3096f4ee227bde46dddd9f6426cbf7faafd69dc95aa44ff151d2fe1c9be",
+      "match": true
+    },
+    {
+      "path": "examples/netio/probe.py",
+      "reported_sha256": "a14aac582f346df707723d496a0c19a790e49f9dfc10ceaaa3664d5c1c083e3b",
+      "local_sha256": "a14aac582f346df707723d496a0c19a790e49f9dfc10ceaaa3664d5c1c083e3b",
+      "match": true
+    },
+    {
+      "path": "examples/netio/oracle/netio.py",
+      "reported_sha256": "0ed47d2c24bd75c5b96c0b4bdb9583bb16710e6afae5cda7a17088f830fa1826",
+      "local_sha256": "0ed47d2c24bd75c5b96c0b4bdb9583bb16710e6afae5cda7a17088f830fa1826",
+      "match": true
+    },
+    {
+      "path": "examples/netio/check.py",
+      "reported_sha256": "35ce4670c5a1d33396265e0f7b66e27be3438acdc53eecdff7717b56d7943861",
+      "local_sha256": "35ce4670c5a1d33396265e0f7b66e27be3438acdc53eecdff7717b56d7943861",
+      "match": true
+    },
+    {
+      "path": "examples/netio/drain.py",
+      "reported_sha256": "34f2480c67568f80c23a7a9d48ee5244d547dc405a408e092df74c2915fe41ac",
+      "local_sha256": "34f2480c67568f80c23a7a9d48ee5244d547dc405a408e092df74c2915fe41ac",
+      "match": true
+    },
+    {
+      "path": "examples/netio/check_drain.py",
+      "reported_sha256": "3806797aa127e6a3fd1a4c2d1ba0c9fe6a286a13171a2a5821b25637eef67547",
+      "local_sha256": "3806797aa127e6a3fd1a4c2d1ba0c9fe6a286a13171a2a5821b25637eef67547",
+      "match": true
+    },
+    {
+      "path": "examples/netio/drain_probe.py",
+      "reported_sha256": "843693e5cb15a9d2b068d86ea5247f2152742da024c93fe76c960f1a1776c01a",
+      "local_sha256": "843693e5cb15a9d2b068d86ea5247f2152742da024c93fe76c960f1a1776c01a",
+      "match": true
+    }
+  ],
+  "scope": "Verifies retained CI reports and their nine source hashes against the clean candidate tree; does not execute or broaden the CI runtime coverage.",
+  "workflow_status": "completed",
+  "workflow_conclusion": "success",
+  "retarget_merge": {
+    "sha": "3a3804599ff0add3779791df6a0391c44c8edd28",
+    "tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+    "parents": [
+      "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "c355f3064ec48077abe2b2b17f81019fad49195d"
+    ],
+    "url": "https://github.com/den-run-ai/pystachy/commit/3a3804599ff0add3779791df6a0391c44c8edd28"
+  },
+  "evidence_frozen_at_utc": "2026-11-10T17:20:15.300154+00:00"
+}

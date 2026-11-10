@@ -1,0 +1,31 @@
+2026-11-10T17:15:40.7202830Z ##[group]Run test -x ./pystachy
+2026-11-10T17:15:40.7203210Z [36;1mtest -x ./pystachy[0m
+2026-11-10T17:15:40.7203550Z [36;1mpython3 examples/netio/check.py --compiler ./pystachy --repeat 1 --timeout 30 \[0m
+2026-11-10T17:15:40.7203950Z [36;1m  --build-timeout 120 --json build/netio-macos.json[0m
+2026-11-10T17:15:40.7204530Z [36;1mpython3 examples/netio/check_drain.py --compiler ./pystachy --timeout 30 \[0m
+2026-11-10T17:15:40.7204950Z [36;1m  --json build/netio-drain-macos.json[0m
+2026-11-10T17:15:40.7249540Z shell: /bin/bash -e {0}
+2026-11-10T17:15:40.7249920Z env:
+2026-11-10T17:15:40.7250150Z   PYSTACHY_JOBS: 4
+2026-11-10T17:15:40.7250440Z   CI_EVENT_BASE_SHA: b52facdc86115e818325c54b82ac6f4d846d83ff
+2026-11-10T17:15:40.7250900Z   CI_HEAD_SHA: c355f3064ec48077abe2b2b17f81019fad49195d
+2026-11-10T17:15:40.7251310Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T17:15:40.7251920Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-10T17:15:40.7252410Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T17:15:40.7252890Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T17:15:40.7253320Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T17:15:40.7253750Z   PYSTACHY_LLVM: /opt/homebrew/opt/llvm@20/bin
+2026-11-10T17:15:40.7253970Z ##[endgroup]
+2026-11-10T17:15:41.7591670Z cpython_oracle: 12 scenarios passed
+2026-11-10T17:15:52.0092780Z cpython_bridge: 12 scenarios match the stdlib oracle
+2026-11-10T17:16:05.3307330Z jit: 12 scenarios match the stdlib oracle
+2026-11-10T17:16:05.5034850Z aot: 12 scenarios match the stdlib oracle
+2026-11-10T17:16:11.2576980Z jit_gc: 12 scenarios match the stdlib oracle
+2026-11-10T17:16:11.4496000Z aot_gc: 12 scenarios match the stdlib oracle
+2026-11-10T17:16:11.4598160Z Socket/readiness parity passed for the documented optional prototype surface.
+2026-11-10T17:16:20.3864600Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:16:20.4596830Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:16:25.5943080Z jit: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:16:25.6145840Z aot: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:16:25.9159210Z jit_gc: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:16:25.9362750Z aot_gc: fragment batches verified; later pipe completed first; binary output matches

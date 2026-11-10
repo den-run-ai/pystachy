@@ -1,6 +1,6 @@
 # Native I/O qualification record for alpha.3
 
-This checkpoint preserves the observed failures, successful Linux runs and bounded fixture fixes for [PR #1216](https://github.com/den-run-ai/pystachy/pull/1216). At this checkpoint, fresh qualification of `b52facdc86115e818325c54b82ac6f4d846d83ff` is running in [CI 42860006680](https://github.com/den-run-ai/pystachy/actions/runs/42860006680). It is not a completed macOS or release gate.
+The corrected I/O head `b52facdc86115e818325c54b82ac6f4d846d83ff` passed native Linux and macOS qualification and every applicable PR workflow. The combined versioned candidate `c355f3064ec48077abe2b2b17f81019fad49195d` also passed its PR gates. This record preserves the earlier failures, their bounded fixes and the completed qualification evidence for [PR #1216](https://github.com/den-run-ai/pystachy/pull/1216) and [PR #1217](https://github.com/den-run-ai/pystachy/pull/1217). Final versioned-main qualification is a separate gate.
 
 This research branch is evidence only and must not be merged into main.
 
@@ -39,4 +39,27 @@ Both original ZIPs and byte-identical reports are included. All 170 reported Lin
 
 [b52facdc](https://github.com/den-run-ai/pystachy/commit/b52facdc86115e818325c54b82ac6f4d846d83ff) explicitly sets the accepted kernel descriptor to blocking mode. Independent real-socket controls also reproduced all four legal short-transfer failures. Tiny TCP exchanges now accumulate exact bytes with positive bounded progress, size checks, early-EOF rejection and unchanged outer timeouts. The nonblocking connection and EOF readiness phases remain. Runtime implementation and APIs are unchanged.
 
-[Local validation](accepted-transfer-fix-local/validation.json) records 53 passing harness tests, twelve oracle/bridge scenarios repeated twice, Ruff and verified hosted IR emission. Controls check real kernel flags, one-byte transfers, zero/invalid progress, early EOF and corrupted data. The local commit `6cc496ab` and published `b52facdc` share tree `e21114a45febccb4aaca65008cda948cf3325112`. Native macOS validation of that fixed tree remains pending at this checkpoint.
+[Local validation](accepted-transfer-fix-local/validation.json) records 53 passing harness tests, twelve oracle/bridge scenarios repeated twice, Ruff and verified hosted IR emission. Controls check real kernel flags, one-byte transfers, zero/invalid progress, early EOF and corrupted data. The local commit `6cc496ab` and published `b52facdc` share tree `e21114a45febccb4aaca65008cda948cf3325112`. The completed qualification below subsequently validated that corrected tree on native macOS.
+
+
+## Completed qualification of the corrected tree
+
+The [b52facdc records](b52facdc) preserve both original artifact ZIPs, all seven unmodified reports, native step logs, compiler identity, final job/run/artifact metadata and a SHA-256 manifest.
+
+| Exact head and platform | Completed evidence |
+|---|---|
+| `b52facdc`, Linux x86-64 | Distribution 4m21s; netio 67s; 53 harness tests; twelve socket cases repeated twice through hosted and native compilers; socket and drain parity in all six modes; 300 ASan/UBSan ownership cycles with leak detection enabled. |
+| `b52facdc`, macOS ARM64 | Distribution 9m08s; netio 45s; twelve socket cases and the completion-order drain scenario in all six modes using the actual native compiler, on macOS 15.8.2 / Python 3.13.16. |
+| `c355f306`, macOS ARM64 | Distribution 9m25s; netio 45s; the same twelve socket cases and drain scenario passed all six modes on the versioned candidate. Original ZIP, reports, source checks and native log are in [c355f306-macos](c355f306-macos). |
+
+The six modes are CPython oracle, CPython bridge, JIT, AOT, JIT GC stress and AOT GC stress. Stress reports explicitly record the applicable flag as 1. The Linux ownership run used `ASAN_OPTIONS=detect_leaks=1`. All downloaded archive digests match GitHub metadata. Every recorded source hash matches its immutable source commit: 170 unique paths for b52 Linux, nine for b52 macOS and nine for c355 macOS.
+
+Both [b52 CI](https://github.com/den-run-ai/pystachy/actions/runs/42860006680) and [c355 CI](https://github.com/den-run-ai/pystachy/actions/runs/42860011761) passed all sixteen jobs on attempt 1, without missing, skipped, cancelled or failed CI groups. Lint, Performance smoke and Submission format also passed; the same-repository fork-only DCO job is an expected skip. All jobs remained within the existing fifteen-minute limit.
+
+The independently verified [aggregate records](pr-gates) contain 41/41 passing checks and the exact twelve report groups. The reports' 58 compiler/runtime hashes match their checkouts. Native JIT and AOT each cover all 4,295 cases exactly once, with 4,541 checks per mode; the 81-case alternative-configuration selections match the trusted sampler. Counts from the separate execution-mode groups and the shared-rejection suite use different conventions and must not be conflated.
+
+[b52 Lint](https://github.com/den-run-ai/pystachy/actions/runs/42859999115) actually ran the nine-job Lean build, all three theorem axiom audits and all 28 boundary tests. [Stacked c355 Lint](https://github.com/den-run-ai/pystachy/actions/runs/42860010890) legitimately skipped Lean because its additional diff was only VERSION and two documentation files. The complete b52 Lean evidence remains material to this candidate; a skipped step is not reported as execution.
+
+The original b52 checkout `02ea4fcb7b52a5c7cac2d2332f24902b2541ec7e` has tree `e21114a45febccb4aaca65008cda948cf3325112`. The original c355 checkout `2b454363fa787023952ed6867a9722c18d6e0840` and its retargeted-main checkout `3a3804599ff0add3779791df6a0391c44c8edd28` both have the exact tested tree `bc34d9b1a3f648fbae6368e1c78485baf8d60c99`. Retargeting changed the comparison base, not the tested file tree.
+
+These are completed PR-profile gates. A public alpha.3 release is not established by this checkpoint.

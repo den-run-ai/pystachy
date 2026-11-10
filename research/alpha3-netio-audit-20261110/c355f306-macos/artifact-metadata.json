@@ -1,0 +1,19 @@
+{
+  "id": 13784879644,
+  "name": "netio-kqueue-pr-macos-15",
+  "size_in_bytes": 1758,
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13784879644",
+  "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13784879644/zip",
+  "expired": false,
+  "created_at": "2026-11-10T17:16:28Z",
+  "expires_at": "2026-11-17T17:16:26Z",
+  "updated_at": "2026-11-10T17:16:28Z",
+  "digest": "sha256:d7ea89064f3289abe43d36c199ec3d9a66dd3f76a7b4d441b401d9fd4d7b3f5b",
+  "workflow_run": {
+    "id": 42860011761,
+    "repository_id": 1409192014,
+    "head_repository_id": 1409192014,
+    "head_branch": "codex/alpha3-release-preparation",
+    "head_sha": "c355f3064ec48077abe2b2b17f81019fad49195d"
+  }
+}
