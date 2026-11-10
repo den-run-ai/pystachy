@@ -1,0 +1,11 @@
+{
+  "base_exit_status": 1,
+  "candidate_exit_status": 1,
+  "same_findings_in_order": true,
+  "base_summary": "671 RUNTIME entries, 70 exception classes: 57 problems",
+  "candidate_summary": "672 RUNTIME entries, 70 exception classes: 57 problems",
+  "new_findings": [],
+  "resolved_findings": [],
+  "base_log": "runtime-base-llvm19.log",
+  "candidate_log": "runtime-candidate-llvm19.log"
+}

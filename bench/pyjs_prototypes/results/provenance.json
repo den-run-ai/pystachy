@@ -1,0 +1,23 @@
+{
+  "pystachy_base": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "pyjs_reference": "be359569398b4cb3c3abb9d31ebd4f1bed88abe2",
+  "pyjs_reference_license": "BSD-3-Clause",
+  "pyjs_code_copied": false,
+  "pyjs_tests_copied": false,
+  "implementation": "Original extensions to Pystachy\u2019s existing sanitizer driver and optional-local pass; no clean-room claim.",
+  "external_files_consulted": [
+    "LICENSE",
+    "pyjs/analysis/lifetime.py",
+    "pyjs/tooling/llvm.py",
+    "tests/native/test_tooling_sanitizers.py",
+    "tests/test_numeric_boundaries.py",
+    "tests/backend_semantics.py",
+    "perf/methodology.md"
+  ],
+  "excluded_file_specific_material": [
+    "pyjs/native/runtime/norm.py: separately noted CPython-derived material, unused",
+    "pyjs/native/UNICODE-LICENSE.txt: separately licensed data/runtime material, unused"
+  ],
+  "benchmark_reuse": "Existing attributed Pystachy optional_scalars.py and byte-BPE/pyperformance kernels; upstream provenance and THIRD_PARTY_NOTICES retained unchanged.",
+  "local_only": true
+}

@@ -1,0 +1,69 @@
+{
+  "source_commit": "ce1445674f57d72005383947cdd61c3c81fbdb39",
+  "base_commit": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "unpublished": true,
+  "source_sha256": {
+    "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+    "runtime.c": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe",
+    "runtime.py": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb",
+    "src/pystachy_compiler/driver.py": "3ea5e60c39c837f0f58828738a3a54cda7e2c4a77b33facbc721c4775aee96e9",
+    "src/pystachy_compiler/lower_module.py": "3ee647b571c099653afd0b99434a61c3aeda31e79ad86aab24dfe0df4b11ecb3",
+    "src/pystachy_compiler/optimizations.py": "72a902e1ee3bdb1b7d0791fa81497a119ad3fb8c1e569649d92b4f5bc23384a7",
+    "src/pystachy_compiler/gen.py": "58ebea47c51bef655f868c103eebf1a8bf7918b2488e527fcefc730f9598593f",
+    "src/pystachy_compiler/specs.py": "64bbc7e1efd852bb48b3d977df605f7edbcf62343336c0ddb545cceb5ea44ae0"
+  },
+  "native_compiler_sha256": "436e71eb4c9ddcdf1c43b97d38bf7adf15e62b33504df58ceff47c7c159bf9f4",
+  "bootstrap": {
+    "toolchain": "LLVM 18.1.3",
+    "compiler_ir_lines": 893716,
+    "runtime_ir_lines": 21100,
+    "stage1_equals_stage2_equals_stage3": true
+  },
+  "check_fast": {
+    "status": "passed",
+    "unit_cases_run": 675,
+    "passed": 659,
+    "skipped": 16,
+    "skip_details": "15 Lean kernel integration checks and one opt-in real-build retained-IR check; the latter was then explicitly enabled and passed.",
+    "typechecked_files": 56,
+    "lint": "passed"
+  },
+  "retained_ir_explicit_native_checks": {
+    "status": "passed",
+    "cases": 10,
+    "skipped": 0
+  },
+  "native_default": {
+    "selected_cases": 178,
+    "jit_aot_checks_passed": 356,
+    "failed": 0
+  },
+  "runtime_contract": {
+    "status": "passed",
+    "toolchain": "LLVM 18.1.3",
+    "entries": 672,
+    "exceptions": 70,
+    "runtime_py_functions": 193
+  },
+  "not_run": [
+    "full make verify",
+    "full-corpus irsame",
+    "release CI",
+    "macOS and ARM validation"
+  ],
+  "native_gc_stress": {
+    "selected_cases": 8,
+    "jit_aot_checks_passed": 16,
+    "failed": 0,
+    "setting": "PYSTACHY_GC_STRESS_PROGRAM=1 via tests/run.sh, which correctly translates AOT runtime stress"
+  },
+  "jit_performance": {
+    "record": "llvm19-jit.json",
+    "timed_samples": 42,
+    "warmups": 12,
+    "all_complete_outputs_match_cpython": true,
+    "rank_execution_ratio_of_medians": 1.3281167551751385,
+    "bpe_encode_ratio_of_medians": 0.9925021786262682,
+    "bpe_encode_conclusion": "inconclusive; no JIT BPE speedup established"
+  }
+}

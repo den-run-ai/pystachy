@@ -1,0 +1,13 @@
+changed str 007
+caught True True
+rejoined str 007
+changed bool True
+caught True True
+rejoined bool True
+changed float 1.5
+caught True True
+rejoined float 1.5
+changed int 1001
+caught True True
+rejoined int 1001
+[exit 0]

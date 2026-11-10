@@ -1,0 +1,30 @@
+[
+  {
+    "variant": "main",
+    "workload": "micro",
+    "wall_seconds": 8.735721424000076,
+    "binary_sha256": "07ec35e5fdf749ba4534e9fcd461466960d990eed68f39b1211d56b0a05af40e",
+    "binary_bytes": 90872
+  },
+  {
+    "variant": "main",
+    "workload": "bpe",
+    "wall_seconds": 6.883808491998934,
+    "binary_sha256": "20f00dd809967a11ccd04191b979913c9108b7a908ce923385c0f02f916514a7",
+    "binary_bytes": 429056
+  },
+  {
+    "variant": "changed",
+    "workload": "micro",
+    "wall_seconds": 8.242307714001072,
+    "binary_sha256": "cb91eccfb88b8fe8515604c457fa81f1da72a166339ab446da89e1c6d105649b",
+    "binary_bytes": 90920
+  },
+  {
+    "variant": "changed",
+    "workload": "bpe",
+    "wall_seconds": 6.534286179999981,
+    "binary_sha256": "2e559db219d99fd3f146e8b16a2dff79896dd32bed419690435b721b07cc12f1",
+    "binary_bytes": 429056
+  }
+]

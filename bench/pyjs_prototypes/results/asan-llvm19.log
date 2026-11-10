@@ -1,0 +1,9 @@
+test_aot_user_load_and_extension_controls (test_runtime_asan.RuntimeASan.test_aot_user_load_and_extension_controls) ... ok
+test_cached_subset_instrumentation_and_overread_control (test_runtime_asan.RuntimeASan.test_cached_subset_instrumentation_and_overread_control) ... ok
+test_marks_definitions_before_personality (test_runtime_asan.RuntimeASan.test_marks_definitions_before_personality) ... ok
+test_sanitizer_flag_order (test_runtime_asan.RuntimeASan.test_sanitizer_flag_order) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 84.043s
+
+OK

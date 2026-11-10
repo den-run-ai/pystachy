@@ -1,0 +1,82 @@
+[
+  {
+    "source": "tests/programs/generators/gen_basic.py",
+    "level": "0",
+    "build_returncode": 0,
+    "build_stderr": "",
+    "runs": [
+      {
+        "stress": "",
+        "returncode": 0,
+        "matches_cpython": true,
+        "stderr": ""
+      },
+      {
+        "stress": "1",
+        "returncode": 0,
+        "matches_cpython": true,
+        "stderr": ""
+      }
+    ]
+  },
+  {
+    "source": "tests/programs/generators/gen_basic.py",
+    "level": "2",
+    "build_returncode": 0,
+    "build_stderr": "",
+    "runs": [
+      {
+        "stress": "",
+        "returncode": 0,
+        "matches_cpython": true,
+        "stderr": ""
+      },
+      {
+        "stress": "1",
+        "returncode": 0,
+        "matches_cpython": true,
+        "stderr": ""
+      }
+    ]
+  },
+  {
+    "source": "tests/programs/generators/gen_finally.py",
+    "level": "0",
+    "build_returncode": 0,
+    "build_stderr": "",
+    "runs": [
+      {
+        "stress": "",
+        "returncode": 0,
+        "matches_cpython": true,
+        "stderr": ""
+      },
+      {
+        "stress": "1",
+        "returncode": 0,
+        "matches_cpython": true,
+        "stderr": ""
+      }
+    ]
+  },
+  {
+    "source": "tests/programs/generators/gen_finally.py",
+    "level": "2",
+    "build_returncode": 0,
+    "build_stderr": "",
+    "runs": [
+      {
+        "stress": "",
+        "returncode": 0,
+        "matches_cpython": true,
+        "stderr": ""
+      },
+      {
+        "stress": "1",
+        "returncode": 0,
+        "matches_cpython": true,
+        "stderr": ""
+      }
+    ]
+  }
+]

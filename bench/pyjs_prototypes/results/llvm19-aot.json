@@ -1,0 +1,899 @@
+{
+  "metadata": {
+    "created_utc": "2026-11-10T18:09:19Z",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "cpu": 0,
+    "load_average_start": [
+      2.0322265625,
+      1.87158203125,
+      0.9375
+    ],
+    "timing_environment": "this task paused builds/tests; host may be shared",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "base_revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "changed_revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "changed_diff_sha256": "4502c58f532a8622d7f1c52291f7857f45bdce3619889ed472a378bd6b8cb074",
+    "compiler_sources_sha256": {
+      "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+      "runtime.py": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb",
+      "runtime.c": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe",
+      "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+      "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+      "src/pystachy_compiler/analysis.py": "29c2f37070a8f802a768f90b086c2c469dda1643130ec08dee2f9c0d4f476b64",
+      "src/pystachy_compiler/argparse_schema.py": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5",
+      "src/pystachy_compiler/bigints.py": "e2765d3ff75b6b0f79bf2f8efc187b0a4ec1e8fcae24f13c74e3cd8f83ebb96d",
+      "src/pystachy_compiler/builtins.py": "8f35ea2bdf159cd8c2b388b88197bb019b64499afa4e783eb3f2eded20b351c4",
+      "src/pystachy_compiler/cache_toolchain.py": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7",
+      "src/pystachy_compiler/cached_run.py": "c3435842d6048af697e6cc7dc12e59a313aefaecc35559034303d62fdc6bc03a",
+      "src/pystachy_compiler/callbacks.py": "7366a851db14c32112a090d3dd0d0409851661f74ad5e1d2c4c2dc4beaf8dcde",
+      "src/pystachy_compiler/calls.py": "21bd33cce31d89560690d17d08e768ff7f6af815435bb3357da01a4bd20fb543",
+      "src/pystachy_compiler/containers.py": "a60d8c504bde351666f39b6f6e93ecd5dd8bd351d791dbf51d0a17160b9ce691",
+      "src/pystachy_compiler/conversions.py": "6c4cfb75f0cd472f3712b267826aee63845a8bdd8a4e3be02f5619fe62d492c0",
+      "src/pystachy_compiler/ctypes_schema.py": "9152db34ca5a236c5305938cf222e1a0d875948e64bfbdfb87c67939a51e3fe4",
+      "src/pystachy_compiler/declarations.py": "8938cecf19e9d33ef7013d06e94eff2492cfffda985cf1cee9cac627110dc31d",
+      "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+      "src/pystachy_compiler/driver.py": "b30a64a8236cc4a3b6814e5d3e9dc3b2d446b390bf1bd256582141e579a81520",
+      "src/pystachy_compiler/dynamic.py": "7b57b2b86d6da56af20f11ca38b41a0d8e9ff34ff1b469b664415fa02734eb70",
+      "src/pystachy_compiler/dynamic_proof.py": "47fbb32e56d6d6e2ffd8b087077bfb01030867e78129e412a0af71da728be553",
+      "src/pystachy_compiler/emission.py": "dae312d3d4386404369a0430b4e99c5bfde2fafc65498d99cc3db2fc05788a96",
+      "src/pystachy_compiler/exceptions.py": "05abab080546bfa14e8809f1df31224306327fc104dc3f88caa3ac14abce7d06",
+      "src/pystachy_compiler/expressions.py": "edb27dd681e9ce5a93d4cb76a45b8fb1d7c26b0b2afcd56306e2e1147e903c0a",
+      "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+      "src/pystachy_compiler/functions.py": "909be9e207959b61cbe5dd4fe948b33cd473b8e49aa5e7b0e18ebd4539e25aa6",
+      "src/pystachy_compiler/gen.py": "58ebea47c51bef655f868c103eebf1a8bf7918b2488e527fcefc730f9598593f",
+      "src/pystachy_compiler/generators.py": "32766d6e1082584c09fb820c970d48d7089aa92bd384061a594e593626a2f904",
+      "src/pystachy_compiler/ir.py": "44d8d776dfd98a04f59dbb324f73f7f557e020bfe9d741cd783a31607427681c",
+      "src/pystachy_compiler/ircheck.py": "450365e2414dda19187cc695db2af2cd18940151c044f675fd539218746173b0",
+      "src/pystachy_compiler/lexer.py": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7",
+      "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+      "src/pystachy_compiler/loader.py": "9bf4d445e35df0308d52fa5e63a4d2c9d229f225dd930b7cdac0525a5ee2b06f",
+      "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+      "src/pystachy_compiler/lower_module.py": "e5abbaa86a145451f1eeb8bc3939ca0463f7d3f8ca7e82ce7818075968817069",
+      "src/pystachy_compiler/lowering.py": "4eea301a1d93fd822cceab264bf99e7f494950bb1db6603b4449865fc624c6d5",
+      "src/pystachy_compiler/memory_ir.py": "00f8e49817740ef7b65066f104cadeec0cd2ab267240089c29b1450c7ac5e611",
+      "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+      "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c",
+      "src/pystachy_compiler/optimizations.py": "72a902e1ee3bdb1b7d0791fa81497a119ad3fb8c1e569649d92b4f5bc23384a7",
+      "src/pystachy_compiler/parser.py": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc",
+      "src/pystachy_compiler/program.py": "44b8a84208ddfa6161b5a322d1b6df64f7d1006e981c606114f9b047da26a874",
+      "src/pystachy_compiler/program_cache.py": "648f6d3733c8bffabb2bde7057db379185862ae23cbc5a9ae22a89f8e3568b25",
+      "src/pystachy_compiler/reflection.py": "b708e176649abccc1c364b19616661df790096f5af6f4b93cb4aedec7abcf2f5",
+      "src/pystachy_compiler/scalar_ir.py": "7e11da58cee27ef8109ed5afb7766c8b7f6f30bd37340e34e10313a13a679868",
+      "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+      "src/pystachy_compiler/source_lines.py": "29b49e6e94513ab66452b019b4b5b0f991d4ae1555c421c9134add318e13d7c2",
+      "src/pystachy_compiler/specs.py": "64bbc7e1efd852bb48b3d977df605f7edbcf62343336c0ddb545cceb5ea44ae0",
+      "src/pystachy_compiler/statements.py": "15186dfa8fbfc7f0ddd1c9b1697db294d2a84d65565435ca9fd829abeaf9d010",
+      "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+      "src/pystachy_compiler/syntax.py": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3",
+      "src/pystachy_compiler/templates.py": "618b43dddc2bef0d042a4cdfceade32d1f85ba9c7138be66303c98f149f1a43b",
+      "src/pystachy_compiler/union_arithmetic.py": "2264c8ff82170a113a62e7f0068cf05703d79765b40de502e9347778bd274d61",
+      "src/pystachy_compiler/union_proof.py": "d2a8e04e1b10210ad2eb1606f51ca3dbf1efc6cbf3b2ed062fcb9f3c4f87ceef",
+      "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+      "src/pystachy_compiler/unions.py": "601cfb63970009603adcbceba11882c35d36c88f5a9d3fa6463936541ae593f1",
+      "src/pystachy_compiler/utils.py": "52a792d18b5b607d8393fe319f69daf23acc605e419279a3dfb8f2d424e5caeb",
+      "src/pystachy_compiler/variables.py": "0718fc550c5211c27955543441df2b62c6bd0cd8fa253919acfa4fbd08affca2"
+    },
+    "micro_sha256": "ff6dc5048a6917a477e2b4c11b71e856afa31617135ec0685d00ee59e3d04bad",
+    "controller_sha256": "b3eee674d99b64c22fc77c8b088c5b3089c3ddb7651152beb0d616887b8227ee",
+    "bpe_sources": {
+      "examples/byte_bpe/stages.py": {
+        "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "sha256": "3f0154fadce48607aa9868cb93fd7a75f4a18b52c4281590709dfb3632a50b7d"
+      },
+      "bench/pyperformance/bpe_tokeniser.py": {
+        "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de"
+      },
+      "bench/pyperformance/data/frankenstein_intro.txt": {
+        "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "sha256": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4"
+      },
+      "examples/byte_bpe/upstream/bpe_tokeniser.py": {
+        "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "sha256": "c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df"
+      },
+      "extracted_upstream_kernels": {
+        "sha256": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e"
+      }
+    },
+    "llvm": "Debian clang version 19.1.7 (3+b1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/d83e4680dd1e/toolchain/root/usr/lib/llvm-19/bin",
+    "compiler_entry_sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+    "compiler_host": "CPython for both variants; build times excluded from speedup claims",
+    "load_average_end": [
+      2.06396484375,
+      1.90478515625,
+      0.98974609375
+    ]
+  },
+  "workload": {
+    "micro_rounds": 30000,
+    "micro_items": 320,
+    "vocab_size": 1024,
+    "encode_loops": 100,
+    "decode_loops": 100,
+    "samples": 9,
+    "warmups": 2,
+    "order": "paired, main/changed then changed/main alternately"
+  },
+  "builds": [
+    {
+      "variant": "main",
+      "workload": "micro",
+      "wall_seconds": 8.735721424000076,
+      "binary_sha256": "07ec35e5fdf749ba4534e9fcd461466960d990eed68f39b1211d56b0a05af40e",
+      "binary_bytes": 90872
+    },
+    {
+      "variant": "main",
+      "workload": "bpe",
+      "wall_seconds": 6.883808491998934,
+      "binary_sha256": "20f00dd809967a11ccd04191b979913c9108b7a908ce923385c0f02f916514a7",
+      "binary_bytes": 429056
+    },
+    {
+      "variant": "changed",
+      "workload": "micro",
+      "wall_seconds": 8.242307714001072,
+      "binary_sha256": "cb91eccfb88b8fe8515604c457fa81f1da72a166339ab446da89e1c6d105649b",
+      "binary_bytes": 90920
+    },
+    {
+      "variant": "changed",
+      "workload": "bpe",
+      "wall_seconds": 6.534286179999981,
+      "binary_sha256": "2e559db219d99fd3f146e8b16a2dff79896dd32bed419690435b721b07cc12f1",
+      "binary_bytes": 429056
+    }
+  ],
+  "oracles": {
+    "bpe": {
+      "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+      "stdout_bytes": 130147
+    },
+    "direct": {
+      "stdout_sha256": "5372588733824ecf5744e694f5d12b57d33e19ff1fd8b88a7e723e7426eea890",
+      "stdout_bytes": 6
+    },
+    "ranks": {
+      "stdout_sha256": "8063ad1efa5285be1d5c9fd804c3651a5d35142f65c297d0bf639ddc1351a5f9",
+      "stdout_bytes": 8
+    }
+  },
+  "samples": [
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 0,
+      "wall_seconds": 0.009137283999734791,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 0,
+      "wall_seconds": 0.009438507000595564,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 1,
+      "wall_seconds": 0.010039128001153586,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 1,
+      "wall_seconds": 0.010108451000633067,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 2,
+      "wall_seconds": 0.010051967001345474,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 2,
+      "wall_seconds": 0.010534987999562873,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 3,
+      "wall_seconds": 0.009978440999475424,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 3,
+      "wall_seconds": 0.010270980001223506,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 4,
+      "wall_seconds": 0.00885895500141487,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 4,
+      "wall_seconds": 0.010142329998416244,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 5,
+      "wall_seconds": 0.008828701000311412,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 5,
+      "wall_seconds": 0.010226254000372137,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 6,
+      "wall_seconds": 0.009917049999785377,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 6,
+      "wall_seconds": 0.010444014000313473,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 7,
+      "wall_seconds": 0.009937709999576327,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 7,
+      "wall_seconds": 0.009986602999561,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "main",
+      "pair": 8,
+      "wall_seconds": 0.010100489998876583,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "direct",
+      "variant": "changed",
+      "pair": 8,
+      "wall_seconds": 0.0100698240003112,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 0,
+      "wall_seconds": 0.07948945299904153,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 0,
+      "wall_seconds": 0.05764663299851236,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 1,
+      "wall_seconds": 0.06014012600098795,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 1,
+      "wall_seconds": 0.07695915099975537,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 2,
+      "wall_seconds": 0.07757205100097053,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 2,
+      "wall_seconds": 0.054926916000113124,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 3,
+      "wall_seconds": 0.06093758200040611,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 3,
+      "wall_seconds": 0.11841040500075906,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 4,
+      "wall_seconds": 0.07568457399975159,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 4,
+      "wall_seconds": 0.059449640999446274,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 5,
+      "wall_seconds": 0.05585982800039346,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 5,
+      "wall_seconds": 0.08004281600005925,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 6,
+      "wall_seconds": 0.11473197099985555,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 6,
+      "wall_seconds": 0.05994642100085912,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 7,
+      "wall_seconds": 0.05714057899967884,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 7,
+      "wall_seconds": 0.07534386299994367,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "main",
+      "pair": 8,
+      "wall_seconds": 0.07673371500095527,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "ranks",
+      "variant": "changed",
+      "pair": 8,
+      "wall_seconds": 0.06882319299984374,
+      "load_average": [
+        2.0322265625,
+        1.87158203125,
+        0.9375
+      ]
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 0,
+      "wall_seconds": 1.8796698599999218,
+      "load_average": [
+        2.107421875,
+        1.89306640625,
+        0.95458984375
+      ],
+      "train_seconds": 0.816321758000413,
+      "encode_seconds": 0.010442684720001125,
+      "decode_seconds": 0.00014762106999114622
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 0,
+      "wall_seconds": 1.8343996359999437,
+      "load_average": [
+        2.107421875,
+        1.89306640625,
+        0.95458984375
+      ],
+      "train_seconds": 0.7978863869993802,
+      "encode_seconds": 0.010141010519982957,
+      "decode_seconds": 0.00016737418998673094
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 1,
+      "wall_seconds": 1.8031909450000967,
+      "load_average": [
+        2.0986328125,
+        1.89501953125,
+        0.96044921875
+      ],
+      "train_seconds": 0.8111094159994536,
+      "encode_seconds": 0.009714069370002108,
+      "decode_seconds": 0.0001462555599937332
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 1,
+      "wall_seconds": 1.9015532819994405,
+      "load_average": [
+        2.0986328125,
+        1.89501953125,
+        0.96044921875
+      ],
+      "train_seconds": 0.8174478370001452,
+      "encode_seconds": 0.010596220680017723,
+      "decode_seconds": 0.00018016617999819573
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 2,
+      "wall_seconds": 2.0008053640012804,
+      "load_average": [
+        2.0986328125,
+        1.89501953125,
+        0.96044921875
+      ],
+      "train_seconds": 0.9362852089998341,
+      "encode_seconds": 0.010281234529993527,
+      "decode_seconds": 0.000277004660001694
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 2,
+      "wall_seconds": 1.942971252999996,
+      "load_average": [
+        2.09033203125,
+        1.89697265625,
+        0.96630859375
+      ],
+      "train_seconds": 0.9275472199988144,
+      "encode_seconds": 0.009855648270004166,
+      "decode_seconds": 0.00022259470999415497
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 3,
+      "wall_seconds": 1.8313553950010828,
+      "load_average": [
+        2.09033203125,
+        1.89697265625,
+        0.96630859375
+      ],
+      "train_seconds": 0.8228583330001129,
+      "encode_seconds": 0.009859947029999603,
+      "decode_seconds": 0.00015988428000127897
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 3,
+      "wall_seconds": 1.8833803189991158,
+      "load_average": [
+        2.0830078125,
+        1.89892578125,
+        0.97216796875
+      ],
+      "train_seconds": 0.8650007740016008,
+      "encode_seconds": 0.0099650247000136,
+      "decode_seconds": 0.0001513455399981467
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 4,
+      "wall_seconds": 1.9066948700001376,
+      "load_average": [
+        2.0830078125,
+        1.89892578125,
+        0.97216796875
+      ],
+      "train_seconds": 0.839372504999119,
+      "encode_seconds": 0.010467339789993275,
+      "decode_seconds": 0.00014450119000684934
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 4,
+      "wall_seconds": 1.7709728610007005,
+      "load_average": [
+        2.0830078125,
+        1.89892578125,
+        0.97216796875
+      ],
+      "train_seconds": 0.7700740480013337,
+      "encode_seconds": 0.00979862697999124,
+      "decode_seconds": 0.00014610625999921466
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 5,
+      "wall_seconds": 1.725511316999473,
+      "load_average": [
+        2.076171875,
+        1.90087890625,
+        0.97802734375
+      ],
+      "train_seconds": 0.756706864998705,
+      "encode_seconds": 0.009477568099991913,
+      "decode_seconds": 0.0001516732300115109
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 5,
+      "wall_seconds": 1.7405566540001018,
+      "load_average": [
+        2.076171875,
+        1.90087890625,
+        0.97802734375
+      ],
+      "train_seconds": 0.7706613390000712,
+      "encode_seconds": 0.00948538357999496,
+      "decode_seconds": 0.00015643561999240774
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 6,
+      "wall_seconds": 1.8502570900000137,
+      "load_average": [
+        2.076171875,
+        1.90087890625,
+        0.97802734375
+      ],
+      "train_seconds": 0.7962907780001842,
+      "encode_seconds": 0.010333495830000174,
+      "decode_seconds": 0.00014866650999465492
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 6,
+      "wall_seconds": 1.8021332539992727,
+      "load_average": [
+        2.06982421875,
+        1.90283203125,
+        0.98388671875
+      ],
+      "train_seconds": 0.7785835590002534,
+      "encode_seconds": 0.010001860210013546,
+      "decode_seconds": 0.00017259567001019606
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 7,
+      "wall_seconds": 1.744076685001346,
+      "load_average": [
+        2.06982421875,
+        1.90283203125,
+        0.98388671875
+      ],
+      "train_seconds": 0.7983518910004932,
+      "encode_seconds": 0.009251552339992485,
+      "decode_seconds": 0.00014649662000010722
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 7,
+      "wall_seconds": 1.8166447549992881,
+      "load_average": [
+        2.06982421875,
+        1.90283203125,
+        0.98388671875
+      ],
+      "train_seconds": 0.8026489109997783,
+      "encode_seconds": 0.009940485489987622,
+      "decode_seconds": 0.00014408967999770538
+    },
+    {
+      "workload": "bpe",
+      "variant": "main",
+      "pair": 8,
+      "wall_seconds": 1.8343084789994464,
+      "load_average": [
+        2.06396484375,
+        1.90478515625,
+        0.98974609375
+      ],
+      "train_seconds": 0.7832513990015286,
+      "encode_seconds": 0.010303496489996178,
+      "decode_seconds": 0.0001514084299924434
+    },
+    {
+      "workload": "bpe",
+      "variant": "changed",
+      "pair": 8,
+      "wall_seconds": 1.775776095000765,
+      "load_average": [
+        2.06396484375,
+        1.90478515625,
+        0.98974609375
+      ],
+      "train_seconds": 0.8104546590002428,
+      "encode_seconds": 0.009453081849987938,
+      "decode_seconds": 0.00015407754999614555
+    }
+  ],
+  "summary": {
+    "direct": {
+      "wall_seconds": {
+        "main": {
+          "median": 0.010051967001345474,
+          "min": 0.00885895500141487,
+          "max": 0.010270980001223506
+        },
+        "changed": {
+          "median": 0.010039128001153586,
+          "min": 0.008828701000311412,
+          "max": 0.010534987999562873
+        },
+        "ratio_of_medians": 1.0012788959549488
+      }
+    },
+    "ranks": {
+      "wall_seconds": {
+        "main": {
+          "median": 0.07757205100097053,
+          "min": 0.07534386299994367,
+          "max": 0.11841040500075906
+        },
+        "changed": {
+          "median": 0.059449640999446274,
+          "min": 0.054926916000113124,
+          "max": 0.06882319299984374
+        },
+        "ratio_of_medians": 1.3048363235985403
+      }
+    },
+    "bpe": {
+      "wall_seconds": {
+        "main": {
+          "median": 1.8796698599999218,
+          "min": 1.7405566540001018,
+          "max": 2.0008053640012804
+        },
+        "changed": {
+          "median": 1.8021332539992727,
+          "min": 1.725511316999473,
+          "max": 1.942971252999996
+        },
+        "ratio_of_medians": 1.0430249016428617
+      },
+      "train_seconds": {
+        "main": {
+          "median": 0.816321758000413,
+          "min": 0.7706613390000712,
+          "max": 0.9362852089998341
+        },
+        "changed": {
+          "median": 0.7983518910004932,
+          "min": 0.756706864998705,
+          "max": 0.9275472199988144
+        },
+        "ratio_of_medians": 1.0225087047484787
+      },
+      "encode_seconds": {
+        "main": {
+          "median": 0.010303496489996178,
+          "min": 0.00948538357999496,
+          "max": 0.010596220680017723
+        },
+        "changed": {
+          "median": 0.00979862697999124,
+          "min": 0.009251552339992485,
+          "max": 0.010141010519982957
+        },
+        "ratio_of_medians": 1.0515245157342838
+      },
+      "decode_seconds": {
+        "main": {
+          "median": 0.0001513455399981467,
+          "min": 0.00014408967999770538,
+          "max": 0.000277004660001694
+        },
+        "changed": {
+          "median": 0.00015407754999614555,
+          "min": 0.00014610625999921466,
+          "max": 0.00022259470999415497
+        },
+        "ratio_of_medians": 0.9822686043614582
+      }
+    }
+  }
+}

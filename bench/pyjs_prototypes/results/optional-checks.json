@@ -1,0 +1,154 @@
+[
+  {
+    "name": "dict_optional_scalar-jit-O2-gc0",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/7becb3edfade/venv/bin/python",
+      "/workspace/scratch/8685cdc8d0ba/pystachy-lifetime/pystachy.py",
+      "run",
+      "/workspace/scratch/8685cdc8d0ba/pystachy-lifetime/tests/programs/optimizations/dict_optional_scalar.py"
+    ],
+    "source_sha256": "1b31df4d695ab94f0c4c2e0a7f2a5a4e61665a3392adb4ed69cdbc5086a402e3",
+    "expected_sha256": "07937252ca4d6891adb6b672b9a71fc188849d1b75c11e64853f9e835652093b"
+  },
+  {
+    "name": "dict_optional_scalar-jit-O2-gc1",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/7becb3edfade/venv/bin/python",
+      "/workspace/scratch/8685cdc8d0ba/pystachy-lifetime/pystachy.py",
+      "run",
+      "/workspace/scratch/8685cdc8d0ba/pystachy-lifetime/tests/programs/optimizations/dict_optional_scalar.py"
+    ],
+    "source_sha256": "1b31df4d695ab94f0c4c2e0a7f2a5a4e61665a3392adb4ed69cdbc5086a402e3",
+    "expected_sha256": "07937252ca4d6891adb6b672b9a71fc188849d1b75c11e64853f9e835652093b"
+  },
+  {
+    "name": "dict_optional_scalar-aot-O2-gc0",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_scalar-aot-O2-gc0"
+    ],
+    "source_sha256": "1b31df4d695ab94f0c4c2e0a7f2a5a4e61665a3392adb4ed69cdbc5086a402e3",
+    "expected_sha256": "07937252ca4d6891adb6b672b9a71fc188849d1b75c11e64853f9e835652093b"
+  },
+  {
+    "name": "dict_optional_scalar-aot-O2-gc1",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_scalar-aot-O2-gc1"
+    ],
+    "source_sha256": "1b31df4d695ab94f0c4c2e0a7f2a5a4e61665a3392adb4ed69cdbc5086a402e3",
+    "expected_sha256": "07937252ca4d6891adb6b672b9a71fc188849d1b75c11e64853f9e835652093b"
+  },
+  {
+    "name": "dict_optional_scalar-aot-O0-gc0",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_scalar-aot-O0-gc0"
+    ],
+    "source_sha256": "1b31df4d695ab94f0c4c2e0a7f2a5a4e61665a3392adb4ed69cdbc5086a402e3",
+    "expected_sha256": "07937252ca4d6891adb6b672b9a71fc188849d1b75c11e64853f9e835652093b"
+  },
+  {
+    "name": "dict_optional_scalar-aot-O0-gc1",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_scalar-aot-O0-gc1"
+    ],
+    "source_sha256": "1b31df4d695ab94f0c4c2e0a7f2a5a4e61665a3392adb4ed69cdbc5086a402e3",
+    "expected_sha256": "07937252ca4d6891adb6b672b9a71fc188849d1b75c11e64853f9e835652093b"
+  },
+  {
+    "name": "dict_optional_scalar-old-O2-gc0",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_scalar-old-O2-gc0"
+    ],
+    "source_sha256": "1b31df4d695ab94f0c4c2e0a7f2a5a4e61665a3392adb4ed69cdbc5086a402e3",
+    "expected_sha256": "07937252ca4d6891adb6b672b9a71fc188849d1b75c11e64853f9e835652093b"
+  },
+  {
+    "name": "dict_optional_reentrant-jit-O2-gc0",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/7becb3edfade/venv/bin/python",
+      "/workspace/scratch/8685cdc8d0ba/pystachy-lifetime/pystachy.py",
+      "run",
+      "/workspace/scratch/8685cdc8d0ba/pystachy-lifetime/tests/programs/optimizations/dict_optional_reentrant.py"
+    ],
+    "source_sha256": "8b55309013a4b97e6fa03c116a74b8fbb53309580f8cf652fe20da89ad3b7723",
+    "expected_sha256": "3d3f5acb1e9bcdea11a6983467432762cef99f578a6b7cdd182f650ef8b08da7"
+  },
+  {
+    "name": "dict_optional_reentrant-jit-O2-gc1",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/7becb3edfade/venv/bin/python",
+      "/workspace/scratch/8685cdc8d0ba/pystachy-lifetime/pystachy.py",
+      "run",
+      "/workspace/scratch/8685cdc8d0ba/pystachy-lifetime/tests/programs/optimizations/dict_optional_reentrant.py"
+    ],
+    "source_sha256": "8b55309013a4b97e6fa03c116a74b8fbb53309580f8cf652fe20da89ad3b7723",
+    "expected_sha256": "3d3f5acb1e9bcdea11a6983467432762cef99f578a6b7cdd182f650ef8b08da7"
+  },
+  {
+    "name": "dict_optional_reentrant-aot-O2-gc0",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_reentrant-aot-O2-gc0"
+    ],
+    "source_sha256": "8b55309013a4b97e6fa03c116a74b8fbb53309580f8cf652fe20da89ad3b7723",
+    "expected_sha256": "3d3f5acb1e9bcdea11a6983467432762cef99f578a6b7cdd182f650ef8b08da7"
+  },
+  {
+    "name": "dict_optional_reentrant-aot-O2-gc1",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_reentrant-aot-O2-gc1"
+    ],
+    "source_sha256": "8b55309013a4b97e6fa03c116a74b8fbb53309580f8cf652fe20da89ad3b7723",
+    "expected_sha256": "3d3f5acb1e9bcdea11a6983467432762cef99f578a6b7cdd182f650ef8b08da7"
+  },
+  {
+    "name": "dict_optional_reentrant-aot-O0-gc0",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_reentrant-aot-O0-gc0"
+    ],
+    "source_sha256": "8b55309013a4b97e6fa03c116a74b8fbb53309580f8cf652fe20da89ad3b7723",
+    "expected_sha256": "3d3f5acb1e9bcdea11a6983467432762cef99f578a6b7cdd182f650ef8b08da7"
+  },
+  {
+    "name": "dict_optional_reentrant-aot-O0-gc1",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_reentrant-aot-O0-gc1"
+    ],
+    "source_sha256": "8b55309013a4b97e6fa03c116a74b8fbb53309580f8cf652fe20da89ad3b7723",
+    "expected_sha256": "3d3f5acb1e9bcdea11a6983467432762cef99f578a6b7cdd182f650ef8b08da7"
+  },
+  {
+    "name": "dict_optional_reentrant-old-O2-gc0",
+    "passed": true,
+    "returncode": 0,
+    "command": [
+      "/workspace/scratch/8685cdc8d0ba/evidence/optional-native-validation/dict_optional_reentrant-old-O2-gc0"
+    ],
+    "source_sha256": "8b55309013a4b97e6fa03c116a74b8fbb53309580f8cf652fe20da89ad3b7723",
+    "expected_sha256": "3d3f5acb1e9bcdea11a6983467432762cef99f578a6b7cdd182f650ef8b08da7"
+  }
+]

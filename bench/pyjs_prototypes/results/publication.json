@@ -1,0 +1,22 @@
+{
+  "base_commit": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "evidence_branch": "research/pyjs-prototype-evidence",
+  "publication": "Submitted through the connected GitHub account; each published implementation tree exactly matches the tested local tree, including file modes.",
+  "prototypes": [
+    {
+      "name": "optional dictionary lookups",
+      "local_commit": "05f3171f7bbb6068880af46d9e64cc5be2a0c413",
+      "published_commit": "313e9ca3359cb0d42a9843c110cc514694a74631",
+      "tree_sha": "a9cf6430249a9184187d9e5e7009f11221b7b81a",
+      "branch": "codex/unbox-optional-dict-lookups"
+    },
+    {
+      "name": "generated-code AddressSanitizer",
+      "local_commit": "3407632d010390bc1b5977c7bc72950da147c152",
+      "published_commit": "b966c88d85d00fde2de4e9bdb78caf4556a04913",
+      "tree_sha": "82c412df8fb4aadc8e72d6289eae4ce85f977e5e",
+      "branch": "codex/asan-generated-user-code"
+    }
+  ],
+  "validation_scope": "Original local implementation and combined qualification are retained in the report; remote CI is separate, pending at submission."
+}

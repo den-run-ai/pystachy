@@ -1,0 +1,4 @@
+/workspace/scratch/7becb3edfade/venv/bin/python -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
+tests/run.sh "/workspace/scratch/7becb3edfade/venv/bin/python -m pystachy" "jit aot" tests/programs/inference/dynany_boundary_*.py
+selected 3 cases
+6 passed, 0 failed

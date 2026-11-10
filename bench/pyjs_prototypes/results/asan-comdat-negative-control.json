@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/workspace/scratch/d83e4680dd1e/toolchain/root/usr/lib/llvm-19/bin/clang",
+    "/workspace/scratch/8685cdc8d0ba/asan-evidence/other.o",
+    "/workspace/scratch/8685cdc8d0ba/asan-evidence/user-runtime.o",
+    "-fsanitize=address",
+    "-lm",
+    "-ldl",
+    "-o",
+    "/workspace/scratch/8685cdc8d0ba/asan-evidence/comdat-other-first"
+  ],
+  "returncode": 1,
+  "stderr": "`.text.asan.module_ctor.2' referenced in section `.init_array.1[asan.module_ctor.2]' of /workspace/scratch/8685cdc8d0ba/asan-evidence/user-runtime.o: defined in discarded section `.text.asan.module_ctor.2[asan.module_ctor]' of /workspace/scratch/8685cdc8d0ba/asan-evidence/user-runtime.o\n`.text.asan.module_dtor.4' referenced in section `.fini_array.1[asan.module_dtor.4]' of /workspace/scratch/8685cdc8d0ba/asan-evidence/user-runtime.o: defined in discarded section `.text.asan.module_dtor.4[asan.module_dtor]' of /workspace/scratch/8685cdc8d0ba/asan-evidence/user-runtime.o\nclang: error: linker command failed with exit code 1 (use -v to see invocation)\n"
+}

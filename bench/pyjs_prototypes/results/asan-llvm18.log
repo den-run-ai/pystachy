@@ -1,0 +1,6 @@
+test_aot_user_load_and_extension_controls (tools.test_runtime_asan.RuntimeASan.test_aot_user_load_and_extension_controls) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 16.344s
+
+OK

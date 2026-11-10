@@ -1,0 +1,19 @@
+finally bool:True
+joined bool:True True 2
+caught int:1
+finally int:1
+joined int:1 True 5
+finally bool:False
+joined bool:False True 7
+caught int:0
+finally int:0
+joined int:0 True 10
+finally str:'001'
+joined str:'001' True 12
+caught NoneType:None
+finally NoneType:None
+joined NoneType:None True 15
+finally int:1001
+joined int:1001 True 17
+['local', 'field', 'local', 'field', 'call', 'local', 'field', 'local', 'field', 'call', 'local', 'field', 'local', 'field', 'call', 'local', 'field']
+[exit 0]

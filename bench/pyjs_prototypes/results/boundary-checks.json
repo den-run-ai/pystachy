@@ -1,0 +1,55 @@
+{
+  "base": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "test_commit": "89878e17df70708215cb278b181147baeb306efc",
+  "cpython": "3.13.16",
+  "llvm": "19.1.7",
+  "compiler_host": "CPython hosted, emitting and executing native LLVM programs",
+  "configuration_results": [
+    {
+      "mode": "JIT + AOT default O2",
+      "gc_stress": false,
+      "cases": 3,
+      "checks_passed": 6,
+      "log": "boundary-normal.log"
+    },
+    {
+      "mode": "JIT + AOT default O2",
+      "gc_stress": true,
+      "cases": 3,
+      "checks_passed": 6,
+      "log": "boundary-gc.log"
+    },
+    {
+      "mode": "AOT O0",
+      "gc_stress": false,
+      "cases": 3,
+      "checks_passed": 3,
+      "log": "boundary-o0.log"
+    },
+    {
+      "mode": "AOT O0",
+      "gc_stress": true,
+      "cases": 3,
+      "checks_passed": 3,
+      "log": "boundary-o0-gc.log"
+    }
+  ],
+  "checks_total": 18,
+  "failures": 0,
+  "new_bug_found": false,
+  "code_changes": false,
+  "source_hashes": {
+    "tests/programs/inference/dynany_boundary_alias_augassign.out": "5784da1182453da4d3bf12b22d26990083bf439401c4b212aecf8410930b12f7",
+    "tests/programs/inference/dynany_boundary_alias_augassign.py": "df8728048eafb4de2e5332d8b74e23778303b8c54453285c9aa25a2e1c31efe3",
+    "tests/programs/inference/dynany_boundary_closure_rebind.out": "44e2fe460f4c08b043961bb87d15d4796a57b05548f1123b8de05e958c2e4f21",
+    "tests/programs/inference/dynany_boundary_closure_rebind.py": "ef3392edf79d9b680c705e6b1510babfc09087c9bac7bbf9001437447845d610",
+    "tests/programs/inference/dynany_boundary_union_events.out": "3a32b9e4d08d5b6a2cae30a13054c0040bc7e655cd905e0694bd2c84002f778f",
+    "tests/programs/inference/dynany_boundary_union_events.py": "80f30d81de6898c715ac5011627e7c8777cfb9816fa6b64776882d186b152bf9"
+  },
+  "limitations": [
+    "No full bootstrap or full verification matrix. Tests-only change; compiler and runtime identical to base.",
+    "An initial custom runner set PYSTACHY_GC_STRESS_PROGRAM for AOT binaries without mapping to PYSTACHY_GC_STRESS; its stress labels do not establish AOT GC coverage. Correct repository-harness runs supersede those labels.",
+    "PYSTACHY_AOT_OPT does not alter JIT optimization. JIT repetitions under that flag are not counted as extra configurations.",
+    "Comments were added to three program files after original probe runs; executable statements are unchanged."
+  ]
+}

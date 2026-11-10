@@ -1,0 +1,19 @@
+{
+  "compare_optional_lookup.py": {
+    "measured_script_sha256": "b3eee674d99b64c22fc77c8b088c5b3089c3ddb7651152beb0d616887b8227ee",
+    "delivered_script_sha256": "b3eee674d99b64c22fc77c8b088c5b3089c3ddb7651152beb0d616887b8227ee"
+  },
+  "profile_optional_lookup.py": {
+    "measured_script_sha256": "c2a70c432ffc967d4bc01cbc3da70a3b44e38ebff11a58487d36f43a7de0fd56",
+    "delivered_script_sha256": "c2a70c432ffc967d4bc01cbc3da70a3b44e38ebff11a58487d36f43a7de0fd56"
+  },
+  "compare_optional_lookup_jit.py": {
+    "measured_script_sha256": "6ac94dcc1181611e056f17526b825e75c5239d2d4d02e9c7b543a8a5d6874e46",
+    "delivered_script_sha256": "4a7b0b82480420583eecba49e4b60c4682ca361585520353275c1fe189dcf345",
+    "post_measurement_changes": [
+      "Remove unused sys import.",
+      "Write the AST kernel-extraction helper as def instead of an assigned lambda.",
+      "Expand final if/else dispatch to multiple lines. No timing, workload, comparison or compiler logic changes."
+    ]
+  }
+}

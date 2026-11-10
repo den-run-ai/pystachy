@@ -1,0 +1,21 @@
+{
+  "examples/byte_bpe/stages.py": {
+    "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "sha256": "3f0154fadce48607aa9868cb93fd7a75f4a18b52c4281590709dfb3632a50b7d"
+  },
+  "bench/pyperformance/bpe_tokeniser.py": {
+    "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "sha256": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de"
+  },
+  "bench/pyperformance/data/frankenstein_intro.txt": {
+    "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "sha256": "6607193e67b7b459d082f5f2aea724e470615643d63ad2e205123b3076223da4"
+  },
+  "examples/byte_bpe/upstream/bpe_tokeniser.py": {
+    "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "sha256": "c7255345499e118181785370b0996e8cc1056491b9678b3fbeb02421e3f9b2df"
+  },
+  "extracted_upstream_kernels": {
+    "sha256": "ab44d9b2600ee956f8464d0a1d299641cdd552c40c60e64e91310ae8e6ba235e"
+  }
+}

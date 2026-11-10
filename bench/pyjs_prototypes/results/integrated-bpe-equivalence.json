@@ -1,0 +1,9 @@
+{
+  "integrated_source_commit": "ce1445674f57d72005383947cdd61c3c81fbdb39",
+  "performance_candidate_commit": "05f3171f7bbb6068880af46d9e64cc5be2a0c413",
+  "native_compiler_sha256": "436e71eb4c9ddcdf1c43b97d38bf7adf15e62b33504df58ceff47c7c159bf9f4",
+  "bpe_functions": 220,
+  "changed_functions": [],
+  "runtime_c_identical": true,
+  "scope": "All emitted BPE function bodies match the measured optimization prototype exactly. This does not replace timing or compare unused global source-path strings."
+}

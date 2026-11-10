@@ -1,0 +1,15 @@
+test_raw_ir_matches_separate_compilation_and_failed_build_does_not_publish (test_retained_ir.RealBuilds.test_raw_ir_matches_separate_compilation_and_failed_build_does_not_publish) ... ok
+test_alias_is_rejected_before_frontend_execution (test_retained_ir.RetainedWitness.test_alias_is_rejected_before_frontend_execution) ... ok
+test_default_executable_alias_and_invalid_arguments (test_retained_ir.RetainedWitness.test_default_executable_alias_and_invalid_arguments) ... ok
+test_frontend_failure_preserves_previous_outputs (test_retained_ir.RetainedWitness.test_frontend_failure_preserves_previous_outputs) ... ok
+test_publication_failure_preserves_previous_witness_and_cleans_staging (test_retained_ir.RetainedWitness.test_publication_failure_preserves_previous_witness_and_cleans_staging) ... ok
+test_publication_preserves_exact_bytes_and_replaces_complete_file (test_retained_ir.RetainedWitness.test_publication_preserves_exact_bytes_and_replaces_complete_file) ... ok
+test_publication_rechecks_aliases (test_retained_ir.RetainedWitness.test_publication_rechecks_aliases) ... ok
+test_publication_replaces_unrelated_symlink_without_changing_its_target (test_retained_ir.RetainedWitness.test_publication_replaces_unrelated_symlink_without_changing_its_target) ... ok
+test_run_arguments_and_no_option_are_unchanged (test_retained_ir.RetainedWitness.test_run_arguments_and_no_option_are_unchanged) ... ok
+test_source_and_executable_aliases_reject_without_writes (test_retained_ir.RetainedWitness.test_source_and_executable_aliases_reject_without_writes) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 11.943s
+
+OK

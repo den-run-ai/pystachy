@@ -1,0 +1,148 @@
+{
+  "scope": "C runtime allocation requests; not total physical traffic or retained memory",
+  "instrumentation": "-DPYSTACHY_PROFILE_DATA; counted binaries excluded from timing results",
+  "samples": [
+    {
+      "variant": "main",
+      "workload": "direct",
+      "executable": "/workspace/scratch/8685cdc8d0ba/evidence/optional-lookup-bench/profile-main-micro",
+      "command": [
+        "optional-lookup-profile",
+        "direct",
+        "30000"
+      ],
+      "binary_sha256": "34f06edd0eaee85c111a80463197879458bfb4977e49bbb2e93836059c4b4487",
+      "stdout_sha256": "5372588733824ecf5744e694f5d12b57d33e19ff1fd8b88a7e723e7426eea890",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 7,
+        "c_gc_requested_bytes": 2794,
+        "c_memcpy_calls": 6,
+        "c_memcpy_requested_bytes": 45,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 327680
+      }
+    },
+    {
+      "variant": "main",
+      "workload": "ranks",
+      "executable": "/workspace/scratch/8685cdc8d0ba/evidence/optional-lookup-bench/profile-main-micro",
+      "command": [
+        "optional-lookup-profile",
+        "ranks",
+        "30000"
+      ],
+      "binary_sha256": "34f06edd0eaee85c111a80463197879458bfb4977e49bbb2e93836059c4b4487",
+      "stdout_sha256": "8063ad1efa5285be1d5c9fd804c3651a5d35142f65c297d0bf639ddc1351a5f9",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 7680036,
+        "c_gc_requested_bytes": 115227194,
+        "c_memcpy_calls": 6,
+        "c_memcpy_requested_bytes": 48,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 3,
+        "gc_peak_heap_bytes": 35127296
+      }
+    },
+    {
+      "variant": "main",
+      "workload": "bpe",
+      "executable": "/workspace/scratch/8685cdc8d0ba/evidence/optional-lookup-bench/profile-main-bpe",
+      "command": [
+        "optional-lookup-profile",
+        "/workspace/scratch/8685cdc8d0ba/evidence/optional-lookup-bench/sources/frankenstein_intro.txt",
+        "1024",
+        "100",
+        "100"
+      ],
+      "binary_sha256": "f48241c4f335c8b9864e68839df9bd635e2fc0115f65d8cd52dca2e6730dfd39",
+      "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 90586326,
+        "c_gc_requested_bytes": 3912662423,
+        "c_memcpy_calls": 57996358,
+        "c_memcpy_requested_bytes": 573932796,
+        "c_memmove_calls": 1,
+        "c_memmove_requested_bytes": 32,
+        "gc_collections": 134,
+        "gc_peak_heap_bytes": 40566784
+      }
+    },
+    {
+      "variant": "changed",
+      "workload": "direct",
+      "executable": "/workspace/scratch/8685cdc8d0ba/evidence/optional-lookup-bench/profile-changed-micro",
+      "command": [
+        "optional-lookup-profile",
+        "direct",
+        "30000"
+      ],
+      "binary_sha256": "7c58f45ee540323461515a82f6ff1631a0fde97352b55a58228cd1a8a8fe6cc7",
+      "stdout_sha256": "5372588733824ecf5744e694f5d12b57d33e19ff1fd8b88a7e723e7426eea890",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 7,
+        "c_gc_requested_bytes": 2794,
+        "c_memcpy_calls": 6,
+        "c_memcpy_requested_bytes": 45,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 327680
+      }
+    },
+    {
+      "variant": "changed",
+      "workload": "ranks",
+      "executable": "/workspace/scratch/8685cdc8d0ba/evidence/optional-lookup-bench/profile-changed-micro",
+      "command": [
+        "optional-lookup-profile",
+        "ranks",
+        "30000"
+      ],
+      "binary_sha256": "7c58f45ee540323461515a82f6ff1631a0fde97352b55a58228cd1a8a8fe6cc7",
+      "stdout_sha256": "8063ad1efa5285be1d5c9fd804c3651a5d35142f65c297d0bf639ddc1351a5f9",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 36,
+        "c_gc_requested_bytes": 27194,
+        "c_memcpy_calls": 6,
+        "c_memcpy_requested_bytes": 48,
+        "c_memmove_calls": 0,
+        "c_memmove_requested_bytes": 0,
+        "gc_collections": 0,
+        "gc_peak_heap_bytes": 1376256
+      }
+    },
+    {
+      "variant": "changed",
+      "workload": "bpe",
+      "executable": "/workspace/scratch/8685cdc8d0ba/evidence/optional-lookup-bench/profile-changed-bpe",
+      "command": [
+        "optional-lookup-profile",
+        "/workspace/scratch/8685cdc8d0ba/evidence/optional-lookup-bench/sources/frankenstein_intro.txt",
+        "1024",
+        "100",
+        "100"
+      ],
+      "binary_sha256": "4ec2d803f8de14c84b001a837fb1ba24672f675151c907eaf4de64a4e33d6bc0",
+      "stdout_sha256": "5107a185eeddfadaf261c250991f819e14ccfb8b85e41f0fd916785910df152e",
+      "counters": {
+        "schema": 1,
+        "c_gc_alloc_calls": 85726926,
+        "c_gc_requested_bytes": 3839771423,
+        "c_memcpy_calls": 57996358,
+        "c_memcpy_requested_bytes": 573932796,
+        "c_memmove_calls": 1,
+        "c_memmove_requested_bytes": 32,
+        "gc_collections": 132,
+        "gc_peak_heap_bytes": 40566784
+      }
+    }
+  ]
+}
