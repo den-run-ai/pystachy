@@ -153,6 +153,103 @@ class CheckerTests(unittest.TestCase):
                     with self.assertRaises(AssertionError):
                         probe.refused(1)
 
+    def test_tcp_probe_sets_accepted_descriptor_blocking(self):
+        spec = importlib.util.spec_from_file_location("netio_oracle", check.HERE / "oracle/netio.py")
+        oracle = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(oracle)
+        spec = importlib.util.spec_from_file_location("netio_probe", check.SOURCE)
+        probe = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {"netio": oracle}):
+            spec.loader.exec_module(probe)
+        test = self
+
+        class AcceptedSocket(socket.socket):
+            def recv(self, size, flags=0):
+                test.assertTrue(os.get_blocking(self.fileno()), "accepted descriptor is nonblocking")
+                return super().recv(size, flags)
+
+        class InheritingSocket(socket.socket):
+            def accept(self):
+                accepted, address = super().accept()
+                inherited = AcceptedSocket(fileno=accepted.detach())
+                # Mirror Darwin's inherited fd flag without changing Python's timeout state.
+                os.set_blocking(inherited.fileno(), False)
+                test.assertTrue(inherited.getblocking())
+                return inherited, address
+
+        with mock.patch.object(oracle, "socket", InheritingSocket):
+            probe.tcp(1)
+
+    def test_tcp_exchanges_handle_short_transfers_and_preserve_kernel_modes(self):
+        spec = importlib.util.spec_from_file_location("netio_oracle", check.HERE / "oracle/netio.py")
+        oracle = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(oracle)
+        spec = importlib.util.spec_from_file_location("netio_probe", check.SOURCE)
+        probe = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {"netio": oracle}):
+            spec.loader.exec_module(probe)
+        test = self
+
+        class ShortSocket(socket.socket):
+            short_send = False
+            short_recv = False
+            nonblocking_connect = False
+
+            def connect_ex(self, address):
+                test.assertFalse(os.get_blocking(self.fileno()), "connect_ex must remain nonblocking")
+                self.nonblocking_connect = True
+                return super().connect_ex(address)
+
+            def accept(self):
+                accepted, address = super().accept()
+                inherited = ShortSocket(fileno=accepted.detach())
+                if not os.get_blocking(self.fileno()):
+                    os.set_blocking(inherited.fileno(), False)
+                return inherited, address
+
+            def send(self, data, flags=0):
+                test.assertTrue(os.get_blocking(self.fileno()), "payload send must be blocking")
+                return super().send(data[:1] if self.short_send else data, flags)
+
+            def recv(self, size, flags=0):
+                test.assertEqual(os.get_blocking(self.fileno()), not self.nonblocking_connect,
+                                 "payload receive must block; client EOF receive must remain nonblocking")
+                return super().recv(min(size, 1) if self.short_recv else size, flags)
+
+        with mock.patch.object(oracle, "socket", ShortSocket):
+            for exchange in (probe.tcp, probe.blocking_connect):
+                for direction in ("send", "recv"):
+                    with self.subTest(exchange=exchange.__name__, direction=direction):
+                        ShortSocket.short_send = direction == "send"
+                        ShortSocket.short_recv = direction == "recv"
+                        exchange(1)
+
+    def test_tcp_payload_helpers_reject_zero_progress_eof_and_wrong_bytes(self):
+        spec = importlib.util.spec_from_file_location("netio_oracle", check.HERE / "oracle/netio.py")
+        oracle = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(oracle)
+        spec = importlib.util.spec_from_file_location("netio_probe", check.SOURCE)
+        probe = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {"netio": oracle}):
+            spec.loader.exec_module(probe)
+
+        for count in (0, 5):
+            with self.subTest(send_count=count):
+                sender = mock.Mock(spec=socket.socket)
+                sender.send.side_effect = [count, RuntimeError("invalid progress was retried")]
+                with self.assertRaisesRegex(AssertionError, "invalid progress"):
+                    probe.send_payload(sender, b"tcp\x00")
+                self.assertEqual(sender.send.call_count, 1)
+
+        receiver = mock.Mock(spec=socket.socket)
+        receiver.recv.side_effect = [b"", RuntimeError("EOF was retried")]
+        with self.assertRaisesRegex(AssertionError, "EOF"):
+            probe.expect_payload(receiver, b"tcp\x00")
+        self.assertEqual(receiver.recv.call_count, 1)
+        receiver.recv.side_effect = [b"tcpX"]
+        with self.assertRaisesRegex(AssertionError, "payload mismatch"):
+            probe.expect_payload(receiver, b"tcp\x00")
+
     def test_environment_excludes_inherited_compiler_and_python_overrides(self):
         dirty = {"PYSTACHY_LLVM": "/llvm", "PYSTACHY_HOME": "/foreign", "PYSTACHY_PATH": "/foreign",
                  "PYSTACHY_GC_STRESS": "1", "PYSTACHY_GC_STRESS_PROGRAM": "1", "PYSTACHY_JOBS": "99",
