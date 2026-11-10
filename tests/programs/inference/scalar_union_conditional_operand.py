@@ -1,8 +1,9 @@
 # A conditional expression as the left operand of a binary operator, where the operation's
-# result is wanted as a closed union: the union is the result's, so arms of one type keep it
-# and the operation runs on that type (it was rejected: "closed union arithmetic requires
-# narrowing", or ran as union arithmetic for int | float). Arms of two types, which make the
-# union: scalar_union_conditional_mixed.py
+# result is wanted as a closed union that has no such operation (int | str has no arithmetic,
+# int | float no power, shift or bit operator; it was rejected: "closed union arithmetic
+# requires narrowing"): the union is the result's, so arms of one type keep it and the
+# operation runs on that type. An operation the union has runs on the union, as do arms of
+# two types: scalar_union_operand_mixed.py, scalar_union_conditional_mixed.py
 import sys
 
 
@@ -24,10 +25,6 @@ def ret_float(a: float, c: float) -> float | str:
 
 def ret_opt_union(a: int, c: int) -> int | str | None:
     return (a if a > 0 else c) + 1
-
-
-def ret_numeric(a: int, c: int) -> int | float:
-    return (a if a > 0 else c) * 2
 
 
 def ret_pow(a: int, c: int) -> int | float:
@@ -87,7 +84,7 @@ def pair(n: int) -> tuple[int | str, int]:
 def main(z: int) -> None:
     print(ret_mul(3, 4), ret_mul(-3, 4), ret_chain(3, 4), ret_chain(-3, 0), ret_str("", "q"), ret_str("p", "q"))
     print(ret_float(3.0, 4.0), ret_float(-3.0, 5.0), ret_opt_union(3, 4), ret_opt_union(-1, 9))
-    print(ret_numeric(3, 4), ret_numeric(-3, 4), ret_pow(3, 4), ret_pow(-3, 4), ret_bits(3, 4), ret_bits(-3, 4))
+    print(ret_pow(3, 4), ret_pow(-3, 4), ret_bits(3, 4), ret_bits(-3, 4))
     print(ret_mixed_str(3, True), ret_mixed_str(3, False))
     print(ret_nested(9, 1), ret_nested(1, 9), ret_nested(1, 2), ret_static(3, 4))
     log: list[str] = []
@@ -106,7 +103,7 @@ def main(z: int) -> None:
     u = (a if a > 0 else c) * 2
     print(vals, u, Cfg(-3).v, Cfg(3).w, Cfg(-3).w, items(-3), items(0), pair(-3))
     r = ret_mul(1, 2)
-    print(isinstance(r, int), type(ret_numeric(1, 2)).__name__, type(ret_str("a", "b")).__name__)
+    print(isinstance(r, int), type(ret_pow(1, 2)).__name__, type(ret_str("a", "b")).__name__)
 
 
 main(len(sys.argv) - 1)

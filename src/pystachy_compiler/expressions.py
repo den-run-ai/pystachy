@@ -38,6 +38,7 @@ from src.pystachy_compiler.specs import (
     is_excname,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_in
+from src.pystachy_compiler.union_arithmetic import unarith
 from src.pystachy_compiler.utils import (
     opaque_class,
     atomic_dict,
@@ -893,11 +894,17 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         try:
             if n.s == "&" and (wraps(n.kids[0]) or wraps(n.kids[1])) and not self.int_policy(n.line):
                 return self.masked(n, want, resultsoft)
-            if is_union(unopt(want)):
-                a = left_operand(self, n.kids[0], want, resultsoft)  # (an operand is not the result)
-            else:
+            if not operand_held(self, n.s, want):
                 a = self.expr(n.kids[0], want, resultsoft=resultsoft)
-            return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+                return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+            ka: list[str] = []
+            a = left_operand(self, n.kids[0], want, resultsoft, ka)  # (an operand is not the result)
+            if len(ka) == 0:
+                return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+            kb: list[str] = []
+            b = left_operand(self, n.kids[1], ka[0], resultsoft, kb)
+            ab = operand_pair(self, n.s, a, ka[0], b, kb[0] if len(kb) > 0 else "")
+            return self.arith(n.s, ab[0], ab[1])
         finally:
             scalar_fn.scalar_reads = scalar_held
     if k == "unary":
@@ -3263,29 +3270,74 @@ def gen_numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> V
     return result
 
 
-def left_operand(self, n: Node, want: str, resultsoft: bool) -> Val:
-    # n as the left operand of a binary operator whose result is wanted as the union want, or as
-    # an arm or operand of such an operand. The union is the result's, not the operand's: a
-    # conditional expression's arms and a boolean operation's operands keep the scalar type they
-    # share (gen_ifexp's and gen_boolop's operand), so that the operation runs on that type and
-    # its result is boxed where it is used. Any other expression takes want as before
+def operand_held(self, op: str, want: str) -> bool:
+    # may an operand of binary operator op, whose result is wanted as want, be compiled by
+    # left_operand: want is a closed union that gen_unumeric compiles no op of (unarith), so the
+    # operation on an operand that is that union, as a conditional or boolean operand is
+    # otherwise, is an error. (A comparison helper raises TypeError for it instead: gen_arith.
+    # It stays that.) An operation the union has is not touched: its operands are the unions
+    return is_union(unopt(want)) and unarith(op, want) and not self.curfn.cmpops
+
+
+def operand_pair(self, op: str, a: Val, at: str, b: Val, bt: str) -> list[Val]:
+    # the operands of a op b as the operation takes them. a is kept as a scalar where it is
+    # the closed union at otherwise (left_operand's kept); b was compiled for that union, as
+    # it is then, and is kept where it is the union bt, if bt is one. The operation runs on
+    # the scalars, but for an operation that is compiled, or stays an error, for the union,
+    # which gets the operands as those unions:
+    # - an Any operand's operator takes the union (gen_arith), so it is what runs;
+    # - a power, but for a literal exponent that is not negative: only then does it have its
+    #   operand's type whatever its value (a power of ints is a float for a negative exponent,
+    #   and ints raise for one here), so any other stays the union's, which has none
+    exact = op != "**" or (b.lit and b.t == "int" and not b.v.startswith("-"))
+    if (bt == "" and b.t == "dyn") or not unarith(op, at) or not exact:
+        return [self.coerce(a, at), self.coerce(b, bt) if bt != "" else b]
+    return [a, b]
+
+
+def left_operand(self, n: Node, want: str, resultsoft: bool, kept: list[str]) -> Val:
+    # n as an operand of a binary operator whose result is wanted as the closed union want
+    # (operand_held), or as an arm or operand of such an operand. The union is the result's,
+    # not the operand's: a conditional expression's arms and a boolean operation's operands
+    # keep the scalar type they share (gen_ifexp's and gen_boolop's kept), so that the operation
+    # runs on that type and its result is boxed where it is used. kept then takes the type n
+    # has where it is no operand, which self.coerce() makes of the value; it takes nothing
+    # where the value is of that type already, as any other expression's is
     if n.kind == "ifexp":
         self.line = n.line
-        return self.ifexp(n, want, resultsoft or n is self.soft, True)
+        return self.ifexp(n, want, resultsoft or n is self.soft, kept)
     if n.kind == "boolop":
         self.line = n.line
-        return self.boolop(n, False, want, resultsoft or n is self.soft, True)
+        return self.boolop(n, False, want, resultsoft or n is self.soft, kept)
     return self.expr(n, want, resultsoft=resultsoft)
 
 
-def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, operand: bool = False) -> Val:
-    # operand: see left_operand. Arms of one scalar type then make no union; arms of two types
-    # make it as before, the first boxed at its edge once the second is known
+def boolop_type(self, op: str, at: str, bt: str) -> str:
+    # the type of x op y (or, and) as a value, x an at and y a bt (gen_boolop)
+    rt = at
+    if is_opt(at) or is_opt(bt) or bt == "None":
+        # x or y with x T | None: a true x is a T; x or None, x and y: T | None
+        rt = unopt(at) if op == "or" else at
+        if not self.term and self.join(rt, bt) != "":
+            rt = self.join(rt, bt)
+    if not self.term and at != bt and self.join(at, bt) == "dyn":
+        rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
+    if not self.term and at != bt and self.join(at, bt) == BIG:
+        rt = BIG  # (an int and a promoting int: either one, as a promoting int)
+    return rt
+
+
+def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str] | None = None) -> Val:
+    # kept: see left_operand. Arms of one scalar type then make no union, and kept takes want;
+    # arms of two types make it as they do otherwise, the first boxed at its edge once the
+    # second is known
     st = self.static(n.kids[0])
     if st >= 0:
         self.static_reads(n.kids[0])
         arm = n.kids[1] if st == 1 else n.kids[2]
-        return left_operand(self, arm, want, resultsoft) if operand else self.expr(arm, want, resultsoft=resultsoft)
+        if kept is not None:
+            return left_operand(self, arm, want, resultsoft, kept)
+        return self.expr(arm, want, resultsoft=resultsoft)
     c = self.cond(n.kids[0])
     l1 = self.label()
     l2 = self.label()
@@ -3294,11 +3346,15 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, operand: bool 
     self.place(l1)
     pre = self.narrow_by(n.kids[0], True)
     self.branch += 1  # (neither arm surely rebinds a template parameter whose argument is None)
-    a = left_operand(self, n.kids[1], want, resultsoft) if operand else self.expr(n.kids[1], want, resultsoft=resultsoft)
+    if kept is not None:
+        # (an operand's arm is one too: the scalar it would keep, it keeps here or has boxed below)
+        a = left_operand(self, n.kids[1], want, resultsoft, [])
+    else:
+        a = self.expr(n.kids[1], want, resultsoft=resultsoft)
     if is_vtuple(unopt(want)) or want == "dyn":
         a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py)
-    held = operand and is_union(unopt(want)) and a.t in ["int", "float", "bool", "str", BIG]
-    if not held and ((is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want))):
+    keep = kept is not None and is_union(unopt(want)) and a.t in ["int", "float", "bool", "str", BIG]
+    if not keep and ((is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want))):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
     # an arm that ends the program (sys.exit()) has no edge to the join, and no value
     e1 = "" if self.term else self.cur
@@ -3309,15 +3365,18 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, operand: bool 
     wb = want if want != "" else a.t
     if want == "" and n.kids[2].kind == "ifexp" and self.optional(a.t) != "":
         wb = self.optional(a.t)  # (x if c else y if d else None: T | None)
-    b = left_operand(self, n.kids[2], wb, resultsoft) if operand else self.expr(n.kids[2], wb, resultsoft=resultsoft)
+    if kept is not None:
+        b = left_operand(self, n.kids[2], wb, resultsoft, [])
+    else:
+        b = self.expr(n.kids[2], wb, resultsoft=resultsoft)
     self.branch -= 1
     if is_vtuple(unopt(want)) or want == "dyn":
         b = self.coerce(b, want)
     # (an operand's arms of one type, or an int and a promoting int, which join below: no union is made)
-    same = held and (b.t == a.t or self.join(a.t, b.t) == BIG)
+    same = keep and (b.t == a.t or self.join(a.t, b.t) == BIG)
     if not same and ((is_fn(b.t) and is_callable(unopt(want))) or is_union(unopt(want))):
         b = self.coerce(b, want)
-    if held and not same and e1 != "":
+    if keep and not same and e1 != "":
         a = self.convert_at(a, b.t, e1)  # (arms of two types after all: the first as the union, boxed at its edge)
         e1 = self.convedge
     self.narrowed = self.forget_walrus(pre, n.kids[1:])
@@ -3344,6 +3403,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, operand: bool 
     if t == "None":
         return Val("null", "None")  # (None either way)
     result = Val(self.phi(ph), t)
+    if kept is not None and same:
+        kept.append(want)  # (the arms' boxes are the union: what the value is where it is no operand)
     if not self.idhere() or not numeric_identity(t):
         return result
     values = [a] if e1 != "" else []
@@ -3353,9 +3414,12 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, operand: bool 
         edges.append(e2)
     return self.numeric_phi(result, values, edges)
 
-def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False, operand: bool = False) -> Val:
+def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False, kept: list[str] | None = None) -> Val:
     # Python semantics: `a or b` yields a if a is truthy, else b (same static type)
-    # operand: see left_operand; its operands that take want are operands as well
+    # kept: see left_operand; an operand that takes want is an operand as well. Where the left
+    # one keeps a scalar, the right one is compiled for the union the left one is otherwise, as
+    # it is then: operands of one scalar type make no union, and kept takes the type the
+    # operation has of those unions; others are made the unions, the left one at its edge
     c0 = n.kids[0]
     c1 = n.kids[1]
     if n.s == "or" and c0.kind == "cmp" and c0.s == "is" and c1.kind == "cmp" and c1.s == "==" and c0.kids[0].kind == "name" and c0.kids[1].kind == "name" and c1.kids[0].kind == "name" and c1.kids[1].kind == "name" and c0.kids[0].s == c1.kids[0].s and c0.kids[1].s == c1.kids[1].s and self.isnum(self.static_type(c0.kids[0])) and self.isnum(self.static_type(c0.kids[1])):
@@ -3367,23 +3431,32 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False,
         # a static test on the left: it is the value if it decides, else the right operand
         # (where the test is not compiled, static_reads() reads its classes)
         if (st == 1) == (n.s == "or") and not ascond:
-            return left_operand(self, n.kids[0], want, resultsoft) if operand else self.expr(n.kids[0], want, resultsoft=resultsoft)
+            if kept is not None:
+                return left_operand(self, n.kids[0], want, resultsoft, kept)
+            return self.expr(n.kids[0], want, resultsoft=resultsoft)
         self.static_reads(n.kids[0])
         if (st == 1) == (n.s == "or"):
             return Val("true" if st == 1 else "false", "bool")
         if ascond:
             return Val(self.cond(n.kids[1]), "bool")
-        return left_operand(self, n.kids[1], want, resultsoft) if operand else self.expr(n.kids[1], want, resultsoft=resultsoft)
+        if kept is not None:
+            return left_operand(self, n.kids[1], want, resultsoft, kept)
+        return self.expr(n.kids[1], want, resultsoft=resultsoft)
+    at = ""  # (the union a is otherwise, where it is kept as a scalar)
     if ascond:
         a = Val(self.cond(n.kids[0]), "bool")
-    elif operand:
-        a = left_operand(self, n.kids[0], want, resultsoft)
+    elif kept is not None:
+        ka: list[str] = []
+        a = left_operand(self, n.kids[0], want, resultsoft, ka)
+        at = ka[0] if len(ka) > 0 else ""
     else:
         a = self.expr(n.kids[0], want, resultsoft=resultsoft)
     if a.t == "None":
         # None is false: `None and b` is None without evaluating b, `None or b` is b
         if n.s == "or":
-            return left_operand(self, n.kids[1], want, resultsoft) if operand else self.expr(n.kids[1], want, resultsoft=resultsoft)
+            if kept is not None:
+                return left_operand(self, n.kids[1], want, resultsoft, kept)
+            return self.expr(n.kids[1], want, resultsoft=resultsoft)
         return Val("null", "None")
     c = self.truth(a)
     if self.term:
@@ -3412,20 +3485,26 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False,
     self.place(l2)
     pre = self.narrow_by(n.kids[0], n.s == "and")
     self.branch += 1
-    b = Val(self.cond(n.kids[1]), "bool") if ascond else self.expr(n.kids[1], a.t, resultsoft=resultsoft)
+    bt = ""  # (as at, of b)
+    if ascond:
+        b = Val(self.cond(n.kids[1]), "bool")
+    elif at != "":
+        kb: list[str] = []
+        b = left_operand(self, n.kids[1], at, resultsoft, kb)
+        bt = kb[0] if len(kb) > 0 else ""
+    else:
+        b = self.expr(n.kids[1], a.t, resultsoft=resultsoft)
     self.branch -= 1
     self.narrowed = self.forget_walrus(pre, n.kids[1:])
     # a right operand that ends the program (sys.exit()) has no edge to the join, and no value
-    rt = a.t
-    if not ascond and (is_opt(a.t) or is_opt(b.t) or b.t == "None"):
-        # x or y with x T | None: a true x is a T; x or None, x and y: T | None
-        rt = unopt(a.t) if n.s == "or" else a.t
-        if not self.term and self.join(rt, b.t) != "":
-            rt = self.join(rt, b.t)
-    if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == "dyn":
-        rt = "dyn"  # (either operand, the other boxed where it reaches the join: dynamic.py)
-    if not ascond and not self.term and a.t != b.t and self.join(a.t, b.t) == BIG:
-        rt = BIG  # (an int and a promoting int: either one, as a promoting int)
+    kt = ""
+    if at != "" and (self.term or b.t == a.t or self.join(a.t, b.t) == BIG):
+        kt = boolop_type(self, n.s, at, bt if bt != "" else b.t)
+    elif at != "":
+        a = self.convert_at(a, at, e1)
+        e1 = self.convedge
+        b = self.coerce(b, bt) if bt != "" else b
+    rt = a.t if ascond else boolop_type(self, n.s, a.t, b.t)
     ph = Ins("phi", rt, "")
     if not ascond and (self.converts(a.t, rt) or narrows(a.t, rt)):
         a = self.convert_at(a, rt, e1)
@@ -3438,6 +3517,8 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False,
     self.br(l3)
     self.place(l3)
     result = Val(self.phi(ph), rt)
+    if kept is not None and kt != "":
+        kept.append(kt)
     if not self.idhere() or not numeric_identity(rt):
         return result
     return self.numeric_phi(result, [a, b] if e2 != "" else [a], [e1, e2] if e2 != "" else [e1])
@@ -4120,10 +4201,19 @@ def gen_masked(self, n: Node, want: str, resultsoft: bool) -> Val:
     # other bits where the other side is exact and not negative, so CPython's result fits and is
     # the low bits'. Otherwise a step's overflow raises OverflowError, as it does in checked
     # arithmetic, but after the whole expression has been evaluated.
-    a = self.wexpr(n.kids[0], want, resultsoft)
-    b = self.wexpr(n.kids[1], a[0].t, resultsoft)
+    ka: list[str] = []
+    a = self.wexpr(n.kids[0], want, resultsoft, "&", ka)
     x = a[0]
-    y = b[0]
+    if len(ka) > 0:
+        # (a side kept as a scalar where the result is wanted as a union: left_operand)
+        kb: list[str] = []
+        b = self.wexpr(n.kids[1], ka[0], resultsoft, "&", kb)
+        xy = operand_pair(self, "&", x, ka[0], b[0], kb[0] if len(kb) > 0 else "")
+        x = xy[0]
+        y = xy[1]
+    else:
+        b = self.wexpr(n.kids[1], x.t, resultsoft)
+        y = b[0]
     if x.t != "int" or y.t != "int" or x.v == "undef" or y.v == "undef":
         bad = self.wflag("or", a[1], b[1])
         if bad.v != "false":
@@ -4149,19 +4239,32 @@ def gen_masked(self, n: Node, want: str, resultsoft: bool) -> Val:
     return Val(self.scalar("and", [Val(x.v, "int"), Val(y.v, "int")]), "int")
 
 
-def gen_wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
+def gen_wexpr(self, e: Node, want: str, resultsoft: bool, op: str = "", kept: list[str] | None = None) -> list[Val]:
     # [value, flag] of int expression e in wrapping 64-bit arithmetic where wraps(e) (see
     # gen_masked): flag is false or an i1 that is true where the value holds only the exact
-    # result's low 64 bits. Operands are evaluated in order, as gen_expr's binop does.
+    # result's low 64 bits. Operands are evaluated in order, as gen_expr's binop does, and are
+    # its operands: with kept, e is operator op's, and one that does not wrap is left_operand's
+    # where op's may be (operand_held)
     if not wraps(e):
-        if is_union(unopt(want)):
-            return [left_operand(self, e, want, resultsoft), Val("false", "bool")]  # (x & y's operand, as a binop's)
+        if kept is not None and operand_held(self, op, want):
+            return [left_operand(self, e, want, resultsoft, kept), Val("false", "bool")]
         return [self.expr(e, want, resultsoft=resultsoft), Val("false", "bool")]
-    a = self.wexpr(e.kids[0], want, resultsoft)
-    # (a shift's count in checked arithmetic: the low bits of x << n depend on all of n)
-    b = [self.expr(e.kids[1], a[0].t, resultsoft=resultsoft), Val("false", "bool")] if e.s == "<<" else self.wexpr(e.kids[1], a[0].t, resultsoft)
+    ka: list[str] = []
+    a = self.wexpr(e.kids[0], want, resultsoft, e.s, ka)
     x = a[0]
-    y = b[0]
+    if len(ka) > 0:
+        kb: list[str] = []
+        if e.s == "<<":
+            b = [left_operand(self, e.kids[1], ka[0], resultsoft, kb), Val("false", "bool")]
+        else:
+            b = self.wexpr(e.kids[1], ka[0], resultsoft, e.s, kb)
+        xy = operand_pair(self, e.s, x, ka[0], b[0], kb[0] if len(kb) > 0 else "")
+        x = xy[0]
+        y = xy[1]
+    else:
+        # (a shift's count in checked arithmetic: the low bits of x << n depend on all of n)
+        b = [self.expr(e.kids[1], x.t, resultsoft=resultsoft), Val("false", "bool")] if e.s == "<<" else self.wexpr(e.kids[1], x.t, resultsoft)
+        y = b[0]
     flag = self.wflag("or", a[1], b[1])
     if x.t != "int" or y.t != "int" or x.v == "undef" or y.v == "undef":
         # not two ints (bools, objects, unions): their operator, after any overflow so far

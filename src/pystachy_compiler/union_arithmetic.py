@@ -4,6 +4,14 @@ from src.pystachy_compiler.ir import Ins, Val
 from src.pystachy_compiler.syntax import mk
 from src.pystachy_compiler.utils import is_opt, is_union, tname, typestr, umembers, unopt
 
+def unarith(op: str, t: str) -> bool:
+    # does gen_unumeric compile no binary op of an operand of type t, a closed union or one or
+    # None: an operator it has not, or a member that is no number (its two errors, below)
+    if op not in ["+", "-", "*", "/", "//", "%"]:
+        return True
+    return len([m for m in umembers(unopt(t)) if m not in ["int", "float", "bool", "None"]]) > 0
+
+
 def gen_unumeric(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
     if op not in (["+", "-"] if unary else ["+", "-", "*", "/", "//", "%"]):
         self.err("closed numeric union arithmetic supports +, -, *, /, //, % and unary + or -; narrow other operations first")

@@ -1,6 +1,7 @@
 # A boolean operation as the left operand of a binary operator, where the operation's result
-# is wanted as a closed union: its operands, and the arms of a conditional expression among
-# them, keep the scalar type they share (see scalar_union_conditional_operand.py)
+# is wanted as a closed union that has no such operation: its operands, and the arms of a
+# conditional expression among them, keep the scalar type they share (see
+# scalar_union_conditional_operand.py; int | float has a division, which runs on the union)
 def bool_or(a: int, b: int, c: bool) -> int | str:
     return ((a if c else b) or 7) * 2 + (a or b) - ((a and b) or 1)
 

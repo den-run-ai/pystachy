@@ -1,0 +1,5 @@
+'ab':str 'cc':str '':str 'ab':str 'ababab':str '--':str
+'st':str 's-':str 't':str 't+':str
+6:int 20:int 29.25:float 125.25:float 6:int 0:int 7:int
+0.75:float 0.125:float 1.0:float 27:int 3:int 8:int
+[exit 0]

@@ -1,7 +1,7 @@
 # A conditional expression whose arms are an int and a float, as the left operand of a binary
-# operator whose result is wanted as int | float: the arms make that union, the first boxed at
-# its edge once the second is known, and the operation runs on the union (arms of one type keep
-# it: scalar_union_conditional_operand.py)
+# operator whose result is wanted as int | float: the arms make that union, as they do anywhere
+# else, and the operation runs on the union (arms of one type keep it only for an operation the
+# union has not: scalar_union_conditional_operand.py)
 import sys
 
 

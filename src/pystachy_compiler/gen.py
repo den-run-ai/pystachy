@@ -4470,14 +4470,14 @@ class Gen:
     def listcomp(self, n: Node, want: str, mode: str='', into: str='', arg: IterArg | None=None, kind: str='list', resultsoft: bool = False) -> Val:
         return expressions_listcomp(self, n, want, mode, into, arg, kind, resultsoft)
 
-    def ifexp(self, n: Node, want: str, resultsoft: bool = False, operand: bool = False) -> Val:
-        return expressions_ifexp(self, n, want, resultsoft, operand)
+    def ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str] | None = None) -> Val:
+        return expressions_ifexp(self, n, want, resultsoft, kept)
 
     def numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
         return expressions_numeric_phi(self, result, values, edges)
 
-    def boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False, operand: bool = False) -> Val:
-        return expressions_boolop(self, n, ascond, want, resultsoft, operand)
+    def boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False, kept: list[str] | None = None) -> Val:
+        return expressions_boolop(self, n, ascond, want, resultsoft, kept)
 
     def unary(self, n: Node) -> Val:
         return expressions_unary(self, n)
@@ -4557,8 +4557,8 @@ class Gen:
     def masked(self, n: Node, want: str, resultsoft: bool) -> Val:
         return expressions_masked(self, n, want, resultsoft)
 
-    def wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
-        return expressions_wexpr(self, e, want, resultsoft)
+    def wexpr(self, e: Node, want: str, resultsoft: bool, op: str = "", kept: list[str] | None = None) -> list[Val]:
+        return expressions_wexpr(self, e, want, resultsoft, op, kept)
 
     def wflag(self, op: str, a: Val, b: Val) -> Val:
         return expressions_wflag(self, op, a, b)
