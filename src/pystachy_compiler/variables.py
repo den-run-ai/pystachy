@@ -1885,6 +1885,11 @@ def gen_target_type(self, n: Node, base: bool = False) -> str:
 
 def gen_assign(self, t: Node, v: Val) -> None:
     k = t.kind
+    if k == "index" and t.kids[0].kind == "attr" and t.kids[1].kind != "slice" and self.dotted(t.kids[0]) == "os.environ":
+        # os.environ[name] = value: the process's environment, as os.environ.__setitem__() sets it
+        name = self.coerce(self.expr(t.kids[1], "str"), "str", "the name in os.environ[...]")
+        self.rt("pys_environ_set", "void", [f"ptr {name.v}", f"ptr {self.coerce(v, 'str', 'the value of os.environ[...]').v}"])
+        return
     if k == "index" and self.list_id_kind(self.ctype("list", [v.t])) != 0 and v.idslot != "":
         # The target and index can run callbacks after the RHS was read.
         v.idfrom = self.dyn_id_box(v).v

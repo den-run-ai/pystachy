@@ -15,6 +15,7 @@ usage: python3 tools/rtcheck.py [N] [SEED]   (N rounds of cases, default 5000)
 """
 import math
 import os
+import posixpath
 import random
 import re
 import sys
@@ -602,7 +603,36 @@ def fuzz_ascii():
             same("ascii-raw", outcome(rt.pys_ascii, bt(r)), ("ok", ascii_raw(r)), (r,))
 
 
+def fuzz_path():
+    # os.path's string functions against posixpath's, which os.path is on POSIX: paths of
+    # slashes, dots, names and "~", also of non-ASCII characters. abspath() and relpath() take
+    # the working directory and join() from CPython here, as they take runtime.c's when compiled
+    rt.pys_getcwd = lambda: b(os.getcwd())
+    rt.pys_path_join = lambda x, y: b(posixpath.join(u(x), u(y)))
+    parts = ["/", "/", ".", ".", "..", "a", "b.c", "é", "€", "𝄞", "~", " ", "//", "x.y.z", ".h"]
+
+    def path():
+        return "".join(R.choice(parts) for _ in range(R.randrange(9)))
+
+    def strs(v):
+        # a CPython result as runtime.py gives it: strs as Pystachy strs, a bool as an int
+        return tuple(b(x) for x in v) if isinstance(v, tuple) else b(v) if isinstance(v, str) else int(v)
+
+    def want(f, *a):
+        r = outcome(f, *a)
+        return (r[0], strs(r[1])) if r[0] == "ok" else r
+
+    for _ in range(N):
+        p, q = path(), path()
+        for name in "basename dirname split splitext isabs normpath abspath".split():
+            same("path." + name, outcome(getattr(rt, "pys_path_" + name), b(p)), want(getattr(posixpath, name), p), (p,))
+        same("path.relpath", outcome(rt.pys_path_relpath, b(p), b(q)), want(posixpath.relpath, p, q), (p, q))
+        m = [path() for _ in range(R.randrange(4))] + [p + q for _ in range(R.randrange(2))]
+        same("path.commonprefix", outcome(rt.pys_path_commonprefix, [b(x) for x in m]), want(posixpath.commonprefix, m), (m,))
+
+
 fuzz_str()
+fuzz_path()
 fuzz_unicode_classification()
 fuzz_replace()
 fuzz_bytes()

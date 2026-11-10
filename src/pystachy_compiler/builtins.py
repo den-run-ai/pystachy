@@ -22,6 +22,7 @@ from src.pystachy_compiler.specs import (
     GALIASUSE,
     GLUE,
     IMPLEMENTATION,
+    INERT,
     ITERS,
     LINKDL,
     TEXTVIEW,
@@ -67,6 +68,8 @@ from src.pystachy_compiler.utils import (
     lt,
     lib_source,
     nones as only_nones,
+    numeric_identity,
+    pure_arg,
     rtt,
     runtime_format,
     selem,
@@ -189,6 +192,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         path = self.coerce(self.expr(args[0], "str"), "str")
         limit = self.as_int(self.expr(args[1], "int"))
         return Val(self.rt("pys_cache_file_hash", "ptr", [f"ptr {path.v}", f"i64 {limit.v}"]), "str")
+    if (name == "min" or name == "max") and len([a for a in args if a.kind == "kw" and a.s == "default"]) > 0:
+        return self.minmax_default(name, args)
     if name == "__pys_ctypes_value":
         # ctypes' generic conversion helpers keep concrete scalars unboxed, but
         # must not accept int(float), float(str), or arbitrary conversion methods.
@@ -705,6 +710,20 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             stt = self.dry(args[1])
             if stt == "str" or is_list(stt) or is_dict(stt) or is_set(stt):
                 return self.reduce(name, args, stt)
+    if name == "os.path.relpath" and len(args) == 2 and args[0].kind != "kw" and args[1].kind == "kw" and args[1].s == "start":
+        args = [args[0], args[1].kids[0]]  # (relpath(path, start=s) is relpath(path, s))
+    if name == "os.makedirs" and len(args) > 0 and args[0].kind != "kw":
+        # makedirs(name, mode=0o777, exist_ok=False): the keywords, named in that order, as the
+        # positions they name, and what is left out as its default (constants: the arguments
+        # are evaluated as written)
+        given = [a for a in args[1:] if a.kind != "kw"]
+        named = [a for a in args[1:] if a.kind == "kw"]
+        rest = ["mode", "exist_ok"][len(given) :]
+        if len(given) <= 2 and [a.s for a in named] == [p for p in rest if p in [a.s for a in named]]:
+            args = [args[0]] + given
+            for p in rest:
+                hit = [a.kids[0] for a in named if a.s == p]
+                args.append(hit[0] if len(hit) == 1 else mk("int", "511", self.line, []) if p == "mode" else mk("False", "", self.line, []))
     npos = 0
     for a in args:
         if a.kind != "kw":
@@ -896,6 +915,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             vals = [self.big_narrow(v) for v in vals]
     if name not in ["str", "repr", "ascii", "hash", "bool", "min", "max"]:
         vals = [self.big_opt_narrow(v) for v in vals]  # (the others take an int | None's 64-bit int: bigints.py)
+    if name == "os.path.relpath" and len(vals) == 1:
+        vals = vals + [Val(self.sconst("."), "str")]  # (start is os.curdir where it is not given)
     key = f"{name}({','.join([v.t for v in vals])})"
     asked = key  # (math's calls convert their arguments below; a rejection names them as given)
     if self.rtmode and name.startswith("_rt."):
@@ -932,9 +953,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val("null", "None")
     if (name == "os.fspath" or name == "os.path.normcase") and len(vals) == 1 and vals[0].t == "str":
         return vals[0]  # a str path is its own file system path, and posixpath's normcase() of it
-    if name == "os.getenv" and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
+    if (name == "os.getenv" or name == "os.environ.get") and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
         # without a default the result is the variable's value or None
-        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', 'argument 1 of os.getenv()').v}", "ptr null"]), "opt[str]")
+        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', f'argument 1 of {name}()').v}", "ptr null"]), "opt[str]")
     if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
         return self.as_int(vals[0])
     if name == "round" and len(vals) >= 1 and (vals[0].t == "int" or vals[0].t == "bool"):
@@ -1160,6 +1181,153 @@ def gen_callable_type(self, t: str) -> int:
     if len(calls) == 0 and len([d for d in self.classes.values() if d.tag > 0 and "__call__" in d.methods and len(cs) == 1 and self.derives(d.name, t)]) > 0:
         self.err(f"callable() of a {typestr(t)} is not supported: a derived class defines __call__")
     return -2 if len(calls) > 0 else 0
+
+def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
+    # min() or max() of one iterable with default=: the default where the iterable has no item,
+    # else what the function gives without it. Lists and dynamic inputs stay live; other inputs
+    # are taken into a list first (as_list, as the function takes them). key= and default= are
+    # evaluated as CPython evaluates them: once the iterable is in hand (the iterator of a
+    # generator expression or of range(), zip(), map(), ... made: consume's arg) and before
+    # its first item is taken
+    pos = [a for a in args if a.kind != "kw"]
+    kws = [a for a in args if a.kind == "kw"]
+    if len(pos) != 1 or pos[0].kind == "starred" or pos[0].kind == "dstar":
+        self.err(f"Cannot specify a default for {name}() with multiple positional arguments")  # (CPython's TypeError)
+    for a in kws:
+        if a.s != "key" and a.s != "default":
+            self.err(f"keyword argument '{a.s}' of {name}() is not supported")
+    it = pos[0]
+    lazy = self.iterator_call(it) or self.is_mapcall(it) or (it.kind == "listcomp" and it.s == "gen")
+    contextual = [a.s == "default" and pure_arg(a.kids[0]) and a.kids[0].kind not in INERT for a in kws]
+    # An empty display has no observable evaluation to capture. Leave it for the items'
+    # type, while other keywords still run before the traversal.
+    ka = IterArg(mk("tuple", "", self.line, [mk("None", "", self.line, []) if contextual[j] else kws[j].kids[0] for j in range(len(kws))])) if lazy else None
+    if ka is not None:
+        ka.capture = True
+    v0 = self.consume(it, "", ka)
+    kv: list[Val] = ka.values if ka is not None else []
+    if ka is None:
+        for j in range(len(kws)):
+            value = Val("null", "None") if contextual[j] else self.expr(kws[j].kids[0], "")
+            if self.idhere() and numeric_identity(value.t):
+                # A later keyword can first alias, then rebind, a private numeric local.
+                # Preserve the default's object before that binding's lazy slot changes.
+                value.idfrom = self.dyn_id_box(value).v
+            kv.append(value)
+    if is_opt(v0.t):
+        v0 = self.unwrap(v0, "TypeError: 'NoneType' object is not iterable")
+    # The same conversion supplies the item type for tuples, generators and iterable objects.
+    # It does not request a length hint; dynamic inputs keep their live iterator path below.
+    lv = v0 if v0.t == "dyn" or is_list(v0.t) else self.as_list(v0, name)
+    if lv.t != "dyn" and not is_list(lv.t):
+        self.err(f"'{tname(lv.t)}' object is not iterable")
+    iw = "dyn" if lv.t == "dyn" else elem(lv.t)
+    for j in range(len(kws)):
+        if contextual[j]:
+            kv[j] = self.expr(kws[j].kids[0], iw)
+    dv = [kv[j] for j in range(len(kws)) if kws[j].s == "default"][0]
+    keys = [kv[j] for j in range(len(kws)) if kws[j].s == "key"]
+    if v0.t == "dyn":
+        # A dynamic list must stay live while a key or comparison mutates it. Iteration also
+        # avoids list()'s length hint for dynamic user objects and preserves item identity.
+        return dynamic_minmax_default(self, name, v0, keys[0] if len(keys) > 0 else Val("null", "None"), dv)
+    self.close_temp(it, v0)
+    rest = [mk("kw", "key", self.line, [self.vnode(kv[j])]) for j in range(len(kws)) if kws[j].s == "key"]
+    some = self.num_cmp(">", self.builtin("len", [self.vnode(lv)], ""), Val("0", "int"))
+    l1 = self.label()
+    l2 = self.label()
+    l3 = self.label()
+    self.cbr(some.v, l1, l2)
+    self.place(l1)
+    self.branch += 1  # (as a conditional expression's arm: gen_ifexp)
+    r = self.builtin(name, [self.vnode(lv)] + rest, "")
+    self.branch -= 1
+    # the result is of the items' type; None as the default makes it optional, an int and a
+    # promoting int (also as items of tuples) join, and a dynamic value takes the other as one
+    t = r.t
+    if dv.t == "None" and r.t != "None":
+        t = self.join(r.t, "None")
+    elif (r.t == "dyn") != (dv.t == "dyn"):
+        t = "dyn"
+    elif dv.t != r.t:
+        # (an int | None default of int items; or types that differ only in which ints promote)
+        t = dv.t if is_opt(dv.t) and unopt(dv.t) == r.t else self.join(r.t, dv.t) if r.t.replace(BIG, "int") == dv.t.replace(BIG, "int") else ""
+    # Classes, class-containing unions and dynamic values already represent None without
+    # an opt[...] wrapper; use the same nullable-type rule as the join and coercion paths.
+    if t == "" or (dv.t == "None" and t != "None" and self.optional(t) != t):
+        self.err(f"default= of {name}() must be None or of the items' type, {typestr(r.t)}, not {typestr(dv.t)}")
+    e1 = "" if self.term else self.cur
+    if e1 != "":
+        r = self.coerce(r, t)
+        e1 = self.cur
+    self.br(l3)
+    self.place(l2)
+    d = self.coerce(dv, t)
+    e2 = self.cur
+    self.br(l3)
+    self.place(l3)
+    if t == "None":
+        return Val("null", "None")
+    ph = Ins("phi", t, "")
+    if e1 != "":
+        self.incoming(ph, r.v, e1)
+    self.incoming(ph, d.v, e2)
+    result = Val(self.phi(ph), t)
+    if not self.idhere() or not numeric_identity(t):
+        return result
+    return self.numeric_phi(result, [r, d] if e1 != "" else [d], [e1, e2] if e1 != "" else [e2])
+
+def dynamic_minmax_default(self, name: str, o: Val, key: Val, default: Val) -> Val:
+    # Each dynamic item is compared as it arrives, retaining its original box. The default
+    # supplies only the empty result: it is never compared and never passed to the key.
+    if key.t != "None":
+        self.key_check(key, f"{name}()")
+    op = ">" if name == "max" else "<"
+    lnone = self.key_none(key, "dyn", op, f"{name}()") if key.t != "None" else ""
+    best = self.alloca("dyn", "")
+    self.mstore("dyn", self.coerce(default, "dyn").v, best)
+    first = self.alloca("bool", "")
+    self.mstore("bool", "true", first)
+    it = self.iterable(o)
+    lc = self.label()
+    le = self.label()
+    self.fn.loops.append(Loop("while", lc, lc, lc, le))
+    self.place(lc)
+    item = Val(self.rt("pys_dyn_next", "ptr", [f"ptr {it.v}"]), "dyn")
+    more = self.label()
+    self.cbr(self.ptr_cmp("==", item, Val("null", "dyn")).v, le, more)
+    self.place(more)
+    k = item if key.t == "None" else self.call_key(key, item)
+    if "?" in k.t or k.t == "None":
+        self.err(f"comparing the keys of {name}() is not supported: its key function returns {typestr(k.t)}")
+    bk = self.alloca(k.t, "")
+    take = self.label()
+    test = self.label()
+    self.cbr(self.mload("bool", first), take, test)
+    self.place(test)
+    better = self.cmp2(op, k, Val(self.mload(k.t, bk), k.t))
+    self.cbr(self.truth(better), take, lc)
+    self.place(take)
+    self.mstore("dyn", item.v, best)
+    self.mstore(k.t, k.v, bk)
+    self.mstore("bool", "false", first)
+    self.br(lc)
+    self.place(le)
+    result = Val(self.mload("dyn", best), "dyn")
+    if lnone == "":
+        return result
+    keyed = self.cur
+    end = self.label()
+    self.br(end)
+    self.place(lnone)
+    plain = dynamic_minmax_default(self, name, o, Val("null", "None"), default)
+    unkeyed = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "dyn", "")
+    self.incoming(ph, result.v, keyed)
+    self.incoming(ph, plain.v, unkeyed)
+    return Val(self.phi(ph), "dyn")
 
 def gen_vnode(self, v: Val) -> Node:
     # a node whose value is v, computed already: an argument of a call the compiler makes (the
@@ -1835,8 +2003,11 @@ def gen_consume(self, n: Node, want: str, arg: IterArg | None = None, resultsoft
         # The runtime backing is pointer-free: keep list[int] regardless of want.
         # Optional/union item storage needs a fresh scanned allocation, never retyping.
         vs = self.range_args(n.kids[1:])
-        if arg is not None and arg.split != "":
-            self.iterarg(arg)  # (xs[::0] = range(n): the consumer's turn comes before the items are made)
+        if arg is not None and (arg.split != "" or arg.capture):
+            if arg.capture and (vs[2].startswith("%") or int(vs[2]) == 0):
+                self.guard(self.num_cmp("==", Val(vs[2], "int"), Val("0", "int")).v, "ValueError: range() arg 3 must not be zero")
+            # Validate range construction before captured keywords, then materialize its items.
+            self.iterarg(arg)
             return Val(self.rt("pys_range_list", "ptr", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"]), "list[int]")
         r = Val(self.rt("pys_range_list", "ptr", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"]), "list[int]")
         self.iterarg(arg)

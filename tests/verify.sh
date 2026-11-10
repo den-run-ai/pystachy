@@ -79,7 +79,8 @@
 #                  collections every max(4 MiB, live bytes) of them; small objects and arrays
 #                  of pointers keep the 32 MiB window
 #   container-eq   tools/eqprobe.c: shared DAG comparisons stop within a fixed comparison budget,
-#                  including ordering and list searches, normally and with GC stress
+#                  including ordering and list searches; a str's == and searches of int, bool
+#                  and str lists run no generic comparison; normally and with GC stress
 #   weakrefs       tools/weakrefprobe.c: true weak targets and dead registry entries are cleared
 #                  before sweeping, including cycles, large objects and allocation stress
 #   box-slots      tools/boxprobe.c: Any and union boxes take exact 16-byte slots of the right kind;

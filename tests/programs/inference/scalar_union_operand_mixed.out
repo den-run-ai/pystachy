@@ -1,0 +1,8 @@
+3.0:float 6:int 8:int 0:int 3.0:float
+2:int 6.0:float 0.0:float 2:int
+1.5:float 6:int 4.5:float 0:int
+1.5:float 2:int 3.0:float 12:int
+4.0:float 4.5:float 1.5:float 1.5:float 6:int
+-0.5:float 3:int -2:int -1.0:float -2:int 6.0:float
+6:int 8:int 0.5:float 1:int ['1:int', '0.0:float', '1.5:float'] ['1:int', '0.0:float', '4:int']
+[exit 0]

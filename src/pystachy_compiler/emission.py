@@ -577,6 +577,10 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
     for b in self.fn.blocks:
         if b.label == label:
             return self.convert_in(v, t, b)
+    if self.drying > 0:
+        # (the block dry() began in is its own, in no list: its code is dropped, and only the
+        # type is read)
+        return Val(v.v, t)
     fail(f"internal error: no block {label} to convert {v.t} to {t} in", 0)
     return v
 
