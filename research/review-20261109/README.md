@@ -301,6 +301,32 @@ Runtime prototype (`prototype/runtime-scalar-eq-fastpath.patch`), built the same
 Main's CI on `c1796654` (push): CI, Coverage, Variants, Installation, Lint, Performance
 smoke and Packages all concluded `success` by 20:27 UTC. Job-level results were not read.
 
+## Follow-up: pull requests (10 November)
+
+Each is one branch from main `c1796654`, validated on its own (`make` fixed points, new
+regression programs in JIT and AOT, focused `make test`, `tools/irsame.sh` against main).
+
+| Finding | Pull request | Change |
+|---|---|---|
+| 1.1 Arithmetic on a conditional operand in union contexts | #1199 | `left_operand()`; also covers promoting-int arms, which the prototype left out |
+| Section 2: `str ==` and scalar list search | #1201 | The runtime prototype, with a zero-generic-comparison bound in `tools/eqprobe.c` |
+| Section 5: `os.path` names | #1200 | Ten builtin functions in `runtime.py` and `runtime.c`, not a forward to `posixpath`: importing it costs about 50 ms a run, and it has no `abspath`, `relpath`, `expanduser` or `commonprefix` |
+| Section 5: `max()`/`min()` `default=` | #1204 | With one iterable, also with `key=`; CPython's evaluation order |
+| Section 5: `Counter(x for x in xs)` | #1203 | A generator argument binds `Iterable[T]` for generic classes |
+| Section 5: `os.environ[...]`, `os.makedirs(exist_ok=)` | #1205 | Item reads, writes, `del`, `in`, `get()`; `os.makedirs()` |
+| New: internal error typing `n or a` of an int and a promoting int | #1202 | Found while fuzzing #1199's programs as promoting-int modules |
+
+Not addressed, with the reason:
+
+| Finding | Why not yet |
+|---|---|
+| 1.2 Dict index width | No test can reach 2**31 entries here; a guard would be unverified |
+| 1.3 Case mapping (#120) | A default-behavior decision (implement, or raise on non-ASCII input) |
+| Caught runtime errors unwind; float formatting; `str(int)`; non-ASCII `s[i]` | Each is a runtime design change that needs its own measurements |
+| JIT code generation of unused library code; program-cache miss; retries re-parse | Driver and loader policy (#430, #1185); the loader rewrites the trees it parses, so a retry cannot simply reuse them |
+| Inherited methods per receiver class; 4,096-specialization limit | Compiler architecture |
+| `enumerate(zip(...))`; `int.to_bytes`; `e.args`; `__file__`; `json.dump` | Not started |
+
 ## Reproducing
 
 ```sh
