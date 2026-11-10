@@ -7607,6 +7607,19 @@ void pys_environ_set(Str *k, Str *v) {
   if (strchr(k->s, '=')) pys_fail("ValueError: illegal environment variable name");
   if (setenv(k->s, v->s, 1)) ioerr(errno);
 }
+static _Noreturn void environ_missing(Str *k) {   /* KeyError(k), as os.environ raises it for a name it has not */
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr_str(&b, k); put(&b, "", 1); pys_fail(b.p);
+}
+Str *pys_environ_get(Str *k) {                    /* os.environ[k] */
+  Str *v = pys_getenv(k, 0);
+  if (!v) environ_missing(k);
+  return v;
+}
+void pys_environ_del(Str *k) {                    /* del os.environ[k] */
+  Str *e = env_encoded(k);
+  if (nul(e) || strchr(e->s, '=') || !getenv(e->s)) environ_missing(k);
+  if (unsetenv(e->s)) ioerr(errno);
+}
 Str *pys_environ_pop(Str *k, Str *dflt) {
   k = env_encoded(k);
   char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
@@ -8534,6 +8547,34 @@ List *pys_listdir_cwd(void) { return pys_listdir(pys_str(".", 1)); }
 /* os.mkdir(p, mode): CPython's posix_mkdir */
 void pys_mkdir(Str *p, I mode) { if (nul(p)) pys_fail("ValueError: mkdir: embedded null character in path"); if (mkdir(p->s, (mode_t)mode)) oserr(p->s); }
 void pys_mkdir_default(Str *p) { pys_mkdir(p, 0777); }
+/* os.makedirs(name, mode, exist_ok), as CPython 3.13's steps: a parent that does not exist is made
+   first, with the default mode, and its FileExistsError (someone made it meanwhile) is passed
+   over; then name itself, whose failure exist_ok forgives where name is a directory */
+I pys_isdir(Str *p);
+static void path_split(Str *p, Str **head, Str **tail) {   /* posixpath.split(p) */
+  I i = p->len;
+  while (i > 0 && p->s[i - 1] != '/') i--;
+  I j = i;
+  while (j > 0 && p->s[j - 1] == '/') j--;
+  *head = pys_str(p->s, j ? j : i); *tail = pys_str(p->s + i, p->len - i);
+}
+static void makedirs(Str *name, I mode, I exist_ok, int top) {
+  Str *head, *tail;
+  path_split(name, &head, &tail);
+  if (!tail->len) path_split(head, &head, &tail);
+  if (head->len && tail->len && !pys_exists(head)) {
+    makedirs(head, 0777, exist_ok, 0);
+    if (tail->len == 1 && tail->s[0] == '.') return;       /* (xxx/newdir/. exists once xxx/newdir does) */
+  }
+  if (nul(name)) pys_fail("ValueError: mkdir: embedded null character in path");
+  if (mkdir(name->s, (mode_t)mode)) {
+    int e = errno;
+    if (exist_ok && pys_isdir(name)) return;
+    if (!top && e == EEXIST) return;                       /* (the caller's except FileExistsError: pass) */
+    errno = e; oserr(name->s);
+  }
+}
+void pys_makedirs(Str *name, I mode, I exist_ok) { makedirs(name, mode, exist_ok, 1); }
 static _Noreturn void oserr2(const char *a, const char *b) {   /* the OSError of a call of two paths: 'a' -> 'b' */
   int e = errno; Buf bf = {0}; char t[32];
   const char *k = errcls(e), *m = strerror(e);

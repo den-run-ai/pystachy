@@ -1,0 +1,10 @@
+True ['a'] ['b']
+['a', 'd', 'm', 't'] ['n', 'o'] ['u'] ['e']
+FileExistsError [Errno 17] File exists: 'TMP/a/b/c'
+FileExistsError [Errno 17] File exists: 'TMP/a'
+FileExistsError [Errno 17] File exists: 'TMP/file'
+NotADirectoryError [Errno 20] Not a directory: 'TMP/file/under'
+FileNotFoundError [Errno 2] No such file or directory: ''
+TypeError expected str, bytes or os.PathLike object, not NoneType
+False
+[exit 0]

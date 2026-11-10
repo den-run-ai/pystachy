@@ -2781,6 +2781,10 @@ def gen_indexed_ord(self, n: Node) -> Val | None:
 
 def gen_index(self, n: Node, want: str = "") -> Val:
     c = n.kids[0]
+    if c.kind == "attr" and n.kids[1].kind != "slice" and self.dotted(c) == "os.environ":
+        # os.environ[name]: the variable's value, or KeyError (the mapping itself is no value)
+        name = self.coerce(self.expr(n.kids[1], "str"), "str", "the name in os.environ[...]")
+        return Val(self.rt("pys_environ_get", "ptr", [f"ptr {name.v}"]), "str")
     if c.kind == "name" and c.s in self.galias and c.s not in self.ltype:
         self.err(GALIASSUB.replace("NAME", short(c.s)))
     f = c.kids[0] if c.kind == "call" else c
@@ -4333,6 +4337,11 @@ def gen_compare(self, n: Node) -> Val:
     self.stkkey = self.nokey
     self.nonecmp = False
     self.cmpnode = self.nokey
+    if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and n.kids[1].kind == "attr" and self.dotted(n.kids[1]) == "os.environ":
+        # name in os.environ: whether the variable is set
+        name = self.coerce(a, "str", "the name tested in os.environ")
+        value = Val(self.rt("pys_getenv", "ptr", [f"ptr {name.v}", "ptr null"]), "opt[str]")
+        return self.ptr_cmp("!=" if ops[0] == "in" else "==", value, Val("null", "None"))
     if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.iterator_call(n.kids[1]) and n.kids[1].kids[0].s == "range":
         # x in range(...): arithmetic, as CPython's range.__contains__ does for ints; an int |
         # None that is None equals no item

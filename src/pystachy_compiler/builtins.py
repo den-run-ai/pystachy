@@ -705,6 +705,18 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             stt = self.dry(args[1])
             if stt == "str" or is_list(stt) or is_dict(stt) or is_set(stt):
                 return self.reduce(name, args, stt)
+    if name == "os.makedirs" and len(args) > 0 and args[0].kind != "kw":
+        # makedirs(name, mode=0o777, exist_ok=False): the keywords, named in that order, as the
+        # positions they name, and what is left out as its default (constants: the arguments
+        # are evaluated as written)
+        given = [a for a in args[1:] if a.kind != "kw"]
+        named = [a for a in args[1:] if a.kind == "kw"]
+        rest = ["mode", "exist_ok"][len(given) :]
+        if len(given) <= 2 and [a.s for a in named] == [p for p in rest if p in [a.s for a in named]]:
+            args = [args[0]] + given
+            for p in rest:
+                hit = [a.kids[0] for a in named if a.s == p]
+                args.append(hit[0] if len(hit) == 1 else mk("int", "511", self.line, []) if p == "mode" else mk("False", "", self.line, []))
     npos = 0
     for a in args:
         if a.kind != "kw":
@@ -932,9 +944,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return Val("null", "None")
     if (name == "os.fspath" or name == "os.path.normcase") and len(vals) == 1 and vals[0].t == "str":
         return vals[0]  # a str path is its own file system path, and posixpath's normcase() of it
-    if name == "os.getenv" and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
+    if (name == "os.getenv" or name == "os.environ.get") and (len(vals) == 1 or (len(vals) == 2 and vals[1].t == "None")):
         # without a default the result is the variable's value or None
-        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', 'argument 1 of os.getenv()').v}", "ptr null"]), "opt[str]")
+        return Val(self.rt("pys_getenv", "ptr", [f"ptr {self.coerce(vals[0], 'str', f'argument 1 of {name}()').v}", "ptr null"]), "opt[str]")
     if (name == "math.floor" or name == "math.ceil" or name == "math.trunc") and len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool"):
         return self.as_int(vals[0])
     if name == "round" and len(vals) >= 1 and (vals[0].t == "int" or vals[0].t == "bool"):

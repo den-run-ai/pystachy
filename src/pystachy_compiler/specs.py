@@ -127,6 +127,7 @@ CALLS: dict[str, str] = {
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
     # Direct environment mutations; os.environ itself is not a mapping value.
     "os.environ.__setitem__(str,str)": "pys_environ_set:None", "os.environ.pop(str,str)": "pys_environ_pop:str",
+    "os.environ.get(str,str)": "pys_getenv:str", "os.makedirs(str,int,bool)": "pys_makedirs:None",
     "ffi.bytes_at(int,int)": "pys_bytes_at:bytes", "ffi.load_library(str)": "pys_load_library:int",
     "ffi.untrack(int)": "pys_untrack:None", "ffi.collected()": "pys_collected:int",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
@@ -510,6 +511,7 @@ NONEARG: dict[str, str] = {"len": "object of type 'NoneType' has no len()", "dic
                            "ord": "ord() expected string of length 1, but NoneType found",
                            "os.system": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.fspath": "expected str, bytes or os.PathLike object, not NoneType",
+                           "os.makedirs": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.path.normcase": "expected str, bytes or os.PathLike object, not NoneType",
                            "abs": "bad operand type for abs(): 'NoneType'", "round": "type NoneType doesn't define __round__ method",
                            "chr": "'NoneType' object cannot be interpreted as an integer",
@@ -1032,6 +1034,7 @@ RUNTIME: dict[str, str] = {
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
     "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
+    "environ_get": "str:str|R A I|", "environ_del": "None:str|R A I|", "makedirs": "None:str,int,bool|R A I|",
     "set_inheritable": "None:int,int|R A I|",
     "cache_lock": "int:str|I|", "cache_lock_fd": "int:|I|", "cache_file_hash": "str:str,int|A I|", "ignored_signals": "int:|I|",
     "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",
