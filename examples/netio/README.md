@@ -6,9 +6,15 @@ reads and persistent **epoll on Linux / kqueue on macOS**. It does not change th
 compiler, runtime or the normal program's dependencies. The same test program
 also runs against CPython's unmodified `socket`, `selectors` and `os` APIs.
 
-The verified platform is **Linux x86-64**, with CPython 3.13.16. The macOS
-implementation is present but unexecuted; Windows is unsupported. This optional
-module does not make `import socket`, `import selectors` or `asyncio` compile.
+The original committed execution and timing records use **Linux x86-64**, with
+CPython 3.13.16. Current compiler and platform qualification, including
+exact-commit results, is tracked in
+[#1216](https://github.com/den-run-ai/pystachy/pull/1216).
+[CI](../../.github/workflows/ci.yml) and
+[Installation](../../.github/workflows/install.yml) include Linux epoll, pipe and
+ownership checks and macOS ARM64 kqueue/pipe checks, retaining source-identified
+reports. Windows is unsupported. This optional module does not make
+`import socket`, `import selectors` or `asyncio` compile.
 
 ## Run the comparison
 
@@ -243,9 +249,14 @@ cc -std=c11 -O1 -g -Wall -Wextra -Werror -Wpedantic \
 ASAN_OPTIONS=detect_leaks=1 build/netio/ownership
 ```
 
-ASan and UBSan passed locally with `detect_leaks=0`; the executor's ptrace setup
-prevented LeakSanitizer from running. Descriptor-count checks passed, but a native
-heap leak scan and macOS execution remain outstanding.
+The original local ASan/UBSan checks used `detect_leaks=0` because that executor's
+ptrace setup prevented LeakSanitizer from running; descriptor-count checks passed.
+The later
+[Linux distribution job](https://github.com/den-run-ai/pystachy/actions/runs/42846109042/job/129940533272)
+at `37a9db95` passed the 300-cycle ASan/UBSan ownership probe with
+`ASAN_OPTIONS=detect_leaks=1`. This is Linux evidence; current compiler and macOS
+qualification results are tracked in
+[#1216](https://github.com/den-run-ai/pystachy/pull/1216).
 
 All code here is original project code. API references:
 [CPython socket](https://docs.python.org/3.13/library/socket.html),
