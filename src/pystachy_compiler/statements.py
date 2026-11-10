@@ -1540,7 +1540,17 @@ def gen_iterarg(self, arg: IterArg | None) -> None:
         self.br(arg.split)
         self.place(arg.trav)
     elif arg is not None:
-        arg.value = self.expr(arg.node, "")
+        if arg.capture:
+            arg.values = []
+            for node in arg.node.kids:
+                value = self.expr(node, "")
+                if self.idhere() and numeric_identity(value.t):
+                    # A later keyword or the traversal can rebind the numeric source. Capture
+                    # its object now; the consumer's use keeps this pointer live through both.
+                    value.idfrom = self.dyn_id_box(value).v
+                arg.values.append(value)
+        else:
+            arg.value = self.expr(arg.node, "")
 
 def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None:
     tgt = n.kids[0]
