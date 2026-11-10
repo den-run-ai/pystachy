@@ -1184,38 +1184,37 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     lazy = self.iterator_call(it) or self.is_mapcall(it) or (it.kind == "listcomp" and it.s == "gen")
     contextual = [a.s == "default" and pure_arg(a.kids[0]) and a.kids[0].kind not in INERT for a in kws]
     # An empty display has no observable evaluation to capture. Leave it for the items'
-    # type, as for a direct list, while other keywords still run before the traversal.
+    # type, while other keywords still run before the traversal.
     ka = IterArg(mk("tuple", "", self.line, [mk("None", "", self.line, []) if contextual[j] else kws[j].kids[0] for j in range(len(kws))])) if lazy else None
     if ka is not None:
         ka.capture = True
     v0 = self.consume(it, "", ka)
-    # (an empty display as the default has the type of a list's items)
-    iw = elem(unopt(v0.t)) if is_list(unopt(v0.t)) else ""
     kv: list[Val] = ka.values if ka is not None else []
-    for j in range(len(kws)):
-        if ka is None or contextual[j]:
-            value = self.expr(kws[j].kids[0], iw if contextual[j] else "")
+    if ka is None:
+        for j in range(len(kws)):
+            value = Val("null", "None") if contextual[j] else self.expr(kws[j].kids[0], "")
             if self.idhere() and numeric_identity(value.t):
                 # A later keyword can first alias, then rebind, a private numeric local.
                 # Preserve the default's object before that binding's lazy slot changes.
                 value.idfrom = self.dyn_id_box(value).v
-            if ka is None:
-                kv.append(value)
-            else:
-                kv[j] = value
+            kv.append(value)
     if is_opt(v0.t):
         v0 = self.unwrap(v0, "TypeError: 'NoneType' object is not iterable")
+    # The same conversion supplies the item type for tuples, generators and iterable objects.
+    # It does not request a length hint; dynamic inputs keep their live iterator path below.
+    lv = v0 if v0.t == "dyn" or is_list(v0.t) else self.as_list(v0, name)
+    if lv.t != "dyn" and not is_list(lv.t):
+        self.err(f"'{tname(lv.t)}' object is not iterable")
+    iw = "dyn" if lv.t == "dyn" else elem(lv.t)
+    for j in range(len(kws)):
+        if contextual[j]:
+            kv[j] = self.expr(kws[j].kids[0], iw)
     dv = [kv[j] for j in range(len(kws)) if kws[j].s == "default"][0]
     keys = [kv[j] for j in range(len(kws)) if kws[j].s == "key"]
     if v0.t == "dyn":
         # A dynamic list must stay live while a key or comparison mutates it. Iteration also
         # avoids list()'s length hint for dynamic user objects and preserves item identity.
         return dynamic_minmax_default(self, name, v0, keys[0] if len(keys) > 0 else Val("null", "None"), dv)
-    # (the items as min() and max() take them, which is by __iter__ alone: list() would ask an
-    # object for its __len__ first, as a hint, and they never do)
-    lv = v0 if is_list(v0.t) else self.as_list(v0, name)
-    if not is_list(lv.t):
-        self.err(f"'{tname(lv.t)}' object is not iterable")
     self.close_temp(it, v0)
     rest = [mk("kw", "key", self.line, [self.vnode(kv[j])]) for j in range(len(kws)) if kws[j].s == "key"]
     some = self.num_cmp(">", self.builtin("len", [self.vnode(lv)], ""), Val("0", "int"))
