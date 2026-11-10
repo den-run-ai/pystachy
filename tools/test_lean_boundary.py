@@ -204,16 +204,12 @@ class AdapterTests(SnapshotFixture):
                     self.normalized(snapshot)
                 self.assertNotIsInstance(raised.exception, Unsupported)
 
-    def test_generators_null_dynamic_slots_and_box_stores_stay_outside(self):
+    def test_generators_and_box_stores_stay_outside(self):
         def generator(function):
             function["recursion"]["generator"] = True
 
         def suspension(function):
             self.block(function, "L9")["operations"][0:0] = [instruction("gen.promise", "%ptr", results=[9001])]
-
-        def unbound(function):
-            number = next(slot for slot in function["slots"] if slot["text"] == "value")["results"][0]
-            self.block(function, "L8")["operations"][0:0] = [store(f"%value.{number}", "null", "dyn")]
 
         def box_store(function):
             # an address derived from a box: only the runtime may write boxes
@@ -221,7 +217,7 @@ class AdapterTests(SnapshotFixture):
                 instruction("mach.addr", "%ptr", "int", [9002], [("%a0", "%ptr"), ("1", "int")]),
                 instruction("mach.store", operands=[("%t9002", "%ptr"), ("0", "int")])]
 
-        for mutate in (generator, suspension, unbound, box_store):
+        for mutate in (generator, suspension, box_store):
             with self.subTest(mutate.__name__):
                 snapshot, function = self.selected()
                 mutate(function)
@@ -395,6 +391,16 @@ class ProvedCheckerTests(SnapshotFixture):
         old_target = false_block["operations"][-1]["targets"][0]
         false_block["operations"][-1]["targets"] = branch["targets"][:1]
         function["blocks"] = [block for block in function["blocks"] if block["label"] != old_target]
+        self.assertFalse(self.check(self.normalized(snapshot)))
+
+    def test_null_store_gives_an_unknown_tag(self):
+        # An unbound local or an identity box not made yet holds null, which has no tag.
+        snapshot, function = self.selected()
+        slots = {slot["text"]: f"%{slot['text']}.{slot['results'][0]}" for slot in function["slots"]}
+        payload_block, _, _ = self.operation(function, "dyn.payload")
+        payload_block["operations"][0:0] = [store(slots["other"], "null", "dyn")]
+        self.assertTrue(self.check(self.normalized(snapshot)))
+        payload_block["operations"][0:0] = [store(slots["value"], "null", "dyn")]
         self.assertFalse(self.check(self.normalized(snapshot)))
 
     def test_calls_keep_private_slots_but_their_dynamic_results_are_unknown(self):
@@ -572,19 +578,19 @@ class SharedSlotNumberTests(SnapshotFixture):
                     by_number.setdefault(slot["results"][0], set()).add((slot["text"], slot["immediate"]))
                 # (if the compiler stops sharing these numbers, this case no longer tests them)
                 self.assertIn(shared, by_number.values())
-        # flagged_total stores null in its float's identity box before boxing it.
-        with self.assertRaisesRegex(Unsupported, "unbound dynamic"):
-            normalize_snapshot(self.snapshot, "flagged_total")
         candidate, metadata = normalize_snapshot(self.snapshot, "flagged_word")
         self.assertGreater(metadata["threaded_edges"], 0)
+        # (flagged_total stores null in its float's identity box before boxing it)
+        normalize_snapshot(self.snapshot, "flagged_total")
 
     @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
     def test_short_circuit_guard_accepts_only_through_its_known_edges(self):
-        completed = subprocess.run(
-            [sys.executable, str(TOOL), "--snapshot", str(self.snapshot_path), "--function", "flagged_word"],
-            capture_output=True, text=True, timeout=10,
-        )
-        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        for name in ("flagged_word", "flagged_total"):
+            completed = subprocess.run(
+                [sys.executable, str(TOOL), "--snapshot", str(self.snapshot_path), "--function", name],
+                capture_output=True, text=True, timeout=10,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
         # "flag and isinstance(word, str)": the join's phi takes the comparison from one edge and
         # the false flag from the other. Claiming either edge's value is true skips the guard.
         snapshot, function = self.selected("flagged_word")

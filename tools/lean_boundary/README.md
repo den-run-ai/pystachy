@@ -119,8 +119,9 @@ typed-IR operation has an explicit role:
 - Private slots are named as lowering names them, by text and kind. A local's
   "is assigned" flag (`%x.def.N`) and numeric identity companions (`%x.box.N`,
   `%x.boxgen.N`) share the local's number `N`; each remains a separate location.
-  Loads and stores become copies or unknown assignments. A stack tuple's
-  register is a tuple value, not storage.
+  Loads and stores become copies or unknown assignments; a null store (an
+  unbound local, or an identity box not made yet) is an unknown assignment. A
+  stack tuple's register is a tuple value, not storage.
 - A slot whose address reaches any other operation, such as an identity-return
   buffer passed to a callee, is not private: its loads get unknown tags, and no
   guard is moved onto it.
@@ -160,9 +161,8 @@ unguarded payload, and `json`'s shipped dynamic key writer is accepted only with
 both of its guards. These are checks of the trusted Python bridge in addition to
 the kernel-checked model examples; they do not prove its fidelity.
 
-Generators, other payload types, stores into boxes, null stores into dynamic
-private slots, landing blocks missing from the snapshot and unknown operations
-are explicitly refused. Most payload reads in real dynamic-`Any` code are of
+Generators, other payload types, stores into boxes, landing blocks missing from
+the snapshot and unknown operations are explicitly refused. Most payload reads in real dynamic-`Any` code are of
 `int`, whose layout bool values share, of classes, whose subclasses share theirs,
 or of dictionaries; the model has no such tags, so those functions are refused. No selected function is silently skipped. The Python
 bridge allows at most 1,024 instructions, 4,096 normalized nodes, 16,384
@@ -177,8 +177,9 @@ not proved by this version:
 - Fidelity of the inspection snapshot and Python normalization to actual IR
   execution, including the operation roles, edges, join threading and same-block
   slot remapping described above.
-- Object initialization, null/unbound behavior, payload layout, GC, aliases in
-  mutable containers, or the implementation of runtime tag operations.
+- Object initialization, null/unbound behavior (a null dynamic value has no tag,
+  so it must never pass a guard), payload layout, GC, aliases in mutable
+  containers, or the implementation of runtime tag operations.
 - Source-language or LLVM equivalence, generic specialization, identity-slot
   elision, absence of dynamic operations, or necessity/removal of `Any`.
 - Termination or a performance improvement.

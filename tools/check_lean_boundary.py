@@ -50,7 +50,7 @@ SUPPORTED_OPS = ORDINARY | TAG_OPS | TERMINATORS
 LIMITATIONS = [
     "Only dyn.payload guard safety in the selected normalized function is checked.",
     "Python normalization, snapshot fidelity, runtime tag contracts and LLVM lowering are not proved.",
-    "Generators, other payload types, stores into boxes and null dynamic slots are rejected.",
+    "Generators, other payload types and stores into boxes are rejected; null values get unknown tags.",
     "The native Lean executable adds the Lean compiler and runtime to the trusted base.",
 ]
 
@@ -430,8 +430,8 @@ def normalize_snapshot(snapshot, function):
                 if kind == "mem.store" and source in definitions:
                     following({"op": "copy", "dst": address, "src": source})
                 else:
-                    if source == "null" and (slots[address] == "dyn" or operands[1]["type"] == "dyn"):
-                        raise Unsupported("unbound dynamic private slots are outside the prototype")
+                    # (a constant, or null: an unbound local or an identity box not made yet,
+                    # which has no tag for a guard to match)
                     following({"op": "havoc", "dst": address})
             elif kind == "landing":
                 require(len(op["targets"]) == 1, "invalid landing shape")
