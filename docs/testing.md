@@ -901,6 +901,18 @@ Embedded shell checks remain enabled, using the pinned `shellcheck-py` executabl
 Pyflakes integration is disabled, so embedded Python snippets are not linted here.
 Ruff checks the repository's Python files separately.
 
+The same Lint job builds and audits the optional
+[Lean payload-guard prototype](../tools/lean_boundary/README.md) on every main push
+and manual dispatch. For PRs, it checks the cumulative merge diff for changes to
+the prototype, compiler, inspection exporter, boundary tests, Makefile, Lint workflow or
+Python/development dependency pins. Missing merge history runs the check;
+documentation-only PRs skip it. The selector has temporary-Git-history controls.
+It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
+`make check-lean-boundary`; no extra PR job is added. The bridge's Python tests
+also run in `make check-fast`. Those tests skip executable checks when Lean has
+not been built; the dedicated target requires them and fails if the executable
+is missing. Lean is a development-only dependency for this bounded prototype.
+
 `make typecheck` uses the mypy version pinned in `tools/requirements-dev.txt` and
 the scope in [`mypy.ini`](../mypy.ini): `pystachy.py` and all of `src/`, targeting
 the supported Python 3.11 bootstrap floor. It checks annotated arguments, returns,

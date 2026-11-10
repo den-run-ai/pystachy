@@ -282,6 +282,8 @@ class Ins:
         # with the bits when unionslots splits storage or rebuilds a box.
         # dyn.type reads a dynamic value's DynType pointer and dyn.payload its slot (s: the type
         # a test proved it holds, r: address then payload); the box never changes (dynamic.py).
+        # dyn.raw reads opaque identity bits with no member claim (s: empty), for
+        # direct integer equality only; r is again the address then payload.
         # num.cast promotes one numeric operand; num.cmp records the source comparison
         # in s and compares two operands of the same native numeric type.
         # empty.kind fixes a fresh dict/set result's key layout, using its typed

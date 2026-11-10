@@ -1345,6 +1345,44 @@ class UnionProofTests(unittest.TestCase):
                         with self.assertRaises(SystemExit):
                             c.g.verify(c.fn, False)
 
+    def test_loop_boolean_phi_does_not_restore_previous_value_facts(self):
+        for pred in ("==", "!="):
+            for paired in (False, True):
+                with self.subTest(predicate=pred, paired=paired):
+                    c = Case("saved_loop_condition", [U, U])
+                    tag = c.op("union.tag", "int", a=[("%a0", U)])
+                    initial = c.op("num.cmp", "bool", pred,
+                                   [(tag, "int"), (str(c.g.utags["int"]), "int")])
+                    c.op("br", b=["loop"])
+                    c.block("loop")
+                    value = c.op("phi", U, a=[("%a0", U), ("%a1", U)],
+                                 b=["entry", "body"])
+                    condition = c.op("phi", "bool", a=[(initial, "bool"), ("next", "bool")],
+                                     b=["entry", "body"])
+                    saved = c.b.code[-1]
+                    c.op("cbr", a=[(condition, "bool")],
+                         b=["body", "done"] if pred == "==" else ["done", "body"])
+                    c.block("body")
+                    c.payload(value)
+                    # A saved test of the old value cannot guard the next one.
+                    # A condition paired with the incoming value can do so.
+                    tag = c.op("union.tag", "int", a=[("%a1" if paired else value, U)])
+                    following = c.op("num.cmp", "bool", pred,
+                                     [(tag, "int"), (str(c.g.utags["int"]), "int")])
+                    saved.a[1].v = following
+                    c.op("br", b=["loop"])
+                    c.block("done")
+                    c.ret()
+                    proof = UnionProof(c.fn, c.g.utags)
+                    proof.run()
+                    self.assertEqual(bool(proof.bad), not paired)
+                    with redirect_stderr(StringIO()):
+                        if paired:
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+
     def test_tag_domains_have_no_machine_word_limit(self):
         c = basic("many_tags", "good")
         for n in range(100):

@@ -38,7 +38,7 @@ unmodified or with minimal annotations.
 | Language/type contract | [language](docs/language.md), [typing](docs/language/typing.md), [deviations](docs/language/compatibility.md) |
 | IR/runtime/FFI | [typed IR](docs/typed-ir.md), [subset runtime](docs/runtime-in-subset.md), [FFI](docs/ffi.md) |
 | Tests and CI | [testing](docs/testing.md), `tests/verify.sh --list`, `.github/workflows/` |
-| Dynamic storage and dispatch | [dynamic `Any`](docs/dynamic-any.md), including typed/dynamic boundaries and deviations |
+| Dynamic storage and dispatch | [dynamic `Any`](docs/dynamic-any.md), including admission rules and boundaries |
 | Packaging/release | [releasing](docs/releasing.md), `.github/workflows/packages.yml`, `.github/workflows/release.yml` |
 | Library gaps and ports | [stdlib](docs/stdlib.md), [lib](lib/README.md), [ports](ports/README.md), [maintained tools](tools/README.md) |
 

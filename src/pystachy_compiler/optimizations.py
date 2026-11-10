@@ -1148,7 +1148,7 @@ def gen_canon(self, vs: Values, v: str) -> str:
             r = self.same(vs, v, f"field {i.a[0].t} {i.k} {self.canon(vs, i.a[0].v)}")
             vs.fieldtype[r] = i.a[0].t
             vs.fieldindex[r] = i.k
-        elif i.op == "union.payload" or i.op == "union.raw" or i.op == "dyn.payload":
+        elif i.op == "union.payload" or i.op == "union.raw" or i.op == "dyn.payload" or i.op == "dyn.raw":
             # A union box's tag and payload are immutable. Retain the equivalence of
             # repeated narrowed reads expose to dictionary lookup fusion.
             r = self.same(vs, v, f"{i.op} {i.s} {self.canon(vs, i.a[0].v)}")

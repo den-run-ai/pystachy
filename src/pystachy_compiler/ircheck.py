@@ -1,6 +1,7 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
+from src.pystachy_compiler.dynamic_proof import DynamicProof, exact_dynamic_payload
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
@@ -11,7 +12,7 @@ RESULT_NUMBERS: dict[str, int] = {
     "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "field.addr": 1,
     "mach.load": 1, "mach.addr": 1, "ovf": 3, "list.load": 4,
     "landing": 2, "exc.match": 2, "union.payload": 2, "union.raw": 2,
-    "tuple.load": 2, "dyn.payload": 2, "dyn.type": 1, "phi": 1,
+    "tuple.load": 2, "dyn.payload": 2, "dyn.raw": 2, "dyn.type": 1, "phi": 1,
     "select": 1, "list.len": 1, "slot.pack": 1, "slot.unpack": 1,
     "union.tag": 1, "num.cast": 1, "num.cmp": 1, "alloc.fixed": 1,
     "vtuple.make": 1, "tuple.store": 1, "mem.load": 1, "int.ucmp": 1, "ptr.cmp": 1,
@@ -129,6 +130,27 @@ def has_machine_union_tag(fn: IFn) -> bool:
     return False
 
 
+def verify_dynamic_raw(self, fn: IFn) -> None:
+    # Raw dynamic payload bits are only an identity-comparison input. Collect all
+    # producers before uses: block order and an operand's annotation cannot hide
+    # a reinterpretation, address escape or later producer. No phi/slot/call
+    # transport is admitted, so another pass cannot launder the bits into a type.
+    addresses: dict[str, bool] = {}
+    payloads: dict[str, bool] = {}
+    for b in fn.blocks:
+        for i in b.code:
+            if i.op == "dyn.raw":
+                addresses[tmpname(i.r[0])] = True
+                payloads[tmpname(i.r[1])] = True
+    for b in fn.blocks:
+        for i in b.code:
+            for a in i.a:
+                if a.v in addresses:
+                    self.bad_ir(fn, b, "dyn.raw internal address cannot be used")
+                if a.v in payloads and not (i.op == "num.cmp" and (i.s == "==" or i.s == "!=") and a.t == "int"):
+                    self.bad_ir(fn, b, "dyn.raw bits require a direct integer equality comparison")
+
+
 def gen_verify(self, fn: IFn, eh: bool) -> None:
     # PYSTACHY_IRCHECK=1: fn is well formed. Every op is in IROPS, an rt op's key in RUNTIME;
     # call and init ops call compiled
@@ -141,6 +163,8 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     at: dict[str, int] = {}
     union_types: dict[str, list[str]] = {}
     union_proofs = False
+    dynamic_proofs = False
+    dynamic_raw = False
     machine_tags = False
     lands: dict[str, bool] = {}
     for b in fn.blocks:
@@ -349,11 +373,17 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 ms = union_types[u]
                 if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)) or (i.op == "union.raw" and (i.t != "%slot" or i.s != "")):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or member")
-            if i.op == "dyn.type" or i.op == "dyn.payload":
+            if i.op == "dyn.type" or i.op == "dyn.payload" or i.op == "dyn.raw":
+                if i.op == "dyn.payload" and exact_dynamic_payload(i.s):
+                    dynamic_proofs = True
                 if len(i.a) != 1 or i.a[0].t != "dyn" or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} needs one dyn operand and no extra metadata")
-                if (i.op == "dyn.type" and (i.t != "dyntype" or i.s != "")) or (i.op == "dyn.payload" and (i.t != "%slot" or i.s == "" or i.s == "dyn" or i.s.startswith("%"))):
+                if (i.op == "dyn.type" and (i.t != "dyntype" or i.s != "")) or (i.op == "dyn.payload" and (i.t != "%slot" or i.s == "" or i.s == "dyn" or i.s.startswith("%"))) or (i.op == "dyn.raw" and (i.t != "%slot" or i.s != "")):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or payload type")
+                if i.op == "dyn.raw":
+                    dynamic_raw = True
+                    if len(i.r) != 2 or i.r[0] < 0 or i.r[1] < 0 or i.r[0] == i.r[1]:
+                        self.bad_ir(fn, b, "dyn.raw needs two distinct nonnegative result numbers")
             if i.op == "big.make" or i.op == "big.lo" or i.op == "big.hi":
                 # a promoting int's two words: big.make (int, %ptr) -> int+, big.lo -> int, big.hi -> %ptr
                 ts = ["int", "%ptr"] if i.op == "big.make" else ["int+"]
@@ -396,6 +426,13 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 for l in i.b:
                     if l not in at or b.label not in succ[at[l]]:
                         self.bad_ir(fn, b, f"a phi from {l}, which does not branch there")
+    if dynamic_raw:
+        verify_dynamic_raw(self, fn)
+    if dynamic_proofs:
+        dynamic = DynamicProof(fn)
+        dynamic.run()
+        for j in range(len(dynamic.bad)):
+            self.bad_ir(fn, fn.blocks[at[dynamic.badblocks[j]]], dynamic.bad[j])
     if (union_proofs or (machine_tags and has_machine_union_tag(fn))) and not simple_union_proof(fn, self.utags, at, succ, union_types):
         writes: dict[str, bool] = {}
         raises: dict[str, bool] = {}

@@ -78,7 +78,9 @@ Pystachy is experimental. It supports typed containers, classes, generators and
 other common Python constructs. General multiple inheritance, `async` and
 `match` are outside the supported subset. Integers are checked 64-bit values by
 default. [Promoting integers](https://github.com/den-run-ai/pystachy/blob/main/docs/python-int.md) and [dynamic `Any`](https://github.com/den-run-ai/pystachy/blob/main/docs/dynamic-any.md)
-are opt-in. Dynamic `Any` includes a bounded prototype for
+are opt-in. Prefer concrete types, generics and closed unions; reserve dynamic storage for
+[open interface boundaries](https://github.com/den-run-ai/pystachy/blob/main/docs/dynamic-any.md#admission-and-containment).
+Dynamic `Any` includes a bounded prototype for
 [class values, type-keyed registries, generic calls and annotated factories](https://github.com/den-run-ai/pystachy/blob/main/docs/dynamic-any.md#class-values-and-type-keyed-registries).
 
 Check the [language guide](https://github.com/den-run-ai/pystachy/blob/main/docs/language.md#support-at-a-glance) and

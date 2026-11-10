@@ -807,6 +807,17 @@ class UnionProof:
         for j in range(len(bools)):
             q = z.clone()
             q.boolcopy(bools[j], bsources[j])
+            # A loop's saved boolean can refer to the previous values of its
+            # phi destinations. Do not restore those implications after the
+            # simultaneous assignments. Only captured incoming-value facts
+            # describe the new destinations, including a paired value/guard.
+            for facts in [q.bt[bools[j]], q.bf[bools[j]]]:
+                for k in dests:
+                    if k in facts:
+                        del facts[k]
+                    if "phi:" + k in facts:
+                        facts[k] = facts["phi:" + k]
+                        del facts["phi:" + k]
             bc.append(q)
         for k in dests:
             z.copy(k, "phi:" + k)

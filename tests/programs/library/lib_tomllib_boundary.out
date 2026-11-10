@@ -1,0 +1,9 @@
+['1.25', '2.5', '3.75', '4.5']
+True True
+after after
+True
+True True
+True True
+ValueError callback stopped ['1.25']
+TOMLDecodeError Cannot overwrite a value (at end of document) ['1.25', '2.5']
+[exit 0]

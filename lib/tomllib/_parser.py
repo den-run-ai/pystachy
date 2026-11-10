@@ -144,15 +144,13 @@ def loads(s: str, /, *, parse_float: ParseFloat = float) -> dict[Any, Any]:  # n
     return out.data.dict
 
 
-def _flags_entry() -> Any:
-    # Pystachy port: a key's entry in Flags._flags. Its flags and recursive_flags hold the flags as
-    # the keys of dicts, where CPython's are sets, which are no Any values yet; and its empty
-    # containers are typed here, as an empty display that Any storage receives is not yet
-    flags: dict[Any, Any] = {}
-    recursive_flags: dict[Any, Any] = {}
-    nested: dict[Any, Any] = {}
-    entry: dict[Any, Any] = {"flags": flags, "recursive_flags": recursive_flags, "nested": nested}
-    return entry
+class _FlagEntry:
+    # Pystachy port: Flags has a closed recursive shape. Keep its private parser
+    # state typed instead of using dynamic dictionaries for known field names.
+    def __init__(self) -> None:
+        self.flags: set[int] = set()
+        self.recursive_flags: set[int] = set()
+        self.nested: dict[str, _FlagEntry] = {}
 
 
 class Flags:
@@ -165,10 +163,10 @@ class Flags:
     EXPLICIT_NEST = 1
 
     def __init__(self) -> None:
-        # Pystachy port: dict[Any, Any], whose values set() walks as Any values; and the pending
-        # flags in a list, as a set's tuples cannot hold a runtime-length tuple yet (a flag that is
-        # pending twice is set twice by finalize_pending(), to the same effect)
-        self._flags: dict[Any, Any] = {}
+        # Pystachy port: typed nodes preserve the private flags' closed shape.
+        # Pending flags stay in a list: sets cannot hold runtime-length tuples
+        # yet, and setting a pending flag twice has the same effect.
+        self._flags: dict[str, _FlagEntry] = {}
         self._pending_flags: list[tuple[Key, int]] = []
 
     def add_pending(self, key: Key, flag: int) -> None:
@@ -184,7 +182,7 @@ class Flags:
         for k in key[:-1]:
             if k not in cont:
                 return
-            cont = cont[k]["nested"]
+            cont = cont[k].nested
         cont.pop(key[-1], None)
 
     def set(self, key: Key, flag: int, *, recursive: bool) -> None:  # noqa: A003
@@ -192,11 +190,14 @@ class Flags:
         key_parent, key_stem = key[:-1], key[-1]
         for k in key_parent:
             if k not in cont:
-                cont[k] = _flags_entry()  # Pystachy port: see _flags_entry()
-            cont = cont[k]["nested"]
+                cont[k] = _FlagEntry()
+            cont = cont[k].nested
         if key_stem not in cont:
-            cont[key_stem] = _flags_entry()  # Pystachy port: see _flags_entry()
-        cont[key_stem]["recursive_flags" if recursive else "flags"][flag] = True  # Pystachy port: a dict's key
+            cont[key_stem] = _FlagEntry()
+        if recursive:
+            cont[key_stem].recursive_flags.add(flag)
+        else:
+            cont[key_stem].flags.add(flag)
 
     def is_(self, key: Key, flag: int) -> bool:
         if not key:
@@ -206,13 +207,13 @@ class Flags:
             if k not in cont:
                 return False
             inner_cont = cont[k]
-            if flag in inner_cont["recursive_flags"]:
+            if flag in inner_cont.recursive_flags:
                 return True
-            cont = inner_cont["nested"]
+            cont = inner_cont.nested
         key_stem = key[-1]
         if key_stem in cont:
-            cont = cont[key_stem]
-            return flag in cont["flags"] or flag in cont["recursive_flags"]
+            entry = cont[key_stem]
+            return flag in entry.flags or flag in entry.recursive_flags
         return False
 
 

@@ -351,7 +351,7 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         o.append(f"  {tmpname(i.r[0])} = icmp u{ICMP[i.s][1:]} i64 {i.a[0].v}, {i.a[1].v}")
     elif op == "ptr.cmp":
         o.append(f"  {tmpname(i.r[0])} = icmp {ICMP[i.s]} ptr {i.a[0].v}, {i.a[1].v}")
-    elif op == "union.payload" or op == "union.raw" or op == "dyn.payload":
+    elif op == "union.payload" or op == "union.raw" or op == "dyn.payload" or op == "dyn.raw":
         o.append(f"  {tmpname(i.r[0])} = getelementptr i64, ptr {i.a[0].v}, i64 1")
         o.append(f"  {tmpname(i.r[1])} = load i64, ptr {tmpname(i.r[0])}")
     elif op == "dyn.type":

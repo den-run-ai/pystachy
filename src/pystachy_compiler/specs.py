@@ -659,7 +659,7 @@ IROPS: dict[str, str] = {
     "num.cast": "", "num.cmp": "", "int.ucmp": "", "ptr.cmp": "",
     "empty.kind": "wD",
     "union.tag": "rL rD rO", "union.payload": "rL rD rO", "union.raw": "rL rD rO",
-    "dyn.type": "", "dyn.payload": "",
+    "dyn.type": "", "dyn.payload": "", "dyn.raw": "",
     "big.make": "", "big.lo": "", "big.hi": "",
     "landing": "T", "throw": "T R N", "exc.match": "",
     # generators (LLVM switched-resume coroutines, docs/internals.md#generators): gen.start ends a
@@ -736,11 +736,11 @@ JIT_INLINE = 20000
 REACH = 256
 LOOKUPS = 32
 # the ops whose values Values places, by the number each defines (its block and position there),
-# as how: 1, the value of one that defines one; 2, the payload of union.payload/raw and dyn.payload,
+# as how: 1, the value of one that defines one; 2, the payload of union.payload/raw and dyn.payload/raw,
 # their second; 3, each value of tuple.load and tuple.store
 VALUE_AT: dict[str, int] = {"list.len": 1, "select": 1, "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "rt": 1, "slot.pack": 1, "slot.unpack": 1,
                             "num.cast": 1, "num.cmp": 1, "mach.load": 1, "mach.addr": 1, "mem.load": 1, "field.addr": 1, "int.ucmp": 1,
-                            "ptr.cmp": 1, "dyn.type": 1, "big.lo": 1, "big.hi": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2,
+                            "ptr.cmp": 1, "dyn.type": 1, "big.lo": 1, "big.hi": 1, "union.payload": 2, "union.raw": 2, "dyn.payload": 2, "dyn.raw": 2,
                             "big.make": 2, "tuple.load": 3, "tuple.store": 3}
 # Types are serialized strings. Bound their size before joining children, and the active
 # template signatures before making keys or call contexts; a depth limit alone misses

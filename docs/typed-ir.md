@@ -118,10 +118,41 @@ the concrete payload.
 In a module that opts in to [dynamic `Any`](dynamic-any.md), `dyn` is a pointer to an immutable
 box of a `DynType` pointer and an eight-byte payload, which is a number's bits or a reference's
 own pointer. `dyn.type` reads the `DynType` (type `dyntype`), and `dyn.payload` reads the payload
-as the static type its `s` names, after a test has proved it; neither has a memory effect, since
-a box never changes. A box in a container slot is descriptor `A`, which runtime walks follow
+as the static type its `s` names. With `PYSTACHY_IRCHECK=1`, the stock verifier
+additionally requires an exact `float`, `str` or `bool` tag on every reachable
+payload read of those types. Other dynamic payload representations retain their
+frontend obligations; in particular an integer payload can legitimately contain
+bool bits, and user classes need inheritance-aware rules.
+Neither instruction has a memory effect, since a box never changes. A box in a container slot
+is descriptor `A`, which runtime walks follow
 through the box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor
 holds an `A` have every effect, as an `O` does.
+
+Identity comparisons use a separate pure `dyn.raw` operation: its empty `s` claims no
+Python type, and its `%slot` result is only opaque payload bits. With
+`PYSTACHY_IRCHECK=1`, those bits may appear only as a direct integer `==` or `!=`
+operand; no arithmetic, pointer conversion, store, call, phi or select may consume
+them, and the operation's internal address cannot escape. This distinguishes a
+float's or reference's identity bits from a typed integer extraction while keeping
+the same LLVM loads. A live, non-null box remains a frontend obligation. The result
+does not establish that its source has any particular dynamic type.
+
+The exact builtin guard proof uses the actual typed-IR control-flow graph, with
+an open unknown-tag case. It follows copies, private scalar slots, boolean
+conditions, simultaneous phis, selects, joins and loop backedges to a fixed point.
+It checks exception and cold-check edges as well as normal flow. Rebinding loses
+the old slot's facts while preserving earlier SSA copies. A slot whose address
+escapes receives no memory facts; calls retain facts only for immutable box
+values and nonescaping private storage. Globals, fields and container reloads
+cannot borrow an earlier load's guard. Unrelated functions bypass this analysis.
+
+This compiler check is not a Lean proof. It does not prove null/lifetime safety,
+runtime tag/layout correctness, SSA well-formedness, identity preservation, GC
+or LLVM lowering. Int/bool shared layouts, class inheritance and container
+payload obligations remain outside its current scope. Its negative tests include
+forged guards, overwritten bindings, unguarded joins and saved loop conditions
+that refer to a previous phi value.
+
 In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
 `{i64, ptr}`: the 64-bit value and a null pointer where it fits, else 0 and the value's immutable
 digits. `big.make` builds one from an `int` and a `%ptr`, and `big.lo` and `big.hi` read its two
@@ -168,6 +199,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Container payload conversions | `slot.pack`, `slot.unpack` |
 | Fresh empty result layout | `empty.kind` (typed dict/set key kind, or a deferred result hole) |
 | Closed union reads | `union.tag`, `union.payload`, `union.raw` |
+| Dynamic box reads | `dyn.type`, `dyn.payload`, `dyn.raw` |
 | Promoting ints | `big.make`, `big.lo`, `big.hi` |
 | Numeric promotion and comparison | `num.cast`, `num.cmp`, `int.ucmp` |
 | Native reference identity and null tests | `ptr.cmp` |
@@ -244,6 +276,15 @@ LLVM text in the shared container/optional/union conversion helpers, preserving 
 existing representation and allocation behavior. The verifier checks their operand,
 result and metadata contracts. Closed-union payloads additionally carry the tag proofs
 described below; ordinary container element typing remains a frontend contract.
+
+The optional [Lean payload-guard checker](../tools/lean_boundary/README.md)
+checks one selected function from a completed inspection snapshot. Its theorem
+establishes tag safety for accepted normalized programs, including copies,
+rebinding, joins and loops. The adapter conservatively refuses operations outside
+its supported subset. Tests use actual emitted `float`, `str` and `bool` guards,
+plus corrupted snapshots and certificates. This is separate from the built-in
+dynamic guard and closed-union verifiers: it neither runs during ordinary compilation nor
+proves the Python adapter, payload layout, identity, GC or LLVM lowering.
 
 `union.tag` reads a nonoptional closed union's integer tag. `union.payload` records the
 declared member type and reads its opaque `%slot`; `slot.unpack` then recovers the native
