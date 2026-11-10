@@ -1,0 +1,11 @@
+False True None unset None
+True one one one one
+'' one two é 9 empty
+False True one two é gone
+KeyError 'PYSTACHY_TEST_ENVIRON'
+KeyError ''
+KeyError 'A=B'
+KeyError 'PYSTACHY_TEST_ENVIRON'
+/h True
+?
+[exit 0]

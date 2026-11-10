@@ -1,0 +1,33 @@
+'/a/b/c.txt' 'c.txt' '/a/b' ('/a/b', 'c.txt') ('/a/b/c', '.txt') True '/a/b/c.txt'
+'a/b/' '' 'a/b' ('a/b', '') ('a/b/', '') False 'a/b'
+'' '' '' ('', '') ('', '') False '.'
+'/' '' '/' ('/', '') ('/', '') True '/'
+'//' '' '//' ('//', '') ('//', '') True '//'
+'///' '' '///' ('///', '') ('///', '') True '/'
+'//x//y/../z/.' '.' '//x//y/../z' ('//x//y/../z', '.') ('//x//y/../z/.', '') True '//x/z'
+'../../a/./b/..' '..' '../../a/./b' ('../../a/./b', '..') ('../../a/./b/..', '') False '../../a'
+'~' '~' '' ('', '~') ('~', '') False '~'
+'c.tar.gz' 'c.tar.gz' '' ('', 'c.tar.gz') ('c.tar', '.gz') False 'c.tar.gz'
+'.bashrc' '.bashrc' '' ('', '.bashrc') ('.bashrc', '') False '.bashrc'
+'a/.b.c' '.b.c' 'a' ('a', '.b.c') ('a/.b', '.c') False 'a/.b.c'
+'..' '..' '' ('', '..') ('..', '') False '..'
+'x/..x.y' '..x.y' 'x' ('x', '..x.y') ('x/..x', '.y') False 'x/..x.y'
+'é/ü.py' 'ü.py' 'é' ('é', 'ü.py') ('é/ü', '.py') False 'é/ü.py'
+'a b/c d.e f' 'c d.e f' 'a b' ('a b', 'c d.e f') ('a b/c d', '.e f') False 'a b/c d.e f'
+'/a/b/../../../c' 'c' '/a/b/../../..' ('/a/b/../../..', 'c') ('/a/b/../../../c', '') True '/c'
+'a/b.c/d' 'd' 'a/b.c' ('a/b.c', 'd') ('a/b.c/d', '') False 'a/b.c/d'
+'...' '...' '' ('', '...') ('...', '') False '...'
+'a.' 'a.' '' ('', 'a.') ('a', '.') False 'a.'
+True True /a/b //b
+../b/c . ../.. a
+q/r . q r ../..
+'/usr/l' 'é' 'a'
+'' 'abc' 'a' ''
+/ .. . . : /dev/null True
+/h/me /h/me/x/y a/~ '' ~nosuchuser_pystachy_test/x
+/ /x
+True True
+['c.txt', '', '', ''] ['.txt', '', '', '', '', '', '', '', '', '.gz', '', '.c', '', '.y', '.py', '.e f', '', '', '', '.'] /usr/local bin ['a/b/', '', '/']
+ValueError no path specified
+ValueError embedded null byte
+[exit 0]

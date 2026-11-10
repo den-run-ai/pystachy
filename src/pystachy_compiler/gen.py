@@ -424,6 +424,7 @@ from src.pystachy_compiler.builtins import (
     gen_reverse_val as builtins_reverse_val,
     gen_stream_start as builtins_stream_start,
     gen_update as builtins_update,
+    gen_minmax_default as builtins_minmax_default,
     gen_vnode as builtins_vnode,
 )
 from src.pystachy_compiler.calls import (
@@ -4470,14 +4471,14 @@ class Gen:
     def listcomp(self, n: Node, want: str, mode: str='', into: str='', arg: IterArg | None=None, kind: str='list', resultsoft: bool = False) -> Val:
         return expressions_listcomp(self, n, want, mode, into, arg, kind, resultsoft)
 
-    def ifexp(self, n: Node, want: str, resultsoft: bool = False) -> Val:
-        return expressions_ifexp(self, n, want, resultsoft)
+    def ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str] | None = None) -> Val:
+        return expressions_ifexp(self, n, want, resultsoft, kept)
 
     def numeric_phi(self, result: Val, values: list[Val], edges: list[str]) -> Val:
         return expressions_numeric_phi(self, result, values, edges)
 
-    def boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False) -> Val:
-        return expressions_boolop(self, n, ascond, want, resultsoft)
+    def boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False, kept: list[str] | None = None) -> Val:
+        return expressions_boolop(self, n, ascond, want, resultsoft, kept)
 
     def unary(self, n: Node) -> Val:
         return expressions_unary(self, n)
@@ -4557,8 +4558,8 @@ class Gen:
     def masked(self, n: Node, want: str, resultsoft: bool) -> Val:
         return expressions_masked(self, n, want, resultsoft)
 
-    def wexpr(self, e: Node, want: str, resultsoft: bool) -> list[Val]:
-        return expressions_wexpr(self, e, want, resultsoft)
+    def wexpr(self, e: Node, want: str, resultsoft: bool, op: str = "", kept: list[str] | None = None) -> list[Val]:
+        return expressions_wexpr(self, e, want, resultsoft, op, kept)
 
     def wflag(self, op: str, a: Val, b: Val) -> Val:
         return expressions_wflag(self, op, a, b)
@@ -4823,6 +4824,9 @@ class Gen:
 
     def builtin(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
         return builtins_builtin(self, name, args, want, resultsoft)
+
+    def minmax_default(self, name: str, args: list[Node]) -> Val:
+        return builtins_minmax_default(self, name, args)
 
     def vnode(self, v: Val) -> Node:
         return builtins_vnode(self, v)

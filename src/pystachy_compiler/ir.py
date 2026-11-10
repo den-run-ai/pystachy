@@ -45,11 +45,15 @@ class Data:
 
 class IterArg:
     # A consumer's next argument: evaluate it after its iterator is constructed, before traversal.
+    # Capture keeps the node's children as original values instead of storing them in a tuple,
+    # whose numeric slots do not retain the identity of a consumer's default argument.
     # With split, a label, there is none: the code after the iterator is constructed goes on at
     # split, and the traversal waits at trav for a branch to it (the consumer's turn to iterate).
     def __init__(self, node: Node):
         self.node = node
         self.value = Val("", "")
+        self.capture = False
+        self.values: list[Val] = []
         self.split = ""
         self.trav = ""
 

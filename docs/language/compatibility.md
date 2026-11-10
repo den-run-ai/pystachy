@@ -133,8 +133,10 @@ no effect. The shared runtime cache is independent of this setting.
 - **Some consumers materialize inputs.** `min()`/`max()` stream scalar generator
   expressions and iterator objects (`int`, `float`, `bool`, `str`) without keywords,
   and iterator objects with `key=`. Other types and generator expressions with
-  `key=` materialize first, as do `math.fsum()`/`math.prod()`. Later input effects
-  or exceptions can therefore precede a comparison error or `fsum()` overflow.
+  `key=` materialize first. With `default=`, lists and dynamic inputs stay live;
+  other inputs materialize, as do those of `math.fsum()`/`math.prod()`.
+  Later input effects or exceptions can therefore
+  precede a comparison error or `fsum()` overflow.
 
 ### Functions and object identity
 
@@ -554,8 +556,9 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
   optional values where the operation does not accept them. Tuples can copy-box items.
 - Passing or assigning `list[T]` / `dict[K, T]` as optional-element containers, including
   through `Sequence` / `Mapping` aliases; optional builtin arguments beyond `len`, `int`,
-  `float`, `ord`, `hex`, `oct`, `bin`, `dict`, `sum`, `round`, `os.system`, `os.path.exists`
-  and functions accepting `None`; `round(float, n)` with optional `n`.
+  `float`, `ord`, `hex`, `oct`, `bin`, `dict`, `sum`, `round`, `os.system`, `os.path.exists`,
+  `os.path`'s one-path string functions and functions accepting `None`; `round(float, n)`
+  with optional `n`.
 - Reads needing the type of a local/global/field assigned only `None` when neither later
   assignments nor context can supply it yet, including assignments in uncompiled templates
   or later module code. Annotate the optional type.
