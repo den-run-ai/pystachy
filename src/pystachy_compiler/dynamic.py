@@ -1462,7 +1462,7 @@ def gen_dyn_box(self, v: Val) -> Val:
         self.place(chk)
         typ = Val(self.rtdata("pys_dyntype_int" if t == "int" else "pys_dyntype_float"), "dyntype")
         st = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), typ).v
-        sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(b, "int")), "int"), Val(self.to_slot(v), "int")).v
+        sp = self.num_cmp("==", self.dyn_raw(b), Val(self.to_slot(v), "int")).v
         self.cbr(self.scalar("and", [Val(st, "bool"), Val(sp, "bool")]), hit, miss)
         self.place(hit)
         self.br(end)
@@ -1587,7 +1587,7 @@ def box_big(self, v: Val) -> Val:
         self.cbr(self.ptr_cmp("!=", held, Val("null", DYN)).v, check, miss)
         self.place(check)
         kind = self.ptr_cmp("==", Val(self.dyn_typeof(held), "dyntype"), Val(self.rtdata("pys_dyntype_bigint"), "dyntype"))
-        payload = self.num_cmp("==", self.dyn_payload(held, "int"), Val(self.scalar_cast("ptrtoint", self.big_hi(v), "int"), "int"))
+        payload = self.num_cmp("==", self.dyn_raw(held), Val(self.scalar_cast("ptrtoint", self.big_hi(v), "int"), "int"))
         self.cbr(self.scalar("and", [kind, payload]), hit, miss)
         self.place(hit)
         self.incoming(wp, held.v, self.cur)
@@ -2284,6 +2284,15 @@ def gen_dyn_typeof(self, v: Val) -> str:
     return tmpname(i.r[0])
 
 
+def gen_dyn_raw(self, v: Val) -> Val:
+    # Opaque identity bits, with no claim about the box's Python type. Only
+    # direct integer equality comparisons may consume this result.
+    i = Ins("dyn.raw", "%slot", "")
+    i.a = [Val(v.v, DYN)]
+    self.put(i, 2)
+    return Val(tmpname(i.r[1]), "int")
+
+
 def gen_dyn_payload(self, v: Val, t: str) -> Val:
     # the payload of box v, which a test proved to be of static type t
     if t == BIG:
@@ -2889,7 +2898,7 @@ def gen_dyn_identity(self, op: str, a: Val, b: Val) -> Val:
     ta = Val(self.dyn_typeof(x), "dyntype")
     same = self.ptr_cmp("==", x, y).v
     st = self.ptr_cmp("==", ta, Val(self.dyn_typeof(y), "dyntype")).v
-    sp = self.num_cmp("==", Val(self.to_slot(self.dyn_payload(x, "int")), "int"), Val(self.to_slot(self.dyn_payload(y, "int")), "int")).v
+    sp = self.num_cmp("==", self.dyn_raw(x), self.dyn_raw(y)).v
     nf = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_float"), "dyntype")).v
     ni = self.ptr_cmp("!=", ta, Val(self.rtdata("pys_dyntype_int"), "dyntype")).v
     fl = self.mload("int", self.maddr("int", ta.v, "5"))  # (its DynType's flags)

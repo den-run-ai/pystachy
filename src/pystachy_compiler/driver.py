@@ -55,6 +55,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/diagnostics.py',
     'src/pystachy_compiler/driver.py',
     'src/pystachy_compiler/dynamic.py',
+    'src/pystachy_compiler/dynamic_proof.py',
     'src/pystachy_compiler/emission.py',
     'src/pystachy_compiler/exceptions.py',
     'src/pystachy_compiler/expressions.py',
