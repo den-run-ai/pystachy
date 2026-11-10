@@ -241,9 +241,11 @@ values that can be [dict keys](typing.md#supported-types), floats and NamedTuple
 
 `print()` accepts `sep`, `end`, `file` and `flush`. Its `file` may be a file or an object with
 `write()`, such as `io.StringIO`; it receives one call for each piece, as in CPython.
-`min()` and `max()` accept `key=`, and `sorted()` and `list.sort()` accept `key=` and `reverse=`;
-a key is a function, a `Callable`, or an object whose class defines `__call__`, and one that is
-`None` where the call runs (a `Callable | None`, or an object) is no key, as `key=None` is.
+`min()` and `max()` accept `key=` and, of one iterable, `default=` (`None`, which makes the
+result optional, or a value of the items' type); `sorted()` and `list.sort()` accept `key=` and
+`reverse=`. A key is a function, a `Callable`, or an object whose class defines `__call__`, and
+one that is `None` where the call runs (a `Callable | None`, or an object) is no key, as
+`key=None` is.
 `set()` and `frozenset()` take supported iterables of their element type. Their methods support
 multiple iterable arguments where CPython's do.
 

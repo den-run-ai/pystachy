@@ -424,6 +424,7 @@ from src.pystachy_compiler.builtins import (
     gen_reverse_val as builtins_reverse_val,
     gen_stream_start as builtins_stream_start,
     gen_update as builtins_update,
+    gen_minmax_default as builtins_minmax_default,
     gen_vnode as builtins_vnode,
 )
 from src.pystachy_compiler.calls import (
@@ -4823,6 +4824,9 @@ class Gen:
 
     def builtin(self, name: str, args: list[Node], want: str, resultsoft: bool = False) -> Val:
         return builtins_builtin(self, name, args, want, resultsoft)
+
+    def minmax_default(self, name: str, args: list[Node]) -> Val:
+        return builtins_minmax_default(self, name, args)
 
     def vnode(self, v: Val) -> Node:
         return builtins_vnode(self, v)

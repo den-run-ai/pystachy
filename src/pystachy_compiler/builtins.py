@@ -22,6 +22,7 @@ from src.pystachy_compiler.specs import (
     GALIASUSE,
     GLUE,
     IMPLEMENTATION,
+    INERT,
     ITERS,
     LINKDL,
     TEXTVIEW,
@@ -67,6 +68,8 @@ from src.pystachy_compiler.utils import (
     lt,
     lib_source,
     nones as only_nones,
+    numeric_identity,
+    pure_arg,
     rtt,
     runtime_format,
     selem,
@@ -189,6 +192,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         path = self.coerce(self.expr(args[0], "str"), "str")
         limit = self.as_int(self.expr(args[1], "int"))
         return Val(self.rt("pys_cache_file_hash", "ptr", [f"ptr {path.v}", f"i64 {limit.v}"]), "str")
+    if (name == "min" or name == "max") and len([a for a in args if a.kind == "kw" and a.s == "default"]) > 0:
+        return self.minmax_default(name, args)
     if name == "__pys_ctypes_value":
         # ctypes' generic conversion helpers keep concrete scalars unboxed, but
         # must not accept int(float), float(str), or arbitrary conversion methods.
@@ -1160,6 +1165,74 @@ def gen_callable_type(self, t: str) -> int:
     if len(calls) == 0 and len([d for d in self.classes.values() if d.tag > 0 and "__call__" in d.methods and len(cs) == 1 and self.derives(d.name, t)]) > 0:
         self.err(f"callable() of a {typestr(t)} is not supported: a derived class defines __call__")
     return -2 if len(calls) > 0 else 0
+
+def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
+    # min() or max() of one iterable with default=: the default where the iterable has no item,
+    # else what the function gives without it. The items are taken into a list first (a list is
+    # itself), so that the function runs only where there is one. key= and default= are
+    # evaluated as CPython evaluates them: once the iterable is in hand (the iterator of a
+    # generator expression or of range(), zip(), map(), ... made: consume's arg) and before
+    # its first item is taken
+    pos = [a for a in args if a.kind != "kw"]
+    kws = [a for a in args if a.kind == "kw"]
+    if len(pos) != 1 or pos[0].kind == "starred" or pos[0].kind == "dstar":
+        self.err(f"Cannot specify a default for {name}() with multiple positional arguments")  # (CPython's TypeError)
+    for a in kws:
+        if a.s != "key" and a.s != "default":
+            self.err(f"keyword argument '{a.s}' of {name}() is not supported")
+    it = pos[0]
+    lazy = self.iterator_call(it) or self.is_mapcall(it) or (it.kind == "listcomp" and it.s == "gen")
+    ka = IterArg(mk("tuple", "", self.line, [a.kids[0] for a in kws])) if lazy else None
+    v0 = self.consume(it, "", ka)
+    # (an empty display as the default has the type of a list's items)
+    iw = elem(unopt(v0.t)) if is_list(unopt(v0.t)) else ""
+    kv = [self.tget(ka.value, j) for j in range(len(kws))] if ka is not None else [self.expr(a.kids[0], iw if a.s == "default" and pure_arg(a.kids[0]) and a.kids[0].kind not in INERT else "") for a in kws]
+    if is_opt(v0.t):
+        v0 = self.unwrap(v0, "TypeError: 'NoneType' object is not iterable")
+    lv = v0 if is_list(v0.t) else self.builtin("list", [self.vnode(v0)], "")
+    dv = [kv[j] for j in range(len(kws)) if kws[j].s == "default"][0]
+    rest = [mk("kw", "key", self.line, [self.vnode(kv[j])]) for j in range(len(kws)) if kws[j].s == "key"]
+    some = self.num_cmp(">", self.builtin("len", [self.vnode(lv)], ""), Val("0", "int"))
+    l1 = self.label()
+    l2 = self.label()
+    l3 = self.label()
+    self.cbr(some.v, l1, l2)
+    self.place(l1)
+    self.branch += 1  # (as a conditional expression's arm: gen_ifexp)
+    r = self.builtin(name, [self.vnode(lv)] + rest, "")
+    self.branch -= 1
+    # the result is of the items' type; None as the default makes it optional, an int and a
+    # promoting int (also as items of tuples) join, and a dynamic value takes the other as one
+    t = r.t
+    if dv.t == "None" and r.t != "None":
+        t = self.join(r.t, "None")
+    elif (r.t == "dyn") != (dv.t == "dyn"):
+        t = "dyn"
+    elif dv.t != r.t:
+        # (an int | None default of int items; or types that differ only in which ints promote)
+        t = dv.t if is_opt(dv.t) and unopt(dv.t) == r.t else self.join(r.t, dv.t) if r.t.replace(BIG, "int") == dv.t.replace(BIG, "int") else ""
+    if t == "" or (dv.t == "None" and not is_opt(t) and t != "None"):
+        self.err(f"default= of {name}() must be None or of the items' type, {typestr(r.t)}, not {typestr(dv.t)}")
+    e1 = "" if self.term else self.cur
+    if e1 != "":
+        r = self.coerce(r, t)
+        e1 = self.cur
+    self.br(l3)
+    self.place(l2)
+    d = self.coerce(dv, t)
+    e2 = self.cur
+    self.br(l3)
+    self.place(l3)
+    if t == "None":
+        return Val("null", "None")
+    ph = Ins("phi", t, "")
+    if e1 != "":
+        self.incoming(ph, r.v, e1)
+    self.incoming(ph, d.v, e2)
+    result = Val(self.phi(ph), t)
+    if not self.idhere() or not numeric_identity(t):
+        return result
+    return self.numeric_phi(result, [r, d] if e1 != "" else [d], [e1, e2] if e1 != "" else [e2])
 
 def gen_vnode(self, v: Val) -> Node:
     # a node whose value is v, computed already: an argument of a call the compiler makes (the

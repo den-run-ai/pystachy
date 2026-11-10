@@ -133,8 +133,9 @@ no effect. The shared runtime cache is independent of this setting.
 - **Some consumers materialize inputs.** `min()`/`max()` stream scalar generator
   expressions and iterator objects (`int`, `float`, `bool`, `str`) without keywords,
   and iterator objects with `key=`. Other types and generator expressions with
-  `key=` materialize first, as do `math.fsum()`/`math.prod()`. Later input effects
-  or exceptions can therefore precede a comparison error or `fsum()` overflow.
+  `key=` materialize first, as do any iterable but a list with `default=` and
+  `math.fsum()`/`math.prod()`. Later input effects or exceptions can therefore
+  precede a comparison error or `fsum()` overflow.
 
 ### Functions and object identity
 
