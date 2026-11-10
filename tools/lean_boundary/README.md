@@ -128,7 +128,9 @@ typed-IR operation has an explicit role:
 - Every other operation, including calls, field and machine loads, `select` and
   `phi`, can write neither a private slot nor a box, which the runtime keeps
   immutable. It only defines its results: one the function uses as `dyn` gets an
-  unknown tag. A store through an address derived from a box is refused.
+  unknown tag. A store through an address computed (by address arithmetic,
+  `select` or `phi`) from a value used as `dyn` is refused; immutability beyond
+  that is part of the trusted runtime contract.
 - Terminators give the edges: branch and `switch` targets, an invoke's unwind
   edge, each `check`'s error block (the snapshot's `check_targets`), a `raise` or
   `throw` that branches to its handler and, conservatively, an edge from every

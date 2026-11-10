@@ -309,13 +309,22 @@ def normalize_snapshot(snapshot, function):
     for parameter in range(len(parameters)):
         if definitions[f"%a{parameter}"][0] == "dyn":
             dynamic.add(f"%a{parameter}")
+    # (to a fixed point: blocks need not be listed in dominance order)
     boxes = set(dynamic)
-    for block in live:
-        for op in block["operations"]:
-            if op["op"] in {"mach.addr", "field.addr"} and op["operands"] and op["operands"][0]["value"] in boxes:
-                boxes.update(f"%t{number}" for number in op["results"])
-            if op["op"] in {"dyn.payload", "dyn.raw"} and op["results"]:
-                boxes.add(f"%t{op['results'][0]}")
+    changed = True
+    while changed:
+        changed = False
+        for block in live:
+            for op in block["operations"]:
+                derived = set()
+                if op["op"] in {"dyn.payload", "dyn.raw"} and op["results"]:
+                    derived.add(f"%t{op['results'][0]}")
+                if op["op"] in {"mach.addr", "field.addr", "select", "phi"} and any(
+                        operand["value"] in boxes for operand in op["operands"]):
+                    derived.update(f"%t{number}" for number in op["results"])
+                if not derived <= boxes:
+                    boxes |= derived
+                    changed = True
 
     def check_operand(operand, label, offset, predecessor=None):
         value = operand["value"]
@@ -441,7 +450,9 @@ def normalize_snapshot(snapshot, function):
                 emit({"op": "jump", "next": op["targets"][0]})
             elif kind == "dyn.type":
                 shape(op, 1, 1, typ="dyntype")
-                require(operands[0]["value"] in definitions, "dyn.type must read a dynamic argument or SSA value")
+                # (a dyn operand is in `dynamic`, so each of its definitions resets its tag)
+                require(operands[0]["type"] == "dyn" and operands[0]["value"] in definitions,
+                        "dyn.type must read a dynamic argument or SSA value")
                 tag_reads[results[0]] = operands[0]["value"]
                 emit({"op": "jump", "next": len(nodes) + 1})
             elif kind == "ptr.cmp":

@@ -217,12 +217,34 @@ class AdapterTests(SnapshotFixture):
                 instruction("mach.addr", "%ptr", "int", [9002], [("%a0", "%ptr"), ("1", "int")]),
                 instruction("mach.store", operands=[("%t9002", "%ptr"), ("0", "int")])]
 
-        for mutate in (generator, suspension, box_store):
+        def chosen_box_store(function):
+            # through a select, from an address computed in a block listed later (L8, which
+            # dominates L9)
+            late = self.block(function, "L8")
+            function["blocks"].remove(late)
+            function["blocks"].append(late)
+            late["operations"][0:0] = [
+                instruction("field.addr", "%ptr", results=[9003], operands=[("%a1", "%ptr")])]
+            self.block(function, "L9")["operations"][0:0] = [
+                instruction("select", "%ptr", results=[9004],
+                            operands=[("true", "bool"), ("%t9003", "%ptr"), ("null", "%ptr")]),
+                instruction("mach.store", operands=[("%t9004", "%ptr"), ("0", "int")])]
+
+        for mutate in (generator, suspension, box_store, chosen_box_store):
             with self.subTest(mutate.__name__):
                 snapshot, function = self.selected()
                 mutate(function)
                 with self.assertRaises(Unsupported):
                     self.normalized(snapshot)
+
+    def test_tag_read_of_a_value_not_used_as_dyn_is_malformed(self):
+        # Only values used as dyn get fresh tags at each definition; a guard needs one.
+        snapshot, function = self.selected()
+        _, _, tag = self.operation(function, "dyn.type")
+        tag["operands"][0]["type"] = "%ptr"
+        with self.assertRaises(ValueError) as raised:
+            self.normalized(snapshot)
+        self.assertNotIsInstance(raised.exception, Unsupported)
 
     def test_unreachable_and_unlabeled_blocks_are_omitted(self):
         snapshot, function = self.selected()
