@@ -1,0 +1,1063 @@
+{
+  "baseline": "070c8137edeb610e11d8d81653e506ad64a9ce6d",
+  "candidate": "ac32fee7bb9116138bf90727f9c4e83e76eaf84b",
+  "tree": "449fd986435afedfab929aa60feef587811883f0",
+  "python": "CPython 3.13.16",
+  "ircheck": true,
+  "workers": 2,
+  "inputs": 4395,
+  "equal_after_narrow_path_normalization": 4385,
+  "oracle_exit_code": 1,
+  "expected_ir_differences": [
+    "tests/programs/library/lib_gettext.py",
+    "tests/programs/library/lib_tomllib.py",
+    "tests/programs/library/lib_tomllib_boundary.py",
+    "tests/programs/library/lib_tomllib_dynamic.py",
+    "tests/programs/library/lib_tomllib_flags.py",
+    "tests/programs/library/lib_tomllib_typed_callback.py",
+    "tests/programs/library/lib_tomllib_uncaught.py",
+    "tests/programs/library/sys_prefix.py",
+    "tests/programs/upstream/upstream_tomllib_data.py",
+    "tests/programs/upstream/upstream_tomllib_misc.py"
+  ],
+  "changed_diagnostics": 0,
+  "changed_exit_statuses": 0,
+  "missing_outputs": 0,
+  "residual_common_candidate_library_control": {
+    "inputs": 10,
+    "identical": 10,
+    "exit_code": 0
+  },
+  "normalization": {
+    "unique_inputs": 253,
+    "asymmetric_inputs": [],
+    "duplicate_controls": [
+      "tests/programs/apps/byte_bpe.py",
+      "tests/programs/library/lib_tomllib_flags.py"
+    ],
+    "cases": [
+      {
+        "input": "bench/itertools_loops.py",
+        "constants": 1
+      },
+      {
+        "input": "bench/pyperformance/bm_logging.py",
+        "constants": 2
+      },
+      {
+        "input": "bench/pyperformance/bpe_tokeniser.py",
+        "constants": 1
+      },
+      {
+        "input": "bench/pyperformance/comprehensions.py",
+        "constants": 1
+      },
+      {
+        "input": "bench/pyperformance/json_loads.py",
+        "constants": 1
+      },
+      {
+        "input": "bench/pyperformance/meteor_contest.py",
+        "constants": 1
+      },
+      {
+        "input": "bench/pyperformance/regex_dna.py",
+        "constants": 1
+      },
+      {
+        "input": "bench/pyperformance/regex_effbot.py",
+        "constants": 1
+      },
+      {
+        "input": "bench/pyperformance/regex_v8.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/dynany_class_construct_deferred.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_datetime.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_fnmatch_byte_boundaries.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_html_parser_names.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_itertools_hasattr.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_itertools_protocol.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_logging_exc_info.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/deviations/lib_markupbase_constructor.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_pathlib_unsupported.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/deviations/lib_random.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_re.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_re_bounded_decoding.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_re_cache_policy.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_re_decoding.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_re_purge_decoding.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_re_release.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_shlex.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_string.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_string_formatter_fields.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_urllib_parse.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_warnings_location.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_warnings_message_type.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/lib_weakref_all.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/deviations/python_int_limits.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/deviations/threading_start.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/byte_bpe.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/example_linediff.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/example_mailmerge.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/example_montecarlo.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/example_route.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/example_route_empty.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/example_suggest.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/example_urlstats.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_json_repair_cli.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_roman_cli.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_roman_convert.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_roman_validate.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_sgp4_api.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_sgp4_verify.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_sortedcontainers_api.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_sortedcontainers_index.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_tomli_w_ini2toml.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_tomli_w_tables.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/apps/port_tomli_w_values.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/classes/private_name_intrinsics.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/containers/range_value.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/containers/tuple_runtime_regex.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/generators/iter_review.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/imports/import_alias_ready_struct.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/imports/import_builtin_exc_alias_attr.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/imports/import_builtin_submodule.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/imports/import_conditional_closures.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/imports/import_conditional_function.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/imports/import_conditional_nested_def.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/imports/import_module_attr_same_name.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/imports/module_doc.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/language/walrus.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_argv.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_choice_error.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_conversion.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_conversion_order.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_dest.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_dormant.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_equal_schemas.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_help.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_missing_value.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_namespace.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_nargs.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_numeric_choices.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_python_int.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_python_int_eq.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_required.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_schema_builtin_names.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_schema_numeric_choices.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_scopes.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_shadow.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_token_abbrev.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_token_unicode.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_type_error.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_unknown.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_argparse_version.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_bisect.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_datetime_datetime.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_datetime_time.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_difflib.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_difflib_grouped.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_difflib_unified.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_any.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_base_lookup.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_flag.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_flag_bits.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_flag_width.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_import.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_intflag.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_missing.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_mixin.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_plain_isinstance.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_reflected.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_enum_values.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_flag_base_lookup.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_fnmatch.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_fnmatch_raw_bytes.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_fnmatch_unicode_ranges.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_gettext.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_glob.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_html.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_html_entities.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_html_parser.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_html_parser_positions.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_itertools_gc.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_itertools_generators.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_itertools_module.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_itertools_range.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_itertools_terminating.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_logging.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/library/lib_logging_config.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/library/lib_logging_int_min.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/library/lib_logging_make_record.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/library/lib_logging_stderr.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/library/lib_pathlib.py",
+        "constants": 3
+      },
+      {
+        "input": "tests/programs/library/lib_pathlib_glob_case.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/library/lib_random.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_random_distributions.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_random_sequences.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_random_triangular_ints.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_annotations.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_bounds.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_branch_filter.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_branch_runs.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_cache.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_cache_churn.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_charset.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_class_span.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_codepoints.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_first.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_flat.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_groups.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_ignorecase_repeat.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_inline_flags.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_lines.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_prefilter.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_purge.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_raw_subject.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_repeat_prefix.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_reuse.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_unicode_memo.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_re_utf8_overlong.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_shlex.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_shlex_upstream.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_string.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_string_formatter.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_string_formatter_mixed.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_string_formatter_subclass.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_string_template_kwargs.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_struct.py",
+        "constants": 4
+      },
+      {
+        "input": "tests/programs/library/lib_textwrap.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_textwrap_codepoints.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_textwrap_whitespace.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_threading.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_tomllib.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/library/lib_tomllib_boundary.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/library/lib_tomllib_dynamic.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/library/lib_tomllib_flags.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/library/lib_tomllib_typed_callback.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/library/lib_tomllib_uncaught.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/library/lib_types_mappingproxy.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_unicodedata_chars.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_urllib_parse.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_urllib_parse_cache.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_warnings.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_warnings_main_filter.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_warnings_objects.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_warnings_options.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_warnings_skip_prefixes.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_weakref.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_callback.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_callback_dead_ref.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_callback_nested.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_callback_order.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_callback_raise.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_dead.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_dead_eq.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_eq.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_module.py",
+        "constants": 4
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_star.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/library/lib_weakref_transition.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/re_specialize.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/library/re_specialize_recursion.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/numbers/mpz_cpython_long_bitops.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/numbers/mpz_cpython_long_division.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/numbers/mpz_cpython_text.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/optimizations/opt_alloc_held_cohort.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/optimizations/opt_alloc_held_fields.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/optimizations/opt_alloc_held_tuple.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/reflection/reflect_formatter.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/reflection/types_generic_alias.py",
+        "constants": 3
+      },
+      {
+        "input": "tests/programs/reflection/types_generic_alias_constants.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/reflection/types_generic_alias_subscripts.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/strings/unicode_library_codepoints.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/upstream/upstream_argparse_options.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_builtin_min_max_sum.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_builtin_zip_sorted.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_contextlib_locks.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_copy_extracted.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/upstream/upstream_copy_extracted_any.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/upstream/upstream_counter.py",
+        "constants": 3
+      },
+      {
+        "input": "tests/programs/upstream/upstream_dict_methods.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_difflib_context.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_float_format.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_fnmatch.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_functools_cache.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_glob_escape.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_heapq_extracted.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_html_parser.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_int_arith.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_int_format.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_itertools.py",
+        "constants": 2
+      },
+      {
+        "input": "tests/programs/upstream/upstream_math_sums.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_ordered_dict.py",
+        "constants": 3
+      },
+      {
+        "input": "tests/programs/upstream/upstream_positional_only_arg_extracted.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_random.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_re_errors.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_re_flags.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_re_match.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_re_sub.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_re_tests.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_re_tests_perl.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_shlex_punctuation.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_slice_steps.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_sort_extracted.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_string_formatter.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_textwrap_field_rebind.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_textwrap_indent.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_textwrap_layout.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_textwrap_unicode.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_textwrap_wrap.py",
+        "constants": 1
+      },
+      {
+        "input": "tests/programs/upstream/upstream_tomllib_data.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/upstream/upstream_tomllib_misc.py",
+        "constants": 5
+      },
+      {
+        "input": "tests/programs/upstream/upstream_weakref.py",
+        "constants": 2
+      }
+    ]
+  },
+  "local_check_fast": {
+    "tests": 666,
+    "skipped": 22
+  },
+  "ci": "https://github.com/den-run-ai/pystachy/actions/runs/42841723667",
+  "lint": "https://github.com/den-run-ai/pystachy/actions/runs/42841723410",
+  "setup_sha256": {
+    "compare_compiler_home.py": "3a0272649ed2c43cd15241a5923234b9ef54a5ab61205aca77fd7c1f5a037af2",
+    "irsame_report_all.sh": "549e51e4da6b244e607395cbaf3f2332b7d63ed11c5899c26c05c6cc75c115af"
+  }
+}

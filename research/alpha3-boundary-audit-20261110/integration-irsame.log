@@ -1,0 +1,181 @@
+sed: couldn't write 142 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 199 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 37 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 149 items to stdout: Broken pipe
+diff: write failed
+sed: couldn't write 156 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 156 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+sed: couldn't write 144 items to stdout: Broken pipe
+diff: standard output: Broken pipe
+DIFF tests/programs/library/lib_gettext.py
+  IR from line 1129:
+@@ -1126,7 +1126,7 @@
+ @s.152 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c"dpgettext\00"}, align 8
+ @s.153 = private unnamed_addr global {i64, i64, i64, [10 x i8]} {i64 9, i64 0, i64 10, [10 x i8] c"npgettext\00"}, align 8
+ @s.154 = private unnamed_addr global {i64, i64, i64, [11 x i8]} {i64 10, i64 0, i64 11, [11 x i8] c"dnpgettext\00"}, align 8
+-@s.155 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"/workspace/scratch/313635e688cf/oracle-old\00"}, align 8
++@s.155 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"/workspace/scratch/313635e688cf/oracle-new\00"}, align 8
+ @s.156 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"share\00"}, align 8
+ @s.157 = private unnamed_addr global {i64, i64, i64, [7 x i8]} {i64 6, i64 0, i64 7, [7 x i8] c"locale\00"}, align 8
+ @s.158 = private unnamed_addr global {i64, i64, i64, [715 x i8]} {i64 714, i64 0, i64 715, [715 x i8] c"\0A        (?P<WHITESPACES>[ \5Ct]+)                    | # spaces and horizontal tabs\0A        (?P<NUMBER>[0-9]+\5Cb)                       | # decimal integer\0A        (?P<NAME>n\5Cb)                              | # only n is allowed\0A        (?P<PARENTHESIS>[()])                      |\0A        (?P<OPERATOR>[-*/%+?:]|[><!]=?|==|&&|\5C|\5C|) | # !, *, /, %, +, -, <, >,\0A                                                     # <=, >=, ==, !=, &&, ||,\0A                                                     # ? :\0A                                                     # unary and bitwise ops\0A                                                     # not allowed\0A        (?P<INVALID>\5Cw+|.)                           # invalid token\0A    \00"}, align 8
+DIFF tests/programs/library/lib_tomllib.py
+  IR from line 28:
+@@ -26,6 +26,7 @@
+ %C.datetime$timezone = type {i64, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i1, i1, i1, i1, i1, i1, i1}
+ %C.functools$CacheInfo = type {i64, i64, ptr, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$TOMLDecodeError = type {ptr, ptr, ptr}
++%C.tomllib$_parser$_FlagEntry = type {ptr, ptr, ptr}
+ %C.tomllib$_parser$Flags = type {i64, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$NestedDict = type {ptr}
+ %C.tomllib$_parser$Output = type {ptr, ptr}
+@@ -226,7 +227,6 @@
+ @g.tomllib$_re$match_to_number.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$load.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$loads.def = internal global i1 zeroinitializer
+-@g.tomllib$_parser$_flags_entry.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$_new_table.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_chars.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_until.def = internal global i1 zeroinitializer
+DIFF tests/programs/library/lib_tomllib_boundary.py
+  IR from line 28:
+@@ -26,6 +26,7 @@
+ %C.datetime$timezone = type {i64, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i1, i1, i1, i1, i1, i1, i1}
+ %C.functools$CacheInfo = type {i64, i64, ptr, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$TOMLDecodeError = type {ptr, ptr, ptr}
++%C.tomllib$_parser$_FlagEntry = type {ptr, ptr, ptr}
+ %C.tomllib$_parser$Flags = type {i64, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$NestedDict = type {ptr}
+ %C.tomllib$_parser$Output = type {ptr, ptr}
+@@ -227,7 +228,6 @@
+ @g.tomllib$_re$match_to_number.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$load.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$loads.def = internal global i1 zeroinitializer
+-@g.tomllib$_parser$_flags_entry.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$_new_table.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_chars.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_until.def = internal global i1 zeroinitializer
+DIFF tests/programs/library/lib_tomllib_dynamic.py
+  IR from line 28:
+@@ -26,6 +26,7 @@
+ %C.datetime$timezone = type {i64, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i1, i1, i1, i1, i1, i1, i1}
+ %C.functools$CacheInfo = type {i64, i64, ptr, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$TOMLDecodeError = type {ptr, ptr, ptr}
++%C.tomllib$_parser$_FlagEntry = type {ptr, ptr, ptr}
+ %C.tomllib$_parser$Flags = type {i64, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$NestedDict = type {ptr}
+ %C.tomllib$_parser$Output = type {ptr, ptr}
+@@ -226,7 +227,6 @@
+ @g.tomllib$_re$match_to_number.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$load.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$loads.def = internal global i1 zeroinitializer
+-@g.tomllib$_parser$_flags_entry.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$_new_table.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_chars.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_until.def = internal global i1 zeroinitializer
+DIFF tests/programs/library/lib_tomllib_flags.py
+  IR from line 28:
+@@ -26,6 +26,7 @@
+ %C.datetime$timezone = type {i64, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i1, i1, i1, i1, i1, i1, i1}
+ %C.functools$CacheInfo = type {i64, i64, ptr, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$TOMLDecodeError = type {ptr, ptr, ptr}
++%C.tomllib$_parser$_FlagEntry = type {ptr, ptr, ptr}
+ %C.tomllib$_parser$Flags = type {i64, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$NestedDict = type {ptr}
+ %C.tomllib$_parser$Output = type {ptr, ptr}
+@@ -226,7 +227,6 @@
+ @g.tomllib$_re$match_to_number.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$load.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$loads.def = internal global i1 zeroinitializer
+-@g.tomllib$_parser$_flags_entry.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$_new_table.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_chars.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_until.def = internal global i1 zeroinitializer
+DIFF tests/programs/library/lib_tomllib_typed_callback.py
+  IR from line 28:
+@@ -26,6 +26,7 @@
+ %C.datetime$timezone = type {i64, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i1, i1, i1, i1, i1, i1, i1}
+ %C.functools$CacheInfo = type {i64, i64, ptr, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$TOMLDecodeError = type {ptr, ptr, ptr}
++%C.tomllib$_parser$_FlagEntry = type {ptr, ptr, ptr}
+ %C.tomllib$_parser$Flags = type {i64, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$NestedDict = type {ptr}
+ %C.tomllib$_parser$Output = type {ptr, ptr}
+@@ -226,7 +227,6 @@
+ @g.tomllib$_re$match_to_number.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$load.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$loads.def = internal global i1 zeroinitializer
+-@g.tomllib$_parser$_flags_entry.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$_new_table.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_chars.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_until.def = internal global i1 zeroinitializer
+DIFF tests/programs/library/lib_tomllib_uncaught.py
+  IR from line 28:
+@@ -26,6 +26,7 @@
+ %C.datetime$timezone = type {i64, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i1, i1, i1, i1, i1, i1, i1}
+ %C.functools$CacheInfo = type {i64, i64, ptr, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$TOMLDecodeError = type {ptr, ptr, ptr}
++%C.tomllib$_parser$_FlagEntry = type {ptr, ptr, ptr}
+ %C.tomllib$_parser$Flags = type {i64, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$NestedDict = type {ptr}
+ %C.tomllib$_parser$Output = type {ptr, ptr}
+@@ -226,7 +227,6 @@
+ @g.tomllib$_re$match_to_number.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$load.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$loads.def = internal global i1 zeroinitializer
+-@g.tomllib$_parser$_flags_entry.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$_new_table.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_chars.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_until.def = internal global i1 zeroinitializer
+DIFF tests/programs/library/sys_prefix.py
+  IR from line 9:
+@@ -6,7 +6,7 @@
+ @pys.roots = private constant [1 x ptr] [ptr @g.localedir]
+ @s.0 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c" \00"}, align 8
+ @s.1 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"\0A\00"}, align 8
+-@s.2 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"/workspace/scratch/313635e688cf/oracle-old\00"}, align 8
++@s.2 = private unnamed_addr global {i64, i64, i64, [43 x i8]} {i64 42, i64 0, i64 43, [43 x i8] c"/workspace/scratch/313635e688cf/oracle-new\00"}, align 8
+ @s.3 = private unnamed_addr global {i64, i64, i64, [2 x i8]} {i64 1, i64 0, i64 2, [2 x i8] c"s\00"}, align 8
+ @s.4 = private unnamed_addr global {i64, i64, i64, [5 x i8]} {i64 4, i64 0, i64 5, [5 x i8] c"True\00"}, align 8
+ @s.5 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c"False\00"}, align 8
+DIFF tests/programs/upstream/upstream_tomllib_data.py
+  IR from line 28:
+@@ -26,6 +26,7 @@
+ %C.datetime$timezone = type {i64, ptr, ptr, ptr, ptr, ptr, ptr, ptr, i1, i1, i1, i1, i1, i1, i1}
+ %C.functools$CacheInfo = type {i64, i64, ptr, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$TOMLDecodeError = type {ptr, ptr, ptr}
++%C.tomllib$_parser$_FlagEntry = type {ptr, ptr, ptr}
+ %C.tomllib$_parser$Flags = type {i64, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$NestedDict = type {ptr}
+ %C.tomllib$_parser$Output = type {ptr, ptr}
+@@ -226,7 +227,6 @@
+ @g.tomllib$_re$match_to_number.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$load.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$loads.def = internal global i1 zeroinitializer
+-@g.tomllib$_parser$_flags_entry.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$_new_table.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_chars.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_until.def = internal global i1 zeroinitializer
+DIFF tests/programs/upstream/upstream_tomllib_misc.py
+  IR from line 28:
+@@ -26,6 +26,7 @@
+ %C.string$Formatter = type {}
+ %C.functools$CacheInfo = type {i64, i64, ptr, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$TOMLDecodeError = type {ptr, ptr, ptr}
++%C.tomllib$_parser$_FlagEntry = type {ptr, ptr, ptr}
+ %C.tomllib$_parser$Flags = type {i64, i64, ptr, ptr, ptr, ptr}
+ %C.tomllib$_parser$NestedDict = type {ptr}
+ %C.tomllib$_parser$Output = type {ptr, ptr}
+@@ -226,7 +227,6 @@
+ @g.tomllib$_re$match_to_number.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$load.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$loads.def = internal global i1 zeroinitializer
+-@g.tomllib$_parser$_flags_entry.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$_new_table.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_chars.def = internal global i1 zeroinitializer
+ @g.tomllib$_parser$skip_until.def = internal global i1 zeroinitializer
+10 of 4395 differ
