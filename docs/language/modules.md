@@ -291,7 +291,7 @@ arguments. Supported iteration contexts and other restrictions are in the
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
 | `os` | `system`, `execv`, `set_inheritable`, `getpid`, `getcwd`, `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |
 | `os.environ` | Direct `__setitem__(name, value)` and `pop(name, default)` calls with `str` arguments. These update the process environment and `os.getenv()` together; `pop` requires an explicit `str` default. The mapping itself and saved bound methods are unsupported. |
-| `os.path` | `exists`, `lexists`, `isdir`, `isfile`, `islink`, `samefile`, `realpath`, `join`, `normcase`, `getsize`, `getmtime`, `getctime`. |
+| `os.path` | `exists`, `lexists`, `isdir`, `isfile`, `islink`, `samefile`, `realpath`, `join`, `normcase`, `getsize`, `getmtime`, `getctime`; of `str` paths, `basename`, `dirname`, `split`, `splitext`, `isabs`, `normpath`, `abspath`, `relpath`, `expanduser` and `commonprefix` (of a `list[str]`); `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `devnull`. |
 | `time` | `time`, `time_ns`, `monotonic`, `perf_counter`, `process_time`, their `_ns` forms, and `sleep`. |
 | `tempfile` | `mkdtemp`. |
 | `errno` | The errno constants. |

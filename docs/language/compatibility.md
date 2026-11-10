@@ -554,8 +554,9 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
   optional values where the operation does not accept them. Tuples can copy-box items.
 - Passing or assigning `list[T]` / `dict[K, T]` as optional-element containers, including
   through `Sequence` / `Mapping` aliases; optional builtin arguments beyond `len`, `int`,
-  `float`, `ord`, `hex`, `oct`, `bin`, `dict`, `sum`, `round`, `os.system`, `os.path.exists`
-  and functions accepting `None`; `round(float, n)` with optional `n`.
+  `float`, `ord`, `hex`, `oct`, `bin`, `dict`, `sum`, `round`, `os.system`, `os.path.exists`,
+  `os.path`'s one-path string functions and functions accepting `None`; `round(float, n)`
+  with optional `n`.
 - Reads needing the type of a local/global/field assigned only `None` when neither later
   assignments nor context can supply it yet, including assignments in uncompiled templates
   or later module code. Annotate the optional type.

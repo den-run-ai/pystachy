@@ -705,6 +705,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             stt = self.dry(args[1])
             if stt == "str" or is_list(stt) or is_dict(stt) or is_set(stt):
                 return self.reduce(name, args, stt)
+    if name == "os.path.relpath" and len(args) == 2 and args[0].kind != "kw" and args[1].kind == "kw" and args[1].s == "start":
+        args = [args[0], args[1].kids[0]]  # (relpath(path, start=s) is relpath(path, s))
     npos = 0
     for a in args:
         if a.kind != "kw":
@@ -896,6 +898,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             vals = [self.big_narrow(v) for v in vals]
     if name not in ["str", "repr", "ascii", "hash", "bool", "min", "max"]:
         vals = [self.big_opt_narrow(v) for v in vals]  # (the others take an int | None's 64-bit int: bigints.py)
+    if name == "os.path.relpath" and len(vals) == 1:
+        vals = vals + [Val(self.sconst("."), "str")]  # (start is os.curdir where it is not given)
     key = f"{name}({','.join([v.t for v in vals])})"
     asked = key  # (math's calls convert their arguments below; a rejection names them as given)
     if self.rtmode and name.startswith("_rt."):

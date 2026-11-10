@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <locale.h>
 #include <pthread.h>
+#include <pwd.h>
 #ifdef __APPLE__
 #include <xlocale.h>
 #endif
@@ -7595,6 +7596,32 @@ static Str *env_decoded(const char *v) {
   for (I i = 0; i < s->len; i++)
     if ((unsigned char)s->s[i] >= 0x80) return pys_bytes_decode(s, 0, cstr("surrogateescape"));
   return s;
+}
+/* os.path.expanduser(p), as posixpath's: a leading "~" is $HOME or, without it, the home
+   directory the password database has for the process's user, and "~name" is user name's; a
+   user the database does not have leaves p as it is. The home loses its trailing slashes, and
+   "/" is the result where nothing is left */
+Str *pys_path_expanduser(Str *p) {
+  if (!p->len || p->s[0] != '~') return p;
+  I i = 1;
+  while (i < p->len && p->s[i] != '/') i++;
+  const char *home;
+  if (i == 1) {
+    home = getenv("HOME");
+    if (!home) { struct passwd *pw = getpwuid(getuid()); if (!pw) return p; home = pw->pw_dir; }
+  } else {
+    Str *name = env_encoded(pys_str(p->s + 1, i - 1));
+    if (nul(name)) pys_fail("ValueError: embedded null byte");
+    struct passwd *pw = getpwnam(name->s);
+    if (!pw) return p;
+    home = pw->pw_dir;
+  }
+  Str *h = env_decoded(home);
+  I n = h->len;
+  while (n && h->s[n - 1] == '/') n--;
+  if (!n && i == p->len) return cstr("/");
+  Buf b = {0}; put(&b, h->s, n); put(&b, p->s + i, p->len - i);
+  return done(&b);
 }
 Str *pys_getenv(Str *k, Str *dflt) {
   k = env_encoded(k);
