@@ -1,7 +1,8 @@
 # A conditional expression as the left operand of a binary operator, where the operation's
 # result is wanted as a closed union: the union is the result's, so arms of one type keep it
 # and the operation runs on that type (it was rejected: "closed union arithmetic requires
-# narrowing", or ran as union arithmetic for int | float)
+# narrowing", or ran as union arithmetic for int | float). Arms of two types, which make the
+# union: scalar_union_conditional_mixed.py
 import sys
 
 
@@ -35,10 +36,6 @@ def ret_pow(a: int, c: int) -> int | float:
 
 def ret_bits(a: int, c: int) -> int | float:
     return ((a if a > 0 else c) & 7) + ((a if a > 0 else c) << 2) + ((c if a > 0 else a) >> 1) + ((a if a > 0 else c) | 8) + ((a if a > 0 else c) ^ 1)
-
-
-def ret_mixed_arms(a: int, flag: bool) -> int | float:
-    return (a if flag else 1.5) * 2
 
 
 def ret_mixed_str(a: int, flag: bool) -> list[int | str]:
@@ -91,7 +88,7 @@ def main(z: int) -> None:
     print(ret_mul(3, 4), ret_mul(-3, 4), ret_chain(3, 4), ret_chain(-3, 0), ret_str("", "q"), ret_str("p", "q"))
     print(ret_float(3.0, 4.0), ret_float(-3.0, 5.0), ret_opt_union(3, 4), ret_opt_union(-1, 9))
     print(ret_numeric(3, 4), ret_numeric(-3, 4), ret_pow(3, 4), ret_pow(-3, 4), ret_bits(3, 4), ret_bits(-3, 4))
-    print(ret_mixed_arms(3, True), ret_mixed_arms(3, False), ret_mixed_str(3, True), ret_mixed_str(3, False))
+    print(ret_mixed_str(3, True), ret_mixed_str(3, False))
     print(ret_nested(9, 1), ret_nested(1, 9), ret_nested(1, 2), ret_static(3, 4))
     log: list[str] = []
     print(ret_order(log, 3), ret_order(log, -3), log)
@@ -109,7 +106,7 @@ def main(z: int) -> None:
     u = (a if a > 0 else c) * 2
     print(vals, u, Cfg(-3).v, Cfg(3).w, Cfg(-3).w, items(-3), items(0), pair(-3))
     r = ret_mul(1, 2)
-    print(isinstance(r, int), type(ret_numeric(1, 2)).__name__, type(ret_mixed_arms(1, False)).__name__, type(ret_str("a", "b")).__name__)
+    print(isinstance(r, int), type(ret_numeric(1, 2)).__name__, type(ret_str("a", "b")).__name__)
 
 
 main(len(sys.argv) - 1)

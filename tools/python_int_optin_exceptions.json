@@ -322,6 +322,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/inference/scalar_union_conditional_mixed.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/scalar_union_conditional_mixed.py:10: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
+      "reason": "A conditional expression's arms join a promoting int with float in a closed numeric union, whose integer payload remains fixed-width.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/scalar_union_conditional_mixed.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/scalar_union_conditional_mixed.py:10: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
+      "reason": "A conditional expression's arms join a promoting int with float in a closed numeric union, whose integer payload remains fixed-width.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/inference/union_order.py",
       "mode": "jit",
       "category": "unsupported-storage",
