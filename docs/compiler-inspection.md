@@ -53,6 +53,9 @@ consumes a completed `typed-after.json` and checks one explicitly selected
 function. Its theorem establishes guard safety in a small normalized model;
 the inspection export, normalization and native execution remain separate trust
 obligations. Unsupported instructions are reported rather than skipped.
+A `check` op's error block is not among its targets, so each function snapshot
+also maps the op's key (its descriptor, else its text) to that block's label in
+`check_targets`.
 
 ## Three questions to try
 

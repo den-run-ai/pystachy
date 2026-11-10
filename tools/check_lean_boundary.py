@@ -13,7 +13,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import re
 import stat
 import subprocess
 import sys
@@ -22,18 +21,36 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CHECKER = ROOT / "tools/lean_boundary/.lake/build/bin/pystachy-boundary"
 MAX_BYTES = 4 * 1024 * 1024
-MAX_NODES = 1024
+MAX_INSTRUCTIONS = 1024
+MAX_NODES = 4096
 MAX_FACTS = 16384
 TAGS = {"float", "str", "bool"}
-NATIVE_TYPES = TAGS | {"int", "None", "dyn"}
 OP_KEYS = {"op", "type", "text", "immediate", "descriptor", "results", "operands", "targets"}
-TERMINATORS = {"br", "cbr", "ret", "unreachable"}
-SUPPORTED_OPS = TERMINATORS | {"slot", "mem.load", "mem.store", "dyn.type", "ptr.cmp",
-                                "dyn.payload", "slot.pack", "slot.unpack", "scalar.bin"}
+# How each typed-IR operation (IROPS, src/pystachy_compiler/specs.py) is normalized. Ordinary
+# operations write no private slot (a slot whose address reaches any other operation is not
+# private) and no box (boxes are immutable; a store through an address derived from a box is
+# refused), so they only define their results: a result the function uses as dyn gets an
+# unknown tag. Tag operations make guards and payload reads; terminators make the edges.
+ORDINARY = {"rt", "call", "icall", "init", "phi", "select", "ovf", "list.load", "list.len",
+            "alloc.fixed", "vtuple.make", "mem.load", "mem.store", "mach.load", "mach.store",
+            "mach.addr", "tuple.load", "tuple.store", "field.addr", "slot.pack", "slot.unpack",
+            "scalar.bin", "scalar.cast", "scalar.cmp", "num.cast", "num.cmp", "int.ucmp",
+            "empty.kind", "union.tag", "union.payload", "union.raw", "dyn.raw", "big.make",
+            "big.lo", "big.hi", "exc.match"}
+TAG_OPS = {"dyn.type", "ptr.cmp", "dyn.payload"}
+TERMINATORS = {"br", "cbr", "switch", "check", "ret", "ret.none", "raise", "throw",
+               "unreachable", "landing"}
+# A call that may raise inside a try statement is an invoke: it ends its block, and its second
+# target is the unwind edge to a landing block.
+INVOKES = {"rt", "call", "icall", "init"}
+# Operations that may read or write a slot named as their first operand; any other use of a
+# slot's address makes it escape.
+SLOT_ACCESS = {"mem.load", "mem.store", "mach.load", "mach.store", "landing"}
+SUPPORTED_OPS = ORDINARY | TAG_OPS | TERMINATORS
 LIMITATIONS = [
     "Only dyn.payload guard safety in the selected normalized function is checked.",
     "Python normalization, snapshot fidelity, runtime tag contracts and LLVM lowering are not proved.",
-    "Calls, exceptions, escaping storage, phi nodes and other unsupported operations are rejected.",
+    "Generators, other payload types, stores into boxes and null dynamic slots are rejected.",
     "The native Lean executable adds the Lean compiler and runtime to the trusted base.",
 ]
 
@@ -70,26 +87,26 @@ def read_snapshot(path):
     return json.loads(raw, object_pairs_hook=unique_object), hashlib.sha256(raw).hexdigest()
 
 
-def instruction(value, immediates=(0,)):
+def instruction(value, slot=False):
     require(isinstance(value, dict) and set(value) == OP_KEYS, "invalid instruction fields")
     for key in ("op", "type", "text", "descriptor"):
-        require(isinstance(value[key], str) and len(value[key]) <= 256, f"invalid instruction {key}")
-    if value["op"] not in SUPPORTED_OPS:
+        require(isinstance(value[key], str) and len(value[key]) <= 4096, f"invalid instruction {key}")
+    if value["op"] not in ({"slot"} if slot else SUPPORTED_OPS):
         raise Unsupported(f"unsupported operation: {value['op']}")
-    require(type(value["immediate"]) is int and value["immediate"] in immediates,
-            "nonzero instruction immediate is unsupported")
-    require(value["descriptor"] == "", "instruction descriptor is unsupported")
-    require(isinstance(value["results"], list) and len(value["results"]) <= 2,
+    require(type(value["immediate"]) is int and (value["immediate"] in (0, 1, 2) if slot
+                                                 else 0 <= value["immediate"] < 2 ** 31),
+            "invalid instruction immediate")
+    require(isinstance(value["results"], list) and len(value["results"]) <= 8,
             "invalid instruction results")
     require(all(type(n) is int and 0 <= n <= 1000000 for n in value["results"]),
             "invalid result identifier")
-    require(isinstance(value["operands"], list) and len(value["operands"]) <= 3,
+    require(isinstance(value["operands"], list) and len(value["operands"]) <= 256,
             "invalid instruction operands")
     for operand in value["operands"]:
         require(isinstance(operand, dict) and set(operand) == {"value", "type"}, "invalid operand")
         name(operand["value"], "operand value")
         name(operand["type"], "operand type")
-    require(isinstance(value["targets"], list) and len(value["targets"]) <= 2,
+    require(isinstance(value["targets"], list) and len(value["targets"]) <= 256,
             "invalid instruction targets")
     for target in value["targets"]:
         name(target, "branch target")
@@ -154,77 +171,100 @@ def normalize_snapshot(snapshot, function):
     require(len(selected) == 1, "--function must select exactly one function by exact name or symbol")
     fn = selected[0]
     symbol = name(fn.get("symbol"), "function symbol")
-    return_type = fn.get("return_representation")
-    require(isinstance(return_type, str), "invalid return representation")
-    if return_type not in NATIVE_TYPES:
-        raise Unsupported(f"unsupported return representation: {return_type}")
+    name(fn.get("return_representation"), "return representation")
+    recursion = fn.get("recursion")
+    require(isinstance(recursion, dict), "invalid recursion record")
+    if recursion.get("generator") or recursion.get("coroutine"):
+        raise Unsupported("generators are outside the prototype")
     parameters = fn.get("parameters")
     require(isinstance(parameters, list) and len(parameters) <= 128, "invalid parameters")
-    definitions = {}
+    # Registers defined on entry: parameters of any representation, the identity boxes that
+    # accompany numeric parameters (%aidN) and the identity-return address (%idret).
+    definitions = {"%idret": ("*dyn", None, -1)}
     for index, parameter in enumerate(parameters):
         require(isinstance(parameter, dict), "invalid parameter")
-        typ = parameter.get("representation")
-        require(isinstance(typ, str), "invalid parameter representation")
-        if typ not in NATIVE_TYPES:
-            raise Unsupported(f"unsupported parameter representation: {typ}")
-        definitions[f"%a{index}"] = (typ, None, -1)
+        definitions[f"%a{index}"] = (name(parameter.get("representation"), "parameter representation"), None, -1)
+        definitions[f"%aid{index}"] = ("dyn", None, -1)
+    targets_of_checks = fn.get("check_targets", {})
+    require(isinstance(targets_of_checks, dict) and all(
+        isinstance(key, str) and len(key) <= 4096 and isinstance(label, str)
+        for key, label in targets_of_checks.items()), "invalid check targets")
     blocks = fn.get("blocks")
-    require(isinstance(blocks, list) and 0 < len(blocks) <= 256, "invalid blocks")
+    require(isinstance(blocks, list) and blocks, "invalid blocks")
+    if len(blocks) > 256:
+        raise Unsupported("function exceeds 256 blocks")
     slots = {}
-    numbers = set()
-    require(isinstance(fn.get("slots"), list) and len(fn["slots"]) <= MAX_NODES, "invalid slots")
+    require(isinstance(fn.get("slots"), list) and len(fn["slots"]) <= MAX_INSTRUCTIONS, "invalid slots")
     for raw in fn["slots"]:
-        # Slot kinds: storage, a local's "is assigned" flag and a stack tuple.
-        op = instruction(raw, (0, 1, 2))
+        # Slot kinds: storage, a local's "is assigned" flag and a stack tuple, whose register is
+        # a tuple value rather than storage.
+        op = instruction(raw, slot=True)
         shape(op, 0, 1, texts=(op["text"],))
-        require(op["op"] == "slot", "expected private slot declaration")
-        if op["immediate"] == 2:
-            raise Unsupported("stack tuple slots are outside the prototype")
-        if op["type"] not in NATIVE_TYPES:
-            raise Unsupported(f"unsupported private slot representation: {op['type']}")
+        name(op["type"], "slot representation")
         # Name a slot as lowering does (slot_register, src/pystachy_compiler/ir.py): a local's
         # "is assigned" flag and numeric identity companions share its number, which is no name.
         number = op["results"][0]
+        if op["immediate"] == 2:
+            definitions[f"%stk.{number}"] = (op["type"], None, -1)
+            continue
         if op["immediate"] == 1:
             require(op["type"] == "bool" and op["text"] != "", "invalid assignment flag slot")
             slot = f"%{op['text']}.def.{number}"
         else:
             slot = f"%{op['text'] or 'h'}.{number}"
-        require(slot not in slots and len(slot) <= 256, "duplicate or invalid slot")
+        require(slot not in slots and slot not in definitions and len(slot) <= 256, "duplicate or invalid slot")
         slots[slot] = op["type"]
     starts = {}
     total = 0
+    numbers = set()
     for block in blocks:
         require(isinstance(block, dict) and set(block) == {"label", "handler", "operations"},
                 "invalid block fields")
-        label = name(block.get("label"), "block label")
-        require(label not in starts, "duplicate block label")
-        if block.get("handler") != "":
-            raise Unsupported("exception handlers are outside the prototype")
+        label = block.get("label")
+        # (LLVM starts an unlabeled block after a terminator; no branch can name it)
+        require(isinstance(label, str) and len(label) <= 256 and (label == "" or name(label, "block label")),
+                "invalid block label")
+        require(label == "" or label not in starts, "duplicate block label")
+        require(isinstance(block.get("handler"), str) and len(block["handler"]) <= 256, "invalid handler")
         operations = block.get("operations")
         require(isinstance(operations, list) and operations, "empty or invalid block")
-        starts[label] = total
+        if label != "":
+            starts[label] = None
         total += len(operations)
-        require(total <= MAX_NODES, f"function exceeds {MAX_NODES} instructions")
+        if total > MAX_INSTRUCTIONS:
+            raise Unsupported(f"function exceeds {MAX_INSTRUCTIONS} instructions")
         for offset, raw in enumerate(operations):
             op = instruction(raw)
-            require((op["op"] in TERMINATORS) == (offset == len(operations) - 1),
-                    "each block must end with its only supported terminator")
+            invoke = op["op"] in INVOKES and len(op["targets"]) == 2
+            require((op["op"] in TERMINATORS or invoke) == (offset == len(operations) - 1),
+                    "each block must end with its only terminator")
             for position, number in enumerate(op["results"]):
                 require(number not in numbers, "duplicate result identifier")
                 numbers.add(number)
-                typ = "%ptr" if op["op"] == "dyn.payload" and position == 0 else op["type"]
-                definitions[f"%t{number}"] = (typ, label, offset)
-    entry_label = blocks[0]["label"]
-    predecessors = {label: set() for label in starts}
+                definitions[f"%t{number}"] = (op["type"], label, offset)
+    for block in blocks:
+        last = block["operations"][-1]
+        for target in last["targets"] if last["op"] != "phi" else ():
+            require(target in starts, "unknown branch target")
+        if block["handler"] != "" and block["handler"] not in starts:
+            raise Unsupported("a covered block's landing block is missing")
+    # Every edge: terminator targets (an invoke's unwind edge among them), each check's separate
+    # error block, and, conservatively, from anywhere in a covered block to its landing block.
     edges = {}
     for block in blocks:
-        label = block["label"]
-        targets = block["operations"][-1]["targets"]
-        require(all(target in starts for target in targets), "unknown branch target")
-        edges[label] = set(targets)
-        for target in targets:
-            predecessors[target].add(label)
+        last = block["operations"][-1]
+        out = list(last["targets"])
+        if last["op"] == "check":
+            key = last["descriptor"] or last["text"]
+            if key not in targets_of_checks or targets_of_checks[key] not in starts:
+                raise Unsupported("a check's error block is not in the snapshot")
+            out.append(targets_of_checks[key])
+        if block["handler"] != "":
+            out.append(block["handler"])
+        edges.setdefault(block["label"], [])
+        edges[block["label"]] += out
+    entry_label = blocks[0]["label"]
+    require(entry_label != "", "the entry block needs a label")
     reached = {entry_label}
     pending = [entry_label]
     while pending:
@@ -232,13 +272,19 @@ def normalize_snapshot(snapshot, function):
             if target not in reached:
                 reached.add(target)
                 pending.append(target)
-    if reached != set(starts):
-        raise Unsupported("unreachable blocks are outside the prototype")
-    dominators = {label: ({label} if label == entry_label else set(starts)) for label in starts}
+    # Blocks that no edge reaches cannot run; they are omitted and counted.
+    live = [block for block in blocks if block["label"] in reached]
+    predecessors = {block["label"]: set() for block in live}
+    for block in live:
+        for target in edges[block["label"]]:
+            predecessors[target].add(block["label"])
+    dominators = {block["label"]: ({entry_label} if block["label"] == entry_label else set(reached))
+                  for block in live}
     changed = True
     while changed:
         changed = False
-        for label in starts:
+        for block in live:
+            label = block["label"]
             if label != entry_label:
                 common = set.intersection(*(dominators[p] for p in predecessors[label]))
                 updated = {label} | common
@@ -246,139 +292,257 @@ def normalize_snapshot(snapshot, function):
                     dominators[label] = updated
                     changed = True
 
-    def check_operand(operand, label, offset):
-        value, typ = operand["value"], operand["type"]
+    # Values the function uses as dyn, which alone can carry a tag; a slot whose address reaches
+    # anything but an access is not private; addresses derived from a box must not be stored to.
+    dynamic = {f"%aid{index}" for index in range(len(parameters))}
+    escaped = set()
+    for block in live:
+        for op in block["operations"]:
+            if op["type"] == "dyn":
+                dynamic.update(f"%t{number}" for number in op["results"])
+            for position, operand in enumerate(op["operands"]):
+                value = operand["value"]
+                if operand["type"] == "dyn" and value.startswith("%"):
+                    dynamic.add(value)
+                if value in slots and not (position == 0 and op["op"] in SLOT_ACCESS):
+                    escaped.add(value)
+    for parameter in range(len(parameters)):
+        if definitions[f"%a{parameter}"][0] == "dyn":
+            dynamic.add(f"%a{parameter}")
+    boxes = set(dynamic)
+    for block in live:
+        for op in block["operations"]:
+            if op["op"] in {"mach.addr", "field.addr"} and op["operands"] and op["operands"][0]["value"] in boxes:
+                boxes.update(f"%t{number}" for number in op["results"])
+            if op["op"] in {"dyn.payload", "dyn.raw"} and op["results"]:
+                boxes.add(f"%t{op['results'][0]}")
+
+    def check_operand(operand, label, offset, predecessor=None):
+        value = operand["value"]
         if value in slots:
-            require(typ == "*" + slots[value], "slot address has wrong type")
-        elif value == "%idret":
-            require(typ == "*dyn", "identity-return address has wrong type")
+            require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}, "slot address has wrong type")
         elif value.startswith("%"):
             require(value in definitions, f"undefined operand: {value}")
-            actual, defined_block, defined_offset = definitions[value]
-            require(actual == typ, f"operand type disagrees with definition: {value}")
+            _, defined_block, defined_offset = definitions[value]
             if defined_block is not None:
-                require((defined_offset < offset if defined_block == label
-                         else defined_block in dominators[label]), f"definition does not dominate use: {value}")
-        else:
-            numeric = typ == "int" and re.fullmatch(r"-?[0-9]+", value)
-            floating = typ == "float" and re.fullmatch(r"(?:-?[0-9]+(?:\.[0-9]*)?(?:[eE][+-]?[0-9]+)?|0x[0-9A-Fa-f]+)", value)
-            boolean = typ == "bool" and value in {"true", "false"}
-            pointer = typ in {"dyn", "str", "None", "dyntype"} and (value == "null" or value.startswith("@"))
-            require(numeric or floating or boolean or pointer, f"unsupported constant: {value}:{typ}")
+                require(defined_block in dominators, f"definition is not reachable: {value}")
+                if predecessor is not None:
+                    # (a phi's operand is read at the end of its predecessor, if that can run)
+                    require(predecessor not in dominators or defined_block in dominators[predecessor],
+                            f"definition does not dominate use: {value}")
+                else:
+                    require((defined_offset < offset if defined_block == label
+                             else defined_block in dominators[label]), f"definition does not dominate use: {value}")
+
+    # A block that holds only a bool phi and a branch on it joins a short-circuit condition
+    # ("flag and isinstance(x, str)"). An edge into it whose incoming value is known (a constant,
+    # the branch condition that chose the edge, or a tag comparison of its own block) goes
+    # straight to the matching successor, as that guard where it is a comparison.
+    joins = {}
+    for block in live:
+        operations = block["operations"]
+        if (block["handler"] == "" and len(operations) == 2 and operations[0]["op"] == "phi"
+                and operations[0]["type"] == "bool" and len(operations[0]["results"]) == 1
+                and operations[1]["op"] == "cbr" and len(operations[1]["operands"]) == 1
+                and operations[1]["operands"][0]["value"] == f"%t{operations[0]['results'][0]}"):
+            phi = operations[0]
+            require(len(phi["operands"]) == len(phi["targets"]), "invalid phi")
+            joins[block["label"]] = ({target: operand["value"] for operand, target
+                                      in zip(phi["operands"], phi["targets"])}, operations[1]["targets"])
 
     nodes = []
     payloads = 0
     remapped_guards = 0
-    for block in blocks:
+    threaded = 0
+
+    def emit(node):
+        nodes.append(node)
+        return len(nodes) - 1
+
+    def following(node):
+        node["next"] = len(nodes) + 1
+        return emit(node)
+
+    def guarded(state, value):
+        # the guard's location: a private slot the compared value was just loaded from
+        nonlocal remapped_guards
+        loaded = state["loads"].get(value)
+        if loaded and state["writes"].get(loaded[0], -1) == loaded[1]:
+            remapped_guards += 1
+            return loaded[0]
+        return value
+
+    def edge(state, target, known=None):
+        # an edge to target, threaded through a short-circuit join when its value is known
+        # here; known is a branch condition and its value on this edge
+        nonlocal threaded
+        if target not in joins:
+            return {"op": "jump", "next": target}
+        incoming, (yes, no) = joins[target]
+        value = incoming.get(state["label"])
+        if value in {"true", "false"}:
+            outcome = value == "true"
+        elif known is not None and value == known[0]:
+            outcome = known[1]
+        elif value in state["comparisons"]:
+            compared, tag, predicate = state["comparisons"][value]
+            threaded += 1
+            return {"op": "guard", "value": guarded(state, compared), "tag": tag,
+                    "yes": yes if predicate == "==" else no, "no": no if predicate == "==" else yes}
+        else:
+            return {"op": "jump", "next": target}
+        threaded += 1
+        return {"op": "jump", "next": yes if outcome else no}
+
+    def branch_to(state, node, key, target, known):
+        # point node's edge at target, or at a new node that threads the join
+        threaded_node = edge(state, target, known)
+        node[key] = threaded_node["next"] if threaded_node["op"] == "jump" else ("pending", threaded_node)
+
+    for block in live:
         label = block["label"]
-        loads = {}
-        tag_reads = {}
-        comparisons = {}
-        writes = {}
+        starts[label] = len(nodes)
+        handler = block["handler"]
+        state = {"label": label, "loads": {}, "tag_reads": {}, "comparisons": {}, "writes": {}}
+        loads, tag_reads, comparisons, writes = (state[key] for key in ("loads", "tag_reads", "comparisons", "writes"))
+
         for offset, op in enumerate(block["operations"]):
-            index = len(nodes)
-            nxt = index + 1
-            kind, operands = op["op"], op["operands"]
-            for operand in operands:
-                check_operand(operand, label, offset)
-                if operand["value"] in slots or operand["value"] == "%idret":
-                    require(kind in {"mem.load", "mem.store"} and operand is operands[0],
-                            "private/identity-return storage cannot escape")
-            node = {"op": "jump", "next": nxt}
-            if kind in {"mem.load", "mem.store"}:
-                load = kind == "mem.load"
-                shape(op, 1 if load else 2, 1 if load else 0)
-                address = operands[0]["value"]
-                require(address in slots or (not load and address == "%idret"),
-                        "memory access must use a private slot or write-only identity return")
-                typ = slots.get(address, "dyn")
-                require(operands[0]["type"] == "*" + typ and
-                        (op["type"] == typ if load else op["type"] == "" and operands[1]["type"] == typ),
-                        "memory access types disagree")
-                if load:
-                    result = f"%t{op['results'][0]}"
-                    if typ == "dyn":
-                        node = {"op": "copy", "dst": result, "src": address, "next": nxt}
-                        loads[result] = (address, writes.get(address, -1))
+            kind, operands, results = op["op"], op["operands"], [f"%t{n}" for n in op["results"]]
+            for position, operand in enumerate(operands):
+                check_operand(operand, label, offset,
+                              op["targets"][position] if kind == "phi" and position < len(op["targets"]) else None)
+            if handler != "":
+                # (an invoke's own unwind edge follows below; this covers every other point)
+                emit({"op": "choice", "yes": len(nodes) + 1, "no": handler})
+            address = operands[0]["value"] if operands else ""
+            private = address in slots and address not in escaped
+            if kind in {"mem.store", "mach.store"}:
+                require(len(operands) == 2 and not results, f"invalid {kind} shape")
+                if address in boxes:
+                    raise Unsupported("a store into a dynamic box is outside the prototype")
+            if kind == "mem.load" and private:
+                shape(op, 1, 1)
+                following({"op": "copy", "dst": results[0], "src": address})
+                loads[results[0]] = (address, writes.get(address, -1))
+            elif kind in {"mem.store", "mach.store"} and private:
+                writes[address] = offset
+                source = operands[1]["value"]
+                if kind == "mem.store" and source in definitions:
+                    following({"op": "copy", "dst": address, "src": source})
                 else:
+                    if source == "null" and (slots[address] == "dyn" or operands[1]["type"] == "dyn"):
+                        raise Unsupported("unbound dynamic private slots are outside the prototype")
+                    following({"op": "havoc", "dst": address})
+            elif kind == "landing":
+                require(len(op["targets"]) == 1, "invalid landing shape")
+                if private:
                     writes[address] = offset
-                    if typ == "dyn":
-                        source = operands[1]["value"]
-                        if source.startswith("%") and source in definitions:
-                            node = {"op": "copy", "dst": address, "src": source, "next": nxt}
-                        else:
-                            if address != "%idret" and source == "null":
-                                raise Unsupported("unbound dynamic private slots are outside the prototype")
-                            node = {"op": "havoc", "dst": address, "next": nxt}
+                    following({"op": "havoc", "dst": address})
+                emit({"op": "jump", "next": op["targets"][0]})
             elif kind == "dyn.type":
                 shape(op, 1, 1, typ="dyntype")
-                require(operands[0]["type"] == "dyn", "dyn.type requires a dyn operand")
-                value = operands[0]["value"]
-                require(value in definitions, "dyn.type must read a dynamic argument or SSA value")
-                tag_reads[f"%t{op['results'][0]}"] = value
+                require(operands[0]["value"] in definitions, "dyn.type must read a dynamic argument or SSA value")
+                tag_reads[results[0]] = operands[0]["value"]
+                emit({"op": "jump", "next": len(nodes) + 1})
             elif kind == "ptr.cmp":
                 shape(op, 2, 1, typ="bool", texts=("==", "!="))
-                require(all(a["type"] in {"dyntype", "dyn", "str", "None"} for a in operands),
-                        "unsupported pointer comparison")
                 for read, descriptor in (operands, operands[::-1]):
                     expected = "@pys_dyntype_"
                     if read["value"] in tag_reads and descriptor["value"].startswith(expected):
                         tag = descriptor["value"][len(expected):]
                         if tag in TAGS and read["type"] == descriptor["type"] == "dyntype":
-                            comparisons[f"%t{op['results'][0]}"] = (tag_reads[read["value"]], tag, op["text"])
+                            comparisons[results[0]] = (tag_reads[read["value"]], tag, op["text"])
+                emit({"op": "jump", "next": len(nodes) + 1})
             elif kind == "dyn.payload":
                 if op["text"] not in TAGS:
                     raise Unsupported(f"unsupported payload type: {op['text']}")
                 shape(op, 1, 2, typ="%slot", texts=tuple(TAGS))
-                require(operands[0]["type"] == "dyn", "dyn.payload requires a dyn operand")
-                node = {"op": "payload", "value": operands[0]["value"], "tag": op["text"], "next": nxt}
+                require(operands[0]["type"] == "dyn" and operands[0]["value"] in definitions,
+                        "dyn.payload requires a dynamic register")
+                following({"op": "payload", "value": operands[0]["value"], "tag": op["text"]})
                 payloads += 1
-            elif kind in {"slot.pack", "slot.unpack"}:
-                shape(op, 1, 1)
-                native = operands[0]["type"] if kind == "slot.pack" else op["type"]
-                opaque = op["type"] if kind == "slot.pack" else operands[0]["type"]
-                require(native in NATIVE_TYPES - {"dyn", "None"} and opaque == "%slot",
-                        "unsupported opaque slot conversion")
-            elif kind == "scalar.bin":
-                shape(op, 2, 1, texts=("fadd", "fsub", "fmul", "fdiv", "frem", "add", "sub", "mul", "and", "or", "xor"))
-                require(op["type"] in {"float", "int", "bool"} and all(a["type"] == op["type"] for a in operands),
-                        "unsupported scalar operation")
-                require(op["text"].startswith("f") == (op["type"] == "float"), "scalar opcode/type mismatch")
             elif kind == "br":
                 shape(op, 0, 0, 1, "")
-                node = {"op": "jump", "next": starts[op["targets"][0]]}
+                emit(edge(state, op["targets"][0]))
             elif kind == "cbr":
                 shape(op, 1, 0, 2, "")
-                require(operands[0]["type"] == "bool", "conditional branch requires a bool")
-                yes, no = (starts[target] for target in op["targets"])
-                comparison = comparisons.get(operands[0]["value"])
+                condition = operands[0]["value"]
+                yes, no = op["targets"]
+                comparison = comparisons.get(condition)
                 if comparison:
                     value, tag, predicate = comparison
-                    loaded = loads.get(value)
-                    if loaded and writes.get(loaded[0], -1) == loaded[1]:
-                        value = loaded[0]
-                        remapped_guards += 1
-                    node = {"op": "guard", "value": value, "tag": tag,
-                            "yes": yes if predicate == "==" else no, "no": no if predicate == "==" else yes}
+                    node = {"op": "guard", "value": guarded(state, value), "tag": tag}
+                    keys = ("yes", "no") if predicate == "==" else ("no", "yes")
                 else:
-                    node = {"op": "choice", "yes": yes, "no": no}
-            elif kind == "ret":
-                shape(op, 0 if fn.get("return_representation") == "None" else 1, 0, typ="")
-                if operands:
-                    require(operands[0]["type"] == fn.get("return_representation"), "return type mismatch")
-                node = {"op": "stop"}
-            elif kind == "unreachable":
-                shape(op, 0, 0, typ="")
-                node = {"op": "stop"}
+                    node = {"op": "choice"}
+                    keys = ("yes", "no")
+                branch_to(state, node, keys[0], yes, (condition, True))
+                branch_to(state, node, keys[1], no, (condition, False))
+                emit(node)
+            elif kind == "switch" or (kind in {"raise", "throw"} and op["targets"]):
+                # (a raise or throw in a try statement may branch to the code that handles it)
+                for target in op["targets"][:-1]:
+                    emit({"op": "choice", "yes": target, "no": len(nodes) + 1})
+                emit({"op": "jump", "next": op["targets"][-1]})
+            elif kind == "check":
+                require(len(op["targets"]) == 1, "invalid check shape")
+                emit({"op": "choice", "yes": op["targets"][0],
+                      "no": targets_of_checks[op["descriptor"] or op["text"]]})
+            elif kind in {"ret", "ret.none", "raise", "throw", "unreachable"}:
+                emit({"op": "stop"})
+            elif kind in INVOKES and len(op["targets"]) == 2:
+                emit({"op": "choice", "yes": len(nodes) + 1, "no": op["targets"][1]})
+                for result in results:
+                    if result in dynamic:
+                        following({"op": "havoc", "dst": result})
+                emit({"op": "jump", "next": op["targets"][0]})
             else:
-                raise Unsupported(f"unsupported operation {kind} in {label} at instruction {offset}")
-            nodes.append(node)
+                # An ordinary operation, including a private slot read that is not a mem.load
+                # and every access to a slot that escaped: dyn results get unknown tags.
+                require(not op["targets"] or kind == "phi", f"invalid {kind} targets")
+                unknown = [result for result in results if result in dynamic]
+                if kind in {"mem.store", "mach.store"} and address in slots:
+                    writes[address] = offset
+                if not unknown:
+                    emit({"op": "jump", "next": len(nodes) + 1})
+                for result in unknown:
+                    following({"op": "havoc", "dst": result})
+            if len(nodes) > MAX_NODES:
+                raise Unsupported(f"normalized function exceeds {MAX_NODES} nodes")
+
+    # Threaded edges become their own nodes; then labels become node indices.
+    for node in list(nodes):
+        for key in ("yes", "no"):
+            if isinstance(node.get(key), tuple):
+                node[key] = emit(node[key][1])
+    require(len(nodes) <= MAX_NODES, f"normalized function exceeds {MAX_NODES} nodes")
+    for node in nodes:
+        for key in ("next", "yes", "no"):
+            if isinstance(node.get(key), str):
+                node[key] = starts[node[key]]
     require(all(0 <= target < len(nodes) for node in nodes for target in successors(node)),
             "normalized target out of range")
+    # Nodes the entry cannot reach never run, such as a join whose every edge was threaded;
+    # dropping them keeps their unconstrained facts from weakening the nodes they lead to.
+    kept = {0}
+    pending = [0]
+    while pending:
+        for target in successors(nodes[pending.pop()]):
+            if target not in kept:
+                kept.add(target)
+                pending.append(target)
+    renumber = {old: new for new, old in enumerate(sorted(kept))}
+    nodes = [nodes[old] for old in sorted(kept)]
+    for node in nodes:
+        for key in ("next", "yes", "no"):
+            if key in node:
+                node[key] = renumber[node[key]]
     certificate = infer_certificate(nodes)
     candidate = {"schema_version": 1, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
     return candidate, {"function": symbol, "stage": "typed-after", "nodes": len(nodes),
                        "payloads": payloads, "remapped_guards": remapped_guards,
+                       "threaded_edges": threaded, "omitted_blocks": len(blocks) - len(live),
+                       "escaped_slots": len(escaped),
                        "scope": "dyn.payload guards in one normalized function", "limitations": LIMITATIONS}
 
 

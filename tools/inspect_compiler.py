@@ -171,6 +171,9 @@ class Observer:
             "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "landed": fn.landed, "gdepth": fn.gdepth,
                           "generator": f.gen, "coroutine": fn.coro},
             "slots": [self.instruction(i) for i in fn.slots],
+            # A check op raises from a separate block: its key (the op's descriptor, else its
+            # text) -> that block's label.
+            "check_targets": dict(fn.cold),
             "blocks": [{"label": b.label, "handler": b.handler,
                         "operations": [self.instruction(i) for i in b.code]} for b in fn.blocks],
             "loops": [{"kind": lp.kind, "mode": lp.mode, "head": lp.head, "body": lp.body,

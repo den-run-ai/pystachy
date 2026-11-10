@@ -111,16 +111,28 @@ allowed axioms are Lean's standard `propext`, `Classical.choice` and `Quot.sound
 ## How actual IR reaches the model
 
 `tools/check_lean_boundary.py` reads the existing inspection schema, validates
-the selected function and emits a normalized node for each instruction. It
-supports exact builtin `float`, `str` and `bool` tag comparisons, private scalar
-slots, copies, simple scalar operations, jumps and returns. Unknown conditions
-become nondeterministic branches. Supported scalar operations that cannot change
-a dynamic tag or control flow become jumps; private dynamic loads and stores
-remain explicit copies or unknown assignments.
+the selected function and emits normalized nodes for its instructions. Each
+typed-IR operation has an explicit role:
 
-Slots are named as lowering names them, by text and kind. A local's "is assigned"
-flag (`%x.def.N`) and numeric identity companions (`%x.box.N`, `%x.boxgen.N`) share
-the local's number `N`; each remains a separate location. Stack tuples are refused.
+- Tag operations make guards and payload reads. Guards are exact builtin
+  `float`, `str` and `bool` tag comparisons; other payload types are refused.
+- Private slots are named as lowering names them, by text and kind. A local's
+  "is assigned" flag (`%x.def.N`) and numeric identity companions (`%x.box.N`,
+  `%x.boxgen.N`) share the local's number `N`; each remains a separate location.
+  Loads and stores become copies or unknown assignments. A stack tuple's
+  register is a tuple value, not storage.
+- A slot whose address reaches any other operation, such as an identity-return
+  buffer passed to a callee, is not private: its loads get unknown tags, and no
+  guard is moved onto it.
+- Every other operation, including calls, field and machine loads, `select` and
+  `phi`, can write neither a private slot nor a box, which the runtime keeps
+  immutable. It only defines its results: one the function uses as `dyn` gets an
+  unknown tag. A store through an address derived from a box is refused.
+- Terminators give the edges: branch and `switch` targets, an invoke's unwind
+  edge, each `check`'s error block (the snapshot's `check_targets`), a `raise` or
+  `throw` that branches to its handler and, conservatively, an edge from every
+  point of a block that a `try` statement covers to its landing block. Unknown
+  conditions become nondeterministic branches.
 
 Pystachy commonly loads a private slot for its guard, then reloads that slot for
 the payload. The normalizer may put the guard fact on the slot only when the
@@ -131,15 +143,29 @@ branch and stores between comparison and branch. They also exercise swapped
 comparison operands, equivalent negated guards, unrelated stores, and a
 cross-block comparison for which the adapter conservatively derives no fact.
 
+A short-circuit condition such as `flag and isinstance(x, str)` joins in a block
+that holds only a boolean `phi` and a branch on it. An edge into that join whose
+incoming value is known there (a constant, the branch condition that chose the
+edge, or a tag comparison in the edge's own block) goes directly to the matching
+successor, through that guard when it is a comparison. Other edges reach the
+join's branch, which is unconstrained. Blocks and nodes that nothing reaches
+cannot run and are omitted. The report counts omitted blocks, threaded edges and
+escaped slots.
+
 The real-IR loop test accepts a fresh guard on every iteration, then redirects
 the backedge past that guard and requires rejection. The copy test removes a
 redundant guard after rebinding: a saved copy still passes, while reloading the
-changed original slot fails. These are checks of the trusted Python bridge in
-addition to the kernel-checked model examples; they do not prove its fidelity.
+changed original slot fails. Each edge form above has a test that leads it to an
+unguarded payload, and `json`'s shipped dynamic key writer is accepted only with
+both of its guards. These are checks of the trusted Python bridge in addition to
+the kernel-checked model examples; they do not prove its fidelity.
 
-Calls, exception handlers, dynamic phi nodes, escaping addresses, unsupported
-instructions and unreachable blocks are explicitly refused. No selected function
-is silently skipped. The Python bridge allows at most 1,024 instructions, 16,384
+Generators, other payload types, stores into boxes, null stores into dynamic
+private slots, landing blocks missing from the snapshot and unknown operations
+are explicitly refused. Most payload reads in real dynamic-`Any` code are of
+`int`, whose layout bool values share, of classes, whose subclasses share theirs,
+or of dictionaries; the model has no such tags, so those functions are refused. No selected function is silently skipped. The Python
+bridge allows at most 1,024 instructions, 4,096 normalized nodes, 16,384
 certificate facts, 4 MiB input/candidate JSON and 20,000 inference iterations;
 the native checker has a ten-second subprocess deadline.
 
@@ -149,7 +175,8 @@ The formal theorem concerns the normalized tag-state program. The following are
 not proved by this version:
 
 - Fidelity of the inspection snapshot and Python normalization to actual IR
-  execution, including the same-block slot remapping described above.
+  execution, including the operation roles, edges, join threading and same-block
+  slot remapping described above.
 - Object initialization, null/unbound behavior, payload layout, GC, aliases in
   mutable containers, or the implementation of runtime tag operations.
 - Source-language or LLVM equivalence, generic specialization, identity-slot

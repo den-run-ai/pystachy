@@ -283,11 +283,13 @@ described below; ordinary container element typing remains a frontend contract.
 The optional [Lean payload-guard checker](../tools/lean_boundary/README.md)
 checks one selected function from a completed inspection snapshot. Its theorem
 establishes tag safety for accepted normalized programs, including copies,
-rebinding, joins and loops. The adapter conservatively refuses operations outside
-its supported subset. Tests use actual emitted `float`, `str` and `bool` guards,
-plus corrupted snapshots and certificates. This is separate from the built-in
-dynamic guard and closed-union verifiers: it neither runs during ordinary compilation nor
-proves the Python adapter, payload layout, identity, GC or LLVM lowering.
+rebinding, joins and loops. The adapter gives other operations' dynamic results
+unknown tags, follows exception and check edges, and refuses generators, other
+payload types and stores into boxes. Tests use actual emitted `float`, `str` and
+`bool` guards, including a shipped `json` function, plus corrupted snapshots and
+certificates. This is separate from the built-in dynamic guard and closed-union
+verifiers: it neither runs during ordinary compilation nor proves the Python
+adapter, payload layout, identity, GC or LLVM lowering.
 
 `union.tag` reads a nonoptional closed union's integer tag. `union.payload` records the
 declared member type and reads its opaque `%slot`; `slot.unpack` then recovers the native

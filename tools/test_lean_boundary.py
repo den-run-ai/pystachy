@@ -47,10 +47,27 @@ print(flagged_total(2.0), flagged_total("s"), flagged_word("a", True), flagged_w
 '''
 
 
+# A small shipped library function behind dynamic json.dumps: _Writer.key reads str and float
+# payloads after exact type guards (lib/_pystachy_json_any.py).
+JSON_KEYS = '''# pystachy: dynamic-any
+import json
+from typing import Any
+
+data: Any = {1.5: "a", "k": 2, True: None}
+print(json.dumps(data))
+'''
+
+
 def store(address, value, typ):
     return {"op": "mem.store", "type": "", "text": "", "immediate": 0, "descriptor": "",
             "results": [], "targets": [],
             "operands": [{"value": address, "type": "*" + typ}, {"value": value, "type": typ}]}
+
+
+def instruction(op, typ="", text="", results=(), operands=(), targets=(), descriptor=""):
+    return {"op": op, "type": typ, "text": text, "immediate": 0, "descriptor": descriptor,
+            "results": list(results), "targets": list(targets),
+            "operands": [{"value": value, "type": operand_type} for value, operand_type in operands]}
 
 
 class SnapshotFixture(unittest.TestCase):
@@ -86,6 +103,10 @@ class SnapshotFixture(unittest.TestCase):
         return next((block, index, operation) for block in function["blocks"]
                     for index, operation in enumerate(block["operations"])
                     if operation["op"] == name)
+
+    @staticmethod
+    def block(function, label):
+        return next(block for block in function["blocks"] if block["label"] == label)
 
     def normalized(self, snapshot=None, function="narrowed_float"):
         return normalize_snapshot(self.snapshot if snapshot is None else snapshot, function)[0]
@@ -133,7 +154,7 @@ class AdapterTests(SnapshotFixture):
                 with self.assertRaises((Unsupported, ValueError)):
                     self.normalized(snapshot)
 
-    def test_unknown_instruction_or_exception_handler_is_unsupported(self):
+    def test_unknown_instruction_or_missing_landing_block_is_unsupported(self):
         snapshot, function = self.selected()
         _, _, operation = self.operation(function, "scalar.bin")
         operation["op"] = "new.unmodeled.operation"
@@ -164,18 +185,68 @@ class AdapterTests(SnapshotFixture):
         self.assertIn((f"%value.box.{number}", "%a1"), copies)
         self.assertIn((f"%value.{number}", "%a0"), copies)
 
-    def test_slot_kinds_outside_the_prototype_or_malformed(self):
-        # A stack tuple is outside the prototype. An unknown kind, a flag that is not a bool
-        # and a second declaration of one slot name are malformed.
-        for kind, typ, text, unsupported in ((2, "tuple[int,int]", "", True), (3, "bool", "value", False),
-                                             (1, "int", "value", False), (0, "dyn", "value", False)):
+    def test_stack_tuples_are_values_and_bad_slot_declarations_are_malformed(self):
+        # A stack tuple's register is a tuple value, not storage. An unknown kind, a flag that
+        # is not a bool and a second declaration of one slot name are malformed.
+        snapshot, function = self.selected()
+        local = next(slot for slot in function["slots"] if slot["text"] == "value")
+        function["slots"].append({**copy.deepcopy(local), "text": "", "type": "tuple[int,int]",
+                                  "immediate": 2, "results": [9000]})
+        self.block(function, "L8")["operations"][0:0] = [
+            instruction("tuple.store", operands=[("%stk.9000", "tuple[int,int]"), ("0", "int"), ("1", "int")])]
+        self.normalized(snapshot)
+        for kind, typ in ((3, "bool"), (1, "int"), (0, "dyn")):
             with self.subTest(kind=kind, typ=typ):
                 snapshot, function = self.selected()
                 local = next(slot for slot in function["slots"] if slot["text"] == "value")
-                function["slots"].append({**copy.deepcopy(local), "text": text, "type": typ, "immediate": kind})
+                function["slots"].append({**copy.deepcopy(local), "type": typ, "immediate": kind})
                 with self.assertRaises(ValueError) as raised:
                     self.normalized(snapshot)
-                self.assertEqual(isinstance(raised.exception, Unsupported), unsupported, raised.exception)
+                self.assertNotIsInstance(raised.exception, Unsupported)
+
+    def test_generators_null_dynamic_slots_and_box_stores_stay_outside(self):
+        def generator(function):
+            function["recursion"]["generator"] = True
+
+        def suspension(function):
+            self.block(function, "L9")["operations"][0:0] = [instruction("gen.promise", "%ptr", results=[9001])]
+
+        def unbound(function):
+            number = next(slot for slot in function["slots"] if slot["text"] == "value")["results"][0]
+            self.block(function, "L8")["operations"][0:0] = [store(f"%value.{number}", "null", "dyn")]
+
+        def box_store(function):
+            # an address derived from a box: only the runtime may write boxes
+            self.block(function, "L9")["operations"][0:0] = [
+                instruction("mach.addr", "%ptr", "int", [9002], [("%a0", "%ptr"), ("1", "int")]),
+                instruction("mach.store", operands=[("%t9002", "%ptr"), ("0", "int")])]
+
+        for mutate in (generator, suspension, unbound, box_store):
+            with self.subTest(mutate.__name__):
+                snapshot, function = self.selected()
+                mutate(function)
+                with self.assertRaises(Unsupported):
+                    self.normalized(snapshot)
+
+    def test_unreachable_and_unlabeled_blocks_are_omitted(self):
+        snapshot, function = self.selected()
+        _, _, payload = self.operation(function, "dyn.payload")
+        unguarded = {**copy.deepcopy(payload), "results": [9030, 9031]}
+        function["blocks"] += [{"label": "", "handler": "", "operations": [instruction("br", targets=["L9"])]},
+                               {"label": "dead", "handler": "", "operations": [
+                                   unguarded, instruction("br", targets=["L9"])]}]
+        candidate, metadata = normalize_snapshot(snapshot, "narrowed_float")
+        self.assertEqual(metadata["omitted_blocks"], 2)
+        self.assertEqual(candidate, self.normalized())
+
+    def test_check_needs_its_error_block(self):
+        snapshot, function = self.selected()
+        self.block(function, "L8")["operations"] = [
+            instruction("check", text="ValueError: no", operands=[("%t6", "bool")], targets=["L9"])]
+        with self.assertRaises(Unsupported):
+            self.normalized(snapshot)
+        function["check_targets"] = {"ValueError: no": "L9"}
+        self.normalized(snapshot)
 
     def test_malformed_parameter_reports_structured_error(self):
         snapshot, function = self.selected()
@@ -326,6 +397,67 @@ class ProvedCheckerTests(SnapshotFixture):
         function["blocks"] = [block for block in function["blocks"] if block["label"] != old_target]
         self.assertFalse(self.check(self.normalized(snapshot)))
 
+    def test_calls_keep_private_slots_but_their_dynamic_results_are_unknown(self):
+        snapshot, function = self.selected()
+        payload_block, index, payload = self.operation(function, "dyn.payload")
+        payload_block["operations"][0:0] = [
+            instruction("call", "dyn", "@f.anything", [9010], [("%a1", "dyn")]),
+            instruction("rt", "None", "anything", operands=[("%t9010", "dyn")])]
+        self.assertTrue(self.check(self.normalized(snapshot)))
+        payload["operands"][0]["value"] = "%t9010"
+        self.assertFalse(self.check(self.normalized(snapshot)))
+
+    def test_a_slot_whose_address_escapes_loses_its_guard(self):
+        # A callee given the slot's address may store into it: reloads get unknown tags.
+        for label in ("entry", "L9"):
+            with self.subTest(escape_in=label):
+                snapshot, function = self.selected()
+                load = next(op for op in function["blocks"][0]["operations"] if op["op"] == "mem.load")
+                address = copy.deepcopy(load["operands"][0])
+                block = self.block(function, label)
+                block["operations"].insert(len(block["operations"]) - 1, instruction(
+                    "call", "None", "@f.writer", operands=[(address["value"], address["type"])]))
+                candidate, metadata = normalize_snapshot(snapshot, "narrowed_float")
+                self.assertEqual(metadata["escaped_slots"], 1)
+                self.assertFalse(self.check(candidate))
+
+    def test_check_switch_invoke_and_landing_edges_are_followed(self):
+        # From L8, where the tag is not float, each form below can reach the payload in L7.
+        def check(function):
+            self.block(function, "L8")["operations"] = [
+                instruction("check", text="ValueError: no", operands=[("true", "bool")], targets=["L9"])]
+            function["check_targets"] = {"ValueError: no": "L7"}
+
+        def switch(function):
+            self.block(function, "L8")["operations"] = [
+                instruction("switch", operands=[("0", "int"), ("1", "int")], targets=["L9", "L7"])]
+
+        def invoke(function):
+            self.block(function, "L8")["operations"] = [
+                instruction("call", "dyn", "@f.raises", [9020], targets=["L9", "L7"])]
+
+        def covered(function):
+            # every point of a block a try statement covers may reach its landing block
+            self.block(function, "L8")["handler"] = "L7"
+
+        def throw(function):
+            self.block(function, "L8")["operations"] = [
+                instruction("throw", operands=[("null", "exc")], targets=["L7"])]
+
+        for mutate in (check, switch, invoke, covered, throw):
+            with self.subTest(mutate.__name__):
+                snapshot, function = self.selected()
+                mutate(function)
+                self.assertFalse(self.check(self.normalized(snapshot)))
+                # the same forms, with every edge leading away from the payload, are accepted
+                for block in function["blocks"]:
+                    block["handler"] = "L9" if block["handler"] else ""
+                    last = block["operations"][-1]
+                    if block["label"] == "L8":
+                        last["targets"] = ["L9"] * len(last["targets"])
+                function["check_targets"] = {key: "L9" for key in function.get("check_targets", {})}
+                self.assertTrue(self.check(self.normalized(snapshot)))
+
     def test_certificate_cannot_seed_entry_or_cycle(self):
         candidate = self.normalized()
         candidate["certificate"][candidate["program"]["entry"]] = [["%a0", "float"]]
@@ -430,7 +562,7 @@ class SharedSlotNumberTests(SnapshotFixture):
         cls.example.write_text(SHARED_SLOTS)
         super().setUpClass()
 
-    def test_real_flags_and_companions_are_unsupported_not_malformed(self):
+    def test_real_flags_and_companions_are_named_not_malformed(self):
         for name, shared in (("flagged_total", {("total", 0), ("total.box", 0), ("total.boxgen", 0)}),
                              ("flagged_word", {("word", 0), ("word", 1)})):
             with self.subTest(function=name):
@@ -440,13 +572,69 @@ class SharedSlotNumberTests(SnapshotFixture):
                     by_number.setdefault(slot["results"][0], set()).add((slot["text"], slot["immediate"]))
                 # (if the compiler stops sharing these numbers, this case no longer tests them)
                 self.assertIn(shared, by_number.values())
-                completed = subprocess.run(
-                    [sys.executable, str(TOOL), "--snapshot", str(self.snapshot_path), "--function", name],
-                    capture_output=True, text=True, timeout=10,
-                )
-                self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
-                self.assertEqual(json.loads(completed.stdout)["status"], "unsupported")
+        # flagged_total stores null in its float's identity box before boxing it.
+        with self.assertRaisesRegex(Unsupported, "unbound dynamic"):
+            normalize_snapshot(self.snapshot, "flagged_total")
+        candidate, metadata = normalize_snapshot(self.snapshot, "flagged_word")
+        self.assertGreater(metadata["threaded_edges"], 0)
 
+    @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+    def test_short_circuit_guard_accepts_only_through_its_known_edges(self):
+        completed = subprocess.run(
+            [sys.executable, str(TOOL), "--snapshot", str(self.snapshot_path), "--function", "flagged_word"],
+            capture_output=True, text=True, timeout=10,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        # "flag and isinstance(word, str)": the join's phi takes the comparison from one edge and
+        # the false flag from the other. Claiming either edge's value is true skips the guard.
+        snapshot, function = self.selected("flagged_word")
+        phi = next(op for block in function["blocks"] for op in block["operations"] if op["op"] == "phi")
+        self.assertEqual(len(phi["operands"]), 2)
+        for index in range(2):
+            with self.subTest(incoming=phi["targets"][index]):
+                mutated = copy.deepcopy(snapshot)
+                join = next(op for block in next(fn for fn in mutated["functions"] if fn["name"] == "flagged_word")["blocks"]
+                            for op in block["operations"] if op["op"] == "phi")
+                join["operands"][index]["value"] = "true"
+                self.assertFalse(ProvedCheckerTests.check(self, self.normalized(mutated, "flagged_word")))
+
+
+class LibraryFunctionTests(SnapshotFixture):
+    function_filter = "_Writer.key"
+    symbol = "@m._pystachy_json_any$_Writer.key"
+
+    @classmethod
+    def setUpClass(cls):
+        source = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(source.cleanup)
+        cls.example = Path(source.name) / "json_keys.py"
+        cls.example.write_text(JSON_KEYS)
+        super().setUpClass()
+
+    def test_shipped_json_key_writer_normalizes(self):
+        _, metadata = normalize_snapshot(self.snapshot, self.symbol)
+        self.assertEqual(metadata["payloads"], 2)
+        self.assertEqual(metadata["remapped_guards"], 2)
+
+    @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+    def test_shipped_json_key_writer_is_accepted_and_needs_both_guards(self):
+        self.assertTrue(ProvedCheckerTests.check(self, normalize_snapshot(self.snapshot, self.symbol)[0]))
+        snapshot = copy.deepcopy(self.snapshot)
+        function = next(fn for fn in snapshot["functions"] if fn["symbol"] == self.symbol)
+        # the branches on "type(k) is str" and "type(k) is float"
+        guards = [block["operations"][-1] for block in function["blocks"]
+                  for op in block["operations"]
+                  if op["op"] == "ptr.cmp" and op["text"] == "==" and op["results"]
+                  and op["operands"][1]["value"] in {"@pys_dyntype_str", "@pys_dyntype_float"}
+                  and block["operations"][-1]["op"] == "cbr"
+                  and block["operations"][-1]["operands"][0]["value"] == f"%t{op['results'][0]}"]
+        self.assertEqual(len(guards), 2)
+        for guard in guards:
+            with self.subTest(guard=guard["targets"][0]):
+                original = copy.deepcopy(guard["operands"])
+                guard["operands"] = [{"value": "true", "type": "bool"}]
+                self.assertFalse(ProvedCheckerTests.check(self, normalize_snapshot(snapshot, self.symbol)[0]))
+                guard["operands"] = original
 
 if __name__ == "__main__":
     unittest.main()
