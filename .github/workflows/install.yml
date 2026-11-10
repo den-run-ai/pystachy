@@ -46,6 +46,32 @@ jobs:
       - name: Hosted and native JIT/AOT smoke
         run: python3 tools/install_smoke.py
 
+      - name: Native kqueue and pipe parity
+        id: netio
+        if: matrix.os == 'macos-15'
+        timeout-minutes: 5
+        env:
+          PYSTACHY_LLVM: /opt/homebrew/opt/llvm@20/bin
+        run: |
+          test -x ./pystachy
+          python3 examples/netio/check.py --compiler ./pystachy --repeat 1 --timeout 30 \
+            --build-timeout 120 --json build/netio-macos.json
+          python3 examples/netio/check_drain.py --compiler ./pystachy --timeout 30 \
+            --json build/netio-drain-macos.json
+
+      - name: Retain native kqueue reports
+        if: always() && matrix.os == 'macos-15' && steps.netio.outcome != 'skipped'
+        timeout-minutes: 2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: netio-kqueue-install-${{ matrix.os }}
+          path: |
+            build/netio-macos.json
+            build/netio-drain-macos.json
+          if-no-files-found: warn
+          retention-days: 7
+          overwrite: true
+
   provision:
     name: Source install with pinned LLVM (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

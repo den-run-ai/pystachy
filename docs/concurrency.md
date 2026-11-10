@@ -48,6 +48,13 @@ use the hosted interfaces for those operations. Native process control provides
 `threading` run only on the owner thread: importing them does not enable
 `Thread.start()`.
 
+The optional [`netio` example](../examples/netio/README.md) prototypes native
+IPv4 TCP, local socket pairs and epoll/kqueue readiness through a separate C
+bridge. It runs under CPython and Pystachy with explicit resource ownership and
+compares its bounded API with the real stdlib. Its pipe consumer drains inherited
+worker output with deadlines; the launcher owns worker processes. This does not
+enable native stdlib `socket`, `selectors` or `asyncio` imports.
+
 An `abi3t` extension refuses import under `PYTHON_GIL=0`. That check needs a
 free-threaded CPython 3.15, which CI does not run. See the
 [extension threading and host-lifetime contract](ffi.md#threading-and-host-lifetime).

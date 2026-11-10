@@ -1,0 +1,708 @@
+# callgrind format
+version: 1
+creator: callgrind-3.22.0
+pid: 6
+cmd:  /workspace/scratch/b43bd52ea2f2/native-profiler/work/consumer pair_64 100 1 1
+part: 1
+
+
+desc: I1 cache: 
+desc: D1 cache: 
+desc: LL cache: 
+
+desc: Timerange: Basic block 0 - 374632
+desc: Trigger: Program termination
+
+positions: line
+events: Ir
+summary: 1283661
+
+
+ob=(3) /usr/lib/x86_64-linux-gnu/libm.so.6
+fl=(3) ???
+fn=(5846) ceil
+0 7
+
+fn=(5848) 0x0000000000078200
+0 900
+
+ob=(8) /workspace/scratch/b43bd52ea2f2/native-profiler/work/libpystachy_netio.so
+fl=(9) examples/netio/netio.c
+fn=(5870) nio_recv
+219 300
+-19 600
++1 300
++1 600
++3 2400
+0 600
+206 600
+cob=(2) /usr/lib/x86_64-linux-gnu/libc.so.6
+cfi=(2) ???
+cfn=(4428) malloc
+calls=300 0 
+* 13645
+* 300
+0 300
+207 300
+0 600
+208 1500
+cob=(2)
+cfi=(2)
+cfn=(5874) recv
+calls=300 0 
+* 3300
+* 300
++2 600
++5 600
+0 1500
+220 300
+
+fn=(5850) nio_selector_wait
+290 300
++1 4200
+0 900
+294 900
+cob=(2)
+cfi=(2)
+cfn=(4428)
+calls=300 0 
+* 13500
+* 300
++1 600
+0 300
+296 1500
+cob=(2)
+cfi=(2)
+cfn=(5856) epoll_wait
+calls=300 0 
+* 2700
+* 300
++1 600
++5 300
+0 300
+302 2100
++1 300
++2 900
++1 1200
++1 600
++1 600
++1 300
+-7 1200
++24 900
+cob=(2)
+cfi=(2)
+cfn=(4952) free
+calls=300 0 
+* 25500
+* 300
+0 2100
+328 300
+
+fn=(5824) nio_send
+187 300
++1 1200
++9 300
+-6 600
+cob=(2)
+cfi=(2)
+cfn=(5828) send
+calls=300 0 
+* 3300
+* 300
+
+ob=(1) /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+fl=(1) ???
+fn=(912) 0x00000000000274e0
+0 182
+
+fn=(3142) 0x000000000000a390
+0 68
+cfn=(912)
+calls=130 0 
+0 50
+0 58
+cfn=(912)
+calls=173 0 
+0 132
+0 4
+
+fn=(4088) 0x0000000000015220
+0 52
+cfn=(4090) 0x0000000000012af0
+calls=38 0 
+0 1403
+0 30
+
+fn=(4090)
+0 132
+cfn=(3092) 0x000000000000b0d0
+calls=38 0 
+0 1169
+0 72
+cob=(3)
+cfi=(3)
+cfn=(5846)
+calls=1 0 
+0 7
+cob=(2)
+cfi=(2)
+cfn=(3316) strcmp
+calls=1 0 
+0 19
+0 4
+
+fn=(3092)
+0 184
+cfn=(3112) 0x000000000000a530
+calls=215 0 
+0 903
+0 82
+
+fn=(3112)
+0 58
+
+ob=(8)
+fl=(9)
+fn=(5824)
+196 600
+
+ob=(1)
+fl=(1)
+fn=(3112)
+0 524
+cfn=(3142)
+calls=203 0 
+0 312
+0 9
+
+ob=(8)
+fl=(9)
+fn=(5824)
+0 300
+197 300
+
+fn=(5878) nio_free
+227 300
+cob=(2)
+cfi=(2)
+cfn=(4952)
+calls=300 0 
+* 25500
+* 300
+
+ob=(1)
+fl=(1)
+fn=(0) 0x000000000001f540
+cob=(7) /workspace/scratch/b43bd52ea2f2/native-profiler/work/consumer
+cfi=(7) ???
+cfn=(4030) (below main)
+calls=1 0 
+0 1283661
+
+ob=(2)
+fl=(2)
+fn=(5742) 0x00000000001882e0
+0 5100
+
+fn=(4032) (below main)
+cfn=(4064) 0x000000000002a150
+calls=1 0 
+0 1283661
+
+fn=(4570) 0x0000000000188a40
+0 22500
+
+fn=(4064)
+cob=(7)
+cfi=(7)
+cfn=(4078) main
+calls=1 0 
+0 1283661
+
+fn=(4196) 0x00000000000ab570
+0 241
+cfn=(4294) 0x00000000000a91f0
+calls=22 0 
+0 8
+0 34
+
+fn=(5004) 0x0000000000189440
+0 151
+
+fn=(5836) 0x000000000018afd0
+0 48000
+
+fn=(3316)
+0 19
+
+fn=(4540) realloc
+0 24
+cfn=(4428)
+calls=5 0 
+0 187
+0 2
+
+fn=(4952)
+0 14400
+cfn=(4584) 0x00000000000ab170
+calls=609 0 
+0 32400
+0 4200
+
+fn=(4294)
+0 8
+
+fn=(5816) clock_gettime
+0 6600
+
+fn=(5828)
+0 3300
+
+fn=(4584)
+0 32400
+
+fn=(4428)
+0 27035
+cfn=(4196)
+calls=15 0 
+0 283
+0 14
+
+fn=(5856)
+0 2700
+
+fn=(5874)
+0 3300
+
+ob=(7)
+fl=(7)
+fn=(4078)
+cfn=(5818) f.bench_workload$transfer
+calls=1 0 
+0 425358
+cfn=(5818)
+calls=1 0 
+0 432291
+cfn=(5818)
+calls=1 0 
+0 426012
+
+fn=(5736) eqv
+0 11100
+cob=(2)
+cfi=(2)
+cfn=(5742)
+calls=300 0 
+0 5100
+0 300
+0 4200
+
+fn=(5876) pys_bytes_at
+0 9576
+cfn=(5198) gc_slow
+calls=6 0 
+0 4026
+0 3906
+cob=(2)
+cfi=(2)
+cfn=(4570)
+calls=300 0 
+0 3600
+0 300
+0 1812
+
+fn=(5200) chunk_new
+0 112
+cfn=(5202) pages_take
+calls=18 0 
+0 3750
+0 20
+cfn=(5220) pmap_set
+calls=18 0 
+0 916
+0 16
+cob=(2)
+cfi=(2)
+cfn=(5004)
+calls=17 0 
+0 151
+0 4
+0 172
+
+fn=(5820) pys_range_list
+0 14973
+cfn=(5198)
+calls=3 0 
+0 4353
+0 8709
+cfn=(5198)
+calls=3 0 
+0 5322
+0 6
+
+fn=(5220)
+0 916
+
+fn=(5752) list_identity_slow
+0 83972
+cfn=(5198)
+calls=28 0 
+0 35636
+0 44728
+
+fn=(5830) pys_errno
+0 7800
+cob=(2)
+cfi=(2)
+cfn=(5836)
+calls=599 0 
+0 11980
+cob=(1)
+cfi=(1)
+cfn=(4088)
+calls=1 0 
+0 822
+0 604
+0 5400
+cob=(2)
+cfi=(2)
+cfn=(5836)
+calls=1800 0 
+0 36000
+0 1800
+0 14400
+
+fn=(5792) pys_list_forget_identity
+0 44400
+cfn=(5198)
+calls=4 0 
+0 13760
+0 6608
+
+fn=(5860) pys_dict_find
+0 8700
+cfn=(5862) dfindc
+calls=300 0 
+0 14700
+0 11400
+
+fn=(5866) pys_dict_getitem
+0 9000
+cfn=(5862)
+calls=300 0 
+0 14700
+0 11700
+
+fn=(5818)
+0 3702
+cfn=(5820)
+calls=300 0 
+0 33363
+0 2100
+cfn=(5752)
+calls=300 0 
+0 27384
+0 11084
+cfn=(5752)
+calls=300 0 
+0 19912
+0 4200
+cfn=(5822) pys_list_mul
+calls=300 0 
+0 73357
+0 6880
+cfn=(5752)
+calls=300 0 
+0 18684
+0 4200
+cfn=(5822)
+calls=300 0 
+0 70506
+0 42300
+cfn=(5762) pys_str_slice
+calls=300 0 
+0 7200
+0 7200
+cob=(8)
+cfi=(9)
+cfn=(5824)
+calls=300 187 
+0 7200
+0 2100
+cfn=(5830)
+calls=300 0 
+0 39806
+0 3000
+cfn=(5770) f.netio$_checked
+calls=300 0 
+0 6900
+0 27600
+cob=(2)
+cfi=(2)
+cfn=(5816)
+calls=300 0 
+0 3300
+0 300
+0 18876
+cfn=(5752)
+calls=300 0 
+0 19694
+0 6300
+cfn=(5822)
+calls=300 0 
+0 82705
+0 2700
+cob=(2)
+cfi=(2)
+cfn=(5816)
+calls=300 0 
+0 3300
+0 300
+0 11400
+cob=(3)
+cfi=(3)
+cfn=(5848)
+calls=299 0 
+0 897
+cob=(1)
+cfi=(1)
+cfn=(4088)
+calls=1 0 
+0 686
+0 304
+0 8400
+cob=(8)
+cfi=(9)
+cfn=(5850)
+calls=300 290 
+0 63000
+0 900
+cfn=(5792)
+calls=300 0 
+0 33600
+0 14672
+cfn=(5860)
+calls=300 0 
+0 34800
+0 5400
+cfn=(5864) pys_dict_get
+calls=300 0 
+0 17700
+0 1500
+cfn=(5800) pys_dict_set
+calls=300 0 
+0 102149
+0 16480
+cfn=(5866)
+calls=300 0 
+0 35400
+0 7200
+cfn=(5198)
+calls=2 0 
+0 5915
+0 927
+cfn=(5198)
+calls=7 0 
+0 4683
+0 23
+cfn=(5198)
+calls=3 0 
+0 5322
+0 12
+cfn=(5198)
+calls=2 0 
+0 2898
+0 11404
+cfn=(5868) pys_list_find_identity
+calls=300 0 
+0 14100
+0 30884
+cfn=(5752)
+calls=300 0 
+0 19912
+0 7200
+cob=(8)
+cfi=(9)
+cfn=(5870)
+calls=300 219 
+0 28645
+0 900
+cfn=(5792)
+calls=300 0 
+0 31168
+0 1800
+cfn=(5830)
+calls=300 0 
+0 39000
+0 4800
+cfn=(5770)
+calls=300 0 
+0 6900
+0 6900
+cfn=(5876)
+calls=300 0 
+0 23220
+0 6000
+cob=(8)
+cfi=(9)
+cfn=(5878)
+calls=300 227 
+0 26100
+0 18300
+cfn=(5762)
+calls=300 0 
+0 8700
+0 1200
+cfn=(5736)
+calls=300 0 
+0 20700
+0 12903
+cfn=(5198)
+calls=1 0 
+0 1774
+0 11
+cfn=(5198)
+calls=3 0 
+0 4122
+0 12
+cfn=(5198)
+calls=3 0 
+0 5322
+0 15
+cfn=(5198)
+calls=3 0 
+0 4353
+0 6
+cfn=(5198)
+calls=1 0 
+0 1774
+0 11
+cfn=(5198)
+calls=3 0 
+0 4353
+0 12
+cfn=(5198)
+calls=3 0 
+0 6553
+0 12
+cfn=(5198)
+calls=2 0 
+0 4133
+0 41
+
+fn=(5822)
+0 75536
+cfn=(5198)
+calls=9 0 
+0 13059
+0 19809
+cfn=(5752)
+calls=900 0 
+0 58750
+0 8100
+cob=(2)
+cfi=(2)
+cfn=(4570)
+calls=900 0 
+0 11700
+0 900
+0 5400
+cob=(2)
+cfi=(2)
+cfn=(4570)
+calls=300 0 
+0 3900
+0 300
+0 2400
+cob=(2)
+cfi=(2)
+cfn=(4570)
+calls=300 0 
+0 3300
+0 300
+0 10828
+cfn=(5198)
+calls=7 0 
+0 12265
+0 21
+
+fn=(5862)
+0 29400
+
+fn=(4030)
+cob=(2)
+cfi=(2)
+cfn=(4032)
+calls=1 0 
+0 1283661
+
+fn=(5802) dgrow
+0 4800
+cfn=(5804) build
+calls=303 0 
+0 66149
+0 4200
+
+fn=(5804)
+0 18591
+cfn=(5198)
+calls=4 0 
+0 3690
+0 6892
+cfn=(5198)
+calls=4 0 
+0 4920
+0 9898
+cfn=(5198)
+calls=3 0 
+0 3690
+0 5706
+cfn=(5198)
+calls=3 0 
+0 4353
+0 8409
+
+fn=(5198)
+0 4480
+cfn=(5200)
+calls=18 0 
+0 5141
+0 146655
+
+fn=(5202)
+0 1980
+cfn=(5218) run_push
+calls=17 0 
+0 416
+0 1354
+
+fn=(5218)
+0 134
+cob=(2)
+cfi=(2)
+cfn=(4540)
+calls=2 0 
+0 213
+0 1
+0 68
+
+fn=(5762)
+0 15900
+
+fn=(5770)
+0 13800
+
+fn=(5800)
+0 12600
+cfn=(5802)
+calls=303 0 
+0 75149
+0 14400
+
+fn=(5864)
+0 17700
+
+fn=(5868)
+0 14100
+
+totals: 1283661

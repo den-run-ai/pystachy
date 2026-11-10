@@ -500,7 +500,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks. |
 | Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
-| Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke. |
+| Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke; macOS native netio kqueue/pipe parity. |
 | `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |
 | Lint, performance, DCO and submission format | 4 | Lint includes CPython port preservation. DCO applies to forks. Submission format validates PR metadata. |
 
@@ -932,7 +932,14 @@ intrinsics. It does not replace bootstrap, IR parity or runtime verification.
 
 On `main` and manual dispatch, the [Installation workflow](../.github/workflows/install.yml)
 builds on Ubuntu x86-64/ARM64 and macOS ARM64/x86-64, then runs hosted/native JIT/AOT
-installation smoke (`tools/install_smoke.py`). The three primary platforms also install the
+installation smoke (`tools/install_smoke.py`). Its macOS ARM64 smoke job and the PR
+distribution job also check the optional [netio bridge](../examples/netio/README.md)
+with the compiler built by `make`: all twelve socket/readiness scenarios and the
+completion-order pipe drain run against CPython's stdlib oracle in native JIT/AOT
+and both GC-stress modes. Those steps have a five-minute limit and retain JSON
+reports for seven days, including failed or incomplete runs; only reports with
+`result: pass` and all expected modes establish successful validation. The
+three primary platforms also install the
 compiler with pip and uv from the exact GitHub commit and verify JIT/AOT outside the checkout
 (`tools/compiler_install_smoke.py`). PR distribution checks exercise pip and uv against the
 checked-out source. The [Packages workflow](../.github/workflows/packages.yml) builds the example and ports source wheels and runs them under CPython, JIT and AOT
