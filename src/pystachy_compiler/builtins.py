@@ -2003,8 +2003,11 @@ def gen_consume(self, n: Node, want: str, arg: IterArg | None = None, resultsoft
         # The runtime backing is pointer-free: keep list[int] regardless of want.
         # Optional/union item storage needs a fresh scanned allocation, never retyping.
         vs = self.range_args(n.kids[1:])
-        if arg is not None and arg.split != "":
-            self.iterarg(arg)  # (xs[::0] = range(n): the consumer's turn comes before the items are made)
+        if arg is not None and (arg.split != "" or arg.capture):
+            if arg.capture and (vs[2].startswith("%") or int(vs[2]) == 0):
+                self.guard(self.num_cmp("==", Val(vs[2], "int"), Val("0", "int")).v, "ValueError: range() arg 3 must not be zero")
+            # Validate range construction before captured keywords, then materialize its items.
+            self.iterarg(arg)
             return Val(self.rt("pys_range_list", "ptr", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"]), "list[int]")
         r = Val(self.rt("pys_range_list", "ptr", [f"i64 {vs[0]}", f"i64 {vs[1]}", f"i64 {vs[2]}"]), "list[int]")
         self.iterarg(arg)
