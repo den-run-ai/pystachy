@@ -843,8 +843,11 @@ are required before promotion. `make verify` keeps the standard tier.
 
 For AddressSanitizer builds, set `ASAN_OPTIONS=detect_stack_use_after_return=0`: its fake stack
 is outside the collector's scanned stack. `PYSTACHY_CFLAGS=-fsanitize=address` instruments
-the C runtime and generated `runtime.py` code before caching; the final link adds the sanitizer
-runtime. For Linux JIT, preload the matching ASan shared runtime into the JIT runner or `lli`, for example
+the C runtime and generated `runtime.py` code before caching. AOT builds and extension modules
+also instrument generated user functions, separately before linking the already-instrumented
+runtime; the final link adds the sanitizer runtime. `ir` and `build --emit-ir` still emit the
+original frontend IR, before sanitizer attributes and instrumentation. JIT currently instruments
+the runtime only. For Linux JIT, preload the matching ASan shared runtime into the JIT runner or `lli`, for example
 `LD_PRELOAD=$(clang -print-file-name=libclang_rt.asan-x86_64.so)` on x86-64. The compiler's
 LLVM toolchain must match that library. Small managed objects still share allocator arenas,
 so this is not complete managed-object bounds or reclaimed-memory coverage. UBSan continues
