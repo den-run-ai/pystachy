@@ -1,3 +1,6 @@
+# pystachy: numeric-values
+# Pystachy port: the comment above, as CPython runs _datetime, whose objects hold their fields
+# as machine values (docs/dynamic-any.md#numeric-value-modules)
 """Concrete date/time and related types.
 
 See http://www.iana.org/time-zones/repository/tz-link.html for

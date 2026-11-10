@@ -1,0 +1,14 @@
+end is end False True
+pos is pos False True
+year is year False True
+days is days False True
+MAXYEAR is MAXYEAR True
+isocalendar year is year True
+timetuple year is year True
+error pos is pos True 300
+month is month True
+boxed year 2024 True False
+7 0:00:00 2024-05-06T07:08:09+00:00
+(1000, 1001) a 432000000.0
+False True 1
+[exit 0]

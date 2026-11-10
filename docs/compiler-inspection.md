@@ -174,16 +174,17 @@ invent explanations. LLVM helper attributes remain available in `llvm.ll`.
 Each `attempts[].dynamic_boundary` observes the actual `identity_modules` policy
 selection. Its `modules` records module names, paths and dependency edges;
 dynamic-Any and promoting-int opt-ins; requested and active identity-inert hints;
+requested and active [numeric-value modules](dynamic-any.md#numeric-value-modules);
 and whether each module's code tracks numeric identity. `tracked_modules` lists
-that selected scope. `hints_enabled` and `full_graph_fallback` retain the driver's
-actual retry settings. The latter means that a previous crossing requested full
+that selected scope. `hints_enabled`, `numeric_values_enabled` and
+`full_graph_fallback` retain the driver's actual retry settings. The latter means that a previous crossing requested full
 tracking; it is distinct from a dependency closure that already includes every
 module. `fallback_reason` is the compiler's exact crossing event for that attempt,
 or `null` if there was none. No event is inferred from the final module graph.
 
 For example, an ordinary typed `tomllib.loads` consumer with a typed `parse_float`
 callback can first exclude its own module, then retry after `number as an Any
-value` with full-graph tracking. Removing an opt-in does not establish that its
+value` with full-graph tracking, in which only the numeric-value modules do not track. Removing an opt-in does not establish that its
 numeric identity costs disappeared. Inspect every attempt, not just the final
 one, to distinguish a discarded hint from full tracking.
 

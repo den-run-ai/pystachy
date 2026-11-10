@@ -33,6 +33,10 @@ DYNPRAGMA = "# pystachy: dynamic-any"
 # Checked optimization hints, never a promise to ignore observable identity.
 IDINERT: dict[int, bool] = {}
 IDPRAGMA = "# pystachy: identity-inert"
+# Modules that model a CPython C extension module, whose numbers are machine values: a number
+# that crosses their functions or objects is a new object, as there (Gen.identity_modules).
+IDVALUES: dict[int, bool] = {}
+VALPRAGMA = "# pystachy: numeric-values"
 
 
 def dynamic_pragma(src: str) -> bool:

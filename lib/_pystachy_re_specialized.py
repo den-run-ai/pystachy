@@ -1,3 +1,5 @@
+# pystachy: numeric-values
+# (lib/re's engine's numbers are machine values, as _sre's: docs/dynamic-any.md#numeric-value-modules)
 """The matchers that lib/re runs in place of its interpreter for a program's own patterns: none here.
 
 tools/re_specialize.py writes a module of this name with a matcher for each pattern a program uses

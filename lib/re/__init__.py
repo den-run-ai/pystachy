@@ -7,6 +7,10 @@
 # (their code points), and every position (pos, endpos, a match's spans, an error's pos) is an
 # index into the str, as slicing and find() count them. For ASCII text that is CPython's.
 #
+# pystachy: numeric-values
+# (Pattern and Match are _sre's C objects in CPython, which hold positions, flags and counts as
+# machine values: those cross this module as values, new objects, docs/dynamic-any.md#numeric-value-modules)
+#
 # Pystachy port: the docstring is CPython's, the module's __doc__
 r"""Support for regular expressions (RE).
 
