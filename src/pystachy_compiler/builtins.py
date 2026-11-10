@@ -1182,21 +1182,27 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
             self.err(f"keyword argument '{a.s}' of {name}() is not supported")
     it = pos[0]
     lazy = self.iterator_call(it) or self.is_mapcall(it) or (it.kind == "listcomp" and it.s == "gen")
-    ka = IterArg(mk("tuple", "", self.line, [a.kids[0] for a in kws])) if lazy else None
+    contextual = [a.s == "default" and pure_arg(a.kids[0]) and a.kids[0].kind not in INERT for a in kws]
+    # An empty display has no observable evaluation to capture. Leave it for the items'
+    # type, as for a direct list, while other keywords still run before the traversal.
+    ka = IterArg(mk("tuple", "", self.line, [mk("None", "", self.line, []) if contextual[j] else kws[j].kids[0] for j in range(len(kws))])) if lazy else None
     if ka is not None:
         ka.capture = True
     v0 = self.consume(it, "", ka)
     # (an empty display as the default has the type of a list's items)
     iw = elem(unopt(v0.t)) if is_list(unopt(v0.t)) else ""
     kv: list[Val] = ka.values if ka is not None else []
-    if ka is None:
-        for a in kws:
-            value = self.expr(a.kids[0], iw if a.s == "default" and pure_arg(a.kids[0]) and a.kids[0].kind not in INERT else "")
+    for j in range(len(kws)):
+        if ka is None or contextual[j]:
+            value = self.expr(kws[j].kids[0], iw if contextual[j] else "")
             if self.idhere() and numeric_identity(value.t):
                 # A later keyword can first alias, then rebind, a private numeric local.
                 # Preserve the default's object before that binding's lazy slot changes.
                 value.idfrom = self.dyn_id_box(value).v
-            kv.append(value)
+            if ka is None:
+                kv.append(value)
+            else:
+                kv[j] = value
     if is_opt(v0.t):
         v0 = self.unwrap(v0, "TypeError: 'NoneType' object is not iterable")
     dv = [kv[j] for j in range(len(kws)) if kws[j].s == "default"][0]
