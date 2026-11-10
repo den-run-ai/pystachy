@@ -25,12 +25,48 @@ The example's typed and dynamic views share the same list; see the
 
 | To… | Read |
 | --- | --- |
+| Decide whether a boundary needs dynamic storage | [Admission and containment](#admission-and-containment) and the [library inventory](dynamic-any-boundaries.md) |
 | Choose annotations and container layouts | [Selecting dynamic storage](#selecting-dynamic-storage) |
 | Pass values between typed and dynamic code | [The typed/dynamic contract](#the-typeddynamic-contract) |
 | Use classes, reducers and runtime argument packs | [Class values and type-keyed registries](#class-values-and-type-keyed-registries) |
 | Use operators, methods, iterators and generators | [Operations](#operations) and [Iteration](#iteration) |
 | Check compatibility before opting in | [Deviations](#deviations) |
 | Understand identity and allocation costs | [Representation](#representation), [Identity scope](#identity-scope) and [Measurements](#measurements) |
+
+## Admission and containment
+
+Keep dynamic `Any` opt-in and stabilize its bounded supported subset. A named
+consumer is necessary for additional breadth, but is not sufficient: show why
+concrete types, specialization through generics, or a supported closed union
+cannot preserve that consumer's existing API. A missing inference, union or
+identity capability is compiler work to eliminate, not evidence that the operation
+is inherently dynamic. This is a development rule; it does not reject existing
+programs or change the meaning of their annotations.
+
+Use concrete storage for scanning, parsing mechanics, numeric processing and
+internal state with a known shape. Keep dynamic adapters where a supported API
+accepts open payloads, callback results, type-keyed registries or runtime argument
+packs. The [boundary inventory](dynamic-any-boundaries.md) separates those
+contracts from removable implementation choices and outstanding compiler work.
+For example, TOML's namespace flags use typed recursive nodes and integer sets;
+its document values can still contain arbitrary supported `parse_float` results.
+
+Before adding or widening a boundary, record its consumer, required operations,
+rejected static alternatives and ownership/identity contract. Preserve mutable
+aliases, callback timing, laziness, exception order, numeric identity and the
+supported ABI. Do not copy containers or introduce earlier rejections to make a
+boundary appear static. JSON's recursive `JSONValue` is already a closed typed
+alternative when the application needs only its value set; it is not a substitute
+for an existing open mutable payload contract.
+
+Containment requires generated-code and consumer evidence. Removing a pragma or
+moving a function does not establish a cost reduction: identity tracking follows
+imports and may restart with the entire graph tracked. Compare dynamic dispatch,
+boxing and identity bookkeeping, compilation, JIT/AOT execution, allocation
+requests and retained memory. Check CPython parity, GC stress, ordinary typed
+controls and a negative control that restores the old footprint. Preserve the
+existing [checked identity fallback](#identity-scope) until a narrower proof covers
+the same observable behavior. Promoting-int policy remains independent.
 
 ## Promoting integers
 

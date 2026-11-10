@@ -315,13 +315,21 @@ The edits: the three modules that use `Any` hold the comment `# pystachy: dynami
 `_parser.py` annotates tables `dict[Any, Any]` where CPython writes `dict[str, Any]`, and makes an
 empty table with a function, `_new_table()`, where CPython writes `{}`, as a typed or empty dict
 does not become an `Any` value yet ([#777](https://github.com/den-run-ai/pystachy/issues/777));
-keeps `Flags`'s flags as dict keys where CPython uses sets, which are no `Any` values yet, and its
-pending flags in a list, as a set's tuples do not hold a runtime-length tuple yet
+keeps `Flags`'s private tree in typed `_FlagEntry` nodes with `set[int]` flags and
+`dict[str, _FlagEntry]` children, instead of dynamic dictionaries with known field names.
+Pending flags remain in a list, as a set's tuples do not hold a runtime-length tuple yet
 ([#783](https://github.com/den-run-ai/pystachy/issues/783)); and declares the variable that
 `parse_basic_str()` gives one of two functions,
 `Callable[[str, Pos], tuple[Pos, str]]`, as each function is a type of its own. `_re.py` asserts that
 an offset's hour and minute groups matched, which its pattern ensures, and passes
 `str(match.group())` to `parse_float`, as a group is a `str | None`.
+
+The typed flag tree preserves recursive freezing, duplicate pending flags and
+array-of-tables subtree resets. It changes private storage, not returned tables
+or callback values. The [public flags regression](../tests/programs/library/lib_tomllib_flags.py)
+and [callback/alias regression](../tests/programs/library/lib_tomllib_boundary.py)
+cover those boundaries. Module-wide numeric identity tracking still follows the
+existing import policy; typed state alone does not make the parser identity-free.
 
 ### `csv`
 

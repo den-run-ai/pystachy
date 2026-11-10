@@ -1,0 +1,12 @@
+pending {'a': {'b': {'c': 1, 'd': 2}, 'other': {'x': 3}}}
+pending-reopen TOMLDecodeError: Cannot declare ('a', 'b') twice (at line 3, column 5)
+implicit-parent {'a': {'b': {'x': 1}, 'y': 2}}
+repeated-table TOMLDecodeError: Cannot declare ('a',) twice (at line 3, column 3)
+redefined-dotted TOMLDecodeError: Cannot redefine namespace ('a', 'b') (at line 4, column 8)
+overwritten-leaf TOMLDecodeError: Cannot overwrite a value (at line 2, column 5)
+frozen-dotted TOMLDecodeError: Cannot mutate immutable namespace ('a', 'b') (at line 2, column 10)
+frozen-table TOMLDecodeError: Cannot declare ('a', 'b', 'd') twice (at line 2, column 7)
+frozen-array TOMLDecodeError: Cannot mutate immutable namespace ('a',) (at line 2, column 4)
+array-reset {'items': [{'node': {'left': 1, 'right': 2}, 'frozen': {'child': {'value': 3}}}, {'node': {'left': 4}, 'frozen': {'child': {'value': 5}}}]}
+fresh-parse {'a': {'b': {'c': 6}}}
+[exit 0]
