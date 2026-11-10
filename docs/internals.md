@@ -732,6 +732,18 @@ objects that never escape compile to no allocation, that objects a list keeps do
 that a build with `PYSTACHY_CFLAGS=-O0` still takes the late step, and that an object and
 a tuple that hold objects come from `pys_alloc` and keep those alive through collections.
 
+The optional-local part of `unionslots` also recognizes a plain scalar dictionary
+`get(key)` whose default is `None` and whose result goes into one private local.
+The local must only be checked for presence and read as a number. The lookup
+runs once, including its key's hash/equality callbacks; the payload is captured
+immediately by `pys_dict_val_or_zero`, which avoids reading the miss index.
+Presence and scalar bits then stay in local slots, removing the temporary box.
+The bounded prototype retains boxing for copied, returned, identity-observed,
+phi-produced and generator values, non-`None` defaults, and every program with a
+dynamic-`Any` or promoting-int opt-in. `PYSTACHY_OPT=-unionslots` retains the old
+path. Eliminating an allocation can delay a threshold-triggered collection, as
+with `allocelide`; this does not establish a general lifetime analysis.
+
 Cached runtime artifacts depend on the runtime sources, included Ryu files, compiler,
 LLVM tools and compilation flags. Changes invalidate the relevant cache. Builds use private
 temporary files and publish reusable artifacts only after checking their inputs stayed stable.
