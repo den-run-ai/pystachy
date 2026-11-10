@@ -1,0 +1,250 @@
+{
+  "head": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+  "workflow": "Installation",
+  "run_id": 42864866843,
+  "event": "push",
+  "branch": "main",
+  "qualification_status": "passed",
+  "platforms": {
+    "linux-x86_64": {
+      "status": "qualified",
+      "directory": "linux-x86_64",
+      "job_id": 130000378687,
+      "artifact_name": "netio-linux-install-ubuntu-24.04",
+      "job_duration_seconds": 440,
+      "netio_step_duration_seconds": 99,
+      "archive_sha256": "0a794e451b082b55b770d43b7ec6f077bb966a3aaf40590ce6ebe9fdb32f82bf",
+      "unique_source_paths_verified": 170,
+      "all_six_socket_and_drain_modes_verified": true,
+      "artifact_id": 13788065447,
+      "archive_digest_verified": true,
+      "archive": "linux-x86_64/netio-linux.zip",
+      "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+      "python": "3.13.16",
+      "report_files": [
+        "netio-linux-benchmark-smoke.json",
+        "netio-linux-drain-native.json",
+        "netio-linux-drain-hosted.json",
+        "netio-linux-hosted.json",
+        "netio-linux-native.json"
+      ]
+    },
+    "linux-aarch64": {
+      "status": "qualified",
+      "directory": "linux-aarch64",
+      "job_id": 130000378479,
+      "artifact_name": "netio-linux-install-ubuntu-24.04-arm",
+      "job_duration_seconds": 417,
+      "netio_step_duration_seconds": 87,
+      "archive_sha256": "46723d51f10fb74c15d951d8fbe281ca1aaa1cf06af8f8276937e71cea22e048",
+      "unique_source_paths_verified": 170,
+      "all_six_socket_and_drain_modes_verified": true,
+      "artifact_id": 13787496891,
+      "archive_digest_verified": true,
+      "archive": "linux-aarch64/netio-linux.zip",
+      "platform": "Linux-7.0.0-1017-azure-aarch64-with-glibc2.39",
+      "python": "3.13.16",
+      "report_files": [
+        "netio-linux-benchmark-smoke.json",
+        "netio-linux-drain-hosted.json",
+        "netio-linux-drain-native.json",
+        "netio-linux-hosted.json",
+        "netio-linux-native.json"
+      ]
+    },
+    "macos-arm64": {
+      "status": "qualified",
+      "directory": "macos-arm64",
+      "job_id": 130000378370,
+      "artifact_name": "netio-kqueue-install-macos-15",
+      "job_duration_seconds": 368,
+      "netio_step_duration_seconds": 40,
+      "archive_sha256": "f34fd335b7d444ef373247f3b90beca03d27e6274a20ac966cdf3000fd4ccfbf",
+      "unique_source_paths_verified": 9,
+      "all_six_socket_and_drain_modes_verified": true,
+      "artifact_id": 13786967285,
+      "archive_digest_verified": true,
+      "archive": "macos-arm64/netio-macos.zip",
+      "platform": "macOS-15.8.2-arm64-arm-64bit-Mach-O",
+      "python": "3.13.16",
+      "report_files": [
+        "netio-macos.json",
+        "netio-drain-macos.json"
+      ]
+    }
+  },
+  "source_installations": {
+    "source-install-linux-x86_64": {
+      "job_id": 130000378447,
+      "job_name": "Source install with pinned LLVM (ubuntu-24.04)",
+      "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378447",
+      "conclusion": "success",
+      "duration_seconds": 102,
+      "source_revision_verified": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "pip_and_uv": {
+        "version_jit_standalone_aot_external_cache": "pass",
+        "gc_stress_and_exact_float_output": "pass"
+      },
+      "raw_log": "supporting-installation-jobs/source-install-linux-x86_64.log",
+      "raw_log_sha256": "745b4a2bf95e830b9b3949e04001fafbc8123a7c298069dfc1502b619701000c"
+    },
+    "source-install-linux-aarch64": {
+      "job_id": 130000377782,
+      "job_name": "Source install with pinned LLVM (ubuntu-24.04-arm)",
+      "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000377782",
+      "conclusion": "success",
+      "duration_seconds": 364,
+      "source_revision_verified": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "pip_and_uv": {
+        "version_jit_standalone_aot_external_cache": "pass",
+        "gc_stress_and_exact_float_output": "pass"
+      },
+      "raw_log": "supporting-installation-jobs/source-install-linux-aarch64.log",
+      "raw_log_sha256": "6f2bc8505f80ae0c6b2a1bec5df345a6d75beb2bf7d689006290431679f5f257"
+    },
+    "source-install-macos-arm64": {
+      "job_id": 130000378523,
+      "job_name": "Source install with pinned LLVM (macos-15)",
+      "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378523",
+      "conclusion": "success",
+      "duration_seconds": 352,
+      "source_revision_verified": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "pip_and_uv": {
+        "version_jit_standalone_aot_external_cache": "pass",
+        "gc_stress_and_exact_float_output": "pass"
+      },
+      "raw_log": "supporting-installation-jobs/source-install-macos-arm64.log",
+      "raw_log_sha256": "e620cd2285f00bf4bd9d6cfdfe9eb1e17ec1d706885052eebd1b181034bcccf3"
+    }
+  },
+  "installer_smoke": {
+    "linux-x86_64": {
+      "job_id": 130000378687,
+      "conclusion": "success",
+      "native_compiler_revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "hosted_jit_aot": "pass",
+      "installed_jit_aot": "pass",
+      "installed_gc_stress": "pass",
+      "external_runtime_cache": "pass",
+      "raw_log": "linux-x86_64/installation-smoke-step.log",
+      "raw_log_sha256": "dba8378c07a725e59c83d300915e6101a30db015dc38f592ab982d4fbcd662f2"
+    },
+    "linux-aarch64": {
+      "job_id": 130000378479,
+      "conclusion": "success",
+      "native_compiler_revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "hosted_jit_aot": "pass",
+      "installed_jit_aot": "pass",
+      "installed_gc_stress": "pass",
+      "external_runtime_cache": "pass",
+      "raw_log": "linux-aarch64/installation-smoke-step.log",
+      "raw_log_sha256": "c9b731688b8a844d5fcbd8d91a6da1ce4095ce4cec293806c070f3fce60b919e"
+    },
+    "macos-arm64": {
+      "job_id": 130000378370,
+      "conclusion": "success",
+      "native_compiler_revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "hosted_jit_aot": "pass",
+      "installed_jit_aot": "pass",
+      "installed_gc_stress": "pass",
+      "external_runtime_cache": "pass",
+      "raw_log": "macos-arm64/installation-smoke-step.log",
+      "raw_log_sha256": "d1c0fe6c2890fb85e5e5c5e54fea8fe380f6419f19b9f27720c46190bd3a4fba"
+    },
+    "macos-intel": {
+      "job_id": 130000378503,
+      "conclusion": "success",
+      "native_compiler_revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "hosted_jit_aot": "pass",
+      "installed_jit_aot": "pass",
+      "installed_gc_stress": "pass",
+      "external_runtime_cache": "pass",
+      "raw_log": "supporting-installation-jobs/install-macos-intel-smoke.log",
+      "raw_log_sha256": "598aa4826b2b99fbe9002aa53a22d5755b28567e6bdd37eb23b5f15377ae639f"
+    }
+  },
+  "jobs": [
+    {
+      "id": 130000377782,
+      "name": "Source install with pinned LLVM (ubuntu-24.04-arm)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000377782",
+      "conclusion": "success",
+      "duration_seconds": 364
+    },
+    {
+      "id": 130000378370,
+      "name": "Install (macos-15)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378370",
+      "conclusion": "success",
+      "duration_seconds": 368
+    },
+    {
+      "id": 130000378447,
+      "name": "Source install with pinned LLVM (ubuntu-24.04)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378447",
+      "conclusion": "success",
+      "duration_seconds": 102
+    },
+    {
+      "id": 130000378479,
+      "name": "Install (ubuntu-24.04-arm)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378479",
+      "conclusion": "success",
+      "duration_seconds": 417
+    },
+    {
+      "id": 130000378503,
+      "name": "Install (macos-15-intel)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378503",
+      "conclusion": "success",
+      "duration_seconds": 560
+    },
+    {
+      "id": 130000378523,
+      "name": "Source install with pinned LLVM (macos-15)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378523",
+      "conclusion": "success",
+      "duration_seconds": 352
+    },
+    {
+      "id": 130000378687,
+      "name": "Install (ubuntu-24.04)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378687",
+      "conclusion": "success",
+      "duration_seconds": 440
+    }
+  ],
+  "workflow_conclusion": "success",
+  "successful_jobs": 7,
+  "all_jobs_within_15_minutes": true,
+  "all_netio_steps_within_5_minutes": true,
+  "no_unexpected_netio_skips": true,
+  "run_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843",
+  "run_metadata": "installation-run-metadata.json",
+  "jobs_metadata": "installation-jobs-metadata.json",
+  "netio_report_count": 12,
+  "native_netio_platforms": [
+    "linux-x86_64",
+    "linux-aarch64",
+    "macos-arm64"
+  ],
+  "native_netio_modes": [
+    "cpython_oracle",
+    "cpython_bridge",
+    "jit",
+    "aot",
+    "jit_gc",
+    "aot_gc"
+  ],
+  "source_paths_verified_per_platform": {
+    "linux-x86_64": 170,
+    "linux-aarch64": 170,
+    "macos-arm64": 9
+  },
+  "linux_ownership_cycles_per_architecture": 300,
+  "linux_harness_tests_per_architecture": 53,
+  "prior_pr_evidence_used_as_substitute": false,
+  "workflow_source_sha256": "9c43c3d492c53e854d62829073b7beb8a951788f9caa3c28a3b047eb57191a9a",
+  "longest_job_seconds": 560
+}

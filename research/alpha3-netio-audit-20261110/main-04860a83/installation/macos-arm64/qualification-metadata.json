@@ -1,0 +1,215 @@
+{
+  "head": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+  "workflow": "Installation",
+  "run_id": 42864866843,
+  "job_id": 130000378370,
+  "artifact_name": "netio-kqueue-install-macos-15",
+  "macos": {
+    "status": "qualified",
+    "artifact_id": 13786967285,
+    "artifact_name": "netio-kqueue-install-macos-15",
+    "workflow_run": 42864866843,
+    "archive": "netio-macos.zip",
+    "archive_sha256": "f34fd335b7d444ef373247f3b90beca03d27e6274a20ac966cdf3000fd4ccfbf",
+    "archive_digest_verified": true,
+    "artifact_created_at": "2026-11-10T17:31:56Z",
+    "reports": [
+      {
+        "file": "netio-macos.json",
+        "file_sha256": "ff6e9865b58e278f7163e17909c8ed5ecfa0c122c8eaaa0eaf89ee6e2ac1bb6f",
+        "result": "pass",
+        "source_hashes_verified": 6,
+        "source_paths": [
+          "examples/netio/check.py",
+          "examples/netio/netio.c",
+          "examples/netio/netio.h",
+          "examples/netio/netio.py",
+          "examples/netio/oracle/netio.py",
+          "examples/netio/probe.py"
+        ],
+        "platform": "macOS-15.8.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.16",
+        "modes": [
+          "cpython_oracle",
+          "cpython_bridge",
+          "jit",
+          "aot",
+          "jit_gc",
+          "aot_gc"
+        ],
+        "runs": {
+          "cpython_oracle": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ]
+          },
+          "cpython_bridge": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "jit": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "aot": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "jit_gc": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {
+              "PYSTACHY_GC_STRESS_PROGRAM": "1"
+            }
+          },
+          "aot_gc": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {
+              "PYSTACHY_GC_STRESS": "1"
+            }
+          }
+        },
+        "cases": [
+          "lifecycle",
+          "binary",
+          "selector_keys",
+          "readiness",
+          "backpressure",
+          "tcp",
+          "blocking_connect",
+          "refused",
+          "timeouts",
+          "fd_reuse",
+          "closed_errors",
+          "inherited_pipe"
+        ],
+        "repeat": 1,
+        "compiler": [
+          "/Users/runner/work/pystachy/pystachy/pystachy"
+        ]
+      },
+      {
+        "file": "netio-drain-macos.json",
+        "file_sha256": "10ced808ab511d2d5c2a3b178111456292fe73c7c203ebab4b6c0aee3f460c23",
+        "result": "pass",
+        "source_hashes_verified": 9,
+        "source_paths": [
+          "examples/netio/check.py",
+          "examples/netio/check_drain.py",
+          "examples/netio/drain.py",
+          "examples/netio/drain_probe.py",
+          "examples/netio/netio.c",
+          "examples/netio/netio.h",
+          "examples/netio/netio.py",
+          "examples/netio/oracle/netio.py",
+          "examples/netio/probe.py"
+        ],
+        "platform": "macOS-15.8.2-arm64-arm-64bit-Mach-O",
+        "python": "3.13.16",
+        "modes": [
+          "cpython_oracle",
+          "cpython_bridge",
+          "jit",
+          "aot",
+          "jit_gc",
+          "aot_gc"
+        ],
+        "compiler": [
+          "/Users/runner/work/pystachy/pystachy/pystachy"
+        ],
+        "scenario": "completion_order"
+      }
+    ],
+    "unique_source_paths_verified": 9,
+    "missing_reports": [],
+    "job_id": 130000378370,
+    "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378370",
+    "job_conclusion": "success",
+    "job_duration_seconds": 368,
+    "netio_step_duration_seconds": 40,
+    "netio_step_log": "netio-step.log",
+    "netio_step_log_sha256": "a12d11a920ff268fd9ef8ebe12e1e5000c95a7c654c274c1fb931ebaf18b81a9",
+    "native_compiler_identity_log": "compiler-identity.log",
+    "native_compiler_revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "all_six_socket_and_drain_modes_verified": true,
+    "job_within_15_minutes": true,
+    "netio_step_within_5_minutes": true
+  },
+  "qualification_status": "passed"
+}

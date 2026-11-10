@@ -1,0 +1,227 @@
+{
+  "schema": 1,
+  "repository": "den-run-ai/pystachy",
+  "candidate_version": "v0.4.0-alpha.3",
+  "main_commit": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+  "parents": [
+    "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+    "c355f3064ec48077abe2b2b17f81019fad49195d"
+  ],
+  "required_release_workflows": [
+    "CI",
+    "Installation",
+    "Lint",
+    "Packages"
+  ],
+  "required_jobs": {
+    "success": 77,
+    "expected_skip": 2
+  },
+  "workflows": [
+    {
+      "name": "CI",
+      "run_id": 42864866935,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935",
+      "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "event": "push",
+      "attempt": 1,
+      "conclusion": "success",
+      "total_jobs": 70,
+      "counts": {
+        "success": 68,
+        "skipped": 2
+      },
+      "skips": [
+        {
+          "id": 130005272356,
+          "name": "native JIT and variants (worker ${{ matrix.worker }})"
+        },
+        {
+          "id": 130005272795,
+          "name": "distribution (${{ matrix.os }})"
+        }
+      ],
+      "maximum_job_seconds": 795
+    },
+    {
+      "name": "Installation",
+      "run_id": 42864866843,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843",
+      "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "event": "push",
+      "attempt": 1,
+      "conclusion": "success",
+      "total_jobs": 7,
+      "counts": {
+        "success": 7
+      },
+      "skips": [],
+      "maximum_job_seconds": 560
+    },
+    {
+      "name": "Lint",
+      "run_id": 42864866830,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866830",
+      "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "event": "push",
+      "attempt": 1,
+      "conclusion": "success",
+      "total_jobs": 1,
+      "counts": {
+        "success": 1
+      },
+      "skips": [],
+      "maximum_job_seconds": 704
+    },
+    {
+      "name": "Packages",
+      "run_id": 42864866834,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866834",
+      "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "event": "push",
+      "attempt": 1,
+      "conclusion": "success",
+      "total_jobs": 1,
+      "counts": {
+        "success": 1
+      },
+      "skips": [],
+      "maximum_job_seconds": 342
+    },
+    {
+      "name": "Performance smoke",
+      "run_id": 42864866829,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866829",
+      "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "event": "push",
+      "attempt": 1,
+      "conclusion": "success",
+      "total_jobs": 1,
+      "counts": {
+        "success": 1
+      },
+      "skips": [],
+      "maximum_job_seconds": 501
+    }
+  ],
+  "merged_feature_prs": [
+    1211,
+    1212,
+    1213,
+    1214,
+    1145,
+    1156,
+    1161
+  ],
+  "integration_prs": [
+    1215,
+    1216,
+    1217
+  ],
+  "histories_preserved": true,
+  "fresh_reviews": [
+    {
+      "pr": 1216,
+      "head": "b52facdc86115e818325c54b82ac6f4d846d83ff",
+      "state": "completed",
+      "findings": 0,
+      "url": "https://github.com/den-run-ai/pystachy/pull/1216#issuecomment-6774139685"
+    },
+    {
+      "pr": 1217,
+      "head": "c355f3064ec48077abe2b2b17f81019fad49195d",
+      "state": "completed",
+      "findings": 0,
+      "url": "https://github.com/den-run-ai/pystachy/pull/1217#issuecomment-6774146598"
+    }
+  ],
+  "superseded_pr_metadata_checks": {
+    "scope": "Submission format only; older edited-event runs were superseded by subsequent metadata/ready events under the existing concurrency policy. Latest same-head checks passed; source CI was not waived or rerun.",
+    "older_cancelled_run_ids": [
+      42863722373,
+      42863726118
+    ],
+    "latest_successful_job_ids": [
+      129996386098,
+      129996545412
+    ]
+  },
+  "variants": {
+    "current_head": "not triggered; not executed",
+    "reason": "No watched path changed; advisory and not one of the four required release workflows",
+    "historical_head": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+    "historical_run_id": 42847908900,
+    "historical_successful_jobs": 24
+  },
+  "boundary_ir_audit": "https://github.com/den-run-ai/pystachy/blob/a2a083f3e55de040de98eb52e6f94683a3e54e0a/research/alpha3-boundary-audit-20261110/README.md",
+  "remaining_scope": {
+    "alpha3_milestone": 4,
+    "closed": 10,
+    "open": 5,
+    "excluded_draft_prs": [
+      1146,
+      1155,
+      1158,
+      1088,
+      1136
+    ],
+    "broader_any_issue": 1210,
+    "known_compatibility_issues": [
+      1182,
+      1207
+    ]
+  },
+  "publication": {
+    "status": "pending",
+    "latest_published_prerelease": "v0.4.0-alpha.2",
+    "latest_published_stable": "v0.3.1",
+    "observed_releases": [
+      {
+        "tag": "v0.4.0-alpha.2",
+        "url": "https://github.com/den-run-ai/pystachy/releases/tag/v0.4.0-alpha.2",
+        "published_at": "2026-11-10T06:44:43Z",
+        "target": "070c8137edeb610e11d8d81653e506ad64a9ce6d"
+      },
+      {
+        "tag": "v0.4.0-alpha.1",
+        "url": "https://github.com/den-run-ai/pystachy/releases/tag/v0.4.0-alpha.1",
+        "published_at": "2026-11-08T17:12:58Z",
+        "target": "ce8c887feaee5c8c038d9da5f09c68f8bd9a83f7"
+      },
+      {
+        "tag": "v0.3.1",
+        "url": "https://github.com/den-run-ai/pystachy/releases/tag/v0.3.1",
+        "published_at": "2026-11-08T03:54:45Z",
+        "target": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf"
+      }
+    ]
+  },
+  "history_verification": {
+    "commit": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+    "version": "v0.4.0-alpha.3",
+    "feature_heads": {
+      "1145": "9c2d9e5c35ed36d3facbcb819c68316d83815029",
+      "1156": "b9ab8d9d3065b94c85952c79bada1de43a021c49",
+      "1161": "c7f282b20de27bdfa137004bc7abbaff9baf2338",
+      "1211": "8a7997d64695d1f2762ecb0a9348fe22a3f9ae2f",
+      "1212": "271f5a5cf0b7b342cdf8c8598492c5049c54d356",
+      "1213": "b191147a7a4b02e5e060d06bd24ed1eb096742cf",
+      "1214": "304184124ab322227db31906b243f99da0d611be"
+    },
+    "all_feature_heads_are_ancestors": {
+      "1145": true,
+      "1156": true,
+      "1161": true,
+      "1211": true,
+      "1212": true,
+      "1213": true,
+      "1214": true
+    }
+  },
+  "independent_ci_audit": "ci-lint/audit-summary.json",
+  "installation_audit": "installation/qualification-metadata.json",
+  "performance_audit": "workflow-gates/performance-report-verification.json",
+  "variants_policy": "workflow-gates/variants-policy.json"
+}

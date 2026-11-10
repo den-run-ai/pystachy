@@ -1,0 +1,129 @@
+{
+  "total_count": 1,
+  "jobs": [
+    {
+      "id": 130000377539,
+      "run_id": 42864866829,
+      "workflow_name": "Performance smoke",
+      "head_branch": "main",
+      "run_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/42864866829",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOU_6QTs8AAAAeRKBWww",
+      "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/130000377539",
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866829/job/130000377539",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-10T17:25:51Z",
+      "started_at": "2026-11-10T17:25:54Z",
+      "completed_at": "2026-11-10T17:34:15Z",
+      "name": "smoke",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-10T17:25:55Z",
+          "completed_at": "2026-11-10T17:25:57Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-10T17:25:57Z",
+          "completed_at": "2026-11-10T17:25:59Z"
+        },
+        {
+          "name": "Select baseline",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-10T17:25:59Z",
+          "completed_at": "2026-11-10T17:25:59Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-10T17:25:59Z",
+          "completed_at": "2026-11-10T17:26:02Z"
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-10T17:26:02Z",
+          "completed_at": "2026-11-10T17:26:09Z"
+        },
+        {
+          "name": "Run tools/setup.sh --minimal",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-10T17:26:09Z",
+          "completed_at": "2026-11-10T17:26:15Z"
+        },
+        {
+          "name": "Paired performance smoke",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-10T17:26:15Z",
+          "completed_at": "2026-11-10T17:34:10Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-10T17:34:10Z",
+          "completed_at": "2026-11-10T17:34:11Z"
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-10T17:34:11Z",
+          "completed_at": "2026-11-10T17:34:11Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-10T17:34:11Z",
+          "completed_at": "2026-11-10T17:34:12Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-10T17:34:12Z",
+          "completed_at": "2026-11-10T17:34:12Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-10T17:34:12Z",
+          "completed_at": "2026-11-10T17:34:12Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/den-run-ai/pystachy/check-runs/130000377539",
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "runner_id": 1000077413,
+      "runner_name": "GitHub Actions 1000077413",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

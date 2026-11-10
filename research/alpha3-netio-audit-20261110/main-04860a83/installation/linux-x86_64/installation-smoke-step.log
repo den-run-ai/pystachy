@@ -1,0 +1,17 @@
+2026-11-10T17:30:35.8280756Z ##[group]Run python3 tools/install_smoke.py
+2026-11-10T17:30:35.8281195Z [36;1mpython3 tools/install_smoke.py[0m
+2026-11-10T17:30:35.8296297Z shell: /usr/bin/bash -e {0}
+2026-11-10T17:30:35.8296712Z env:
+2026-11-10T17:30:35.8297089Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:30:35.8297589Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T17:30:35.8298156Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:30:35.8298660Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:30:35.8299148Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:30:35.8299795Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T17:30:35.8300197Z ##[endgroup]
+2026-11-10T17:31:25.9946392Z hosted JIT: CPython output matches
+2026-11-10T17:31:25.9947134Z hosted AOT: CPython output matches
+2026-11-10T17:31:25.9948578Z pystachy v0.4.0-alpha.3 (commit 04860a83618e744c6f461761b6ee7fdbbe21f985): installed and native --version, without LLVM or Python
+2026-11-10T17:31:25.9949933Z installed JIT/AOT: CPython output matches
+2026-11-10T17:31:25.9950416Z installed JIT/AOT with GC stress: CPython output matches
+2026-11-10T17:31:25.9950914Z installed runtime cache: outside installation

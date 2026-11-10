@@ -1,0 +1,20 @@
+{
+  "id": 13788065447,
+  "node_id": "MDg6QXJ0aWZhY3QxMzc4ODA2NTQ0Nw==",
+  "name": "netio-linux-install-ubuntu-24.04",
+  "size_in_bytes": 13175,
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13788065447",
+  "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13788065447/zip",
+  "expired": false,
+  "digest": "sha256:0a794e451b082b55b770d43b7ec6f077bb966a3aaf40590ce6ebe9fdb32f82bf",
+  "created_at": "2026-11-10T17:33:11Z",
+  "updated_at": "2026-11-10T17:33:11Z",
+  "expires_at": "2026-11-17T17:33:10Z",
+  "workflow_run": {
+    "id": 42864866843,
+    "repository_id": 1409192014,
+    "head_repository_id": 1409192014,
+    "head_branch": "main",
+    "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985"
+  }
+}

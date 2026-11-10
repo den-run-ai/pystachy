@@ -1,0 +1,258 @@
+{
+  "run": {
+    "id": 42847908900,
+    "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900"
+  },
+  "pagination": {
+    "per_page": 100,
+    "total_count": 24,
+    "returned": 24,
+    "complete": true
+  },
+  "jobs": [
+    {
+      "id": 129940283742,
+      "name": "variant opt-2 (shard 0/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T16:01:00Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940283742"
+    },
+    {
+      "id": 129940284179,
+      "name": "variant opt-6 (shard 0/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:59:52Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284179"
+    },
+    {
+      "id": 129940284251,
+      "name": "variant opt-3 (shard 1/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:55:05Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284251"
+    },
+    {
+      "id": 129940284306,
+      "name": "variant opt-4 (shard 1/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:59:08Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284306"
+    },
+    {
+      "id": 129940284310,
+      "name": "variant opt-5 (shard 2/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:54:55Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284310"
+    },
+    {
+      "id": 129940284328,
+      "name": "variant opt-3 (shard 0/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:59:23Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284328"
+    },
+    {
+      "id": 129940284329,
+      "name": "variant opt-6 (shard 3/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:58:15Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284329"
+    },
+    {
+      "id": 129940284358,
+      "name": "variant opt-1 cflags-O0 (shard 0/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:56:54Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284358"
+    },
+    {
+      "id": 129940284371,
+      "name": "variant opt-3 (shard 3/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:55:55Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284371"
+    },
+    {
+      "id": 129940284379,
+      "name": "variant opt-5 (shard 1/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:55:58Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284379"
+    },
+    {
+      "id": 129940284390,
+      "name": "variant opt-3 (shard 2/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:59:02Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284390"
+    },
+    {
+      "id": 129940284432,
+      "name": "variant opt-4 (shard 2/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:58:45Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284432"
+    },
+    {
+      "id": 129940284437,
+      "name": "variant opt-2 (shard 2/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:58:43Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284437"
+    },
+    {
+      "id": 129940284462,
+      "name": "variant opt-1 cflags-O0 (shard 2/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T16:01:31Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284462"
+    },
+    {
+      "id": 129940284490,
+      "name": "variant opt-2 (shard 1/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:59:11Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284490"
+    },
+    {
+      "id": 129940284554,
+      "name": "variant opt-2 (shard 3/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:54:07Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284554"
+    },
+    {
+      "id": 129940284562,
+      "name": "variant opt-1 cflags-O0 (shard 3/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T16:01:00Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284562"
+    },
+    {
+      "id": 129940284581,
+      "name": "variant opt-5 (shard 0/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:54:11Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284581"
+    },
+    {
+      "id": 129940284656,
+      "name": "variant opt-5 (shard 3/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:56:15Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284656"
+    },
+    {
+      "id": 129940284731,
+      "name": "variant opt-4 (shard 0/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:54:06Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284731"
+    },
+    {
+      "id": 129940284780,
+      "name": "variant opt-4 (shard 3/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:54:07Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940284780"
+    },
+    {
+      "id": 129940285075,
+      "name": "variant opt-6 (shard 2/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:59:40Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940285075"
+    },
+    {
+      "id": 129940285314,
+      "name": "variant opt-1 cflags-O0 (shard 1/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:51Z",
+      "completed_at": "2026-11-10T15:58:11Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940285314"
+    },
+    {
+      "id": 129940285375,
+      "name": "variant opt-6 (shard 1/4, JIT and AOT)",
+      "head_sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-10T15:46:50Z",
+      "completed_at": "2026-11-10T15:54:15Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/42847908900/job/129940285375"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+2026-11-10T17:26:11.9482777Z ##[group]Run lean_boundary_dir=$(mktemp -d)
+2026-11-10T17:26:11.9483087Z [36;1mlean_boundary_dir=$(mktemp -d)[0m
+2026-11-10T17:26:11.9483492Z [36;1mtrap 'rm -rf "$lean_boundary_dir"' EXIT[0m
+2026-11-10T17:26:11.9483868Z [36;1mcurl --fail --location --silent --show-error --retry 2 --retry-max-time 240 \[0m
+2026-11-10T17:26:11.9484258Z [36;1m  --connect-timeout 20 --max-time 120 \[0m
+2026-11-10T17:26:11.9484686Z [36;1m  'https://github.com/leanprover/lean4/releases/download/v4.35.0/lean-4.35.0-linux.tar.zst' \[0m
+2026-11-10T17:26:11.9485107Z [36;1m  --output "$lean_boundary_dir/lean.tar.zst"[0m
+2026-11-10T17:26:11.9485503Z [36;1mprintf '%s  %s\n' '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d' \[0m
+2026-11-10T17:26:11.9485924Z [36;1m  "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -[0m
+2026-11-10T17:26:11.9486349Z [36;1mtar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"[0m
+2026-11-10T17:26:11.9486859Z [36;1mPATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" make check-lean-boundary[0m
+2026-11-10T17:26:11.9502585Z shell: /usr/bin/bash -e {0}
+2026-11-10T17:26:11.9502812Z env:
+2026-11-10T17:26:11.9503013Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:26:11.9503313Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:11.9503675Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T17:26:11.9504035Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:11.9504362Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:11.9504676Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:11.9504992Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T17:26:11.9505264Z ##[endgroup]
+2026-11-10T17:26:14.6619839Z /tmp/tmp.BSJe9iJHZy/lean.tar.zst: OK
+2026-11-10T17:26:28.2726983Z cd tools/lean_boundary && lake build
+2026-11-10T17:26:29.0072078Z ✔ [2/9] Built PystachyBoundary (654ms)
+2026-11-10T17:26:29.3071699Z ✔ [4/9] Built PystachyBoundary:c.o (256ms)
+2026-11-10T17:26:30.1078443Z ℹ [5/9] Built Audit (1.1s)
+2026-11-10T17:26:30.1078923Z info: Audit.lean:9:0: PystachyBoundary.check_iff: axiom audit passed ([propext])
+2026-11-10T17:26:30.1079451Z info: Audit.lean:9:0: PystachyBoundary.reachable_facts: axiom audit passed ([propext, Quot.sound])
+2026-11-10T17:26:30.1080017Z info: Audit.lean:9:0: PystachyBoundary.accepted_payload_safe: axiom audit passed ([propext, Quot.sound])
+2026-11-10T17:26:30.1080787Z info: Audit.lean:19:0: 'PystachyBoundary.accepted_payload_safe' depends on axioms: [propext, Quot.sound]
+2026-11-10T17:26:30.2080623Z ✔ [7/9] Built Main (1.2s)
+2026-11-10T17:26:30.5096777Z ✔ [8/9] Built Main:c.o (329ms)
+2026-11-10T17:26:31.1106141Z ✔ [9/9] Built «pystachy-boundary»:exe (560ms)
+2026-11-10T17:26:31.1118079Z Build completed successfully (9 jobs).
+2026-11-10T17:26:31.1154252Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_lean_boundary*.py'
+2026-11-10T17:26:35.8691278Z ............................
+2026-11-10T17:26:35.8691665Z ----------------------------------------------------------------------
+2026-11-10T17:26:35.8691989Z Ran 28 tests in 4.149s
+2026-11-10T17:26:35.8692117Z 
+2026-11-10T17:26:35.8692191Z OK

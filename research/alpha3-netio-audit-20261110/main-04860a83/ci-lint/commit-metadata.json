@@ -1,0 +1,40 @@
+{
+  "sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "node_id": "C_kwDOU_6QTtoAKDA0ODYwYTgzNjE4ZTc0NGM2ZjQ2MTc2MWI2ZWU3ZmRiYmUyMWY5ODU",
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "html_url": "https://github.com/den-run-ai/pystachy/commit/04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "author": {
+    "name": "Denis Akhiyarov",
+    "email": "denis.akhiyarov@gmail.com",
+    "date": "2026-11-10T17:25:46Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2026-11-10T17:25:46Z"
+  },
+  "tree": {
+    "sha": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+    "url": "https://api.github.com/repos/den-run-ai/pystachy/git/trees/bc34d9b1a3f648fbae6368e1c78485baf8d60c99"
+  },
+  "message": "Merge pull request #1217: prepare v0.4.0-alpha.3\n\nPrepare v0.4.0-alpha.3 release candidate",
+  "parents": [
+    {
+      "sha": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+      "html_url": "https://github.com/den-run-ai/pystachy/commit/ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab"
+    },
+    {
+      "sha": "c355f3064ec48077abe2b2b17f81019fad49195d",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/c355f3064ec48077abe2b2b17f81019fad49195d",
+      "html_url": "https://github.com/den-run-ai/pystachy/commit/c355f3064ec48077abe2b2b17f81019fad49195d"
+    }
+  ],
+  "verification": {
+    "verified": true,
+    "reason": "valid",
+    "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJq81OaCRC1aQ7uu5UhlAAASr0QAD2eEgC3piO8YCG2dUo3zQr/\nuIGAaykdr9QqYGuDBG0mtKlZmFWsNxr3j6Km3b/S/YtiK2VUXy4cPpPvy61WBEZB\ncGyj+7bszVkV3SIy+TpaNjLps/5tAaEwip1h6iSJj7U5KwdAScqlJnVehH718QEm\nbamyyNj+QolLo66+eYAxEA4fBbYRZ7y04ahUspimBnB/ArehRliqBc7LXy3p25Eb\nri5M3jhCRnw6smdkWKep+nnY4x/dgQdlCREr8Q14jswCXalOOMIip97+MN7cUvop\n3EikbH25zqsDNtorZQMLXxH6VCPWp1WzRDd8bPPneP6hYoNFvTZisfRecgFDZWKQ\ndrCxAgst9fIsdDgctjWJGg6DrZtq1YIad/5dz4Mu7tQ8VWfMUIJpRtwxbORAS5QQ\ncav6kAyT1/MrrvFllVqKUsM94tLPgNS2u9xcarSuPhE8/2KhKi4Ytwk0WnBz0OhT\nED+heGzxuTpp6y1KeY+7kVUWajtcjIzxmgiukjoh05XXJUCw8dBb/yoAEN7/7a0h\n+eGPWaxFx+gdv0BAue3mGI8eA5fD5weBChtFT1p5IXGvQiHkzdk1zd25yJay5QLj\ndyAwy4zMNr7bADnG2xWKTGJ5NI6gFL1d8OX3QKW8CVNndNhvpR0haH9x/7VaW+si\niev3cHpzu7Mlyvn7cG1I\n=e86U\n-----END PGP SIGNATURE-----\n",
+    "payload": "tree bc34d9b1a3f648fbae6368e1c78485baf8d60c99\nparent ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab\nparent c355f3064ec48077abe2b2b17f81019fad49195d\nauthor Denis Akhiyarov <denis.akhiyarov@gmail.com> 1794331546 -0800\ncommitter GitHub <noreply@github.com> 1794331546 -0800\n\nMerge pull request #1217: prepare v0.4.0-alpha.3\n\nPrepare v0.4.0-alpha.3 release candidate",
+    "verified_at": "2026-11-10T17:25:47Z"
+  }
+}

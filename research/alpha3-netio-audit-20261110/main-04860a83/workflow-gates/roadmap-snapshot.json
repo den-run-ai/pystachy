@@ -1,0 +1,289 @@
+{
+  "milestone": {
+    "number": 4,
+    "title": "v0.4.0-alpha.3",
+    "state": "open",
+    "open_items": 5,
+    "closed_items": 10,
+    "url": "https://github.com/den-run-ai/pystachy/milestone/4",
+    "description": "Conditional optional-feature qualification: native/socket I/O #1145→#1156→#1161, libuv #1146→#1155→#1158, and restricted numerical workers #1088→#1136. Refresh against current main; require combined ownership, cancellation, deadlines, cleanup, regression and platform evidence. Keep APIs experimental and defer any unqualified stack at rc.1. No committed date."
+  },
+  "items": [
+    {
+      "number": 1217,
+      "title": "Prepare v0.4.0-alpha.3 release candidate",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1217"
+    },
+    {
+      "number": 1216,
+      "title": "Qualify native I/O for alpha.3",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1216"
+    },
+    {
+      "number": 1215,
+      "title": "Integrate Any boundary checks for alpha.3",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1215"
+    },
+    {
+      "number": 1214,
+      "title": "Report dynamic boundaries and identity fallback scope",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1214"
+    },
+    {
+      "number": 1213,
+      "title": "Enforce exact dynamic payload guards in typed IR",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1213"
+    },
+    {
+      "number": 1212,
+      "title": "Verify dynamic payload guards with an optional Lean checker",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1212"
+    },
+    {
+      "number": 1211,
+      "title": "Contain dynamic Any in TOML parser state",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1211"
+    },
+    {
+      "number": 1161,
+      "title": "Bound drain accumulation and reject late completions",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1161"
+    },
+    {
+      "number": 1158,
+      "title": "Preserve libuv completions across managed-copy failures",
+      "state": "open",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1158"
+    },
+    {
+      "number": 1156,
+      "title": "Dogfood compiler pipes and benchmark native readiness I/O",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1156"
+    },
+    {
+      "number": 1155,
+      "title": "Dogfood libuv with bounded compiler source transfers",
+      "state": "open",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1155"
+    },
+    {
+      "number": 1146,
+      "title": "Prototype owned libuv TCP exchanges",
+      "state": "open",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1146"
+    },
+    {
+      "number": 1145,
+      "title": "Prototype native socket and readiness I/O",
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1145"
+    },
+    {
+      "number": 1136,
+      "title": "Prototype ordered row scoring on verified native workers",
+      "state": "open",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1136"
+    },
+    {
+      "number": 1088,
+      "title": "Prototype verified native float-map parallelism",
+      "state": "open",
+      "url": "https://github.com/den-run-ai/pystachy/pull/1088"
+    }
+  ],
+  "open_pr_count": 22,
+  "open_prs": [
+    {
+      "number": 816,
+      "title": "Do not merge: batched comparison-method declines (#801) are unsound without rolling back compiler state",
+      "draft": true,
+      "head": "63e3db29331c223e9ef89506634e7b52975fbf48",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 796,
+      "title": "Research, do not merge: a proposal to make dynamic Any robust and scalable (measurements, probes, two experiments)",
+      "draft": true,
+      "head": "93e2fd108f9af373e128f735184053d3e523e933",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 784,
+      "title": "Research, do not merge: where dynamic Any pays off (idioms, tomllib and tomli-w, a pipeline profile, the corpus opt-in sweep)",
+      "draft": true,
+      "head": "4d61e4ce2824ae2f2a0046bfb66cf1ef2d9db868",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 1126,
+      "title": "Compare byte-BPE across Cython, mypyc and PyPy",
+      "draft": true,
+      "head": "ae2c0afe568c6f5f02dd427e7981c1c6181462ea",
+      "base": "prototype/byte-bpe-showcase",
+      "milestone": 6
+    },
+    {
+      "number": 1110,
+      "title": "Validate and measure the installed JSON repair companion",
+      "draft": true,
+      "head": "455013090e852494885fecf22139061f6e5da2bf",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 1063,
+      "title": "Prototype guarded callbacks for bisect",
+      "draft": true,
+      "head": "169c84594f8e742cc84ff10633a70e8d1737e430",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 1134,
+      "title": "Preserve list bounds across element and identity writes",
+      "draft": true,
+      "head": "7b4946fe52644e288566e5d93ff23966a8a221cd",
+      "base": "research/typed-list-contracts",
+      "milestone": 6
+    },
+    {
+      "number": 1105,
+      "title": "Prototype StringZilla scans and bounded float parsing",
+      "draft": true,
+      "head": "d47528a7fde75c70196262dfe42234109b69c4c9",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 1095,
+      "title": "Evaluate GC on application workloads and optional BDWGC",
+      "draft": true,
+      "head": "08963a31688a06c4c283efda6550c884e3181b31",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 1135,
+      "title": "Prototype owned native subprocesses and compiler supervision",
+      "draft": true,
+      "head": "6ac75c62d3721cc523ceb69785ca266b7ec67162",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 1133,
+      "title": "Prototype bounded process workers and detached backend jobs",
+      "draft": true,
+      "head": "a8b8eb20edc7b99a259c7a99ea974d4591d43dc9",
+      "base": "prototype/ordinary-runtime-overlap",
+      "milestone": 6
+    },
+    {
+      "number": 1111,
+      "title": "Prototype runtime overlap for ordinary compiler bootstraps",
+      "draft": true,
+      "head": "cf6fa8dc19e4e61e1f3fb2d895d3de27fa3a36e4",
+      "base": "research/compiler-host-scaling",
+      "milestone": 6
+    },
+    {
+      "number": 1091,
+      "title": "Optimize compiler bootstrap and portable host comparisons",
+      "draft": true,
+      "head": "f8127dc25f44af46f34dbae31b64fa2152aa2a7e",
+      "base": "research/self-build-pipeline",
+      "milestone": 6
+    },
+    {
+      "number": 1090,
+      "title": "Prototype faster compiler bootstrap and runtime caching",
+      "draft": true,
+      "head": "626c3bf19ad88d575b36b418563ac1175f64e33a",
+      "base": "research/compiler-parallelism",
+      "milestone": 6
+    },
+    {
+      "number": 1089,
+      "title": "Prototype compiler build parallelism and stage timings",
+      "draft": true,
+      "head": "3f4318a5808aa41de355c38c84676464ea83c312",
+      "base": "main",
+      "milestone": 6
+    },
+    {
+      "number": 1136,
+      "title": "Prototype ordered row scoring on verified native workers",
+      "draft": true,
+      "head": "86fe869b9423e5d3f4edf2c664c43ae609bbd645",
+      "base": "research/minimal-native-parallel",
+      "milestone": 4
+    },
+    {
+      "number": 1088,
+      "title": "Prototype verified native float-map parallelism",
+      "draft": true,
+      "head": "163fe22c9bfcdb6c299bf65998cf003d151b6132",
+      "base": "main",
+      "milestone": 4
+    },
+    {
+      "number": 1158,
+      "title": "Preserve libuv completions across managed-copy failures",
+      "draft": true,
+      "head": "a9389c5e0321372393fca18e1f5eff1f47375567",
+      "base": "prototype/libuv-io-dogfood",
+      "milestone": 4
+    },
+    {
+      "number": 1155,
+      "title": "Dogfood libuv with bounded compiler source transfers",
+      "draft": true,
+      "head": "b68c4262143abe97d2de16b88e6e7ea663fab037",
+      "base": "prototype/libuv-owned-io",
+      "milestone": 4
+    },
+    {
+      "number": 1146,
+      "title": "Prototype owned libuv TCP exchanges",
+      "draft": true,
+      "head": "5b50ebd36d3f7b425032c00073b214e63a261dff",
+      "base": "main",
+      "milestone": 4
+    },
+    {
+      "number": 743,
+      "title": "Audit compatibility through #842: runtime ABI/root coverage",
+      "draft": false,
+      "head": "8873520fe7fafe4e9a3abdf773afea9f5a6ed0c0",
+      "base": "main",
+      "milestone": null
+    },
+    {
+      "number": 672,
+      "title": "Decode named Unicode literals using the shipped names table",
+      "draft": true,
+      "head": "ad465695299f44535b17921ae373a592716ab7e6",
+      "base": "main",
+      "milestone": null
+    }
+  ],
+  "legacy_audit_review": {
+    "number": 743,
+    "head": "8873520fe7fafe4e9a3abdf773afea9f5a6ed0c0",
+    "mergeable": false,
+    "mergeable_state": "dirty"
+  },
+  "publication": "pending"
+}

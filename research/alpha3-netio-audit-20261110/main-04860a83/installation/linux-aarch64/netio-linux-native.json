@@ -1,0 +1,151 @@
+{
+  "schema": 1,
+  "result": "pass",
+  "cases": [
+    "lifecycle",
+    "binary",
+    "selector_keys",
+    "readiness",
+    "backpressure",
+    "tcp",
+    "blocking_connect",
+    "refused",
+    "timeouts",
+    "fd_reuse",
+    "closed_errors",
+    "inherited_pipe"
+  ],
+  "modes": [
+    "cpython_oracle",
+    "cpython_bridge",
+    "jit",
+    "aot",
+    "jit_gc",
+    "aot_gc"
+  ],
+  "runs": {
+    "cpython_oracle": {
+      "cases": [
+        "lifecycle",
+        "binary",
+        "selector_keys",
+        "readiness",
+        "backpressure",
+        "tcp",
+        "blocking_connect",
+        "refused",
+        "timeouts",
+        "fd_reuse",
+        "closed_errors",
+        "inherited_pipe"
+      ]
+    },
+    "cpython_bridge": {
+      "cases": [
+        "lifecycle",
+        "binary",
+        "selector_keys",
+        "readiness",
+        "backpressure",
+        "tcp",
+        "blocking_connect",
+        "refused",
+        "timeouts",
+        "fd_reuse",
+        "closed_errors",
+        "inherited_pipe"
+      ],
+      "gc_settings": {}
+    },
+    "jit": {
+      "cases": [
+        "lifecycle",
+        "binary",
+        "selector_keys",
+        "readiness",
+        "backpressure",
+        "tcp",
+        "blocking_connect",
+        "refused",
+        "timeouts",
+        "fd_reuse",
+        "closed_errors",
+        "inherited_pipe"
+      ],
+      "gc_settings": {}
+    },
+    "aot": {
+      "cases": [
+        "lifecycle",
+        "binary",
+        "selector_keys",
+        "readiness",
+        "backpressure",
+        "tcp",
+        "blocking_connect",
+        "refused",
+        "timeouts",
+        "fd_reuse",
+        "closed_errors",
+        "inherited_pipe"
+      ],
+      "gc_settings": {}
+    },
+    "jit_gc": {
+      "cases": [
+        "lifecycle",
+        "binary",
+        "selector_keys",
+        "readiness",
+        "backpressure",
+        "tcp",
+        "blocking_connect",
+        "refused",
+        "timeouts",
+        "fd_reuse",
+        "closed_errors",
+        "inherited_pipe"
+      ],
+      "gc_settings": {
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      }
+    },
+    "aot_gc": {
+      "cases": [
+        "lifecycle",
+        "binary",
+        "selector_keys",
+        "readiness",
+        "backpressure",
+        "tcp",
+        "blocking_connect",
+        "refused",
+        "timeouts",
+        "fd_reuse",
+        "closed_errors",
+        "inherited_pipe"
+      ],
+      "gc_settings": {
+        "PYSTACHY_GC_STRESS": "1"
+      }
+    }
+  },
+  "python": "3.13.16",
+  "platform": "Linux-7.0.0-1017-azure-aarch64-with-glibc2.39",
+  "source_sha256": {
+    "netio.c": "722e7a8b714fe7787c6f63ce564b08260da97130cc7ff88dde89d8b9105ef620",
+    "netio.h": "cb008b4893980e6f52c11036138186f353b1edd41f601158bbe1490896aeaaf4",
+    "netio.py": "893ad3096f4ee227bde46dddd9f6426cbf7faafd69dc95aa44ff151d2fe1c9be",
+    "probe.py": "a14aac582f346df707723d496a0c19a790e49f9dfc10ceaaa3664d5c1c083e3b",
+    "oracle/netio.py": "0ed47d2c24bd75c5b96c0b4bdb9583bb16710e6afae5cda7a17088f830fa1826",
+    "check.py": "35ce4670c5a1d33396265e0f7b66e27be3438acdc53eecdff7717b56d7943861"
+  },
+  "repeat": 2,
+  "compiler": [
+    "/home/runner/work/pystachy/pystachy/pystachy"
+  ],
+  "c_compiler": [
+    "/usr/lib/llvm-18/bin/clang"
+  ],
+  "library_sha256": "91e9c9aa1ef383ff6b55f566ff6a5ee6d6463a3bc416a927255f297b301b01e3"
+}

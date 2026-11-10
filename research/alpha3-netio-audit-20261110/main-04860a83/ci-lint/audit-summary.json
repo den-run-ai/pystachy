@@ -1,0 +1,2782 @@
+{
+  "schema": 1,
+  "repository": "den-run-ai/pystachy",
+  "audit_result": "pass",
+  "audit_completed_at_utc": "2026-11-10 17:56:01 UTC",
+  "qualified_commit": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "qualified_tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+  "parents": [
+    "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+    "c355f3064ec48077abe2b2b17f81019fad49195d"
+  ],
+  "scope": "Exact-main CI and Lint qualification after PR #1217 merge. Installation, Packages, Variants and Performance evidence are maintained separately by the root release audit.",
+  "ci": {
+    "run_id": 42864866935,
+    "run_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935",
+    "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "attempt": 1,
+    "event": "push",
+    "head_branch": "main",
+    "conclusion": "success",
+    "pages": 1,
+    "total": 70,
+    "success": 68,
+    "skipped": [
+      {
+        "id": 130005272356,
+        "name": "native JIT and variants (worker ${{ matrix.worker }})"
+      },
+      {
+        "id": 130005272795,
+        "name": "distribution (${{ matrix.os }})"
+      }
+    ],
+    "longest_jobs": [
+      {
+        "id": 130005274191,
+        "name": "verify (ubsan-3, x86_64)",
+        "started_at": "2026-11-10T17:34:18Z",
+        "completed_at": "2026-11-10T17:47:33Z",
+        "seconds": 795
+      },
+      {
+        "id": 130005274230,
+        "name": "verify (python-free-2, x86_64)",
+        "started_at": "2026-11-10T17:34:01Z",
+        "completed_at": "2026-11-10T17:46:57Z",
+        "seconds": 776
+      },
+      {
+        "id": 130005274233,
+        "name": "verify (python-free-1, x86_64)",
+        "started_at": "2026-11-10T17:34:02Z",
+        "completed_at": "2026-11-10T17:46:49Z",
+        "seconds": 767
+      },
+      {
+        "id": 130005274273,
+        "name": "verify (ubsan-2, x86_64)",
+        "started_at": "2026-11-10T17:34:01Z",
+        "completed_at": "2026-11-10T17:46:38Z",
+        "seconds": 757
+      },
+      {
+        "id": 130005274281,
+        "name": "verify (ubsan-0, x86_64)",
+        "started_at": "2026-11-10T17:40:10Z",
+        "completed_at": "2026-11-10T17:52:27Z",
+        "seconds": 737
+      },
+      {
+        "id": 130005274464,
+        "name": "verify (gc-ir-0, x86_64)",
+        "started_at": "2026-11-10T17:40:26Z",
+        "completed_at": "2026-11-10T17:51:11Z",
+        "seconds": 645
+      },
+      {
+        "id": 130005274063,
+        "name": "verify (native-2, x86_64)",
+        "started_at": "2026-11-10T17:40:13Z",
+        "completed_at": "2026-11-10T17:50:56Z",
+        "seconds": 643
+      },
+      {
+        "id": 130005274107,
+        "name": "verify (native-0, x86_64)",
+        "started_at": "2026-11-10T17:40:13Z",
+        "completed_at": "2026-11-10T17:50:46Z",
+        "seconds": 633
+      }
+    ],
+    "jobs": [
+      {
+        "id": 130000378530,
+        "name": "verify (bootstrap, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:25:54Z",
+        "completed_at": "2026-11-10T17:33:58Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130000378530"
+      },
+      {
+        "id": 130000379448,
+        "name": "verify (bootstrap, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:25:57Z",
+        "completed_at": "2026-11-10T17:31:22Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130000379448"
+      },
+      {
+        "id": 130005272356,
+        "name": "native JIT and variants (worker ${{ matrix.worker }})",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-10T17:33:58Z",
+        "completed_at": "2026-11-10T17:33:58Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005272356"
+      },
+      {
+        "id": 130005272795,
+        "name": "distribution (${{ matrix.os }})",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-10T17:33:58Z",
+        "completed_at": "2026-11-10T17:33:58Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005272795"
+      },
+      {
+        "id": 130005274063,
+        "name": "verify (native-2, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:13Z",
+        "completed_at": "2026-11-10T17:50:56Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274063"
+      },
+      {
+        "id": 130005274070,
+        "name": "verify (native-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:08Z",
+        "completed_at": "2026-11-10T17:47:45Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274070"
+      },
+      {
+        "id": 130005274086,
+        "name": "verify (hosted, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:01Z",
+        "completed_at": "2026-11-10T17:40:09Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274086"
+      },
+      {
+        "id": 130005274107,
+        "name": "verify (native-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:13Z",
+        "completed_at": "2026-11-10T17:50:46Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274107"
+      },
+      {
+        "id": 130005274191,
+        "name": "verify (ubsan-3, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:18Z",
+        "completed_at": "2026-11-10T17:47:33Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274191"
+      },
+      {
+        "id": 130005274227,
+        "name": "verify (opt-off-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:35:20Z",
+        "completed_at": "2026-11-10T17:45:11Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274227"
+      },
+      {
+        "id": 130005274230,
+        "name": "verify (python-free-2, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:01Z",
+        "completed_at": "2026-11-10T17:46:57Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274230"
+      },
+      {
+        "id": 130005274233,
+        "name": "verify (python-free-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:02Z",
+        "completed_at": "2026-11-10T17:46:49Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274233"
+      },
+      {
+        "id": 130005274244,
+        "name": "verify (gc-ir-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:07Z",
+        "completed_at": "2026-11-10T17:49:05Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274244"
+      },
+      {
+        "id": 130005274246,
+        "name": "verify (dynany-optin-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:02Z",
+        "completed_at": "2026-11-10T17:41:59Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274246"
+      },
+      {
+        "id": 130005274256,
+        "name": "verify (ubsan-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:15Z",
+        "completed_at": "2026-11-10T17:48:53Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274256"
+      },
+      {
+        "id": 130005274260,
+        "name": "verify (opt-off-2, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:18Z",
+        "completed_at": "2026-11-10T17:49:22Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274260"
+      },
+      {
+        "id": 130005274263,
+        "name": "verify (gc-self, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:07Z",
+        "completed_at": "2026-11-10T17:45:15Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274263"
+      },
+      {
+        "id": 130005274273,
+        "name": "verify (ubsan-2, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:01Z",
+        "completed_at": "2026-11-10T17:46:38Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274273"
+      },
+      {
+        "id": 130005274281,
+        "name": "verify (ubsan-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:10Z",
+        "completed_at": "2026-11-10T17:52:27Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274281"
+      },
+      {
+        "id": 130005274289,
+        "name": "verify (python-free-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:39:59Z",
+        "completed_at": "2026-11-10T17:49:21Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274289"
+      },
+      {
+        "id": 130005274316,
+        "name": "verify (opt-off-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:05Z",
+        "completed_at": "2026-11-10T17:47:37Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274316"
+      },
+      {
+        "id": 130005274319,
+        "name": "verify (runtime-cache, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:38:42Z",
+        "completed_at": "2026-11-10T17:47:58Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274319"
+      },
+      {
+        "id": 130005274322,
+        "name": "verify (gc-jit-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:39:25Z",
+        "completed_at": "2026-11-10T17:43:04Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274322"
+      },
+      {
+        "id": 130005274333,
+        "name": "verify (python-int-optin-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:37:41Z",
+        "completed_at": "2026-11-10T17:45:52Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274333"
+      },
+      {
+        "id": 130005274342,
+        "name": "verify (gc-aot-2, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:39:18Z",
+        "completed_at": "2026-11-10T17:46:49Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274342"
+      },
+      {
+        "id": 130005274343,
+        "name": "verify (native-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:16Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274343"
+      },
+      {
+        "id": 130005274351,
+        "name": "verify (python-int-optin-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:07Z",
+        "completed_at": "2026-11-10T17:50:22Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274351"
+      },
+      {
+        "id": 130005274355,
+        "name": "verify (gc-aot-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:00Z",
+        "completed_at": "2026-11-10T17:45:51Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274355"
+      },
+      {
+        "id": 130005274358,
+        "name": "verify (dynany-optin-2, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:36:48Z",
+        "completed_at": "2026-11-10T17:46:10Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274358"
+      },
+      {
+        "id": 130005274382,
+        "name": "verify (dynany-optin-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:36:30Z",
+        "completed_at": "2026-11-10T17:44:39Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274382"
+      },
+      {
+        "id": 130005274383,
+        "name": "verify (gc-jit-1, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:12Z",
+        "completed_at": "2026-11-10T17:43:09Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274383"
+      },
+      {
+        "id": 130005274387,
+        "name": "verify (gc-aot-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:13Z",
+        "completed_at": "2026-11-10T17:46:49Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274387"
+      },
+      {
+        "id": 130005274397,
+        "name": "verify (hosted, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:39:16Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274397"
+      },
+      {
+        "id": 130005274411,
+        "name": "verify (opt-off-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:05Z",
+        "completed_at": "2026-11-10T17:40:10Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274411"
+      },
+      {
+        "id": 130005274441,
+        "name": "verify (benchmarks, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:35:51Z",
+        "completed_at": "2026-11-10T17:41:39Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274441"
+      },
+      {
+        "id": 130005274464,
+        "name": "verify (gc-ir-0, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:26Z",
+        "completed_at": "2026-11-10T17:51:11Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274464"
+      },
+      {
+        "id": 130005274465,
+        "name": "verify (scaling, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:08Z",
+        "completed_at": "2026-11-10T17:42:15Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274465"
+      },
+      {
+        "id": 130005274472,
+        "name": "verify (opt-off-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:05Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274472"
+      },
+      {
+        "id": 130005274473,
+        "name": "verify (contracts, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:41:09Z",
+        "completed_at": "2026-11-10T17:50:26Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274473"
+      },
+      {
+        "id": 130005274480,
+        "name": "verify (python-int-optin-2, x86_64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:40:11Z",
+        "completed_at": "2026-11-10T17:47:42Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274480"
+      },
+      {
+        "id": 130005274536,
+        "name": "verify (native-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:10Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274536"
+      },
+      {
+        "id": 130005274556,
+        "name": "verify (native-2, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:05Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274556"
+      },
+      {
+        "id": 130005274771,
+        "name": "verify (ubsan-3, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:05Z",
+        "completed_at": "2026-11-10T17:42:36Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274771"
+      },
+      {
+        "id": 130005274777,
+        "name": "verify (dynany-optin-2, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:05Z",
+        "completed_at": "2026-11-10T17:40:08Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274777"
+      },
+      {
+        "id": 130005274807,
+        "name": "verify (scaling, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:35:49Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274807"
+      },
+      {
+        "id": 130005274811,
+        "name": "verify (python-int-optin-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:13Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274811"
+      },
+      {
+        "id": 130005274812,
+        "name": "verify (python-int-optin-2, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:05Z",
+        "completed_at": "2026-11-10T17:41:07Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274812"
+      },
+      {
+        "id": 130005274842,
+        "name": "verify (dynany-optin-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:05Z",
+        "completed_at": "2026-11-10T17:40:02Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274842"
+      },
+      {
+        "id": 130005274918,
+        "name": "verify (gc-aot-2, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:39:57Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274918"
+      },
+      {
+        "id": 130005274942,
+        "name": "verify (python-free-2, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:41:58Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274942"
+      },
+      {
+        "id": 130005274948,
+        "name": "verify (runtime-cache, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:41:36Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274948"
+      },
+      {
+        "id": 130005274950,
+        "name": "verify (gc-jit-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:36:46Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274950"
+      },
+      {
+        "id": 130005274951,
+        "name": "verify (gc-self, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:38:40Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274951"
+      },
+      {
+        "id": 130005274953,
+        "name": "verify (python-int-optin-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:11Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274953"
+      },
+      {
+        "id": 130005274962,
+        "name": "verify (benchmarks, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:23Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274962"
+      },
+      {
+        "id": 130005274971,
+        "name": "verify (ubsan-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:05Z",
+        "completed_at": "2026-11-10T17:42:19Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274971"
+      },
+      {
+        "id": 130005274980,
+        "name": "verify (opt-off-2, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:04Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274980"
+      },
+      {
+        "id": 130005274981,
+        "name": "verify (python-free-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:41:46Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274981"
+      },
+      {
+        "id": 130005274988,
+        "name": "verify (ubsan-2, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:41:40Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274988"
+      },
+      {
+        "id": 130005274998,
+        "name": "verify (ubsan-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:42:08Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005274998"
+      },
+      {
+        "id": 130005275001,
+        "name": "verify (dynany-optin-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:09Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005275001"
+      },
+      {
+        "id": 130005275015,
+        "name": "verify (gc-ir-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:39:23Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005275015"
+      },
+      {
+        "id": 130005275037,
+        "name": "verify (gc-ir-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:06Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005275037"
+      },
+      {
+        "id": 130005275072,
+        "name": "verify (gc-jit-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:05Z",
+        "completed_at": "2026-11-10T17:36:28Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005275072"
+      },
+      {
+        "id": 130005275089,
+        "name": "verify (contracts, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:41:15Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005275089"
+      },
+      {
+        "id": 130005275098,
+        "name": "verify (python-free-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:05Z",
+        "completed_at": "2026-11-10T17:42:03Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005275098"
+      },
+      {
+        "id": 130005275117,
+        "name": "verify (gc-aot-1, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:40:05Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005275117"
+      },
+      {
+        "id": 130005275205,
+        "name": "verify (gc-aot-0, aarch64)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:34:04Z",
+        "completed_at": "2026-11-10T17:39:56Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130005275205"
+      },
+      {
+        "id": 130016188220,
+        "name": "make verify (Linux ARM64, LLVM 18, Python 3.13)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:52:30Z",
+        "completed_at": "2026-11-10T17:53:05Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130016188220"
+      },
+      {
+        "id": 130016188225,
+        "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-10T17:52:30Z",
+        "completed_at": "2026-11-10T17:52:59Z",
+        "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866935/job/130016188225"
+      }
+    ],
+    "aggregate_jobs": [
+      {
+        "id": 130016188220,
+        "name": "make verify (Linux ARM64, LLVM 18, Python 3.13)",
+        "steps": [
+          {
+            "name": "Require complete verification reports",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-11-10T17:52:54Z",
+            "completed_at": "2026-11-10T17:53:00Z"
+          },
+          {
+            "name": "Require every verification group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-11-10T17:53:00Z",
+            "completed_at": "2026-11-10T17:53:00Z"
+          }
+        ]
+      },
+      {
+        "id": 130016188225,
+        "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+        "steps": [
+          {
+            "name": "Require complete verification reports",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5,
+            "started_at": "2026-11-10T17:52:49Z",
+            "completed_at": "2026-11-10T17:52:53Z"
+          },
+          {
+            "name": "Require every verification group",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6,
+            "started_at": "2026-11-10T17:52:53Z",
+            "completed_at": "2026-11-10T17:52:53Z"
+          }
+        ]
+      }
+    ]
+  },
+  "lint": {
+    "run_id": 42864866830,
+    "run_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866830",
+    "run_attempt": 1,
+    "event": "push",
+    "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "conclusion": "success",
+    "job_id": 130000378211,
+    "started_at": "2026-11-10T17:25:55Z",
+    "completed_at": "2026-11-10T17:37:39Z",
+    "duration_seconds": 704,
+    "lean": {
+      "step": {
+        "name": "Build, audit and test the Lean boundary prototype",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-11-10T17:26:11Z",
+        "completed_at": "2026-11-10T17:26:38Z"
+      },
+      "required_environment": "LEAN_BOUNDARY_REQUIRED=1",
+      "archive_version": "4.35.0",
+      "archive_sha256": "7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d",
+      "archive_checksum_verified": true,
+      "build_jobs": 9,
+      "axiom_audits": [
+        {
+          "theorem": "PystachyBoundary.check_iff",
+          "axioms": [
+            "propext"
+          ]
+        },
+        {
+          "theorem": "PystachyBoundary.reachable_facts",
+          "axioms": [
+            "propext",
+            "Quot.sound"
+          ]
+        },
+        {
+          "theorem": "PystachyBoundary.accepted_payload_safe",
+          "axioms": [
+            "propext",
+            "Quot.sound"
+          ]
+        }
+      ],
+      "boundary_tests": 28,
+      "boundary_test_seconds": 4.149,
+      "skipped_tests": 0,
+      "result": "pass",
+      "evidence_file": "lint-lean.log"
+    }
+  },
+  "limits": {
+    "verification_job_minutes": 15,
+    "lint_job_minutes": 15,
+    "aggregate_job_minutes": 10,
+    "max_observed_ci_job_seconds": 795,
+    "failed_jobs": 0,
+    "cancelled_jobs": 0,
+    "timed_out_jobs": 0,
+    "attempts": 1,
+    "changes_to_caps_or_test_scope": false
+  },
+  "aggregates": [
+    {
+      "artifact_id": 13789111336,
+      "artifact_name": "x86_64-verification",
+      "archive_file": "x86_64-verification.zip",
+      "archive_bytes": 115792,
+      "archive_sha256": "3abe97cdc92f7d2dbfd83369663d473b72a6870ce26b8d87b51e6f89a7ff8724",
+      "member": "verification.json",
+      "member_bytes": 2031548,
+      "member_sha256": "20cf04c44b62c89b6bdeb2bf12899b46173b1edd9d2e93b95a72fc5ac0682fb0",
+      "profile": "full",
+      "group": "all",
+      "result": "pass",
+      "git": {
+        "commit": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "dirty": false
+      },
+      "source_tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+      "machine": "x86_64",
+      "summary": {
+        "steps": 56,
+        "passed": 56,
+        "failed": 0,
+        "seconds": 1020.009
+      },
+      "report_group_count": 33,
+      "report_groups": [
+        {
+          "group": "bootstrap",
+          "seconds": 258.198,
+          "steps": 1,
+          "report": "build/ci-reports/x86_64-verification-bootstrap/verification.json",
+          "platform": {
+            "cpu": "znver4",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "system": "Linux 7.0.0-1017-azure"
+          }
+        },
+        {
+          "group": "hosted",
+          "seconds": 342.699,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-hosted/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "(unknown)"
+          }
+        },
+        {
+          "group": "native-0",
+          "seconds": 607.161,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-native-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "native-1",
+          "seconds": 436.432,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-native-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "native-2",
+          "seconds": 614.059,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-native-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "opt-off-0",
+          "seconds": 426.276,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-opt-off-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "opt-off-1",
+          "seconds": 563.849,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-opt-off-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "opt-off-2",
+          "seconds": 520.233,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-opt-off-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "sapphirerapids"
+          }
+        },
+        {
+          "group": "python-free-0",
+          "seconds": 534.656,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-python-free-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "python-free-1",
+          "seconds": 734.57,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-python-free-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "python-free-2",
+          "seconds": 752.066,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-python-free-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "ubsan-0",
+          "seconds": 696.907,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-ubsan-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "icelake-server"
+          }
+        },
+        {
+          "group": "ubsan-1",
+          "seconds": 485.31,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-ubsan-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "(unknown)"
+          }
+        },
+        {
+          "group": "ubsan-2",
+          "seconds": 723.206,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-ubsan-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "ubsan-3",
+          "seconds": 761.811,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-ubsan-3/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "gc-self",
+          "seconds": 278.896,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-gc-self/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "icelake-server"
+          }
+        },
+        {
+          "group": "gc-ir-0",
+          "seconds": 617.425,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-gc-ir-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "gc-ir-1",
+          "seconds": 514.969,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-gc-ir-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "gc-jit-0",
+          "seconds": 156.894,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-gc-jit-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "(unknown)"
+          }
+        },
+        {
+          "group": "gc-jit-1",
+          "seconds": 147.331,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-gc-jit-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "gc-aot-0",
+          "seconds": 366.742,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-gc-aot-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "(unknown)"
+          }
+        },
+        {
+          "group": "gc-aot-1",
+          "seconds": 330.934,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-gc-aot-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "(unknown)"
+          }
+        },
+        {
+          "group": "gc-aot-2",
+          "seconds": 424.772,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-gc-aot-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "runtime-cache",
+          "seconds": 290.611,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-runtime-cache/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver3"
+          }
+        },
+        {
+          "group": "dynany-optin-0",
+          "seconds": 452.207,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-dynany-optin-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "dynany-optin-1",
+          "seconds": 437.667,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-dynany-optin-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "dynany-optin-2",
+          "seconds": 536.08,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-dynany-optin-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "icelake-server"
+          }
+        },
+        {
+          "group": "python-int-optin-0",
+          "seconds": 588.605,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-python-int-optin-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "icelake-server"
+          }
+        },
+        {
+          "group": "python-int-optin-1",
+          "seconds": 466.73,
+          "steps": 2,
+          "report": "build/ci-reports/x86_64-verification-python-int-optin-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "python-int-optin-2",
+          "seconds": 428.009,
+          "steps": 3,
+          "report": "build/ci-reports/x86_64-verification-python-int-optin-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "(unknown)"
+          }
+        },
+        {
+          "group": "contracts",
+          "seconds": 463.124,
+          "steps": 22,
+          "report": "build/ci-reports/x86_64-verification-contracts/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "sapphirerapids"
+          }
+        },
+        {
+          "group": "benchmarks",
+          "seconds": 192.992,
+          "steps": 3,
+          "report": "build/ci-reports/x86_64-verification-benchmarks/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        },
+        {
+          "group": "scaling",
+          "seconds": 98.719,
+          "steps": 3,
+          "report": "build/ci-reports/x86_64-verification-scaling/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "x86_64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "znver4"
+          }
+        }
+      ],
+      "complete_source_digest": "d7039fe986b12ba852be0bac4d4b2c341dd07ff8c7521b903ffacb95e4a8622f",
+      "source_file_hashes_checked": 58,
+      "sources": {
+        "corpus_cases": 4295,
+        "mode_checks": 4541,
+        "pystachy.py": {
+          "lines": 34,
+          "sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29"
+        },
+        "rejection_tests": 1890,
+        "runtime.c": {
+          "lines": 9300,
+          "sha256": "4365aab2cc685d77521e9422e6c2480fd090e1cb71ecefd933215201af253903"
+        },
+        "runtime.py": {
+          "lines": 2597,
+          "sha256": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb"
+        },
+        "src/__init__.py": {
+          "lines": 1,
+          "sha256": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7"
+        },
+        "src/pystachy_compiler/__init__.py": {
+          "lines": 1,
+          "sha256": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8"
+        },
+        "src/pystachy_compiler/analysis.py": {
+          "lines": 2126,
+          "sha256": "29c2f37070a8f802a768f90b086c2c469dda1643130ec08dee2f9c0d4f476b64"
+        },
+        "src/pystachy_compiler/argparse_schema.py": {
+          "lines": 393,
+          "sha256": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5"
+        },
+        "src/pystachy_compiler/bigints.py": {
+          "lines": 1498,
+          "sha256": "e2765d3ff75b6b0f79bf2f8efc187b0a4ec1e8fcae24f13c74e3cd8f83ebb96d"
+        },
+        "src/pystachy_compiler/builtins.py": {
+          "lines": 3273,
+          "sha256": "8f35ea2bdf159cd8c2b388b88197bb019b64499afa4e783eb3f2eded20b351c4"
+        },
+        "src/pystachy_compiler/cache_toolchain.py": {
+          "lines": 338,
+          "sha256": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7"
+        },
+        "src/pystachy_compiler/cached_run.py": {
+          "lines": 306,
+          "sha256": "c3435842d6048af697e6cc7dc12e59a313aefaecc35559034303d62fdc6bc03a"
+        },
+        "src/pystachy_compiler/callbacks.py": {
+          "lines": 209,
+          "sha256": "7366a851db14c32112a090d3dd0d0409851661f74ad5e1d2c4c2dc4beaf8dcde"
+        },
+        "src/pystachy_compiler/calls.py": {
+          "lines": 1717,
+          "sha256": "21bd33cce31d89560690d17d08e768ff7f6af815435bb3357da01a4bd20fb543"
+        },
+        "src/pystachy_compiler/containers.py": {
+          "lines": 1260,
+          "sha256": "a60d8c504bde351666f39b6f6e93ecd5dd8bd351d791dbf51d0a17160b9ce691"
+        },
+        "src/pystachy_compiler/conversions.py": {
+          "lines": 397,
+          "sha256": "6c4cfb75f0cd472f3712b267826aee63845a8bdd8a4e3be02f5619fe62d492c0"
+        },
+        "src/pystachy_compiler/ctypes_schema.py": {
+          "lines": 274,
+          "sha256": "9152db34ca5a236c5305938cf222e1a0d875948e64bfbdfb87c67939a51e3fe4"
+        },
+        "src/pystachy_compiler/declarations.py": {
+          "lines": 3009,
+          "sha256": "8938cecf19e9d33ef7013d06e94eff2492cfffda985cf1cee9cac627110dc31d"
+        },
+        "src/pystachy_compiler/diagnostics.py": {
+          "lines": 176,
+          "sha256": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131"
+        },
+        "src/pystachy_compiler/driver.py": {
+          "lines": 1426,
+          "sha256": "b30a64a8236cc4a3b6814e5d3e9dc3b2d446b390bf1bd256582141e579a81520"
+        },
+        "src/pystachy_compiler/dynamic.py": {
+          "lines": 5197,
+          "sha256": "7b57b2b86d6da56af20f11ca38b41a0d8e9ff34ff1b469b664415fa02734eb70"
+        },
+        "src/pystachy_compiler/dynamic_proof.py": {
+          "lines": 316,
+          "sha256": "47fbb32e56d6d6e2ffd8b087077bfb01030867e78129e412a0af71da728be553"
+        },
+        "src/pystachy_compiler/emission.py": {
+          "lines": 703,
+          "sha256": "dae312d3d4386404369a0430b4e99c5bfde2fafc65498d99cc3db2fc05788a96"
+        },
+        "src/pystachy_compiler/exceptions.py": {
+          "lines": 1651,
+          "sha256": "05abab080546bfa14e8809f1df31224306327fc104dc3f88caa3ac14abce7d06"
+        },
+        "src/pystachy_compiler/expressions.py": {
+          "lines": 5371,
+          "sha256": "edb27dd681e9ce5a93d4cb76a45b8fb1d7c26b0b2afcd56306e2e1147e903c0a"
+        },
+        "src/pystachy_compiler/flow.py": {
+          "lines": 972,
+          "sha256": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9"
+        },
+        "src/pystachy_compiler/functions.py": {
+          "lines": 524,
+          "sha256": "909be9e207959b61cbe5dd4fe948b33cd473b8e49aa5e7b0e18ebd4539e25aa6"
+        },
+        "src/pystachy_compiler/gen.py": {
+          "lines": 5196,
+          "sha256": "5b42e140f33d2604378bf2b532bdf21e8c426541de61f62179e5ab1260710db3"
+        },
+        "src/pystachy_compiler/generators.py": {
+          "lines": 1361,
+          "sha256": "32766d6e1082584c09fb820c970d48d7089aa92bd384061a594e593626a2f904"
+        },
+        "src/pystachy_compiler/ir.py": {
+          "lines": 624,
+          "sha256": "44d8d776dfd98a04f59dbb324f73f7f557e020bfe9d741cd783a31607427681c"
+        },
+        "src/pystachy_compiler/ircheck.py": {
+          "lines": 557,
+          "sha256": "450365e2414dda19187cc695db2af2cd18940151c044f675fd539218746173b0"
+        },
+        "src/pystachy_compiler/lexer.py": {
+          "lines": 788,
+          "sha256": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7"
+        },
+        "src/pystachy_compiler/llvm_abi.py": {
+          "lines": 19,
+          "sha256": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae"
+        },
+        "src/pystachy_compiler/loader.py": {
+          "lines": 3798,
+          "sha256": "9bf4d445e35df0308d52fa5e63a4d2c9d229f225dd930b7cdac0525a5ee2b06f"
+        },
+        "src/pystachy_compiler/local_versions.py": {
+          "lines": 57,
+          "sha256": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375"
+        },
+        "src/pystachy_compiler/lower_module.py": {
+          "lines": 776,
+          "sha256": "e5abbaa86a145451f1eeb8bc3939ca0463f7d3f8ca7e82ce7818075968817069"
+        },
+        "src/pystachy_compiler/lowering.py": {
+          "lines": 664,
+          "sha256": "4eea301a1d93fd822cceab264bf99e7f494950bb1db6603b4449865fc624c6d5"
+        },
+        "src/pystachy_compiler/memory_ir.py": {
+          "lines": 28,
+          "sha256": "00f8e49817740ef7b65066f104cadeec0cd2ab267240089c29b1450c7ac5e611"
+        },
+        "src/pystachy_compiler/module.py": {
+          "lines": 55,
+          "sha256": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601"
+        },
+        "src/pystachy_compiler/names.py": {
+          "lines": 55,
+          "sha256": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c"
+        },
+        "src/pystachy_compiler/optimizations.py": {
+          "lines": 1548,
+          "sha256": "e8d19b75105d17c6d273f67e8aad03d308927421f564515dd81bbb703eb85cb2"
+        },
+        "src/pystachy_compiler/parser.py": {
+          "lines": 2465,
+          "sha256": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc"
+        },
+        "src/pystachy_compiler/program.py": {
+          "lines": 1318,
+          "sha256": "44b8a84208ddfa6161b5a322d1b6df64f7d1006e981c606114f9b047da26a874"
+        },
+        "src/pystachy_compiler/program_cache.py": {
+          "lines": 785,
+          "sha256": "648f6d3733c8bffabb2bde7057db379185862ae23cbc5a9ae22a89f8e3568b25"
+        },
+        "src/pystachy_compiler/reflection.py": {
+          "lines": 3232,
+          "sha256": "b708e176649abccc1c364b19616661df790096f5af6f4b93cb4aedec7abcf2f5"
+        },
+        "src/pystachy_compiler/scalar_ir.py": {
+          "lines": 61,
+          "sha256": "7e11da58cee27ef8109ed5afb7766c8b7f6f30bd37340e34e10313a13a679868"
+        },
+        "src/pystachy_compiler/scope.py": {
+          "lines": 619,
+          "sha256": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97"
+        },
+        "src/pystachy_compiler/source_lines.py": {
+          "lines": 166,
+          "sha256": "29b49e6e94513ab66452b019b4b5b0f991d4ae1555c421c9134add318e13d7c2"
+        },
+        "src/pystachy_compiler/specs.py": {
+          "lines": 1135,
+          "sha256": "635b0faf78e4bee873aafedbdc0dec55b7d1fc7e143771b51367bbfdadc4e8f4"
+        },
+        "src/pystachy_compiler/statements.py": {
+          "lines": 2145,
+          "sha256": "15186dfa8fbfc7f0ddd1c9b1697db294d2a84d65565435ca9fd829abeaf9d010"
+        },
+        "src/pystachy_compiler/structs.py": {
+          "lines": 271,
+          "sha256": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090"
+        },
+        "src/pystachy_compiler/syntax.py": {
+          "lines": 245,
+          "sha256": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3"
+        },
+        "src/pystachy_compiler/templates.py": {
+          "lines": 998,
+          "sha256": "618b43dddc2bef0d042a4cdfceade32d1f85ba9c7138be66303c98f149f1a43b"
+        },
+        "src/pystachy_compiler/union_arithmetic.py": {
+          "lines": 169,
+          "sha256": "2264c8ff82170a113a62e7f0068cf05703d79765b40de502e9347778bd274d61"
+        },
+        "src/pystachy_compiler/union_proof.py": {
+          "lines": 906,
+          "sha256": "d2a8e04e1b10210ad2eb1606f51ca3dbf1efc6cbf3b2ed062fcb9f3c4f87ceef"
+        },
+        "src/pystachy_compiler/union_state.py": {
+          "lines": 251,
+          "sha256": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026"
+        },
+        "src/pystachy_compiler/unions.py": {
+          "lines": 591,
+          "sha256": "601cfb63970009603adcbceba11882c35d36c88f5a9d3fa6463936541ae593f1"
+        },
+        "src/pystachy_compiler/utils.py": {
+          "lines": 1194,
+          "sha256": "52a792d18b5b607d8393fe319f69daf23acc605e419279a3dfb8f2d424e5caeb"
+        },
+        "src/pystachy_compiler/variables.py": {
+          "lines": 2330,
+          "sha256": "0718fc550c5211c27955543441df2b62c6bd0cd8fa253919acfa4fbd08affca2"
+        },
+        "suite_checks": 6946,
+        "syntax_cases": 254,
+        "test_programs": 2275
+      },
+      "toolchain": {
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin",
+        "python": "Python 3.13.16"
+      },
+      "bootstrap": {
+        "bootstrap_bundle_id": "ebcd395180dc344f7a7c377e26b288d38f81bd7207895964d856c4b42d4aad4f",
+        "bootstrap_reused": false,
+        "cpython_self_compile_seconds": 28.277,
+        "ir_identical": true,
+        "ir_lines": 892614,
+        "ir_sha256": "45636a72f5524c7b302e0790b6a89fbdd5dc0cbb9ebb98d52b24106b14e4bfca",
+        "log": "build/ci-reports/x86_64-verification-bootstrap/verify/bootstrap.log",
+        "name": "bootstrap",
+        "native_compiler_bytes": 6416664,
+        "native_self_compile_seconds": 4.03,
+        "producer_seconds": 254.426,
+        "result": "pass",
+        "runtime_ir_identical": true,
+        "runtime_ir_sha256": "cb7d1f0521e490a2a9de3d4554fcc749e87a7233ae376c2082f5798e3cdb2a18",
+        "seconds": 254.426,
+        "ci_group": "bootstrap"
+      },
+      "coverage": {
+        "tests-native": {
+          "shards": [
+            {
+              "index": 0,
+              "cases_expected_from_checkout": 1431,
+              "checks": 2314,
+              "case_list_sha256_expected": "2297b6451bd7e30f4a2af8b145d5cc1bdc15a74392eadc72d225444fbb66ae88"
+            },
+            {
+              "index": 1,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "5a7d388471da8ed51cea66dbee9a073dbdd8af3527ef03206b9e5a1661c765ee"
+            },
+            {
+              "index": 2,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "cfa9615e516d642ab73ce8ed663f59de240d11bafb14634d1bd81da5629f7a46"
+            }
+          ],
+          "checks": 6946
+        },
+        "tests-opt-off": {
+          "shards": [
+            {
+              "index": 0,
+              "cases_expected_from_checkout": 1431,
+              "checks": 2314,
+              "case_list_sha256_expected": "2297b6451bd7e30f4a2af8b145d5cc1bdc15a74392eadc72d225444fbb66ae88"
+            },
+            {
+              "index": 1,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "5a7d388471da8ed51cea66dbee9a073dbdd8af3527ef03206b9e5a1661c765ee"
+            },
+            {
+              "index": 2,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "cfa9615e516d642ab73ce8ed663f59de240d11bafb14634d1bd81da5629f7a46"
+            }
+          ],
+          "checks": 6946
+        },
+        "python-free": {
+          "shards": [
+            {
+              "index": 0,
+              "cases_expected_from_checkout": 1431,
+              "checks": 2314,
+              "case_list_sha256_expected": "2297b6451bd7e30f4a2af8b145d5cc1bdc15a74392eadc72d225444fbb66ae88"
+            },
+            {
+              "index": 1,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "5a7d388471da8ed51cea66dbee9a073dbdd8af3527ef03206b9e5a1661c765ee"
+            },
+            {
+              "index": 2,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "cfa9615e516d642ab73ce8ed663f59de240d11bafb14634d1bd81da5629f7a46"
+            }
+          ],
+          "checks": 6946
+        },
+        "ubsan": {
+          "shards": [
+            {
+              "index": 0,
+              "cases_expected_from_checkout": 1074,
+              "checks": 2264,
+              "case_list_sha256_expected": "95bca5ebaf5d742f167a4ed57827d9c6a18510c00ce358e82b27e4b37fc0e54a"
+            },
+            {
+              "index": 1,
+              "cases_expected_from_checkout": 1074,
+              "checks": 2276,
+              "case_list_sha256_expected": "3902cfcdc6e8458dba5c4bac851eb46da28ff2eda3bcd45dbc920c0eea9106d5"
+            },
+            {
+              "index": 2,
+              "cases_expected_from_checkout": 1074,
+              "checks": 2266,
+              "case_list_sha256_expected": "1691b54163fb14d45502ca088a6717a08e80067d3c27ec07b2cc81850286927a"
+            },
+            {
+              "index": 3,
+              "cases_expected_from_checkout": 1073,
+              "checks": 2276,
+              "case_list_sha256_expected": "b25ae3844f96cfebba6578d831d548352e1b01e67db97d6ce809a9a6bfaf2d10"
+            }
+          ],
+          "checks": 9082
+        },
+        "gc-jit": {
+          "shards": [
+            {
+              "index": 0,
+              "cases": 2148,
+              "program_stress_checks": 2132,
+              "compiler_stress_sample_cases": 134,
+              "compiler_stress_sample_checks": 141
+            },
+            {
+              "index": 1,
+              "cases": 2147,
+              "program_stress_checks": 2125,
+              "compiler_stress_sample_cases": 134,
+              "compiler_stress_sample_checks": 143
+            }
+          ],
+          "cases": 4295,
+          "checks": 4541
+        },
+        "gc-aot": {
+          "shards": [
+            {
+              "index": 0,
+              "cases": 1431,
+              "program_stress_checks": 1419,
+              "compiler_stress_sample_cases": 89,
+              "compiler_stress_sample_checks": 93
+            },
+            {
+              "index": 1,
+              "cases": 1432,
+              "program_stress_checks": 1421,
+              "compiler_stress_sample_cases": 89,
+              "compiler_stress_sample_checks": 94
+            },
+            {
+              "index": 2,
+              "cases": 1432,
+              "program_stress_checks": 1419,
+              "compiler_stress_sample_cases": 89,
+              "compiler_stress_sample_checks": 95
+            }
+          ],
+          "cases": 4295,
+          "checks": 4541
+        },
+        "gc-ir": {
+          "shards": [
+            {
+              "index": 0,
+              "ir_cases": 2147,
+              "syntax_cases": 128
+            },
+            {
+              "index": 1,
+              "ir_cases": 2148,
+              "syntax_cases": 126
+            }
+          ],
+          "ir_cases": 4295,
+          "syntax_cases": 254
+        },
+        "hosted": {
+          "ir_cases": 4295,
+          "syntax_cases": 254,
+          "sample_cases": 73,
+          "sample_checks": 120
+        },
+        "dynany-optin": {
+          "shards": 3,
+          "programs": 2275,
+          "case_mode_pairs": 4550,
+          "passed_checks": 3894,
+          "expected_failures": 8,
+          "native_ir_checks": 648,
+          "native_suite": true
+        },
+        "python-int-optin": {
+          "shards": 3,
+          "programs": 2275,
+          "case_mode_pairs": 4550,
+          "passed_checks": 3837,
+          "expected_failures": 76,
+          "native_ir_checks": 637,
+          "native_suite": true
+        }
+      },
+      "scaling_shapes": [
+        "chain",
+        "modules",
+        "stdlib",
+        "fields",
+        "lookups",
+        "elifs",
+        "globals",
+        "topelifs",
+        "funcs",
+        "both",
+        "long",
+        "top",
+        "classes",
+        "calls",
+        "imports",
+        "breaks",
+        "exits",
+        "comps",
+        "gdicts",
+        "dropped",
+        "nones",
+        "nulls",
+        "handlers",
+        "samehandlers"
+      ],
+      "ci_timing": {
+        "max_group_seconds": 761.811,
+        "critical_path_seconds": 1020.009,
+        "runner_seconds": 15250.14,
+        "timing_scope": "verification only; bootstrap then parallel groups; excludes queue, setup and artifact transfer"
+      },
+      "scope_note": "Full-profile aggregate independently validated against exact merged checkout. Full native reports attest deterministic shard/check counts, not per-case lists; exact case/mode result identities are independently checked for both opt-in sweeps. Original verification.json bytes are preserved inside the original artifact ZIP."
+    },
+    {
+      "artifact_id": 13788527165,
+      "artifact_name": "aarch64-verification",
+      "archive_file": "aarch64-verification.zip",
+      "archive_bytes": 115647,
+      "archive_sha256": "3ee2be59c22a2698ccabfa7784ab39d0049bab2afcae59cc880e0df34387e908",
+      "member": "verification.json",
+      "member_bytes": 2031786,
+      "member_sha256": "1269deecc09993f368e54484655eea7969fb4b0a542e0a03a9da3d92cccb304d",
+      "profile": "full",
+      "group": "all",
+      "result": "pass",
+      "git": {
+        "commit": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+        "dirty": false
+      },
+      "source_tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+      "machine": "aarch64",
+      "summary": {
+        "steps": 56,
+        "passed": 56,
+        "failed": 0,
+        "seconds": 760.71
+      },
+      "report_group_count": 33,
+      "report_groups": [
+        {
+          "group": "bootstrap",
+          "seconds": 298.145,
+          "steps": 1,
+          "report": "build/ci-reports/aarch64-verification-bootstrap/verification.json",
+          "platform": {
+            "cpu": "neoverse-n2",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "system": "Linux 7.0.0-1017-azure"
+          }
+        },
+        {
+          "group": "hosted",
+          "seconds": 290.366,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-hosted/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "native-0",
+          "seconds": 343.075,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-native-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "native-1",
+          "seconds": 347.616,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-native-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "native-2",
+          "seconds": 337.183,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-native-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "opt-off-0",
+          "seconds": 340.489,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-opt-off-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "opt-off-1",
+          "seconds": 337.026,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-opt-off-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "opt-off-2",
+          "seconds": 318.379,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-opt-off-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "python-free-0",
+          "seconds": 453.802,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-python-free-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "python-free-1",
+          "seconds": 440.527,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-python-free-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "python-free-2",
+          "seconds": 448.961,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-python-free-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "ubsan-0",
+          "seconds": 451.273,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-ubsan-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "ubsan-1",
+          "seconds": 442.21,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-ubsan-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "ubsan-2",
+          "seconds": 416.894,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-ubsan-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "ubsan-3",
+          "seconds": 462.565,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-ubsan-3/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "gc-self",
+          "seconds": 254.147,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-gc-self/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "gc-ir-0",
+          "seconds": 303.323,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-gc-ir-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "gc-ir-1",
+          "seconds": 297.097,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-gc-ir-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "gc-jit-0",
+          "seconds": 139.341,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-gc-jit-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "gc-jit-1",
+          "seconds": 116.518,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-gc-jit-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "gc-aot-0",
+          "seconds": 328.313,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-gc-aot-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "gc-aot-1",
+          "seconds": 312.656,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-gc-aot-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "gc-aot-2",
+          "seconds": 306.052,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-gc-aot-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "runtime-cache",
+          "seconds": 240.825,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-runtime-cache/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "dynany-optin-0",
+          "seconds": 336.469,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-dynany-optin-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "dynany-optin-1",
+          "seconds": 327.291,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-dynany-optin-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "dynany-optin-2",
+          "seconds": 333.219,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-dynany-optin-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "python-int-optin-0",
+          "seconds": 343.766,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-python-int-optin-0/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "python-int-optin-1",
+          "seconds": 340.239,
+          "steps": 2,
+          "report": "build/ci-reports/aarch64-verification-python-int-optin-1/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "python-int-optin-2",
+          "seconds": 396.421,
+          "steps": 3,
+          "report": "build/ci-reports/aarch64-verification-python-int-optin-2/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "contracts",
+          "seconds": 346.219,
+          "steps": 22,
+          "report": "build/ci-reports/aarch64-verification-contracts/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "benchmarks",
+          "seconds": 212.626,
+          "steps": 3,
+          "report": "build/ci-reports/aarch64-verification-benchmarks/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        },
+        {
+          "group": "scaling",
+          "seconds": 83.329,
+          "steps": 3,
+          "report": "build/ci-reports/aarch64-verification-scaling/verification.json",
+          "platform": {
+            "system": "Linux 7.0.0-1017-azure",
+            "machine": "aarch64",
+            "os": "Ubuntu 24.04.5 LTS",
+            "cpu": "neoverse-n2"
+          }
+        }
+      ],
+      "complete_source_digest": "d7039fe986b12ba852be0bac4d4b2c341dd07ff8c7521b903ffacb95e4a8622f",
+      "source_file_hashes_checked": 58,
+      "sources": {
+        "corpus_cases": 4295,
+        "mode_checks": 4541,
+        "pystachy.py": {
+          "lines": 34,
+          "sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29"
+        },
+        "rejection_tests": 1890,
+        "runtime.c": {
+          "lines": 9300,
+          "sha256": "4365aab2cc685d77521e9422e6c2480fd090e1cb71ecefd933215201af253903"
+        },
+        "runtime.py": {
+          "lines": 2597,
+          "sha256": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb"
+        },
+        "src/__init__.py": {
+          "lines": 1,
+          "sha256": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7"
+        },
+        "src/pystachy_compiler/__init__.py": {
+          "lines": 1,
+          "sha256": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8"
+        },
+        "src/pystachy_compiler/analysis.py": {
+          "lines": 2126,
+          "sha256": "29c2f37070a8f802a768f90b086c2c469dda1643130ec08dee2f9c0d4f476b64"
+        },
+        "src/pystachy_compiler/argparse_schema.py": {
+          "lines": 393,
+          "sha256": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5"
+        },
+        "src/pystachy_compiler/bigints.py": {
+          "lines": 1498,
+          "sha256": "e2765d3ff75b6b0f79bf2f8efc187b0a4ec1e8fcae24f13c74e3cd8f83ebb96d"
+        },
+        "src/pystachy_compiler/builtins.py": {
+          "lines": 3273,
+          "sha256": "8f35ea2bdf159cd8c2b388b88197bb019b64499afa4e783eb3f2eded20b351c4"
+        },
+        "src/pystachy_compiler/cache_toolchain.py": {
+          "lines": 338,
+          "sha256": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7"
+        },
+        "src/pystachy_compiler/cached_run.py": {
+          "lines": 306,
+          "sha256": "c3435842d6048af697e6cc7dc12e59a313aefaecc35559034303d62fdc6bc03a"
+        },
+        "src/pystachy_compiler/callbacks.py": {
+          "lines": 209,
+          "sha256": "7366a851db14c32112a090d3dd0d0409851661f74ad5e1d2c4c2dc4beaf8dcde"
+        },
+        "src/pystachy_compiler/calls.py": {
+          "lines": 1717,
+          "sha256": "21bd33cce31d89560690d17d08e768ff7f6af815435bb3357da01a4bd20fb543"
+        },
+        "src/pystachy_compiler/containers.py": {
+          "lines": 1260,
+          "sha256": "a60d8c504bde351666f39b6f6e93ecd5dd8bd351d791dbf51d0a17160b9ce691"
+        },
+        "src/pystachy_compiler/conversions.py": {
+          "lines": 397,
+          "sha256": "6c4cfb75f0cd472f3712b267826aee63845a8bdd8a4e3be02f5619fe62d492c0"
+        },
+        "src/pystachy_compiler/ctypes_schema.py": {
+          "lines": 274,
+          "sha256": "9152db34ca5a236c5305938cf222e1a0d875948e64bfbdfb87c67939a51e3fe4"
+        },
+        "src/pystachy_compiler/declarations.py": {
+          "lines": 3009,
+          "sha256": "8938cecf19e9d33ef7013d06e94eff2492cfffda985cf1cee9cac627110dc31d"
+        },
+        "src/pystachy_compiler/diagnostics.py": {
+          "lines": 176,
+          "sha256": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131"
+        },
+        "src/pystachy_compiler/driver.py": {
+          "lines": 1426,
+          "sha256": "b30a64a8236cc4a3b6814e5d3e9dc3b2d446b390bf1bd256582141e579a81520"
+        },
+        "src/pystachy_compiler/dynamic.py": {
+          "lines": 5197,
+          "sha256": "7b57b2b86d6da56af20f11ca38b41a0d8e9ff34ff1b469b664415fa02734eb70"
+        },
+        "src/pystachy_compiler/dynamic_proof.py": {
+          "lines": 316,
+          "sha256": "47fbb32e56d6d6e2ffd8b087077bfb01030867e78129e412a0af71da728be553"
+        },
+        "src/pystachy_compiler/emission.py": {
+          "lines": 703,
+          "sha256": "dae312d3d4386404369a0430b4e99c5bfde2fafc65498d99cc3db2fc05788a96"
+        },
+        "src/pystachy_compiler/exceptions.py": {
+          "lines": 1651,
+          "sha256": "05abab080546bfa14e8809f1df31224306327fc104dc3f88caa3ac14abce7d06"
+        },
+        "src/pystachy_compiler/expressions.py": {
+          "lines": 5371,
+          "sha256": "edb27dd681e9ce5a93d4cb76a45b8fb1d7c26b0b2afcd56306e2e1147e903c0a"
+        },
+        "src/pystachy_compiler/flow.py": {
+          "lines": 972,
+          "sha256": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9"
+        },
+        "src/pystachy_compiler/functions.py": {
+          "lines": 524,
+          "sha256": "909be9e207959b61cbe5dd4fe948b33cd473b8e49aa5e7b0e18ebd4539e25aa6"
+        },
+        "src/pystachy_compiler/gen.py": {
+          "lines": 5196,
+          "sha256": "5b42e140f33d2604378bf2b532bdf21e8c426541de61f62179e5ab1260710db3"
+        },
+        "src/pystachy_compiler/generators.py": {
+          "lines": 1361,
+          "sha256": "32766d6e1082584c09fb820c970d48d7089aa92bd384061a594e593626a2f904"
+        },
+        "src/pystachy_compiler/ir.py": {
+          "lines": 624,
+          "sha256": "44d8d776dfd98a04f59dbb324f73f7f557e020bfe9d741cd783a31607427681c"
+        },
+        "src/pystachy_compiler/ircheck.py": {
+          "lines": 557,
+          "sha256": "450365e2414dda19187cc695db2af2cd18940151c044f675fd539218746173b0"
+        },
+        "src/pystachy_compiler/lexer.py": {
+          "lines": 788,
+          "sha256": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7"
+        },
+        "src/pystachy_compiler/llvm_abi.py": {
+          "lines": 19,
+          "sha256": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae"
+        },
+        "src/pystachy_compiler/loader.py": {
+          "lines": 3798,
+          "sha256": "9bf4d445e35df0308d52fa5e63a4d2c9d229f225dd930b7cdac0525a5ee2b06f"
+        },
+        "src/pystachy_compiler/local_versions.py": {
+          "lines": 57,
+          "sha256": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375"
+        },
+        "src/pystachy_compiler/lower_module.py": {
+          "lines": 776,
+          "sha256": "e5abbaa86a145451f1eeb8bc3939ca0463f7d3f8ca7e82ce7818075968817069"
+        },
+        "src/pystachy_compiler/lowering.py": {
+          "lines": 664,
+          "sha256": "4eea301a1d93fd822cceab264bf99e7f494950bb1db6603b4449865fc624c6d5"
+        },
+        "src/pystachy_compiler/memory_ir.py": {
+          "lines": 28,
+          "sha256": "00f8e49817740ef7b65066f104cadeec0cd2ab267240089c29b1450c7ac5e611"
+        },
+        "src/pystachy_compiler/module.py": {
+          "lines": 55,
+          "sha256": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601"
+        },
+        "src/pystachy_compiler/names.py": {
+          "lines": 55,
+          "sha256": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c"
+        },
+        "src/pystachy_compiler/optimizations.py": {
+          "lines": 1548,
+          "sha256": "e8d19b75105d17c6d273f67e8aad03d308927421f564515dd81bbb703eb85cb2"
+        },
+        "src/pystachy_compiler/parser.py": {
+          "lines": 2465,
+          "sha256": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc"
+        },
+        "src/pystachy_compiler/program.py": {
+          "lines": 1318,
+          "sha256": "44b8a84208ddfa6161b5a322d1b6df64f7d1006e981c606114f9b047da26a874"
+        },
+        "src/pystachy_compiler/program_cache.py": {
+          "lines": 785,
+          "sha256": "648f6d3733c8bffabb2bde7057db379185862ae23cbc5a9ae22a89f8e3568b25"
+        },
+        "src/pystachy_compiler/reflection.py": {
+          "lines": 3232,
+          "sha256": "b708e176649abccc1c364b19616661df790096f5af6f4b93cb4aedec7abcf2f5"
+        },
+        "src/pystachy_compiler/scalar_ir.py": {
+          "lines": 61,
+          "sha256": "7e11da58cee27ef8109ed5afb7766c8b7f6f30bd37340e34e10313a13a679868"
+        },
+        "src/pystachy_compiler/scope.py": {
+          "lines": 619,
+          "sha256": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97"
+        },
+        "src/pystachy_compiler/source_lines.py": {
+          "lines": 166,
+          "sha256": "29b49e6e94513ab66452b019b4b5b0f991d4ae1555c421c9134add318e13d7c2"
+        },
+        "src/pystachy_compiler/specs.py": {
+          "lines": 1135,
+          "sha256": "635b0faf78e4bee873aafedbdc0dec55b7d1fc7e143771b51367bbfdadc4e8f4"
+        },
+        "src/pystachy_compiler/statements.py": {
+          "lines": 2145,
+          "sha256": "15186dfa8fbfc7f0ddd1c9b1697db294d2a84d65565435ca9fd829abeaf9d010"
+        },
+        "src/pystachy_compiler/structs.py": {
+          "lines": 271,
+          "sha256": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090"
+        },
+        "src/pystachy_compiler/syntax.py": {
+          "lines": 245,
+          "sha256": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3"
+        },
+        "src/pystachy_compiler/templates.py": {
+          "lines": 998,
+          "sha256": "618b43dddc2bef0d042a4cdfceade32d1f85ba9c7138be66303c98f149f1a43b"
+        },
+        "src/pystachy_compiler/union_arithmetic.py": {
+          "lines": 169,
+          "sha256": "2264c8ff82170a113a62e7f0068cf05703d79765b40de502e9347778bd274d61"
+        },
+        "src/pystachy_compiler/union_proof.py": {
+          "lines": 906,
+          "sha256": "d2a8e04e1b10210ad2eb1606f51ca3dbf1efc6cbf3b2ed062fcb9f3c4f87ceef"
+        },
+        "src/pystachy_compiler/union_state.py": {
+          "lines": 251,
+          "sha256": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026"
+        },
+        "src/pystachy_compiler/unions.py": {
+          "lines": 591,
+          "sha256": "601cfb63970009603adcbceba11882c35d36c88f5a9d3fa6463936541ae593f1"
+        },
+        "src/pystachy_compiler/utils.py": {
+          "lines": 1194,
+          "sha256": "52a792d18b5b607d8393fe319f69daf23acc605e419279a3dfb8f2d424e5caeb"
+        },
+        "src/pystachy_compiler/variables.py": {
+          "lines": 2330,
+          "sha256": "0718fc550c5211c27955543441df2b62c6bd0cd8fa253919acfa4fbd08affca2"
+        },
+        "suite_checks": 6946,
+        "syntax_cases": 254,
+        "test_programs": 2275
+      },
+      "toolchain": {
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin",
+        "python": "Python 3.13.16"
+      },
+      "bootstrap": {
+        "bootstrap_bundle_id": "af8fad8c28c693cf0ea2256436561e9796386c6e48762566cf1dffba8e3d1224",
+        "bootstrap_reused": false,
+        "cpython_self_compile_seconds": 26.094,
+        "ir_identical": true,
+        "ir_lines": 892614,
+        "ir_sha256": "45636a72f5524c7b302e0790b6a89fbdd5dc0cbb9ebb98d52b24106b14e4bfca",
+        "log": "build/ci-reports/aarch64-verification-bootstrap/verify/bootstrap.log",
+        "name": "bootstrap",
+        "native_compiler_bytes": 6156032,
+        "native_self_compile_seconds": 3.842,
+        "producer_seconds": 294.678,
+        "result": "pass",
+        "runtime_ir_identical": true,
+        "runtime_ir_sha256": "cb7d1f0521e490a2a9de3d4554fcc749e87a7233ae376c2082f5798e3cdb2a18",
+        "seconds": 294.678,
+        "ci_group": "bootstrap"
+      },
+      "coverage": {
+        "tests-native": {
+          "shards": [
+            {
+              "index": 0,
+              "cases_expected_from_checkout": 1431,
+              "checks": 2314,
+              "case_list_sha256_expected": "2297b6451bd7e30f4a2af8b145d5cc1bdc15a74392eadc72d225444fbb66ae88"
+            },
+            {
+              "index": 1,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "5a7d388471da8ed51cea66dbee9a073dbdd8af3527ef03206b9e5a1661c765ee"
+            },
+            {
+              "index": 2,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "cfa9615e516d642ab73ce8ed663f59de240d11bafb14634d1bd81da5629f7a46"
+            }
+          ],
+          "checks": 6946
+        },
+        "tests-opt-off": {
+          "shards": [
+            {
+              "index": 0,
+              "cases_expected_from_checkout": 1431,
+              "checks": 2314,
+              "case_list_sha256_expected": "2297b6451bd7e30f4a2af8b145d5cc1bdc15a74392eadc72d225444fbb66ae88"
+            },
+            {
+              "index": 1,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "5a7d388471da8ed51cea66dbee9a073dbdd8af3527ef03206b9e5a1661c765ee"
+            },
+            {
+              "index": 2,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "cfa9615e516d642ab73ce8ed663f59de240d11bafb14634d1bd81da5629f7a46"
+            }
+          ],
+          "checks": 6946
+        },
+        "python-free": {
+          "shards": [
+            {
+              "index": 0,
+              "cases_expected_from_checkout": 1431,
+              "checks": 2314,
+              "case_list_sha256_expected": "2297b6451bd7e30f4a2af8b145d5cc1bdc15a74392eadc72d225444fbb66ae88"
+            },
+            {
+              "index": 1,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "5a7d388471da8ed51cea66dbee9a073dbdd8af3527ef03206b9e5a1661c765ee"
+            },
+            {
+              "index": 2,
+              "cases_expected_from_checkout": 1432,
+              "checks": 2316,
+              "case_list_sha256_expected": "cfa9615e516d642ab73ce8ed663f59de240d11bafb14634d1bd81da5629f7a46"
+            }
+          ],
+          "checks": 6946
+        },
+        "ubsan": {
+          "shards": [
+            {
+              "index": 0,
+              "cases_expected_from_checkout": 1074,
+              "checks": 2264,
+              "case_list_sha256_expected": "95bca5ebaf5d742f167a4ed57827d9c6a18510c00ce358e82b27e4b37fc0e54a"
+            },
+            {
+              "index": 1,
+              "cases_expected_from_checkout": 1074,
+              "checks": 2276,
+              "case_list_sha256_expected": "3902cfcdc6e8458dba5c4bac851eb46da28ff2eda3bcd45dbc920c0eea9106d5"
+            },
+            {
+              "index": 2,
+              "cases_expected_from_checkout": 1074,
+              "checks": 2266,
+              "case_list_sha256_expected": "1691b54163fb14d45502ca088a6717a08e80067d3c27ec07b2cc81850286927a"
+            },
+            {
+              "index": 3,
+              "cases_expected_from_checkout": 1073,
+              "checks": 2276,
+              "case_list_sha256_expected": "b25ae3844f96cfebba6578d831d548352e1b01e67db97d6ce809a9a6bfaf2d10"
+            }
+          ],
+          "checks": 9082
+        },
+        "gc-jit": {
+          "shards": [
+            {
+              "index": 0,
+              "cases": 2148,
+              "program_stress_checks": 2132,
+              "compiler_stress_sample_cases": 134,
+              "compiler_stress_sample_checks": 141
+            },
+            {
+              "index": 1,
+              "cases": 2147,
+              "program_stress_checks": 2125,
+              "compiler_stress_sample_cases": 134,
+              "compiler_stress_sample_checks": 143
+            }
+          ],
+          "cases": 4295,
+          "checks": 4541
+        },
+        "gc-aot": {
+          "shards": [
+            {
+              "index": 0,
+              "cases": 1431,
+              "program_stress_checks": 1419,
+              "compiler_stress_sample_cases": 89,
+              "compiler_stress_sample_checks": 93
+            },
+            {
+              "index": 1,
+              "cases": 1432,
+              "program_stress_checks": 1421,
+              "compiler_stress_sample_cases": 89,
+              "compiler_stress_sample_checks": 94
+            },
+            {
+              "index": 2,
+              "cases": 1432,
+              "program_stress_checks": 1419,
+              "compiler_stress_sample_cases": 89,
+              "compiler_stress_sample_checks": 95
+            }
+          ],
+          "cases": 4295,
+          "checks": 4541
+        },
+        "gc-ir": {
+          "shards": [
+            {
+              "index": 0,
+              "ir_cases": 2147,
+              "syntax_cases": 128
+            },
+            {
+              "index": 1,
+              "ir_cases": 2148,
+              "syntax_cases": 126
+            }
+          ],
+          "ir_cases": 4295,
+          "syntax_cases": 254
+        },
+        "hosted": {
+          "ir_cases": 4295,
+          "syntax_cases": 254,
+          "sample_cases": 73,
+          "sample_checks": 120
+        },
+        "dynany-optin": {
+          "shards": 3,
+          "programs": 2275,
+          "case_mode_pairs": 4550,
+          "passed_checks": 3894,
+          "expected_failures": 8,
+          "native_ir_checks": 648,
+          "native_suite": true
+        },
+        "python-int-optin": {
+          "shards": 3,
+          "programs": 2275,
+          "case_mode_pairs": 4550,
+          "passed_checks": 3837,
+          "expected_failures": 76,
+          "native_ir_checks": 637,
+          "native_suite": true
+        }
+      },
+      "scaling_shapes": [
+        "chain",
+        "modules",
+        "stdlib",
+        "fields",
+        "lookups",
+        "elifs",
+        "globals",
+        "topelifs",
+        "funcs",
+        "both",
+        "long",
+        "top",
+        "classes",
+        "calls",
+        "imports",
+        "breaks",
+        "exits",
+        "comps",
+        "gdicts",
+        "dropped",
+        "nones",
+        "nulls",
+        "handlers",
+        "samehandlers"
+      ],
+      "ci_timing": {
+        "max_group_seconds": 462.565,
+        "critical_path_seconds": 760.71,
+        "runner_seconds": 10746.362,
+        "timing_scope": "verification only; bootstrap then parallel groups; excludes queue, setup and artifact transfer"
+      },
+      "scope_note": "Full-profile aggregate independently validated against exact merged checkout. Full native reports attest deterministic shard/check counts, not per-case lists; exact case/mode result identities are independently checked for both opt-in sweeps. Original verification.json bytes are preserved inside the original artifact ZIP."
+    }
+  ],
+  "archived_log_and_metadata_files": [
+    {
+      "file": "lint-job-130000378211.log.gz",
+      "bytes": 17446,
+      "sha256": "fc4714ec08e49176d401d8a7d7b475683d099d3854990655d18a89db5508f8d5",
+      "raw_bytes": 98723,
+      "raw_sha256": "f53d9fbb85b2aaf7bb34315f036a9ec70fe553f667931d1cc9a77d96b06d75ca"
+    },
+    {
+      "file": "lint-lean.log",
+      "bytes": 3405,
+      "sha256": "0f371a19ce1877421167a87d925087bdc40a72523f6a81624dfce422c4f90d0f",
+      "raw_bytes": 3405,
+      "raw_sha256": "0f371a19ce1877421167a87d925087bdc40a72523f6a81624dfce422c4f90d0f"
+    },
+    {
+      "file": "run-and-job-metadata.json.gz",
+      "bytes": 17259,
+      "sha256": "33f7b4616e8b2038d30ba277630290bcf5cb96782c8b2a942060a23b18b89077",
+      "raw_bytes": 517470,
+      "raw_sha256": "a2002261c3de45c26f3cdca1be713985d9a46f793747ff457add633958dede1a"
+    },
+    {
+      "file": "aggregate-x86_64.log.gz",
+      "bytes": 12283,
+      "sha256": "1b2d923170f0d75e77a672997b2fb1b01010fccc8dd0ebb4aaf3de8ad31288d4",
+      "raw_bytes": 53476,
+      "raw_sha256": "e62a0b6f3b0ff9243b5a0dfb39a0ba82cb82e4890b0a6f82e5a33a950411b300"
+    },
+    {
+      "file": "aggregate-aarch64.log.gz",
+      "bytes": 12366,
+      "sha256": "0869e10cdbc9a1a331b975f73e79b0bf05f37b4b401d13925d3c5221c233b5b9",
+      "raw_bytes": 53554,
+      "raw_sha256": "24b5988c51bbd5c7bec310d8eab22f34fd72e7ff32e4393207335b6edd3716f2"
+    }
+  ],
+  "methodology": [
+    "Retrieved every CI job page with per_page=100 and checked total_count, unique IDs, exact expected successful job names, two exact PR-only skipped placeholders, completed statuses, and commit identity for all 70 jobs.",
+    "Checked actual successful aggregate Require complete verification reports and Require every verification group steps and preserved both full aggregate job logs.",
+    "Downloaded the original aggregate ZIP bytes and independently matched their byte lengths and SHA-256 digests to the GitHub artifact metadata. Each ZIP contains the raw verification.json without duplication outside the archive.",
+    "Created a detached checkout of the exact merged commit, confirmed its tree, and recomputed all 58 compiler/runtime source hashes, corpus counts, deterministic weighted shard counts, GC sample counts, and the complete source fingerprint.",
+    "Ran the repository's full-profile report validator on both aggregates, then independently checked all 33 report group names/paths/step counts, all 56 checks in their planned order, all full-suite shard totals, both opt-in suites' exact case/mode pair coverage and declared exception manifests, and all scaling shapes.",
+    "Inspected the actual pinned Lean checksum/build/audit/test log block; all 28 boundary tests ran under LEAN_BOUNDARY_REQUIRED=1 with no skips. The full retrieved Lint log is also retained as gzip.",
+    "No CI cancellation, restart, remote mutation, or native build was performed by this audit.",
+    "Additionally checked the aggregate native and optimization-off stage-2 JIT/AOT mode fields, Python-free PATH isolation and identical IR, and actual UBSan AOT/JIT flags, preload and identical-IR fields on every shard."
+  ],
+  "interpretation_notes": [
+    "Full-profile native reports attest deterministic shard/check counts rather than storing per-case lists; expected case-list hashes in this summary are independently reconstructed from the checkout. Both opt-in sweeps include and validate exact case/mode result rows.",
+    "Known opt-in exceptions are intentional manifest entries checked exactly; their counts are not new failures. Deferred native-ir checks are backed by the complete native JIT/AOT suite.",
+    "Aggregate summary.seconds is the bootstrap plus the longest consumer group's verification work, not an individual job duration. Actual longest job duration was 795 seconds, within the unchanged 900-second cap.",
+    "The source fingerprint equals the reviewed c355f306 release-candidate fingerprint because the ordinary merge preserved tree bc34d9b1. Commit identity in these main-run reports is the actual merge commit 04860a83."
+  ],
+  "frozen_at_utc": "2026-11-10 17:57:19 UTC"
+}

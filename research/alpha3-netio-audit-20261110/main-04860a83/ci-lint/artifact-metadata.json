@@ -1,0 +1,44 @@
+{
+  "repository": "den-run-ai/pystachy",
+  "workflow_run_id": 42864866935,
+  "artifacts": [
+    {
+      "id": 13789111336,
+      "name": "x86_64-verification",
+      "size_in_bytes": 115792,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13789111336",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13789111336/zip",
+      "expired": false,
+      "created_at": "2026-11-10T17:52:55Z",
+      "expires_at": "2026-11-17T17:52:54Z",
+      "updated_at": "2026-11-10T17:52:55Z",
+      "digest": "sha256:3abe97cdc92f7d2dbfd83369663d473b72a6870ce26b8d87b51e6f89a7ff8724",
+      "workflow_run": {
+        "id": 42864866935,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "main",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985"
+      }
+    },
+    {
+      "id": 13788527165,
+      "name": "aarch64-verification",
+      "size_in_bytes": 115647,
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13788527165",
+      "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13788527165/zip",
+      "expired": false,
+      "created_at": "2026-11-10T17:53:02Z",
+      "expires_at": "2026-11-17T17:53:00Z",
+      "updated_at": "2026-11-10T17:53:02Z",
+      "digest": "sha256:3ee2be59c22a2698ccabfa7784ab39d0049bab2afcae59cc880e0df34387e908",
+      "workflow_run": {
+        "id": 42864866935,
+        "repository_id": 1409192014,
+        "head_repository_id": 1409192014,
+        "head_branch": "main",
+        "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985"
+      }
+    }
+  ]
+}

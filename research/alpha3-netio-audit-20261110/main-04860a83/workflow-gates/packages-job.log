@@ -1,0 +1,307 @@
+﻿2026-11-10T17:25:55.1194157Z Current runner version: '2.338.2'
+2026-11-10T17:25:55.1219393Z ##[group]Runner Image Provisioner
+2026-11-10T17:25:55.1220265Z Hosted Compute Agent
+2026-11-10T17:25:55.1220942Z Version: 20261028.624
+2026-11-10T17:25:55.1221568Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-10T17:25:55.1222346Z Build Date: 2026-10-28T21:51:42Z
+2026-11-10T17:25:55.1223040Z Worker ID: {715645d9-ea71-44e3-a31d-42f7926c5f44}
+2026-11-10T17:25:55.1223999Z Region: eastus2
+2026-11-10T17:25:55.1224751Z Cloud: Azure
+2026-11-10T17:25:55.1225291Z ##[endgroup]
+2026-11-10T17:25:55.1226715Z ##[group]Operating System
+2026-11-10T17:25:55.1227397Z Ubuntu
+2026-11-10T17:25:55.1227903Z 24.04.5
+2026-11-10T17:25:55.1228432Z LTS
+2026-11-10T17:25:55.1228956Z ##[endgroup]
+2026-11-10T17:25:55.1229491Z ##[group]Runner Image
+2026-11-10T17:25:55.1230125Z Image: ubuntu-24.04
+2026-11-10T17:25:55.1230676Z Version: 20261101.360.1
+2026-11-10T17:25:55.1231933Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-10T17:25:55.1233364Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+2026-11-10T17:25:55.1234547Z ##[endgroup]
+2026-11-10T17:25:55.1235594Z ##[group]GITHUB_TOKEN Permissions
+2026-11-10T17:25:55.1238262Z Contents: read
+2026-11-10T17:25:55.1239012Z Metadata: read
+2026-11-10T17:25:55.1239734Z ##[endgroup]
+2026-11-10T17:25:55.1242569Z Secret source: Actions
+2026-11-10T17:25:55.1244139Z Cache mode: write
+2026-11-10T17:25:55.1245075Z Prepare workflow directory
+2026-11-10T17:25:55.1627421Z Prepare all required actions
+2026-11-10T17:25:55.1678248Z Getting action download info
+2026-11-10T17:25:55.3732417Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-10T17:25:55.5195719Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-10T17:25:55.8954335Z Complete job name: source wheels (CPython, JIT and AOT)
+2026-11-10T17:25:55.9757887Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-10T17:25:55.9758882Z with:
+2026-11-10T17:25:55.9759461Z   persist-credentials: false
+2026-11-10T17:25:55.9760074Z   repository: den-run-ai/pystachy
+2026-11-10T17:25:55.9764308Z   token: ***
+2026-11-10T17:25:55.9764847Z   ssh-strict: true
+2026-11-10T17:25:55.9765363Z   ssh-user: git
+2026-11-10T17:25:55.9765882Z   clean: true
+2026-11-10T17:25:55.9766402Z   sparse-checkout-cone-mode: true
+2026-11-10T17:25:55.9767012Z   fetch-depth: 1
+2026-11-10T17:25:55.9767550Z   fetch-tags: false
+2026-11-10T17:25:55.9768071Z   show-progress: true
+2026-11-10T17:25:55.9768648Z   lfs: false
+2026-11-10T17:25:55.9769140Z   submodules: false
+2026-11-10T17:25:55.9769670Z   set-safe-directory: true
+2026-11-10T17:25:55.9770282Z   allow-unsafe-pr-checkout: false
+2026-11-10T17:25:55.9771061Z env:
+2026-11-10T17:25:55.9771580Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:25:55.9772218Z ##[endgroup]
+2026-11-10T17:25:56.2538923Z Syncing repository: den-run-ai/pystachy
+2026-11-10T17:25:56.2540927Z ##[group]Getting Git version info
+2026-11-10T17:25:56.2541764Z Working directory is '/home/runner/work/pystachy/pystachy'
+2026-11-10T17:25:56.2542861Z [command]/usr/bin/git version
+2026-11-10T17:25:56.2606420Z git version 2.56.0
+2026-11-10T17:25:56.2627231Z ##[endgroup]
+2026-11-10T17:25:56.2642554Z Temporarily overriding HOME='/home/runner/work/_temp/bbb309a3-8beb-4c48-b204-57a466c42677' before making global git config changes
+2026-11-10T17:25:56.2644961Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-10T17:25:56.2650298Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-10T17:25:56.2693041Z Deleting the contents of '/home/runner/work/pystachy/pystachy'
+2026-11-10T17:25:56.2696972Z ##[group]Determining repository object format
+2026-11-10T17:25:56.2698472Z ##[endgroup]
+2026-11-10T17:25:56.2699872Z ##[group]Initializing the repository
+2026-11-10T17:25:56.2710977Z [command]/usr/bin/git init /home/runner/work/pystachy/pystachy
+2026-11-10T17:25:56.2808059Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-10T17:25:56.2809944Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-10T17:25:56.2811087Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-10T17:25:56.2811908Z hint: call:
+2026-11-10T17:25:56.2812392Z hint:
+2026-11-10T17:25:56.2813495Z hint: 	git config --global init.defaultBranch <name>
+2026-11-10T17:25:56.2814513Z hint:
+2026-11-10T17:25:56.2815193Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-10T17:25:56.2816468Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-10T17:25:56.2817707Z hint:
+2026-11-10T17:25:56.2818455Z hint: 	git branch -m <name>
+2026-11-10T17:25:56.2819233Z hint:
+2026-11-10T17:25:56.2820266Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-10T17:25:56.2821834Z Initialized empty Git repository in /home/runner/work/pystachy/pystachy/.git/
+2026-11-10T17:25:56.2827776Z [command]/usr/bin/git remote add origin https://github.com/den-run-ai/pystachy
+2026-11-10T17:25:56.2875151Z ##[endgroup]
+2026-11-10T17:25:56.2876077Z ##[group]Disabling automatic garbage collection
+2026-11-10T17:25:56.2879379Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-10T17:25:56.2917596Z ##[endgroup]
+2026-11-10T17:25:56.2919301Z ##[group]Setting up auth
+2026-11-10T17:25:56.2923312Z Removing SSH command configuration
+2026-11-10T17:25:56.2930448Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-10T17:25:56.2965344Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-10T17:25:56.3451414Z Removing HTTP extra header
+2026-11-10T17:25:56.3458362Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-10T17:25:56.3494330Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-10T17:25:56.3680586Z Removing includeIf entries pointing to credentials config files
+2026-11-10T17:25:56.3686117Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-10T17:25:56.3717983Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-10T17:25:56.3905411Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-10T17:25:56.3941352Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git.path /home/runner/work/_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config
+2026-11-10T17:25:56.3972686Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config
+2026-11-10T17:25:56.4004721Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config
+2026-11-10T17:25:56.4036031Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config
+2026-11-10T17:25:56.4105345Z ##[endgroup]
+2026-11-10T17:25:56.4106314Z ##[group]Fetching the repository
+2026-11-10T17:25:56.4111587Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +04860a83618e744c6f461761b6ee7fdbbe21f985:refs/remotes/origin/main
+2026-11-10T17:25:57.4300790Z From https://github.com/den-run-ai/pystachy
+2026-11-10T17:25:57.4303086Z  * [new ref]         04860a83618e744c6f461761b6ee7fdbbe21f985 -> origin/main
+2026-11-10T17:25:57.4310082Z [command]/usr/bin/git branch --list --remote origin/main
+2026-11-10T17:25:57.4337601Z   origin/main
+2026-11-10T17:25:57.4346031Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-11-10T17:25:57.4371106Z 04860a83618e744c6f461761b6ee7fdbbe21f985
+2026-11-10T17:25:57.4375824Z ##[endgroup]
+2026-11-10T17:25:57.4378506Z ##[group]Determining the checkout info
+2026-11-10T17:25:57.4381321Z ##[endgroup]
+2026-11-10T17:25:57.4383149Z [command]/usr/bin/git sparse-checkout disable
+2026-11-10T17:25:57.4436792Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-10T17:25:57.4470526Z ##[group]Checking out the ref
+2026-11-10T17:25:57.4472992Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-11-10T17:25:57.7911173Z Switched to a new branch 'main'
+2026-11-10T17:25:57.7914038Z branch 'main' set up to track 'origin/main'.
+2026-11-10T17:25:57.7923801Z ##[endgroup]
+2026-11-10T17:25:57.7968437Z [command]/usr/bin/git log -1 --format=%H
+2026-11-10T17:25:57.7995552Z 04860a83618e744c6f461761b6ee7fdbbe21f985
+2026-11-10T17:25:57.8007097Z ##[group]Removing auth
+2026-11-10T17:25:57.8007986Z Removing SSH command configuration
+2026-11-10T17:25:57.8008999Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-10T17:25:57.8038994Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-10T17:25:57.8237415Z Removing HTTP extra header
+2026-11-10T17:25:57.8241156Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-10T17:25:57.8270637Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-10T17:25:57.8467751Z Removing includeIf entries pointing to credentials config files
+2026-11-10T17:25:57.8469282Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-10T17:25:57.8500082Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-10T17:25:57.8501581Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-10T17:25:57.8502807Z includeif.gitdir:/github/workspace/.git.path
+2026-11-10T17:25:57.8504047Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-10T17:25:57.8508292Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-10T17:25:57.8531879Z /home/runner/work/_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config
+2026-11-10T17:25:57.8540881Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-e4836296\-3614\-4b5e\-a62d\-6c704e5a14fd\.config
+2026-11-10T17:25:57.8581880Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-10T17:25:57.8606513Z /home/runner/work/_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config
+2026-11-10T17:25:57.8616480Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-e4836296\-3614\-4b5e\-a62d\-6c704e5a14fd\.config
+2026-11-10T17:25:57.8651213Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-10T17:25:57.8674427Z /github/runner_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config
+2026-11-10T17:25:57.8682387Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-e4836296\-3614\-4b5e\-a62d\-6c704e5a14fd\.config
+2026-11-10T17:25:57.8717679Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-10T17:25:57.8739122Z /github/runner_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config
+2026-11-10T17:25:57.8746726Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-e4836296\-3614\-4b5e\-a62d\-6c704e5a14fd\.config
+2026-11-10T17:25:57.8780679Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-10T17:25:57.8973721Z Removing credentials config '/home/runner/work/_temp/git-credentials-e4836296-3614-4b5e-a62d-6c704e5a14fd.config'
+2026-11-10T17:25:57.8986367Z ##[endgroup]
+2026-11-10T17:25:57.9265299Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-10T17:25:57.9266149Z with:
+2026-11-10T17:25:57.9266697Z   python-version-file: .python-version
+2026-11-10T17:25:57.9267286Z   check-latest: false
+2026-11-10T17:25:57.9270209Z   token: ***
+2026-11-10T17:25:57.9270878Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-10T17:25:57.9271613Z   update-environment: true
+2026-11-10T17:25:57.9272242Z   allow-prereleases: false
+2026-11-10T17:25:57.9272779Z   freethreaded: false
+2026-11-10T17:25:57.9273358Z env:
+2026-11-10T17:25:57.9274230Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:25:57.9274830Z ##[endgroup]
+2026-11-10T17:25:58.0465171Z Resolved .python-version as 3.13.16
+2026-11-10T17:25:58.0466637Z ##[group]Installed versions
+2026-11-10T17:25:58.0484586Z Version 3.13.16 was not found in the local cache
+2026-11-10T17:25:58.9890490Z Version 3.13.16 is available for downloading
+2026-11-10T17:25:58.9892322Z Download from "https://github.com/actions/python-versions/releases/download/3.13.16-36805956071/python-3.13.16-linux-24.04-x64.tar.gz"
+2026-11-10T17:25:59.4679717Z Extract downloaded archive
+2026-11-10T17:25:59.4793885Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/5b9c457f-d493-48c9-be93-a2d9be9d6a6e -f /home/runner/work/_temp/82776aa5-b209-491f-a2c7-14b42a73176b
+2026-11-10T17:26:01.8125777Z Execute installation script
+2026-11-10T17:26:01.8209000Z Check if Python hostedtoolcache folder exist...
+2026-11-10T17:26:01.8210126Z Create Python 3.13.16 folder
+2026-11-10T17:26:01.8220207Z Copy Python binaries to hostedtoolcache folder
+2026-11-10T17:26:02.0919434Z Create additional symlinks (Required for the UsePythonVersion Azure Pipelines task and the setup-python GitHub Action)
+2026-11-10T17:26:02.0957894Z Upgrading pip...
+2026-11-10T17:26:04.1597258Z Collecting pip
+2026-11-10T17:26:04.2593070Z Downloading pip-26.3-py3-none-any.whl.metadata (4.6 kB)
+2026-11-10T17:26:04.2835469Z Downloading pip-26.3-py3-none-any.whl (2.0 MB)
+2026-11-10T17:26:04.3924751Z ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 29.6 MB/s  0:00:00
+2026-11-10T17:26:04.3925521Z 
+2026-11-10T17:26:04.4845392Z Installing collected packages: pip
+2026-11-10T17:26:04.4846182Z Attempting uninstall: pip
+2026-11-10T17:26:04.4870203Z Found existing installation: pip 26.2.1
+2026-11-10T17:26:04.5086861Z Uninstalling pip-26.2.1:
+2026-11-10T17:26:04.5128766Z Successfully uninstalled pip-26.2.1
+2026-11-10T17:26:05.3972337Z Successfully installed pip-26.3
+2026-11-10T17:26:05.4592669Z Create complete file
+2026-11-10T17:26:05.4625766Z Successfully set up CPython (3.13.16)
+2026-11-10T17:26:05.4627478Z ##[endgroup]
+2026-11-10T17:26:05.4773458Z ##[group]Run tools/setup.sh --minimal
+2026-11-10T17:26:05.4774294Z [36;1mtools/setup.sh --minimal[0m
+2026-11-10T17:26:05.4794736Z shell: /usr/bin/bash -e {0}
+2026-11-10T17:26:05.4795183Z env:
+2026-11-10T17:26:05.4795503Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:26:05.4795966Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:05.4796513Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T17:26:05.4797291Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:05.4797776Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:05.4798248Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:05.4798683Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T17:26:05.4799124Z ##[endgroup]
+2026-11-10T17:26:10.6233941Z Ubuntu clang version 18.1.3 (1ubuntu1)
+2026-11-10T17:26:10.6362578Z Ubuntu LLVM version 18.1.3
+2026-11-10T17:26:10.6480778Z Ubuntu LLVM version 18.1.3
+2026-11-10T17:26:10.6593358Z Ubuntu LLVM version 18.1.3
+2026-11-10T17:26:10.6705777Z Ubuntu LLVM version 18.1.3
+2026-11-10T17:26:10.6717209Z Python 3.13.16
+2026-11-10T17:26:10.6718090Z ready: make PY=/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13
+2026-11-10T17:26:10.6767227Z ##[group]Run python3 -m pip install -r tools/requirements-packaging.txt
+2026-11-10T17:26:10.6767915Z [36;1mpython3 -m pip install -r tools/requirements-packaging.txt[0m
+2026-11-10T17:26:10.6784808Z shell: /usr/bin/bash -e {0}
+2026-11-10T17:26:10.6785195Z env:
+2026-11-10T17:26:10.6785539Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:26:10.6785977Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:10.6786480Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T17:26:10.6786992Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:10.6787445Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:10.6787899Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:10.6788382Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T17:26:10.6788813Z ##[endgroup]
+2026-11-10T17:26:11.8802885Z Collecting uv==0.13.7 (from -r tools/requirements-packaging.txt (line 2))
+2026-11-10T17:26:11.9653908Z   Downloading uv-0.13.7-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+2026-11-10T17:26:12.0550187Z Collecting setuptools==84.2.1 (from -r tools/requirements-packaging.txt (line 3))
+2026-11-10T17:26:12.0706119Z   Downloading setuptools-84.2.1-py3-none-any.whl.metadata (6.6 kB)
+2026-11-10T17:26:12.1101279Z Collecting wheel==0.48.0 (from -r tools/requirements-packaging.txt (line 4))
+2026-11-10T17:26:12.1259594Z   Downloading wheel-0.48.0-py3-none-any.whl.metadata (2.3 kB)
+2026-11-10T17:26:12.1605563Z Collecting packaging>=24.0 (from wheel==0.48.0->-r tools/requirements-packaging.txt (line 4))
+2026-11-10T17:26:12.1758844Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+2026-11-10T17:26:12.1956639Z Downloading uv-0.13.7-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (17.2 MB)
+2026-11-10T17:26:12.4296272Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 17.2/17.2 MB 88.1 MB/s  0:00:00
+2026-11-10T17:26:12.4451549Z Downloading setuptools-84.2.1-py3-none-any.whl (876 kB)
+2026-11-10T17:26:12.4547505Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 876.3/876.3 kB 83.7 MB/s  0:00:00
+2026-11-10T17:26:12.4701725Z Downloading wheel-0.48.0-py3-none-any.whl (33 kB)
+2026-11-10T17:26:12.4880330Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+2026-11-10T17:26:12.5949039Z Installing collected packages: uv, setuptools, packaging, wheel
+2026-11-10T17:26:13.3477623Z 
+2026-11-10T17:26:13.3489689Z Successfully installed packaging-26.3 setuptools-84.2.1 uv-0.13.7 wheel-0.48.0
+2026-11-10T17:26:13.4253048Z ##[group]Run make
+2026-11-10T17:26:13.4253380Z [36;1mmake[0m
+2026-11-10T17:26:13.4268020Z shell: /usr/bin/bash -e {0}
+2026-11-10T17:26:13.4268447Z env:
+2026-11-10T17:26:13.4268768Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:26:13.4269223Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:13.4269792Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T17:26:13.4270309Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:13.4270795Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:13.4271424Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:26:13.4271940Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T17:26:13.4272386Z ##[endgroup]
+2026-11-10T17:26:13.4453032Z mkdir -p build
+2026-11-10T17:26:13.4463771Z PYSTACHY_AOT_OPT="2" /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 pystachy.py build pystachy.py -o build/pystachy1 --emit-ir build/stage1.ll
+2026-11-10T17:28:36.7377786Z PYSTACHY_AOT_OPT=2 build/pystachy1 build pystachy.py -o build/pystachy2 --emit-ir build/stage2.ll
+2026-11-10T17:30:29.7570403Z build/pystachy2 ir pystachy.py -o build/stage3.ll
+2026-11-10T17:30:33.8007379Z cmp build/stage1.ll build/stage2.ll && cmp build/stage2.ll build/stage3.ll
+2026-11-10T17:30:33.8547652Z fixed point: stage1 == stage2 == stage3 (892614 lines of IR)
+2026-11-10T17:30:33.8548560Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 pystachy.py rt runtime.py -o build/rt1.ll
+2026-11-10T17:30:34.3586790Z build/pystachy1 rt runtime.py -o build/rt2.ll
+2026-11-10T17:30:34.4239699Z build/pystachy2 rt runtime.py -o build/rt3.ll
+2026-11-10T17:30:34.4896164Z cmp build/rt1.ll build/rt2.ll && cmp build/rt2.ll build/rt3.ll
+2026-11-10T17:30:34.4944642Z fixed point: runtime.py's IR, rt1 == rt2 == rt3 (21100 lines)
+2026-11-10T17:30:34.4946347Z cp build/pystachy2 pystachy
+2026-11-10T17:30:34.5025487Z ##[group]Run python3 tools/package_smoke.py --no-build-isolation
+2026-11-10T17:30:34.5026063Z [36;1mpython3 tools/package_smoke.py --no-build-isolation[0m
+2026-11-10T17:30:34.5041239Z shell: /usr/bin/bash -e {0}
+2026-11-10T17:30:34.5041617Z env:
+2026-11-10T17:30:34.5041930Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:30:34.5042413Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:30:34.5042931Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T17:30:34.5043419Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:30:34.5044260Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:30:34.5044725Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:30:34.5045194Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T17:30:34.5045607Z ##[endgroup]
+2026-11-10T17:31:04.2169035Z sdist/wheel: all port sources, licenses and provenance included
+2026-11-10T17:31:04.2170512Z offline hashed dependency sync: CPython library/module/CLI, JIT and standalone AOT match
+2026-11-10T17:31:04.2171841Z negative checks: incompatible dependency and altered wheel rejected
+2026-11-10T17:31:04.2276412Z ##[group]Run python3 tools/package_smoke.py --no-build-isolation --compiler 'python3 pystachy.py'
+2026-11-10T17:31:04.2277160Z [36;1mpython3 tools/package_smoke.py --no-build-isolation --compiler 'python3 pystachy.py'[0m
+2026-11-10T17:31:04.2290984Z shell: /usr/bin/bash -e {0}
+2026-11-10T17:31:04.2291316Z env:
+2026-11-10T17:31:04.2291726Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:31:04.2292478Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:31:04.2293062Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T17:31:04.2293998Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:31:04.2294457Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:31:04.2294956Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T17:31:04.2295417Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T17:31:04.2295831Z ##[endgroup]
+2026-11-10T17:31:34.7210877Z sdist/wheel: all port sources, licenses and provenance included
+2026-11-10T17:31:34.7211872Z offline hashed dependency sync: CPython library/module/CLI, JIT and standalone AOT match
+2026-11-10T17:31:34.7212692Z negative checks: incompatible dependency and altered wheel rejected
+2026-11-10T17:31:34.7400925Z Post job cleanup.
+2026-11-10T17:31:34.8699296Z Post job cleanup.
+2026-11-10T17:31:34.9591246Z [command]/usr/bin/git version
+2026-11-10T17:31:34.9634888Z git version 2.56.0
+2026-11-10T17:31:34.9669492Z Temporarily overriding HOME='/home/runner/work/_temp/964bdac2-c65f-4ede-abb6-4ed08f54807b' before making global git config changes
+2026-11-10T17:31:34.9670691Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-10T17:31:34.9671655Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-10T17:31:34.9705973Z Removing SSH command configuration
+2026-11-10T17:31:34.9711601Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-10T17:31:34.9750374Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-10T17:31:34.9972439Z Removing HTTP extra header
+2026-11-10T17:31:34.9979346Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-10T17:31:35.0011326Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-10T17:31:35.0256113Z Removing includeIf entries pointing to credentials config files
+2026-11-10T17:31:35.0262105Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-10T17:31:35.0296081Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-10T17:31:35.0736826Z Cleaning up orphan processes

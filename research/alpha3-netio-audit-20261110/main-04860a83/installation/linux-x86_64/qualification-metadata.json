@@ -1,0 +1,770 @@
+{
+  "head": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "tree": "bc34d9b1a3f648fbae6368e1c78485baf8d60c99",
+  "workflow": "Installation",
+  "run_id": 42864866843,
+  "job_id": 130000378687,
+  "artifact_name": "netio-linux-install-ubuntu-24.04",
+  "linux": {
+    "status": "qualified",
+    "artifact_id": 13788065447,
+    "artifact_name": "netio-linux-install-ubuntu-24.04",
+    "workflow_run": 42864866843,
+    "archive": "netio-linux.zip",
+    "archive_sha256": "0a794e451b082b55b770d43b7ec6f077bb966a3aaf40590ce6ebe9fdb32f82bf",
+    "archive_digest_verified": true,
+    "artifact_created_at": "2026-11-10T17:33:11Z",
+    "reports": [
+      {
+        "file": "netio-linux-benchmark-smoke.json",
+        "file_sha256": "e42fa63913b31d5d65bb90c2681735b61bd2ed63cf8b00556920bd8253c4bb39",
+        "result": "pass",
+        "source_hashes_verified": 167,
+        "source_paths": [
+          "examples/netio/bench_driver.py",
+          "examples/netio/bench_workload.py",
+          "examples/netio/benchmark.py",
+          "examples/netio/check.py",
+          "examples/netio/netio.c",
+          "examples/netio/netio.h",
+          "examples/netio/netio.py",
+          "examples/netio/oracle/netio.py",
+          "examples/netio/probe.py",
+          "lib/_argparse_help.py",
+          "lib/_markupbase.py",
+          "lib/_pyrandom.py",
+          "lib/_pystachy__io.py",
+          "lib/_pystachy_abc.py",
+          "lib/_pystachy_atexit.py",
+          "lib/_pystachy_bfile.py",
+          "lib/_pystachy_binascii.py",
+          "lib/_pystachy_bytescan.py",
+          "lib/_pystachy_cache.py",
+          "lib/_pystachy_codecs.py",
+          "lib/_pystachy_copy.py",
+          "lib/_pystachy_ctypes.py",
+          "lib/_pystachy_iterators.py",
+          "lib/_pystachy_itertools.py",
+          "lib/_pystachy_json_any.py",
+          "lib/_pystachy_json_int.py",
+          "lib/_pystachy_mappingproxy.py",
+          "lib/_pystachy_object.py",
+          "lib/_pystachy_percent.py",
+          "lib/_pystachy_range.py",
+          "lib/_pystachy_re_specialized.py",
+          "lib/_pystachy_string.py",
+          "lib/_pystachy_struct.py",
+          "lib/_pystachy_thread.py",
+          "lib/_pystachy_time.py",
+          "lib/_pystachy_types.py",
+          "lib/_pystachy_unicodedata.py",
+          "lib/_pystachy_unicodedata_db.py",
+          "lib/_pystachy_unicodedata_names.py",
+          "lib/_pystachy_weakref.py",
+          "lib/_weakrefset.py",
+          "lib/argparse.py",
+          "lib/bisect.py",
+          "lib/codecs.py",
+          "lib/collections/__init__.py",
+          "lib/colorsys.py",
+          "lib/contextlib.py",
+          "lib/copy.py",
+          "lib/csv.py",
+          "lib/ctypes.py",
+          "lib/curses/__init__.py",
+          "lib/curses/ascii.py",
+          "lib/datetime.py",
+          "lib/difflib.py",
+          "lib/enum.py",
+          "lib/fnmatch.py",
+          "lib/functools.py",
+          "lib/genericpath.py",
+          "lib/getopt.py",
+          "lib/gettext.py",
+          "lib/glob.py",
+          "lib/heapq.py",
+          "lib/html/__init__.py",
+          "lib/html/entities.py",
+          "lib/html/parser.py",
+          "lib/io.py",
+          "lib/json.py",
+          "lib/keyword.py",
+          "lib/logging/__init__.py",
+          "lib/mpz.py",
+          "lib/operator.py",
+          "lib/pathlib.py",
+          "lib/posixpath.py",
+          "lib/pyobj.py",
+          "lib/random.py",
+          "lib/re/__init__.py",
+          "lib/re/_constants.py",
+          "lib/re/_sre.py",
+          "lib/re/_unicode.py",
+          "lib/shlex.py",
+          "lib/shutil.py",
+          "lib/stat.py",
+          "lib/statistics.py",
+          "lib/string.py",
+          "lib/struct.py",
+          "lib/textwrap.py",
+          "lib/this.py",
+          "lib/threading.py",
+          "lib/token.py",
+          "lib/tomllib/__init__.py",
+          "lib/tomllib/_parser.py",
+          "lib/tomllib/_re.py",
+          "lib/tomllib/_types.py",
+          "lib/traceback.py",
+          "lib/types.py",
+          "lib/urllib/__init__.py",
+          "lib/urllib/parse.py",
+          "lib/warnings.py",
+          "lib/weakref.py",
+          "mpz/mpz.c",
+          "pystachy.py",
+          "pystachy_toolchain.py",
+          "runtime.c",
+          "runtime.py",
+          "ryu/common.h",
+          "ryu/d2s.c",
+          "ryu/d2s_intrinsics.h",
+          "ryu/d2s_small_table.h",
+          "ryu/digit_table.h",
+          "ryu/ryu.h",
+          "src/__init__.py",
+          "src/pystachy_compiler/__init__.py",
+          "src/pystachy_compiler/analysis.py",
+          "src/pystachy_compiler/argparse_schema.py",
+          "src/pystachy_compiler/bigints.py",
+          "src/pystachy_compiler/builtins.py",
+          "src/pystachy_compiler/cache_toolchain.py",
+          "src/pystachy_compiler/cached_run.py",
+          "src/pystachy_compiler/callbacks.py",
+          "src/pystachy_compiler/calls.py",
+          "src/pystachy_compiler/containers.py",
+          "src/pystachy_compiler/conversions.py",
+          "src/pystachy_compiler/ctypes_schema.py",
+          "src/pystachy_compiler/declarations.py",
+          "src/pystachy_compiler/diagnostics.py",
+          "src/pystachy_compiler/driver.py",
+          "src/pystachy_compiler/dynamic.py",
+          "src/pystachy_compiler/dynamic_proof.py",
+          "src/pystachy_compiler/emission.py",
+          "src/pystachy_compiler/exceptions.py",
+          "src/pystachy_compiler/expressions.py",
+          "src/pystachy_compiler/flow.py",
+          "src/pystachy_compiler/functions.py",
+          "src/pystachy_compiler/gen.py",
+          "src/pystachy_compiler/generators.py",
+          "src/pystachy_compiler/ir.py",
+          "src/pystachy_compiler/ircheck.py",
+          "src/pystachy_compiler/lexer.py",
+          "src/pystachy_compiler/llvm_abi.py",
+          "src/pystachy_compiler/loader.py",
+          "src/pystachy_compiler/local_versions.py",
+          "src/pystachy_compiler/lower_module.py",
+          "src/pystachy_compiler/lowering.py",
+          "src/pystachy_compiler/memory_ir.py",
+          "src/pystachy_compiler/module.py",
+          "src/pystachy_compiler/names.py",
+          "src/pystachy_compiler/optimizations.py",
+          "src/pystachy_compiler/parser.py",
+          "src/pystachy_compiler/program.py",
+          "src/pystachy_compiler/program_cache.py",
+          "src/pystachy_compiler/reflection.py",
+          "src/pystachy_compiler/scalar_ir.py",
+          "src/pystachy_compiler/scope.py",
+          "src/pystachy_compiler/source_lines.py",
+          "src/pystachy_compiler/specs.py",
+          "src/pystachy_compiler/statements.py",
+          "src/pystachy_compiler/structs.py",
+          "src/pystachy_compiler/syntax.py",
+          "src/pystachy_compiler/templates.py",
+          "src/pystachy_compiler/union_arithmetic.py",
+          "src/pystachy_compiler/union_proof.py",
+          "src/pystachy_compiler/union_state.py",
+          "src/pystachy_compiler/unions.py",
+          "src/pystachy_compiler/utils.py",
+          "src/pystachy_compiler/variables.py",
+          "tools/bench_extended.py",
+          "tools/rt_cpython/ffi.py"
+        ],
+        "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+        "python": "3.13.16 (main, Oct  1 2026, 02:37:54) [GCC 13.3.0]",
+        "cases": {
+          "pair_64": {
+            "cpython_stdlib": {
+              "runs": [
+                {
+                  "checksum": 192,
+                  "first_s": 5.1034e-05,
+                  "samples_s": [
+                    1.3327e-05,
+                    1.4065e-05
+                  ],
+                  "process_wall_s": 0.02251617299998543,
+                  "round": 0
+                }
+              ],
+              "summary": {
+                "median_s": 1.3695999999999999e-05,
+                "min_s": 1.3327e-05,
+                "max_s": 1.4065e-05,
+                "mad_s": 3.690000000000002e-07
+              },
+              "ns_per_iteration": 4565.333333333333,
+              "speedup_vs_cpython_stdlib": 1.0
+            },
+            "cpython_bridge": {
+              "runs": [
+                {
+                  "checksum": 192,
+                  "first_s": 0.000188033,
+                  "samples_s": [
+                    0.000116221,
+                    8.2732e-05
+                  ],
+                  "process_wall_s": 0.04970594200000278,
+                  "round": 0
+                }
+              ],
+              "summary": {
+                "median_s": 9.947649999999999e-05,
+                "min_s": 8.2732e-05,
+                "max_s": 0.000116221,
+                "mad_s": 1.6744500000000002e-05
+              },
+              "ns_per_iteration": 33158.83333333333,
+              "speedup_vs_cpython_stdlib": 0.13768075877217234
+            }
+          },
+          "fanin_4k": {
+            "cpython_stdlib": {
+              "runs": [
+                {
+                  "checksum": 196608,
+                  "first_s": 0.000207488,
+                  "samples_s": [
+                    0.000144034,
+                    0.000145551
+                  ],
+                  "process_wall_s": 0.02377050299998018,
+                  "round": 0
+                }
+              ],
+              "summary": {
+                "median_s": 0.00014479249999999999,
+                "min_s": 0.000144034,
+                "max_s": 0.000145551,
+                "mad_s": 7.58500000000003e-07
+              },
+              "ns_per_iteration": 48264.166666666664,
+              "speedup_vs_cpython_stdlib": 1.0
+            },
+            "cpython_bridge": {
+              "runs": [
+                {
+                  "checksum": 196608,
+                  "first_s": 0.000975827,
+                  "samples_s": [
+                    0.000828136,
+                    0.000923726
+                  ],
+                  "process_wall_s": 0.05208990199997743,
+                  "round": 0
+                }
+              ],
+              "summary": {
+                "median_s": 0.000875931,
+                "min_s": 0.000828136,
+                "max_s": 0.000923726,
+                "mad_s": 4.7795e-05
+              },
+              "ns_per_iteration": 291977.0,
+              "speedup_vs_cpython_stdlib": 0.1653012623140407
+            }
+          },
+          "sparse_64": {
+            "cpython_stdlib": {
+              "runs": [
+                {
+                  "checksum": 192,
+                  "first_s": 5.7307e-05,
+                  "samples_s": [
+                    1.4145e-05,
+                    1.4417e-05
+                  ],
+                  "process_wall_s": 0.024061115999984395,
+                  "round": 0
+                }
+              ],
+              "summary": {
+                "median_s": 1.4281e-05,
+                "min_s": 1.4145e-05,
+                "max_s": 1.4417e-05,
+                "mad_s": 1.3600000000000005e-07
+              },
+              "ns_per_iteration": 4760.333333333333,
+              "speedup_vs_cpython_stdlib": 1.0
+            },
+            "cpython_bridge": {
+              "runs": [
+                {
+                  "checksum": 192,
+                  "first_s": 0.000439636,
+                  "samples_s": [
+                    0.000325827,
+                    0.000324022
+                  ],
+                  "process_wall_s": 0.05243713200002276,
+                  "round": 0
+                }
+              ],
+              "summary": {
+                "median_s": 0.0003249245,
+                "min_s": 0.000324022,
+                "max_s": 0.000325827,
+                "mad_s": 9.02500000000007e-07
+              },
+              "ns_per_iteration": 108308.16666666667,
+              "speedup_vs_cpython_stdlib": 0.043951748790872956
+            }
+          },
+          "bulk_64k": {
+            "cpython_stdlib": {
+              "runs": [
+                {
+                  "checksum": 786432,
+                  "first_s": 0.000255669,
+                  "samples_s": [
+                    0.000121498,
+                    0.000122241
+                  ],
+                  "process_wall_s": 0.02425334299999804,
+                  "round": 0
+                }
+              ],
+              "summary": {
+                "median_s": 0.0001218695,
+                "min_s": 0.000121498,
+                "max_s": 0.000122241,
+                "mad_s": 3.715000000000082e-07
+              },
+              "ns_per_iteration": 40623.166666666664,
+              "speedup_vs_cpython_stdlib": 1.0
+            },
+            "cpython_bridge": {
+              "runs": [
+                {
+                  "checksum": 786432,
+                  "first_s": 0.000591642,
+                  "samples_s": [
+                    0.00037828,
+                    0.000374725
+                  ],
+                  "process_wall_s": 0.05065119300002152,
+                  "round": 0
+                }
+              ],
+              "summary": {
+                "median_s": 0.0003765025,
+                "min_s": 0.000374725,
+                "max_s": 0.00037828,
+                "mad_s": 1.7774999999999876e-06
+              },
+              "ns_per_iteration": 125500.83333333333,
+              "speedup_vs_cpython_stdlib": 0.3236884217236274
+            }
+          }
+        },
+        "compiler": [
+          "/home/runner/work/pystachy/pystachy/pystachy"
+        ]
+      },
+      {
+        "file": "netio-linux-drain-native.json",
+        "file_sha256": "ad37dd50af4ae16b5e7480121a3451a75e81043feb66c425df70244abb3c5982",
+        "result": "pass",
+        "source_hashes_verified": 9,
+        "source_paths": [
+          "examples/netio/check.py",
+          "examples/netio/check_drain.py",
+          "examples/netio/drain.py",
+          "examples/netio/drain_probe.py",
+          "examples/netio/netio.c",
+          "examples/netio/netio.h",
+          "examples/netio/netio.py",
+          "examples/netio/oracle/netio.py",
+          "examples/netio/probe.py"
+        ],
+        "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+        "python": "3.13.16",
+        "modes": [
+          "cpython_oracle",
+          "cpython_bridge",
+          "jit",
+          "aot",
+          "jit_gc",
+          "aot_gc"
+        ],
+        "compiler": [
+          "/home/runner/work/pystachy/pystachy/pystachy"
+        ],
+        "scenario": "completion_order"
+      },
+      {
+        "file": "netio-linux-drain-hosted.json",
+        "file_sha256": "fdf7dc7cf137b397ed00d91654df810c9698628818ce767a6ecdbfa97bb5a2b9",
+        "result": "pass",
+        "source_hashes_verified": 9,
+        "source_paths": [
+          "examples/netio/check.py",
+          "examples/netio/check_drain.py",
+          "examples/netio/drain.py",
+          "examples/netio/drain_probe.py",
+          "examples/netio/netio.c",
+          "examples/netio/netio.h",
+          "examples/netio/netio.py",
+          "examples/netio/oracle/netio.py",
+          "examples/netio/probe.py"
+        ],
+        "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+        "python": "3.13.16",
+        "modes": [
+          "cpython_oracle",
+          "cpython_bridge",
+          "jit",
+          "aot",
+          "jit_gc",
+          "aot_gc"
+        ],
+        "compiler": [
+          "python3",
+          "/home/runner/work/pystachy/pystachy/pystachy.py"
+        ],
+        "scenario": "completion_order"
+      },
+      {
+        "file": "netio-linux-hosted.json",
+        "file_sha256": "0ba8ae184eb38598bf2bce07c7507d150d506a5f800dfde78f9aa8646bd4f9af",
+        "result": "pass",
+        "source_hashes_verified": 6,
+        "source_paths": [
+          "examples/netio/check.py",
+          "examples/netio/netio.c",
+          "examples/netio/netio.h",
+          "examples/netio/netio.py",
+          "examples/netio/oracle/netio.py",
+          "examples/netio/probe.py"
+        ],
+        "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+        "python": "3.13.16",
+        "modes": [
+          "cpython_oracle",
+          "cpython_bridge",
+          "jit",
+          "aot",
+          "jit_gc",
+          "aot_gc"
+        ],
+        "runs": {
+          "cpython_oracle": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ]
+          },
+          "cpython_bridge": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "jit": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "aot": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "jit_gc": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {
+              "PYSTACHY_GC_STRESS_PROGRAM": "1"
+            }
+          },
+          "aot_gc": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {
+              "PYSTACHY_GC_STRESS": "1"
+            }
+          }
+        },
+        "cases": [
+          "lifecycle",
+          "binary",
+          "selector_keys",
+          "readiness",
+          "backpressure",
+          "tcp",
+          "blocking_connect",
+          "refused",
+          "timeouts",
+          "fd_reuse",
+          "closed_errors",
+          "inherited_pipe"
+        ],
+        "repeat": 2,
+        "compiler": [
+          "python3",
+          "/home/runner/work/pystachy/pystachy/pystachy.py"
+        ]
+      },
+      {
+        "file": "netio-linux-native.json",
+        "file_sha256": "20841a7d464e8636910c31a06b2c25de83068464378fd7d3ed97126da85b13d7",
+        "result": "pass",
+        "source_hashes_verified": 6,
+        "source_paths": [
+          "examples/netio/check.py",
+          "examples/netio/netio.c",
+          "examples/netio/netio.h",
+          "examples/netio/netio.py",
+          "examples/netio/oracle/netio.py",
+          "examples/netio/probe.py"
+        ],
+        "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+        "python": "3.13.16",
+        "modes": [
+          "cpython_oracle",
+          "cpython_bridge",
+          "jit",
+          "aot",
+          "jit_gc",
+          "aot_gc"
+        ],
+        "runs": {
+          "cpython_oracle": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ]
+          },
+          "cpython_bridge": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "jit": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "aot": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {}
+          },
+          "jit_gc": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {
+              "PYSTACHY_GC_STRESS_PROGRAM": "1"
+            }
+          },
+          "aot_gc": {
+            "cases": [
+              "lifecycle",
+              "binary",
+              "selector_keys",
+              "readiness",
+              "backpressure",
+              "tcp",
+              "blocking_connect",
+              "refused",
+              "timeouts",
+              "fd_reuse",
+              "closed_errors",
+              "inherited_pipe"
+            ],
+            "gc_settings": {
+              "PYSTACHY_GC_STRESS": "1"
+            }
+          }
+        },
+        "cases": [
+          "lifecycle",
+          "binary",
+          "selector_keys",
+          "readiness",
+          "backpressure",
+          "tcp",
+          "blocking_connect",
+          "refused",
+          "timeouts",
+          "fd_reuse",
+          "closed_errors",
+          "inherited_pipe"
+        ],
+        "repeat": 2,
+        "compiler": [
+          "/home/runner/work/pystachy/pystachy/pystachy"
+        ]
+      }
+    ],
+    "unique_source_paths_verified": 170,
+    "missing_reports": [],
+    "job_id": 130000378687,
+    "job_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378687",
+    "job_conclusion": "success",
+    "job_duration_seconds": 440,
+    "netio_step_duration_seconds": 99,
+    "netio_step_log": "netio-step.log",
+    "netio_step_log_sha256": "4d38f3de49a17a42297f725831491475f2ead21120ad04b803bb6d0ff1a9b26b",
+    "native_compiler_identity_log": "compiler-identity.log",
+    "native_compiler_revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+    "all_six_socket_and_drain_modes_verified": true,
+    "job_within_15_minutes": true,
+    "netio_step_within_5_minutes": true,
+    "harness_tests": 53,
+    "ownership_cycles": 300,
+    "sanitizers": [
+      "AddressSanitizer",
+      "UndefinedBehaviorSanitizer"
+    ],
+    "ASAN_OPTIONS": "detect_leaks=1"
+  },
+  "qualification_status": "passed"
+}

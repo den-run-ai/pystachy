@@ -1,0 +1,63 @@
+2026-11-10T17:31:22.9383815Z ##[group]Run test -x ./pystachy
+2026-11-10T17:31:22.9384127Z [36;1mtest -x ./pystachy[0m
+2026-11-10T17:31:22.9384427Z [36;1mpython3 -m unittest discover -s tools -p 'test_netio*.py'[0m
+2026-11-10T17:31:22.9385004Z [36;1mpython3 examples/netio/benchmark.py --cpython-only --smoke --json build/netio-linux-benchmark-smoke.json[0m
+2026-11-10T17:31:22.9386020Z [36;1mpython3 examples/netio/check.py --compiler 'python3 pystachy.py' --repeat 2 --json build/netio-linux-hosted.json[0m
+2026-11-10T17:31:22.9386786Z [36;1mpython3 examples/netio/check_drain.py --compiler 'python3 pystachy.py' --json build/netio-linux-drain-hosted.json[0m
+2026-11-10T17:31:22.9387299Z [36;1mmkdir -p build/netio[0m
+2026-11-10T17:31:22.9387634Z [36;1m"$PYSTACHY_LLVM/clang" -std=c11 -O1 -g -Wall -Wextra -Werror -Wpedantic \[0m
+2026-11-10T17:31:22.9388092Z [36;1m  -fsanitize=address,undefined -fno-omit-frame-pointer \[0m
+2026-11-10T17:31:22.9388580Z [36;1m  examples/netio/netio.c examples/netio/ownership.c -o build/netio/ownership[0m
+2026-11-10T17:31:22.9389019Z [36;1mASAN_OPTIONS=detect_leaks=1 build/netio/ownership[0m
+2026-11-10T17:31:22.9389534Z [36;1mpython3 examples/netio/check.py --compiler ./pystachy --repeat 2 --json build/netio-linux-native.json[0m
+2026-11-10T17:31:22.9390233Z [36;1mpython3 examples/netio/check_drain.py --compiler ./pystachy --json build/netio-linux-drain-native.json[0m
+2026-11-10T17:31:22.9424088Z shell: /usr/bin/bash -e {0}
+2026-11-10T17:31:22.9424322Z env:
+2026-11-10T17:31:22.9424566Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T17:31:22.9424972Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-10T17:31:22.9425374Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T17:31:22.9425736Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T17:31:22.9426098Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T17:31:22.9426482Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib
+2026-11-10T17:31:22.9426805Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T17:31:22.9427034Z ##[endgroup]
+2026-11-10T17:31:24.4758009Z .....................................................
+2026-11-10T17:31:24.4758867Z ----------------------------------------------------------------------
+2026-11-10T17:31:24.4759557Z Ran 53 tests in 1.321s
+2026-11-10T17:31:24.4759686Z 
+2026-11-10T17:31:24.4759753Z OK
+2026-11-10T17:31:24.8360946Z pair_64      cpython_stdlib          4348 ns/iteration 1.000x CPython stdlib
+2026-11-10T17:31:24.8361468Z pair_64      cpython_bridge         21804 ns/iteration 0.199x CPython stdlib
+2026-11-10T17:31:24.9074861Z fanin_4k     cpython_stdlib         53478 ns/iteration 1.000x CPython stdlib
+2026-11-10T17:31:24.9075922Z fanin_4k     cpython_bridge        267154 ns/iteration 0.200x CPython stdlib
+2026-11-10T17:31:24.9781241Z sparse_64    cpython_stdlib          4048 ns/iteration 1.000x CPython stdlib
+2026-11-10T17:31:24.9781783Z sparse_64    cpython_bridge         95621 ns/iteration 0.042x CPython stdlib
+2026-11-10T17:31:25.0471424Z bulk_64k     cpython_stdlib         64702 ns/iteration 1.000x CPython stdlib
+2026-11-10T17:31:25.0471888Z bulk_64k     cpython_bridge        165920 ns/iteration 0.390x CPython stdlib
+2026-11-10T17:31:25.5069741Z cpython_oracle: 12 scenarios passed
+2026-11-10T17:31:36.0632436Z cpython_bridge: 12 scenarios match the stdlib oracle
+2026-11-10T17:31:49.2297334Z jit: 12 scenarios match the stdlib oracle
+2026-11-10T17:31:49.2584211Z aot: 12 scenarios match the stdlib oracle
+2026-11-10T17:31:57.1801628Z jit_gc: 12 scenarios match the stdlib oracle
+2026-11-10T17:31:57.2111708Z aot_gc: 12 scenarios match the stdlib oracle
+2026-11-10T17:31:57.2127658Z Socket/readiness parity passed for the documented optional prototype surface.
+2026-11-10T17:32:06.6504342Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:06.6956508Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:12.2994833Z jit: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:12.3010169Z aot: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:12.6914055Z jit_gc: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:12.6947137Z aot_gc: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:13.4226087Z netio ownership: 300 cycles, SIGPIPE, pipe readiness and bounds pass
+2026-11-10T17:32:13.8545788Z cpython_oracle: 12 scenarios passed
+2026-11-10T17:32:22.4574035Z cpython_bridge: 12 scenarios match the stdlib oracle
+2026-11-10T17:32:31.9799387Z jit: 12 scenarios match the stdlib oracle
+2026-11-10T17:32:32.0095844Z aot: 12 scenarios match the stdlib oracle
+2026-11-10T17:32:36.3714080Z jit_gc: 12 scenarios match the stdlib oracle
+2026-11-10T17:32:36.4032198Z aot_gc: 12 scenarios match the stdlib oracle
+2026-11-10T17:32:36.4048575Z Socket/readiness parity passed for the documented optional prototype surface.
+2026-11-10T17:32:43.9713162Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:44.0183101Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:49.4356769Z jit: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:49.4372186Z aot: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:49.6015462Z jit_gc: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T17:32:49.6049392Z aot_gc: fragment batches verified; later pipe completed first; binary output matches

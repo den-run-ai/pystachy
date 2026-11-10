@@ -1,0 +1,97 @@
+{
+  "report_status": "complete",
+  "phase": "complete",
+  "revisions": {
+    "base": "ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab",
+    "head": "04860a83618e744c6f461761b6ee7fdbbe21f985"
+  },
+  "cases": 11,
+  "metrics": 49,
+  "classifications": {
+    "ok": 49
+  },
+  "warnings": [],
+  "unconfirmed": [],
+  "zip_sha256": "05d523ffb5ca42e3d78d64365d2f00a5add316d20b9e00f8fefa05b301cf08cb",
+  "zip_digest_match": true,
+  "runner_sha256_match": true,
+  "source_checks": [
+    {
+      "case": "autograd",
+      "source": "bench/smoke/ml.py",
+      "reported_sha256": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946",
+      "local_sha256": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946",
+      "match": true
+    },
+    {
+      "case": "numeric",
+      "source": "bench/smoke/ml.py",
+      "reported_sha256": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946",
+      "local_sha256": "e8814f71feb22de983f5e2c92854e9e7a50737acfddd8b17db7f758f825be946",
+      "match": true
+    },
+    {
+      "case": "fnmatch",
+      "source": "bench/smoke/text.py",
+      "reported_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "local_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "match": true
+    },
+    {
+      "case": "json",
+      "source": "bench/smoke/text.py",
+      "reported_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "local_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "match": true
+    },
+    {
+      "case": "repair_scan",
+      "source": "bench/smoke/text.py",
+      "reported_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "local_sha256": "abcf4ba78bd62af42207230106b96f63b1a64758c1aa2831a49d0ba7781e6302",
+      "match": true
+    },
+    {
+      "case": "copy_int",
+      "source": "bench/smoke/identity.py",
+      "reported_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "local_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "match": true
+    },
+    {
+      "case": "copy_float",
+      "source": "bench/smoke/identity.py",
+      "reported_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "local_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "match": true
+    },
+    {
+      "case": "global_int",
+      "source": "bench/smoke/identity.py",
+      "reported_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "local_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "match": true
+    },
+    {
+      "case": "global_float",
+      "source": "bench/smoke/identity.py",
+      "reported_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "local_sha256": "7693416300598013128588e740a6d8faf0a8de1dbc7b28db49d262f565320ec0",
+      "match": true
+    },
+    {
+      "case": "graph_copy",
+      "source": "tools/dynany_bench.py",
+      "reported_sha256": "a2218d739d4d2b82f59730f03fd7cb60197035b83ac6883bb85428daf86951b6",
+      "local_sha256": "a2218d739d4d2b82f59730f03fd7cb60197035b83ac6883bb85428daf86951b6",
+      "match": true
+    },
+    {
+      "case": "regex_effbot",
+      "source": "bench/pyperformance/regex_effbot.py",
+      "reported_sha256": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+      "local_sha256": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+      "match": true
+    }
+  ]
+}

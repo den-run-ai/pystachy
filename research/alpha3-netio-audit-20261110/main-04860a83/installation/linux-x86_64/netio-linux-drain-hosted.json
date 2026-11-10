@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "result": "pass",
+  "scenario": "completion_order",
+  "modes": [
+    "cpython_oracle",
+    "cpython_bridge",
+    "jit",
+    "aot",
+    "jit_gc",
+    "aot_gc"
+  ],
+  "python": "3.13.16",
+  "platform": "Linux-7.0.0-1017-azure-x86_64-with-glibc2.39",
+  "compiler": [
+    "python3",
+    "/home/runner/work/pystachy/pystachy/pystachy.py"
+  ],
+  "source_sha256": {
+    "netio.c": "722e7a8b714fe7787c6f63ce564b08260da97130cc7ff88dde89d8b9105ef620",
+    "netio.h": "cb008b4893980e6f52c11036138186f353b1edd41f601158bbe1490896aeaaf4",
+    "netio.py": "893ad3096f4ee227bde46dddd9f6426cbf7faafd69dc95aa44ff151d2fe1c9be",
+    "probe.py": "a14aac582f346df707723d496a0c19a790e49f9dfc10ceaaa3664d5c1c083e3b",
+    "oracle/netio.py": "0ed47d2c24bd75c5b96c0b4bdb9583bb16710e6afae5cda7a17088f830fa1826",
+    "check.py": "35ce4670c5a1d33396265e0f7b66e27be3438acdc53eecdff7717b56d7943861"
+  },
+  "drain_sha256": "34f2480c67568f80c23a7a9d48ee5244d547dc405a408e092df74c2915fe41ac",
+  "checker_sha256": "3806797aa127e6a3fd1a4c2d1ba0c9fe6a286a13171a2a5821b25637eef67547",
+  "probe_sha256": "843693e5cb15a9d2b068d86ea5247f2152742da024c93fe76c960f1a1776c01a"
+}

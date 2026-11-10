@@ -1,0 +1,148 @@
+{
+  "id": 130000378687,
+  "run_id": 42864866843,
+  "workflow_name": "Installation",
+  "head_branch": "main",
+  "run_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/42864866843",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOU_6QTs8AAAAeRKBbPw",
+  "head_sha": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/130000378687",
+  "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42864866843/job/130000378687",
+  "status": "completed",
+  "conclusion": "success",
+  "created_at": "2026-11-10T17:25:51Z",
+  "started_at": "2026-11-10T17:25:54Z",
+  "completed_at": "2026-11-10T17:33:14Z",
+  "name": "Install (ubuntu-24.04)",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-10T17:25:55Z",
+      "completed_at": "2026-11-10T17:25:56Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-10T17:25:56Z",
+      "completed_at": "2026-11-10T17:25:58Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-10T17:25:58Z",
+      "completed_at": "2026-11-10T17:26:05Z"
+    },
+    {
+      "name": "LLVM toolchain (install only when missing)",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-10T17:26:05Z",
+      "completed_at": "2026-11-10T17:26:08Z"
+    },
+    {
+      "name": "Check dependencies and installer",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-10T17:26:08Z",
+      "completed_at": "2026-11-10T17:26:08Z"
+    },
+    {
+      "name": "Bootstrap fixed point",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-10T17:26:08Z",
+      "completed_at": "2026-11-10T17:30:35Z"
+    },
+    {
+      "name": "Hosted and native JIT/AOT smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-10T17:30:35Z",
+      "completed_at": "2026-11-10T17:31:26Z"
+    },
+    {
+      "name": "Install sanitizer runtime for netio ownership",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-10T17:31:26Z",
+      "completed_at": "2026-11-10T17:31:31Z"
+    },
+    {
+      "name": "Hosted and native epoll, pipes and ownership",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-10T17:31:31Z",
+      "completed_at": "2026-11-10T17:33:10Z"
+    },
+    {
+      "name": "Retain Linux netio reports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-10T17:33:10Z",
+      "completed_at": "2026-11-10T17:33:11Z"
+    },
+    {
+      "name": "Native kqueue and pipe parity",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-11-10T17:33:11Z",
+      "completed_at": "2026-11-10T17:33:11Z"
+    },
+    {
+      "name": "Retain native kqueue reports",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 12,
+      "started_at": "2026-11-10T17:33:11Z",
+      "completed_at": "2026-11-10T17:33:11Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 23,
+      "started_at": "2026-11-10T17:33:11Z",
+      "completed_at": "2026-11-10T17:33:11Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 24,
+      "started_at": "2026-11-10T17:33:11Z",
+      "completed_at": "2026-11-10T17:33:11Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25,
+      "started_at": "2026-11-10T17:33:11Z",
+      "completed_at": "2026-11-10T17:33:11Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/den-run-ai/pystachy/check-runs/130000378687",
+  "labels": [
+    "ubuntu-24.04"
+  ],
+  "runner_id": 1000077420,
+  "runner_name": "GitHub Actions 1000077420",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}
