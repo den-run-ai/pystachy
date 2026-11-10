@@ -1307,7 +1307,9 @@ and `typing.BinaryIO`. Deviations:
 `splitext`, `splitdrive`, `splitroot`, `basename`, `dirname` and `normpath`.
 `genericpath` supplies their helpers. `abspath`, `relpath`, `commonpath`,
 `commonprefix`, `expanduser`, `expandvars`, `realpath` and filesystem tests are
-outside this supported API set. Builtin `os.path` has its own documented APIs.
+outside this supported API set. Builtin `os.path` has its
+[own documented APIs](../docs/language/modules.md#builtin-modules-and-files), which
+include `abspath`, `relpath`, `expanduser` and `commonprefix`.
 
 `stat` supports constants, `S_IS*`, `S_IMODE` and `S_IFMT`, but not `filemode`.
 

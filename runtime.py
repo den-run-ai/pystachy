@@ -1417,6 +1417,148 @@ def pys_str_splitlines(s: str, keep: int) -> list[str]:
     return out
 
 
+# ---------- os.path: posixpath's string functions ----------
+# CPython 3.13's posixpath (and genericpath), step for step, on the bytes of a str: "/" and "."
+# are single bytes that occur in no other character's encoding.
+
+
+def pys_getcwd() -> str: ...
+def pys_path_join(a: str, b: str) -> str: ...
+
+
+def last_part(p: str) -> int:
+    # p.rfind("/") + 1: where p's last component starts
+    i = len(p)
+    while i > 0 and _rt.byte(p, i - 1) != 47:
+        i -= 1
+    return i
+
+
+def path_head(p: str, i: int) -> str:
+    # split()'s and dirname()'s head of p, whose last component starts at i: p[:i] without its
+    # trailing slashes, unless it is slashes only
+    j = i
+    while j > 0 and _rt.byte(p, j - 1) == 47:
+        j -= 1
+    return p[:i] if j == 0 else p[:j]
+
+
+def pys_path_basename(p: str) -> str:
+    return p[last_part(p) :]
+
+
+def pys_path_dirname(p: str) -> str:
+    return path_head(p, last_part(p))
+
+
+def pys_path_split(p: str) -> tuple[str, str]:
+    i = last_part(p)
+    return (path_head(p, i), p[i:])
+
+
+def pys_path_splitext(p: str) -> tuple[str, str]:
+    # genericpath._splitext: at the last dot of the last component, unless only dots precede it
+    i = last_part(p)
+    d = len(p) - 1
+    while d >= i and _rt.byte(p, d) != 46:
+        d -= 1
+    k = i
+    while k < d and _rt.byte(p, k) == 46:
+        k += 1
+    if k < d:
+        return (p[:d], p[d:])
+    return (p, "")
+
+
+def pys_path_isabs(p: str) -> int:
+    return 1 if len(p) > 0 and _rt.byte(p, 0) == 47 else 0
+
+
+def pys_path_normpath(p: str) -> str:
+    n = len(p)
+    if n == 0:
+        return "."
+    # splitroot(): no root, "/" for one leading slash or three and more, "//" for exactly two
+    root = 0
+    if _rt.byte(p, 0) == 47:
+        root = 2 if n >= 2 and _rt.byte(p, 1) == 47 and (n == 2 or _rt.byte(p, 2) != 47) else 1
+    comps: list[str] = []
+    i = root
+    while i <= n:
+        j = _rt.find_byte(p, 47, i, n)
+        if j < 0:
+            j = n
+        m = j - i
+        if m == 0 or (m == 1 and _rt.byte(p, i) == 46):
+            pass  # ("" and ".")
+        elif not (m == 2 and _rt.byte(p, i) == 46 and _rt.byte(p, i + 1) == 46) or (root == 0 and len(comps) == 0) or (len(comps) > 0 and comps[-1] == ".."):
+            comps.append(p[i:j])
+        elif len(comps) > 0:
+            comps.pop()  # (".." after a name; at the root it is dropped)
+        i = j + 1
+    out = p[:root] + "/".join(comps)
+    return out if len(out) > 0 else "."
+
+
+def pys_path_abspath(p: str) -> str:
+    if len(p) == 0 or _rt.byte(p, 0) != 47:
+        p = pys_path_join(pys_getcwd(), p)
+    return pys_path_normpath(p)
+
+
+def path_parts(p: str) -> list[str]:
+    # relpath()'s p.lstrip("/").split("/") of an abspath() p, [] where nothing follows the slashes
+    out: list[str] = []
+    n = len(p)
+    i = 0
+    while i < n and _rt.byte(p, i) == 47:
+        i += 1
+    while i < n:
+        j = _rt.find_byte(p, 47, i, n)
+        if j < 0:
+            j = n
+        out.append(p[i:j])
+        i = j + 1
+    return out
+
+
+def pys_path_relpath(p: str, start: str) -> str:
+    if len(p) == 0:
+        raise ValueError("no path specified")
+    a = path_parts(pys_path_abspath(start))
+    b = path_parts(pys_path_abspath(p))
+    i = 0
+    while i < len(a) and i < len(b) and a[i] == b[i]:
+        i += 1
+    out: list[str] = []
+    for _ in range(len(a) - i):
+        out.append("..")
+    for k in range(i, len(b)):
+        out.append(b[k])
+    return "/".join(out) if len(out) > 0 else "."
+
+
+def pys_path_commonprefix(m: list[str]) -> str:
+    # genericpath.commonprefix: the characters that the least and the greatest str share at their
+    # starts (bytes order strs as their code points do)
+    if len(m) == 0:
+        return ""
+    lo = m[0]
+    hi = m[0]
+    for x in m:
+        if x < lo:
+            lo = x
+        if x > hi:
+            hi = x
+    n = len(lo)  # (lo <= hi: hi is no proper prefix of lo)
+    i = 0
+    while i < n and i < len(hi) and _rt.byte(lo, i) == _rt.byte(hi, i):
+        i += 1
+    while i > 0 and i < n and (_rt.byte(lo, i) & 192) == 128:
+        i -= 1  # (inside a character whose bytes differ later: back to its first byte)
+    return lo[:i]
+
+
 # ---------- dict hashing ----------
 # The dicts themselves stay in runtime.c (their tables are raw int32 and uint64 arrays), which
 # calls these on every lookup; LLVM inlines them there, since the two are one module once

@@ -1,0 +1,10 @@
+basename expected str, bytes or os.PathLike object, not NoneType
+dirname expected str, bytes or os.PathLike object, not NoneType
+split expected str, bytes or os.PathLike object, not NoneType
+splitext expected str, bytes or os.PathLike object, not NoneType
+isabs expected str, bytes or os.PathLike object, not NoneType
+normpath _path_normpath: path should be string, bytes or os.PathLike, not NoneType
+abspath expected str, bytes or os.PathLike object, not NoneType
+expanduser expected str, bytes or os.PathLike object, not NoneType
+True ('/x', 'y.z') ('/x//y', '.z') /x /x/y.z
+[exit 0]

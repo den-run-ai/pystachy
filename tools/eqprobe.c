@@ -106,6 +106,37 @@ int main(void) {
     if (pys_dict_has(dleft, (I)other) != h || pys_set_has(sleft, (I)other) != h) bad("a lookup of an object found the wrong key");
     if (obj_hashes != 2 * h || (!h && obj_eqs)) bad("a lookup of an object ran the program's hash or equality where it should not");
   }
-  puts("eqprobe: native and union-boxed shared DAG equality and searches passed within 64 comparisons each; objects compare by identity or by their hash");
+  /* A str's == and the searches of int, bool and str lists that have no companion compare
+     slots or bytes: none runs the generic comparison once */
+  comparisons = 0;
+  haystack = pys_list_new(4);
+  for (I i = 0; i < 100; i++) pys_list_append(haystack, i % 7);
+  desc = cstr("i");
+  if (pys_list_find(haystack, 6, desc) != 6 || pys_list_find(haystack, 9, desc) != -1 || pys_list_index(haystack, 6, desc, 7, 100) != 13 ||
+      pys_list_index(haystack, 6, desc, -3, INT64_MAX) != 97 || pys_list_count(haystack, 3, desc) != 14 || pys_list_count(haystack, 9, desc))
+    bad("int list search");
+  pys_list_remove(haystack, 6, desc);
+  if (haystack->len != 99 || haystack->a[6] != 0 || pys_list_find(haystack, 6, desc) != 12) bad("int list removal");
+  desc = cstr("b");
+  if (pys_list_find(haystack, 1, desc) != 1 || pys_list_count(haystack, 0, desc) != 15) bad("bool list search");
+  left = pys_list_new(4);
+  for (I i = 0; i < 9; i++) { char w[3] = {(char)('a' + i % 3), (char)('a' + i % 2), 0}; pys_list_append(left, (I)cstr(w)); }
+  pys_list_append(left, (I)cstr(""));
+  desc = cstr("s");
+  right = pys_list_new(3);
+  pys_list_append(right, (I)cstr("ba")); pys_list_append(right, (I)cstr("bc")); pys_list_append(right, (I)cstr(""));
+  if (pys_list_find(left, right->a[0], desc) != 4 || pys_list_find(left, right->a[1], desc) != -1 || pys_list_find(left, right->a[2], desc) != 9 ||
+      pys_list_index(left, left->a[1], desc, 5, 10) != 7 || pys_list_count(left, right->a[0], desc) != 1 || pys_list_count(left, left->a[0], desc) != 2)
+    bad("str list search");
+  if (!pys_eq(left->a[4], right->a[0], desc) || pys_eq(left->a[0], right->a[0], desc) || !pys_eq(right->a[2], left->a[9], desc) ||
+      pys_eq(right->a[2], right->a[0], desc) || !pys_eq(0, 0, desc) || pys_eq(0, right->a[2], desc) || pys_eq(right->a[2], 0, desc))
+    bad("str equality");
+  if (comparisons) bad("a str's == or a search of an int, bool or str list ran the generic comparison");
+  /* (a list with a companion, here the identity boxes of its ints, keeps the generic search) */
+  pys_list_identity(haystack, 1);
+  desc = cstr("i");
+  if (pys_list_find(haystack, 5, desc) != 5 || !comparisons) bad("a list with a companion must search by the generic comparison");
+  puts("eqprobe: native and union-boxed shared DAG equality and searches passed within 64 comparisons each; objects compare by identity or by their hash; "
+       "str equality and scalar list searches ran no generic comparison");
   return 0;
 }

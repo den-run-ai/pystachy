@@ -127,6 +127,7 @@ CALLS: dict[str, str] = {
     "os.getenv(str,str)": "pys_getenv:str", "ffi.string_at(int,int)": "pys_string_at:str",
     # Direct environment mutations; os.environ itself is not a mapping value.
     "os.environ.__setitem__(str,str)": "pys_environ_set:None", "os.environ.pop(str,str)": "pys_environ_pop:str",
+    "os.environ.get(str,str)": "pys_getenv:str", "os.makedirs(str,int,bool)": "pys_makedirs:None",
     "ffi.bytes_at(int,int)": "pys_bytes_at:bytes", "ffi.load_library(str)": "pys_load_library:int",
     "ffi.untrack(int)": "pys_untrack:None", "ffi.collected()": "pys_collected:int",
     "os.remove(str)": "pys_remove:None", "os.rmdir(str)": "pys_rmdir:None", "tempfile.mkdtemp()": "pys_mkdtemp:str",
@@ -135,6 +136,12 @@ CALLS: dict[str, str] = {
     "os.rename(str,str)": "pys_rename:None", "os.replace(str,str)": "pys_replace:None",
     "os.path.isdir(str)": "pys_isdir:bool", "os.path.isfile(str)": "pys_isfile:bool", "os.path.islink(str)": "pys_islink:bool",
     "os.path.lexists(str)": "pys_lexists:bool", "os.path.samefile(str,str)": "pys_samefile:bool",
+    # posixpath's string functions (runtime.py), and expanduser, which reads the password database
+    "os.path.basename(str)": "pys_path_basename:str", "os.path.dirname(str)": "pys_path_dirname:str",
+    "os.path.split(str)": "pys_path_split:tuple[str,str]", "os.path.splitext(str)": "pys_path_splitext:tuple[str,str]",
+    "os.path.isabs(str)": "pys_path_isabs:bool", "os.path.normpath(str)": "pys_path_normpath:str",
+    "os.path.abspath(str)": "pys_path_abspath:str", "os.path.relpath(str,str)": "pys_path_relpath:str",
+    "os.path.expanduser(str)": "pys_path_expanduser:str", "os.path.commonprefix(list[str])": "pys_path_commonprefix:str",
     "math.floor(float)": "pys_floor:int", "math.ceil(float)": "pys_ceil:int", "math.trunc(float)": "pys_m_trunc:int",
     "math.gcd(int,int)": "pys_m_gcd:int", "math.lcm(int,int)": "pys_m_lcm:int", "math.isqrt(int)": "pys_m_isqrt:int",
     "math.factorial(int)": "pys_m_factorial:int", "math.comb(int,int)": "pys_m_comb:int", "math.perm(int,int)": "pys_m_perm:int",
@@ -242,11 +249,14 @@ for _k in "sys os os.path math tempfile typing dataclasses __future__ builtins t
 MODATTRS: dict[str, bool] = {}
 for _k in ("sys.argv sys.warnoptions sys.maxsize sys.stdin sys.stdout sys.stderr sys.platform sys.byteorder sys.prefix sys.base_prefix "
            "sys.exec_prefix sys.base_exec_prefix math.pi math.e math.inf math.tau math.nan "
-           "os.name os.sep os.curdir os.pardir os.extsep os.pathsep os.linesep os.devnull").split():
+           "os.name os.sep os.curdir os.pardir os.extsep os.pathsep os.linesep os.devnull "
+           "os.path.sep os.path.curdir os.path.pardir os.path.extsep os.path.pathsep os.path.devnull").split():
     MODATTRS[_k] = True
-# the os module's constants on POSIX systems
+# the os module's constants on POSIX systems, and those os.path (posixpath) has of them
 OSCONST: dict[str, str] = {"os.name": "posix", "os.sep": "/", "os.curdir": ".", "os.pardir": "..", "os.extsep": ".",
                            "os.pathsep": ":", "os.linesep": "\n", "os.devnull": "/dev/null"}
+for _k in "sep curdir pardir extsep pathsep devnull".split():
+    OSCONST["os.path." + _k] = OSCONST["os." + _k]
 # sys.float_info's attributes for IEEE 754 doubles: floats (with an "e") and ints
 FLOATINFO: dict[str, str] = {"sys.float_info.max": "1.7976931348623157e+308", "sys.float_info.max_exp": "1024",
                              "sys.float_info.max_10_exp": "308", "sys.float_info.min": "2.2250738585072014e-308",
@@ -510,12 +520,16 @@ NONEARG: dict[str, str] = {"len": "object of type 'NoneType' has no len()", "dic
                            "ord": "ord() expected string of length 1, but NoneType found",
                            "os.system": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.fspath": "expected str, bytes or os.PathLike object, not NoneType",
+                           "os.makedirs": "expected str, bytes or os.PathLike object, not NoneType",
                            "os.path.normcase": "expected str, bytes or os.PathLike object, not NoneType",
                            "abs": "bad operand type for abs(): 'NoneType'", "round": "type NoneType doesn't define __round__ method",
                            "chr": "'NoneType' object cannot be interpreted as an integer",
                            "os.path.exists": "stat: path should be string, bytes, os.PathLike or integer, not NoneType"}
 for _k in "hex oct bin".split():
     NONEARG[_k] = NONEARG["chr"]
+for _k in "basename dirname split splitext isabs abspath expanduser".split():
+    NONEARG["os.path." + _k] = NONEARG["os.fspath"]  # (posixpath's take os.fspath() of the path first)
+NONEARG["os.path.normpath"] = "_path_normpath: path should be string, bytes or os.PathLike, not NoneType"  # (posix's, in C)
 OPTARG: list[str] = "str repr ascii bool input min max sys.exit exit quit".split()
 # what those return (for None itself, which always raises)
 NONERET: dict[str, str] = {"len": "int", "int": "int", "float": "float", "ord": "int", "os.system": "int", "os.path.exists": "bool"}
@@ -1030,8 +1044,13 @@ RUNTIME: dict[str, str] = {
     # errors and the process
     "raise": "None:str,str|R N|", "exit": "None:int|R N I|", "exit_msg": "None:str|R N I|", "argv": "list[str]:|I|", "warnoptions": "list[str]:|A I|",
     "platform": "str:|A|", "errno": "int:str|R A|", "system": "int:str|R I|", "execv": "None:str,list[str]|R N A I rL|", "getpid": "int:|I|", "getcwd": "str:|R A I|", "exists": "bool:str|I|",
-    "path_join": "str:str,str|A|", "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
+    "path_join": "str:str,str|A|", "path_basename": "str:str|A|", "path_dirname": "str:str|A|", "path_split": "tuple[str,str]:str|A|",
+    "path_splitext": "tuple[str,str]:str|A|", "path_isabs": "bool:str||", "path_normpath": "str:str|R A|",
+    "path_abspath": "str:str|R A I|", "path_relpath": "str:str,str|R A I|", "path_expanduser": "str:str|R A I|",
+    "path_commonprefix": "str:list[str]|R A rL|",
+    "realpath": "str:str|R A I|", "getenv": "opt[str]:str,opt[str]|R A I|", "remove": "None:str|R A I|", "rmdir": "None:str|R A I|",
     "environ_set": "None:str,str|R A I|", "environ_pop": "str:str,str|R A I|",
+    "environ_get": "str:str|R A I|", "environ_del": "None:str|R A I|", "makedirs": "None:str,int,bool|R A I|",
     "set_inheritable": "None:int,int|R A I|",
     "cache_lock": "int:str|I|", "cache_lock_fd": "int:|I|", "cache_file_hash": "str:str,int|A I|", "ignored_signals": "int:|I|",
     "listdir": "list[str]:str|R A I|", "listdir_cwd": "list[str]:|R A I|", "mkdir": "None:str,int|R A I|", "mkdir_default": "None:str|R A I|",

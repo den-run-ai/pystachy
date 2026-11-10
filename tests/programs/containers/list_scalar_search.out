@@ -1,0 +1,21 @@
+True False True 2 9 35 3 7 0 4
+0 0 ValueError 5 is not in list
+5 2 ValueError 5 is not in list
+-1000 1000 4
+39 40 ValueError 5 is not in list
+40 41 ValueError 5 is not in list
+-1 40 ValueError 5 is not in list
+2 -2 4
+-3 -1 37
+True True 1 2 4 False
+True True 1 3 3 0 False
+True True False 4 9 5 5 5
+1 21 False True
+False False 0 False True True 1
+ValueError 'zz' is not in list
+ValueError 'abab' is not in list
+0 33 4 3 22
+ValueError list.remove(x): x not in list [False, False, False, False, False]
+True True False 1 2 2
+True False 1 1
+[exit 0]

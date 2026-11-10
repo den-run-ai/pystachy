@@ -921,6 +921,11 @@ def gen_stmt_main(self, n: Node) -> None:
                 o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion")
                 self.rt("pys_dyn_list_del_slice" if o.t == "dyn" else "pys_list_del_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"])
                 continue
+            if dt.kind == "index" and dt.kids[0].kind == "attr" and self.dotted(dt.kids[0]) == "os.environ":
+                # del os.environ[name]: the variable unset, or KeyError
+                name = self.coerce(self.expr(dt.kids[1], "str"), "str", "the name in del os.environ[...]")
+                self.rt("pys_environ_del", "void", [f"ptr {name.v}"])
+                continue
             o = self.expr(dt.kids[0], "") if dt.kind == "index" else Val("", "")
             nodel = "TypeError: 'NoneType' object does not support item deletion"
             if o.t == "dyn":

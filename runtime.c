@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <locale.h>
 #include <pthread.h>
+#include <pwd.h>
 #ifdef __APPLE__
 #include <xlocale.h>
 #endif
@@ -2916,7 +2917,12 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   __builtin_unreachable();   /* the compiler permits only the builtin value descriptors above */
 }
 static int eqpair(I a, I b, const char *x, const char *y) { return eqpair_depth(a, b, x, y, 0); }
-I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
+/* a == b of two strs (descriptor "s", which the compiler passes for every str == str and
+   str != str) is eqv's answer for 's', taken without its descriptor walk */
+I pys_eq(I a, I b, Str *d) {
+  if (d->s[0] == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
+  return eqv(a, b, d->s);
+}
 I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
 /* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
@@ -3439,7 +3445,23 @@ List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items a
   }
   r->len = n > 0 ? m * n : 0; return r;
 }
-I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i; return -1; }
+/* Searches of a list of ints or bools that has no companion (so no item past 64 bits and no
+   identity boxes: lbig is null for each), and of a list of strs, compare slots as eqitem does
+   for the descriptors "i", "b" and "s", without its descriptor walk for each item: 1 where the
+   slots' values decide, 2 where pys_str_eq does (a null slot, None, equals only None). No
+   program code runs in these comparisons, so the list cannot change under the search */
+static inline int scalar_items(const List *l, const char *d) {
+  if (d[1] || l->ids) return 0;
+  return d[0] == 'i' || d[0] == 'b' ? 1 : d[0] == 's' ? 2 : 0;
+}
+static inline int str_item_eq(I a, I b) { return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b; }
+I pys_list_find(List *l, I v, Str *d) {
+  int k = scalar_items(l, d->s);
+  if (k == 1) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) if (a[i] == v) return i; return -1; }
+  if (k == 2) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) if (str_item_eq(a[i], v)) return i; return -1; }
+  for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i;
+  return -1;
+}
 I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
   for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m ? big_eq(m, v, vd->s) : eqpair(l->a[i], v, d->s, vd->s)) return i; }
   return -1;
@@ -3447,6 +3469,10 @@ I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
 static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
   if (st < 0 && (st += l->len) < 0) st = 0;
   if (en < 0 && (en += l->len) < 0) en = 0;
+  int k = scalar_items(l, d);
+  I e = en < l->len ? en : l->len;   /* (the list keeps its length while slots are compared: scalar_items) */
+  if (k == 1) { for (I j = st, *a = l->a; j < e; j++) if (a[j] == v) return j; return -1; }
+  if (k == 2) { for (I j = st, *a = l->a; j < e; j++) if (str_item_eq(a[j], v)) return j; return -1; }
   for (I j = st; j < en && j < l->len; j++) if (!lbig(l, j) && eqitem(l->a[j], v, d)) return j;
   return -1;
 }
@@ -3464,7 +3490,13 @@ I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /* 
   if (i < 0) not_in_list(x, xd->s);
   return i;
 }
-I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s); return c; }
+I pys_list_count(List *l, I v, Str *d) {
+  I c = 0; int k = scalar_items(l, d->s);
+  if (k == 1) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) c += a[i] == v; return c; }
+  if (k == 2) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) c += str_item_eq(a[i], v); return c; }
+  for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s);
+  return c;
+}
 void pys_list_remove(List *l, I v, Str *d) {
   I i = pys_list_find(l, v, d);
   if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
@@ -7596,6 +7628,32 @@ static Str *env_decoded(const char *v) {
     if ((unsigned char)s->s[i] >= 0x80) return pys_bytes_decode(s, 0, cstr("surrogateescape"));
   return s;
 }
+/* os.path.expanduser(p), as posixpath's: a leading "~" is $HOME or, without it, the home
+   directory the password database has for the process's user, and "~name" is user name's; a
+   user the database does not have leaves p as it is. The home loses its trailing slashes, and
+   "/" is the result where nothing is left */
+Str *pys_path_expanduser(Str *p) {
+  if (!p->len || p->s[0] != '~') return p;
+  I i = 1;
+  while (i < p->len && p->s[i] != '/') i++;
+  const char *home;
+  if (i == 1) {
+    home = getenv("HOME");
+    if (!home) { struct passwd *pw = getpwuid(getuid()); if (!pw) return p; home = pw->pw_dir; }
+  } else {
+    Str *name = env_encoded(pys_str(p->s + 1, i - 1));
+    if (nul(name)) pys_fail("ValueError: embedded null byte");
+    struct passwd *pw = getpwnam(name->s);
+    if (!pw) return p;
+    home = pw->pw_dir;
+  }
+  Str *h = env_decoded(home);
+  I n = h->len;
+  while (n && h->s[n - 1] == '/') n--;
+  if (!n && i == p->len) return cstr("/");
+  Buf b = {0}; put(&b, h->s, n); put(&b, p->s + i, p->len - i);
+  return done(&b);
+}
 Str *pys_getenv(Str *k, Str *dflt) {
   k = env_encoded(k);
   char *v = nul(k) || strchr(k->s, '=') ? 0 : getenv(k->s);
@@ -7606,6 +7664,25 @@ void pys_environ_set(Str *k, Str *v) {
   if (nul(k) || nul(v)) pys_fail("ValueError: embedded null byte");
   if (strchr(k->s, '=')) pys_fail("ValueError: illegal environment variable name");
   if (setenv(k->s, v->s, 1)) ioerr(errno);
+}
+static _Noreturn void environ_missing(Str *k) {   /* KeyError(k), as os.environ raises it for a name it has not */
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr_str(&b, k); put(&b, "", 1); pys_fail(b.p);
+}
+Str *pys_environ_get(Str *k) {                    /* os.environ[k] */
+  Str *v = pys_getenv(k, 0);
+  if (!v) environ_missing(k);
+  return v;
+}
+void pys_environ_del(Str *k) {                    /* del os.environ[k] */
+  /* as CPython's __delitem__: os.unsetenv() of the name first, whose errors are its own (a NUL
+     byte is no file system name's, and no name or one with '=' is unsetenv()'s EINVAL), and
+     only then KeyError for a name the environment has not */
+  Str *e = env_encoded(k);
+  if (nul(e)) pys_fail("ValueError: embedded null byte");
+  if (!e->len || strchr(e->s, '=')) ioerr(EINVAL);
+  int had = getenv(e->s) != 0;
+  if (unsetenv(e->s)) ioerr(errno);
+  if (!had) environ_missing(k);
 }
 Str *pys_environ_pop(Str *k, Str *dflt) {
   k = env_encoded(k);
@@ -8534,6 +8611,35 @@ List *pys_listdir_cwd(void) { return pys_listdir(pys_str(".", 1)); }
 /* os.mkdir(p, mode): CPython's posix_mkdir */
 void pys_mkdir(Str *p, I mode) { if (nul(p)) pys_fail("ValueError: mkdir: embedded null character in path"); if (mkdir(p->s, (mode_t)mode)) oserr(p->s); }
 void pys_mkdir_default(Str *p) { pys_mkdir(p, 0777); }
+/* os.makedirs(name, mode, exist_ok), as CPython 3.13's steps: a parent that does not exist is made
+   first, with the default mode, and its FileExistsError (someone made it meanwhile) is passed
+   over; then name itself, whose failure exist_ok forgives where name is a directory */
+I pys_isdir(Str *p);
+static void path_split(Str *p, Str **head, Str **tail) {   /* posixpath.split(p) */
+  I i = p->len;
+  while (i > 0 && p->s[i - 1] != '/') i--;
+  I j = i;
+  while (j > 0 && p->s[j - 1] == '/') j--;
+  *head = pys_str(p->s, j ? j : i); *tail = pys_str(p->s + i, p->len - i);
+}
+static void makedirs(Str *name, I mode, I exist_ok, int top) {
+  Str *head, *tail;
+  path_split(name, &head, &tail);
+  if (!tail->len) path_split(head, &head, &tail);
+  if (head->len && tail->len && !pys_exists(head)) {
+    makedirs(head, 0777, exist_ok, 0);
+    if (tail->len == 1 && tail->s[0] == '.') return;       /* (xxx/newdir/. exists once xxx/newdir does) */
+  }
+  if (nul(name)) pys_fail("ValueError: mkdir: embedded null character in path");
+  if (mode < INT_MIN || mode > INT_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
+  if (mkdir(name->s, (mode_t)mode)) {
+    int e = errno;
+    if (exist_ok && pys_isdir(name)) return;
+    if (!top && e == EEXIST) return;                       /* (the caller's except FileExistsError: pass) */
+    errno = e; oserr(name->s);
+  }
+}
+void pys_makedirs(Str *name, I mode, I exist_ok) { makedirs(name, mode, exist_ok, 1); }
 static _Noreturn void oserr2(const char *a, const char *b) {   /* the OSError of a call of two paths: 'a' -> 'b' */
   int e = errno; Buf bf = {0}; char t[32];
   const char *k = errcls(e), *m = strerror(e);
