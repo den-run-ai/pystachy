@@ -2,6 +2,7 @@
 
 import contextlib
 import copy
+import errno
 import importlib.util
 import io
 import json
@@ -114,6 +115,43 @@ class CheckerTests(unittest.TestCase):
                     FlagSocket.disabled_result = disabled
                     with self.assertRaisesRegex(AssertionError, "SO_REUSEADDR"):
                         probe.tcp(1)
+
+    def test_refused_fixture_releases_port_and_rejects_invalid_completion(self):
+        spec = importlib.util.spec_from_file_location("netio_oracle", check.HERE / "oracle/netio.py")
+        oracle = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(oracle)
+        spec = importlib.util.spec_from_file_location("netio_probe", check.SOURCE)
+        probe = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {"netio": oracle}):
+            spec.loader.exec_module(probe)
+        created = []
+        test = self
+
+        class CheckedSocket(socket.socket):
+            def __init__(self):
+                super().__init__()
+                created.append(self)
+
+            def connect_ex(self, address):
+                test.assertEqual(created[0].fileno(), -1, "reservation must close before connect")
+                test.assertNotEqual(self.getsockname()[1], 0, "client must reserve its source port")
+                test.assertNotEqual(self.getsockname()[1], address[1], "endpoint ports must differ")
+                return super().connect_ex(address)
+
+        with mock.patch.object(oracle, "socket", CheckedSocket):
+            probe.refused(1)
+            key = selectors.SelectorKey(None, -1, selectors.EVENT_WRITE, 1)
+            ready = [(key, selectors.EVENT_WRITE)]
+            for result, events, error in ((0, ready, 0),
+                                           (errno.EINPROGRESS, [], errno.ECONNREFUSED),
+                                           (errno.EINPROGRESS, ready, 0)):
+                with self.subTest(result=result, events=events, error=error), \
+                        mock.patch.object(CheckedSocket, "connect_ex", return_value=result), \
+                        mock.patch.object(CheckedSocket, "getsockopt", return_value=error), \
+                        mock.patch.object(oracle, "DefaultSelector") as selector:
+                    selector.return_value.select.return_value = events
+                    with self.assertRaises(AssertionError):
+                        probe.refused(1)
 
     def test_environment_excludes_inherited_compiler_and_python_overrides(self):
         dirty = {"PYSTACHY_LLVM": "/llvm", "PYSTACHY_HOME": "/foreign", "PYSTACHY_PATH": "/foreign",

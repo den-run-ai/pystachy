@@ -304,15 +304,19 @@ def blocking_connect(repeat: int) -> None:
 
 
 def refused(repeat: int) -> None:
-    # Keep the local port reserved without listening, so another process cannot take it.
+    # Darwin drops SYNs to a bound, non-listening TCP socket. Reserve distinct
+    # endpoint ports, then release the destination so the kernel refuses it.
     for _ in range(repeat):
         reservation = netio.socket()
         client = netio.socket()
         selector = netio.DefaultSelector()
         try:
             reservation.bind(("127.0.0.1", 0))
+            client.bind(("127.0.0.1", 0))
+            address = reservation.getsockname()
+            reservation.close()
             client.setblocking(False)
-            result = client.connect_ex(reservation.getsockname())
+            result = client.connect_ex(address)
             if result == errno.ECONNREFUSED:
                 pass
             else:
