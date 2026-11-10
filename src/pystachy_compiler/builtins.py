@@ -1169,7 +1169,7 @@ def gen_callable_type(self, t: str) -> int:
 def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     # min() or max() of one iterable with default=: the default where the iterable has no item,
     # else what the function gives without it. The items are taken into a list first (a list is
-    # itself), so that the function runs only where there is one. key= and default= are
+    # itself; as_list, as the function takes them), so that it runs only where there is one. key= and default= are
     # evaluated as CPython evaluates them: once the iterable is in hand (the iterator of a
     # generator expression or of range(), zip(), map(), ... made: consume's arg) and before
     # its first item is taken
@@ -1189,7 +1189,12 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     kv = [self.tget(ka.value, j) for j in range(len(kws))] if ka is not None else [self.expr(a.kids[0], iw if a.s == "default" and pure_arg(a.kids[0]) and a.kids[0].kind not in INERT else "") for a in kws]
     if is_opt(v0.t):
         v0 = self.unwrap(v0, "TypeError: 'NoneType' object is not iterable")
-    lv = v0 if is_list(v0.t) else self.builtin("list", [self.vnode(v0)], "")
+    # (the items as min() and max() take them, which is by __iter__ alone: list() would ask an
+    # object for its __len__ first, as a hint, and they never do)
+    lv = v0 if is_list(v0.t) else self.as_list(v0, name)
+    if not is_list(lv.t):
+        self.err(f"'{tname(lv.t)}' object is not iterable")
+    self.close_temp(it, v0)
     dv = [kv[j] for j in range(len(kws)) if kws[j].s == "default"][0]
     rest = [mk("kw", "key", self.line, [self.vnode(kv[j])]) for j in range(len(kws)) if kws[j].s == "key"]
     some = self.num_cmp(">", self.builtin("len", [self.vnode(lv)], ""), Val("0", "int"))
