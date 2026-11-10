@@ -1,0 +1,83 @@
+{
+  "status": "passed",
+  "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+  "case": "bench/itertools_loops.py",
+  "variants": {
+    "baseline": {
+      "root": "/workspace/scratch/9822edb13683/pystachy-any-audit",
+      "command": [
+        "/workspace/scratch/a36fd6f2ade2/venv/bin/python",
+        "/workspace/scratch/9822edb13683/pystachy-any-audit/pystachy.py",
+        "ir",
+        "bench/itertools_loops.py",
+        "-o",
+        "/workspace/scratch/977de0945628/ordinary-itertools-baseline.ll"
+      ],
+      "cwd": "/workspace/scratch/9822edb13683/pystachy-any-audit",
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/9822edb13683/pystachy-any-audit",
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "git_head": "c1796654c55d162ff7cad43390c86270acaf91f3",
+      "source_sha256": "5dc545398152df00558fc63df526dd7ee28d5ab82872eecc4406224cfa5f33ac",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "duration_s": 0.22423122599866474,
+      "ir_path": "/workspace/scratch/977de0945628/ordinary-itertools-baseline.ll",
+      "ir_sha256": "c533880b8796ddfa19fecdd5fcdb747800805aae5af8e09f74a4325e07c395b5"
+    },
+    "candidate": {
+      "root": "/workspace/scratch/977de0945628/pystachy",
+      "command": [
+        "/workspace/scratch/a36fd6f2ade2/venv/bin/python",
+        "/workspace/scratch/977de0945628/pystachy/pystachy.py",
+        "ir",
+        "bench/itertools_loops.py",
+        "-o",
+        "/workspace/scratch/977de0945628/ordinary-itertools-candidate.ll"
+      ],
+      "cwd": "/workspace/scratch/977de0945628/pystachy",
+      "environment": {
+        "PYSTACHY_HOME": "/workspace/scratch/977de0945628/pystachy",
+        "PYSTACHY_PROGRAM_CACHE": "0"
+      },
+      "git_head": "c1796654c55d162ff7cad43390c86270acaf91f3",
+      "source_sha256": "5dc545398152df00558fc63df526dd7ee28d5ab82872eecc4406224cfa5f33ac",
+      "returncode": 0,
+      "stdout": "",
+      "stderr": "",
+      "duration_s": 0.24249869300001592,
+      "ir_path": "/workspace/scratch/977de0945628/ordinary-itertools-candidate.ll",
+      "ir_sha256": "0e7dbfc6150102db3f24bf9c6be1539895acc9b1180f9a6c61e362c9b96aac42"
+    }
+  },
+  "total_ir_lines": 3529,
+  "changed_lines": 1,
+  "changes": [
+    {
+      "line": 160,
+      "symbol": "@s.61",
+      "kind": "ImportError library checkout location with verified corresponding string lengths",
+      "messages": {
+        "baseline": "cannot import name 'chain' from 'itertools' (/workspace/scratch/9822edb13683/pystachy-any-audit/lib/_pystachy_itertools.py)",
+        "candidate": "cannot import name 'chain' from 'itertools' (/workspace/scratch/977de0945628/pystachy/lib/_pystachy_itertools.py)"
+      },
+      "length_fields": {
+        "baseline": {
+          "byte_length": 123,
+          "array_extent": 124,
+          "ascii_chars_plus_one": 124
+        },
+        "candidate": {
+          "byte_length": 113,
+          "array_extent": 114,
+          "ascii_chars_plus_one": 114
+        }
+      }
+    }
+  ],
+  "verification": "Every unchanged line compared byte for byte. The sole changed line in each variant equals an independently constructed complete LLVM string constant whose payload names that variant own actual library path and whose four size fields match its ASCII payload. No arbitrary normalization and no shared PYSTACHY_HOME.",
+  "scope": "Independent regeneration of only this one case; the parent run owns the other 220 ordinary controls.",
+  "full_diff": "--- baseline\n+++ candidate\n@@ -157,7 +157,7 @@\n @s.58 = private unnamed_addr global {i64, i64, i64, [29 x i8]} {i64 28, i64 0, i64 29, [29 x i8] c\"name '_chain' is not defined\\00\"}, align 8\n @s.59 = private unnamed_addr global {i64, i64, i64, [28 x i8]} {i64 27, i64 0, i64 28, [28 x i8] c\"generator already executing\\00\"}, align 8\n @s.60 = private unnamed_addr global {i64, i64, i64, [6 x i8]} {i64 5, i64 0, i64 6, [6 x i8] c\"chain\\00\"}, align 8\n-@s.61 = private unnamed_addr global {i64, i64, i64, [124 x i8]} {i64 123, i64 0, i64 124, [124 x i8] c\"cannot import name 'chain' from 'itertools' (/workspace/scratch/9822edb13683/pystachy-any-audit/lib/_pystachy_itertools.py)\\00\"}, align 8\n+@s.61 = private unnamed_addr global {i64, i64, i64, [114 x i8]} {i64 113, i64 0, i64 114, [114 x i8] c\"cannot import name 'chain' from 'itertools' (/workspace/scratch/977de0945628/pystachy/lib/_pystachy_itertools.py)\\00\"}, align 8\n @s.62 = private unnamed_addr global {i64, i64, i64, [12 x i8]} {i64 11, i64 0, i64 12, [12 x i8] c\"ImportError\\00\"}, align 8\n @s.63 = private unnamed_addr global {i64, i64, i64, [30 x i8]} {i64 29, i64 0, i64 30, [30 x i8] c\"name 'product' is not defined\\00\"}, align 8\n @s.64 = private unnamed_addr global {i64, i64, i64, [46 x i8]} {i64 45, i64 0, i64 46, [46 x i8] c\"module 'itertools' has no attribute 'product'\\00\"}, align 8\n"
+}

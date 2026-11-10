@@ -90,6 +90,106 @@ class InspectionTests(unittest.TestCase):
         self.assertTrue(report["verification"]["completed"])
         self.assertGreater(report["verification"]["calls"], 0)
         self.assertEqual(report["input"]["sha256"], hashlib.sha256(program.read_bytes()).hexdigest())
+        boundary = report["attempts"][-1]["dynamic_boundary"]
+        self.assertFalse(boundary["dynamic_any_enabled"])
+        self.assertEqual(boundary["tracked_modules"], [])
+        self.assertIsNone(boundary["fallback_reason"])
+        for footprint in boundary["footprints"].values():
+            self.assertEqual(footprint["status"], "completed")
+            self.assertEqual(footprint["totals"]["dynamic_operations"], {})
+            self.assertEqual(footprint["totals"]["dynamic_runtime_calls"], {})
+            self.assertEqual(footprint["totals"]["numeric_companion_slots"], 0)
+            self.assertEqual(footprint["totals"]["numeric_generation_slots"], 0)
+
+    def test_dynamic_boundary_records_transitive_graph_outside_snapshot_filter(self):
+        self.source("def number(text: str) -> int:\n    return int(text)\n", "boundary_leaf.py")
+        self.source("import boundary_leaf\ndef number(text: str) -> int:\n"
+                    "    return boundary_leaf.number(text)\n", "boundary_middle.py")
+        self.source("# pystachy: dynamic-any\nfrom typing import Any\nimport boundary_middle\n"
+                    "def make(text: str) -> Any:\n    value = boundary_middle.number(text)\n"
+                    "    return value\n", "boundary_dynamic.py")
+        program = self.source("import boundary_dynamic\ndef ordinary(text: str) -> str:\n"
+                              "    return text\nprint(ordinary('x'), boundary_dynamic.make('1000'))\n")
+        ordinary = self.ordinary_ir(program)
+        self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
+        completed, destination = self.inspect(program, args=("--function", "ordinary"))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
+        attempt = self.report(destination)["attempts"][-1]
+        boundary = attempt["dynamic_boundary"]
+        modules = {module["name"]: module for module in boundary["modules"]}
+        self.assertEqual(boundary["policy_status"], "observed")
+        self.assertTrue(modules["boundary_dynamic"]["dynamic_any"])
+        self.assertFalse(modules[""]["dynamic_any"])
+        self.assertFalse(modules[""]["tracks_numeric_identity"])
+        self.assertIn("boundary_middle", modules["boundary_dynamic"]["dependencies"])
+        self.assertIn("boundary_leaf", modules["boundary_middle"]["dependencies"])
+        for name in ("boundary_dynamic", "boundary_middle", "boundary_leaf"):
+            self.assertTrue(modules[name]["tracks_numeric_identity"])
+        for stage in ("before", "after"):
+            footprint = boundary["footprints"][stage]
+            self.assertEqual(footprint["status"], "completed")
+            self.assertGreater(footprint["totals"]["functions"], attempt["selected_functions"])
+            self.assertGreater(footprint["totals"]["numeric_companion_slots"], 0)
+            self.assertGreater(footprint["totals"]["numeric_generation_slots"], 0)
+            self.assertTrue(footprint["totals"]["dynamic_runtime_calls"])
+            self.assertEqual(len(self.snapshot(destination, "typed-" + stage)["functions"]), 1)
+
+    def test_boundary_hints_record_active_discarded_and_overridden_policies(self):
+        safe = "def observe(text: str) -> str:\n    return text\n"
+        unsafe = ("def observe(text: str) -> bool:\n    value = float(text)\n"
+                  "    values = [value]\n    return value in values\n")
+        program = self.source("# pystachy: dynamic-any\nimport boundary_inert\n"
+                              "print(boundary_inert.observe('nan'))\n")
+        for label, source in (("active", safe), ("discarded", unsafe),
+                              ("overridden", "# pystachy: python-int\n" + safe)):
+            with self.subTest(label=label):
+                self.source("# pystachy: identity-inert\n" + source, "boundary_inert.py")
+                ordinary = self.ordinary_ir(program)
+                self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
+                completed, destination = self.inspect(program, output=label)
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
+                attempts = self.report(destination)["attempts"]
+                first, final = [attempt["dynamic_boundary"] for attempt in (attempts[0], attempts[-1])]
+                module = next(item for item in final["modules"] if item["name"] == "boundary_inert")
+                self.assertTrue(module["identity_inert_requested"])
+                self.assertEqual(module["identity_inert_active"], label == "active")
+                self.assertEqual(module["promoting_int"], label == "overridden")
+                self.assertFalse(final["full_graph_fallback"])
+                if label == "discarded":
+                    self.assertEqual(first["fallback_reason"], "numeric list in an identity-inert module")
+                    self.assertFalse(final["hints_enabled"])
+                    self.assertEqual(attempts[0]["status"], "retry")
+                    for footprint in first["footprints"].values():
+                        self.assertEqual(footprint["status"], "unavailable")
+                        self.assertIsNone(footprint["totals"])
+                else:
+                    self.assertIsNone(first["fallback_reason"])
+
+    def test_typed_toml_callback_reports_actual_full_graph_fallback(self):
+        program = self.source("import tomllib\ndef parse_float(text: str) -> float:\n"
+                              "    value = float(text)\n    return value\n"
+                              "print(tomllib.loads('value = 1.5', parse_float=parse_float))\n")
+        ordinary = self.ordinary_ir(program)
+        self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
+        completed, destination = self.inspect(program, args=("--function", "no_matching_function"))
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
+        attempts = self.report(destination)["attempts"]
+        self.assertTrue(any(attempt["dynamic_boundary"]["fallback_reason"] == "number as an Any value"
+                            for attempt in attempts))
+        initial, final = [attempt["dynamic_boundary"] for attempt in (attempts[0], attempts[-1])]
+        self.assertFalse(next(m for m in initial["modules"] if m["name"] == "")["tracks_numeric_identity"])
+        self.assertTrue(final["full_graph_fallback"])
+        self.assertTrue(all(module["tracks_numeric_identity"] for module in final["modules"]))
+        self.assertFalse(next(m for m in final["modules"] if m["name"] == "")["dynamic_any"])
+        self.assertTrue(any(m["dynamic_any"] and m["name"].startswith("tomllib") for m in final["modules"]))
+        self.assertEqual(attempts[-1]["selected_functions"], 0)
+        for footprint in final["footprints"].values():
+            self.assertEqual(footprint["status"], "completed")
+            self.assertGreater(footprint["totals"]["functions"], 0)
+            self.assertGreater(footprint["totals"]["numeric_companion_slots"], 0)
 
     def test_library_intrinsics_keep_exact_llvm_when_observed(self):
         # The imported range adapter needs Loader's library-primitive parse context.
@@ -101,6 +201,34 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
         self.assertEqual(self.report(destination)["status"], "ok")
+
+    def test_failed_lowering_keeps_boundary_footprints_partial(self):
+        program = self.source(LOOP)
+        destination = self.directory / "partial"
+        destination.mkdir()
+        script = '''
+import argparse
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path.cwd() / "tools"))
+import inspect_compiler
+from src.pystachy_compiler.gen import Gen
+def stopped_lowering(gen, fn):
+    raise RuntimeError("test stops lowering after typed IR capture")
+Gen.lower = stopped_lowering
+raise SystemExit(inspect_compiler.worker(argparse.Namespace(
+    source=sys.argv[1], output=sys.argv[2], function="no_matching_function")))
+'''
+        completed = subprocess.run([sys.executable, "-c", script, str(program), str(destination)],
+                                   cwd=ROOT, env=self.env, capture_output=True, text=True, timeout=40)
+        self.assertEqual(completed.returncode, 2, completed.stderr)
+        report = self.report(destination)
+        self.assertEqual(report["status"], "error")
+        attempt = report["attempts"][-1]
+        self.assertEqual(attempt["status"], "failed")
+        for footprint in attempt["dynamic_boundary"]["footprints"].values():
+            self.assertEqual(footprint["status"], "partial")
+            self.assertGreater(footprint["totals"]["functions"], 0)
 
     def test_same_operation_count_rewrite_has_immutable_snapshots_and_real_diff(self):
         program = self.source(LOOP)
@@ -477,6 +605,10 @@ raise SystemExit(inspect_compiler.worker(argparse.Namespace(
         self.assertTrue(any(item["source_sha256"] == expected for item in reads))
         self.assertTrue(any(item["changed_since_read"] for item in reads))
         self.assertTrue(all(stage["status"] != "completed" for stage in report["stages"]))
+        for attempt in report["attempts"]:
+            boundary = attempt["dynamic_boundary"]
+            self.assertEqual(boundary["source_provenance"], "inconsistent")
+            self.assertTrue(all(footprint["status"] != "completed" for footprint in boundary["footprints"].values()))
 
     def test_crlf_source_hashes_distinguish_raw_bytes_from_consumed_text(self):
         program = self.source(LOOP)

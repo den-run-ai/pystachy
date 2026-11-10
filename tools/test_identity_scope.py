@@ -151,6 +151,59 @@ class IdentityScopeTests(unittest.TestCase):
         # (tomllib's own code still tracks identity)
         self.assertIn("call ptr @pys_dyn_int_box", ir)
 
+    def test_tomllib_flags_keep_typed_private_storage(self):
+        source = 'import tomllib\nprint(tomllib.loads("a.b = 1\\na.c = 2\\n[x]\\ny = 3"))\n'
+        ir, generations = self.compile(source, helper=False)
+        final = generations[-1]
+        self.assertEqual([g.idevent for g in generations], [""])
+        # The document remains dynamic; only the closed private flag tree is typed.
+        # Its imported regex/date dependencies still follow the existing identity scope.
+        for module in ["tomllib._parser", "tomllib._re", "re", "datetime"]:
+            self.assertNotIn(module, final.idoff)
+        flags = final.classes["tomllib$_parser$Flags"]
+        tree = flags.ftypes["_flags"]
+        self.assertRegex(tree, r"^dict\[str,[^\[\],]+\]$")
+        entry_name = tree[len("dict[str,"):-1]
+        entry = final.classes[entry_name]
+        self.assertEqual(entry.ftypes["nested"], tree)
+        self.assertEqual(entry.ftypes["flags"], "set[int]")
+        self.assertEqual(entry.ftypes["recursive_flags"], "set[int]")
+        bodies = functions(ir)
+        private = {fn.f.ll: bodies[fn.f.ll] for fn in final.fns
+                   if fn.f.cls in [flags.name, entry_name]}
+        for method in ["set", "is_", "unset_all", "finalize_pending"]:
+            self.assertIn("@m.tomllib$_parser$Flags." + method, private)
+        calls = []
+        for name, body in private.items():
+            with self.subTest(function=name):
+                dynamic = re.findall(r"\b(?:call|invoke) [^\n]*?@(pys_dyn_\w+|dyn\.[^(]+)\(", body)
+                # No private container boxing, dynamic lookup or dispatch. A pending
+                # tuple's int may still acquire one numeric companion when unpacked.
+                self.assertLessEqual(set(dynamic), {"pys_dyn_int_box"})
+                calls.extend(dynamic)
+        self.assertLessEqual(len(calls), 1)
+
+    def test_tomllib_numeric_callback_preserves_tracking_and_dynamic_result(self):
+        source = '''import tomllib
+number = float("123.5")
+def reuse_float(text: str) -> float:
+    return number
+result = tomllib.loads("value = 123.5", parse_float=reuse_float)
+print(result["value"] is number)
+'''
+        ir, generations = self.compile(source, helper=False)
+        # Returning a caller-owned number through parse_float requires tracking in
+        # that caller too. Generic specialization must not erase its original box.
+        self.assertEqual(generations[0].idevent, "number as an Any value")
+        self.assertTrue(generations[-1].idfull)
+        self.assertEqual(generations[-1].idoff, {})
+        number_functions = [fn.f for fn in generations[-1].fns
+                            if fn.f.ll == "@f.tomllib$_re$match_to_number"]
+        self.assertEqual(len(number_functions), 1)
+        self.assertEqual(number_functions[0].ret, "dyn")
+        full, _ = self.compile(source, helper=False, full=True)
+        self.assertEqual(ir, full)
+
     def test_typed_json_container_delimiters_do_not_repeat_byte_reads(self):
         ir, _ = self.compile(
             'import json\nprint(json.dumps(json.loads(\'[1,2,{"a":3,"b":4}]\')))\n',

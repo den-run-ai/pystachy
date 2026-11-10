@@ -186,6 +186,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_narrowed as dynamic_dyn_narrowed,
     gen_dyn_none_first as dynamic_dyn_none_first,
     gen_dyn_payload as dynamic_dyn_payload,
+    gen_dyn_raw as dynamic_dyn_raw,
     gen_dyn_policy as dynamic_dyn_policy,
     gen_class_identity as dynamic_class_identity,
     gen_fn_home as dynamic_fn_home,
@@ -2030,6 +2031,9 @@ class Gen:
 
     def dyn_typeof(self, v: Val) -> str:
         return dynamic_dyn_typeof(self, v)
+
+    def dyn_raw(self, v: Val) -> Val:
+        return dynamic_dyn_raw(self, v)
 
     def dyn_payload(self, v: Val, t: str) -> Val:
         return dynamic_dyn_payload(self, v, t)

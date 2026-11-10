@@ -1,0 +1,21 @@
+{
+  "published_source_commit": "54e32245e89aa8ca193a17bd54e42a90261539cd",
+  "published_source_tree": "464359377bfd73c82c8d4c61b81576f7ca9bb29b",
+  "baseline_commit": "c1796654c55d162ff7cad43390c86270acaf91f3",
+  "verified_candidate_manifest_files": 167,
+  "verified_benchmark_fixture_files": 5,
+  "method": "Every recorded candidate source and fixture hash matched its staged Git blob, and that complete tree matched the GitHub tree before committing. The report retains the original dirty-checkout revision/status; this maps it to the identical published sources.",
+  "report_sha256": "c782de8b56bd1819c64eafabb02d132a94aa4efbdfa3f1cf2dc8900184e0faa0",
+  "local_validation": {
+    "hosted_compiler_jit_aot_checks": 14,
+    "program_gc_stress_jit_aot_checks": 14,
+    "identity_scope_tests": 19,
+    "evidence_unit_tests": 5,
+    "ordinary_ir_controls": 221,
+    "ordinary_ir_byte_identical": 220,
+    "ordinary_ir_location_only": 1,
+    "full_local_verify": "not run",
+    "full_local_corpus_ir_audit": "not run"
+  },
+  "initial_instrumentation_failure": "First smoke could not dynamically resolve toml_boundary_collect_live. Fixed used/default visibility and explicit linker export; corrected focused native probe and the complete report passed."
+}

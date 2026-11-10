@@ -389,6 +389,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p 'test_json*.py'
 	$(PY) -m unittest discover -s tools -p test_numeric_identity.py
 	$(PY) -m unittest discover -s tools -p test_identity_scope.py
+	$(PY) -m unittest discover -s tools -p test_toml_boundary.py
 	$(PY) -m unittest discover -s tools -p test_dynany_comparisons.py
 	$(PY) -m unittest discover -s tools -p test_dynany_dict_kinds.py
 	$(PY) -m unittest discover -s tools -p test_diagnostic_capture.py
@@ -398,10 +399,17 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_parser_allocations.py
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
+	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
 	$(PY) -m unittest discover -s tools -p test_jitfdprobe.py
+
+# Optional development dependency, pinned by tools/lean_boundary/lean-toolchain.
+# The ordinary compiler and runtime do not invoke Lean.
+check-lean-boundary:
+	cd tools/lean_boundary && lake build
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
@@ -431,4 +439,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary lint clean install uninstall test-install
