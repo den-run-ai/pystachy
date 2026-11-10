@@ -237,6 +237,28 @@ def backpressure(repeat: int) -> None:
             right.close()
 
 
+def send_payload(sock: netio.Socket, payload: bytes) -> None:
+    """Blocking transfers for the probes' two- and four-byte TCP messages."""
+    assert 0 < len(payload) <= 4
+    sent = 0
+    while sent < len(payload):
+        count = sock.send(payload[sent:])
+        assert 0 < count <= len(payload) - sent, "send made invalid progress"
+        sent += count
+
+
+def expect_payload(sock: netio.Socket, payload: bytes) -> None:
+    assert 0 < len(payload) <= 4
+    received = b""
+    while len(received) < len(payload):
+        remaining = len(payload) - len(received)
+        chunk = sock.recv(remaining)
+        assert chunk, "EOF before complete TCP payload"
+        assert len(chunk) <= remaining, "recv exceeded the requested size"
+        received += chunk
+    assert received == payload, "TCP payload mismatch"
+
+
 def tcp(repeat: int) -> None:
     for _ in range(repeat):
         listener = netio.socket()
@@ -264,12 +286,17 @@ def tcp(repeat: int) -> None:
             wait_one(selector, 2, netio.EVENT_READ)
             accepted, peer = listener.accept()
             try:
+                # accept() can inherit the listener's kernel nonblocking flag.
+                accepted.setblocking(True)
                 assert accepted.getblocking()
                 assert peer == client.getsockname()
                 assert accepted.getsockname() == address
                 assert client.getpeername() == address
-                assert client.send(b"tcp\x00") == 4
-                assert accepted.recv(4) == b"tcp\x00"
+                client.setblocking(True)
+                send_payload(client, b"tcp\x00")
+                client.setblocking(False)
+                assert not client.getblocking()
+                expect_payload(accepted, b"tcp\x00")
                 accepted.shutdown(netio.SHUT_WR)
                 selector.unregister(listener)
                 selector.register(client, netio.EVENT_READ, 3)
@@ -294,8 +321,8 @@ def blocking_connect(repeat: int) -> None:
             accepted, peer = listener.accept()
             try:
                 assert peer == client.getsockname()
-                assert accepted.send(b"ok") == 2
-                assert client.recv(2) == b"ok"
+                send_payload(accepted, b"ok")
+                expect_payload(client, b"ok")
             finally:
                 accepted.close()
         finally:
