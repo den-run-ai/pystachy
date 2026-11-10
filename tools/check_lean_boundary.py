@@ -70,13 +70,13 @@ def read_snapshot(path):
     return json.loads(raw, object_pairs_hook=unique_object), hashlib.sha256(raw).hexdigest()
 
 
-def instruction(value):
+def instruction(value, immediates=(0,)):
     require(isinstance(value, dict) and set(value) == OP_KEYS, "invalid instruction fields")
     for key in ("op", "type", "text", "descriptor"):
         require(isinstance(value[key], str) and len(value[key]) <= 256, f"invalid instruction {key}")
     if value["op"] not in SUPPORTED_OPS:
         raise Unsupported(f"unsupported operation: {value['op']}")
-    require(type(value["immediate"]) is int and value["immediate"] == 0,
+    require(type(value["immediate"]) is int and value["immediate"] in immediates,
             "nonzero instruction immediate is unsupported")
     require(value["descriptor"] == "", "instruction descriptor is unsupported")
     require(isinstance(value["results"], list) and len(value["results"]) <= 2,
@@ -174,15 +174,22 @@ def normalize_snapshot(snapshot, function):
     numbers = set()
     require(isinstance(fn.get("slots"), list) and len(fn["slots"]) <= MAX_NODES, "invalid slots")
     for raw in fn["slots"]:
-        op = instruction(raw)
+        # Slot kinds: storage, a local's "is assigned" flag and a stack tuple.
+        op = instruction(raw, (0, 1, 2))
         shape(op, 0, 1, texts=(op["text"],))
         require(op["op"] == "slot", "expected private slot declaration")
+        if op["immediate"] == 2:
+            raise Unsupported("stack tuple slots are outside the prototype")
         if op["type"] not in NATIVE_TYPES:
             raise Unsupported(f"unsupported private slot representation: {op['type']}")
+        # Name a slot as lowering does (slot_register, src/pystachy_compiler/ir.py): a local's
+        # "is assigned" flag and numeric identity companions share its number, which is no name.
         number = op["results"][0]
-        require(number not in numbers, "duplicate result identifier")
-        numbers.add(number)
-        slot = f"%{op['text'] or 'h'}.{number}"
+        if op["immediate"] == 1:
+            require(op["type"] == "bool" and op["text"] != "", "invalid assignment flag slot")
+            slot = f"%{op['text']}.def.{number}"
+        else:
+            slot = f"%{op['text'] or 'h'}.{number}"
         require(slot not in slots and len(slot) <= 256, "duplicate or invalid slot")
         slots[slot] = op["type"]
     starts = {}

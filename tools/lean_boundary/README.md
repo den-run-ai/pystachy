@@ -118,6 +118,10 @@ become nondeterministic branches. Supported scalar operations that cannot change
 a dynamic tag or control flow become jumps; private dynamic loads and stores
 remain explicit copies or unknown assignments.
 
+Slots are named as lowering names them, by text and kind. A local's "is assigned"
+flag (`%x.def.N`) and numeric identity companions (`%x.box.N`, `%x.boxgen.N`) share
+the local's number `N`; each remains a separate location. Stack tuples are refused.
+
 Pystachy commonly loads a private slot for its guard, then reloads that slot for
 the payload. The normalizer may put the guard fact on the slot only when the
 load, tag read, comparison and branch occur in the same block and no intervening
