@@ -1189,13 +1189,18 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     kv = [self.tget(ka.value, j) for j in range(len(kws))] if ka is not None else [self.expr(a.kids[0], iw if a.s == "default" and pure_arg(a.kids[0]) and a.kids[0].kind not in INERT else "") for a in kws]
     if is_opt(v0.t):
         v0 = self.unwrap(v0, "TypeError: 'NoneType' object is not iterable")
+    dv = [kv[j] for j in range(len(kws)) if kws[j].s == "default"][0]
+    keys = [kv[j] for j in range(len(kws)) if kws[j].s == "key"]
+    if v0.t == "dyn":
+        # A dynamic list must stay live while a key or comparison mutates it. Iteration also
+        # avoids list()'s length hint for dynamic user objects and preserves item identity.
+        return dynamic_minmax_default(self, name, v0, keys[0] if len(keys) > 0 else Val("null", "None"), dv)
     # (the items as min() and max() take them, which is by __iter__ alone: list() would ask an
     # object for its __len__ first, as a hint, and they never do)
     lv = v0 if is_list(v0.t) else self.as_list(v0, name)
     if not is_list(lv.t):
         self.err(f"'{tname(lv.t)}' object is not iterable")
     self.close_temp(it, v0)
-    dv = [kv[j] for j in range(len(kws)) if kws[j].s == "default"][0]
     rest = [mk("kw", "key", self.line, [self.vnode(kv[j])]) for j in range(len(kws)) if kws[j].s == "key"]
     some = self.num_cmp(">", self.builtin("len", [self.vnode(lv)], ""), Val("0", "int"))
     l1 = self.label()
@@ -1216,7 +1221,7 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     elif dv.t != r.t:
         # (an int | None default of int items; or types that differ only in which ints promote)
         t = dv.t if is_opt(dv.t) and unopt(dv.t) == r.t else self.join(r.t, dv.t) if r.t.replace(BIG, "int") == dv.t.replace(BIG, "int") else ""
-    if t == "" or (dv.t == "None" and not is_opt(t) and t != "None"):
+    if t == "" or (dv.t == "None" and not is_opt(t) and t not in ["None", "dyn"]):
         self.err(f"default= of {name}() must be None or of the items' type, {typestr(r.t)}, not {typestr(dv.t)}")
     e1 = "" if self.term else self.cur
     if e1 != "":
@@ -1238,6 +1243,58 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     if not self.idhere() or not numeric_identity(t):
         return result
     return self.numeric_phi(result, [r, d] if e1 != "" else [d], [e1, e2] if e1 != "" else [e2])
+
+def dynamic_minmax_default(self, name: str, o: Val, key: Val, default: Val) -> Val:
+    # Each dynamic item is compared as it arrives, retaining its original box. The default
+    # supplies only the empty result: it is never compared and never passed to the key.
+    if key.t != "None":
+        self.key_check(key, f"{name}()")
+    op = ">" if name == "max" else "<"
+    lnone = self.key_none(key, "dyn", op, f"{name}()") if key.t != "None" else ""
+    best = self.alloca("dyn", "")
+    self.mstore("dyn", self.coerce(default, "dyn").v, best)
+    first = self.alloca("bool", "")
+    self.mstore("bool", "true", first)
+    it = self.iterable(o)
+    lc = self.label()
+    le = self.label()
+    self.fn.loops.append(Loop("while", lc, lc, lc, le))
+    self.place(lc)
+    item = Val(self.rt("pys_dyn_next", "ptr", [f"ptr {it.v}"]), "dyn")
+    more = self.label()
+    self.cbr(self.ptr_cmp("==", item, Val("null", "dyn")).v, le, more)
+    self.place(more)
+    k = item if key.t == "None" else self.call_key(key, item)
+    if "?" in k.t or k.t == "None":
+        self.err(f"comparing the keys of {name}() is not supported: its key function returns {typestr(k.t)}")
+    bk = self.alloca(k.t, "")
+    take = self.label()
+    test = self.label()
+    self.cbr(self.mload("bool", first), take, test)
+    self.place(test)
+    better = self.cmp2(op, k, Val(self.mload(k.t, bk), k.t))
+    self.cbr(self.truth(better), take, lc)
+    self.place(take)
+    self.mstore("dyn", item.v, best)
+    self.mstore(k.t, k.v, bk)
+    self.mstore("bool", "false", first)
+    self.br(lc)
+    self.place(le)
+    result = Val(self.mload("dyn", best), "dyn")
+    if lnone == "":
+        return result
+    keyed = self.cur
+    end = self.label()
+    self.br(end)
+    self.place(lnone)
+    plain = dynamic_minmax_default(self, name, o, Val("null", "None"), default)
+    unkeyed = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "dyn", "")
+    self.incoming(ph, result.v, keyed)
+    self.incoming(ph, plain.v, unkeyed)
+    return Val(self.phi(ph), "dyn")
 
 def gen_vnode(self, v: Val) -> Node:
     # a node whose value is v, computed already: an argument of a call the compiler makes (the
