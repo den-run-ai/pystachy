@@ -1,0 +1,11 @@
+default
+default failed
+key
+key failed
+range() arg 3 must not be zero
+range() arg 3 must not be zero
+range() arg 3 must not be zero
+range() arg 3 must not be zero
+2 ['start', 'stop', 'step', 'default', 'key']
+-1 ['stop', 'key', 'default']
+[exit 0]
