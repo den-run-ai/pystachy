@@ -1,0 +1,19 @@
+{
+  "id": 13784460304,
+  "name": "netio-linux-pr-ubuntu-24.04",
+  "size_in_bytes": 13206,
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13784460304",
+  "archive_download_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/artifacts/13784460304/zip",
+  "expired": false,
+  "created_at": "2026-11-10T16:44:01Z",
+  "expires_at": "2026-11-17T16:44:00Z",
+  "updated_at": "2026-11-10T16:44:01Z",
+  "digest": "sha256:f12ce7972982ddf47d4b1c5ab439705a4c482714a86b2eb605d1fdf1883a7a04",
+  "workflow_run": {
+    "id": 42855237339,
+    "repository_id": 1409192014,
+    "head_repository_id": 1409192014,
+    "head_branch": "codex/alpha3-netio-qualification",
+    "head_sha": "e4e81296c7f322e04451980c882fa254d1eb0b62"
+  }
+}

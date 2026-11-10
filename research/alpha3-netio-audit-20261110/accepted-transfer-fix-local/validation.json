@@ -1,0 +1,66 @@
+{
+  "head_sha": "6cc496ab312346524df594ecdc0e9ab85cdc09bd",
+  "head_tree": "e21114a45febccb4aaca65008cda948cf3325112",
+  "parent": "e4e81296c7f322e04451980c882fa254d1eb0b62",
+  "changed_paths": [
+    "examples/netio/probe.py",
+    "tools/test_netio.py"
+  ],
+  "harness_tests": {
+    "count": 53,
+    "result": "pass",
+    "python": "3.13.16"
+  },
+  "fail_before_evidence": [
+    "Inherited accepted fd forced nonblocking while Python getblocking remained true: original tcp recv assertion fails physical-mode control",
+    "With explicit modes established but original single-I/O assertions retained, real one-byte sends and receives independently fail all four tcp/blocking_connect transfer assertions"
+  ],
+  "physical_mode_controls": [
+    "connect_ex runs with nonblocking kernel fd",
+    "accepted payload receive uses blocking kernel fd",
+    "TCP payload sender uses blocking kernel fd",
+    "client EOF receive returns to nonblocking kernel fd"
+  ],
+  "invalid_transfer_controls": [
+    "send returns zero: immediate rejection",
+    "send returns more than remaining payload: immediate rejection",
+    "recv returns EOF before complete payload: immediate rejection",
+    "completed receive differs from expected bytes including NUL: rejection"
+  ],
+  "payload_bound_bytes": 4,
+  "unchanged_contracts": [
+    "connect_ex pending/error whitelist",
+    "writable readiness and SO_ERROR == 0",
+    "client EOF read readiness",
+    "dedicated nonblocking backpressure/readiness tests",
+    "external execution timeouts"
+  ],
+  "cpython_report": {
+    "file": "linux-cpython.json",
+    "file_sha256": "a0d689d175f5bda2da694a57d4590dc8aaa59f278ea2b78a8944e9523d55a662",
+    "result": "pass",
+    "cases": 12,
+    "repeat": 2,
+    "modes": [
+      "cpython_oracle",
+      "cpython_bridge"
+    ],
+    "source_hashes_verified": 6
+  },
+  "hosted_ir_report": "ir.json",
+  "ruff": "pass",
+  "diff_check": "pass",
+  "independent_review": "lean_review inspected completed diff with no finding",
+  "native_and_macos": "not run locally; exact-head CI rerun required",
+  "source_references": [
+    "https://github.com/python/cpython/blob/v3.13.16/Doc/library/socket.rst",
+    "https://github.com/python/cpython/blob/v3.13.16/Lib/socket.py"
+  ],
+  "observed_ci_failure": {
+    "head": "e4e81296c7f322e04451980c882fa254d1eb0b62",
+    "workflow_run": 42855237339,
+    "job_id": 129972818539,
+    "mode": "cpython_oracle/tcp",
+    "error": "accepted.recv(4): BlockingIOError errno35"
+  }
+}

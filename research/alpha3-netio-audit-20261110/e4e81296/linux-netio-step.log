@@ -1,0 +1,131 @@
+2026-11-10T16:42:39.0557318Z libclang-rt-18-dev is already the newest version (1:18.1.3-1ubuntu1).
+2026-11-10T16:42:39.0557914Z libclang-rt-18-dev set to manually installed.
+2026-11-10T16:42:39.0558404Z 0 upgraded, 0 newly installed, 0 to remove and 39 not upgraded.
+2026-11-10T16:42:39.0614300Z ##[group]Run test -x ./pystachy
+2026-11-10T16:42:39.0614784Z [36;1mtest -x ./pystachy[0m
+2026-11-10T16:42:39.0615258Z [36;1mpython3 -m unittest discover -s tools -p 'test_netio*.py'[0m
+2026-11-10T16:42:39.0616080Z [36;1mpython3 examples/netio/benchmark.py --cpython-only --smoke --json build/netio-linux-benchmark-smoke.json[0m
+2026-11-10T16:42:39.0617156Z [36;1mpython3 examples/netio/check.py --compiler 'python3 pystachy.py' --repeat 2 --json build/netio-linux-hosted.json[0m
+2026-11-10T16:42:39.0618236Z [36;1mpython3 examples/netio/check_drain.py --compiler 'python3 pystachy.py' --json build/netio-linux-drain-hosted.json[0m
+2026-11-10T16:42:39.0618970Z [36;1mmkdir -p build/netio[0m
+2026-11-10T16:42:39.0619489Z [36;1m"$PYSTACHY_LLVM/clang" -std=c11 -O1 -g -Wall -Wextra -Werror -Wpedantic \[0m
+2026-11-10T16:42:39.0620145Z [36;1m  -fsanitize=address,undefined -fno-omit-frame-pointer \[0m
+2026-11-10T16:42:39.0621046Z [36;1m  examples/netio/netio.c examples/netio/ownership.c -o build/netio/ownership[0m
+2026-11-10T16:42:39.0621692Z [36;1mASAN_OPTIONS=detect_leaks=1 build/netio/ownership[0m
+2026-11-10T16:42:39.0622445Z [36;1mpython3 examples/netio/check.py --compiler ./pystachy --repeat 2 --json build/netio-linux-native.json[0m
+2026-11-10T16:42:39.0623444Z [36;1mpython3 examples/netio/check_drain.py --compiler ./pystachy --json build/netio-linux-drain-native.json[0m
+2026-11-10T16:42:39.0648107Z shell: /usr/bin/bash -e {0}
+2026-11-10T16:42:39.0648446Z env:
+2026-11-10T16:42:39.0648709Z   PYSTACHY_JOBS: 4
+2026-11-10T16:42:39.0649110Z   CI_EVENT_BASE_SHA: ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab
+2026-11-10T16:42:39.0649627Z   CI_HEAD_SHA: e4e81296c7f322e04451980c882fa254d1eb0b62
+2026-11-10T16:42:39.0650136Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:42:39.0650724Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T16:42:39.0651921Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:42:39.0652457Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:42:39.0652984Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:42:39.0653474Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T16:42:39.0653936Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T16:42:39.0654280Z ##[endgroup]
+2026-11-10T16:42:40.8377808Z ..................................................
+2026-11-10T16:42:40.8378334Z ----------------------------------------------------------------------
+2026-11-10T16:42:40.8378646Z Ran 50 tests in 1.576s
+2026-11-10T16:42:40.8378782Z 
+2026-11-10T16:42:40.8378859Z OK
+2026-11-10T16:42:41.1664838Z pair_64      cpython_stdlib          6561 ns/iteration 1.000x CPython stdlib
+2026-11-10T16:42:41.2354973Z pair_64      cpython_bridge         31057 ns/iteration 0.211x CPython stdlib
+2026-11-10T16:42:41.2355638Z fanin_4k     cpython_stdlib         80190 ns/iteration 1.000x CPython stdlib
+2026-11-10T16:42:41.2356267Z fanin_4k     cpython_bridge        285722 ns/iteration 0.281x CPython stdlib
+2026-11-10T16:42:41.3043586Z sparse_64    cpython_stdlib          6600 ns/iteration 1.000x CPython stdlib
+2026-11-10T16:42:41.3712234Z sparse_64    cpython_bridge        105215 ns/iteration 0.063x CPython stdlib
+2026-11-10T16:42:41.3712924Z bulk_64k     cpython_stdlib         55315 ns/iteration 1.000x CPython stdlib
+2026-11-10T16:42:41.3713533Z bulk_64k     cpython_bridge        140574 ns/iteration 0.393x CPython stdlib
+2026-11-10T16:42:41.8143994Z cpython_oracle: 12 scenarios passed
+2026-11-10T16:42:51.4552235Z cpython_bridge: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:03.8737502Z jit: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:03.9026252Z aot: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:11.4257527Z jit_gc: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:11.4571719Z aot_gc: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:11.4586972Z Socket/readiness parity passed for the documented optional prototype surface.
+2026-11-10T16:43:20.1431303Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:43:20.1872177Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:43:25.5974667Z jit: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:43:25.5990160Z aot: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:43:25.9747179Z jit_gc: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:43:25.9778311Z aot_gc: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:43:26.6210093Z netio ownership: 300 cycles, SIGPIPE, pipe readiness and bounds pass
+2026-11-10T16:43:27.0544804Z cpython_oracle: 12 scenarios passed
+2026-11-10T16:43:34.9267368Z cpython_bridge: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:43.9623065Z jit: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:43.9911198Z aot: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:48.0143465Z jit_gc: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:48.0453436Z aot_gc: 12 scenarios match the stdlib oracle
+2026-11-10T16:43:48.0469170Z Socket/readiness parity passed for the documented optional prototype surface.
+2026-11-10T16:43:54.8373611Z cpython_oracle: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:43:54.8812478Z cpython_bridge: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:44:00.0348209Z jit: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:44:00.0363932Z aot: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:44:00.1961281Z jit_gc: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:44:00.1993631Z aot_gc: fragment batches verified; later pipe completed first; binary output matches
+2026-11-10T16:44:00.2143882Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-10T16:44:00.2144218Z with:
+2026-11-10T16:44:00.2144426Z   name: netio-linux-pr-ubuntu-24.04
+2026-11-10T16:44:00.2144672Z   path: build/netio-linux*.json
+2026-11-10T16:44:00.2144885Z   if-no-files-found: warn
+2026-11-10T16:44:00.2145091Z   retention-days: 7
+2026-11-10T16:44:00.2145274Z   overwrite: true
+2026-11-10T16:44:00.2145455Z   compression-level: 6
+2026-11-10T16:44:00.2145658Z   include-hidden-files: false
+2026-11-10T16:44:00.2145866Z   archive: true
+2026-11-10T16:44:00.2146034Z env:
+2026-11-10T16:44:00.2146203Z   PYSTACHY_JOBS: 4
+2026-11-10T16:44:00.2146434Z   CI_EVENT_BASE_SHA: ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab
+2026-11-10T16:44:00.2146748Z   CI_HEAD_SHA: e4e81296c7f322e04451980c882fa254d1eb0b62
+2026-11-10T16:44:00.2147049Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:44:00.2147416Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T16:44:00.2147799Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:44:00.2148113Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:44:00.2148567Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:44:00.2148892Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T16:44:00.2149156Z ##[endgroup]
+2026-11-10T16:44:00.3422377Z With the provided path, there will be 5 files uploaded
+2026-11-10T16:44:00.6652085Z Artifact name is valid!
+2026-11-10T16:44:00.6652499Z Root directory input is valid!
+2026-11-10T16:44:01.0601973Z Uploading artifact: netio-linux-pr-ubuntu-24.04.zip
+2026-11-10T16:44:01.0631823Z Beginning upload of artifact content to blob storage
+2026-11-10T16:44:01.3883284Z Uploaded bytes 13206
+2026-11-10T16:44:01.4639056Z Finished uploading artifact content to blob storage!
+2026-11-10T16:44:01.4639981Z SHA256 digest of uploaded artifact is f12ce7972982ddf47d4b1c5ab439705a4c482714a86b2eb605d1fdf1883a7a04
+2026-11-10T16:44:01.4640734Z Finalizing artifact upload
+2026-11-10T16:44:02.0867775Z Artifact netio-linux-pr-ubuntu-24.04 successfully finalized. Artifact ID 13784460304
+2026-11-10T16:44:02.0868441Z Artifact netio-linux-pr-ubuntu-24.04 has been successfully uploaded! Final size is 13206 bytes. Artifact ID is 13784460304
+2026-11-10T16:44:02.0869089Z Artifact download URL: https://github.com/den-run-ai/pystachy/actions/runs/42855237339/artifacts/13784460304
+2026-11-10T16:44:02.0993377Z ##[group]Run python3 -m pip install -r tools/requirements-packaging.txt
+2026-11-10T16:44:02.0993808Z [36;1mpython3 -m pip install -r tools/requirements-packaging.txt[0m
+2026-11-10T16:44:02.0994142Z [36;1mpython3 tools/compiler_install_smoke.py[0m
+2026-11-10T16:44:02.1011934Z shell: /usr/bin/bash -e {0}
+2026-11-10T16:44:02.1012153Z env:
+2026-11-10T16:44:02.1012327Z   PYSTACHY_JOBS: 4
+2026-11-10T16:44:02.1012588Z   CI_EVENT_BASE_SHA: ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab
+2026-11-10T16:44:02.1012903Z   CI_HEAD_SHA: e4e81296c7f322e04451980c882fa254d1eb0b62
+2026-11-10T16:44:02.1013225Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:44:02.1013579Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-10T16:44:02.1013944Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:44:02.1014269Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:44:02.1014613Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-10T16:44:02.1014926Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-10T16:44:02.1015217Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-10T16:44:02.1015440Z ##[endgroup]
+2026-11-10T16:44:02.6029065Z Collecting uv==0.13.7 (from -r tools/requirements-packaging.txt (line 2))
+2026-11-10T16:44:02.6041327Z   Using cached uv-0.13.7-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
+2026-11-10T16:44:02.6564031Z Collecting setuptools==84.2.1 (from -r tools/requirements-packaging.txt (line 3))
+2026-11-10T16:44:02.6574193Z   Using cached setuptools-84.2.1-py3-none-any.whl.metadata (6.6 kB)
+2026-11-10T16:44:02.6747374Z Collecting wheel==0.48.0 (from -r tools/requirements-packaging.txt (line 4))
+2026-11-10T16:44:02.6756275Z   Using cached wheel-0.48.0-py3-none-any.whl.metadata (2.3 kB)
+2026-11-10T16:44:02.6896077Z Collecting packaging>=24.0 (from wheel==0.48.0->-r tools/requirements-packaging.txt (line 4))
+2026-11-10T16:44:02.6904707Z   Using cached packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+2026-11-10T16:44:02.6925482Z Using cached uv-0.13.7-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (17.2 MB)
+2026-11-10T16:44:02.6984492Z Using cached setuptools-84.2.1-py3-none-any.whl (876 kB)
+2026-11-10T16:44:02.6995253Z Using cached wheel-0.48.0-py3-none-any.whl (33 kB)
+2026-11-10T16:44:02.7003926Z Using cached packaging-26.3-py3-none-any.whl (129 kB)
+2026-11-10T16:44:02.7443543Z Installing collected packages: uv, setuptools, packaging, wheel

@@ -1,0 +1,172 @@
+{
+  "id": 129972818539,
+  "run_id": 42855237339,
+  "workflow_name": "CI",
+  "head_branch": "codex/alpha3-netio-qualification",
+  "run_url": "https://api.github.com/repos/den-run-ai/pystachy/actions/runs/42855237339",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOU_6QTs8AAAAeQvvSaw",
+  "head_sha": "e4e81296c7f322e04451980c882fa254d1eb0b62",
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/actions/jobs/129972818539",
+  "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/42855237339/job/129972818539",
+  "status": "completed",
+  "conclusion": "failure",
+  "created_at": "2026-11-10T16:41:17Z",
+  "started_at": "2026-11-10T16:41:20Z",
+  "completed_at": "2026-11-10T16:47:05Z",
+  "name": "distribution (macos-15)",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-10T16:41:20Z",
+      "completed_at": "2026-11-10T16:41:22Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-10T16:41:22Z",
+      "completed_at": "2026-11-10T16:41:27Z"
+    },
+    {
+      "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-10T16:41:27Z",
+      "completed_at": "2026-11-10T16:41:52Z"
+    },
+    {
+      "name": "Run tools/setup.sh --minimal",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-10T16:41:52Z",
+      "completed_at": "2026-11-10T16:42:17Z"
+    },
+    {
+      "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 5,
+      "started_at": "2026-11-10T16:42:17Z",
+      "completed_at": "2026-11-10T16:42:17Z"
+    },
+    {
+      "name": "Reuse verified Linux compiler",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 6,
+      "started_at": "2026-11-10T16:42:17Z",
+      "completed_at": "2026-11-10T16:42:17Z"
+    },
+    {
+      "name": "Bootstrap on macOS ARM64",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-10T16:42:17Z",
+      "completed_at": "2026-11-10T16:46:09Z"
+    },
+    {
+      "name": "Installer and hosted/native JIT/AOT smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-10T16:46:09Z",
+      "completed_at": "2026-11-10T16:46:57Z"
+    },
+    {
+      "name": "Install sanitizer runtime for netio ownership",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 9,
+      "started_at": "2026-11-10T16:46:57Z",
+      "completed_at": "2026-11-10T16:46:57Z"
+    },
+    {
+      "name": "Hosted and native epoll, pipes and ownership",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 10,
+      "started_at": "2026-11-10T16:46:57Z",
+      "completed_at": "2026-11-10T16:46:57Z"
+    },
+    {
+      "name": "Retain Linux netio reports",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 11,
+      "started_at": "2026-11-10T16:46:57Z",
+      "completed_at": "2026-11-10T16:46:57Z"
+    },
+    {
+      "name": "Native kqueue and pipe parity",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 12,
+      "started_at": "2026-11-10T16:46:57Z",
+      "completed_at": "2026-11-10T16:46:58Z"
+    },
+    {
+      "name": "Retain native kqueue reports",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-10T16:46:58Z",
+      "completed_at": "2026-11-10T16:47:00Z"
+    },
+    {
+      "name": "Install the compiler with pip and uv",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 14,
+      "started_at": "2026-11-10T16:47:00Z",
+      "completed_at": "2026-11-10T16:47:00Z"
+    },
+    {
+      "name": "Source packages and native release archive smoke",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 15,
+      "started_at": "2026-11-10T16:47:00Z",
+      "completed_at": "2026-11-10T16:47:00Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 29,
+      "started_at": "2026-11-10T16:47:00Z",
+      "completed_at": "2026-11-10T16:47:00Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 30,
+      "started_at": "2026-11-10T16:47:00Z",
+      "completed_at": "2026-11-10T16:47:00Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 31,
+      "started_at": "2026-11-10T16:47:00Z",
+      "completed_at": "2026-11-10T16:47:03Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/den-run-ai/pystachy/check-runs/129972818539",
+  "labels": [
+    "macos-15"
+  ],
+  "runner_id": 1000077342,
+  "runner_name": "GitHub Actions 1000077342",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}

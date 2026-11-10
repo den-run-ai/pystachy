@@ -1,0 +1,56 @@
+2026-11-10T16:46:57.8067070Z ##[group]Run test -x ./pystachy
+2026-11-10T16:46:57.8067540Z [36;1mtest -x ./pystachy[0m
+2026-11-10T16:46:57.8067990Z [36;1mpython3 examples/netio/check.py --compiler ./pystachy --repeat 1 --timeout 30 \[0m
+2026-11-10T16:46:57.8068640Z [36;1m  --build-timeout 120 --json build/netio-macos.json[0m
+2026-11-10T16:46:57.8069530Z [36;1mpython3 examples/netio/check_drain.py --compiler ./pystachy --timeout 30 \[0m
+2026-11-10T16:46:57.8069900Z [36;1m  --json build/netio-drain-macos.json[0m
+2026-11-10T16:46:57.8137870Z shell: /bin/bash -e {0}
+2026-11-10T16:46:57.8138680Z env:
+2026-11-10T16:46:57.8138850Z   PYSTACHY_JOBS: 4
+2026-11-10T16:46:57.8139570Z   CI_EVENT_BASE_SHA: ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab
+2026-11-10T16:46:57.8140600Z   CI_HEAD_SHA: e4e81296c7f322e04451980c882fa254d1eb0b62
+2026-11-10T16:46:57.8141260Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:46:57.8142390Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-10T16:46:57.8143790Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:46:57.8144770Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:46:57.8145750Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:46:57.8146970Z   PYSTACHY_LLVM: /opt/homebrew/opt/llvm@20/bin
+2026-11-10T16:46:57.8147440Z ##[endgroup]
+2026-11-10T16:46:58.7839370Z cpython_oracle/tcp: command=['/Library/Frameworks/Python.framework/Versions/3.13/bin/python3', '/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-140keohi/probe.py', 'tcp', '1'], timeout=30.0s, exit=1
+2026-11-10T16:46:58.7842430Z stdout=b''
+2026-11-10T16:46:58.7871250Z stderr=b'Traceback (most recent call last):\n  File "/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-140keohi/probe.py", line 461, in <module>\n    main()\n    ~~~~^^\n  File "/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-140keohi/probe.py", line 442, in main\n    tcp(repeat)\n    ~~~^^^^^^^^\n  File "/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-140keohi/probe.py", line 272, in tcp\n    assert accepted.recv(4) == b"tcp\\x00"\n           ~~~~~~~~~~~~~^^^\nBlockingIOError: [Errno 35] Resource temporarily unavailable\n'
+2026-11-10T16:46:58.7913900Z ##[error]Process completed with exit code 1.
+2026-11-10T16:46:58.8602860Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-10T16:46:58.8603310Z with:
+2026-11-10T16:46:58.8603490Z   name: netio-kqueue-pr-macos-15
+2026-11-10T16:46:58.8603760Z   path: build/netio-macos.json
+2026-11-10T16:46:58.8604040Z   if-no-files-found: warn
+2026-11-10T16:46:58.8604230Z   retention-days: 7
+2026-11-10T16:46:58.8604390Z   overwrite: true
+2026-11-10T16:46:58.8604560Z   compression-level: 6
+2026-11-10T16:46:58.8604740Z   include-hidden-files: false
+2026-11-10T16:46:58.8604940Z   archive: true
+2026-11-10T16:46:58.8605090Z env:
+2026-11-10T16:46:58.8605270Z   PYSTACHY_JOBS: 4
+2026-11-10T16:46:58.8605490Z   CI_EVENT_BASE_SHA: ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab
+2026-11-10T16:46:58.8605800Z   CI_HEAD_SHA: e4e81296c7f322e04451980c882fa254d1eb0b62
+2026-11-10T16:46:58.8606140Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:46:58.8606610Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-10T16:46:58.8607020Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:46:58.8607400Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:46:58.8607760Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:46:58.8608050Z ##[endgroup]
+2026-11-10T16:46:59.4176280Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-11-10T16:46:59.4178360Z The least common ancestor is /Users/runner/work/pystachy/pystachy/build. This will be the root directory of the artifact
+2026-11-10T16:46:59.4178880Z With the provided path, there will be 1 file uploaded
+2026-11-10T16:46:59.5350430Z Artifact name is valid!
+2026-11-10T16:46:59.5351260Z Root directory input is valid!
+2026-11-10T16:46:59.7722910Z Uploading artifact: netio-kqueue-pr-macos-15.zip
+2026-11-10T16:46:59.7723820Z Beginning upload of artifact content to blob storage
+2026-11-10T16:46:59.8118130Z Uploaded bytes 1151
+2026-11-10T16:46:59.8307510Z Finished uploading artifact content to blob storage!
+2026-11-10T16:46:59.8309390Z SHA256 digest of uploaded artifact is efcb941ab86971e527210370b2b37b25012ac4a8b0e7e304311e8e2e03132c39
+2026-11-10T16:46:59.8310540Z Finalizing artifact upload
+2026-11-10T16:47:00.2205940Z Artifact netio-kqueue-pr-macos-15 successfully finalized. Artifact ID 13783203103
+2026-11-10T16:47:00.2206790Z Artifact netio-kqueue-pr-macos-15 has been successfully uploaded! Final size is 1151 bytes. Artifact ID is 13783203103
+2026-11-10T16:47:00.2219100Z Artifact download URL: https://github.com/den-run-ai/pystachy/actions/runs/42855237339/artifacts/13783203103
