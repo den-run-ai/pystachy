@@ -1,0 +1,11 @@
+{
+  "parent": "cbb02637a069250680d9c950edb5315ed62a8d88",
+  "ircheck": "1",
+  "program": "examples/netio/probe.py",
+  "source_sha256": "36dd197f72dbc7a3e488ca13979c5bf1a9a6594f67a75938b63adbbbae0dd1eb",
+  "exit": 0,
+  "seconds": 0.275,
+  "ir_bytes": 452798,
+  "ir_sha256": "0ec628c11afac7f1246aba1704c84978c3525ab77125b54fa6788b1ccd33c07f",
+  "stderr": ""
+}

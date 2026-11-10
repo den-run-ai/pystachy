@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "result": "fail",
+  "cases": [
+    "lifecycle",
+    "binary",
+    "selector_keys",
+    "readiness",
+    "backpressure",
+    "tcp",
+    "blocking_connect",
+    "refused",
+    "timeouts",
+    "fd_reuse",
+    "closed_errors",
+    "inherited_pipe"
+  ],
+  "modes": [],
+  "runs": {},
+  "python": "3.13.16",
+  "platform": "macOS-15.8.2-arm64-arm-64bit-Mach-O",
+  "source_sha256": {
+    "netio.c": "722e7a8b714fe7787c6f63ce564b08260da97130cc7ff88dde89d8b9105ef620",
+    "netio.h": "cb008b4893980e6f52c11036138186f353b1edd41f601158bbe1490896aeaaf4",
+    "netio.py": "893ad3096f4ee227bde46dddd9f6426cbf7faafd69dc95aa44ff151d2fe1c9be",
+    "probe.py": "d2a18a09dfce77635dcb30e6f4764af67a015d2a893820a4c8e46cd3e6c97f16",
+    "oracle/netio.py": "0ed47d2c24bd75c5b96c0b4bdb9583bb16710e6afae5cda7a17088f830fa1826",
+    "check.py": "35ce4670c5a1d33396265e0f7b66e27be3438acdc53eecdff7717b56d7943861"
+  },
+  "repeat": 1,
+  "compiler": [
+    "/Users/runner/work/pystachy/pystachy/pystachy"
+  ],
+  "c_compiler": [
+    "/opt/homebrew/opt/llvm@20/bin/clang"
+  ],
+  "library_sha256": "ed3a59f14ed2e032dd35dc5aa76c5e725d1ae53a3a7df714f45bddcac3c4e68b",
+  "error": "cpython_oracle/refused: command=['/Library/Frameworks/Python.framework/Versions/3.13/bin/python3', '/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py', 'refused', '1'], timeout=30.0s, exit=1\nstdout=b''\nstderr=b'Traceback (most recent call last):\\n  File \"/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py\", line 457, in <module>\\n    main()\\n    ~~~~^^\\n  File \"/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py\", line 442, in main\\n    refused(repeat)\\n    ~~~~~~~^^^^^^^^\\n  File \"/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py\", line 321, in refused\\n    wait_one(selector, 1, netio.EVENT_WRITE)\\n    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \"/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py\", line 14, in wait_one\\n    assert len(ready) == 1, \"expected exactly one ready registration\"\\n           ^^^^^^^^^^^^^^^\\nAssertionError: expected exactly one ready registration\\n'"
+}

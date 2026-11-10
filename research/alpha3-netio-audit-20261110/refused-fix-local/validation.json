@@ -1,0 +1,54 @@
+{
+  "head_sha": "99caca3658f55043a4dafa4b230880b34e98279d",
+  "head_tree": "30cf2986f9fb929aa50fcc46f06a973a5a109285",
+  "parent": "cbb02637a069250680d9c950edb5315ed62a8d88",
+  "changed_paths": [
+    "examples/netio/probe.py",
+    "tools/test_netio.py"
+  ],
+  "regression_before_fix": "Real-socket fixture regression fails because destination reservation is still open at connect_ex",
+  "harness_tests": {
+    "count": 50,
+    "result": "pass",
+    "python": "3.13.16"
+  },
+  "positive_guards": [
+    "Destination reservation closed before connect",
+    "Client source port prebound and distinct from destination"
+  ],
+  "negative_controls": [
+    "Immediate connection success rejected",
+    "No write readiness rejected",
+    "Ready completion with SO_ERROR=0 rejected"
+  ],
+  "cpython_report": {
+    "file": "linux-cpython.json",
+    "file_sha256": "83e41d8be65eb6a1f42bb6d5b87ae266156c676e5775b83a546e08115a8de128",
+    "result": "pass",
+    "cases": 12,
+    "repeat": 2,
+    "modes": [
+      "cpython_oracle",
+      "cpython_bridge"
+    ],
+    "source_hashes_verified": 6
+  },
+  "hosted_ir_report": "ir.json",
+  "ruff": "pass",
+  "diff_check": "pass",
+  "native_and_macos": "not run locally; exact-head CI rerun required",
+  "cause": {
+    "xnu_commit": "f6217f891ac0bb64f3d375211650a4c1ff8ca1ea",
+    "source": "https://github.com/apple-oss-distributions/xnu/blob/f6217f891ac0bb64f3d375211650a4c1ff8ca1ea/bsd/netinet/tcp_input.c",
+    "source_matches_reviewed_main": true,
+    "closed_state_drop_lines": [
+      3195,
+      3199
+    ],
+    "no_pcb_reset_line": 3120,
+    "rst_connection_refused_line": 4155,
+    "description": "Darwin drops packets matching a bound TCP endpoint in TCPS_CLOSED. Releasing the destination removes that endpoint so loopback SYN reaches the no-PCB reset path."
+  },
+  "remaining_risk": "Another process can take the destination after release. The strict readiness and ECONNREFUSED checks fail closed on unexpected connection success or another error; no retries or timeout extension hide this race.",
+  "fixture_reference": "https://github.com/python/cpython/blob/v3.13.16/Lib/test/support/socket_helper.py"
+}

@@ -1,0 +1,73 @@
+2026-11-10T16:22:22.4289290Z ##[group]Run test -x ./pystachy
+2026-11-10T16:22:22.4289680Z [36;1mtest -x ./pystachy[0m
+2026-11-10T16:22:22.4290210Z [36;1mpython3 examples/netio/check.py --compiler ./pystachy --repeat 1 --timeout 30 \[0m
+2026-11-10T16:22:22.4290820Z [36;1m  --build-timeout 120 --json build/netio-macos.json[0m
+2026-11-10T16:22:22.4292340Z [36;1mpython3 examples/netio/check_drain.py --compiler ./pystachy --timeout 30 \[0m
+2026-11-10T16:22:22.4293430Z [36;1m  --json build/netio-drain-macos.json[0m
+2026-11-10T16:22:22.4379270Z shell: /bin/bash -e {0}
+2026-11-10T16:22:22.4379530Z env:
+2026-11-10T16:22:22.4379860Z   PYSTACHY_JOBS: 4
+2026-11-10T16:22:22.4380180Z   CI_EVENT_BASE_SHA: ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab
+2026-11-10T16:22:22.4380600Z   CI_HEAD_SHA: cbb02637a069250680d9c950edb5315ed62a8d88
+2026-11-10T16:22:22.4381080Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:22:22.4382300Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-10T16:22:22.4382830Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:22:22.4383380Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:22:22.4383800Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:22:22.4384260Z   PYSTACHY_LLVM: /opt/homebrew/opt/llvm@20/bin
+2026-11-10T16:22:22.4384580Z ##[endgroup]
+2026-11-10T16:22:25.6987210Z cpython_oracle/refused: command=['/Library/Frameworks/Python.framework/Versions/3.13/bin/python3', '/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py', 'refused', '1'], timeout=30.0s, exit=1
+2026-11-10T16:22:25.6988610Z stdout=b''
+2026-11-10T16:22:25.6991000Z stderr=b'Traceback (most recent call last):\n  File "/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py", line 457, in <module>\n    main()\n    ~~~~^^\n  File "/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py", line 442, in main\n    refused(repeat)\n    ~~~~~~~^^^^^^^^\n  File "/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py", line 321, in refused\n    wait_one(selector, 1, netio.EVENT_WRITE)\n    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File "/var/folders/2s/vty41l455yv698g4xkgfv7z00000gn/T/pystachy-netio-7tk_8i7p/probe.py", line 14, in wait_one\n    assert len(ready) == 1, "expected exactly one ready registration"\n           ^^^^^^^^^^^^^^^\nAssertionError: expected exactly one ready registration\n'
+2026-11-10T16:22:25.7094230Z ##[error]Process completed with exit code 1.
+2026-11-10T16:22:25.7234110Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-10T16:22:25.7234490Z with:
+2026-11-10T16:22:25.7234670Z   name: netio-kqueue-pr-macos-15
+2026-11-10T16:22:25.7234970Z   path: build/netio-macos.json
+2026-11-10T16:22:25.7235320Z   if-no-files-found: warn
+2026-11-10T16:22:25.7235510Z   retention-days: 7
+2026-11-10T16:22:25.7235710Z   overwrite: true
+2026-11-10T16:22:25.7235900Z   compression-level: 6
+2026-11-10T16:22:25.7236090Z   include-hidden-files: false
+2026-11-10T16:22:25.7236270Z   archive: true
+2026-11-10T16:22:25.7236400Z env:
+2026-11-10T16:22:25.7236540Z   PYSTACHY_JOBS: 4
+2026-11-10T16:22:25.7236820Z   CI_EVENT_BASE_SHA: ad3d0c0eda3ccf2ae2a35d38c92f345205e853ab
+2026-11-10T16:22:25.7237110Z   CI_HEAD_SHA: cbb02637a069250680d9c950edb5315ed62a8d88
+2026-11-10T16:22:25.7237450Z   pythonLocation: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:22:25.7237980Z   PKG_CONFIG_PATH: /Users/runner/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-10T16:22:25.7238510Z   Python_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:22:25.7238900Z   Python2_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:22:25.7239290Z   Python3_ROOT_DIR: /Users/runner/hostedtoolcache/Python/3.13.16/arm64
+2026-11-10T16:22:25.7239590Z ##[endgroup]
+2026-11-10T16:22:26.1767590Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-11-10T16:22:26.1770260Z The least common ancestor is /Users/runner/work/pystachy/pystachy/build. This will be the root directory of the artifact
+2026-11-10T16:22:26.1773270Z With the provided path, there will be 1 file uploaded
+2026-11-10T16:22:26.4857560Z Artifact name is valid!
+2026-11-10T16:22:26.4857990Z Root directory input is valid!
+2026-11-10T16:22:26.8733200Z Uploading artifact: netio-kqueue-pr-macos-15.zip
+2026-11-10T16:22:26.8734180Z Beginning upload of artifact content to blob storage
+2026-11-10T16:22:27.1788990Z Uploaded bytes 1186
+2026-11-10T16:22:27.2500230Z Finished uploading artifact content to blob storage!
+2026-11-10T16:22:27.2601910Z SHA256 digest of uploaded artifact is 899a25cca2eb3f8bbf73454e090638b4d23ddb53a847ffbfe118d13afe9caa6b
+2026-11-10T16:22:27.2701710Z Finalizing artifact upload
+2026-11-10T16:22:27.8395040Z Artifact netio-kqueue-pr-macos-15 successfully finalized. Artifact ID 13782335737
+2026-11-10T16:22:27.8397050Z Artifact netio-kqueue-pr-macos-15 has been successfully uploaded! Final size is 1186 bytes. Artifact ID is 13782335737
+2026-11-10T16:22:27.8399190Z Artifact download URL: https://github.com/den-run-ai/pystachy/actions/runs/42850804216/artifacts/13782335737
+2026-11-10T16:22:27.8668650Z Post job cleanup.
+2026-11-10T16:22:27.9913800Z [command]/opt/homebrew/bin/git version
+2026-11-10T16:22:28.0003810Z git version 2.56.0
+2026-11-10T16:22:28.0020960Z Copying '/Users/runner/.gitconfig' to '/Users/runner/work/_temp/854b4fcb-8de8-4761-a052-17dfd87e8814/.gitconfig'
+2026-11-10T16:22:28.0034690Z Temporarily overriding HOME='/Users/runner/work/_temp/854b4fcb-8de8-4761-a052-17dfd87e8814' before making global git config changes
+2026-11-10T16:22:28.0036850Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-10T16:22:28.0047080Z [command]/opt/homebrew/bin/git config --global --add safe.directory /Users/runner/work/pystachy/pystachy
+2026-11-10T16:22:28.0120880Z Removing SSH command configuration
+2026-11-10T16:22:28.0124410Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-10T16:22:28.0202840Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-10T16:22:28.1369720Z Removing HTTP extra header
+2026-11-10T16:22:28.1377100Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-10T16:22:28.1514620Z [command]/opt/homebrew/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-10T16:22:28.2755800Z Removing includeIf entries pointing to credentials config files
+2026-11-10T16:22:28.2858630Z [command]/opt/homebrew/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-10T16:22:28.3168050Z [command]/opt/homebrew/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-10T16:22:28.4664420Z Cleaning up orphan processes

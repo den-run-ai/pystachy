@@ -1,0 +1,44 @@
+{
+  "head_sha": "eea8afd47ebc56e7d3be793d04db30c8eee20eab",
+  "head_tree": "5f322fa9993706512b3c86f4e724a6ae84b8f40a",
+  "parent": "37a9db95268b767e75f05091c5a8946a42300c77",
+  "changed_paths": [
+    "examples/netio/probe.py",
+    "tools/test_netio.py"
+  ],
+  "regression_before_fix": "New FlagSocket enabled-result=4 case fails at probe.py:247 old SO_REUSEADDR == 1 assertion",
+  "harness_tests": {
+    "count": 49,
+    "result": "pass",
+    "python": "3.13.16"
+  },
+  "negative_controls": [
+    "SO_REUSEADDR returns zero after enabling: rejected",
+    "SO_REUSEADDR returns nonzero after disabling: rejected"
+  ],
+  "cpython_report": {
+    "file": "option-fix-linux-cpython.json",
+    "file_sha256": "1e7986685a73c05825402f7fb78e5b08410883e137d6a61ca93d8db86ca2cc2e",
+    "result": "pass",
+    "cases": 12,
+    "repeat": 2,
+    "modes": [
+      "cpython_oracle",
+      "cpython_bridge"
+    ],
+    "source_hashes_verified": 6
+  },
+  "hosted_ir_report": "option-fix-ir.json",
+  "ruff": "pass",
+  "diff_check": "pass",
+  "native_and_macos": "not run locally; exact-head CI rerun required",
+  "darwin_return_value": {
+    "observed_raw_ci_value": null,
+    "ci_failure": "The old equality-to-1 assertion failed; raw integer was not logged",
+    "inferred_enabled_value": 4,
+    "basis": "Apple XNU sogetopt copies so_options & sopt_name; SO_REUSEADDR is 0x0004",
+    "kernel_source": "https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/uipc_socket.c",
+    "option_source": "https://github.com/apple/darwin-xnu/blob/main/bsd/sys/socket.h",
+    "contract_source": "https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getsockopt.2.html"
+  }
+}
