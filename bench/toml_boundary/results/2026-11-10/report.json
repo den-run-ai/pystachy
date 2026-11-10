@@ -1,0 +1,1744 @@
+{
+  "schema": 1,
+  "status": "complete",
+  "platform": "Linux-6.18.44-fc-v338-x86_64-with-glibc2.39",
+  "cpu": 0,
+  "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "python": "Python 3.13.18",
+  "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/lib/llvm-18/bin",
+  "parameters": {
+    "baseline": "/home/user/pystachy-base",
+    "candidate": "/home/user/pystachy-values",
+    "output": "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16",
+    "python": "/usr/local/bin/python3.13",
+    "width": 16,
+    "rounds": 100,
+    "samples": 3,
+    "processes": 5,
+    "timeout": 300,
+    "cpu": null
+  },
+  "fixture_hashes": {
+    "README.md": "ddb1e26b04b28ee3a316625f4a767bef5ce957d350f536ef262fc1eb3b8cc4b6",
+    "consumer.py": "109adc8ff766241a4aa86311ad36f9cb0ffa6d3816b409f707b4eaa0e7fecbc7",
+    "retained.h": "761cff1c29d9f671e42b875b18747621dfb2b3bf8b66ae3decdd7c617a63cb16",
+    "retained.py": "711e8c163427241b9bd9be701eecb3f4970ee8eebfbb828395ebc7f8dce829dc",
+    "run.py": "2218ba221bb1b9cbc2884f59c700a955bdc465249153dc4b3808800ade796e66"
+  },
+  "oracle": {
+    "command": [
+      "/usr/local/bin/python3.13",
+      "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+      "16",
+      "100",
+      "3"
+    ],
+    "wall_s": 0.29508580600031564,
+    "stdout": "sample 50400 91837453\nsample 50400 81504525\nsample 50400 81983117\n",
+    "stderr": "",
+    "returncode": 0,
+    "in_process_samples_s": [
+      0.091837453,
+      0.081504525,
+      0.081983117
+    ]
+  },
+  "variants": {
+    "baseline": {
+      "source_manifest": {
+        "lib/README.md": "8ebffadedec82bbe89ece3fe370e37aae9778b34caa5790cdf396385b8453c40",
+        "lib/_argparse_help.py": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_bfile.py": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_bytescan.py": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63",
+        "lib/_pystachy_cache.py": "884b77660eb425052dcce3a5fa622360e692b1469d395f84ecf457345fefa3d6",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_copy.py": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f",
+        "lib/_pystachy_ctypes.py": "2ec7e8b16ce0a2648b1ee1e343aa7ca0db8cee8d0d941a1bac7e26dba9a727f8",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af",
+        "lib/_pystachy_json_int.py": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_percent.py": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc",
+        "lib/_pystachy_time.py": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/argparse.py": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/compatibility.md": "e92240e8696d29f0fed3d69e26f682aaa519a0cdd314cc5dc34665611d5c311d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/copy.py": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/ctypes.py": "a422b62cc141173af5a710817fa683f9b4810a7a0652694c0b43bc71b5649601",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/enum.py": "5966e540800846a58328cfcf50029b5c6b79c27194ed01f30a432d45a81401ed",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/glob.py": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/logging/__init__.py": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3",
+        "lib/mpz.py": "03446eef1f51aacb8ed978aea17db754ff1049ec2f1bab9eb15a9521d42c4434",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/pathlib.py": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/provenance.md": "5f244fa72dbe846ea8791756fe8d4b6f030e62740ba7d01914326d7f71a757c9",
+        "lib/pyobj.py": "7469a60287c88b96a812c29024edc2532dab06e29c32f856661527e498250b50",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/shutil.py": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/threading.py": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "90eb6012af1c47527350e6bfae364eaafc1ad0bffaf89bd481471ac8406a6d8f",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/traceback.py": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a",
+        "lljit.c": "fba2b30d745c78fd79e7c254e14b6a2d36e4a5b29301c9c51f1380e7039628ab",
+        "mpz/README.md": "6c799665d06dc2ae8d8cebbd61e9da246ed337ef4af2c7ffdff961bd1e982d06",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "5429fb7023c9dc952ee02d251938c64f8ef72a1de9403525c57f86cae97ff6b8",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "pystachy_cli.py": "dcd87591b65dc89ccb33eed977ab4eac2bc138a69e73c77726944aea4f94fa87",
+        "pystachy_toolchain.py": "c0d557d93c816c65159854ffefb1a60f790526dd9c13062b42d9edf2f1c31938",
+        "runtime.c": "4365aab2cc685d77521e9422e6c2480fd090e1cb71ecefd933215201af253903",
+        "runtime.py": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb",
+        "ryu/LICENSE-Boost": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+        "ryu/README.md": "746d657c420bb3d6598cbfecd6c21abc50da3a9c5be9711247f3a0918aa7f672",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/README.md": "4977701d34b71a12167cfcd4b2292fed201546b0a41c81cb1f0f5324cf517af7",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "29c2f37070a8f802a768f90b086c2c469dda1643130ec08dee2f9c0d4f476b64",
+        "src/pystachy_compiler/argparse_schema.py": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5",
+        "src/pystachy_compiler/bigints.py": "e2765d3ff75b6b0f79bf2f8efc187b0a4ec1e8fcae24f13c74e3cd8f83ebb96d",
+        "src/pystachy_compiler/builtins.py": "8f35ea2bdf159cd8c2b388b88197bb019b64499afa4e783eb3f2eded20b351c4",
+        "src/pystachy_compiler/cache_toolchain.py": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7",
+        "src/pystachy_compiler/cached_run.py": "c3435842d6048af697e6cc7dc12e59a313aefaecc35559034303d62fdc6bc03a",
+        "src/pystachy_compiler/callbacks.py": "7366a851db14c32112a090d3dd0d0409851661f74ad5e1d2c4c2dc4beaf8dcde",
+        "src/pystachy_compiler/calls.py": "21bd33cce31d89560690d17d08e768ff7f6af815435bb3357da01a4bd20fb543",
+        "src/pystachy_compiler/containers.py": "a60d8c504bde351666f39b6f6e93ecd5dd8bd351d791dbf51d0a17160b9ce691",
+        "src/pystachy_compiler/conversions.py": "6c4cfb75f0cd472f3712b267826aee63845a8bdd8a4e3be02f5619fe62d492c0",
+        "src/pystachy_compiler/ctypes_schema.py": "9152db34ca5a236c5305938cf222e1a0d875948e64bfbdfb87c67939a51e3fe4",
+        "src/pystachy_compiler/declarations.py": "8938cecf19e9d33ef7013d06e94eff2492cfffda985cf1cee9cac627110dc31d",
+        "src/pystachy_compiler/diagnostics.py": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+        "src/pystachy_compiler/driver.py": "b30a64a8236cc4a3b6814e5d3e9dc3b2d446b390bf1bd256582141e579a81520",
+        "src/pystachy_compiler/dynamic.py": "7b57b2b86d6da56af20f11ca38b41a0d8e9ff34ff1b469b664415fa02734eb70",
+        "src/pystachy_compiler/dynamic_proof.py": "47fbb32e56d6d6e2ffd8b087077bfb01030867e78129e412a0af71da728be553",
+        "src/pystachy_compiler/emission.py": "dae312d3d4386404369a0430b4e99c5bfde2fafc65498d99cc3db2fc05788a96",
+        "src/pystachy_compiler/exceptions.py": "05abab080546bfa14e8809f1df31224306327fc104dc3f88caa3ac14abce7d06",
+        "src/pystachy_compiler/expressions.py": "edb27dd681e9ce5a93d4cb76a45b8fb1d7c26b0b2afcd56306e2e1147e903c0a",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "909be9e207959b61cbe5dd4fe948b33cd473b8e49aa5e7b0e18ebd4539e25aa6",
+        "src/pystachy_compiler/gen.py": "5b42e140f33d2604378bf2b532bdf21e8c426541de61f62179e5ab1260710db3",
+        "src/pystachy_compiler/generators.py": "32766d6e1082584c09fb820c970d48d7089aa92bd384061a594e593626a2f904",
+        "src/pystachy_compiler/ir.py": "44d8d776dfd98a04f59dbb324f73f7f557e020bfe9d741cd783a31607427681c",
+        "src/pystachy_compiler/ircheck.py": "450365e2414dda19187cc695db2af2cd18940151c044f675fd539218746173b0",
+        "src/pystachy_compiler/lexer.py": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "9bf4d445e35df0308d52fa5e63a4d2c9d229f225dd930b7cdac0525a5ee2b06f",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "e5abbaa86a145451f1eeb8bc3939ca0463f7d3f8ca7e82ce7818075968817069",
+        "src/pystachy_compiler/lowering.py": "4eea301a1d93fd822cceab264bf99e7f494950bb1db6603b4449865fc624c6d5",
+        "src/pystachy_compiler/memory_ir.py": "00f8e49817740ef7b65066f104cadeec0cd2ab267240089c29b1450c7ac5e611",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c",
+        "src/pystachy_compiler/optimizations.py": "e8d19b75105d17c6d273f67e8aad03d308927421f564515dd81bbb703eb85cb2",
+        "src/pystachy_compiler/parser.py": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc",
+        "src/pystachy_compiler/program.py": "44b8a84208ddfa6161b5a322d1b6df64f7d1006e981c606114f9b047da26a874",
+        "src/pystachy_compiler/program_cache.py": "648f6d3733c8bffabb2bde7057db379185862ae23cbc5a9ae22a89f8e3568b25",
+        "src/pystachy_compiler/reflection.py": "b708e176649abccc1c364b19616661df790096f5af6f4b93cb4aedec7abcf2f5",
+        "src/pystachy_compiler/scalar_ir.py": "7e11da58cee27ef8109ed5afb7766c8b7f6f30bd37340e34e10313a13a679868",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/source_lines.py": "29b49e6e94513ab66452b019b4b5b0f991d4ae1555c421c9134add318e13d7c2",
+        "src/pystachy_compiler/specs.py": "635b0faf78e4bee873aafedbdc0dec55b7d1fc7e143771b51367bbfdadc4e8f4",
+        "src/pystachy_compiler/statements.py": "15186dfa8fbfc7f0ddd1c9b1697db294d2a84d65565435ca9fd829abeaf9d010",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3",
+        "src/pystachy_compiler/templates.py": "618b43dddc2bef0d042a4cdfceade32d1f85ba9c7138be66303c98f149f1a43b",
+        "src/pystachy_compiler/union_arithmetic.py": "2264c8ff82170a113a62e7f0068cf05703d79765b40de502e9347778bd274d61",
+        "src/pystachy_compiler/union_proof.py": "d2a8e04e1b10210ad2eb1606f51ca3dbf1efc6cbf3b2ed062fcb9f3c4f87ceef",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "601cfb63970009603adcbceba11882c35d36c88f5a9d3fa6463936541ae593f1",
+        "src/pystachy_compiler/utils.py": "52a792d18b5b607d8393fe319f69daf23acc605e419279a3dfb8f2d424e5caeb",
+        "src/pystachy_compiler/variables.py": "0718fc550c5211c27955543441df2b62c6bd0cd8fa253919acfa4fbd08affca2",
+        "tools/ir_cost_report.py": "c01b626b27a55c8b4f92a9f8ede3ae1d7bd49b5e012f6c1e252bc9663f7d7c2b"
+      },
+      "revision": "04860a83618e744c6f461761b6ee7fdbbe21f985",
+      "git_status": "",
+      "environment": {
+        "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+        "PYSTACHY_PROGRAM_CACHE": "0",
+        "PYSTACHY_JOBS": "2",
+        "PYSTACHY_HOME": "/home/user/pystachy-base",
+        "PYSTACHY_PATH": "/home/user/pystachy-values/bench/toml_boundary",
+        "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/runtime"
+      },
+      "phases": {
+        "frontend": [
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program.ll"
+            ],
+            "wall_s": 2.3388995229997818,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program.ll"
+            ],
+            "wall_s": 2.103541368999686,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program.ll"
+            ],
+            "wall_s": 2.238312487999792,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program.ll"
+            ],
+            "wall_s": 2.143621169999733,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program.ll"
+            ],
+            "wall_s": 2.284755389000111,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          }
+        ],
+        "aot_build_warm": [
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program"
+            ],
+            "wall_s": 13.14738844700014,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program"
+            ],
+            "wall_s": 12.868628804999844,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program"
+            ],
+            "wall_s": 12.908217571000023,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program"
+            ],
+            "wall_s": 13.21551470500026,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program"
+            ],
+            "wall_s": 12.991080941999826,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 4.864409175000219,
+            "stdout": "sample 50400 64557274\nsample 50400 51463326\nsample 50400 52364061\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.064557274,
+              0.051463326,
+              0.052364061
+            ]
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 4.881690409999919,
+            "stdout": "sample 50400 70463850\nsample 50400 57339065\nsample 50400 54821039\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.07046385,
+              0.057339065,
+              0.054821039
+            ]
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 4.79809638100005,
+            "stdout": "sample 50400 68670308\nsample 50400 53555014\nsample 50400 53059028\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.068670308,
+              0.053555014,
+              0.053059028
+            ]
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 4.933067658999789,
+            "stdout": "sample 50400 63660622\nsample 50400 51488750\nsample 50400 51344112\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.063660622,
+              0.05148875,
+              0.051344112
+            ]
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-base/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 5.160318325999924,
+            "stdout": "sample 50400 63224102\nsample 50400 51347790\nsample 50400 51154261\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.063224102,
+              0.05134779,
+              0.051154261
+            ]
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.13880582299998423,
+            "stdout": "sample 50400 50526678\nsample 50400 38602464\nsample 50400 44796450\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.050526678,
+              0.038602464,
+              0.04479645
+            ]
+          },
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.14545679100001507,
+            "stdout": "sample 50400 59878936\nsample 50400 40465472\nsample 50400 40130744\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.059878936,
+              0.040465472,
+              0.040130744
+            ]
+          },
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.1381870989998788,
+            "stdout": "sample 50400 52064916\nsample 50400 40082994\nsample 50400 40367576\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.052064916,
+              0.040082994,
+              0.040367576
+            ]
+          },
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.13656356399997094,
+            "stdout": "sample 50400 51869497\nsample 50400 41014983\nsample 50400 38325938\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.051869497,
+              0.041014983,
+              0.038325938
+            ]
+          },
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.13261592199978622,
+            "stdout": "sample 50400 50544685\nsample 50400 39051333\nsample 50400 38815411\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.050544685,
+              0.039051333,
+              0.038815411
+            ]
+          }
+        ]
+      },
+      "frontend_prime": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-base/pystachy.py",
+          "ir",
+          "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program.ll"
+        ],
+        "wall_s": 2.171373790999951,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "ir": {
+        "bytes": 3325677,
+        "lines": 91173,
+        "sha256": "7139fe503ed880e561b4b90db7f638bab008a29179bb537090aa422248544485",
+        "dynamic_static_calls": {
+          "pys_dyn_contains": 1,
+          "pys_dyn_float": 29,
+          "pys_dyn_float_box": 9,
+          "pys_dyn_getitem": 1,
+          "pys_dyn_int": 455,
+          "pys_dyn_int_box": 1228,
+          "pys_dyn_isa": 53,
+          "pys_dyn_iter": 3,
+          "pys_dyn_list_method": 2,
+          "pys_dyn_next": 3,
+          "pys_dyn_ref": 21,
+          "pys_dyn_setitem": 1,
+          "pys_dyn_unbox": 194
+        },
+        "dynamic_static_calls_total": 2000,
+        "generated_dynamic_static_calls": {
+          "dyn.call.append.1": 1,
+          "dyn.callv.1": 1,
+          "dyn.contains": 1,
+          "dyn.getitem": 17,
+          "dyn.has.append.1": 1,
+          "dyn.index": 2,
+          "dyn.setitem": 1
+        },
+        "generated_dynamic_static_calls_total": 24,
+        "identity_static_calls": {
+          "pys_list_append_identity": 190,
+          "pys_list_get_identity": 150,
+          "pys_list_identity": 3,
+          "pys_list_pop_identity": 4,
+          "pys_list_set_identity": 39
+        }
+      },
+      "llvm_program_optimize": {
+        "command": [
+          "/usr/lib/llvm-18/bin/opt",
+          "-S",
+          "-O2",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program.ll",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program-O2.ll"
+        ],
+        "wall_s": 1.8443611020002209,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "optimized_program_ir": {
+        "bytes": 2761017,
+        "lines": 53517,
+        "sha256": "62b4324a8183d4b41e92adb011ae15eae5b25a5b3f6dfbb76914c0708d52391f",
+        "dynamic_static_calls": {
+          "pys_dyn_contains": 1,
+          "pys_dyn_float": 29,
+          "pys_dyn_float_box": 9,
+          "pys_dyn_getitem": 17,
+          "pys_dyn_int": 472,
+          "pys_dyn_int_box": 872,
+          "pys_dyn_isa": 56,
+          "pys_dyn_iter": 3,
+          "pys_dyn_list_method": 1,
+          "pys_dyn_next": 6,
+          "pys_dyn_ref": 23,
+          "pys_dyn_setitem": 1,
+          "pys_dyn_unbox": 205
+        },
+        "dynamic_static_calls_total": 1695,
+        "generated_dynamic_static_calls": {},
+        "generated_dynamic_static_calls_total": 0,
+        "identity_static_calls": {
+          "pys_list_append_identity": 188,
+          "pys_list_get_identity": 167,
+          "pys_list_identity": 3,
+          "pys_list_pop_identity": 4,
+          "pys_list_set_identity": 47
+        }
+      },
+      "aot_build_cold": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-base/pystachy.py",
+          "build",
+          "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program"
+        ],
+        "wall_s": 21.4849276369996,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "binary_bytes": 749992,
+      "aot_prime": {
+        "command": [
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/program",
+          "16",
+          "100",
+          "3"
+        ],
+        "wall_s": 0.13052152399995975,
+        "stdout": "sample 50400 49475105\nsample 50400 37252644\nsample 50400 38375176\n",
+        "stderr": "",
+        "returncode": 0,
+        "in_process_samples_s": [
+          0.049475105,
+          0.037252644,
+          0.038375176
+        ]
+      },
+      "jit_prime": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-base/pystachy.py",
+          "run",
+          "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+          "16",
+          "100",
+          "3"
+        ],
+        "wall_s": 11.885215895999863,
+        "stdout": "sample 50400 63311081\nsample 50400 51113002\nsample 50400 51479341\n",
+        "stderr": "",
+        "returncode": 0,
+        "in_process_samples_s": [
+          0.063311081,
+          0.051113002,
+          0.051479341
+        ]
+      },
+      "allocation_environment_overrides": {
+        "PYSTACHY_CFLAGS": "-DPYSTACHY_PROFILE_DATA",
+        "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/runtime-counted"
+      },
+      "counted_build": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-base/pystachy.py",
+          "build",
+          "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/counted"
+        ],
+        "wall_s": 21.72058570099989,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "allocation": {
+        "command": [
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/counted",
+          "16",
+          "100",
+          "3"
+        ],
+        "wall_s": 0.17203762600001937,
+        "stdout": "sample 50400 63503759\nsample 50400 52003629\nsample 50400 52190375\n",
+        "stderr": "pystachy-data: {\"schema\":1,\"c_gc_alloc_calls\":3572770,\"c_gc_requested_bytes\":179776508,\"c_memcpy_calls\":1071704,\"c_memcpy_requested_bytes\":20439288,\"c_memmove_calls\":349800,\"c_memmove_requested_bytes\":0,\"gc_collections\":5,\"gc_peak_heap_bytes\":36450304}\n",
+        "returncode": 0,
+        "in_process_samples_s": [
+          0.063503759,
+          0.052003629,
+          0.052190375
+        ],
+        "counters": {
+          "schema": 1,
+          "c_gc_alloc_calls": 3572770,
+          "c_gc_requested_bytes": 179776508,
+          "c_memcpy_calls": 1071704,
+          "c_memcpy_requested_bytes": 20439288,
+          "c_memmove_calls": 349800,
+          "c_memmove_requested_bytes": 0,
+          "gc_collections": 5,
+          "gc_peak_heap_bytes": 36450304
+        }
+      },
+      "retained_environment_overrides": {
+        "PYSTACHY_CFLAGS": "-include /home/user/pystachy-values/bench/toml_boundary/retained.h -Wl,--export-dynamic-symbol=toml_boundary_collect_live",
+        "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/runtime-retained"
+      },
+      "retained_build": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-base/pystachy.py",
+          "build",
+          "/home/user/pystachy-values/bench/toml_boundary/retained.py",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/retained"
+        ],
+        "wall_s": 21.424557785999696,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "retained_samples": [
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.0616296749999492,
+          "stdout": "checksum 50400\nretained 143425 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 143425
+        },
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.059983429000112665,
+          "stdout": "checksum 50400\nretained 143425 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 143425
+        },
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.059533808999731264,
+          "stdout": "checksum 50400\nretained 143425 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 143425
+        },
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.06058007499996165,
+          "stdout": "checksum 50400\nretained 143425 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 143425
+        },
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.059175968000090506,
+          "stdout": "checksum 50400\nretained 143425 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 143425
+        }
+      ],
+      "retained": {
+        "command": [
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/baseline/retained",
+          "16",
+          "100"
+        ],
+        "wall_s": 0.0616296749999492,
+        "stdout": "checksum 50400\nretained 143425 504\n",
+        "stderr": "",
+        "returncode": 0,
+        "conservative_live_bytes": 143425
+      },
+      "retained_summary": {
+        "median_bytes": 143425,
+        "min_bytes": 143425,
+        "max_bytes": 143425,
+        "mad_bytes": 0
+      },
+      "summary": {
+        "frontend": {
+          "median_s": 2.238312487999792,
+          "min_s": 2.103541368999686,
+          "max_s": 2.3388995229997818,
+          "mad_s": 0.09469131800005925
+        },
+        "aot_build_warm": {
+          "median_s": 12.991080941999826,
+          "min_s": 12.868628804999844,
+          "max_s": 13.21551470500026,
+          "mad_s": 0.12245213699998203
+        },
+        "jit": {
+          "median_s": 4.881690409999919,
+          "min_s": 4.79809638100005,
+          "max_s": 5.160318325999924,
+          "mad_s": 0.05137724899987006
+        },
+        "aot": {
+          "median_s": 0.1381870989998788,
+          "min_s": 0.13261592199978622,
+          "max_s": 0.14545679100001507,
+          "mad_s": 0.0016235349999078608
+        },
+        "jit_in_process": {
+          "median_s": 0.052364061,
+          "min_s": 0.05134779,
+          "max_s": 0.057339065,
+          "mad_s": 0.001016271000000006
+        },
+        "aot_in_process": {
+          "median_s": 0.040465472,
+          "min_s": 0.039051333,
+          "max_s": 0.04479645,
+          "mad_s": 0.0005495109999999956
+        }
+      }
+    },
+    "candidate": {
+      "source_manifest": {
+        "lib/README.md": "8ebffadedec82bbe89ece3fe370e37aae9778b34caa5790cdf396385b8453c40",
+        "lib/_argparse_help.py": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42",
+        "lib/_markupbase.py": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1",
+        "lib/_pyrandom.py": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09",
+        "lib/_pystachy__io.py": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117",
+        "lib/_pystachy_abc.py": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8",
+        "lib/_pystachy_atexit.py": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c",
+        "lib/_pystachy_bfile.py": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826",
+        "lib/_pystachy_binascii.py": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848",
+        "lib/_pystachy_bytescan.py": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63",
+        "lib/_pystachy_cache.py": "884b77660eb425052dcce3a5fa622360e692b1469d395f84ecf457345fefa3d6",
+        "lib/_pystachy_codecs.py": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf",
+        "lib/_pystachy_copy.py": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f",
+        "lib/_pystachy_ctypes.py": "2ec7e8b16ce0a2648b1ee1e343aa7ca0db8cee8d0d941a1bac7e26dba9a727f8",
+        "lib/_pystachy_iterators.py": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e",
+        "lib/_pystachy_itertools.py": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566",
+        "lib/_pystachy_json_any.py": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af",
+        "lib/_pystachy_json_int.py": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0",
+        "lib/_pystachy_mappingproxy.py": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c",
+        "lib/_pystachy_object.py": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c",
+        "lib/_pystachy_percent.py": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3",
+        "lib/_pystachy_range.py": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2",
+        "lib/_pystachy_re_specialized.py": "5ff454ed08b58084cd7e145a328bc7d061335543fdbb7db01dd1d0f00e482631",
+        "lib/_pystachy_string.py": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434",
+        "lib/_pystachy_struct.py": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6",
+        "lib/_pystachy_thread.py": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc",
+        "lib/_pystachy_time.py": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39",
+        "lib/_pystachy_types.py": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70",
+        "lib/_pystachy_unicodedata.py": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0",
+        "lib/_pystachy_unicodedata_db.py": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2",
+        "lib/_pystachy_unicodedata_names.py": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28",
+        "lib/_pystachy_weakref.py": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb",
+        "lib/_weakrefset.py": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac",
+        "lib/argparse.py": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936",
+        "lib/bisect.py": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999",
+        "lib/codecs.py": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42",
+        "lib/collections/__init__.py": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852",
+        "lib/colorsys.py": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d",
+        "lib/compatibility.md": "e92240e8696d29f0fed3d69e26f682aaa519a0cdd314cc5dc34665611d5c311d",
+        "lib/contextlib.py": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665",
+        "lib/copy.py": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969",
+        "lib/csv.py": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4",
+        "lib/ctypes.py": "a422b62cc141173af5a710817fa683f9b4810a7a0652694c0b43bc71b5649601",
+        "lib/curses/__init__.py": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394",
+        "lib/curses/ascii.py": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6",
+        "lib/datetime.py": "f45547040b088dc8a6a507ef0d9be87061ce104848a11672460f1a7096149665",
+        "lib/difflib.py": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f",
+        "lib/enum.py": "5966e540800846a58328cfcf50029b5c6b79c27194ed01f30a432d45a81401ed",
+        "lib/fnmatch.py": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5",
+        "lib/functools.py": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703",
+        "lib/genericpath.py": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4",
+        "lib/getopt.py": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241",
+        "lib/gettext.py": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63",
+        "lib/glob.py": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78",
+        "lib/heapq.py": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3",
+        "lib/html/__init__.py": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893",
+        "lib/html/entities.py": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f",
+        "lib/html/parser.py": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90",
+        "lib/io.py": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f",
+        "lib/json.py": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39",
+        "lib/keyword.py": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9",
+        "lib/logging/__init__.py": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3",
+        "lib/mpz.py": "03446eef1f51aacb8ed978aea17db754ff1049ec2f1bab9eb15a9521d42c4434",
+        "lib/operator.py": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99",
+        "lib/pathlib.py": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2",
+        "lib/posixpath.py": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e",
+        "lib/provenance.md": "5f244fa72dbe846ea8791756fe8d4b6f030e62740ba7d01914326d7f71a757c9",
+        "lib/pyobj.py": "7469a60287c88b96a812c29024edc2532dab06e29c32f856661527e498250b50",
+        "lib/random.py": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e",
+        "lib/re/__init__.py": "0f0b8a50706818e5af66935a999dbf119bc8a2bd78a33eb3fadd47c17b948021",
+        "lib/re/_constants.py": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe",
+        "lib/re/_sre.py": "a80d1544ae7be6cc7e52e57a46fb5512dc5d98f1afbed396b39471d0c94a1cb4",
+        "lib/re/_unicode.py": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2",
+        "lib/shlex.py": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4",
+        "lib/shutil.py": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1",
+        "lib/stat.py": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6",
+        "lib/statistics.py": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b",
+        "lib/string.py": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27",
+        "lib/struct.py": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856",
+        "lib/textwrap.py": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b",
+        "lib/this.py": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71",
+        "lib/threading.py": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9",
+        "lib/token.py": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2",
+        "lib/tomllib/__init__.py": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51",
+        "lib/tomllib/_parser.py": "90eb6012af1c47527350e6bfae364eaafc1ad0bffaf89bd481471ac8406a6d8f",
+        "lib/tomllib/_re.py": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056",
+        "lib/tomllib/_types.py": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0",
+        "lib/traceback.py": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1",
+        "lib/types.py": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2",
+        "lib/urllib/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "lib/urllib/parse.py": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148",
+        "lib/warnings.py": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133",
+        "lib/weakref.py": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a",
+        "lljit.c": "fba2b30d745c78fd79e7c254e14b6a2d36e4a5b29301c9c51f1380e7039628ab",
+        "mpz/README.md": "6c799665d06dc2ae8d8cebbd61e9da246ed337ef4af2c7ffdff961bd1e982d06",
+        "mpz/mpz.c": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa",
+        "pyembed.c": "5429fb7023c9dc952ee02d251938c64f8ef72a1de9403525c57f86cae97ff6b8",
+        "pyext.c": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109",
+        "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+        "pystachy_cli.py": "dcd87591b65dc89ccb33eed977ab4eac2bc138a69e73c77726944aea4f94fa87",
+        "pystachy_toolchain.py": "c0d557d93c816c65159854ffefb1a60f790526dd9c13062b42d9edf2f1c31938",
+        "runtime.c": "4365aab2cc685d77521e9422e6c2480fd090e1cb71ecefd933215201af253903",
+        "runtime.py": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb",
+        "ryu/LICENSE-Boost": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+        "ryu/README.md": "746d657c420bb3d6598cbfecd6c21abc50da3a9c5be9711247f3a0918aa7f672",
+        "ryu/common.h": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19",
+        "ryu/d2s.c": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2",
+        "ryu/d2s_intrinsics.h": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21",
+        "ryu/d2s_small_table.h": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606",
+        "ryu/digit_table.h": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01",
+        "ryu/ryu.h": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16",
+        "src/README.md": "4977701d34b71a12167cfcd4b2292fed201546b0a41c81cb1f0f5324cf517af7",
+        "src/__init__.py": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7",
+        "src/pystachy_compiler/__init__.py": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8",
+        "src/pystachy_compiler/analysis.py": "29c2f37070a8f802a768f90b086c2c469dda1643130ec08dee2f9c0d4f476b64",
+        "src/pystachy_compiler/argparse_schema.py": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5",
+        "src/pystachy_compiler/bigints.py": "e2765d3ff75b6b0f79bf2f8efc187b0a4ec1e8fcae24f13c74e3cd8f83ebb96d",
+        "src/pystachy_compiler/builtins.py": "8f35ea2bdf159cd8c2b388b88197bb019b64499afa4e783eb3f2eded20b351c4",
+        "src/pystachy_compiler/cache_toolchain.py": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7",
+        "src/pystachy_compiler/cached_run.py": "c3435842d6048af697e6cc7dc12e59a313aefaecc35559034303d62fdc6bc03a",
+        "src/pystachy_compiler/callbacks.py": "7366a851db14c32112a090d3dd0d0409851661f74ad5e1d2c4c2dc4beaf8dcde",
+        "src/pystachy_compiler/calls.py": "21bd33cce31d89560690d17d08e768ff7f6af815435bb3357da01a4bd20fb543",
+        "src/pystachy_compiler/containers.py": "a60d8c504bde351666f39b6f6e93ecd5dd8bd351d791dbf51d0a17160b9ce691",
+        "src/pystachy_compiler/conversions.py": "6c4cfb75f0cd472f3712b267826aee63845a8bdd8a4e3be02f5619fe62d492c0",
+        "src/pystachy_compiler/ctypes_schema.py": "9152db34ca5a236c5305938cf222e1a0d875948e64bfbdfb87c67939a51e3fe4",
+        "src/pystachy_compiler/declarations.py": "8938cecf19e9d33ef7013d06e94eff2492cfffda985cf1cee9cac627110dc31d",
+        "src/pystachy_compiler/diagnostics.py": "c8d1369d8f4590fd75c4ed32c5a89d36f2f6e4ad365b9a16b3064a6c823f7aaf",
+        "src/pystachy_compiler/driver.py": "22ed8f8a04c173c66a79ba07d0dcc8903c5db9bb42e55a6ca7793c1bf9cc899d",
+        "src/pystachy_compiler/dynamic.py": "f9ff810888bc322c920bccc12e8cccff6fef8dea3e8984a1c4f15972176b48e8",
+        "src/pystachy_compiler/dynamic_proof.py": "47fbb32e56d6d6e2ffd8b087077bfb01030867e78129e412a0af71da728be553",
+        "src/pystachy_compiler/emission.py": "dae312d3d4386404369a0430b4e99c5bfde2fafc65498d99cc3db2fc05788a96",
+        "src/pystachy_compiler/exceptions.py": "69f0ae56a42b61ff2e1568e08b2bcfb519aecddc37dc393eb3b7429295036f35",
+        "src/pystachy_compiler/expressions.py": "4ea92990495e6b967632ae1a584717b443771d825f93296f03959e8178abc4f9",
+        "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+        "src/pystachy_compiler/functions.py": "909be9e207959b61cbe5dd4fe948b33cd473b8e49aa5e7b0e18ebd4539e25aa6",
+        "src/pystachy_compiler/gen.py": "7a9b32c73d833d87a789c573bbd59652b983cfafd65af83d67777147c059c1ed",
+        "src/pystachy_compiler/generators.py": "32766d6e1082584c09fb820c970d48d7089aa92bd384061a594e593626a2f904",
+        "src/pystachy_compiler/ir.py": "44d8d776dfd98a04f59dbb324f73f7f557e020bfe9d741cd783a31607427681c",
+        "src/pystachy_compiler/ircheck.py": "450365e2414dda19187cc695db2af2cd18940151c044f675fd539218746173b0",
+        "src/pystachy_compiler/lexer.py": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7",
+        "src/pystachy_compiler/llvm_abi.py": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae",
+        "src/pystachy_compiler/loader.py": "b7a07e35c1ca42269b65be5472ca2aabcfacdb910c44729fc94068f9d5162302",
+        "src/pystachy_compiler/local_versions.py": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375",
+        "src/pystachy_compiler/lower_module.py": "e5abbaa86a145451f1eeb8bc3939ca0463f7d3f8ca7e82ce7818075968817069",
+        "src/pystachy_compiler/lowering.py": "4eea301a1d93fd822cceab264bf99e7f494950bb1db6603b4449865fc624c6d5",
+        "src/pystachy_compiler/memory_ir.py": "00f8e49817740ef7b65066f104cadeec0cd2ab267240089c29b1450c7ac5e611",
+        "src/pystachy_compiler/module.py": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601",
+        "src/pystachy_compiler/names.py": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c",
+        "src/pystachy_compiler/optimizations.py": "e8d19b75105d17c6d273f67e8aad03d308927421f564515dd81bbb703eb85cb2",
+        "src/pystachy_compiler/parser.py": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc",
+        "src/pystachy_compiler/program.py": "44b8a84208ddfa6161b5a322d1b6df64f7d1006e981c606114f9b047da26a874",
+        "src/pystachy_compiler/program_cache.py": "648f6d3733c8bffabb2bde7057db379185862ae23cbc5a9ae22a89f8e3568b25",
+        "src/pystachy_compiler/reflection.py": "b708e176649abccc1c364b19616661df790096f5af6f4b93cb4aedec7abcf2f5",
+        "src/pystachy_compiler/scalar_ir.py": "7e11da58cee27ef8109ed5afb7766c8b7f6f30bd37340e34e10313a13a679868",
+        "src/pystachy_compiler/scope.py": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97",
+        "src/pystachy_compiler/source_lines.py": "29b49e6e94513ab66452b019b4b5b0f991d4ae1555c421c9134add318e13d7c2",
+        "src/pystachy_compiler/specs.py": "635b0faf78e4bee873aafedbdc0dec55b7d1fc7e143771b51367bbfdadc4e8f4",
+        "src/pystachy_compiler/statements.py": "15186dfa8fbfc7f0ddd1c9b1697db294d2a84d65565435ca9fd829abeaf9d010",
+        "src/pystachy_compiler/structs.py": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090",
+        "src/pystachy_compiler/syntax.py": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3",
+        "src/pystachy_compiler/templates.py": "618b43dddc2bef0d042a4cdfceade32d1f85ba9c7138be66303c98f149f1a43b",
+        "src/pystachy_compiler/union_arithmetic.py": "2264c8ff82170a113a62e7f0068cf05703d79765b40de502e9347778bd274d61",
+        "src/pystachy_compiler/union_proof.py": "d2a8e04e1b10210ad2eb1606f51ca3dbf1efc6cbf3b2ed062fcb9f3c4f87ceef",
+        "src/pystachy_compiler/union_state.py": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026",
+        "src/pystachy_compiler/unions.py": "601cfb63970009603adcbceba11882c35d36c88f5a9d3fa6463936541ae593f1",
+        "src/pystachy_compiler/utils.py": "52a792d18b5b607d8393fe319f69daf23acc605e419279a3dfb8f2d424e5caeb",
+        "src/pystachy_compiler/variables.py": "0718fc550c5211c27955543441df2b62c6bd0cd8fa253919acfa4fbd08affca2",
+        "tools/ir_cost_report.py": "c01b626b27a55c8b4f92a9f8ede3ae1d7bd49b5e012f6c1e252bc9663f7d7c2b"
+      },
+      "revision": "b2647179a5f4e2d6e68ea30c6932c6a5a43b71bd",
+      "git_status": "",
+      "environment": {
+        "PYSTACHY_LLVM": "/usr/lib/llvm-18/bin",
+        "PYSTACHY_PROGRAM_CACHE": "0",
+        "PYSTACHY_JOBS": "2",
+        "PYSTACHY_HOME": "/home/user/pystachy-values",
+        "PYSTACHY_PATH": "/home/user/pystachy-values/bench/toml_boundary",
+        "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/runtime"
+      },
+      "phases": {
+        "frontend": [
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program.ll"
+            ],
+            "wall_s": 1.9337661869999465,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program.ll"
+            ],
+            "wall_s": 1.9474392320003062,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program.ll"
+            ],
+            "wall_s": 1.9602757869997731,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program.ll"
+            ],
+            "wall_s": 1.9998158469998089,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "ir",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program.ll"
+            ],
+            "wall_s": 1.8838730900001792,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          }
+        ],
+        "aot_build_warm": [
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program"
+            ],
+            "wall_s": 10.168407157999809,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program"
+            ],
+            "wall_s": 10.096953429999758,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program"
+            ],
+            "wall_s": 10.363486112999908,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program"
+            ],
+            "wall_s": 10.221066592999705,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "build",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "-o",
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program"
+            ],
+            "wall_s": 10.31065678899995,
+            "stdout": "",
+            "stderr": "",
+            "returncode": 0
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 4.070863394000298,
+            "stdout": "sample 50400 49831970\nsample 50400 36931961\nsample 50400 41313706\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.04983197,
+              0.036931961,
+              0.041313706
+            ]
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 4.32986234100008,
+            "stdout": "sample 50400 72074502\nsample 50400 60995745\nsample 50400 58068522\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.072074502,
+              0.060995745,
+              0.058068522
+            ]
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 4.294816820000051,
+            "stdout": "sample 50400 76749392\nsample 50400 38859959\nsample 50400 38538421\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.076749392,
+              0.038859959,
+              0.038538421
+            ]
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 3.9034227719998853,
+            "stdout": "sample 50400 48014863\nsample 50400 36418143\nsample 50400 36622719\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.048014863,
+              0.036418143,
+              0.036622719
+            ]
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy-values/pystachy.py",
+              "run",
+              "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 3.9556050300002426,
+            "stdout": "sample 50400 48375521\nsample 50400 36711737\nsample 50400 37006836\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.048375521,
+              0.036711737,
+              0.037006836
+            ]
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.11192564099974334,
+            "stdout": "sample 50400 42640879\nsample 50400 30973692\nsample 50400 30451418\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.042640879,
+              0.030973692,
+              0.030451418
+            ]
+          },
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.1130668189998687,
+            "stdout": "sample 50400 45734604\nsample 50400 30514826\nsample 50400 30911535\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.045734604,
+              0.030514826,
+              0.030911535
+            ]
+          },
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.11379244299996571,
+            "stdout": "sample 50400 44127250\nsample 50400 31909059\nsample 50400 33547049\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.04412725,
+              0.031909059,
+              0.033547049
+            ]
+          },
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.10594538900022599,
+            "stdout": "sample 50400 41590117\nsample 50400 30085558\nsample 50400 30165528\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.041590117,
+              0.030085558,
+              0.030165528
+            ]
+          },
+          {
+            "command": [
+              "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program",
+              "16",
+              "100",
+              "3"
+            ],
+            "wall_s": 0.10725406399978965,
+            "stdout": "sample 50400 41940165\nsample 50400 30107072\nsample 50400 29970696\n",
+            "stderr": "",
+            "returncode": 0,
+            "in_process_samples_s": [
+              0.041940165,
+              0.030107072,
+              0.029970696
+            ]
+          }
+        ]
+      },
+      "frontend_prime": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-values/pystachy.py",
+          "ir",
+          "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program.ll"
+        ],
+        "wall_s": 1.912220657999569,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "ir": {
+        "bytes": 2444739,
+        "lines": 68906,
+        "sha256": "f28c035538f3860d3ad2d3b3086c8e685320c59a44d353ebf990eda54c7d1580",
+        "dynamic_static_calls": {
+          "pys_dyn_contains": 1,
+          "pys_dyn_float": 1,
+          "pys_dyn_getitem": 1,
+          "pys_dyn_int": 321,
+          "pys_dyn_int_box": 120,
+          "pys_dyn_isa": 53,
+          "pys_dyn_iter": 3,
+          "pys_dyn_list_method": 2,
+          "pys_dyn_next": 3,
+          "pys_dyn_ref": 21,
+          "pys_dyn_setitem": 1,
+          "pys_dyn_unbox": 45
+        },
+        "dynamic_static_calls_total": 572,
+        "generated_dynamic_static_calls": {
+          "dyn.call.append.1": 1,
+          "dyn.callv.1": 1,
+          "dyn.contains": 1,
+          "dyn.getitem": 17,
+          "dyn.has.append.1": 1,
+          "dyn.index": 2,
+          "dyn.setitem": 1
+        },
+        "generated_dynamic_static_calls_total": 24,
+        "identity_static_calls": {
+          "pys_list_append_identity": 5,
+          "pys_list_get_identity": 5,
+          "pys_list_set_identity": 7
+        }
+      },
+      "llvm_program_optimize": {
+        "command": [
+          "/usr/lib/llvm-18/bin/opt",
+          "-S",
+          "-O2",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program.ll",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program-O2.ll"
+        ],
+        "wall_s": 1.6470144780000737,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "optimized_program_ir": {
+        "bytes": 2502065,
+        "lines": 50601,
+        "sha256": "d1f0d65438ca418656690cd7887f202c3a14b8ca7db8f4579e8de0aa7637176f",
+        "dynamic_static_calls": {
+          "pys_dyn_contains": 1,
+          "pys_dyn_float": 1,
+          "pys_dyn_getitem": 17,
+          "pys_dyn_int": 321,
+          "pys_dyn_int_box": 120,
+          "pys_dyn_isa": 56,
+          "pys_dyn_iter": 3,
+          "pys_dyn_list_method": 1,
+          "pys_dyn_next": 6,
+          "pys_dyn_ref": 23,
+          "pys_dyn_setitem": 1,
+          "pys_dyn_unbox": 41
+        },
+        "dynamic_static_calls_total": 591,
+        "generated_dynamic_static_calls": {},
+        "generated_dynamic_static_calls_total": 0,
+        "identity_static_calls": {
+          "pys_list_append_identity": 5,
+          "pys_list_get_identity": 7,
+          "pys_list_set_identity": 9
+        }
+      },
+      "aot_build_cold": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-values/pystachy.py",
+          "build",
+          "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program"
+        ],
+        "wall_s": 18.696708686999955,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "binary_bytes": 635280,
+      "aot_prime": {
+        "command": [
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/program",
+          "16",
+          "100",
+          "3"
+        ],
+        "wall_s": 0.10623868799984848,
+        "stdout": "sample 50400 41696387\nsample 50400 29898090\nsample 50400 30621442\n",
+        "stderr": "",
+        "returncode": 0,
+        "in_process_samples_s": [
+          0.041696387,
+          0.02989809,
+          0.030621442
+        ]
+      },
+      "jit_prime": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-values/pystachy.py",
+          "run",
+          "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+          "16",
+          "100",
+          "3"
+        ],
+        "wall_s": 11.160973332999674,
+        "stdout": "sample 50400 48122079\nsample 50400 36893996\nsample 50400 36470565\n",
+        "stderr": "",
+        "returncode": 0,
+        "in_process_samples_s": [
+          0.048122079,
+          0.036893996,
+          0.036470565
+        ]
+      },
+      "allocation_environment_overrides": {
+        "PYSTACHY_CFLAGS": "-DPYSTACHY_PROFILE_DATA",
+        "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/runtime-counted"
+      },
+      "counted_build": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-values/pystachy.py",
+          "build",
+          "/home/user/pystachy-values/bench/toml_boundary/consumer.py",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/counted"
+        ],
+        "wall_s": 18.755467239000154,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "allocation": {
+        "command": [
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/counted",
+          "16",
+          "100",
+          "3"
+        ],
+        "wall_s": 0.13741963099982968,
+        "stdout": "sample 50400 52122417\nsample 50400 40588250\nsample 50400 40490749\n",
+        "stderr": "pystachy-data: {\"schema\":1,\"c_gc_alloc_calls\":3099744,\"c_gc_requested_bytes\":130039189,\"c_memcpy_calls\":672064,\"c_memcpy_requested_bytes\":12349225,\"c_memmove_calls\":174900,\"c_memmove_requested_bytes\":0,\"gc_collections\":4,\"gc_peak_heap_bytes\":35913728}\n",
+        "returncode": 0,
+        "in_process_samples_s": [
+          0.052122417,
+          0.04058825,
+          0.040490749
+        ],
+        "counters": {
+          "schema": 1,
+          "c_gc_alloc_calls": 3099744,
+          "c_gc_requested_bytes": 130039189,
+          "c_memcpy_calls": 672064,
+          "c_memcpy_requested_bytes": 12349225,
+          "c_memmove_calls": 174900,
+          "c_memmove_requested_bytes": 0,
+          "gc_collections": 4,
+          "gc_peak_heap_bytes": 35913728
+        }
+      },
+      "retained_environment_overrides": {
+        "PYSTACHY_CFLAGS": "-include /home/user/pystachy-values/bench/toml_boundary/retained.h -Wl,--export-dynamic-symbol=toml_boundary_collect_live",
+        "PYSTACHY_CACHE": "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/runtime-retained"
+      },
+      "retained_build": {
+        "command": [
+          "/usr/local/bin/python3.13",
+          "/home/user/pystachy-values/pystachy.py",
+          "build",
+          "/home/user/pystachy-values/bench/toml_boundary/retained.py",
+          "-o",
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/retained"
+        ],
+        "wall_s": 19.22776900300005,
+        "stdout": "",
+        "stderr": "",
+        "returncode": 0
+      },
+      "retained_samples": [
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.04698476599969581,
+          "stdout": "checksum 50400\nretained 109104 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 109104
+        },
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.047985762000280374,
+          "stdout": "checksum 50400\nretained 109104 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 109104
+        },
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.04804945999967458,
+          "stdout": "checksum 50400\nretained 109104 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 109104
+        },
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.04865255000004254,
+          "stdout": "checksum 50400\nretained 109104 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 109104
+        },
+        {
+          "command": [
+            "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/retained",
+            "16",
+            "100"
+          ],
+          "wall_s": 0.04731595900011598,
+          "stdout": "checksum 50400\nretained 109104 504\n",
+          "stderr": "",
+          "returncode": 0,
+          "conservative_live_bytes": 109104
+        }
+      ],
+      "retained": {
+        "command": [
+          "/tmp/claude-0/-home-user-pystachy/c3a948a4-2b5e-5548-a0ef-fe9e06fe0d49/scratchpad/bench-values-w16/candidate/retained",
+          "16",
+          "100"
+        ],
+        "wall_s": 0.04698476599969581,
+        "stdout": "checksum 50400\nretained 109104 504\n",
+        "stderr": "",
+        "returncode": 0,
+        "conservative_live_bytes": 109104
+      },
+      "retained_summary": {
+        "median_bytes": 109104,
+        "min_bytes": 109104,
+        "max_bytes": 109104,
+        "mad_bytes": 0
+      },
+      "summary": {
+        "frontend": {
+          "median_s": 1.9474392320003062,
+          "min_s": 1.8838730900001792,
+          "max_s": 1.9998158469998089,
+          "mad_s": 0.013673045000359707
+        },
+        "aot_build_warm": {
+          "median_s": 10.221066592999705,
+          "min_s": 10.096953429999758,
+          "max_s": 10.363486112999908,
+          "mad_s": 0.08959019600024476
+        },
+        "jit": {
+          "median_s": 4.070863394000298,
+          "min_s": 3.9034227719998853,
+          "max_s": 4.32986234100008,
+          "mad_s": 0.167440622000413
+        },
+        "aot": {
+          "median_s": 0.11192564099974334,
+          "min_s": 0.10594538900022599,
+          "max_s": 0.11379244299996571,
+          "mad_s": 0.0018668020002223784
+        },
+        "jit_in_process": {
+          "median_s": 0.038859959,
+          "min_s": 0.036622719,
+          "max_s": 0.060995745,
+          "mad_s": 0.0022372400000000014
+        },
+        "aot_in_process": {
+          "median_s": 0.030911535,
+          "min_s": 0.030107072,
+          "max_s": 0.033547049,
+          "mad_s": 0.0007460069999999999
+        }
+      }
+    }
+  },
+  "limits": [
+    "Shared-host timings are advisory; CPU pinning does not isolate the host.",
+    "IR counts are static calls before linking the runtime, not allocations or timings.",
+    "AOT C counters measure allocation requests, not physical traffic or all foreign allocations.",
+    "Post-collection live bytes use the conservative collector and retain source plus one document.",
+    "All compiler timings use the CPython-hosted compiler and this checkout's own libraries.",
+    "Initial builds use private empty runtime caches; later build/JIT samples use warm caches."
+  ]
+}

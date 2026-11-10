@@ -1310,10 +1310,11 @@ do: the box may contain an object whose equality, hashing or repr runs program c
 Only code that can observe a number's identity tracks it (#969). In a program where a module
 opts in, that is the code of the modules that opt in, of every module they import, directly
 or not, of lib's `range`, `object()` and `iter()` modules where one of those uses them, and the
-compiler's shared helpers, but not the code of [numeric-value modules](#numeric-value-modules). The code of every other module compiles as in a program without
-dynamic `Any`: its classes keep their layouts, with no companion slots, and its functions keep
-no box slots, take no snapshots and allocate no boxes for their calls. Typically such a module
-is the main program that does not opt in but imports `tomllib` or the json_repair port.
+compiler's shared helpers, but not the code of [numeric-value modules](#numeric-value-modules).
+The code of every other module compiles as in a program without dynamic `Any`: its classes keep
+their layouts, with no companion slots, and its functions keep no box slots, take no snapshots
+and allocate no boxes for their calls. Typically such a module is the main program that does
+not opt in but imports `tomllib` or the json_repair port.
 
 Values cross from that code into tracking code only where they cannot carry a number's
 identity: it may pass strings, bools, `None`, `Any` values (which keep their boxes), and
@@ -1321,10 +1322,11 @@ containers and `Callable` values of these, make `Any` values of these and of num
 literals, receive these and plain numbers, and read numbers from the variables and objects
 of tracking modules.
 
-Any other crossing compiles the program again from the start with every module tracking identity,
-except numeric-value modules, which gives the same IR as before this split: one of its numbers or objects made an `Any` value, a
-call of a tracking module's function, constructor or method that takes or gives back anything
-else, or a store into a tracking module's variable, class attribute or object.
+Any other crossing compiles the program again from the start with every module except
+numeric-value modules tracking identity, as before this split: one of its numbers or objects
+made an `Any` value, a call of a tracking module's function, constructor or method that takes or
+gives back anything else, or a store into a tracking module's variable, class attribute or
+object.
 
 Without an identity-inert hint, a program whose main module opts in, or whose every
 module a module that opts in imports, is unaffected; one
@@ -1377,12 +1379,14 @@ companion boxes. A crossing that could carry identity restarts compilation from 
 with these modules tracking identity as before. Such crossings include a numeric list, dict or
 set (`Pattern.groupindex`), a function, another module's object, a subclass with a different
 layout, or a numeric class attribute of theirs. This restart is separate from those above and
-happens at most once. No program is rejected. The comment has no effect in a module that also opts in to dynamic `Any` or
-promoting ints.
+happens at most once. No program is rejected. The comment has no effect in a module that also
+opts in to dynamic `Any` or promoting ints.
 
 For the [TOML consumer benchmark](../bench/toml_boundary/README.md), whose own module does not
 opt in, tomllib's regex and date dependencies no longer track identity, also under full
-tracking. Its raw IR shrinks from 91,173 to 68,906 lines. Coverage:
+tracking. In one [measured run](../bench/toml_boundary/results/2026-11-10/README.md), raw program
+IR fell from 91,173 to 68,906 lines and C allocation requests by 13%; in-process AOT parsing
+ran 1.31 times as fast. Coverage:
 [dynany_identity_values.py](../tests/programs/inference/dynany_identity_values.py) and
 `tools/test_identity_scope.py`, which also checks the fallback's IR and a synthetic module.
 
