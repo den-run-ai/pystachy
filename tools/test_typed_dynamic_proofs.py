@@ -8,7 +8,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.dynamic_proof import DynamicProof
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Val
+from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.syntax import Node
 
 
@@ -42,6 +42,15 @@ class Case:
         i.r = [self.fn.n]
         self.fn.slots.append(i)
         return "%" + name + "." + str(i.r[0])
+
+    def shared_slot(self, local, typ, name, kind=0):
+        # a slot under local's number, as a local's "is assigned" flag (kind 1) and its numeric
+        # identity companions are declared (emission.py)
+        i = Ins("slot", typ, name)
+        i.k = kind
+        i.r = [int(local.rsplit(".", 1)[1])]
+        self.fn.slots.append(i)
+        return slot_register(i)
 
     def load(self, address, typ="dyn"):
         return self.op("mem.load", typ, a=[(address, "*" + typ)])
@@ -155,6 +164,46 @@ class DynamicGuardTests(unittest.TestCase):
             c.payload(value if old else c.load(slot))
             c.finish_pair()
             self.assert_safe(c, old)
+
+    def test_slots_sharing_a_local_number_keep_their_own_names_and_types(self):
+        # A flag or companion named by number alone would retype the local's own slot.
+        for guarded in (True, False):
+            with self.subTest(guarded=guarded):
+                c = Case()
+                slot = c.slot()
+                number = slot.rsplit(".", 1)[1]
+                flag = c.shared_slot(slot, "bool", "local", 1)
+                box = c.shared_slot(slot, "dyn", "local.box")
+                generation = c.shared_slot(slot, "int", "local.boxgen")
+                self.assertEqual([flag, box, generation],
+                                 ["%local.def." + number, "%local.box." + number, "%local.boxgen." + number])
+                c.store(slot, "%a0")
+                c.store(flag, "true", "bool")
+                c.store(box, "%a1")
+                c.store(generation, "1", "int")
+                if guarded:
+                    c.guard(c.load(slot))
+                    c.block("hit")
+                c.payload(c.load(slot))
+                if guarded:
+                    c.finish_pair()
+                else:
+                    c.ret()
+                self.assert_safe(c, guarded)
+                if guarded:
+                    c.g.verify(c.fn, False)
+
+    def test_a_guarded_local_does_not_prove_its_companion_box(self):
+        c = Case()
+        slot = c.slot()
+        box = c.shared_slot(slot, "dyn", "local.box")
+        c.store(slot, "%a0")
+        c.store(box, "%a1")
+        c.guard(c.load(slot))
+        c.block("hit")
+        c.payload(c.load(box))
+        c.finish_pair()
+        self.assert_safe(c, False)
 
     def test_calls_preserve_private_storage_but_escaped_reloads_lose_facts(self):
         for escaped, old in ((False, False), (True, False), (True, True)):

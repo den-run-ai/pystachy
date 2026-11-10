@@ -214,7 +214,10 @@ The exact operation table is `IROPS`; its current groups are:
 The operation registry is closed: unknown operations, including `raw`, are rejected.
 Operations carry typed operands and finite operators, predicates, flags and metadata;
 they never carry an LLVM instruction string. Entry slots lower to `alloca`; LLVM's
-`mem2reg` later builds SSA form.
+`mem2reg` later builds SSA form. A local's "is assigned" flag (`k` 1) and numeric
+identity companions share its slot number, so analyses name each slot by its text
+and kind as lowering does (`slot_register`), never by number alone. A stack tuple
+(`k` 2) is a tuple value.
 
 `mem.load` and `mem.store` keep a native value type on both sides of a typed
 address (`*int`, `*Box`, and so on). The verifier checks operand counts, matching

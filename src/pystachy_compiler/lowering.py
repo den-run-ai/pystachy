@@ -1,7 +1,7 @@
 """Lowering component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
-from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val, tmpname, one_num
+from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.lower_module import const_slot, struct_types
 from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSLOTS, GENSLOTSB, GENSLOTSX, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
@@ -42,13 +42,13 @@ def gen_lower(self, fn: IFn) -> None:
         o.append(f"  %coro.promise = alloca [{promise_slots(self.gproto)} x i64], align 8")
         self.coros = True
     for i in fn.slots:
+        r = slot_register(i)
         if i.k == 1:
-            o.append(f"  %{i.s}.def.{i.r[0]} = alloca i1")
-            o.append(f"  store i1 false, ptr %{i.s}.def.{i.r[0]}")
+            o.append(f"  {r} = alloca i1")
+            o.append(f"  store i1 false, ptr {r}")
         elif i.k == 2:
-            o.append(f"  %stk.{i.r[0]} = alloca [{tslots(i.t)} x i64], align 8")  # (a tuple: stack_tuple)
+            o.append(f"  {r} = alloca [{tslots(i.t)} x i64], align 8")  # (a tuple: stack_tuple)
         else:
-            r = f"%{i.s or 'h'}.{i.r[0]}"
             o.append(f"  {r} = alloca {lt(i.t)}")
             o.append(f"  store {lt(i.t)} zeroinitializer, ptr {r}")
     self.source_lines.mark(o, prologue, scope, 0)

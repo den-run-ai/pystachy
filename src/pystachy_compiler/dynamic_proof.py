@@ -7,7 +7,7 @@ a proof for int/bool shared layouts, class inheritance or container layouts.
 """
 from __future__ import annotations
 
-from src.pystachy_compiler.ir import IFn, Ins
+from src.pystachy_compiler.ir import IFn, Ins, slot_register
 from src.pystachy_compiler.union_state import UnionState, union_join
 
 
@@ -28,8 +28,9 @@ class DynamicProof:
         self.payloads = 0
         for i in fn.slots:
             if i.t == "dyn" or i.t == "dyntype" or i.t == "bool":
-                v = "%" + (i.s if i.s != "" else "h") + "." + str(i.r[0])
-                self.private[v] = i.t
+                # (a local's "is assigned" flag shares its number: named by number alone, it
+                # would retype the local's own slot)
+                self.private[slot_register(i)] = i.t
         for bn in range(len(fn.blocks)):
             b = fn.blocks[bn]
             self.blocks[b.label] = bn
