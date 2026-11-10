@@ -1237,7 +1237,9 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     elif dv.t != r.t:
         # (an int | None default of int items; or types that differ only in which ints promote)
         t = dv.t if is_opt(dv.t) and unopt(dv.t) == r.t else self.join(r.t, dv.t) if r.t.replace(BIG, "int") == dv.t.replace(BIG, "int") else ""
-    if t == "" or (dv.t == "None" and not is_opt(t) and t not in ["None", "dyn"]):
+    # Classes, class-containing unions and dynamic values already represent None without
+    # an opt[...] wrapper; use the same nullable-type rule as the join and coercion paths.
+    if t == "" or (dv.t == "None" and t != "None" and self.optional(t) != t):
         self.err(f"default= of {name}() must be None or of the items' type, {typestr(r.t)}, not {typestr(dv.t)}")
     e1 = "" if self.term else self.cur
     if e1 != "":
