@@ -87,6 +87,34 @@ class CheckerTests(unittest.TestCase):
                     self.assertEqual(result.stdout, f"{case} 1 ok\n".encode())
                     self.assertEqual(result.stderr, b"")
 
+    def test_tcp_probe_accepts_nonzero_option_and_rejects_wrong_states(self):
+        spec = importlib.util.spec_from_file_location("netio_oracle", check.HERE / "oracle/netio.py")
+        oracle = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(oracle)
+        spec = importlib.util.spec_from_file_location("netio_probe", check.SOURCE)
+        probe = importlib.util.module_from_spec(spec)
+        with mock.patch.dict(sys.modules, {"netio": oracle}):
+            spec.loader.exec_module(probe)
+
+        class FlagSocket(socket.socket):
+            enabled_result = 4
+            disabled_result = 0
+
+            def getsockopt(self, level, option):
+                value = super().getsockopt(level, option)
+                if (level, option) == (socket.SOL_SOCKET, socket.SO_REUSEADDR):
+                    return self.enabled_result if value else self.disabled_result
+                return value
+
+        with mock.patch.object(oracle, "socket", FlagSocket):
+            probe.tcp(1)
+            for enabled, disabled in ((0, 0), (4, 4)):
+                with self.subTest(enabled=enabled, disabled=disabled):
+                    FlagSocket.enabled_result = enabled
+                    FlagSocket.disabled_result = disabled
+                    with self.assertRaisesRegex(AssertionError, "SO_REUSEADDR"):
+                        probe.tcp(1)
+
     def test_environment_excludes_inherited_compiler_and_python_overrides(self):
         dirty = {"PYSTACHY_LLVM": "/llvm", "PYSTACHY_HOME": "/foreign", "PYSTACHY_PATH": "/foreign",
                  "PYSTACHY_GC_STRESS": "1", "PYSTACHY_GC_STRESS_PROGRAM": "1", "PYSTACHY_JOBS": "99",
