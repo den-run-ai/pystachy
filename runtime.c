@@ -8573,6 +8573,7 @@ static void makedirs(Str *name, I mode, I exist_ok, int top) {
     if (tail->len == 1 && tail->s[0] == '.') return;       /* (xxx/newdir/. exists once xxx/newdir does) */
   }
   if (nul(name)) pys_fail("ValueError: mkdir: embedded null character in path");
+  if (mode < INT_MIN || mode > INT_MAX) pys_fail("OverflowError: Python int too large to convert to C int");
   if (mkdir(name->s, (mode_t)mode)) {
     int e = errno;
     if (exist_ok && pys_isdir(name)) return;

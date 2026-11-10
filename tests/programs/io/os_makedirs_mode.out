@@ -1,0 +1,18 @@
+-2147483649 OverflowError Python int too large to convert to C int
+leaf False
+-2147483648 made
+leaf True
+2147483647 made
+leaf True
+2147483648 OverflowError Python int too large to convert to C int
+leaf False
+4294967295 OverflowError Python int too large to convert to C int
+leaf False
+nested Python int too large to convert to C int
+nested paths True False
+existing Python int too large to convert to C int
+nul mkdir: embedded null character in path True
+new dot True
+existing dot Python int too large to convert to C int
+removed True
+[exit 0]
