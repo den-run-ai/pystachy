@@ -55,6 +55,12 @@ Evidence for the fix is in the [validation log](#validation-log). Before merging
 Not covered by the fix: arms of a promoting-int type (`# pystachy: python-int`) still take
 the old path.
 
+**Superseded (10 November).** The prototype keeps the scalar for every union, and so did the
+first head of #1199. With `int | float` that rejects programs main compiles, because union
+arithmetic works there and the operands beside the kept one are then typed against the scalar:
+`((a if flag else b) or 1.5) * 2`. Do not apply the patch; see the
+[review round](#review-round-10-november) for what replaced it.
+
 ### 1.2 Latent limit found by reading (not reproduced)
 
 A dict's index stores entry numbers as `int32_t` with no guard (`runtime.c`, `dadd` and
@@ -308,7 +314,7 @@ regression programs in JIT and AOT, focused `make test`, `tools/irsame.sh` again
 
 | Finding | Pull request | Change |
 |---|---|---|
-| 1.1 Arithmetic on a conditional operand in union contexts | #1199 | `left_operand()`; also covers promoting-int arms, which the prototype left out |
+| 1.1 Arithmetic on a conditional operand in union contexts | #1199 | `left_operand()`, kept only for operations the union has not (see the review round); also covers promoting-int arms, which the prototype left out |
 | Section 2: `str ==` and scalar list search | #1201 | The runtime prototype, with a zero-generic-comparison bound in `tools/eqprobe.c` |
 | Section 5: `os.path` names | #1200 | Ten builtin functions in `runtime.py` and `runtime.c`, not a forward to `posixpath`: importing it costs about 50 ms a run, and it has no `abspath`, `relpath`, `expanduser` or `commonprefix` |
 | Section 5: `max()`/`min()` `default=` | #1204 | With one iterable, also with `key=`; CPython's evaluation order |
@@ -327,6 +333,57 @@ Not addressed, with the reason:
 | Inherited methods per receiver class; 4,096-specialization limit | Compiler architecture |
 | `enumerate(zip(...))`; `int.to_bytes`; `e.args`; `__file__`; `json.dump` | Not started |
 
+## Review round (10 November)
+
+Review of the seven pull requests found three defects. Each is fixed on its branch with a
+regression that fails before the fix.
+
+| Pull request | Finding | Fix |
+|---|---|---|
+| #1199 | A regression against main: `((a if flag else b) or 1.5) * 2` wanted as `int \| float` was rejected (`expected int, got float`), also with `and` | `d142435d` |
+| #1204 | `min()`/`max()` with `default=` made the items' list with `list()`, which asks an object for `__len__`; CPython's never do | `5329c0ae` |
+| #1205 | `del os.environ[name]` raised `KeyError` for `''`, `'A=B'` and a name with a NUL byte; CPython raises `OSError` (EINVAL) and `ValueError` | `b612f7d9` |
+
+**#1199.** The reported shape was one of a family. Keeping a scalar where main makes the union
+changes what the operands beside it are typed against, so these were rejected as well, all
+accepted by main:
+
+```python
+(a if c else b) * (1.5 if d else z)            # the operator's own right operand
+((a if c else b) * 2) or 1.5                   # an or/and around the operation
+((a if c else b) * 2) * (1.5 if d else z)      # an operator around it
+```
+
+The first two fuzzers could not find them: every expression they generate has one type.
+`fuzz/gen4.py` generates operands of mixed member types and `fuzz/fuzz4.sh` runs each program
+three ways (CPython, a base compiler, a fixed compiler). It counts programs the base compiles
+and the fixed one rejects, and output changes among those both compile.
+
+The replacement keeps a scalar only for an operation that union arithmetic rejects for the
+wanted union (`gen_unumeric`'s two errors: a member that is no number, or an operator other
+than `+ - * / // %`). Main rejects those programs, so nothing it compiles can change; every
+other program compiles byte for byte as on main. Where a scalar is kept, the next operand is
+compiled for the union the kept one stands for, and mixed operands are boxed as on main. So is
+a kept operand beside an `Any` value, whose operator takes the union. `**` keeps a scalar only
+for a non-negative literal exponent.
+
+What that gives up against the first head: with `int | float`, `+ - * / // %` on a conditional
+operand run as boxed union arithmetic again, as on main. In a promoting-int module main rejects
+some of those (`expected !int in a closed union`), and so does this: 8 of 200 `gen2.py`
+programs that the first head compiled.
+
+| Check | Result |
+|---|---|
+| `tools/irsame.sh` against main, 4,368 corpus programs | 4,362 identical. Five are new acceptances; `scalar_union_operand_any.py` boxes after the join instead of in each arm |
+| `fuzz4.sh`, 1,000 plain + 600 dynamic-Any + 500 promoting-int programs | Main compiles 841: none rejected, none prints differently. 459 new acceptances: 455 match CPython, three hit the documented `int ** negative int` deviation through an int intermediate, one returns a float where it declares `int \| str` |
+| The same seeds at the first head `f9abbeda` | 33 programs main compiles are rejected (20 plain, 11 dynamic-Any, 2 promoting-int) |
+| Trial merge of all seven branches on `c1796654` (local, not pushed) | Bootstrap fixed points; 22 new cases pass in JIT and AOT; `check-runtime` agrees on 671 entries; `fuzz4.sh` gives the same counts as #1199 alone |
+| The earlier fuzzers on that merge | `gen.py`: 518 of 518 match CPython. `gen2.py`: 400 of 400. `gen2.py` as promoting-int modules: 192 of 200 match, and main rejects the other 8 the same way |
+
+Shared lines when merging: #1200 and #1205 both insert before `npos = 0` in `builtins.py`
+(keep both blocks). In `docs/language/modules.md` take the `os` and `os.environ` rows from
+#1205 and the `os.path` row from #1200.
+
 ## Reproducing
 
 ```sh
@@ -334,6 +391,8 @@ export PYSTACHY_REPO=/path/to/checkout PYSTACHY=/path/to/checkout/pystachy
 probes/probe.sh -a probes/order1.py           # CPython against run and build
 python3.13 bench/mb1.py; "$PYSTACHY" build bench/mb1.py -o mb1 && ./mb1
 (cd fuzz && ./fuzz.sh 1 520 aot)              # random programs
+(cd fuzz && BASE_COMPILER=/path/to/main/pystachy FIXED_COMPILER=$PYSTACHY FIXED_HOME=$PYSTACHY_REPO \
+    ./fuzz4.sh 1 1000)                        # mixed-type operands, three ways; also: 1 600 dynamic-any, 1 500 python-int
 python3.13 scaling/scale.py; python3.13 scaling/km.py
 git apply prototype/union-ifexp-operand-fix.patch      # in a clean checkout, then make
 git apply prototype/runtime-scalar-eq-fastpath.patch
