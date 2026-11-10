@@ -163,6 +163,39 @@ counted source functions. It is not an instruction count. A zero result does not
 identify a refusal reason; the observer does not rerun the call-graph analysis to
 invent explanations. LLVM helper attributes remain available in `llvm.ll`.
 
+### Dynamic boundaries and numeric identity
+
+Each `attempts[].dynamic_boundary` observes the actual `identity_modules` policy
+selection. Its `modules` records module names, paths and dependency edges;
+dynamic-Any and promoting-int opt-ins; requested and active identity-inert hints;
+and whether each module's code tracks numeric identity. `tracked_modules` lists
+that selected scope. `hints_enabled` and `full_graph_fallback` retain the driver's
+actual retry settings. The latter means that a previous crossing requested full
+tracking; it is distinct from a dependency closure that already includes every
+module. `fallback_reason` is the compiler's exact crossing event for that attempt,
+or `null` if there was none. No event is inferred from the final module graph.
+
+For example, an ordinary typed `tomllib.loads` consumer with a typed `parse_float`
+callback can first exclude its own module, then retry after `number as an Any
+value` with full-graph tracking. Removing an opt-in does not establish that its
+numeric identity costs disappeared. Inspect every attempt, not just the final
+one, to distinguish a discarded hint from full tracking.
+
+`footprints.before` and `footprints.after` summarize all generated typed-IR
+functions at the same boundaries as the selected before/after snapshots. The
+function filter does not narrow these maps or totals. Per-function entries give
+the owning identity-policy module, tracking choice, counts of `dyn.*` operations
+and `rt` calls named `dyn.*`, and named local numeric companion (`.box`) and
+generation (`.boxgen`) slots. Shared compiler helpers can have module `?`.
+
+These counts are static observations, not allocation frequency, memory use or
+runtime cost. They exclude global/field companions, unnamed identity temporaries,
+other runtime operations and helpers emitted only during LLVM lowering. They do
+not prove that the selected scope is minimal or justify removing identity checks.
+Before a stage is reached its footprint is `unavailable`, with `totals: null`;
+retained stages of failed attempts are `partial`. A source-provenance failure
+marks every attempt inconsistent and downgrades completed footprints to partial.
+
 Diagnostic codes are deliberately coarse in this prototype:
 
 | Code | Meaning |

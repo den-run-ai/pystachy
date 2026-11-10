@@ -114,6 +114,7 @@ def base_report(source: str, function: str) -> dict:
             "Pass rules describe general contracts, not exact reasons for every missed optimization.",
             "This is the first terminal error, not multi-error or all-units semantic checking.",
             "Snapshot IR and schema are experimental; this is a hosted developer tool.",
+            "Dynamic boundary counts are static typed-IR observations, not runtime, allocation or minimal-containment proofs.",
         ],
     }
 
@@ -201,6 +202,60 @@ class Observer:
                 self.attempt["typed_functions"] = len(gen.fns)
                 self.attempt["selected_functions"] = len(self.before)
                 self.attempt["enabled_optimizations"] = list(gen.opts)
+                footprint = self.attempt["dynamic_boundary"]["footprints"]["before"]
+                footprint.update(status="partial", functions={fn.f.ll: self.boundary_function(gen, fn) for fn in gen.fns})
+
+    @staticmethod
+    def boundary_function(gen, fn) -> dict:
+        operations, calls = Counter(), Counter()
+        for block in fn.blocks:
+            for ins in block.code:
+                if ins.op.startswith("dyn."):
+                    operations[ins.op] += 1
+                if ins.op == "rt" and ins.s.startswith("dyn."):
+                    calls[ins.s] += 1
+        return {"name": fn.f.name, "module": gen.fn_home(fn.f),
+                "tracks_numeric_identity": gen.fn_identity(fn.f),
+                "dynamic_operations": dict(sorted(operations.items())),
+                "dynamic_runtime_calls": dict(sorted(calls.items())),
+                "numeric_companion_slots": sum(ins.op == "slot" and ins.t == "dyn" and ins.s.endswith(".box") for ins in fn.slots),
+                "numeric_generation_slots": sum(ins.op == "slot" and ins.t == "int" and ins.s.endswith(".boxgen") for ins in fn.slots)}
+
+    @staticmethod
+    def boundary_totals(functions: dict) -> dict:
+        operations, calls = Counter(), Counter()
+        for function in functions.values():
+            operations.update(function["dynamic_operations"])
+            calls.update(function["dynamic_runtime_calls"])
+        return {"functions": len(functions),
+                "dynamic_operations": dict(sorted(operations.items())),
+                "dynamic_runtime_calls": dict(sorted(calls.items())),
+                "numeric_companion_slots": sum(fn["numeric_companion_slots"] for fn in functions.values()),
+                "numeric_generation_slots": sum(fn["numeric_generation_slots"] for fn in functions.values())}
+
+    def identity_wrapper(self, original):
+        def wrapped(gen, modules, *args, **kwargs):
+            result = original(gen, modules, *args, **kwargs)
+            if self.attempt is not None:
+                d = self.diagnostics
+                paths = [{d.FILES[k].removeprefix("./") for k in flags}
+                         for flags in (d.DYNFILES, d.INTFILES, d.IDINERT)]
+                enabled = d.dynamic_program()
+                observed = []
+                for module in modules:
+                    path = module.path.removeprefix("./")
+                    observed.append({"name": module.name, "path": module.path,
+                        "dependencies": sorted(module.deps),
+                        "dynamic_any": path in paths[0], "promoting_int": path in paths[1],
+                        "identity_inert_requested": path in paths[2],
+                        "identity_inert_active": module.name in gen.idhint,
+                        "tracks_numeric_identity": enabled and module.name not in gen.idoff})
+                self.attempt["dynamic_boundary"].update(
+                    policy_status="observed", modules=observed, dynamic_any_enabled=enabled,
+                    full_graph_fallback=gen.idfull, hints_enabled=gen.idtry,
+                    tracked_modules=[m["name"] for m in observed if m["tracks_numeric_identity"]])
+            return result
+        return wrapped
 
     def wrap(self, cls, name: str, wrapper) -> None:
         original = getattr(cls, name)
@@ -248,7 +303,11 @@ class Observer:
             from src.pystachy_compiler.diagnostics import NeedSliceEH, Rejoin
             self.before, self.after = [], []
             self.captured_before = False
-            self.attempt = {"index": len(self.report["attempts"]) + 1, "status": "failed"}
+            self.attempt = {"index": len(self.report["attempts"]) + 1, "status": "failed",
+                            "dynamic_boundary": {"policy_status": "unavailable", "modules": [],
+                                "fallback_reason": None, "source_provenance": "consistent",
+                                "footprints": {stage: {"status": "unavailable", "functions": {}, "totals": None}
+                                               for stage in ("before", "after")}}}
             self.report["attempts"].append(self.attempt)
             self.diagnostics.PHASE = "semantic"
             try:
@@ -264,6 +323,13 @@ class Observer:
                 self.attempt["status"] = "completed"
                 return result
             finally:
+                boundary = self.attempt["dynamic_boundary"]
+                boundary["fallback_reason"] = gen.idevent or None
+                for footprint in boundary["footprints"].values():
+                    if footprint["status"] != "unavailable":
+                        footprint["totals"] = self.boundary_totals(footprint["functions"])
+                        if self.attempt["status"] == "completed":
+                            footprint["status"] = "completed"
                 # specdone contains only completed requests. A fresh Gen owns
                 # each retry, so copy its aliases and fields before it is lost.
                 selected = {}
@@ -399,6 +465,10 @@ class Observer:
     def lower_wrapper(self, original):
         def wrapped(gen, fn, *args, **kwargs):
             self.capture_before(gen)
+            if self.attempt is not None:
+                footprint = self.attempt["dynamic_boundary"]["footprints"]["after"]
+                footprint["status"] = "partial"
+                footprint["functions"][fn.f.ll] = self.boundary_function(gen, fn)
             if self.selected(fn):
                 self.after.append(self.snapshot(fn))
             self.diagnostics.PHASE = "lower"
@@ -416,6 +486,7 @@ class Observer:
         self.wrap(Lexer, "file", self.phase_wrapper("lex"))
         self.wrap(Parser, "module", self.phase_wrapper("parse"))
         self.wrap(Gen, "program", self.program_wrapper)
+        self.wrap(Gen, "identity_modules", self.identity_wrapper)
         self.wrap(Gen, "effects", self.effects_wrapper)
         self.wrap(Gen, "verify", self.verify_wrapper)
         for contract in PASS_CONTRACTS:
@@ -435,6 +506,13 @@ class Observer:
             setattr(cls, name, original)
 
     def save(self) -> None:
+        if self.report["input"]["changed_during_compilation"]:
+            for attempt in self.report["attempts"]:
+                boundary = attempt["dynamic_boundary"]
+                boundary["source_provenance"] = "inconsistent"
+                for footprint in boundary["footprints"].values():
+                    if footprint["status"] == "completed":
+                        footprint["status"] = "partial"
         # Partial snapshots remain explicitly partial, never a completed pipeline.
         for name, functions, available in (("typed-before", self.before, self.captured_before),
                                            ("typed-after", self.after, bool(self.after) or self.report["status"] == "ok")):
