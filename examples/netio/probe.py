@@ -243,8 +243,11 @@ def tcp(repeat: int) -> None:
         client = netio.socket()
         selector = netio.DefaultSelector()
         try:
+            listener.setsockopt(netio.SOL_SOCKET, netio.SO_REUSEADDR, 0)
+            assert listener.getsockopt(netio.SOL_SOCKET, netio.SO_REUSEADDR) == 0, "SO_REUSEADDR remains enabled"
             listener.setsockopt(netio.SOL_SOCKET, netio.SO_REUSEADDR, 1)
-            assert listener.getsockopt(netio.SOL_SOCKET, netio.SO_REUSEADDR) == 1
+            # Darwin returns the enabled option bitmask, while Linux returns 1.
+            assert listener.getsockopt(netio.SOL_SOCKET, netio.SO_REUSEADDR) != 0, "SO_REUSEADDR remains disabled"
             listener.bind(("127.0.0.1", 0))
             address = listener.getsockname()
             assert address[0] == "127.0.0.1" and address[1] > 0
