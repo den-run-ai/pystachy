@@ -2916,7 +2916,12 @@ static int eqpair_depth(I a, I b, const char *x, const char *y, I depth) {
   __builtin_unreachable();   /* the compiler permits only the builtin value descriptors above */
 }
 static int eqpair(I a, I b, const char *x, const char *y) { return eqpair_depth(a, b, x, y, 0); }
-I pys_eq(I a, I b, Str *d) { return eqv(a, b, d->s); }
+/* a == b of two strs (descriptor "s", which the compiler passes for every str == str and
+   str != str) is eqv's answer for 's', taken without its descriptor walk */
+I pys_eq(I a, I b, Str *d) {
+  if (d->s[0] == 's') return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b;
+  return eqv(a, b, d->s);
+}
 I pys_eq_pair(I a, I b, Str *x, Str *y) { return eqpair(a, b, x->s, y->s); }
 /* a OP b for op 0..3 = < <= > >=, as CPython compares: sequences find the first pair of
    items that are not equal (identity, then ==) and apply OP to that pair only, else compare
@@ -3439,7 +3444,23 @@ List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items a
   }
   r->len = n > 0 ? m * n : 0; return r;
 }
-I pys_list_find(List *l, I v, Str *d) { for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i; return -1; }
+/* Searches of a list of ints or bools that has no companion (so no item past 64 bits and no
+   identity boxes: lbig is null for each), and of a list of strs, compare slots as eqitem does
+   for the descriptors "i", "b" and "s", without its descriptor walk for each item: 1 where the
+   slots' values decide, 2 where pys_str_eq does (a null slot, None, equals only None). No
+   program code runs in these comparisons, so the list cannot change under the search */
+static inline int scalar_items(const List *l, const char *d) {
+  if (d[1] || l->ids) return 0;
+  return d[0] == 'i' || d[0] == 'b' ? 1 : d[0] == 's' ? 2 : 0;
+}
+static inline int str_item_eq(I a, I b) { return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b; }
+I pys_list_find(List *l, I v, Str *d) {
+  int k = scalar_items(l, d->s);
+  if (k == 1) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) if (a[i] == v) return i; return -1; }
+  if (k == 2) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) if (str_item_eq(a[i], v)) return i; return -1; }
+  for (I i = 0; i < l->len; i++) if (!lbig(l, i) && eqitem(l->a[i], v, d->s)) return i;
+  return -1;
+}
 I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
   for (I i = 0; i < l->len; i++) { Mpz *m = lbig(l, i); if (m ? big_eq(m, v, vd->s) : eqpair(l->a[i], v, d->s, vd->s)) return i; }
   return -1;
@@ -3447,6 +3468,10 @@ I pys_list_find_pair(List *l, I v, Str *d, Str *vd) {
 static I index_in(List *l, I v, const char *d, I st, I en) {   /* the first i in [st, en) where l[i] == v, or -1 */
   if (st < 0 && (st += l->len) < 0) st = 0;
   if (en < 0 && (en += l->len) < 0) en = 0;
+  int k = scalar_items(l, d);
+  I e = en < l->len ? en : l->len;   /* (the list keeps its length while slots are compared: scalar_items) */
+  if (k == 1) { for (I j = st, *a = l->a; j < e; j++) if (a[j] == v) return j; return -1; }
+  if (k == 2) { for (I j = st, *a = l->a; j < e; j++) if (str_item_eq(a[j], v)) return j; return -1; }
   for (I j = st; j < en && j < l->len; j++) if (!lbig(l, j) && eqitem(l->a[j], v, d)) return j;
   return -1;
 }
@@ -3464,7 +3489,13 @@ I pys_list_index_as(List *l, I v, Str *d, I st, I en, I ok, I x, Str *xd) {  /* 
   if (i < 0) not_in_list(x, xd->s);
   return i;
 }
-I pys_list_count(List *l, I v, Str *d) { I c = 0; for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s); return c; }
+I pys_list_count(List *l, I v, Str *d) {
+  I c = 0; int k = scalar_items(l, d->s);
+  if (k == 1) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) c += a[i] == v; return c; }
+  if (k == 2) { for (I i = 0, n = l->len, *a = l->a; i < n; i++) c += str_item_eq(a[i], v); return c; }
+  for (I i = 0; i < l->len; i++) c += !lbig(l, i) && eqitem(l->a[i], v, d->s);
+  return c;
+}
 void pys_list_remove(List *l, I v, Str *d) {
   I i = pys_list_find(l, v, d);
   if (i < 0) pys_fail("ValueError: list.remove(x): x not in list");
