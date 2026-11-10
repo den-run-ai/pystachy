@@ -48,6 +48,12 @@ not come from separate compilations with different optimization settings.
 Failed compilations may stop before any typed IR or LLVM output is available;
 read `report.json` first.
 
+The optional [Lean payload-guard prototype](../tools/lean_boundary/README.md)
+consumes a completed `typed-after.json` and checks one explicitly selected
+function. Its theorem establishes guard safety in a small normalized model;
+the inspection export, normalization and native execution remain separate trust
+obligations. Unsupported instructions are reported rather than skipped.
+
 ## Three questions to try
 
 ### Did the list-loop proof remove a checked read?

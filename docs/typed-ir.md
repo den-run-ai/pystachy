@@ -118,8 +118,10 @@ the concrete payload.
 In a module that opts in to [dynamic `Any`](dynamic-any.md), `dyn` is a pointer to an immutable
 box of a `DynType` pointer and an eight-byte payload, which is a number's bits or a reference's
 own pointer. `dyn.type` reads the `DynType` (type `dyntype`), and `dyn.payload` reads the payload
-as the static type its `s` names, after a test has proved it; neither has a memory effect, since
-a box never changes. A box in a container slot is descriptor `A`, which runtime walks follow
+as the static type its `s` names. The frontend must establish that type before the read;
+the stock IR verifier checks these instructions' shape, not that dynamic tag obligation.
+Neither instruction has a memory effect, since a box never changes. A box in a container slot
+is descriptor `A`, which runtime walks follow
 through the box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor
 holds an `A` have every effect, as an `O` does.
 In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
@@ -244,6 +246,15 @@ LLVM text in the shared container/optional/union conversion helpers, preserving 
 existing representation and allocation behavior. The verifier checks their operand,
 result and metadata contracts. Closed-union payloads additionally carry the tag proofs
 described below; ordinary container element typing remains a frontend contract.
+
+The optional [Lean payload-guard checker](../tools/lean_boundary/README.md)
+checks one selected function from a completed inspection snapshot. Its theorem
+establishes tag safety for accepted normalized programs, including copies,
+rebinding, joins and loops. The adapter conservatively refuses operations outside
+its supported subset. Tests use actual emitted `float`, `str` and `bool` guards,
+plus corrupted snapshots and certificates. This is separate from the built-in
+closed-union verifier below: it neither runs during ordinary compilation nor
+proves the Python adapter, payload layout, identity, GC or LLVM lowering.
 
 `union.tag` reads a nonoptional closed union's integer tag. `union.payload` records the
 declared member type and reads its opaque `%slot`; `slot.unpack` then recovers the native

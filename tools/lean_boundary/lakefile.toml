@@ -1,0 +1,13 @@
+name = "pystachy-boundary"
+version = "0.1.0"
+defaultTargets = ["PystachyBoundary", "Audit", "pystachy-boundary"]
+
+[[lean_lib]]
+name = "PystachyBoundary"
+
+[[lean_lib]]
+name = "Audit"
+
+[[lean_exe]]
+name = "pystachy-boundary"
+root = "Main"

@@ -1248,7 +1248,13 @@ Coverage: [dynany_identity_scalar_expressions.py](../tests/ir/dynany_identity_sc
 ### IR reads and effects
 
 `dyn.type` reads a box's DynType pointer. `dyn.payload` reads the payload with the
-type established by a preceding proof. Both are effect-free because boxes are
+type established by frontend narrowing. The stock IR verifier validates their
+shape; matching dynamic tag guards remain a frontend obligation. The optional
+[Lean checker](../tools/lean_boundary/README.md) checks those guards in selected
+normalized functions exported from actual typed IR. It rejects unsupported
+forms and does not establish adapter fidelity, identity/GC preservation or LLVM
+correctness. It is separate from the built-in closed-union proof and does not
+justify removing `Any` or identity bookkeeping. Both instructions are effect-free because boxes are
 immutable. Runtime calls with an `A` descriptor receive every effect, as `O` calls
 do: the box may contain an object whose equality, hashing or repr runs program code.
 

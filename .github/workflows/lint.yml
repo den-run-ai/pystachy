@@ -33,6 +33,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
@@ -41,6 +42,36 @@ jobs:
           cache-dependency-path: tools/requirements-dev.txt
 
       - run: python3 -m pip install -r tools/requirements-dev.txt
+
+      - name: Select Lean boundary validation
+        id: lean-boundary
+        run: |
+          # PR checkout is the synthetic merge: its first parent is the base,
+          # so this compares the whole PR, including earlier commits. Missing
+          # merge history fails safe; main pushes and manual runs always check.
+          if [ "$GITHUB_EVENT_NAME" != pull_request ] ||
+              ! git rev-parse --verify 'HEAD^2^{commit}' >/dev/null 2>&1 ||
+              ! git diff --quiet HEAD^ HEAD -- tools/lean_boundary tools/check_lean_boundary.py \
+                'tools/test_lean_boundary*.py' src pystachy.py tools/inspect_compiler.py \
+                Makefile .github/workflows/lint.yml tools/requirements-dev.txt .python-version; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'run=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build, audit and test the Lean boundary prototype
+        if: steps.lean-boundary.outputs.run == 'true'
+        run: |
+          lean_boundary_dir=$(mktemp -d)
+          trap 'rm -rf "$lean_boundary_dir"' EXIT
+          curl --fail --location --silent --show-error --retry 2 --retry-max-time 240 \
+            --connect-timeout 20 --max-time 120 \
+            'https://github.com/leanprover/lean4/releases/download/v4.35.0/lean-4.35.0-linux.tar.zst' \
+            --output "$lean_boundary_dir/lean.tar.zst"
+          printf '%s  %s\n' '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d' \
+            "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -
+          tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
+          PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" make check-lean-boundary
 
       - name: Validate GitHub Actions workflows (actionlint)
         env:
