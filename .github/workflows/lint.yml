@@ -209,18 +209,6 @@ jobs:
           python3 -m unittest discover -s tools -p test_concurrency_contract.py
           python3 -m unittest discover -s tools -p 'test_process_worker*.py'
 
-      - name: Optional native socket and readiness prototype
-        run: |
-          python3 -m unittest discover -s tools -p 'test_netio*.py'
-          python3 examples/netio/benchmark.py --cpython-only --smoke --json build/netio-benchmark-smoke.json
-          python3 examples/netio/check.py --compiler 'python3 pystachy.py' --repeat 2
-          python3 examples/netio/check_drain.py --compiler 'python3 pystachy.py' --json build/netio-drain-checks.json
-          mkdir -p build/netio
-          "$PYSTACHY_LLVM/clang" -std=c11 -O1 -g -Wall -Wextra -Werror -Wpedantic \
-            -fsanitize=address,undefined -fno-omit-frame-pointer \
-            examples/netio/netio.c examples/netio/ownership.c -o build/netio/ownership
-          ASAN_OPTIONS=detect_leaks=1 build/netio/ownership
-
       - name: Native program cache manifests and tool inputs
         run: |
           python3 -m unittest discover -s tools -p 'test_program_cache*.py'

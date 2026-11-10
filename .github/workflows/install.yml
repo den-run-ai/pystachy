@@ -46,6 +46,42 @@ jobs:
       - name: Hosted and native JIT/AOT smoke
         run: python3 tools/install_smoke.py
 
+      - name: Install sanitizer runtime for netio ownership
+        if: runner.os == 'Linux'
+        timeout-minutes: 2
+        run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
+
+      - name: Hosted and native epoll, pipes and ownership
+        id: netio_linux
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        env:
+          PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+        run: |
+          test -x ./pystachy
+          python3 -m unittest discover -s tools -p 'test_netio*.py'
+          python3 examples/netio/benchmark.py --cpython-only --smoke --json build/netio-linux-benchmark-smoke.json
+          python3 examples/netio/check.py --compiler 'python3 pystachy.py' --repeat 2 --json build/netio-linux-hosted.json
+          python3 examples/netio/check_drain.py --compiler 'python3 pystachy.py' --json build/netio-linux-drain-hosted.json
+          mkdir -p build/netio
+          "$PYSTACHY_LLVM/clang" -std=c11 -O1 -g -Wall -Wextra -Werror -Wpedantic \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            examples/netio/netio.c examples/netio/ownership.c -o build/netio/ownership
+          ASAN_OPTIONS=detect_leaks=1 build/netio/ownership
+          python3 examples/netio/check.py --compiler ./pystachy --repeat 2 --json build/netio-linux-native.json
+          python3 examples/netio/check_drain.py --compiler ./pystachy --json build/netio-linux-drain-native.json
+
+      - name: Retain Linux netio reports
+        if: always() && runner.os == 'Linux' && steps.netio_linux.outcome != 'skipped'
+        timeout-minutes: 2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: netio-linux-install-${{ matrix.os }}
+          path: build/netio-linux*.json
+          if-no-files-found: warn
+          retention-days: 7
+          overwrite: true
+
       - name: Native kqueue and pipe parity
         id: netio
         if: matrix.os == 'macos-15'
