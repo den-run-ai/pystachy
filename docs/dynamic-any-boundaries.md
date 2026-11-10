@@ -54,6 +54,10 @@ are not sufficient.
 TOML's typed flag tree is covered by the [table/error cases](../tests/programs/library/lib_tomllib_flags.py),
 [open callback cases](../tests/programs/library/lib_tomllib_boundary.py),
 and the TOML checks in [identity-scope tests](../tools/test_identity_scope.py).
+The [ordinary typed-callback consumer](../tests/programs/library/lib_tomllib_typed_callback.py)
+also observes the identity of the imported helper's result without opting in to
+dynamic `Any`. A generic `int | T` replacement currently rejects its `is` comparison
+when `T` is `float`; this is closed-union operation debt, not failed generic inference.
 The [consumer benchmark](../bench/toml_boundary/README.md) separates raw and
 optimized program IR, hosted compilation, JIT/AOT execution, AOT allocation
 requests and conservative post-collection live bytes.
