@@ -1,0 +1,23 @@
+OSError [Errno 22] Invalid argument ''
+OSError [Errno 22] Invalid argument ''
+KeyError ''
+False None unset none
+OSError [Errno 22] Invalid argument 'A=B'
+ValueError illegal environment variable name 'A=B'
+KeyError 'A=B'
+False None unset none
+ValueError embedded null byte 'A\x00B'
+ValueError embedded null byte 'A\x00B'
+KeyError 'A\x00B'
+False None unset none
+OSError [Errno 22] Invalid argument '='
+ValueError illegal environment variable name '='
+KeyError '='
+False None unset none
+KeyError 'PYSTACHY_TEST_INVALID'
+stored 'PYSTACHY_TEST_INVALID' x
+x
+True x x x
+ValueError embedded null byte False
+KeyError 'PYSTACHY_TEST_INVALID' False
+[exit 0]

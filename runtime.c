@@ -7616,9 +7616,15 @@ Str *pys_environ_get(Str *k) {                    /* os.environ[k] */
   return v;
 }
 void pys_environ_del(Str *k) {                    /* del os.environ[k] */
+  /* as CPython's __delitem__: os.unsetenv() of the name first, whose errors are its own (a NUL
+     byte is no file system name's, and no name or one with '=' is unsetenv()'s EINVAL), and
+     only then KeyError for a name the environment has not */
   Str *e = env_encoded(k);
-  if (nul(e) || strchr(e->s, '=') || !getenv(e->s)) environ_missing(k);
+  if (nul(e)) pys_fail("ValueError: embedded null byte");
+  if (!e->len || strchr(e->s, '=')) ioerr(EINVAL);
+  int had = getenv(e->s) != 0;
   if (unsetenv(e->s)) ioerr(errno);
+  if (!had) environ_missing(k);
 }
 Str *pys_environ_pop(Str *k, Str *dflt) {
   k = env_encoded(k);
