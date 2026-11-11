@@ -1,6 +1,6 @@
 name = "pystachy-boundary"
 version = "0.1.0"
-defaultTargets = ["PystachyBoundary", "PystachyAccess", "PystachyInt", "PystachyStorage", "Audit", "pystachy-boundary", "pystachy-access", "pystachy-int"]
+defaultTargets = ["PystachyBoundary", "PystachyAccess", "PystachyInt", "PystachyStorage", "PystachyInline", "PystachyGuards", "GuardAudit", "Audit", "pystachy-boundary", "pystachy-access", "pystachy-int"]
 
 [[lean_lib]]
 name = "PystachyBoundary"
@@ -13,6 +13,15 @@ name = "PystachyInt"
 
 [[lean_lib]]
 name = "PystachyStorage"
+
+[[lean_lib]]
+name = "PystachyInline"
+
+[[lean_lib]]
+name = "PystachyGuards"
+
+[[lean_lib]]
+name = "GuardAudit"
 
 [[lean_lib]]
 name = "Audit"
