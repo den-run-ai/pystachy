@@ -55,7 +55,12 @@ the inspection export, normalization and native execution remain separate trust
 obligations. Unsupported instructions are reported rather than skipped.
 A `check` op's error block is not among its targets, so each function snapshot
 also maps the op's key (its descriptor, else its text) to that block's label in
-`check_targets`.
+`check_targets`. `typed-after.json` also lists, in `dynamic_types`, every
+DynType descriptor the program emits for its classes, functions and generators.
+A dynamic box's tag is the address of one of these or of a runtime.c builtin.
+Each entry records the descriptor's kind, class number (the word class
+dispatchers switch on), base, secondary role, flags and the static type of the
+payload its boxes hold.
 
 ## Three questions to try
 

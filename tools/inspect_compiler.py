@@ -140,6 +140,7 @@ class Observer:
         self.after: list[dict] = []
         self.captured_before = False
         self.attempt: dict | None = None
+        self.gen = None
         self.restores: list[tuple] = []
         self.source_reads: list[dict] = []
 
@@ -207,6 +208,26 @@ class Observer:
                 self.attempt["enabled_optimizations"] = list(gen.opts)
                 footprint = self.attempt["dynamic_boundary"]["footprints"]["before"]
                 footprint.update(status="partial", functions={fn.f.ll: self.boundary_function(gen, fn) for fn in gen.fns})
+
+    @staticmethod
+    def dynamic_types(gen) -> list[dict]:
+        # Every DynType the program emits (dynamic.py: dyn_class_type, dyn_fn_type and generator
+        # types), as lowered: a dynamic box's tag is the address of one of these or of a
+        # runtime.c builtin. cls is the word class dispatchers switch on, base the DynType that
+        # pys_dyn_isa follows, role a secondary base's, and payload the static type of the
+        # value a box of it holds.
+        from src.pystachy_compiler.dynamic import DF_ROLE
+        held = {symbol: t for t, symbol in gen.dyntypes.items()}
+        held.update({symbol: t for t, symbol in gen.dynfnt.items()})
+        types = []
+        for d in gen.consts:
+            if d.kind == "dyntype":
+                flags = int(d.items[2].v)
+                types.append({"symbol": d.name, "kind": int(d.items[0].v), "cls": int(d.items[1].v),
+                              "flags": flags, "base": "" if d.refs[2] == "null" else d.refs[2],
+                              "role": d.refs[6] if flags & DF_ROLE and len(d.refs) == 7 else "",
+                              "payload": held.get(d.name, "")})
+        return sorted(types, key=lambda t: t["symbol"])
 
     @staticmethod
     def boundary_function(gen, fn) -> dict:
@@ -305,6 +326,7 @@ class Observer:
         def wrapped(gen, *args, **kwargs):
             from src.pystachy_compiler.diagnostics import NeedSliceEH, Rejoin
             self.before, self.after = [], []
+            self.gen = gen
             self.captured_before = False
             self.attempt = {"index": len(self.report["attempts"]) + 1, "status": "failed",
                             "dynamic_boundary": {"policy_status": "unavailable", "modules": [],
@@ -522,9 +544,11 @@ class Observer:
             if available:
                 artifact = name + ".json"
                 state = "completed" if self.report["status"] == "ok" else "partial"
-                write_json(self.output / artifact, {"schema_version": SCHEMA_VERSION, "stage": name,
-                           "status": state, "attempt": self.attempt["index"] if self.attempt else 0,
-                           "functions": functions})
+                snapshot = {"schema_version": SCHEMA_VERSION, "stage": name, "status": state,
+                            "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
+                if name == "typed-after" and self.gen is not None:
+                    snapshot["dynamic_types"] = self.dynamic_types(self.gen)
+                write_json(self.output / artifact, snapshot)
                 self.report["artifacts"][name] = artifact
                 for stage in self.report["stages"]:
                     if stage["name"] == name:
