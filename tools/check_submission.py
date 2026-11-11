@@ -1,7 +1,7 @@
 """Check issue/PR metadata using trusted base code; never execute PR files.
 
 Run in submissions.yml with GITHUB_EVENT_PATH, GITHUB_REPOSITORY and GITHUB_TOKEN.
-PRs receive a head-commit status; issues receive a removable label. No comments.
+PRs receive a head-commit status and opening reminder; issues receive a label.
 """
 
 import json
@@ -18,6 +18,13 @@ CHAR_LIMIT = 6000
 LABEL = "needs-description"
 STATUS = "Submission format"
 GUIDE = "https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md#issues-and-pull-requests"
+ACK_MARKER = "<!-- pystachy-ack-v1 -->"
+ACK_BODY = (ACK_MARKER + "\nThanks for contributing! Please reply once to acknowledge "
+            "the [contributor guidelines](https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md), "
+            "your right to submit this work under its applicable licenses, "
+            "and any substantial AI assistance (tool and scope, or `AI: none`). "
+            "You are responsible for reviewing and understanding your contribution. "
+            "This reminder is **not a blocking check**.")
 
 
 def validate(title, body, is_pr=False):
@@ -72,6 +79,13 @@ def api(method, path, payload=None, missing_ok=False):
         raise
 
 
+def remind_contributor(number):
+    """Leave one nonblocking reminder, including on a rerun of the opening event."""
+    comments = api("GET", f"/issues/{number}/comments?per_page=100")
+    if not any(ACK_MARKER in comment.get("body", "") for comment in comments):
+        api("POST", f"/issues/{number}/comments", {"body": ACK_BODY})
+
+
 def check(event):
     is_pr = "pull_request" in event
     number = event["pull_request" if is_pr else "issue"]["number"]
@@ -86,6 +100,8 @@ def check(event):
             "description": "Shorten or complete title/body; see CONTRIBUTING.md." if errors
                            else "Title and three-section body meet the reading budget.",
             "target_url": GUIDE})
+        if event.get("action") == "opened":
+            remind_contributor(number)
     elif errors:
         if api("GET", "/labels/" + LABEL, missing_ok=True) is None:
             try:
