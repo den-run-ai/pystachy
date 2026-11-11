@@ -19,6 +19,9 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+from src.pystachy_compiler.utils import numeric_identity  # noqa: E402
+
 DEFAULT_CHECKER = ROOT / "tools/lean_boundary/.lake/build/bin/pystachy-boundary"
 MAX_BYTES = 4 * 1024 * 1024
 # (a whole program's snapshot, for --all; each normalized candidate keeps MAX_BYTES)
@@ -319,10 +322,14 @@ def normalize_snapshot(snapshot, function):
     # Registers defined on entry: parameters of any representation, the identity boxes that
     # accompany numeric parameters (%aidN) and the identity-return address (%idret).
     definitions = {"%idret": ("*dyn", None, -1)}
+    identity_arguments = set()
     for index, parameter in enumerate(parameters):
         require(isinstance(parameter, dict), "invalid parameter")
-        definitions[f"%a{index}"] = (name(parameter.get("representation"), "parameter representation"), None, -1)
-        definitions[f"%aid{index}"] = ("dyn", None, -1)
+        typ = name(parameter.get("representation"), "parameter representation")
+        definitions[f"%a{index}"] = (typ, None, -1)
+        if numeric_identity(typ):
+            identity_arguments.add(f"%aid{index}")
+            definitions[f"%aid{index}"] = ("dyn", None, -1)
     targets_of_checks = fn.get("check_targets", {})
     require(isinstance(targets_of_checks, dict) and all(
         isinstance(key, str) and len(key) <= 4096 and isinstance(label, str)
@@ -437,7 +444,7 @@ def normalize_snapshot(snapshot, function):
 
     # Values the function uses as dyn, which alone can carry a tag; a slot whose address reaches
     # anything but an access is not private; addresses derived from a box must not be stored to.
-    dynamic = {f"%aid{index}" for index in range(len(parameters))}
+    dynamic = set(identity_arguments)
     escaped = set()
     for block in live:
         for op in block["operations"]:
@@ -474,6 +481,10 @@ def normalize_snapshot(snapshot, function):
         value = operand["value"]
         if value in slots:
             require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}, "slot address has wrong type")
+        elif value == "%idret":
+            require(operand["type"] == "*dyn", "identity-return address has wrong type")
+        elif value in identity_arguments:
+            require(operand["type"] == "dyn", "identity argument has wrong type")
         elif value.startswith("%"):
             require(value in definitions, f"undefined operand: {value}")
             _, defined_block, defined_offset = definitions[value]

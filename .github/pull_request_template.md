@@ -9,7 +9,7 @@ Read CONTRIBUTING.md. Link code, results and background instead of copying them.
 
 <!-- What happens now, and why? State scope/limits and dependencies.
 Use Refs #N for partial work. Use Fixes #N only for completed issue scope.
-Mention adapted sources/licenses and substantive AI assistance/tools, or "none". -->
+Mention adapted sources/licenses; disclose substantive AI tools here or in a comment. -->
 
 ## Validation
 

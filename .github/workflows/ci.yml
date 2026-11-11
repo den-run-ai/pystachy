@@ -170,6 +170,10 @@ jobs:
         if: startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in'
         run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
 
+      - name: Workload pytest oracle dependency
+        if: matrix.group == 'benchmarks' || matrix.group == 'hosted'
+        run: python3 -m pip install "$(sed -n '/^pytest==/p' tools/requirements-dev.txt)"
+
       # No run-id or token: download-artifact can only select this workflow run here.
       - name: Download verified bootstrap
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
@@ -219,6 +223,14 @@ jobs:
           python3 -m unittest discover -s tools -p test_stack_floor.py
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
 
+      # Keep the existing hosted ASan controls out of Lint's 15-minute budget.
+      # setup.sh already validates LLVM; compiler-rt supplies the runtime and preload library.
+      - name: Generated user and runtime ASan controls
+        if: matrix.group == 'contracts' && matrix.machine == 'x86_64'
+        run: |
+          sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
+          python3 -m unittest discover -s tools -p test_runtime_asan.py -v
+
       - name: Sanitized shared and object JIT linkage controls
         if: matrix.group == 'ubsan-0' || matrix.group == 'safety-1'
         run: python3 -m unittest discover -s tools -p test_runtime_ubsan.py
@@ -242,6 +254,17 @@ jobs:
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-pyperformance-check BENCH_COMPILER=build/verify/pystachy2
+
+      - name: Shared pytest example assertions
+        if: matrix.group == 'hosted'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make test-pytest-workloads PYTEST_WORKLOAD_COMPILER=build/verify/pystachy2 PYTEST_WORKLOAD_ARGS='--group examples'
+
+      # Retain the hosted compiler and original pytest oracle without using Lint's budget.
+      - name: Generated native pytest runner parity
+        if: matrix.group == 'hosted' && matrix.machine == 'x86_64'
+        run: make test-pytest-native
 
       # tools/setup.sh installs both of Ubuntu's LP64 libblas.so.3 providers: OpenBLAS
       # (libopenblas0-pthread), checked on one thread, and the reference BLAS (libblas3).
@@ -270,6 +293,12 @@ jobs:
           name: ${{ matrix.machine }}-verification-${{ matrix.group }}
           path: |
             build/pyperformance-smoke.json
+            build/pytest-pyperformance.json
+            build/pytest-workloads.json
+            build/pytest-native/examples.json
+            build/pytest-native-aot/examples.json
+            build/pytest-controls.json
+            build/pytest-upstream-bundled.json
             build/verification.json
             build/extended-smoke.json
             build/program-cache-checks.json

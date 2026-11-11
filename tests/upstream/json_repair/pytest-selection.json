@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "upstream_commit": "dc6d02b168656aa3dcaac6a119ecc47594d3526e",
+  "selected": {
+    "test_json_repair.py": [
+      "test_valid_top_level_string_preserved_with_strict_mode",
+      "test_valid_empty_string_serializes_as_json",
+      "test_unrecoverable_input_still_returns_empty_string",
+      "test_valid_json",
+      "test_valid_json_with_trailing_garbage_preserves_string_content",
+      "test_prefixed_invalid_json_falls_back_to_repair_parser",
+      "test_ensure_ascii",
+      "test_stream_stable",
+      "test_logging"
+    ],
+    "test_parse_array.py": [
+      "test_parse_array",
+      "test_parse_array_edge_cases",
+      "test_parse_array_closes_before_object_member_after_scalar_items",
+      "test_parse_array_contextually_closes_in_strict_mode",
+      "test_parse_array_python_tuple_literals",
+      "test_parse_array_python_tuple_literals_accept_boolean_and_null_values",
+      "test_parse_array_parenthesized_scalar_keeps_scalar_shape"
+    ],
+    "test_parse_number.py": [
+      "test_parse_number",
+      "test_object_number_followed_by_consecutive_commas_and_digits",
+      "test_comma_containing_object_value_remains_a_string",
+      "test_parse_number_plus_outside_exponent",
+      "test_parse_number_edge_cases",
+      "test_numeric_prefix_identifiers_preserve_underscored_digits"
+    ],
+    "test_parse_string.py": [
+      "test_parse_string",
+      "test_missing_and_mixed_quotes",
+      "test_escaping",
+      "test_parse_string_keeps_multiline_curly_quoted_prose_after_comma",
+      "test_parse_string_keeps_low_smart_quote_span_closed_by_ascii_quote",
+      "test_parse_string_keeps_low_smart_quote_span_closed_by_unicode_quote",
+      "test_parse_boolean_or_null",
+      "test_parse_literals_require_boundaries_and_support_python_none"
+    ],
+    "test_strict_mode.py": [
+      "test_strict_rejects_missing_opening_object_brace",
+      "test_strict_rejects_multiple_top_level_values",
+      "test_strict_duplicate_keys_inside_array",
+      "test_strict_rejects_empty_keys",
+      "test_strict_requires_colon_between_key_and_value",
+      "test_strict_rejects_empty_values",
+      "test_strict_rejects_empty_object_with_extra_characters",
+      "test_strict_rejects_empty_escaped_object_with_extra_characters",
+      "test_strict_detects_immediate_doubled_quotes",
+      "test_strict_detects_doubled_quotes_followed_by_string"
+    ]
+  },
+  "excluded_scope": "Only the listed public-API functions are selected. Other function/case IDs are explicitly inventoried as unqualified. Private parser, monkeypatch, schema, file, CLI and resource-dependent tests remain outside this native subset.",
+  "helpers": {
+    "test_parse_string.py": [
+      "_assert_object_repairs"
+    ]
+  },
+  "helper_annotation_refinements": {
+    "test_parse_string.py": [
+      {
+        "function": "_assert_object_repairs",
+        "before": "expected: dict",
+        "after": "expected: dict[Any, Any]",
+        "reason": "The upstream helper compares arbitrary JSON mappings with the parser's open dynamic JSON result. Specify its existing open key/value storage without copying. The native compiler rejects bare dict annotations and cannot box dict[str, str | int] into dynamic Any; this representation gap remains explicit."
+      }
+    ]
+  }
+}

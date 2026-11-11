@@ -1,7 +1,7 @@
 """Optimizations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import fail
+from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_program
 from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values, tmpname, one_num
 from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, NONEVAR, RAWW, REACH
@@ -811,7 +811,9 @@ def gen_unionslots(self, fn: IFn) -> int:
     # only for None, scalar boxes or their phis, with no use beyond null tests and payload reads.
     # Inferred None-first locals can retain NONEVAR on their slots: the same producer/use
     # checks prove scalar storage without depending on that provisional annotation.
-    # Unknown producers and escaping optionals stay boxed; no nullable pointer is dereferenced
+    # Plain scalar dict.get producers with one private store also split: one lookup and
+    # one safe value read replace the optional allocation. Other unknown producers and
+    # escaping optionals stay boxed; no nullable pointer is dereferenced
     # to take it apart. A generator's locals stay (its frame keeps them). How many slots it split
     if fn.coro:
         return 0
@@ -836,7 +838,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         ok = addr in uses
         for u in uses.get(addr, []):
             i = fn.blocks[u[0]].code[u[1]]
-            if u[2] != 0 or (i.op != "mem.load" and i.op != "mem.store") or (i.op == "mem.store" and not self.usplits(fn, defs, i.a[1].v, {}, is_opt(s.t))):
+            if u[2] != 0 or (i.op != "mem.load" and i.op != "mem.store") or (i.op == "mem.store" and not self.usplits(fn, defs, uses, i.a[1].v, {}, is_opt(s.t))):
                 ok = False
             elif i.op == "mem.load":
                 if is_opt(s.t) and self.uleaves(fn, uses, i, {}):
@@ -959,7 +961,7 @@ def gen_unionslots(self, fn: IFn) -> int:
         for b in fn.blocks:
             code = []
             for i in b.code:
-                pure = (i.op == "rt" and (i.s == "ubox" or i.s == "box")) or i.op == "slot.pack" or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or is_opt(i.t) or i.t == "int"))
+                pure = (i.op == "rt" and (i.s == "ubox" or i.s == "box")) or i.op == "slot.pack" or (i.op == "slot.unpack" and is_opt(i.t)) or i.op == "union.tag" or i.op == "union.payload" or i.op == "union.raw" or (i.op == "phi" and (is_union(i.t) or is_opt(i.t) or i.t == "int"))
                 if pure and len([r for r in i.r if tmpname(r) in used]) == 0:
                     gone += 1
                 else:
@@ -973,7 +975,33 @@ def gen_tag_read(self, i: Ins) -> bool:
     # equality and methods reads it (Gen.mload of the box)
     return i.op == "mach.load" and i.t == "int" and i.s == ""
 
-def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
+def optional_dict_source(fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str) -> Ins | None:
+    # A plain scalar get(k), with None as its default, whose box goes immediately
+    # into one private local. The caller proves that the local has only presence
+    # tests and numeric reads. Keep opt-in storage, copies, phis and identity uses
+    # on the existing path. A single getbox and unpack use makes replacement local:
+    # no other operation can observe the box or repeat the key's hash/equality.
+    if dynamic_program() or int_program() or v not in defs or len(uses.get(v, [])) != 1:
+        return None
+    use = uses[v][0]
+    store = fn.blocks[use[0]].code[use[1]]
+    if store.op != "mem.store" or use[2] != 1:
+        return None
+    d = defs[v]
+    unpack = fn.blocks[d[0]].code[d[1]]
+    if unpack.op != "slot.unpack" or unpack.t not in ["opt[int]", "opt[float]", "opt[bool]"] or len(unpack.a) != 1:
+        return None
+    raw = unpack.a[0].v
+    if raw not in defs or len(uses.get(raw, [])) != 1:
+        return None
+    d = defs[raw]
+    call = fn.blocks[d[0]].code[d[1]]
+    if call.op != "rt" or call.s != "dict.getbox" or len(call.a) != 3 or call.a[2].v != "0":
+        return None
+    return call
+
+
+def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], uses: dict[str, list[list[int]]], v: str, seen: dict[str, bool], optional: bool = False) -> bool:
     # can unionslots take apart union value v: an op's (a phi's where its incoming values'
     # are) or a parameter's. An optional admits only known scalar boxes, None and their phis.
     if optional and v == "null":
@@ -986,10 +1014,10 @@ def gen_usplits(self, fn: IFn, defs: dict[str, list[int]], v: str, seen: dict[st
     i = fn.blocks[defs[v][0]].code[defs[v][1]]
     if i.op == "phi":
         for a in i.a:
-            if not self.usplits(fn, defs, a.v, seen, optional):
+            if not self.usplits(fn, defs, uses, a.v, seen, optional):
                 return False
     elif optional:
-        return i.op == "rt" and i.s == "box"
+        return (i.op == "rt" and i.s == "box") or optional_dict_source(fn, defs, uses, v) is not None
     return True
 
 def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts: dict[str, list[str]], before: dict[str, list[Ins]], after: dict[str, list[Ins]], heads: dict[int, list[Ins]]) -> list[str]:
@@ -1003,6 +1031,43 @@ def gen_uparts(self, fn: IFn, defs: dict[str, list[int]], v: str, t: str, parts:
         return ["0", "0"]
     d = defs[v] if v in defs else [0, -1]
     i = fn.blocks[d[0]].code[d[1]] if d[1] >= 0 else Ins("", "", "")
+    if is_opt(t) and i.op == "slot.unpack":
+        # usplits proved this getbox has no other observer. Read the payload at
+        # the original lookup, before subsequent callbacks can mutate the dict.
+        # val_or_zero never reads the miss index and performs no allocation.
+        raw = i.a[0].v
+        rd = defs[raw]
+        get = fn.blocks[rd[0]].code[rd[1]]
+        self.runtime("pys_dict_find")
+        self.runtime("pys_dict_val_or_zero")
+        get.s = "dict.find"
+        get.t = "int"
+        get.a = get.a[:2]
+        ops: list[Ins] = []
+        fn.n += 1
+        found = Ins("num.cmp", "bool", ">=")
+        found.line = get.line
+        found.a = [Val(raw, "int"), Val("0", "int")]
+        found.r = one_num(fn.n)
+        ops.append(found)
+        fn.n += 1
+        tag = Ins("num.cast", "int", "")
+        tag.line = get.line
+        tag.a = [Val(tmpname(found.r[0]), "bool")]
+        tag.r = one_num(fn.n)
+        ops.append(tag)
+        fn.n += 1
+        payload = Ins("rt", "*V", "dict.val_or_zero")
+        payload.line = get.line
+        payload.a = [get.a[0], Val(raw, "int")]
+        payload.r = one_num(fn.n)
+        ops.append(payload)
+        parts[v] = [tmpname(tag.r[0]), tmpname(payload.r[0])]
+        key = f"{rd[0]}:{rd[1]}"
+        if key not in after:
+            after[key] = []
+        after[key].extend(ops)
+        return parts[v]
     if is_opt(t) and i.op == "rt" and i.s == "box":
         parts[v] = ["1", i.a[0].v]
         return parts[v]

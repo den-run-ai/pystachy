@@ -119,11 +119,12 @@ In a module that opts in to [dynamic `Any`](dynamic-any.md), `dyn` is a pointer 
 box of a `DynType` pointer and an eight-byte payload, which is a number's bits or a reference's
 own pointer. `dyn.type` reads the `DynType` (type `dyntype`), and `dyn.payload` reads the payload
 as the static type its `s` names. With `PYSTACHY_IRCHECK=1`, the stock verifier
-additionally requires an exact `float`, `str` or `bool` tag on every reachable
-payload read of those types, and an `int` or `bool` tag on every reachable `int`
-read: a bool's payload is its int value, while a wide int's box and None's hold
-none. Other dynamic payload representations retain their frontend obligations;
-in particular user classes need inheritance-aware rules.
+additionally requires every reachable payload read to find only tags whose boxes
+have that type's payload layout: for an `int` read, an `int` or `bool` tag (a
+bool's payload is its int value, while a wide int's box and None's hold none); for
+a class read, the tag of the class, of a subclass or of a class that takes it as
+its role; for any other, the `DynType` of the type's boxes. It reads the tags from
+the program's `DynType` constants and rejects a read of a type no `DynType` holds.
 Neither instruction has a memory effect, since a box never changes. A box in a container slot
 is descriptor `A`, which runtime walks follow
 through the box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor
@@ -138,8 +139,12 @@ float's or reference's identity bits from a typed integer extraction while keepi
 the same LLVM loads. A live, non-null box remains a frontend obligation. The result
 does not establish that its source has any particular dynamic type.
 
-The builtin guard proof uses the actual typed-IR control-flow graph, with an
-open unknown-tag case for every other DynType, a wide int's among them. It follows copies, private scalar slots, boolean
+The builtin guard proof uses the actual typed-IR control-flow graph. A function's
+tags are the `DynType`s its tests and reads name, with an open unknown-tag case for
+every other one, a wide int's or a runtime iterator's among them. Its tests compare
+a box's `DynType` with a `DynType`, compare with zero the result of `pys_dyn_isa` or
+`pys_dyn_role_isa`, which follow bases and admit None for a class, or switch on the
+class number a `DynType` holds, as class dispatchers do. It follows copies, private scalar slots, boolean
 conditions, simultaneous phis, selects, joins and loop backedges to a fixed point.
 It checks exception and cold-check edges as well as normal flow. Rebinding loses
 the old slot's facts while preserving earlier SSA copies. A slot whose address
@@ -148,11 +153,15 @@ values and nonescaping private storage. Globals, fields and container reloads
 cannot borrow an earlier load's guard. Unrelated functions bypass this analysis.
 
 This compiler check is not a Lean proof. It does not prove null/lifetime safety,
-runtime tag/layout correctness, SSA well-formedness, identity preservation, GC
-or LLVM lowering. Int/bool shared layouts, class inheritance and container
-payload obligations remain outside its current scope. Its negative tests include
-forged guards, overwritten bindings, unguarded joins and saved loop conditions
-that refer to a previous phi value.
+runtime tag/layout correctness, the `DynType` constants it reads, SSA
+well-formedness, identity preservation, GC or LLVM lowering. Its negative tests
+include forged guards, overwritten bindings, unguarded joins, saved loop
+conditions that refer to a previous phi value, a class test that admits None, a
+base's test before a subclass's read and a switch on another box's class number.
+A bounded model compares its verdicts on class tests and dispatch with a concrete
+interpreter. [A test](../tools/test_typed_dynamic_tables.py) checks the runtime facts
+it copies (DynType kinds and flags, builtin DynTypes, the class number word and
+constant boxes) against runtime.c, as it does the Lean bridge's.
 
 In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
 `{i64, ptr}`: the 64-bit value and a null pointer where it fits, else 0 and the value's immutable
@@ -282,15 +291,18 @@ result and metadata contracts. Closed-union payloads additionally carry the tag 
 described below; ordinary container element typing remains a frontend contract.
 
 The optional [Lean payload-guard checker](../tools/lean_boundary/README.md)
-checks one selected function from a completed inspection snapshot. Its theorem
-establishes tag safety for accepted normalized programs, including copies,
-rebinding, joins and loops. The adapter gives other operations' dynamic results
-unknown tags, follows exception and check edges, and refuses generators, other
-payload types and stores into boxes. Tests use actual emitted `float`, `str` and
-`bool` guards, including a shipped `json` function, plus corrupted snapshots and
-certificates. This is separate from the built-in dynamic guard and closed-union
-verifiers: it neither runs during ordinary compilation nor proves the Python
-adapter, payload layout, identity, GC or LLVM lowering.
+checks a selected function or every payload-reading function in a completed
+inspection snapshot; the corpus gate checks test programs that opt in to dynamic
+`Any` or import a module that does. Its theorem establishes tag safety for
+accepted normalized programs, including copies, rebinding, joins and loops.
+Supported descriptor sets cover scalar, integer/bool, class/subclass and container
+payloads. The adapter gives other operations' dynamic results unknown tags,
+follows exception and check edges, and refuses generators, unlisted payload types
+and stores into boxes. Tests use actual emitted guards plus corrupted snapshots
+and certificates. This is separate from the built-in dynamic guard and
+closed-union verifiers: it neither runs during ordinary compilation nor proves
+snapshot fidelity, the Python adapter, descriptor correspondence, payload layout,
+identity, GC or LLVM lowering.
 
 `union.tag` reads a nonoptional closed union's integer tag. `union.payload` records the
 declared member type and reads its opaque `%slot`; `slot.unpack` then recovers the native
@@ -551,14 +563,25 @@ before the next pass. Normal compilation does not add these verification scans.
 `unionslots` also splits private `int | None`, `float | None` and `bool | None`
 locals into a presence slot (zero or one) and a payload slot. Inferred None-first
 locals whose slot still has the provisional `opt[None]` type use the same checks.
-Stores must come from
-`None`, scalar `box` operations, or phis of those values. Loads may only test against
+Stores must come from `None`, scalar `box` operations, phis of those values,
+or the eligible dictionary lookup described below. Loads may only test against
 `None` or read the packed scalar payload; no nullable pointer is dereferenced to
 extract its parts. The payload stays as bits, so zero, `False`, negative zero and
-NaN remain distinct from absence. An optional parameter, call or dictionary-lookup
-result, an optional copy, an escaping or identity-sensitive pointer use, and a
+NaN remain distinct from absence. A plain scalar dictionary `get` result can also
+split when its default is `None` and it has exactly one private local consumer.
+The original `dict.getbox` is replaced by one `dict.find`, a presence test on the
+entry index, and an immediate `dict.val_or_zero` payload snapshot. A negative
+index produces zero without reading dictionary storage; absence is carried by
+the separate presence slot. Lookup callbacks, exceptions and evaluation order
+remain on the original call, before the payload snapshot. Dynamic-`Any` and
+promoting-int programs retain the existing representation.
+
+An optional parameter or other call result, an optional copy, a phi-produced
+lookup, a non-`None` default, an escaping or identity-sensitive pointer use, and a
 generator frame retain their boxes. Numeric identity companions remain unchanged.
-This uses the existing slot/phi rewrite and adds no runtime ABI or LLVM operation;
+This uses the existing typed slot/phi operations. The dictionary path adds the
+internal runtime entry `pys_dict_val_or_zero(Dict *, I)` and changes no object
+layout or public ABI.
 `PYSTACHY_OPT=-unionslots` disables both scalar-union and optional-local splitting.
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with

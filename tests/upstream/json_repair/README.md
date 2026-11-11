@@ -54,6 +54,16 @@ and through the CPython companion extension under GC stress (the `ffi` step). Th
 extension replay needs the pinned CPython as its oracle; under another interpreter
 the FFI report lists it as skipped, which CI's FFI coverage check rejects.
 
+The separate [native pytest qualifier](../../../tools/pytest_native_json_repair.py)
+executes 53 real upstream pytest cases selected from five source modules. It
+compares pristine upstream pytest, adapted pytest, generated CPython, native JIT
+and native AOT, preserving exact case inventories and explicit exclusions.
+Test functions/decorators and assertion bodies stay unchanged; public imports,
+the existing dynamic JSON opt-in and one open-mapping helper annotation are
+recorded in [pytest-selection.json](pytest-selection.json). Its 261-case inventory
+covers only those five modules, not the complete upstream test tree. See
+[qualification commands](../../../docs/pytest-native.md#qualify-original-upstream-tests).
+
 ## Replay
 
 From the repository root, with CPython 3.13.16 on `PATH`:

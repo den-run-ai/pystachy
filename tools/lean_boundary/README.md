@@ -175,6 +175,10 @@ explicit role:
   Loads and stores become copies or unknown assignments; a null store (an
   unbound local, or an identity box not made yet) is an unknown assignment. A
   stack tuple's register is a tuple value, not storage.
+- A numeric parameter's identity companion (`%aidN`) also starts with an unknown
+  tag, since the caller's box may be null. The compiler's numeric-identity
+  predicate identifies the eligible parameters, including optional and joined
+  numeric types; a nonexistent companion or a non-box annotation is malformed.
 - A slot paired with a box, because the box was loaded from or stored into it and
   no path since writes the slot, is guarded together with the box: a later reload
   of the slot keeps the fact. Paths on which the two tests would disagree stop.
@@ -245,10 +249,12 @@ not proved by this version:
 - Fidelity of the inspection snapshot and Python normalization to actual IR
   execution, including the operation roles, edges, join threading and slot
   pairing described above.
-- The descriptor table: that it lists every DynType the program emits, and that
-  runtime.c's builtins have the kinds the bridge assumes. (runtime.c's iterator
-  descriptors have no base, class number or kind that an interpreted test admits.)
-  The class numbers that dispatchers switch on must identify the program's classes.
+- The descriptor table: that it lists every DynType the program emits. (runtime.c's
+  iterator descriptors have no base, class number or kind that an interpreted test
+  admits.) The class numbers that dispatchers switch on must identify the program's
+  classes. The bridge's copies of runtime.c's builtin kinds, role flag, class number
+  word and builtin payload tags are tested against runtime.c
+  ([test_typed_dynamic_tables.py](../test_typed_dynamic_tables.py)), not proved.
 - Payload layout: that a subclass's, a secondary role's, a bool's and a native
   int list's payloads have the layouts their accepted reads assume.
 - Object initialization, null/unbound behavior (a null dynamic value has no tag,
@@ -286,10 +292,10 @@ This is a verification building block for
 [#1210](https://github.com/den-run-ai/pystachy/issues/1210). The compiler already
 has a separate [closed-union proof](../../docs/typed-ir.md) from
 [#840](https://github.com/den-run-ai/pystachy/pull/840). With
-`PYSTACHY_IRCHECK=1`, the stock verifier also checks `float`, `str`, `bool` and
-`int` dynamic payload tags over its actual control-flow graph. That compiler
-analysis is not proved here, and does not yet check the class, container and
-function reads this optional checker covers. Runtime layout, lifetime,
+`PYSTACHY_IRCHECK=1`, the stock verifier also checks the tags of every dynamic
+payload read, including class, container and function reads, over its actual
+control-flow graph. That compiler analysis is not proved here; this optional
+checker is an independent check of the same obligation. Runtime layout, lifetime,
 identity, GC and LLVM obligations remain outside both checks. Neither satisfies
 #1210's acceptance requirement of reducing a consumer's dynamic footprint; the
 typed TOML namespace state in

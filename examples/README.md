@@ -34,6 +34,36 @@ The extra requirements below are in addition to the compiler and its build toolc
 
 ## Checks
 
+Reusable API checks live in `test_*.py` files beside the applications. The same
+source runs with original CPython pytest and the generated native runner: tests
+import the actual application functions, fixtures retain concrete types, and
+unsupported behavior is an error. The maintained suite controller supplies each
+example's import paths and keeps independent applications in separate processes.
+
+```sh
+# Run the shared assertions under generated CPython and compare with original pytest.
+python3 tools/pytest_native_suites.py --group examples --mode python
+
+# Run every registered example and benchmark suite under JIT/AOT, with pytest comparison.
+make test-pytest-workloads
+
+# Select one example while iterating; this also compares original pytest outcomes.
+python3 tools/pytest_native_suites.py --suite byte_bpe --mode aot
+```
+
+| Shared API suites | Coverage boundary |
+|---|---|
+| column, csvstat, cut, latency, linediff, mailmerge, mazepath, route, suggest, topk, urlstats | In-memory parsing, transformation, output construction, errors, state and aliases |
+| byte_bpe, id_filter, montecarlo, guarded_score | Byte/token results, independent set/document oracles, seeded samples and callback contracts |
+| agent, miniui | Wire/action validation and widget state; HTTP, tool processes and raylib remain integration checks |
+| ndarray, nanogpt | Pure array/view and numerical contracts; NumPy/PyTorch reference, training, BLAS and foreign-buffer checks remain separate |
+
+See the [native pytest contract](../docs/pytest-native.md) for supported syntax.
+These suites add individual assertion outcomes. The broader checks below retain
+their recorded output, process-exit, installation and external-backend coverage.
+Timing drivers continue to validate complete output before comparing speed;
+pytest execution times are not replacements for benchmark measurements.
+
 The app corpus compares JIT and AOT execution with recorded CPython output and
 exit status. From the repository root, run all example fixtures with:
 
