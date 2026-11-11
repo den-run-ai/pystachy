@@ -644,6 +644,7 @@ from src.pystachy_compiler.declarations import (
     gen_typevar_in as declarations_typevar_in,
     gen_typing_attr as declarations_typing_attr,
     gen_typing_forms as declarations_typing_forms,
+    gen_typing_marker_check as declarations_typing_marker_check,
     gen_typing_name as declarations_typing_name,
     gen_typing_ref as declarations_typing_ref,
     gen_unalias as declarations_unalias,
@@ -1317,6 +1318,7 @@ class Gen:
         self.gdecl: dict[str, bool] = {}
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
+        self.compcells: dict[str, str] = {}  # captured targets of the current comprehension, installed after its iterable runs
         self.compshare: dict[str, str] = {}  # (the names a comprehension's for clause binds into an earlier clause's variables, and their types)
         self.drying = 0  # (dry() is typing an expression from further on in the function)
         self.loops: list[Loop] = []  # the loops the code being compiled is in, innermost last
@@ -1347,6 +1349,11 @@ class Gen:
         self.dynints: dict[str, bool] = {}  # the boxes a test proved hold an int or a bool (dynamic.py)
         self.selfname = ""
         self.lazy: dict[str, FnInfo] = {}
+        self.cvpending: dict[str, FnInfo] = {}  # concrete Callable adapters waiting for decorated module bindings
+        self.cvwhy: dict[str, str] = {}  # their original conversion sites, for deferred diagnostics
+        self.cvwait: dict[str, bool] = {}  # stable declaration/signature keys proved to need a later binding
+        self.newcv: dict[str, bool] = {}  # such keys discovered by an actual read, retained across Rejoin
+        self.cvactive = ""  # the adapter conversion being attempted, across nested function compilation
         self.lazyat: dict[str, int] = {}  # each lazy function's position in lazy, once it is complete
         self.wake: list[int] = []  # a min-heap of the positions of those called and not yet compiled
         self.called: dict[str, bool] = {}
@@ -1504,6 +1511,7 @@ class Gen:
         self.ncv = 0  # the adapters named (@cv.N), each before its body is compiled, which may name others
         self.cacheforms: dict[str, int] = {}  # cached calls: positional count and ordered keyword names
         self.decorated: dict[str, bool] = {}  # the defs of a module's top level that bind what their decorators give (decorate)
+        self.typemarkers: dict[int, str] = {}  # declaration-line -> final/override attributes; fixed before compilation, never speculative
         self.decoexprs: dict[str, Node] = {}  # "<module> <line>" -> the dotted name of the decorator there (deco_callee)
         self.cvos: dict[str, bool] = {}  # the constant Callable objects defined (Gen.to_callable)
         self.nlw: dict[str, bool] = {}  # and those of them, or of the variables it takes, that a closure assigns (nonlocal)
@@ -2915,6 +2923,9 @@ class Gen:
 
     def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
         return declarations_typing_forms(self, m, body, cls)
+
+    def typing_marker_check(self, t: str, a: str) -> None:
+        declarations_typing_marker_check(self, t, a)
 
     def stub(self, m: Mod, st: Node) -> bool:
         return declarations_stub(self, m, st)

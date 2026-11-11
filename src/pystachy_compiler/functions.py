@@ -33,6 +33,8 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.gdecl = {}
     self.assigned = {}
     self.compvars = {}
+    self.compcells = {}
+    self.compshare = {}
     self.loops = []
     self.exits = []
     self.wdepth = []

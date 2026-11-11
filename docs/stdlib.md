@@ -66,6 +66,9 @@ For parallel work today, CPython can run Pystachy-built extension modules in
 | Compiler builtins | `sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `select`, `typing`, `collections.abc`, `dataclasses`, `builtins`, `__future__` and `ffi` |
 | Outside the standard library | [`mpz`](mpz.md), explicit arbitrary-precision integers on a packed-limb C backend; `pyobj`, objects of an [embedded CPython](ffi.md#calling-cpython) |
 
+Typing's `final` and `override` markers preserve concrete storage and ordinary
+method dispatch; see their [supported placements and limits](language/typing.md).
+
 Opt-in library code follows the [dynamic boundary policy](dynamic-any.md#admission-and-containment):
 known parser state stays typed, while supported open callback and payload contracts
 retain dynamic storage. The [inventory](dynamic-any-boundaries.md) records remaining

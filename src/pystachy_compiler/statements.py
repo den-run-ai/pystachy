@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
-from src.pystachy_compiler.diagnostics import shown
+from src.pystachy_compiler.diagnostics import int_program, shown
 from src.pystachy_compiler.ir import Blk, ClassInfo, Exit, FnInfo, Ins, IterArg, Loop, SeqStart, StopCatch, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
 from src.pystachy_compiler.specs import (
@@ -265,6 +265,7 @@ def gen_class_default(self, ci: ClassInfo, fl: str) -> None:
 
 def gen_hoist(self, f: FnInfo) -> None:
     # Python evaluates default values once, when the def statement runs
+    self.modchk(f.node.kids[0])  # (typing marker imports, before defaults)
     for j in range(len(f.params)):
         d = f.defaults[j]
         early = f"{f.ll}.{j}" in self.pending
@@ -322,6 +323,7 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
     # class-body defaults are evaluated once, when the class statement runs, in body order,
     # and shared. Pystachy has no class scope: names bound earlier in the body are rejected.
     # (A class whose only problem is ci.hook still compiles here: CPython runs its body.)
+    self.modchk(ci.node.kids[0])  # (typing marker imports, before the class body)
     ci.bad = "" if ci.bad == ci.hook else ci.bad
     if "enum$Enum" in self.classes and self.derives(ci.name, "enum$Enum") and ci.node.line not in ENUMCLASSES and not lib_source(ci.node.line, self.libdir, "enum.py"):
         # (a class whose base is an enum class of another module, or lib/enum.py's own where the
@@ -1040,7 +1042,8 @@ def gen_stmt_main(self, n: Node) -> None:
         names_in(n.kids[0], own)
         names: list[str] = []
         for tn in own:
-            if tn not in n.kids[3].s.split() or tn not in self.ltype:
+            captured = tn in self.compcells and self.cells.get(tn, "") == self.compcells[tn]
+            if (tn not in n.kids[3].s.split() and not captured) or tn not in self.ltype:
                 names.append(tn)
         share = self.compshare
         self.compshare = {}
@@ -1535,6 +1538,11 @@ def gen_hide(self, names: list[str]) -> None:
         if nm in self.ltype:
             del self.ltype[nm]
         self.idbox.pop(nm, "")
+        self.cells.pop(nm, "")
+        if nm in self.compcells:
+            self.cells[nm] = self.compcells[nm]
+            if self.idhere():
+                self.idbox[nm] = self.maddr('%ptr', self.cells[nm], '2' if int_program() else '1', True)
         self.compvars[nm] = self.compvars.get(nm, 0) + 1
 
 def gen_iterarg(self, arg: IterArg | None) -> None:

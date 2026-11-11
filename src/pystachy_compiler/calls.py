@@ -544,6 +544,22 @@ def gen_adapter(self, ft: str, t: str) -> str:
     call = mk("call", "", line, [mk("name", p, line, []) for p in f.params])
     body = [mk("return", "", line, [call]) if ts[0] != "None" else mk("expr", "", line, [call])]
     f.node.kids = [mk("params", "-1,-1", line, []), mk("noann", "", line, []), mk("block", "", line, body)]
+    wait = ""
+    if ft.startswith("fn[c:"):
+        source = self.closures[int(ft[5:ft.find(":", 5)])]
+        if source.f.node.s in self.decorated and ".<locals>." not in source.qual:
+            # Source identity and signature survive a restart; a closure's
+            # discovery index can change when another adapter is deferred.
+            wait = source.f.node.s + "|" + str(source.f.node.line) + "|" + t
+    if wait in self.cvwait:
+        # This is declaration work only. The runtime still creates and calls the
+        # decorator here, and recursive calls read its final (checked) binding.
+        self.cvpending[ll] = f
+        self.cvwhy[ll] = f"making a {typestr(t)} of {typestr(ft)} at {where(line)}"
+        return ll
+    active = self.cvactive
+    if active == "" and wait != "":
+        self.cvactive = wait
     self.making.append(f"making a {typestr(t)} of {typestr(ft)} at {where(line)}")
     fr = self.save()
     self.modlevel = False
@@ -551,6 +567,7 @@ def gen_adapter(self, ft: str, t: str) -> str:
     self.function(f, body)
     self.restore(fr)
     self.making.pop()
+    self.cvactive = active
     return ll
 
 def gen_callable_pat(self, a: Node) -> str:

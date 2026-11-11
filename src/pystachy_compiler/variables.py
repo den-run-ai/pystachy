@@ -397,6 +397,7 @@ def gen_closure(self, n: Node) -> Val:
     # default values that are no constants, which CPython evaluates when the def runs, then the
     # cells of the flags of the names a lambda reads that an import in a try statement binds
     what = "the lambda" if n.kind == "lambda" else f"{n.s}()"
+    self.modchk(n.kids[0])  # (typing marker imports, before defaults)
     if n.mchk != "":
         x = n.mchk.split(" ")[0]
         if n.kind == "def" and x == n.s:
@@ -486,9 +487,13 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     dels: dict[str, bool] = {}
     deleted(d.kids[2].kids, dels)
     if not self.modlevel and outer.node.kind == "def":
-        deleted(outer.node.kids[2].kids, dels)
+        outside: dict[str, bool] = {}
+        deleted(outer.node.kids[2].kids, outside)
+        for x in outside:
+            if x not in self.compvars:
+                dels[x] = True  # deleting an outer binding does not unbind a comprehension's cell
     for x in free:
-        if x in self.compvars:
+        if x in self.compvars and x not in self.cells:
             self.err(f"{'the lambda' if n.kind == 'lambda' else name + '()'} reads '{x}', a variable of the comprehension it is in: not supported")
         if x not in self.cells and x not in mine:
             continue  # (a global, a builtin, or a name nothing binds)
@@ -841,6 +846,12 @@ def gen_gtype(self, name: str) -> str:
     # has not been compiled yet (see ahead and early), or ""
     if name not in self.gtypes and name in self.mvars and name not in self.noneglobals and not self.copying and self.globread(name) and self.ahead(name) == "":
         self.early(name)
+    if name not in self.gtypes and name in self.decorated and self.globread(name) and self.cvactive != "":
+        # A concrete adapter reached a recursive decorated binding before that
+        # def's decorator returned. Restart before reporting a premature error;
+        # the next pass emits this adapter after module declaration types settle.
+        self.newcv[self.cvactive] = True
+        raise Rejoin()
     return self.gtypes.get(name, "")
 
 def gen_ahead(self, name: str) -> str:

@@ -105,8 +105,12 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # without that call (Gen.xnot: each such pass adds a method, so these passes count toward no
     # limit). Unsupported iteration protocol bodies use the same per-method retry
     # registry, but their replacement arms raise an explicit compatibility error.
+    # A concrete Callable adapter that reaches an untyped decorated global also
+    # retries with that adapter deferred. These finite declaration/signature facts
+    # survive restart and do not spend the budget for widening storage types.
     hints: dict[str, str] = {}
     xnot: dict[str, bool] = {}
+    cvwait: dict[str, bool] = {}
     lambdas = LAMBDAS[0]
     libs = len(LIBS)
     linkdl = len(LINKDL)
@@ -127,6 +131,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.prefix = os.path.realpath(dirs[-1] + "/..") if len(dirs) > 0 else ""
         g.hints = hints
         g.xnot = xnot
+        g.cvwait = cvwait
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
@@ -151,10 +156,12 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
             else:
                 for k in g.newhints:
                     hints[k] = g.newhints[k]
-                if len([k for k in g.newx if k not in xnot]) == 0:
+                if len([k for k in g.newx if k not in xnot]) == 0 and len([k for k in g.newcv if k not in cvwait]) == 0:
                     passes += 1
                 for k in g.newx:
                     xnot[k] = True
+                for k in g.newcv:
+                    cvwait[k] = True
             # (as parsing and lowering found them: the next pass numbers lambdas and
             # lists C libraries as the first did; Loader.program rebuilds its file-index space)
             LAMBDAS[0] = lambdas

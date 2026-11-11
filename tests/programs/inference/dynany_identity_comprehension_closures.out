@@ -1,0 +1,6 @@
+escaped 2000 True False
+shadow True 5000 True
+rebound 6000 False 5000
+float 2.5 True
+module 8000 True
+[exit 0]

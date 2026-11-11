@@ -1405,6 +1405,7 @@ def comp_unbound(c: Node, names: list[str]) -> str:
     # only that clause's target or a later one binds, which CPython finds unbound (UnboundLocalError)
     bound: list[str] = []
     nm = target_unbound(c.kids[1], names, bound)
+    captured = False
     for x in c.kids[3:] if len(c.kids) > 3 and (c.kids[3].kind == "compfor" or c.kids[3].kind == "compif") else NOKIDS:
         if nm != "":
             break
@@ -1413,8 +1414,13 @@ def comp_unbound(c: Node, names: list[str]) -> str:
         for v in names:
             if v in out and v not in bound and nm == "":
                 nm = v
+                caps: dict[str, bool] = {}
+                captured_reads(x.kids[1] if x.kind == "compfor" else x.kids[0], {}, caps)
+                captured = v in caps
         if nm == "" and x.kind == "compfor":
             nm = target_unbound(x.kids[0], names, bound)
+    if captured:
+        return f"a closure captures '{nm}' before the comprehension's for clause binds it: not supported (its cell needs a concrete type where the closure is created)"
     return "" if nm == "" else f"'{nm}' is read before the comprehension's for clause that binds it, where CPython raises UnboundLocalError (not supported)"
 
 
@@ -1478,6 +1484,36 @@ def nested_defs(n: Node, out: list[Node]) -> None:
         return
     for k in n.kids:
         nested_defs(k, out)
+
+
+def captured_reads(n: Node, bound: dict[str, bool], out: dict[str, bool]) -> None:
+    # The surrounding variables captured by closures created in n. A nested
+    # comprehension binds its own targets after evaluating its first iterable;
+    # direct reads in n need no cell. Defaults can themselves create closures.
+    if n.kind == "def" or n.kind == "lambda":
+        free: dict[str, bool] = {}
+        closure_free(n if n.kind == "def" else lambda_def(n), free)
+        for nm in free:
+            if nm not in bound:
+                out[nm] = True
+        for p in n.kids[0].kids:
+            captured_reads(p.kids[1], bound, out)
+        return
+    if n.kind == "class" or n.kind == "subclass":
+        return
+    if n.kind == "listcomp":
+        captured_reads(n.kids[2], bound, out)
+        own = dict(bound)
+        names: list[str] = []
+        comp_names(n, names)
+        for nm in names:
+            own[nm] = True
+        for i in range(len(n.kids)):
+            if i != 2:
+                captured_reads(n.kids[i], own, out)
+        return
+    for k in n.kids:
+        captured_reads(k, bound, out)
 
 
 def appends_to(st: Node) -> bool:
@@ -1707,7 +1743,9 @@ def import_reads(n: Node, sure: dict[str, bool], out: dict[str, bool], user: dic
         return
     for a in n.kids if n.kind == "import" else NOKIDS:
         sure[a.s] = True
-        if n.s.startswith("from.") or not (builtin_import(n, a) or a.kids[1].s == "typing_extensions"):
+        if n.s.startswith("from.") or a.kids[1].s in ["typing", "typing_extensions"] or not builtin_import(n, a):
+            # Typing decorators are executable binding reads, too: a conditional
+            # local import of final/override can leave the decorator unbound.
             user[a.s] = True
     if n.kind == "if":
         import_reads(n.kids[0], sure, out, user, closed)

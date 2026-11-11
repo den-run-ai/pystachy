@@ -133,7 +133,8 @@ which `threading` and `_thread` describe.
 ### Runtime services
 
 `typing`, `dataclasses` and `collections.abc` are compiler support; see
-[typing](../docs/language/typing.md).
+[typing](../docs/language/typing.md). Supported typing markers include `final` and
+`override`, with concrete function and object representations unchanged.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|

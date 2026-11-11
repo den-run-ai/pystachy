@@ -54,6 +54,8 @@ def gen_save(self) -> Frame:
     fr.gdecl = self.gdecl
     fr.assigned = self.assigned
     fr.compvars = self.compvars
+    fr.compcells = self.compcells
+    fr.compshare = self.compshare
     fr.loops = self.loops
     fr.exits = self.exits
     fr.wdepth = self.wdepth
@@ -110,6 +112,8 @@ def gen_restore(self, fr: Frame) -> None:
     self.gdecl = fr.gdecl
     self.assigned = fr.assigned
     self.compvars = fr.compvars
+    self.compcells = fr.compcells
+    self.compshare = fr.compshare
     self.loops = fr.loops
     self.exits = fr.exits
     self.wdepth = fr.wdepth
@@ -645,8 +649,8 @@ def gen_alloca(self, t: str, name: str) -> str:
         self.err(f"cannot infer the type of '{name}' from None; annotate it ({name}: T | None = None)")
     if t == "":
         self.err(f"cannot infer the type of '{name}'; add a type annotation")
-    if name != "" and name in self.cells and name not in self.compvars:
-        # a variable a closure takes: its cell, which the function allocated as it began (an int
+    if name != "" and name in self.cells:
+        # a variable a closure takes: its cell, allocated at the start of its scope (an int
         # of a module whose ints promote is a promoting int there, which a nonlocal write may
         # need: bigints.py)
         if t == "int" and self.int_policy(self.line):
@@ -654,7 +658,7 @@ def gen_alloca(self, t: str, name: str) -> str:
         self.ltype[name] = t
         self.lreg[name] = self.cells[name]
         self.anyopt = self.anyopt or is_opt(t) or is_union(t) or t == "dyn" or t in self.classes
-        if name in self.uflags:
+        if name in self.uflags and name not in self.compvars:
             self.n += 1
             self.lflag[name] = f"%{name}.def.{self.n}"
             i = Ins("slot", "bool", name)

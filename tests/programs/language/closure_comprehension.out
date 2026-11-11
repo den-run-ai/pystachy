@@ -1,0 +1,19 @@
+late [3, 3, 3]
+separate [5, 5] [7, 7] []
+clauses [4, 4, 4, 4]
+early [1, 2, 3]
+module [9, 9]
+shadow [41, 41] 40 40
+restored [41, 41] 50 50
+iterable scope [51, 51] 50
+nested [[11, 11], [21, 21]]
+both [[(4, 2), (4, 2)], [(4, 2), (4, 2)]]
+repeated [22, 22, 22, 22]
+dict 6 6
+immediate [1, 2, 3]
+nested lambdas [8, 8]
+filter [1, 2] [3, 3]
+set [1, 2]
+exception scope 50 50
+deleted outer [2, 2]
+[exit 0]

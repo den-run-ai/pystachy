@@ -1089,6 +1089,7 @@ def gen_refl_names(self, c: str) -> list[list[str]]:
     # (its flag says), "c" a class attribute, "p" a property, "m" a method, "s" a static and "k" a
     # class method, "o" one object, its type or @dataclass gives (see refl_otext), "u" a slot that
     # no code assigns (an attribute an object never has)
+    self.typing_marker_check(c, "")
     self.refl_supported(c, "reflection")
     ci = self.classes[c]
     out: dict[str, str] = {}

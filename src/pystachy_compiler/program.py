@@ -1188,8 +1188,15 @@ def gen_program(self, mods: list[Mod]) -> str:
     xmade: dict[str, bool] = {}
     ned: dict[str, bool] = {}
     xed: dict[str, bool] = {}
+    cved: dict[str, bool] = {}
     while True:
-        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors)
+        before = len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) + len(cved)
+        for f in [x for x in self.cvpending.values()]:
+            if f.ll not in cved:
+                cved[f.ll] = True
+                self.making.append(self.cvwhy[f.ll])
+                self.function(f, f.node.kids[2].kids)
+                self.making.pop()
         for c in [x for x in self.ocls]:
             if c not in helped:
                 helped[c] = True
@@ -1233,7 +1240,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         for i in later:
             hpush(self.wake, i)
         # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) == before and not self.dyn_dispatchers():
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) + len(cved) == before and not self.dyn_dispatchers():
             break
     self.exc_tables()
     for nm in self.flagged:

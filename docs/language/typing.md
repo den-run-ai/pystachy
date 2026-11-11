@@ -92,6 +92,16 @@ and `Self` work when imported from `typing` or `typing_extensions`. String forwa
 references work, including `list["Node"]`. `Self` in a class's methods and fields denotes
 that class or its current specialization.
 
+`@typing.final` and `@typing.override`, including qualified and aliased imports from
+`typing_extensions`, are accepted on supported functions and methods; `@final` is
+also accepted on classes. They compose with static methods, class methods,
+properties, dataclasses and abstract methods in either valid order. The compiler
+still checks the decorator's import binding before defaults or the class body.
+They add no storage or dispatch assumptions: subclasses may override a final method
+as ordinary Python permits. Marker attributes (`__final__`, `__override__`) and
+name-table reflection of marked classes remain unsupported. A marker combined
+with a user decorator that may return a different object is rejected.
+
 The supported `collections.abc` annotations use concrete container types:
 
 | Annotation | Compiled type |
@@ -652,8 +662,13 @@ declared without an initializer still needs a concrete annotation. A class templ
 `__init__` parameters can also mention `Any`, with its fields inferred from the constructor's
 arguments as described below. Non-generator `__iter__` and `__next__` methods also infer
 returns annotated with `Any`, including `Iterator[Any]`; the iterator and its items still
-have concrete types. `Any` remains unsupported in field annotations, `__init__` returns,
-properties and special-method signatures outside these supported cases.
+have concrete types. Property getters annotated `Any` (including quoted, aliased and
+`Annotated` spellings) infer their concrete result per receiver specialization;
+reads preserve aliases, and setters/deleters keep their declared contracts. A call
+through a class hierarchy still requires compatible property results. A recursive
+getter needs a concrete return annotation if its body cannot establish the result.
+`Any` remains unsupported in field annotations, `__init__` returns and
+special-method signatures outside these supported cases.
 
 For a generator function, `Any` in `Generator[Y, S, R]`'s yield type `Y` or return type `R`
 infers only that channel; the other concrete types still apply. `Iterator[Any]` and
@@ -922,14 +937,24 @@ unsupported.
 A lambda or nested `def` creates a closure on each execution. Captured variables are shared,
 so later assignments and `nonlocal` updates are visible. Captured variables must already be
 assigned and typed, except a function's own name for recursion; they cannot later be deleted
-or unbound by the end of `except ... as`. A closure in a comprehension cannot capture its
-iteration variable. Nonconstant defaults are evaluated when the closure is defined.
+or unbound by the end of `except ... as`. A closure can capture comprehension variables:
+`[lambda: x for x in xs]` shares one cell and reads the last assigned `x` when called
+afterward. Each evaluation of a comprehension creates fresh cells; nested comprehensions
+have separate scopes, and the first iterable still reads the surrounding scope. A
+captured name must have a compatible type across its `for` clauses and must be bound
+before a closure capturing it is created. Nonconstant defaults are evaluated when the
+closure is defined; `lambda x=x: x` keeps that iteration's value.
 
 Function decorators run when their `def` executes: expressions from top to bottom, then
 defaults, then decorator calls from bottom to top. The function name binds the final result.
+Module functions passed through decorators annotated with `Callable` may recurse through
+that decorated binding, including mutually recursive definitions. Their concrete call
+adapters wait for declaration types when needed; decorator execution, default evaluation
+and checks for a name used before its binding keep their usual order.
 Methods support the dedicated decorators `@staticmethod`, `@classmethod`, `@property`
-with its `@value.setter` and `@value.deleter`, and recognized `@overload` stubs. Other method
-decorators, including `@final` and `@override`, are unsupported when the class is used.
+with its `@value.setter` and `@value.deleter`, recognized `@overload` stubs, and the
+typing markers `@final` and `@override` described above. Other method decorators
+are unsupported when the class is used.
 
 A property getter takes only `self` and needs a return annotation. Reading `obj.value`
 calls the getter each time; inherited getters, property overrides and `super().value`

@@ -4022,7 +4022,7 @@ def dyn_prepare_factory(self, c: str) -> None:
         # including a first inference-only retry before a later body error.
         self.newhints = hints
         self.newx = declined
-        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+        if not isinstance(retry, NeedSliceEH) and self.idevent == "" and len(self.newcv) == 0:
             self.newx[attempt] = True
         raise
     self.xtry = previous
@@ -4311,6 +4311,7 @@ def gen_dyn_builtin(self, name: str, v: Val) -> Val:
 
 def gen_dyn_getattr(self, o: Val, a: str) -> Val:
     # o.a for a dyn o: its class's attribute, boxed
+    self.typing_marker_check(o.t, a)
     if self.xtry != "":
         # Dispatcher bodies are emitted after the comparison's retry scope has
         # ended. Detect a known unboxable field here, so an indexed/len read can
@@ -4902,7 +4903,7 @@ def dyn_packed_invoke(self, f: FnInfo, fm: FnInfo, pre: list[Val], pos: Val, kws
         self.newhints = hints
         failed = attempt in self.newx
         self.newx = declined
-        if not isinstance(retry, NeedSliceEH) and self.idevent == "":
+        if not isinstance(retry, NeedSliceEH) and self.idevent == "" and len(self.newcv) == 0:
             if len(nested) > 0 and not failed:
                 # A nested protocol may install its own unsupported arm and
                 # leave this otherwise usable adapter intact on the next pass.
