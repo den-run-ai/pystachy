@@ -113,14 +113,82 @@ def atom(kind, which, x, y):
     raise Unsupported(f"a fit condition about a value other than the operands: {which[1]}")
 
 
+def result_projection(value, kind, defs):
+    """The big.op result whose low word or digits this value projects, if any."""
+    projection = defs.get(value)
+    if projection is None or projection["op"] != kind:
+        return None
+    args = operands(projection)
+    require(len(args) == 1, f"{kind} takes one operand")
+    call = defs.get(args[0])
+    return args[0] if call is not None and call["op"] == "rt" and call.get("text") == "big.op" else None
+
+
+def result_word(value, defs):
+    """Trace gen_big_arith's result word through either operand of its AND masks.
+
+    A second inventory starts at reconstruction, rather than at a particular
+    select shape, so removing or changing that select cannot erase its claim.
+    Other arithmetic and general value provenance remain outside this checker.
+    """
+    pending, seen, sources = [(value, 0)], set(), set()
+    while pending:
+        value, depth = pending.pop()
+        if depth >= MAX_DEPTH:
+            raise Unsupported("a result word's AND masks nest too deeply")
+        if value in seen:
+            continue
+        seen.add(value)
+        if len(seen) > bridge.MAX_INSTRUCTIONS:
+            raise Unsupported("a result word's AND masks exceed the instruction bound")
+        result = result_projection(value, "big.lo", defs)
+        if result is not None:
+            sources.add(result)
+            if len(sources) > 1:
+                raise Unsupported("a result word's AND masks mix multiple pys_big_op results")
+            continue
+        op = defs.get(value)
+        if op is None or op["op"] != "scalar.bin" or op.get("text") != "and":
+            continue
+        args = operands(op)
+        require(len(args) == 2, "an AND mask takes two operands")
+        pending.extend((arg, depth + 1) for arg in args)
+    return next(iter(sources)) if sources else None
+
+
+def supported_replacement(value, result, defs):
+    """Only the true arm may discard this result's digits in the proved form."""
+    op = defs.get(value)
+    args = operands(op) if op is not None else []
+    return (op is not None and op["op"] == "select" and op.get("type") == "%ptr"
+            and len(args) == 3 and args[1] == "null"
+            and result_projection(args[2], "big.hi", defs) == result)
+
+
 def known_claims(fn):
     """(block, claim) for each null digit pointer selected for a pys_big_op result."""
     defs = definitions(fn)
     claims = []
+    # Inventory reconstructions independently of select recognition. Otherwise
+    # a direct null, swapped arms or a changed source silently removes a claim.
+    for block in fn["blocks"]:
+        for op in block["operations"]:
+            if op["op"] != "big.make":
+                continue
+            args = operands(op)
+            require(len(args) == 2, "big.make takes two operands")
+            result = result_word(args[0], defs)
+            if result is not None and result_projection(args[1], "big.hi", defs) != result \
+                    and not supported_replacement(args[1], result, defs):
+                raise Unsupported("unrecognized digit replacement while reconstructing a pys_big_op result")
     for block in fn["blocks"]:
         for op in block["operations"]:
             args = operands(op)
-            if op["op"] != "select" or op.get("type") != "%ptr" or len(args) != 3 or args[1] != "null":
+            if op["op"] != "select" or op.get("type") != "%ptr" or len(args) != 3:
+                continue
+            if args[2] == "null" and result_projection(args[1], "big.hi", defs) is not None:
+                raise Unsupported("a pys_big_op digit replacement selects null on its false arm")
+            if args[1] != "null":
                 continue
             hi = defs.get(args[2])
             if hi is None or hi["op"] != "big.hi":

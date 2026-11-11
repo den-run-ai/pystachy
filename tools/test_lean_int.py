@@ -139,6 +139,13 @@ class FitClaimTest(unittest.TestCase):
         fields, code = self.corrupted("@f.rem", change)
         self.assertEqual((fields["status"], code), ("rejected", 1), fields)
 
+    def test_swapped_select_arms_cannot_erase_a_claim(self):
+        def change(select, defs, call):
+            select["operands"][1], select["operands"][2] = select["operands"][2], select["operands"][1]
+        fields, code = self.corrupted("@f.rem", change)
+        self.assertEqual((fields["status"], code), ("unsupported", 2), fields)
+        self.assertEqual(record(fields, "@f.rem")["status"], "unsupported")
+
     def test_a_condition_outside_the_atoms_is_unsupported(self):
         # (a test of something else entirely: the checker must not guess what it means)
         def change(select, defs, call):
@@ -186,6 +193,58 @@ class AdapterUnitTest(unittest.TestCase):
         from pystachy_compiler.bigints import BIGOPS
         self.assertEqual({op: BIGOPS[op] for op in check_lean_int.RULES.values()},
                          {op: code for code, op in check_lean_int.RULES.items()})
+
+
+class ClaimInventoryTest(unittest.TestCase):
+    """Corrupt real IR before proof invocation: no missing claim may be accepted.
+
+    These checks also run without a built Lean executable, unlike proof tests.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.snapshot = compile_snapshot(PROGRAM)
+
+    def test_select_corruptions_are_inventoried(self):
+        for symbol in ("@f.rem", "@f.mask"):
+            for mutation in ("swapped", "both_null", "wrong_result", "direct_null"):
+                with self.subTest(symbol=symbol, mutation=mutation):
+                    fn = copy.deepcopy(function(self.snapshot, symbol))
+                    select, defs = known_select(fn)
+                    if mutation == "swapped":
+                        select["operands"][1], select["operands"][2] = select["operands"][2], select["operands"][1]
+                    elif mutation == "both_null":
+                        select["operands"][2]["value"] = "null"
+                    elif mutation == "wrong_result":
+                        # Use the input's digits instead of the result's.
+                        hi = defs[operands(select)[2]]
+                        call = defs[operands(hi)[0]]
+                        hi["operands"][0]["value"] = operand_source(defs, call, 0)
+                    else:
+                        name = f"%t{select['results'][0]}"
+                        for block in fn["blocks"]:
+                            for op in block["operations"]:
+                                if op["op"] == "big.make" and operands(op)[1] == name:
+                                    op["operands"][1]["value"] = "null"
+                    with self.assertRaises(check_lean_int.Unsupported):
+                        known_claims(fn)
+
+    def test_original_claim_inventory_is_preserved(self):
+        self.assertEqual(sum(len(known_claims(fn)) for fn in self.snapshot["functions"]), 7)
+
+    def test_commuting_an_and_mask_cannot_hide_a_digit_replacement(self):
+        fn = copy.deepcopy(function(self.snapshot, "@f.mask"))
+        select, defs = known_select(fn)
+        name = f"%t{select['results'][0]}"
+        make = next(op for block in fn["blocks"] for op in block["operations"]
+                    if op["op"] == "big.make" and operands(op)[1] == name)
+        mask = defs[operands(make)[0]]
+        self.assertEqual((mask["op"], mask["text"]), ("scalar.bin", "and"))
+        mask["operands"].reverse()
+        self.assertEqual(len(known_claims(fn)), 1)
+        select["operands"][2]["value"] = "null"
+        with self.assertRaises(check_lean_int.Unsupported):
+            known_claims(fn)
 
 
 if __name__ == "__main__":
