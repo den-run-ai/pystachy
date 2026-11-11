@@ -299,6 +299,39 @@ def test_cleanup():
     assert events == ["second", "first"]
 '''
 
+TEARDOWN_OUTCOMES = '''
+import pytest
+
+@pytest.fixture
+def skip_one():
+    yield 1
+    pytest.skip("first skip")
+
+@pytest.fixture
+def skip_two():
+    yield 2
+    pytest.skip("second skip")
+
+@pytest.fixture
+def xfail_one():
+    yield 1
+    pytest.xfail("first xfail")
+
+@pytest.fixture
+def xfail_two():
+    yield 2
+    pytest.xfail("second xfail")
+
+def test_all_skips(skip_one, skip_two):
+    assert skip_one + skip_two == 3
+
+def test_all_xfails(xfail_one, xfail_two):
+    assert xfail_one + xfail_two == 3
+
+def test_mixed(skip_one, xfail_one):
+    assert skip_one == xfail_one
+'''
+
 OUTCOMES = '''
 import pytest
 
@@ -351,6 +384,49 @@ class OriginalPytestParity(TemporarySuite):
     def test_call_and_multiple_teardown_failures_all_report(self):
         self.check_parity(TEARDOWN_FAILURES, "test-failed")
 
+    def test_multiple_teardown_outcomes_do_not_hide_exception_groups(self):
+        self.check_parity(TEARDOWN_OUTCOMES, "test-failed")
+
+    def test_unsupported_raises_shape_cannot_be_caught_or_xfailed(self):
+        attempts = [
+            "with pytest.raises(TypeError):\n    with pytest.raises(ERRORS):\n        raise ValueError('inner')",
+            "with pytest.raises(BaseException):\n    with pytest.raises(ERRORS):\n        raise ValueError('inner')",
+            "try:\n    with pytest.raises(ERRORS):\n        raise ValueError('inner')\nexcept BaseException:\n    pass",
+            "with pytest.raises(ERRORS):\n    raise ValueError('inner')",
+        ]
+        for index, body in enumerate(attempts):
+            with self.subTest(body=body):
+                marker = "@pytest.mark.xfail(reason='expected test failure')\n" if index == 3 else ""
+                path = self.source("import pytest\nERRORS = (ValueError,)\n" + marker
+                                   + "def test_tuple():\n" + textwrap.indent(body, "    ") + "\n")
+                actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
+                self.assertEqual(actual.state, "execution-error")
+                self.assertIn("exception tuples and non-class values are unsupported", actual.stderr)
+                expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+                self.assertNotIn("error", expected)
+                self.assertTrue(runner.compare([actual], expected))
+
+    def test_imported_and_custom_exception_classes_remain_supported(self):
+        self.check_parity('''
+            import pytest
+            from builtins import ValueError as InvalidValue
+            class Problem(InvalidValue):
+                pass
+            def test_class():
+                with pytest.raises(InvalidValue):
+                    raise Problem("problem")
+                with pytest.raises(ValueError):
+                    pytest.raises(int)
+        ''')
+
+    def test_invalid_exception_class_cannot_satisfy_type_error(self):
+        self.check_parity('''
+            import pytest
+            def test_wrong_error():
+                with pytest.raises(TypeError):
+                    pytest.raises(int)
+        ''', "test-failed")
+
     def test_skip_xfail_and_strict_unexpected_pass(self):
         self.check_parity(OUTCOMES, "test-failed")
 
@@ -395,8 +471,29 @@ class OriginalPytestParity(TemporarySuite):
                 self.check_parity(LIFECYCLE, mode=mode)
 
     @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
+    def test_native_exception_class_checks_do_not_create_false_passes(self):
+        self.source("class Problem(ValueError):\n    pass\n", "errors_helper.py")
+        self.check_parity('''
+            import pytest
+            from errors_helper import Problem
+            class Child(Problem):
+                pass
+            def test_classes():
+                with pytest.raises(Problem):
+                    raise Child("problem")
+        ''', mode="jit")
+        compiler = shlex.split(os.environ["PYSTACHY_PYTEST_NATIVE_COMPILER"])
+        for expected in ("int", "ERRORS"):
+            with self.subTest(expected=expected):
+                path = self.source("import pytest\nERRORS = (ValueError,)\n"
+                                   "def test_invalid():\n    with pytest.raises(TypeError):\n"
+                                   f"        pytest.raises({expected})\n")
+                actual = runner.run_module(path, self.root, self.work, "aot", compiler, sys.executable, 120)
+                self.assertIn(actual.state, {"compile-error", "execution-error"}, actual.events)
+
+    @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
     def test_native_failures_do_not_hide_cleanup(self):
-        for source in (PARTIAL_SETUP, TEARDOWN_FAILURES, OUTCOMES):
+        for source in (PARTIAL_SETUP, TEARDOWN_FAILURES, TEARDOWN_OUTCOMES, OUTCOMES):
             with self.subTest(source=source):
                 self.check_parity(source, "test-failed", mode="jit")
 

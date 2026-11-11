@@ -521,7 +521,7 @@ class Generator:
                       "    _pyn_report.record(_pyn_id, 'teardown', 'passed', '')"]
             return "\n".join(lines)
         lines += ["    _pyn_teardown_errors = ''", "    _pyn_teardown_skip = ''",
-                  "    _pyn_teardown_xfail = ''", "    try:"]
+                  "    _pyn_teardown_xfail = ''", "    _pyn_teardown_xfail_count = 0", "    try:"]
         indent = 2
         generators = []
         values = dict(parameters)
@@ -567,6 +567,7 @@ class Generator:
                       p + "        _pyn_teardown_skip += str(_pyn_error) + '\\n'",
                       p + "    except _pyn_support.XFailed as _pyn_error:",
                       p + "        _pyn_teardown_xfail += str(_pyn_error) + '\\n'",
+                      p + "        _pyn_teardown_xfail_count += 1",
                       p + "    except KeyboardInterrupt:", p + "        raise",
                       p + "    except BaseException as _pyn_error:",
                       p + "        _pyn_teardown_errors += str(_pyn_error) + '\\n'"]
@@ -577,8 +578,9 @@ class Generator:
                   "    except KeyboardInterrupt:", "        raise",
                   "    except BaseException as _pyn_error:",
                   f"        _pyn_report.record(_pyn_id, 'setup', {'xfailed' if xfail else 'error'!r}, str(_pyn_error))",
-                  "    if _pyn_teardown_errors:",
-                  f"        _pyn_report.record(_pyn_id, 'teardown', {'xfailed' if xfail else 'error'!r}, _pyn_teardown_errors)",
+                  "    if (_pyn_teardown_errors or _pyn_teardown_xfail_count > 1",
+                  "            or (_pyn_teardown_xfail_count and _pyn_teardown_skip)):",
+                  f"        _pyn_report.record(_pyn_id, 'teardown', {'xfailed' if xfail else 'error'!r}, _pyn_teardown_errors + _pyn_teardown_skip + _pyn_teardown_xfail)",
                   "    elif _pyn_teardown_skip:",
                   "        _pyn_report.record(_pyn_id, 'teardown', 'skipped', _pyn_teardown_skip)",
                   "    elif _pyn_teardown_xfail:",

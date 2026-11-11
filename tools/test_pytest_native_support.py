@@ -173,7 +173,7 @@ class RaisesTests(unittest.TestCase):
 
     def test_invalid_expected_class_fails_before_the_body(self):
         entered = []
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             with support.raises(int):
                 entered.append(True)
         self.assertEqual(entered, [])

@@ -98,16 +98,62 @@ PYTHONPATH=ports PYSTACHY_PATH=ports python3 tools/pytest_native.py \
 The target checks original pytest outcomes, negative controls, fixture lifecycle,
 shared module state, native JIT/AOT, GC stress and a mixed `Any` fixture. It runs
 inside the existing Lint job. The examples exercise current stdlib APIs and the
-iniconfig/jdcal ports; they are original tests, not claims of complete upstream
-suite support.
+iniconfig/jdcal/json_repair ports. The 35 cases include 16 JSON-repair cases for
+malformed/Unicode input, result objects, logs, fixture aliases and strict errors. These are
+original tests, not claims of complete upstream suite support. Keep the existing
+[943-case JSON-repair replay](../tests/upstream/json_repair/README.md) and extension
+checks: this runner adds fixture/collection qualification rather than replacing
+those broader API checks.
 
 ## Reusing tests and measuring speed
 
 Compatible tests written for CPython can run natively, including adapted tests
-from CPython's library suite. The existing [test-method extractor](../tools/cpython_test_methods.py)
-helps adapt unittest methods, but its output is not automatically a pytest suite:
-give a selected method a no-argument test wrapper and remove its eager invocation.
-Keep the original CPython result as the oracle and preserve upstream provenance.
+from CPython's library suite. Both the test and the library must fit Pystachy's
+supported language/API subset; a faster runner does not make an unported package
+compile. The [mypy stubgen parser and mypyc NameGenerator experiments](porting.md#port-one-application-component-at-a-time)
+are component prototypes, not full mypy/mypyc ports. Start qualification with those
+components, keeping CPython's full integration suites for CLI, C extensions,
+plugins, subprocesses and other unported dependencies.
+The optional [NameGenerator qualification](../examples/pytest_native_mypyc/README.md)
+provides ten original cases against a hash-checked, unchanged upstream module;
+run it separately from the default examples.
+
+The [test-method extractor](../tools/cpython_test_methods.py) can generate a pytest
+suite from an **explicit selection** of unittest methods:
+
+```sh
+python3 tools/cpython_test_methods.py pytest \
+  tests/upstream/ports/cpython/Lib/test/test_fnmatch.py build/fnmatch-pytest \
+  FnmatchTestCase.test_fnmatch FnmatchTestCase.test_fnmatchcase \
+  FnmatchTestCase.test_slow_fnmatch
+python3 tools/pytest_native.py build/fnmatch-pytest --mode aot --compare \
+  --json build/fnmatch-pytest-results.json
+```
+
+The destination must be new, preventing stale tests from entering a later
+selection. Generated helper classes stay in a separate module; top-level pytest
+tests use function-scoped fixtures, a fresh instance for each test, and teardown
+after failed calls. Setup failures do not trigger teardown. `selection.json`
+records the source SHA-256, selected methods, unselected extractable methods and
+decorator/C-accelerator exclusions. Unknown/skipped selections, duplicates,
+unsupported unittest calls, class keywords, and discarded class/module lifecycle
+or selected decorators are errors.
+
+This applies the extractor's documented mechanical adaptations; it does not port
+`unittest` or `test.support`. Subtests become ordinary statements (stopping at the
+first failure), and assertion methods become the extractor's plain assertions.
+`--compare` checks the **adapted pytest suite** under
+real CPython pytest. It does not validate the extraction against original unittest.
+Retain the upstream pin, license, source and adaptation review, and run the original
+selected unittest methods separately where available. The three fnmatch methods
+above are a bounded qualification, not complete fnmatch coverage.
+
+Keep existing stdlib differential corpus tests, upstream inventories, JIT/AOT,
+GC-stress and sanitizer gates. Add this runner for convenient new cases and
+selected upstream adaptations; migrate existing tests only after matching their
+case inventory, assertions and failure controls. Continue recording outcomes from
+pinned CPython, report excluded/unsupported methods explicitly, and preserve the
+PSF license for adapted CPython material.
 
 Compiled tests exercise Pystachy and its library implementations. They do not
 replace CPython's interpreter, bytecode, extension, reference-counting or frame

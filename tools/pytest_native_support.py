@@ -22,6 +22,21 @@ class XFailed(BaseException):
     """A test or fixture requested an expected failure."""
 
 
+class UnsupportedOperation(BaseException):
+    """An unsupported helper form invalidates the whole execution."""
+
+
+_unsupported_operation: str = ""
+
+
+def unsupported(reason: str) -> None:
+    # A test may catch BaseException or carry an xfail mark. Keep this outside
+    # test outcomes so neither can turn an unsupported helper operation green.
+    global _unsupported_operation
+    _unsupported_operation = reason
+    raise UnsupportedOperation(reason)
+
+
 def fail(reason: str = "") -> None:
     raise Failed(reason)
 
@@ -38,8 +53,10 @@ class Raises:
     """The supported single-exception-class, string-regex raises context."""
 
     def __init__(self, expected: type[BaseException], match: str | None) -> None:
+        if not isinstance(expected, type):
+            unsupported("raises requires one exception class; exception tuples and non-class values are unsupported")
         if not issubclass(expected, BaseException):
-            raise TypeError("expected exception must be a BaseException type")
+            raise ValueError("Expected a BaseException type, but got " + repr(expected.__name__))
         # pytest validates the regex before entering the body. Deferring this
         # until __exit__ could run application side effects for an invalid test.
         if match is not None:
@@ -147,6 +164,12 @@ class Report:
     def finish(self) -> int:
         if self.closed:
             raise RuntimeError("native test report is closed")
+        if _unsupported_operation:
+            self.stream.close()
+            self.closed = True
+            # No completion record: the hosted controller must classify this as
+            # an execution error, even if every test caught or xfailed the error.
+            raise UnsupportedOperation(_unsupported_operation)
         code = 0
         if self.failed:
             code = 1
