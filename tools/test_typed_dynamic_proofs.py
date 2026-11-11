@@ -375,8 +375,52 @@ class DynamicGuardTests(unittest.TestCase):
         c.ret()
         self.assert_safe(c)
 
+    def test_int_reads_accept_int_or_bool_tags(self):
+        # A bool's payload is its int value, so an int read accepts either box.
+        for members, safe in ((["int"], True), (["bool"], True), (["int", "bool"], True),
+                              (["float"], False), (["bigint"], False), (["int", "float"], False)):
+            with self.subTest(members=members):
+                c = Case()
+                tests = [c.compare(member=member) for member in members]
+                condition = tests[0] if len(tests) == 1 else c.op(
+                    "scalar.bin", "bool", "or", [(tests[0], "bool"), (tests[1], "bool")])
+                c.branch(condition)
+                c.block("hit")
+                c.payload(member="int")
+                c.finish_pair()
+                self.assert_safe(c, safe)
+                if safe:
+                    c.g.verify(c.fn, False)
+
+    def test_int_read_needs_none_excluded_after_its_check(self):
+        # A slice bound's check admits None, an int or a bool: its int payload may be read
+        # only where a further test excluded None (None's box holds no int).
+        for exclude_none in (False, True):
+            with self.subTest(exclude_none=exclude_none):
+                c = Case()
+                none = c.compare(member="none")
+                integer = c.op("scalar.bin", "bool", "or", [(c.compare(member="int"), "bool"),
+                                                            (c.compare(member="bool"), "bool")])
+                ok = c.op("scalar.bin", "bool", "or", [(none, "bool"), (integer, "bool")])
+                bad = c.op("scalar.bin", "bool", "xor", [(ok, "bool"), ("true", "bool")])
+                c.op("check", s="TypeError", a=[(bad, "bool")], b=["checked"])
+                c.fn.cold["TypeError"] = "miss"
+                c.block("checked")
+                if exclude_none:
+                    c.branch(none, "miss", "hit")
+                    c.block("hit")
+                c.payload(member="int")
+                c.finish_pair()
+                self.assert_safe(c, exclude_none)
+
+    def test_none_box_is_not_an_int(self):
+        c = Case()
+        c.payload("@pys_dyn_none_box", "int")
+        c.ret()
+        self.assert_safe(c, False)
+
     def test_unsupported_payloads_do_not_claim_exact_builtin_proofs(self):
-        for member in ("int", "Box", "list[int]"):
+        for member in ("Box", "list[int]"):
             c = Case()
             c.payload(member=member)
             c.ret()

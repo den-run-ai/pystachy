@@ -1285,12 +1285,12 @@ Coverage: [dynany_identity_scalar_expressions.py](../tests/ir/dynany_identity_sc
 
 `dyn.type` reads a box's DynType pointer. `dyn.payload` reads the payload with the
 type established by frontend narrowing. With `PYSTACHY_IRCHECK=1`, the stock IR
-verifier checks both instruction shape and matching exact tags for reachable
-`float`, `str` and `bool` payload reads. Its control-flow proof covers copies,
-private slots, branches, simultaneous phis, loops and exception edges, losing
-facts on rebinding and refusing to infer facts for escaping storage. Other
-payload layouts, including int/bool sharing and class inheritance, retain
-frontend obligations. Identity comparisons use `dyn.raw` for opaque bits, which
+verifier checks both instruction shape and matching tags for reachable `float`,
+`str`, `bool` and `int` payload reads; an `int` read accepts a bool's box, whose
+payload is its int value. Its control-flow proof covers copies, private slots,
+branches, simultaneous phis, loops and exception edges, losing facts on rebinding
+and refusing to infer facts for escaping storage. Other payload layouts,
+including class inheritance, retain frontend obligations. Identity comparisons use `dyn.raw` for opaque bits, which
 the verifier permits only in direct integer equality comparisons. See the
 [IR contracts](typed-ir.md) for the exact scope and remaining assumptions.
 
