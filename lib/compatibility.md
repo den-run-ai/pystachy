@@ -1086,7 +1086,9 @@ variants, `linear_regression`, `kde`, `kde_random`,
 and `NormalDist`. These depend on exact fractions, decimal/long integers,
 iterators, properties or other features beyond the port's compiled paths. Only
 CPython runs the module's import of `random`, which `kde_random` and
-`NormalDist.samples` use ([CPython-only code](#cpython-only-code)).
+`NormalDist.samples` use ([CPython-only code](#cpython-only-code)). Bounded pattern
+matching now lowers `kde`'s kernel selection, but its distinct lambda values cannot
+share one inferred native function slot; function `__doc__` writes also remain unsupported.
 
 ### `mpz`
 
