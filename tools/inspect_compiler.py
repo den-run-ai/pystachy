@@ -91,7 +91,7 @@ def compiler_identity() -> dict:
             "python": platform.python_version(), "platform": platform.platform()}
 
 
-def base_report(source: str, function: str) -> dict:
+def base_report(source: str, function: str, typed_after_only: bool = False) -> dict:
     return {
         "schema_version": SCHEMA_VERSION, "status": "error",
         "compiler": compiler_identity(),
@@ -101,7 +101,8 @@ def base_report(source: str, function: str) -> dict:
         "settings": {"environment": {k: os.environ[k] for k in ENV_KEYS if k in os.environ}
                      | {"PYSTACHY_IRCHECK": "1"},
                      "function_filter": function, "command": "ir", "executes_program": False,
-                     "forced_environment": {"PYSTACHY_IRCHECK": "1"}},
+                     "forced_environment": {"PYSTACHY_IRCHECK": "1"},
+                     "captures": "typed-after" if typed_after_only else "all"},
         "diagnostics": [], "attempts": [], "passes": [], "pass_contracts": {}, "program_passes": [],
         "stages": [{"name": name, "status": "unavailable", "artifact": None}
                    for name in ("typed-before", "typed-after", "llvm")],
@@ -127,7 +128,7 @@ def tool_diagnostic(code: str, phase: str, message: str, source: str) -> dict:
 class Observer:
     """Read snapshots immediately: the compiler mutates ops and frees typed IR."""
 
-    def __init__(self, report: dict, output: Path, function: str):
+    def __init__(self, report: dict, output: Path, function: str, typed_after_only: bool = False):
         from src.pystachy_compiler import diagnostics
         from src.pystachy_compiler.utils import fxs, typestr
         self.diagnostics = diagnostics
@@ -136,10 +137,13 @@ class Observer:
         self.report = report
         self.output = output
         self.function = function
+        # (only the typed-after snapshot: no typed-before snapshot, pass records or diffs)
+        self.typed_after_only = typed_after_only
         self.before: list[dict] = []
         self.after: list[dict] = []
         self.captured_before = False
         self.attempt: dict | None = None
+        self.gen = None
         self.restores: list[tuple] = []
         self.source_reads: list[dict] = []
 
@@ -171,6 +175,9 @@ class Observer:
             "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "landed": fn.landed, "gdepth": fn.gdepth,
                           "generator": f.gen, "coroutine": fn.coro},
             "slots": [self.instruction(i) for i in fn.slots],
+            # A check op raises from a separate block: its key (the op's descriptor, else its
+            # text) -> that block's label.
+            "check_targets": dict(fn.cold),
             "blocks": [{"label": b.label, "handler": b.handler,
                         "operations": [self.instruction(i) for i in b.code]} for b in fn.blocks],
             "loops": [{"kind": lp.kind, "mode": lp.mode, "head": lp.head, "body": lp.body,
@@ -196,7 +203,8 @@ class Observer:
 
     def capture_before(self, gen) -> None:
         if not self.captured_before:
-            self.before = [self.snapshot(fn) for fn in gen.fns if self.selected(fn)]
+            if not self.typed_after_only:
+                self.before = [self.snapshot(fn) for fn in gen.fns if self.selected(fn)]
             self.captured_before = True
             if self.attempt is not None:
                 self.attempt["typed_functions"] = len(gen.fns)
@@ -204,6 +212,26 @@ class Observer:
                 self.attempt["enabled_optimizations"] = list(gen.opts)
                 footprint = self.attempt["dynamic_boundary"]["footprints"]["before"]
                 footprint.update(status="partial", functions={fn.f.ll: self.boundary_function(gen, fn) for fn in gen.fns})
+
+    @staticmethod
+    def dynamic_types(gen) -> list[dict]:
+        # Every DynType the program emits (dynamic.py: dyn_class_type, dyn_fn_type and generator
+        # types), as lowered: a dynamic box's tag is the address of one of these or of a
+        # runtime.c builtin. cls is the word class dispatchers switch on, base the DynType that
+        # pys_dyn_isa follows, role a secondary base's, and payload the static type of the
+        # value a box of it holds.
+        from src.pystachy_compiler.dynamic import DF_ROLE
+        held = {symbol: t for t, symbol in gen.dyntypes.items()}
+        held.update({symbol: t for t, symbol in gen.dynfnt.items()})
+        types = []
+        for d in gen.consts:
+            if d.kind == "dyntype":
+                flags = int(d.items[2].v)
+                types.append({"symbol": d.name, "kind": int(d.items[0].v), "cls": int(d.items[1].v),
+                              "flags": flags, "base": "" if d.refs[2] == "null" else d.refs[2],
+                              "role": d.refs[6] if flags & DF_ROLE and len(d.refs) == 7 else "",
+                              "payload": held.get(d.name, "")})
+        return sorted(types, key=lambda t: t["symbol"])
 
     @staticmethod
     def boundary_function(gen, fn) -> dict:
@@ -302,6 +330,7 @@ class Observer:
         def wrapped(gen, *args, **kwargs):
             from src.pystachy_compiler.diagnostics import NeedSliceEH, Rejoin
             self.before, self.after = [], []
+            self.gen = gen
             self.captured_before = False
             self.attempt = {"index": len(self.report["attempts"]) + 1, "status": "failed",
                             "dynamic_boundary": {"policy_status": "unavailable", "modules": [],
@@ -367,7 +396,7 @@ class Observer:
             def wrapped(gen, fn, *args, **kwargs):
                 old = self.diagnostics.PHASE
                 self.diagnostics.PHASE = "exceptions" if name == "exceptions" else "optimize"
-                before = self.snapshot(fn) if self.selected(fn) else None
+                before = self.snapshot(fn) if self.selected(fn) and not self.typed_after_only else None
                 result = original(gen, fn, *args, **kwargs)
                 if before is not None:
                     after = self.snapshot(fn)
@@ -425,6 +454,10 @@ class Observer:
             def wrapped(gen, *args, **kwargs):
                 old = self.diagnostics.PHASE
                 self.diagnostics.PHASE = "optimize"
+                if self.typed_after_only:
+                    result = original(gen, *args, **kwargs)
+                    self.diagnostics.PHASE = old
+                    return result
                 before = self.program_snapshot(gen)
                 result = original(gen, *args, **kwargs)
                 after = self.program_snapshot(gen)
@@ -514,14 +547,16 @@ class Observer:
                     if footprint["status"] == "completed":
                         footprint["status"] = "partial"
         # Partial snapshots remain explicitly partial, never a completed pipeline.
-        for name, functions, available in (("typed-before", self.before, self.captured_before),
+        for name, functions, available in (("typed-before", self.before, self.captured_before and not self.typed_after_only),
                                            ("typed-after", self.after, bool(self.after) or self.report["status"] == "ok")):
             if available:
                 artifact = name + ".json"
                 state = "completed" if self.report["status"] == "ok" else "partial"
-                write_json(self.output / artifact, {"schema_version": SCHEMA_VERSION, "stage": name,
-                           "status": state, "attempt": self.attempt["index"] if self.attempt else 0,
-                           "functions": functions})
+                snapshot = {"schema_version": SCHEMA_VERSION, "stage": name, "status": state,
+                            "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
+                if name == "typed-after" and self.gen is not None:
+                    snapshot["dynamic_types"] = self.dynamic_types(self.gen)
+                write_json(self.output / artifact, snapshot)
                 self.report["artifacts"][name] = artifact
                 for stage in self.report["stages"]:
                     if stage["name"] == name:
@@ -532,8 +567,11 @@ def worker(args) -> int:
     sys.path.insert(0, str(ROOT))
     from src.pystachy_compiler import diagnostics, driver
     output = Path(args.output)
-    report = base_report(args.source, args.function)
-    observer = Observer(report, output, args.function)
+    typed_after_only = getattr(args, "typed_after_only", False)
+    report = base_report(args.source, args.function, typed_after_only)
+    if typed_after_only:
+        report["stages"][0]["status"] = "skipped"
+    observer = Observer(report, output, args.function, typed_after_only)
     diagnostics.CAPTURE = True
     diagnostics.CAPTURED.clear()
     diagnostics.PHASE = "input"
@@ -610,15 +648,16 @@ def run_worker(args, output: Path) -> int:
     """Run in staging; do not introduce an importable requested output directory."""
     env = os.environ.copy()
     env["PYSTACHY_IRCHECK"] = "1"
+    typed_after_only = getattr(args, "typed_after_only", False)
     command = [sys.executable, str(Path(__file__).resolve()), args.source, "--output", str(output),
-               "--function", args.function, "--_worker"]
+               "--function", args.function, "--_worker"] + (["--typed-after-only"] if typed_after_only else [])
     start = time.monotonic()
     try:
         with (output / "worker.stderr").open("w", encoding="utf-8") as errors:
             run = subprocess.run(command, env=env, stdout=subprocess.DEVNULL, stderr=errors, timeout=args.timeout)
         exitcode = run.returncode
     except (subprocess.TimeoutExpired, OSError) as error:
-        report = base_report(args.source, args.function)
+        report = base_report(args.source, args.function, typed_after_only)
         timeout = isinstance(error, subprocess.TimeoutExpired)
         report["status"] = "timeout" if timeout else "error"
         report["diagnostics"].append(tool_diagnostic("PYS9002" if timeout else "PYS9001", "worker",
@@ -627,7 +666,7 @@ def run_worker(args, output: Path) -> int:
         write_json(output / "report.json", report)
         exitcode = 124 if timeout else 2
     if not (output / "report.json").exists():
-        report = base_report(args.source, args.function)
+        report = base_report(args.source, args.function, typed_after_only)
         report["diagnostics"].append(tool_diagnostic("PYS9001", "worker",
             f"Compilation worker exited {exitcode} without a report; see worker.stderr", args.source))
         report["elapsed_seconds"] = time.monotonic() - start
@@ -642,6 +681,8 @@ def main() -> int:
     parser.add_argument("--output", required=True, help="new directory for report and snapshots (must not exist)")
     parser.add_argument("--function", default="", help="filter snapshot functions by symbol/name substring; compilation is still complete")
     parser.add_argument("--timeout", type=positive_timeout, default=120.0, help="worker deadline in seconds (default: 120)")
+    parser.add_argument("--typed-after-only", action="store_true",
+                        help="record only the typed-after snapshot: no typed-before snapshot, pass records or diffs")
     parser.add_argument("--_worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     args.source = str(Path(args.source).absolute())

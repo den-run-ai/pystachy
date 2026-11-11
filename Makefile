@@ -416,6 +416,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_numeric_identity.py
 	$(PY) -m unittest discover -s tools -p test_identity_scope.py
 	$(PY) -m unittest discover -s tools -p test_toml_boundary.py
+	$(PY) -m unittest discover -s tools -p test_dynamic_any_inventory.py
 	$(PY) -m unittest discover -s tools -p test_dynany_comparisons.py
 	$(PY) -m unittest discover -s tools -p test_dynany_dict_kinds.py
 	$(PY) -m unittest discover -s tools -p test_diagnostic_capture.py
@@ -436,6 +437,14 @@ check-fast: lint-python typecheck check-repository
 check-lean-boundary:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
+
+# Every dyn.payload read of the dynamic-Any test programs, each compiled by the hosted
+# compiler, proved guarded by the Lean checker (tools/lean_boundary/README.md).
+LEAN_CORPUS_FLAGS ?=
+check-lean-corpus:
+	cd tools/lean_boundary && lake build
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_corpus.py
+	$(PY) tools/check_lean_corpus.py $(LEAN_CORPUS_FLAGS)
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
@@ -465,4 +474,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary check-lean-corpus lint clean install uninstall test-install

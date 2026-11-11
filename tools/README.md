@@ -30,7 +30,8 @@ which checks each kind of change needs.
 | Inspect emitted LLVM | [ir_cost_report.py](ir_cost_report.py) | Static call sites, runtime declarations/definitions and input hashes; static counts do not measure runtime cost. |
 | Check reduced LLVM optimizations | [llvm_validation.py](llvm_validation.py) | [Extracted scalar kernels](../docs/llvm-validation.md), structural verification, finite CPython/native agreement, optional llubi path checks and Alive2 refinement. |
 | Inspect typed stages or a compiler diagnostic | [inspect_compiler.py](inspect_compiler.py) | Same-run typed snapshots, pass diffs and structured diagnostics in the [hosted inspection prototype](../docs/compiler-inspection.md). |
-| Check a dynamic payload's guard | [check_lean_boundary.py](check_lean_boundary.py), `make check-lean-boundary` | A [Lean prototype](lean_boundary/README.md) checks tag guards in a supported fragment of one exported function; its IR normalization and runtime correspondence remain unproved. |
+| Check a dynamic payload's guard | [check_lean_boundary.py](check_lean_boundary.py), `make check-lean-boundary` | A [Lean prototype](lean_boundary/README.md) checks tag guards in a supported fragment of one exported function, or every function of a snapshot (`--all`); its IR normalization and runtime correspondence remain unproved. |
+| Prove every dynamic payload read of the test corpus | [check_lean_corpus.py](check_lean_corpus.py), `make check-lean-corpus` | Compiles each dynamic-`Any` test program with the hosted compiler and requires Lean to accept every function that reads a payload. |
 | Check release/install tooling | `make test-install`, [release_smoke.py](release_smoke.py) | Installation unit tests and release-artifact checks described in the [release guide](../docs/releasing.md); release publication has additional gates. |
 
 For an import survey, use the CPython source directory for your installation:
