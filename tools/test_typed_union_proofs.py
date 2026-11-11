@@ -12,7 +12,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler import ircheck, union_proof
-from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, NOLABELS, Val
+from src.pystachy_compiler.ir import Blk, ClassInfo, FnInfo, IFn, Ins, NOLABELS, Val, slot_register
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.specs import IROPS
 from src.pystachy_compiler.union_state import UnionState
@@ -691,6 +691,44 @@ class UnionProofTests(unittest.TestCase):
                 c.ret()
                 self.assertFalse(simple_union_proof(c.fn, c.g.utags))
                 c.g.verify(c.fn, False)
+
+    def test_flag_sharing_a_local_number_keeps_the_union_storage_type(self):
+        # A possibly unassigned local's "is assigned" flag shares its number (emission.py).
+        # Named by number alone, the flag's bool replaced the declared union domain that a
+        # path leaving the local unassigned contributes, so exclusion no longer proved str.
+        t = "union[int,str]"
+        for guarded in (True, False):
+            with self.subTest(guarded=guarded):
+                c = Case("flagged_union_slot", [t, "bool"])
+                slot = Ins("slot", t, "local")
+                c.fn.n += 1
+                slot.r = [c.fn.n]
+                flag = Ins("slot", "bool", "local")
+                flag.k = 1
+                flag.r = [c.fn.n]
+                c.fn.slots += [slot, flag]
+                address = slot_register(slot)
+                self.assertEqual(slot_register(flag), "%local.def." + str(c.fn.n))
+                c.op("cbr", a=[("%a1", "bool")], b=["assign", "join"])
+                c.block("assign")
+                c.op("mem.store", a=[(address, "*" + t), ("%a0", t)])
+                c.op("mem.store", a=[(slot_register(flag), "*bool"), ("true", "bool")])
+                c.op("br", b=["join"])
+                c.block("join")
+                if guarded:
+                    c.guard(c.op("mem.load", t, a=[(address, "*" + t)]), typ=t, yes="hit", no="miss")
+                    c.block("hit")
+                    c.ret()
+                    c.block("miss")
+                c.payload(c.op("mem.load", t, a=[(address, "*" + t)]), member="str", typ=t)
+                c.ret()
+                self.assertFalse(simple_union_proof(c.fn, c.g.utags))
+                with redirect_stderr(StringIO()):
+                    if guarded:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
 
     def test_repeated_union_shapes_are_validated_once_but_each_read_is_checked(self):
         for invalid in (False, True):

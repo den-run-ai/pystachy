@@ -1,24 +1,39 @@
-"""Exact builtin dynamic-payload guard proofs over the real typed-IR CFG.
+"""Builtin dynamic-payload guard proofs over the real typed-IR CFG.
 
 Dynamic boxes have immutable tags. Only nonescaping private slots carry memory
 facts; a copied SSA box keeps its tag when the original binding is overwritten.
-The open tag domain always retains an unknown member. This is deliberately not
-a proof for int/bool shared layouts, class inheritance or container layouts.
+The open tag domain always retains an unknown member, which stands for every
+DynType outside the tracked builtins (a wide int's among them). An int read
+accepts an int's or a bool's box, whose payload is its int value. This is
+deliberately not a proof for class inheritance or container layouts.
 """
 from __future__ import annotations
 
-from src.pystachy_compiler.ir import IFn, Ins
+from src.pystachy_compiler.ir import IFn, Ins, slot_register
 from src.pystachy_compiler.union_state import UnionState, union_join
 
 
+# The builtin DynTypes this proof tells apart (runtime.c's pys_dyntype_<tag>).
+TRACKED: list[str] = ["bool", "float", "int", "none", "str"]
+
+
+def payload_tags(t: str) -> list[str]:
+    # the tags of the boxes whose payload a dyn.payload of static type t may read
+    if t == "int":
+        return ["bool", "int"]
+    if t == "float" or t == "str" or t == "bool":
+        return [t]
+    return []
+
+
 def exact_dynamic_payload(t: str) -> bool:
-    return t == "float" or t == "str" or t == "bool"
+    return len(payload_tags(t)) > 0
 
 
 class DynamicProof:
     def __init__(self, fn: IFn):
         self.fn = fn
-        self.full = ["?", "bool", "float", "str"]
+        self.full: list[str] = ["?"] + TRACKED
         self.base: dict[str, list[str]] = {}
         self.blocks: dict[str, int] = {}
         self.private: dict[str, str] = {}
@@ -28,8 +43,9 @@ class DynamicProof:
         self.payloads = 0
         for i in fn.slots:
             if i.t == "dyn" or i.t == "dyntype" or i.t == "bool":
-                v = "%" + (i.s if i.s != "" else "h") + "." + str(i.r[0])
-                self.private[v] = i.t
+                # (a local's "is assigned" flag shares its number: named by number alone, it
+                # would retype the local's own slot)
+                self.private[slot_register(i)] = i.t
         for bn in range(len(fn.blocks)):
             b = fn.blocks[bn]
             self.blocks[b.label] = bn
@@ -96,10 +112,12 @@ class DynamicProof:
 
     def key(self, s: UnionState, v: str, tag: bool = False) -> str:
         k = ("T:" if tag else "D:") + v
-        if tag and v.startswith("@pys_dyntype_") and exact_dynamic_payload(v[13:]):
+        if tag and v.startswith("@pys_dyntype_") and v[13:] in TRACKED:
             s.set(k, [v[13:]])
         elif not tag and (v == "@pys_dyn_true_box" or v == "@pys_dyn_false_box"):
             s.set(k, ["bool"])
+        elif not tag and v == "@pys_dyn_none_box":
+            s.set(k, ["none"])
         return k
 
     def forget_bool(self, s: UnionState, v: str) -> None:
@@ -127,8 +145,9 @@ class DynamicProof:
         if i.op == "dyn.type":
             s.copy("T:" + r, self.key(s, i.a[0].v))
         elif i.op == "dyn.payload" and exact_dynamic_payload(i.s):
-            if checking and s.live and s.dom(self.key(s, i.a[0].v)) != [i.s]:
-                self.bad.append("dyn.payload needs tag " + i.s + " for " + i.a[0].v)
+            accepted = payload_tags(i.s)
+            if checking and s.live and len([t for t in s.dom(self.key(s, i.a[0].v)) if t not in accepted]) > 0:
+                self.bad.append("dyn.payload needs tag " + "/".join(accepted) + " for " + i.a[0].v)
                 self.badblocks.append(block)
         elif i.op == "mem.load" and i.a[0].v in self.private:
             addr = i.a[0].v
@@ -159,7 +178,7 @@ class DynamicProof:
             for j in range(2):
                 operand = i.a[j]
                 literal = i.a[1 - j]
-                if operand.t == "dyntype" and literal.t == "dyntype" and literal.v.startswith("@pys_dyntype_") and exact_dynamic_payload(literal.v[13:]):
+                if operand.t == "dyntype" and literal.t == "dyntype" and literal.v.startswith("@pys_dyntype_") and literal.v[13:] in TRACKED:
                     self.compare(s, r, self.key(s, operand.v, True), literal.v[13:], i.s == "==")
                     break
         elif i.op == "scalar.bin" and i.t == "bool":

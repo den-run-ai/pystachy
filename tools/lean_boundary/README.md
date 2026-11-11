@@ -118,6 +118,10 @@ become nondeterministic branches. Supported scalar operations that cannot change
 a dynamic tag or control flow become jumps; private dynamic loads and stores
 remain explicit copies or unknown assignments.
 
+Slots are named as lowering names them, by text and kind. A local's "is assigned"
+flag (`%x.def.N`) and numeric identity companions (`%x.box.N`, `%x.boxgen.N`) share
+the local's number `N`; each remains a separate location. Stack tuples are refused.
+
 Pystachy commonly loads a private slot for its guard, then reloads that slot for
 the payload. The normalizer may put the guard fact on the slot only when the
 load, tag read, comparison and branch occur in the same block and no intervening
@@ -173,10 +177,11 @@ This is a first verification building block for
 [#1210](https://github.com/den-run-ai/pystachy/issues/1210). The compiler already
 has a separate [closed-union proof](../../docs/typed-ir.md) from
 [#840](https://github.com/den-run-ai/pystachy/pull/840). With
-`PYSTACHY_IRCHECK=1`, the stock verifier also checks exact `float`, `str` and
-`bool` dynamic payload tags over its actual control-flow graph. That compiler
+`PYSTACHY_IRCHECK=1`, the stock verifier also checks `float`, `str`, `bool` and
+`int` dynamic payload tags over its actual control-flow graph. That compiler
 analysis is not proved here; this optional checker independently addresses
-the obligation in its normalized subset. Other payload representations and
+the `float`, `str` and `bool` obligation in its normalized subset. Other payload
+representations and
 runtime layout, lifetime, identity, GC and LLVM obligations remain outside
 both checks. Neither satisfies #1210's acceptance requirement of reducing a
 consumer's dynamic footprint; the typed TOML namespace state in
