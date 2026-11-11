@@ -758,9 +758,10 @@ Checks include bracket and indentation limits, unterminated literals, invalid ta
 argument-list errors, invalid `global` / `nonlocal`, misplaced control-flow statements,
 late future imports and excessive statically nested blocks. A `match` statement's patterns
 follow CPython's grammar and its compiler's checks (a capture or `_` before the last case,
-alternatives that bind different names, a name bound twice, duplicate mapping keys), although
-match statements themselves are not compiled. Error selection follows the parser, tokenizer
-where reached, symbol table, then compiler checks.
+alternatives that bind different names, a name bound twice, duplicate mapping keys).
+Execution supports the [bounded structural patterns](#structural-patterns) above;
+unsupported patterns are rejected when their statement is compiled. Error selection
+follows the parser, tokenizer where reached, symbol table, then compiler checks.
 
 Some messages fall back to `invalid syntax` where CPython is more specific, and the supported
 source syntax has [additional restrictions](compatibility.md#source-text).

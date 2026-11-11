@@ -131,7 +131,7 @@ def pattern_class(self, node: Node) -> str:
     if cls.kind != "name" or cls.s not in self.classes or cls.s in self.ltype or not self.is_dc(cls.s):
         self.err("class patterns require a statically known dataclass")
     ci = self.classes[cls.s]
-    if ci.tag > 0 or ci.hook != "" or "__match_args__" in ci.ftypes or "__match_args__" in ci.fdefault:
+    if ci.tag > 0 or ci.hook != "" or "__match_args__" in ci.ftypes or "__match_args__" in ci.fdefault or "__match_args__" in ci.methods:
         self.err("class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__")
     return cls.s
 
