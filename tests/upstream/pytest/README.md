@@ -28,7 +28,7 @@ files, the explicit selected methods, source hashes and known exclusions.
 |---|---:|---:|---|
 | fnmatch | 3 | 17 | CPython 3.13.16 `Lib/test/test_fnmatch.py` |
 | textwrap | 6 | 66 | CPython 3.13.16 `Lib/test/test_textwrap.py` |
-| statistics | 2 | 401 | CPython 3.13.16 `Lib/test/test_statistics.py` |
+| statistics | 4 | 401 | CPython 3.13.16 `Lib/test/test_statistics.py` |
 | mypyc NameGenerator | 5 | 5 | mypy `mypyc/test/test_namegen.py` |
 
 The CPython pin is `cbc944f4bc59639a444dd971c737788ba2283a91`; the mypy pin is
@@ -48,9 +48,9 @@ messages and traceback formatting are outside this contract.
 `TestFMean.test_weights` is an observed exclusion: original unittest and adapted
 CPython pass, but alpha.3 native compilation rejects its local exception-class
 alias (`StatisticsError = statistics.StatisticsError`) in an `except` clause.
-A second observed exclusion, `TestLinearRegression.test_proportional`, passes
-original/adapted CPython but native compilation rejects its unchanged integer
-inputs (`expected int, got float` in `lib/statistics.py:1542`). The original
+`TestLinearRegression.test_proportional` was a second exclusion until the
+`linear_regression` port stopped rebinding its parameters to other types; it and
+`test_constant_input_error` now run with their original integer inputs. The original
 source and full 401-case inventory remain pinned. Other unselected
 methods are explicitly listed in the report as outside this bounded
 qualification; this is not a claim that each one is unsupported.

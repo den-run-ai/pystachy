@@ -1061,10 +1061,10 @@ hint to pass `k=`.
 ### `statistics`
 
 Supported APIs are `fmean` (including weights), `geometric_mean`, `median`,
-`median_low`, `median_high`, `median_grouped`, `quantiles`, `mode`, `multimode` and
-`covariance` for the compatible sequence types, and `correlation` (linear and ranked) of
-floats. Weighted `fmean` uses the port of CPython's
-`math.sumprod` algorithm; unsupported iterators are materialized first.
+`median_low`, `median_high`, `median_grouped`, `quantiles`, `mode`, `multimode`,
+`covariance` and `linear_regression` for the compatible sequence types, and `correlation`
+(linear and ranked) of floats. Weighted `fmean` and `linear_regression` use the port of
+CPython's `math.sumprod` algorithm; unsupported iterators are materialized first.
 
 - `median` of ints or bools returns their union with `float`, as CPython returns the middle
   item of an odd number of them and the mean of the two middle ones otherwise. `quantiles`
@@ -1072,8 +1072,8 @@ floats. Weighted `fmean` uses the port of CPython's
   floats otherwise ([error test](../tests/errors/library/lib_statistics_quantiles_int.py)).
   `median_low` and `median_high` retain the item type. `median` of strings is unsupported.
 - `mode` and `multimode` cannot use float keys. String inputs iterate code points.
-- Integer products in weighted `fmean` can raise `OverflowError` beyond 64 bits;
-  CPython's integers continue growing.
+- Integer products in weighted `fmean` and in `linear_regression(..., proportional=True)`
+  can raise `OverflowError` beyond 64 bits; CPython's integers continue growing.
 - The port's `sumprod` returns a float, including `11.0` for integer inputs and
   `0.0` for empty inputs, where CPython can return an integer.
 - `correlation` of ints is a compile-time error: it rebinds its list-of-int parameters to
@@ -1082,8 +1082,7 @@ floats. Weighted `fmean` uses the port of CPython's
   that starts as floats, where CPython's starts as ints and holds the same float ranks.
 
 Unsupported APIs are `mean`, `harmonic_mean`, variance/stdev and their population
-variants, `linear_regression`, `kde`, `kde_random`,
-and `NormalDist`. These depend on exact fractions, decimal/long integers,
+variants, `kde`, `kde_random` and `NormalDist`. These depend on exact fractions, decimal/long integers,
 iterators, properties or other features beyond the port's compiled paths. Only
 CPython runs the module's import of `random`, which `kde_random` and
 `NormalDist.samples` use ([CPython-only code](#cpython-only-code)).

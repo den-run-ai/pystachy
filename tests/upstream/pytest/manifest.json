@@ -237,7 +237,9 @@
       ],
       "selected": [
         "TestMultiMode.test_basics",
-        "TestFMean.test_special_values"
+        "TestFMean.test_special_values",
+        "TestLinearRegression.test_constant_input_error",
+        "TestLinearRegression.test_proportional"
       ],
       "inventory": [
         "ApproxEqualExactTest.test_exactly_equal_absolute",
@@ -644,8 +646,7 @@
       ],
       "exclusion_reason": "Outside this bounded native pytest qualification; no claim of complete upstream suite coverage. Existing upstream checks remain independent.",
       "exclusions": {
-        "TestFMean.test_weights": "Probed on alpha.3 (c5cebb8b): original and adapted CPython pass; native rejects its local StatisticsError exception-class alias: 'an except clause needs exception classes: a name, or a tuple of names'. Kept outside this selection until generalized local exception aliases are supported.",
-        "TestLinearRegression.test_proportional": "Probed on alpha.3 (c5cebb8b): original and adapted CPython pass; native rejects lib/statistics.py:1542 with 'expected int, got float' while compiling linear_regression(list[int], list[int], bool). Original integer inputs remain unchanged; this case is not qualified."
+        "TestFMean.test_weights": "Probed on alpha.3 (c5cebb8b): original and adapted CPython pass; native rejects its local StatisticsError exception-class alias: 'an except clause needs exception classes: a name, or a tuple of names'. Kept outside this selection until generalized local exception aliases are supported."
       },
       "reference_modules": {
         "statistics": "cpython/Lib/statistics.py"
