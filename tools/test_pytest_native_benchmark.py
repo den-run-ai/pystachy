@@ -21,6 +21,218 @@ bench = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(bench)
 
 
+class BenchmarkEvidenceControls(unittest.TestCase):
+    def run_main(self, directory):
+        with patch.object(bench.os, "sched_setaffinity", create=True), \
+                contextlib.redirect_stderr(io.StringIO()):
+            return bench.main(["--suite", "fixtures", "--samples", "3", "--work-dir", str(directory / "work"),
+                               "--json", str(directory / "result.json"), "--markdown", str(directory / "result.md")])
+
+    def test_outputs_can_live_inside_the_new_work_directory(self):
+        metadata = {"source_sha256": {}, "compiler_executable_sha256": "compiler", "llvm": "selected",
+                    "llvm_tools": {}, "memory_sampler": {}, "llvm_library": {"status": "unavailable"}}
+        with tempfile.TemporaryDirectory() as temp, patch.object(bench, "build_memory_helper"), \
+                patch.object(bench, "benchmark_suite"), patch.object(bench, "provenance", return_value=metadata), \
+                patch.object(bench, "markdown", return_value="Complete benchmark"), \
+                patch.object(bench.os, "sched_setaffinity", create=True), contextlib.redirect_stderr(io.StringIO()):
+            work = Path(temp) / "new-work"
+            self.assertEqual(bench.main(["--suite", "fixtures", "--samples", "3", "--work-dir", str(work),
+                                         "--json", str(work / "result.json"), "--markdown", str(work / "result.md")]), 0)
+            self.assertTrue(json.loads((work / "result.json").read_text())["complete"])
+            self.assertEqual((work / "result.md").read_text(), "Complete benchmark")
+
+    def test_startup_failure_invalidates_stale_success_before_work(self):
+        for stage in ("sampler", "provenance"):
+            with self.subTest(stage=stage), tempfile.TemporaryDirectory() as temp:
+                directory = Path(temp)
+                report = directory / "result.json"
+                document = directory / "result.md"
+                report.write_text(json.dumps({"complete": True, "previous_success": True}))
+                document.write_text("Previous successful benchmark")
+                def build(work, report=report, document=document, stage=stage):
+                    self.assertFalse(json.loads(report.read_text())["complete"])
+                    self.assertIn("incomplete", document.read_text())
+                    if stage == "sampler":
+                        raise subprocess.CalledProcessError(1, ["clang"])
+                with patch.object(bench, "build_memory_helper", side_effect=build), \
+                        patch.object(bench, "provenance", side_effect=ValueError("wrong pinned Python")), \
+                        patch.object(bench, "benchmark_suite") as measure:
+                    self.assertEqual(self.run_main(directory), 1)
+                saved = json.loads(report.read_text())
+                self.assertFalse(saved["complete"])
+                self.assertIn("error", saved)
+                self.assertNotIn("previous_success", saved)
+                self.assertNotIn("Previous successful benchmark", document.read_text())
+                measure.assert_not_called()
+
+    def test_generated_sample_retains_the_validated_events_after_report_reuse(self):
+        case = "test_suite.py::test_value[0]"
+        events = [{"nodeid": case, "phase": phase, "outcome": "passed", "detail": ""}
+                  for phase in ("setup", "call", "teardown")]
+        with tempfile.TemporaryDirectory() as temp:
+            report = Path(temp) / "events.jsonl"
+            report.write_text("".join(json.dumps(row) + "\n" for row in [*events, {"complete": True, "exit_code": 0}]))
+            record = {"returncode": 0, "stdout": "BENCH 0 11\n", "stderr": ""}
+            bench.validate_generated(record, report, [case], [("0", "11")])
+            report.unlink()
+            saved = json.loads(json.dumps(record))
+        self.assertEqual(saved["cases"], [case])
+        self.assertEqual(saved["events"], events)
+
+    def test_generated_nonpassing_or_partial_phases_are_not_retained_as_valid(self):
+        case = "test_suite.py::test_value[0]"
+        events = [{"nodeid": case, "phase": phase, "outcome": "passed", "detail": ""}
+                  for phase in ("setup", "call", "teardown")]
+        for rows in (events[:1] + events[2:], [events[0], dict(events[1], outcome="skipped"), events[2]]):
+            with self.subTest(events=rows), tempfile.TemporaryDirectory() as temp:
+                report = Path(temp) / "events.jsonl"
+                report.write_text("".join(json.dumps(row) + "\n" for row in [*rows, {"complete": True, "exit_code": 0}]))
+                record = {"returncode": 0, "stdout": "BENCH 0 11\n", "stderr": ""}
+                with self.assertRaises(ValueError):
+                    bench.validate_generated(record, report, [case], [("0", "11")])
+                self.assertNotIn("events", record)
+
+    def test_lljit_source_is_hashed_even_when_not_tracked(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            here = root / "bench/pytest_native"
+            (here / "inputs").mkdir(parents=True)
+            launcher = root / "lljit.c"
+            launcher.write_text("original launcher")
+            with patch.object(bench, "ROOT", root), patch.object(bench, "HERE", here):
+                before = bench.source_hashes()
+                launcher.write_text("changed launcher")
+                after = bench.source_hashes()
+            self.assertIn("lljit.c", before)
+            self.assertNotEqual(before["lljit.c"], after["lljit.c"])
+
+    def test_changed_launcher_or_llvm_library_prevents_complete_report(self):
+        before = {"source_sha256": {"lljit.c": "original"}, "compiler_executable_sha256": "compiler",
+                  "llvm": "/llvm/bin", "llvm_tools": {}, "memory_sampler": {},
+                  "llvm_library": {"status": "identified", "sha256": "original"}}
+        for key in ("source_sha256", "llvm_library"):
+            after = json.loads(json.dumps(before))
+            after[key]["lljit.c" if key == "source_sha256" else "sha256"] = "changed"
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as temp, \
+                    patch.object(bench, "build_memory_helper"), patch.object(bench, "benchmark_suite"), \
+                    patch.object(bench, "provenance", side_effect=[before, after]), \
+                    patch.object(bench, "markdown") as render:
+                directory = Path(temp)
+                self.assertEqual(self.run_main(directory), 1)
+                saved = json.loads((directory / "result.json").read_text())
+                self.assertFalse(saved["complete"])
+                self.assertIn(key, saved["error"])
+                self.assertNotIn("measured_sources_unchanged", saved["metadata"])
+                render.assert_not_called()
+
+
+class BenchmarkLLVMControls(unittest.TestCase):
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.directory = Path(temp.name)
+        self.names = ("clang", "opt", "llvm-as", "llvm-link", "lli")
+        for name in self.names:
+            (self.directory / name).write_text("selected " + name)
+        self.library = self.directory / "actual-libLLVM.so"
+        self.library.write_text("actual selected LLVM library")
+        self.link = self.directory / "libLLVM.so"
+        self.link.symlink_to(self.library)
+        (self.directory / "decoy-libLLVM.so").write_text("not selected")
+        self.prefix = str(self.directory)
+        self.original_which = bench.shutil.which
+        def output(command, **kwargs):
+            if command[1] == "-c":
+                self.assertEqual(command[2], "from pystachy import llvm_dir; print(llvm_dir())")
+                return self.prefix + "\n"
+            return "LLVM tool 18\n"
+        def which(name, **kwargs):
+            return "/test/ldd" if name == "ldd" else str(self.directory / name)
+        self.version = patch.object(bench.subprocess, "check_output", side_effect=output).start()
+        self.which = patch.object(bench.shutil, "which", side_effect=which).start()
+        self.discovery = patch.object(bench.subprocess, "run", return_value=subprocess.CompletedProcess(
+            ["ldd"], 0, f"\tlibLLVM-18.so => {self.link} (0x1234)\n", "")).start()
+        self.platform = patch.object(bench.sys, "platform", "linux").start()
+        self.addCleanup(patch.stopall)
+
+    def test_tools_follow_driver_selection_including_explicit_path_fallback(self):
+        for prefix, override in ((str(self.directory), None), (str(self.directory), "/explicit/llvm"), ("", "")):
+            with self.subTest(prefix=prefix, override=override), patch.dict(os.environ, {}, clear=True):
+                if override is not None:
+                    os.environ["PYSTACHY_LLVM"] = override
+                self.prefix = prefix
+                selected, tools, _ = bench.llvm_provenance(sys.executable)
+                self.assertEqual(selected, prefix)
+                self.assertEqual(set(tools), set(self.names))
+                for name in self.names:
+                    self.assertEqual(tools[name]["path"], str(self.directory / name))
+                    self.assertEqual(tools[name]["sha256"], bench.digest(self.directory / name))
+                resolver = self.version.call_args_list[-6]
+                self.assertEqual(resolver.kwargs["env"].get("PYSTACHY_LLVM"), override)
+
+    def test_missing_required_tool_fails_instead_of_shrinking_inventory(self):
+        (self.directory / "llvm-link").unlink()
+        with self.assertRaisesRegex(ValueError, "missing selected LLVM tool: llvm-link"):
+            bench.llvm_provenance(sys.executable)
+
+    def test_relative_prefix_path_and_library_mapping_use_the_measured_working_directory(self):
+        self.prefix = "."
+        self.discovery.return_value = subprocess.CompletedProcess(["ldd"], 0,
+                                                                  "libLLVM.so => libLLVM.so (0x1234)\n", "")
+        with patch.object(bench, "ROOT", self.directory):
+            _, tools, library = bench.llvm_provenance(sys.executable)
+            self.assertEqual(library["realpath"], str(self.library))
+            self.assertEqual(library["sha256"], bench.digest(self.library))
+            for name in self.names:
+                self.assertEqual(tools[name]["invocation"], str(self.directory / name))
+                (self.directory / name).chmod(0o755)
+            self.prefix = ""
+            self.which.side_effect = self.original_which
+            with patch.dict(os.environ, {"PATH": "."}):
+                _, tools, _ = bench.llvm_provenance(sys.executable)
+            for name in self.names:
+                self.assertEqual(tools[name]["invocation"], str(self.directory / name))
+
+    def test_libllvm_uses_selected_mapping_and_measured_loader_environment(self):
+        with patch.dict(os.environ, {"LD_LIBRARY_PATH": "/measured/loader"}):
+            _, tools, library = bench.llvm_provenance(sys.executable)
+        self.assertEqual(library["status"], "identified")
+        self.assertEqual(library["path"], str(self.link))
+        self.assertEqual(library["realpath"], str(self.library))
+        self.assertEqual(library["sha256"], bench.digest(self.library))
+        self.assertEqual(self.discovery.call_args.args[0], ["/test/ldd", tools["lli"]["invocation"]])
+        self.assertEqual(self.discovery.call_args.kwargs["env"]["LD_LIBRARY_PATH"], "/measured/loader")
+        original = library["sha256"]
+        self.library.write_text("changed selected library")
+        self.assertNotEqual(bench.llvm_provenance(sys.executable)[2]["sha256"], original)
+
+    def test_unresolved_library_is_explicit_and_never_guessed_from_nearby_files(self):
+        for result, status, reason in ((subprocess.CompletedProcess(["ldd"], 0, "", ""), "not_identified", "no libLLVM mapping"),
+                                       (subprocess.CompletedProcess(["ldd"], 1, "", "not dynamic"), "not_identified", "ldd failed"),
+                                       (OSError("cannot execute ldd"), "unavailable", "cannot execute ldd")):
+            with self.subTest(reason=reason):
+                self.discovery.side_effect = result if isinstance(result, Exception) else None
+                self.discovery.return_value = result
+                library = bench.llvm_provenance(sys.executable)[2]
+                self.assertEqual(library["status"], status)
+                self.assertEqual(library["reason"], reason)
+                self.assertNotIn("sha256", library)
+        self.which.side_effect = lambda name, **kwargs: None if name == "ldd" else str(self.directory / name)
+        self.assertEqual(bench.llvm_provenance(sys.executable)[2],
+                         {"status": "unavailable", "reason": "ldd is unavailable"})
+
+    def test_aslr_changes_do_not_hide_library_identity_changes(self):
+        before = {"source_sha256": {}, "compiler_executable_sha256": "compiler", "llvm": "selected",
+                  "llvm_tools": {}, "memory_sampler": {},
+                  "llvm_library": {"status": "identified", "sha256": "same", "discovery": {"stdout": "0x1234"}}}
+        after = json.loads(json.dumps(before))
+        after["llvm_library"]["discovery"]["stdout"] = "0x5678"
+        bench.verify_provenance(before, after)
+        after["llvm_library"]["sha256"] = "changed"
+        with self.assertRaisesRegex(ValueError, "llvm_library"):
+            bench.verify_provenance(before, after)
+
+
 class BenchmarkControls(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

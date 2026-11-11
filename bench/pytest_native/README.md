@@ -20,7 +20,7 @@ that the complete upstream pytest, JSON repair or CPython suite compiles. Both
 CPython and native runs use Pystachy's maintained JSON repair port, preserving the
 same application source while comparing runner/runtime costs.
 
-## Recorded Linux run: 11 November 2026 (UTC)
+## Historical alpha.3 Linux run: 11 November 2026 (UTC)
 
 The [measurement report](results/2026-11-11.md) and
 [raw JSON](results/2026-11-11.json) contain seven interleaved samples of every
@@ -28,6 +28,17 @@ execution, plus the complete first-command, unchanged-rerun and edit/rebuild
 measurements. All 84 comparative samples and 36 full lifecycle commands passed
 their exact inventories and checksums. The measured source was the clean tree at
 [`7e33fb336a6429caf089aff3bd5c684528202c26`](https://github.com/den-run-ai/pystachy/commit/7e33fb336a6429caf089aff3bd5c684528202c26).
+
+These are historical alpha.3 measurements, not measurements of alpha.4, alpha.5
+or the updated harness. The unchanged schema 2 JSON retains full lifecycle phase
+events, but the harness validated and then discarded the comparative generated
+samples' and JIT warmups' phase events. Their retained stdout checksums and
+completion status remain independently inspectable. It also omits a source hash
+for `lljit.c` and fingerprints for `llvm-as`, `llvm-link`, `lli` and the selected
+`libLLVM`; its native provenance is therefore incomplete. Those missing records
+have not been reconstructed or backfilled. The current schema 3 harness retains
+the phase events and expanded native provenance for future runs. New performance
+claims about the released code require a fresh run with a matching compiler.
 
 Preparation alone reduced the median CPython time by 5.76× for fixtures, 1.37×
 for JSON repair and 2.00× for the numeric workload. Reusing a prebuilt AOT
@@ -85,7 +96,7 @@ commit and the measured revision, verified with:
 ```sh
 git diff --exit-code c5cebb8bdeb71e7e099b48e4400119dd1e5b29e2 \
   7e33fb336a6429caf089aff3bd5c684528202c26 \
-  -- src pystachy.py lib runtime.py runtime.c ryu mpz
+  -- src pystachy.py lib runtime.py runtime.c lljit.c ryu mpz
 ```
 
 To replay this revision, check it out in a separate clean worktree and use the
@@ -138,11 +149,22 @@ pins itself and its children to the first allowed CPU on Linux, or an explicit
 concurrently. `--timeout` bounds each subprocess (default 180 seconds). Three
 samples is the minimum; five or more is preferable. This is not a CI timing gate.
 
-The JSON retains every raw sample, command, input/source/compiler/sampler hash, case ID,
-phase outcome, output checksum, environment, load average and first-command
-build/run measurement. The Markdown is generated from that data. An interrupted,
-failed or incomplete run is marked incomplete and does not produce a complete
-report. Replay on an otherwise idle host before presenting small differences.
+Schema 3 JSON retains every raw sample, command, input/source/compiler/sampler
+hash, output checksum, environment, load average and first-command build/run
+measurement. Every generated sample and JIT warmup retains its validated case
+IDs and setup/call/teardown events; full lifecycle commands retain their generated
+and original-pytest evidence. LLVM tool fingerprints follow the compiler's actual
+selection of `clang`, `opt`, `llvm-as`, `llvm-link` and `lli`. On Linux, a bounded
+`ldd` lookup records the selected `libLLVM` mapping and hash when available, or an
+explicit unresolved status. This records native inputs, not which JIT launcher
+executed. Source hashes include `lljit.c`; source/tool/library identities are
+compared again before marking the report complete.
+
+The Markdown is generated from the new data. Before compilation or provenance
+checks begin, both output paths are replaced with incomplete reports, so a startup
+failure cannot leave an earlier success labeled as the current attempt. An
+interrupted, failed or incomplete run does not produce a complete report. Replay
+on an otherwise idle host before presenting small differences.
 
 ## Timing boundaries
 

@@ -176,6 +176,8 @@ def validate_generated(record, report, cases, checksums):
     if len(events) != 3 * len(cases) or any(event["outcome"] != "passed" for event in events):
         raise ValueError("every case and setup/call/teardown phase must pass")
     validate_checksums(record["stdout"], checksums)
+    record["cases"] = list(cases)
+    record["events"] = events
 
 
 def validate_pytest(record, checksums):
@@ -394,33 +396,91 @@ def benchmark_suite(name, args, result, checkpoint):
     return result
 
 
-def provenance(args):
-    def output(command):
-        return subprocess.check_output(command, cwd=ROOT, text=True).strip()
+def source_hashes():
     paths = (set(ROOT.glob("*.py")) | set(HERE.glob("*.py")) | set(HERE.glob("*.c"))
              | set((HERE / "inputs").iterdir()))
     for directory in ("src", "lib", "ports"):
         paths.update((ROOT / directory).rglob("*.py"))
     paths.update((ROOT / "tools").glob("pytest_native*.py"))
-    for directory in ("runtime.c", "runtime.py", "ryu", "mpz"):
+    for directory in ("runtime.c", "runtime.py", "lljit.c", "ryu", "mpz"):
         path = ROOT / directory
         if path.is_file():
             paths.add(path)
         elif path.is_dir():
             paths.update(p for p in path.rglob("*") if p.is_file() and p.suffix in {".c", ".h"})
+    return {path.relative_to(ROOT).as_posix(): digest(path) for path in sorted(paths)}
+
+
+def llvm_provenance(python):
+    env = environment(Path("INPUT"), Path("CACHE"))
+    search_path = os.pathsep.join(str(ROOT / part) for part in env.get("PATH", os.defpath).split(os.pathsep))
+    def output(command):
+        return subprocess.check_output(command, cwd=ROOT, env=env, text=True, timeout=30).strip()
+    # Use the compiler's selection: an unset override prefers a complete versioned
+    # installation, while an explicitly empty override selects PATH.
+    prefix = output([python, "-c", "from pystachy import llvm_dir; print(llvm_dir())"])
+    tools = {}
+    for name in ("clang", "opt", "llvm-as", "llvm-link", "lli"):
+        invocation = str(ROOT / prefix / name) if prefix else shutil.which(name, path=search_path)
+        if not invocation or not (ROOT / invocation).is_file():
+            raise ValueError(f"missing selected LLVM tool: {name}")
+        path = (ROOT / invocation).resolve()
+        version = output([invocation, "--version"])
+        if not version:
+            raise ValueError(f"missing version for selected LLVM tool: {name}")
+        tools[name] = {"invocation": invocation, "path": str(path), "sha256": digest(path),
+                       "version": version.splitlines()[0]}
+    library = {"status": "not_inspected", "reason": "libLLVM discovery is Linux-only"}
+    if sys.platform == "linux":
+        ldd = shutil.which("ldd", path=search_path)
+        library = {"status": "unavailable", "reason": "ldd is unavailable"}
+        if ldd:
+            command = [ldd, tools["lli"]["invocation"]]
+            try:
+                result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True,
+                                        text=True, timeout=30)
+            except (OSError, subprocess.SubprocessError) as error:
+                library = {"status": "unavailable", "reason": str(error),
+                           "discovery": {"command": command}}
+            else:
+                discovery = {"command": command, "returncode": result.returncode,
+                             "stdout": result.stdout, "stderr": result.stderr}
+                # This is the same first mapping consumed by driver.jit_launcher.
+                # Do not infer a library from adjacent files or claim the launcher ran.
+                match = re.search(r"^\s*libLLVM[^ ]* => (.*) \(0x[0-9a-f]*\)$",
+                                  result.stdout, re.MULTILINE)
+                library = {"status": "not_identified", "reason": "no libLLVM mapping",
+                           "discovery": discovery}
+                if match:
+                    path = (ROOT / match[1]).resolve()
+                    library = {"status": "identified", "path": match[1], "realpath": str(path),
+                               "sha256": digest(path), "discovery": discovery}
+                elif result.returncode:
+                    library["reason"] = "ldd failed"
+    return prefix, tools, library
+
+
+def verify_provenance(before, after):
+    for key in ("source_sha256", "compiler_executable_sha256", "llvm", "llvm_tools", "memory_sampler"):
+        if before[key] != after[key]:
+            raise ValueError(f"benchmark inputs changed during measurement: {key}")
+    # Raw ldd output contains ASLR addresses; compare the selected library identity.
+    libraries = [{key: value for key, value in metadata["llvm_library"].items() if key != "discovery"}
+                 for metadata in (before, after)]
+    if libraries[0] != libraries[1]:
+        raise ValueError("benchmark inputs changed during measurement: llvm_library")
+
+
+def provenance(args):
+    def output(command):
+        return subprocess.check_output(command, cwd=ROOT, text=True, timeout=30).strip()
     versions = json.loads(output([args.python, "-c", "import json,platform,pytest; print(json.dumps("
                                  "{'python':platform.python_version(),'pytest':pytest.__version__}))"]))
     if versions != {"python": PINNED_PYTHON, "pytest": PINNED_PYTEST}:
         raise ValueError(f"use pinned Python {PINNED_PYTHON} and pytest {PINNED_PYTEST}; got {versions}")
     compiler = shlex.split(args.compiler)
     compiler_path = Path(shutil.which(compiler[0]) or compiler[0]).resolve()
-    llvm = {}
-    for tool in ("clang", "opt", "llc"):
-        prefix = os.environ.get("PYSTACHY_LLVM", "")
-        path = Path(prefix) / tool if prefix else Path(shutil.which(tool) or tool)
-        if path.is_file():
-            llvm[tool] = {"path": str(path.resolve()), "sha256": digest(path),
-                          "version": output([str(path), "--version"]).splitlines()[0]}
+    prefix, llvm, library = llvm_provenance(args.python)
     cpuinfo = Path("/proc/cpuinfo")
     cpu = next((line.split(":", 1)[1].strip() for line in cpuinfo.read_text().splitlines()
                 if line.startswith("model name")), "unknown") if cpuinfo.exists() else platform.processor()
@@ -431,12 +491,12 @@ def provenance(args):
                   compiler_sha256=digest(Path(MEMORY_HELPER_BUILD["compiler"])))
     return {"git_commit": output(["git", "rev-parse", "HEAD"]),
             "git_status": output(["git", "status", "--short", "--untracked-files=all"]),
-            "source_sha256": {path.relative_to(ROOT).as_posix(): digest(path) for path in sorted(paths)},
+            "source_sha256": source_hashes(),
             "compiler_command": compiler, "compiler_executable_sha256": digest(compiler_path),
             "platform": platform.platform(), "cpu": cpu, "versions": versions,
             "cpu_affinity": sorted(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else None,
-            "llvm": os.environ.get("PYSTACHY_LLVM", "system PATH"),
-            "llvm_tools": llvm,
+            "llvm": prefix or "system PATH", "llvm_override": os.environ.get("PYSTACHY_LLVM"),
+            "llvm_tools": llvm, "llvm_library": library,
             "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
             "samples": args.samples, "order_seed": args.order_seed,
             "memory_sampler": memory,
@@ -526,7 +586,11 @@ def markdown(data):
                                     if name == "clang") + ". "
              f"Compiler executable SHA-256: `{meta['compiler_executable_sha256']}`.", "",
              "The adjacent JSON records exact commands, source/input/compiler/sampler hashes, raw samples, "
-             "phase outcomes, checksums, load averages, environment and first-command build/run times. "
+             "validated case IDs and setup/call/teardown events for every generated sample and warmup, "
+             "full-command phase outcomes, checksums, load averages, environment and first-command build/run times. "
+             "LLVM tool fingerprints follow the compiler's selected clang, opt, llvm-as, llvm-link and lli; "
+             "Linux libLLVM discovery records the selected mapping and hash when available, otherwise "
+             "an explicit unresolved status. This identifies native inputs, not which JIT launcher executed. "
              "The native sampler forks after its own exec, avoiding the Python controller's inherited "
              "pre-exec RSS floor. Peak RSS is the target's largest individual-process high-water mark "
              "from wait4, including waited descendants, not a sum of concurrent processes. Launcher "
@@ -540,6 +604,19 @@ def markdown(data):
              "[benchmark instructions](../README.md) for "
              "the replay command and input definitions.", ""]
     return "\n".join(rows)
+
+
+def write_report(path, contents):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                     prefix=path.name + ".", suffix=".tmp", delete=False) as output:
+        pending = Path(output.name)
+        try:
+            output.write(contents)
+            output.close()
+            pending.replace(path)
+        finally:
+            pending.unlink(missing_ok=True)
 
 
 def main(argv=None):
@@ -565,37 +642,49 @@ def main(argv=None):
         cpu = min(allowed) if args.cpu is None else args.cpu
         if cpu not in allowed:
             parser.error("selected CPU is outside this process's allowed affinity")
-        os.sched_setaffinity(0, {cpu})
     elif args.cpu is not None:
         parser.error("CPU pinning is unavailable on this platform")
     args.work_dir = args.work_dir.resolve()
-    args.work_dir.mkdir(parents=True, exist_ok=False)
-    build_memory_helper(args.work_dir)
-    data = {"schema": 2, "complete": False, "metadata": provenance(args), "suites": []}
+    if args.work_dir.exists():
+        parser.error("work directory must not already exist")
+    if args.json.resolve() == args.markdown.resolve():
+        parser.error("JSON and Markdown output paths must differ")
+    data = {"schema": 3, "complete": False, "metadata": {}, "suites": []}
+    incomplete = "# Native pytest benchmark incomplete\n\nNo complete report is available for this attempt. See the JSON state/error.\n"
     def save():
-        args.json.parent.mkdir(parents=True, exist_ok=True)
-        args.json.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
-    save()
+        write_report(args.json, json.dumps(data, indent=2, ensure_ascii=False, allow_nan=False) + "\n")
     try:
+        args.work_dir.mkdir(parents=True, exist_ok=False)
+        # Invalidate prior success before sampler compilation, version checks or
+        # other fallible startup work. Keep the Markdown visibly incomplete too.
+        save()
+        write_report(args.markdown, incomplete)
+        if hasattr(os, "sched_getaffinity"):
+            os.sched_setaffinity(0, {cpu})
+        build_memory_helper(args.work_dir)
+        data["metadata"] = provenance(args)
+        save()
         for name in selected:
             result = {}
             data["suites"].append(result)
             benchmark_suite(name, args, result, save)
             save()
-        after = provenance(args)
-        for key in ("source_sha256", "compiler_executable_sha256", "llvm_tools", "memory_sampler"):
-            if data["metadata"][key] != after[key]:
-                raise ValueError(f"benchmark inputs changed during measurement: {key}")
+        verify_provenance(data["metadata"], provenance(args))
         data["metadata"]["measured_sources_unchanged"] = True
+        write_report(args.markdown, markdown(data))
         data["complete"] = True
+        save()
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+        data["complete"] = False
         data["error"] = str(error)
         print(str(error), file=sys.stderr)
-        save()
+        for path, contents in ((args.json, json.dumps(data, indent=2, ensure_ascii=False, allow_nan=False) + "\n"),
+                               (args.markdown, incomplete)):
+            try:
+                write_report(path, contents)
+            except OSError as failure:
+                print(f"could not save incomplete report {path}: {failure}", file=sys.stderr)
         return 1
-    save()
-    args.markdown.parent.mkdir(parents=True, exist_ok=True)
-    args.markdown.write_text(markdown(data))
     return 0
 
 
