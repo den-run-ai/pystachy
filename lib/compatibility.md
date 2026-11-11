@@ -49,7 +49,10 @@ from CPython's accelerated modules:
 - `bisect` treats `hi=-1` as a bound; `_bisect` treats it as `len(a)`.
 - `stat` tests use the module's constants rather than `_stat`'s separate constants.
 - For more than 2,500 items, `heapify` compares in a different order from `_heapq`'s
-  cache-friendly loop, with the same result.
+  cache-friendly loop, with the same result when comparisons do not mutate the heap.
+- `heapq` comparisons that mutate the heap can change the resulting contents as
+  well as callback order relative to CPython's C `_heapq`. Such reentrant mutation
+  remains outside promised accelerator parity ([#1257](https://github.com/den-run-ai/pystachy/pull/1257)).
 - `operator.__doc__` is the Python module's docstring, which CPython replaces with
   `_operator`'s.
 
