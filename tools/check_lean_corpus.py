@@ -83,7 +83,9 @@ class Reach:
 
     @staticmethod
     def files(directories, parts):
-        # each package's __init__.py from the top, then the module itself, in each directory
+        # In each directory, each package's __init__.py from the top, then the module itself.
+        # As loader.py's filepath finds them, NAME/__init__.py comes before NAME.py, and a
+        # directory without either is a portion of a namespace package, which has no code.
         found = []
         for directory in directories:
             base = directory
@@ -91,9 +93,13 @@ class Reach:
                 if (base / part / "__init__.py").is_file():
                     base = base / part
                     found.append(base / "__init__.py")
-                else:
-                    if index == len(parts) - 1 and (base / (part + ".py")).is_file():
+                elif (base / (part + ".py")).is_file():
+                    if index == len(parts) - 1:
                         found.append(base / (part + ".py"))
+                    break
+                elif (base / part).is_dir():
+                    base = base / part
+                else:
                     break
         return found
 
@@ -117,10 +123,11 @@ class Reach:
         return False
 
 
-def select():
-    """The corpus's programs that may compile dynamic code."""
+def select(programs=None):
+    """The programs, by default the corpus's, that may compile dynamic code."""
     reach = Reach()
-    return [program for program in corpus() if reach.dynamic(ROOT / program, search_path(ROOT / program))]
+    return [program for program in (corpus() if programs is None else programs)
+            if reach.dynamic(located(program), search_path(located(program)))]
 
 
 def check_program(program, checker, timeout):

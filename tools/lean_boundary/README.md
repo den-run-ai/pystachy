@@ -86,8 +86,9 @@ the checker, does that for the dynamic-`Any` corpus: each differential test
 program and deviation that opts in to dynamic `Any` (the compiler's own pragma
 test), or whose imports reach a module that does. Imports are followed through
 the program's search path as the compiler gives it (its directory, its
-`NAME.path` directories, then `lib/`), each package's `__init__.py` on the way
-and every import of a file, wherever it is, so the selection over-approximates.
+`NAME.path` directories, then `lib/`), each regular package's `__init__.py` on
+the way, namespace packages (directories without one) included, and every import
+of a file, wherever it is, so the selection over-approximates.
 Each program is compiled by the hosted compiler under
 `tools/inspect_compiler.py --typed-after-only`, which records only the final
 snapshot, and the run fails unless Lean accepts every function that reads a
