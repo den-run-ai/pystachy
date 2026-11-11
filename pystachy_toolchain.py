@@ -1,11 +1,13 @@
 """Provision the pinned LLVM used by GitHub source installations."""
 
 import hashlib
+import http.client
 import os
 from pathlib import Path
 import platform
 import shutil
 import socket
+import ssl
 import subprocess
 import sys
 import tarfile
@@ -50,6 +52,14 @@ MACOS_RELEASE = (
 MACOS_SHA256 = "a9a22f450d35f1f73cd61ab6a17c6f27d8f6051d56197395c1eb397f0c9bbec4"
 
 
+# The connection to an endpoint failed or ended early: refused, reset, closed, cut short or
+# dropped inside TLS. Like a timeout, each says that endpoint is unavailable now, so it is
+# retried and falls back to the mirror. Certificate errors, proxy rejections and anything
+# unrecognized stay terminal.
+CONNECTION_FAILURES = (ConnectionError, http.client.HTTPException, ssl.SSLEOFError, ssl.SSLZeroReturnError)
+NETWORK_FAILURES = (URLError, TimeoutError, *CONNECTION_FAILURES)
+
+
 def download(url: str, sha256: str, destination: Path, *, fallback_url: str | None = None) -> None:
     # Share the retry budget across endpoints: snapshot, mirror, snapshot. The
     # mirror may prune old packages, so its 404 can use the final snapshot attempt.
@@ -62,14 +72,14 @@ def download(url: str, sha256: str, destination: Path, *, fallback_url: str | No
         # Catch network operations separately so local file errors are not retried.
         try:
             response = urlopen(active_url, timeout=60)
-        except (URLError, TimeoutError) as failure:
+        except NETWORK_FAILURES as failure:
             error = failure
         else:
             with response, destination.open("wb") as archive:
                 while True:
                     try:
                         chunk = response.read(1024 * 1024)
-                    except (URLError, TimeoutError) as failure:
+                    except NETWORK_FAILURES as failure:
                         error = failure
                         break
                     if not chunk:
@@ -86,7 +96,7 @@ def download(url: str, sha256: str, destination: Path, *, fallback_url: str | No
             retryable = retryable or (attempt == 1 and fallback_url is not None and error.code == 404)
         else:
             reason = error.reason if isinstance(error, URLError) else error
-            retryable = (isinstance(reason, TimeoutError)
+            retryable = (isinstance(reason, (TimeoutError, *CONNECTION_FAILURES))
                          or isinstance(reason, socket.gaierror) and reason.errno == socket.EAI_AGAIN)
         if isinstance(error, HTTPError):
             error.close()
