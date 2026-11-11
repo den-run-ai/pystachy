@@ -78,15 +78,17 @@ provides no evidence about a dynamic crossing.
 reports each one's result, read count and candidate hash. Its status and exit
 code are the worst function's: an error, then a rejection, then an unsupported
 form. A read in a block that nothing reaches cannot run; it counts as proved
-with its function.
+with its function. The snapshot must be a completed typed-after inspection even
+when no function reads a payload.
 
 `tools/check_lean_corpus.py`, which `make check-lean-corpus` runs after building
 the checker, does that for the dynamic-`Any` corpus: each differential test
 program and deviation that opts in to dynamic `Any` (the compiler's own pragma
 test), or whose imports reach a module that does. Imports are followed through
 the program's search path as the compiler gives it (its directory, its
-`NAME.path` directories, then `lib/`), each package's `__init__.py` on the way
-and every import of a file, wherever it is, so the selection over-approximates.
+`NAME.path` directories, then `lib/`), each regular package's `__init__.py` on
+the way, namespace packages (directories without one) included, and every import
+of a file, wherever it is, so the selection over-approximates.
 Each program is compiled by the hosted compiler under
 `tools/inspect_compiler.py --typed-after-only`, which records only the final
 snapshot, and the run fails unless Lean accepts every function that reads a

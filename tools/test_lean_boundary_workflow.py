@@ -107,6 +107,8 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertEqual([len(found) for found in pins(boundary["run"])[:2]], [1, 1])
         self.assertEqual(corpus["if"], "matrix.machine == 'x86_64' && "
                                        "(matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0')")
+        # (two workers, explicitly: the runner would otherwise start up to four)
+        self.assertIn("LEAN_CORPUS_FLAGS='--jobs 2 ", corpus["run"])
         groups = verification["strategy"]["matrix"]["group"]
         self.assertIn('"opt-in"', groups.split("||")[0])
         self.assertIn('"dynany-optin-0"', groups.split("||")[1])

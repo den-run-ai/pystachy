@@ -276,13 +276,18 @@ def condition_size(condition):
     return 1 if condition[0] in {"atom", "const", "opaque"} else sum(condition_size(c) for c in condition[1:])
 
 
-def normalize_snapshot(snapshot, function):
-    name(function, "function selector")
+def check_header(snapshot):
+    """Every check reads a completed typed-after snapshot of inspection schema 1."""
     require(isinstance(snapshot, dict), "snapshot must be an object")
     require(type(snapshot.get("schema_version")) is int and snapshot["schema_version"] == 1,
             "expected inspection schema_version 1")
     if snapshot.get("stage") != "typed-after" or snapshot.get("status") != "completed":
         raise Unsupported("only completed typed-after snapshots are supported")
+
+
+def normalize_snapshot(snapshot, function):
+    name(function, "function selector")
+    check_header(snapshot)
     functions = snapshot.get("functions")
     require(isinstance(functions, list) and len(functions) <= 65536, "invalid functions list")
     require(all(isinstance(fn, dict) for fn in functions), "invalid function record")
@@ -892,7 +897,9 @@ SEVERITY = ("accepted", "unsupported", "rejected", "error")
 def check_all(snapshot, checker=DEFAULT_CHECKER):
     """Check every function of the snapshot that reads a dynamic payload. A read in a block that
     no edge reaches cannot run: it counts as proved with its function. Returns the report's
-    fields and the exit code of the worst result."""
+    fields and the exit code of the worst result. The header is checked first: a snapshot with
+    no payload read passes only if it is complete."""
+    check_header(snapshot)
     records = []
     for symbol, reads in payload_functions(snapshot):
         record = {"function": symbol, "reads": reads}

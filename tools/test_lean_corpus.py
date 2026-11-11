@@ -38,6 +38,13 @@ class ReachTests(unittest.TestCase):
             "helpers/pkg/relative.py": "from .opted import x\n",
             "helpers/cycle_a.py": "import cycle_b\n",
             "helpers/cycle_b.py": "import cycle_a\n",
+            # namespace packages: directories without __init__.py, one split across two
+            # directories of the search path
+            "helpers/ns/helper.py": PRAGMA + "x = 1\n",
+            "helpers/ns/plainmod.py": "",
+            "helpers/ns/deeper/inner.py": PRAGMA + "x = 1\n",
+            "helpers/split/part_a.py": "",
+            "lib/split/part_b.py": PRAGMA + "x = 1\n",
         }
         for name, text in files.items():
             path = self.base / name
@@ -58,6 +65,15 @@ class ReachTests(unittest.TestCase):
             "import pkg.relative\n": True,
             "def f():\n    import pkg.opted\n": True,
             "import cycle_a\n": False,
+            # (loader.py's filepath: a directory without __init__.py is a namespace package)
+            "import ns.helper\n": True,
+            "from ns import helper\n": True,
+            "import ns.deeper.inner\n": True,
+            "from ns.deeper import inner\n": True,
+            "import ns.plainmod\n": False,
+            "import ns\n": False,
+            "import split.part_b\n": True,
+            "import split.part_a\n": False,
             "import missing\n": False,
             "﻿import plain\n": False,
             # (an unparsable file is compiled anyway)
@@ -116,6 +132,22 @@ class CorpusRunTests(unittest.TestCase):
         self.assertEqual(records["tests/programs/strings/bom.py"]["totals"]["reads"], 0)
         self.assertEqual(report["totals"]["programs"], 2)
         self.assertIn("2 programs", completed.stdout)
+
+    def test_a_namespace_packages_dynamic_module_is_selected_and_proved(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            (Path(temporary) / "ns").mkdir()
+            (Path(temporary) / "ns" / "helper.py").write_text(
+                PRAGMA + "from typing import Any\n\n\ndef describe(x: Any) -> str:\n"
+                "    if isinstance(x, str):\n        return 'str ' + x\n    return 'other'\n")
+            program = str(Path(temporary) / "uses_namespace.py")
+            Path(program).write_text("import ns.helper\n\nprint(ns.helper.describe('a'))\n"
+                                     "print(ns.helper.describe(1))\n")
+            self.assertEqual(corpus.select([program]), [program])
+            completed, report = self.run_tool(program)
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        totals = report["programs"][0]["totals"]
+        self.assertGreater(totals["reads"], 0)
+        self.assertEqual(totals["proved_reads"], totals["reads"])
 
     def test_a_program_that_does_not_compile_fails_the_run(self):
         with tempfile.TemporaryDirectory() as temporary:
