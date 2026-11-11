@@ -57,8 +57,9 @@ class Reach:
     in any branch or function counts, as does a name imported from a package that is also its
     submodule: over-approximate, so that no program that compiles dynamic code is left out."""
 
-    def __init__(self):
+    def __init__(self, pragma=dynamic_pragma):
         self.parsed = {}
+        self.pragma = pragma
 
     def facts(self, path):
         # (opts in, its imports: (level, dotted module parts, imported names))
@@ -80,7 +81,7 @@ class Reach:
                 elif isinstance(node, ast.ImportFrom):
                     imports.append((node.level, node.module.split(".") if node.module else [],
                                     [alias.name for alias in node.names if alias.name != "*"]))
-            self.parsed[path] = (dynamic_pragma(text), imports)
+            self.parsed[path] = (self.pragma(text), imports)
         return self.parsed[path]
 
     @staticmethod

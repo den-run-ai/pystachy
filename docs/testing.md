@@ -954,7 +954,11 @@ the hosted compiler, failing unless Lean proves every dynamic payload read guard
 (in two workers, about four minutes; its report is uploaded as `lean-corpus.json`), and
 `make check-lean-int`, which compiles each test program that opts in to promoting ints
 and fails unless Lean proves every [fit claim](../tools/lean_boundary/INT.md) (about
-half a minute; `lean-int.json`). Lint, already near its 15-minute bound, runs neither. The bridge's Python tests
+half a minute; `lean-int.json`). PR `opt-in` and full-run x86 `scaling` run `make check-lean-storage` for
+[promoting-integer storage guards](../tools/lean_boundary/STORAGE.md), including
+programs that import opted-in modules, and upload `lean-storage.json`. The full-run
+placement avoids adding this roughly four-minute check to the longer dynamic-`Any` job.
+Lint, already near its 15-minute bound, runs none of these corpora. The bridge's Python tests
 also run in `make check-fast`. Those tests skip executable checks when Lean has
 not been built; the dedicated target requires them and fails if the executable
 is missing. Lean is a development-only dependency for this bounded prototype.

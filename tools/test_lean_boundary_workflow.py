@@ -78,6 +78,9 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
     def test_adapter_inspection_tests_and_pins_run_lean(self):
         for name in ("tools/check_lean_boundary.py", "tools/inspect_compiler.py",
                      "tools/test_lean_boundary_workflow.py", "pystachy.py",
+                     "tools/check_lean_storage.py", "tools/check_lean_storage_corpus.py",
+                     "tools/test_lean_storage.py", "tools/test_lean_storage_corpus.py",
+                     "tools/test_lean_layout_metadata.py", "tools/check_lean_corpus.py",
                      "tools/lean_boundary/PystachyBoundary.lean", "tools/lean_boundary/PystachyInt.lean",
                      "tools/check_lean_int.py", "tools/test_lean_int.py", "Makefile",
                      ".github/workflows/lint.yml", "tools/requirements-dev.txt", ".python-version"):
@@ -107,13 +110,40 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertEqual(pins(corpus["run"]), pins(boundary["run"]))
         self.assertEqual([len(found) for found in pins(boundary["run"])[:2]], [1, 1])
         self.assertEqual(corpus["if"], "matrix.machine == 'x86_64' && "
-                                       "(matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0')")
+                                       "(matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0' || "
+                                       "matrix.group == 'scaling')")
         # (two workers, explicitly: the runner would otherwise start up to four)
         self.assertIn("LEAN_CORPUS_FLAGS='--jobs 2 ", corpus["run"])
+        self.assertIn("make check-lean-storage LEAN_STORAGE_FLAGS='--jobs 2 ", corpus["run"])
         groups = verification["strategy"]["matrix"]["group"]
         self.assertIn('"opt-in"', groups.split("||")[0])
         self.assertIn('"dynany-optin-0"', groups.split("||")[1])
+        self.assertIn('"scaling"', groups.split("||")[1])
         self.assertIn("build/verify/lean-corpus.json", verification["steps"][-1]["with"]["path"])
+        self.assertIn("build/verify/lean-storage.json", verification["steps"][-1]["with"]["path"])
+
+    def test_full_storage_proof_uses_the_short_scaling_group(self):
+        ci = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
+        step = next(step for step in ci["jobs"]["verification"]["steps"]
+                    if "make check-lean-storage" in step.get("run", ""))
+        self.assertEqual(step["env"]["VERIFY_GROUP"], "${{ matrix.group }}")
+        # Execute the real command selector with an inert make, without downloading Lean.
+        selector = 'case "$VERIFY_GROUP" in' + step["run"].split('case "$VERIFY_GROUP" in', 1)[1]
+        bin_dir = self.directory / "bin"
+        bin_dir.mkdir()
+        make = bin_dir / "make"
+        make.write_text('#!/bin/sh\nprintf "%s\\n" "$1"\n')
+        make.chmod(0o755)
+        for group, expected in (("opt-in", ["check-lean-corpus", "check-lean-int", "check-lean-storage"]),
+                                ("dynany-optin-0", ["check-lean-corpus", "check-lean-int"]),
+                                ("scaling", ["check-lean-storage"]), ("hosted", [])):
+            with self.subTest(group=group):
+                env = dict(os.environ, VERIFY_GROUP=group, lean_boundary_dir=str(self.directory),
+                           PATH=str(bin_dir) + os.pathsep + os.environ["PATH"])
+                completed = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", selector],
+                                           env=env, capture_output=True, text=True, timeout=10)
+                self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+                self.assertEqual(completed.stdout.splitlines(), expected)
 
     def test_missing_merge_parent_runs_lean(self):
         self.merge_pr("docs/typed-ir.md")

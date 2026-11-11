@@ -449,6 +449,8 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_int.py
+	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
@@ -460,6 +462,8 @@ check-lean-boundary:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_int.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 
 # Every dyn.payload read of the dynamic-Any test programs, each compiled by the hosted
 # compiler, proved guarded by the Lean checker (tools/lean_boundary/README.md).
@@ -475,6 +479,15 @@ LEAN_INT_FLAGS ?=
 check-lean-int:
 	cd tools/lean_boundary && lake build
 	$(PY) tools/check_lean_int.py --corpus $(LEAN_INT_FLAGS)
+
+# Low words, tuple digit slots and representation crossings, including imported int mode.
+LEAN_STORAGE_FLAGS ?=
+check-lean-storage:
+	cd tools/lean_boundary && lake build
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) tools/check_lean_storage_corpus.py $(LEAN_STORAGE_FLAGS)
+
+.PHONY: check-lean-storage
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py

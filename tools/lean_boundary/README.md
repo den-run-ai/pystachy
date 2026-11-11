@@ -1,5 +1,10 @@
 # Lean payload-guard prototype
 
+The [promoting-integer storage checker](STORAGE.md) extends the same checked
+control-flow model to low-word uses, tuple digit slots and representation
+crossings. Its storage model and trust boundary are separate from the dynamic
+payload-tag obligations described here.
+
 This optional developer tool checks the guards of `dyn.payload` operations in
 one selected function, or in every function, of a completed Pystachy typed-IR
 snapshot; `make check-lean-corpus` checks every such read of the dynamic-`Any`
@@ -26,8 +31,8 @@ it found no copied implementation. The shared logical axiom names and
 `Lean.collectAxioms` calls are standard Lean interfaces. This records a source
 and dependency review, not a formal proof of authorship.
 
-Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary` and
-`PystachyInt` modules; `lake-manifest.json` contains no external packages. The pinned Lean
+Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`,
+`PystachyInt` and `PystachyStorage` modules; `lake-manifest.json` contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
 [Apache-2.0 license](https://github.com/leanprover/lean4/blob/v4.35.0/LICENSE).
 It is downloaded for CI and is not vendored in this repository. Its license is

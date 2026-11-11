@@ -304,6 +304,10 @@ fold later pointer tests and use the mask's range. Loops such as
 paths' fit rules, and `make check-lean-int` checks every such claim of the test
 programs that opt in.
 
+The [Lean storage checker](../tools/lean_boundary/STORAGE.md) checks low-word uses,
+tuple digit-slot guards and fixed-width tuple boundaries, including programs
+that import an opted-in module. Run it with `make check-lean-storage`.
+
 ### Tuples and runtime traversal
 
 A tuple keeps each fitting int in its 8-byte item slot. A large item uses

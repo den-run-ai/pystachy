@@ -187,12 +187,13 @@ jobs:
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: tests/verify.sh "$VERIFY_GROUP"
 
-      # The hosted compiler compiles each dynamic-Any test program, and the pinned Lean checker
-      # must prove every dynamic payload read guarded: in the short PR opt-in group and the first
-      # full opt-in shard (in two workers, about four minutes; the release archive is for x86_64
-      # Linux).
-      - name: Lean proof of the dynamic-Any corpus's payload guards
-        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0')
+      # Keep the complete Lean corpora at two workers. Full dynany-optin-0 already approaches
+      # the job's time bound; put storage proofs in the shorter full scaling group instead.
+      # PR opt-in retains all three checks. The pinned release archive is for x86_64 Linux.
+      - name: Lean proofs of compiler guard obligations
+        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0' || matrix.group == 'scaling')
+        env:
+          VERIFY_GROUP: ${{ matrix.group }}
         run: |
           lean_boundary_dir=$(mktemp -d)
           trap 'rm -rf "$lean_boundary_dir"' EXIT
@@ -203,10 +204,18 @@ jobs:
           printf '%s  %s\n' '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d' \
             "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -
           tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
-          PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
-            make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
-          PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
-            make check-lean-int LEAN_INT_FLAGS='--jobs 2 --report build/verify/lean-int.json'
+          case "$VERIFY_GROUP" in
+            opt-in|dynany-optin-0)
+              PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+                make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
+              PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+                make check-lean-int LEAN_INT_FLAGS='--jobs 2 --report build/verify/lean-int.json' ;;
+          esac
+          case "$VERIFY_GROUP" in
+            opt-in|scaling)
+              PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+                make check-lean-storage LEAN_STORAGE_FLAGS='--jobs 2 --report build/verify/lean-storage.json' ;;
+          esac
 
       - name: Require C, embedding and extension FFI coverage
         if: matrix.group == 'contracts'
@@ -310,6 +319,7 @@ jobs:
             build/verify/dynany-optin-*.json
             build/verify/lean-corpus.json
             build/verify/lean-int.json
+            build/verify/lean-storage.json
             build/verify/dynany-optin-*/tests/programs/*/*
             build/verify/python-int-optin-*.json
             build/verify/python-int-optin-*/tests/programs/*/*

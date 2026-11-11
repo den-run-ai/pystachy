@@ -53,6 +53,8 @@ jobs:
               ! git rev-parse --verify 'HEAD^2^{commit}' >/dev/null 2>&1 ||
               ! git diff --quiet HEAD^ HEAD -- tools/lean_boundary tools/check_lean_boundary.py \
                 'tools/test_lean_boundary*.py' tools/check_lean_int.py tools/test_lean_int.py \
+                'tools/check_lean_storage*.py' 'tools/test_lean_storage*.py' tools/test_lean_layout_metadata.py \
+                tools/check_lean_corpus.py \
                 src pystachy.py tools/inspect_compiler.py \
                 Makefile .github/workflows/lint.yml tools/requirements-dev.txt .python-version; then
             echo 'run=true' >> "$GITHUB_OUTPUT"
