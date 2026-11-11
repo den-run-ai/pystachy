@@ -56,7 +56,7 @@ hold for one. A checked addition gives an offset only on the path where its sum 
 one only where the facts show it fits, as for a constant added to an exact offset of a value
 that brings it no higher than that value (`n - 3 + 2`). A write to a field of a class keeps the
 values of the class's other fields, of any object, and the fields of the classes it lists as
-unrelated (no object is both); any other field may change: a base and a derived class may view
+unrelated (by the classes table, no object is both); any other field may change: a base and a derived class may view
 one object differently. The checker refuses a write that lists its own class, and
 `accepted_write_progress` shows that an accepted program's writes can always happen.
 
@@ -94,8 +94,9 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   and store read and write its cell, named by the object's register and the field's class and
   index; a store of a constant or an unknown value writes that field alone too. A field store
   lists as unrelated the function's other field classes that the snapshot's `classes` table
-  (each class's base and fieldless secondary base, as `Gen.derives` follows them) relates to it
-  neither way; a class the table lacks is related to every class. A field address's operands, like a test's, are SSA
+  (each class's base and fieldless secondary base, as `Gen.derives` follows them, and the classes
+  it overlaps through a common subclass) relates to it in no way; a class the table lacks is
+  related to every class. A field address's operands, like a test's, are SSA
   values, unchanged wherever its result is used.
 - Values of one 64-bit word (not a promoting int or a narrower scalar) loaded repeatedly from a
   recognized closure cell use the same heap model, as do typed loads and stores of the first
@@ -208,7 +209,9 @@ Not proved by this version:
   obligations there. That proves the check redundant in the input graph, not the rest of the
   pass's rewrite.
 - The classes table, and typed memory: objects of classes neither of which derives from the
-  other are distinct, as the compiler's `Gen.disjoint` also assumes.
+  other, and that share no subclass through a secondary base (the table's overlaps), are
+  distinct, as the compiler's `Gen.disjoint` also assumes. A tagged class's objects begin with
+  the 8-byte class tag.
 - The identity-return ABI: `%idret` is the buffer the caller passes last; the scan checks that
   each direct call passes one of its slots there, not what runtime or native callers pass.
 - Source-language or LLVM equivalence, GC, allocation and aliasing beyond the rules above,

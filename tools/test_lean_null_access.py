@@ -145,13 +145,13 @@ class NullAccessTests(unittest.TestCase):
 
     def test_a_write_of_an_unrelated_class_keeps_the_proof(self):
         # (no object is both an Inner and a Holder: the classes table relates neither to the other)
-        self.assertEqual(self.snap["classes"]["Inner"], {"base": "", "role": ""})
+        self.assertEqual(self.snap["classes"]["Inner"], {"base": "", "role": "", "overlaps": [], "tagged": False})
         self.assert_proved(*self.other_class_write())
 
     def test_a_write_through_a_related_or_unknown_class_view_refutes(self):
         # (a base and a derived class, or a secondary base, may view one object; a class the
         # table lacks may be anything)
-        for relate in ("base", "derived", "role", "missing", "no table"):
+        for relate in ("base", "derived", "role", "overlap", "missing", "no table"):
             with self.subTest(relate=relate):
                 self.setUp()
                 classes = self.snap["classes"]
@@ -161,6 +161,8 @@ class NullAccessTests(unittest.TestCase):
                     classes["Holder"]["base"] = "Inner"
                 elif relate == "role":
                     classes["Holder"]["role"] = "Inner"
+                elif relate == "overlap":
+                    classes["Holder"]["overlaps"] = ["Inner"]
                 elif relate == "missing":
                     del classes["Inner"]
                 else:
@@ -252,12 +254,20 @@ class NullAccessTests(unittest.TestCase):
                 self.assert_refuted(fn, removed)
 
     def test_a_store_into_memory_the_function_allocated_keeps_the_global(self):
-        # (a new object's header word, as a class constructor writes it: no global changes; an
-        # unknown pointer's store refutes, test_global_writes_between_refute)
-        fn, removed = self.global_case()
-        removed = self.insert(fn, removed, "L10", 0, [op("alloc.fixed", [], [9000], typ="Inner"),
-                                                      op("mach.store", [("%t9000", "%ptr"), ("2", "int")])])
-        self.assert_proved(fn, removed)
+        # (a new object's class tag, as gen_new_obj writes it: no global changes where the class's
+        # objects begin with the tag; of another class, the word may not be the object's, and an
+        # unknown pointer's store refutes too, test_global_writes_between_refute)
+        for tagged in (True, False):
+            with self.subTest(tagged=tagged):
+                self.setUp()
+                self.snap["classes"]["Inner"]["tagged"] = tagged
+                fn, removed = self.global_case()
+                removed = self.insert(fn, removed, "L10", 0, [op("alloc.fixed", [], [9000], typ="Inner"),
+                                                              op("mach.store", [("%t9000", "%ptr"), ("2", "int")])])
+                if tagged:
+                    self.assert_proved(fn, removed)
+                else:
+                    self.assert_refuted(fn, removed)
 
     def test_a_store_to_another_global_keeps_the_proof(self):
         fn, removed = self.global_case()
@@ -310,6 +320,49 @@ class NullAccessTests(unittest.TestCase):
         address = op("field.addr", [("%a0", "Inner")], [9030], typ="*int", immediate=0)
         removed = self.insert(fn, removed, "L15", 0, [address, op("mem.store", [("%t9030", "*int"), ("7", "int")])])
         self.assert_proved(fn, removed)
+
+    @staticmethod
+    def function_record(symbol, operations):
+        return {"name": symbol[1:], "symbol": symbol, "effects": "", "recursion": {}, "parameters": [],
+                "check_targets": {}, "slots": [],
+                "blocks": [{"label": "entry", "handler": "", "operations": operations + [op("ret")]}]}
+
+    def identity_case(self, argument, callee, snapshot_call=None):
+        # (@f.null_idret stores null through %idret, the buffer its caller passes last;
+        # @f.forward_idret passes its own on. The pass input calls one of them before the reload)
+        self.snap["functions"] += [
+            self.function_record("@f.null_idret", [op("mem.store", [("%idret", "*dyn"), ("null", "dyn")])]),
+            self.function_record("@f.forward_idret", [op("call", [("1", "int"), ("%idret", "*dyn")], [900],
+                                                         text="@f.null_idret", typ="int")])]
+        if snapshot_call is not None:
+            # (a call elsewhere in the snapshot that passes forward_idret something else)
+            self.snap["functions"].append(self.function_record("@f.elsewhere", [
+                op("call", [("1", "int"), (snapshot_call, "*dyn")], [901], text="@f.forward_idret", typ="int")]))
+        fn, removed, tested = self.field_case()
+        fn["slots"].append(op("slot", results=[9040], typ="dyn", text="h"))
+        call = op("call", [("1", "int"), (argument, "*dyn")], [9041], text=callee, typ="int")
+        prefix = [dict(tested, results=[9042])] if argument == "%t9042" else []
+        removed = self.insert(fn, removed, "L12", 0, prefix + [call])
+        self.effects = summaries(self.snap)
+        return fn, removed
+
+    def test_identity_return_buffers_must_be_slots_of_the_caller(self):
+        # (passing h.inner's address as the buffer lets the callee null it)
+        for callee in ("@f.null_idret", "@f.forward_idret"):
+            with self.subTest(callee=callee):
+                self.setUp()
+                self.assert_refuted(*self.identity_case("%t9042", callee))
+        # A buffer of the function's own keeps the proof.
+        self.setUp()
+        self.assert_proved(*self.identity_case("%h.9040", "@f.null_idret"))
+
+    def test_identity_return_forwarding_carries_an_unverified_buffer(self):
+        # (another caller passes forward_idret a field's address, which it forwards to null_idret:
+        # neither may leave its %idret stores out of its summary, wherever it is called)
+        self.assert_refuted(*self.identity_case("%h.9040", "@f.forward_idret", snapshot_call="%a0"))
+        for symbol in ("@f.null_idret", "@f.forward_idret"):
+            self.assertNotIn(symbol, self.effects.exempt)
+            self.assertEqual(self.effects[symbol] & {"wL", "wD", "wO", "wG"}, {"wL", "wD", "wO", "wG"})
 
     def test_inventory_must_name_actual_checks(self):
         fn, removed, _ = self.field_case()

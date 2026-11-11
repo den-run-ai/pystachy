@@ -29,6 +29,38 @@ ELEMENT_BYTES = {"int": 8, "%ptr": 8, "%byte": 1}  # (mach.addr's element types,
 IDENTITY_RETURN = "%idret"
 
 
+def tagged_classes(snapshot):
+    """tagged(cls): whether the snapshot's classes table marks cls as tagged, its objects'
+    first field the 8-byte class tag (declarations.py's " class" field); False without a table."""
+    table = snapshot.get("classes") if isinstance(snapshot, dict) else None
+    if not isinstance(table, dict):
+        return lambda cls: False
+    return lambda cls: isinstance(table.get(cls), dict) and table[cls].get("tagged") is True
+
+
+class Summaries(dict):
+    """Each function's possible effect tokens by symbol (summaries), with the functions that
+    store through %idret (returners) and those of them whose stores there the summaries do not
+    count (exempt): every direct call passes one of its caller's slots, or forwards an exempt
+    caller's own buffer. A call of an exempt function passing anything else (identity_argument)
+    may write anything."""
+
+    def __init__(self, data, returners=frozenset(), exempt=frozenset()):
+        super().__init__(data)
+        self.returners = frozenset(returners)
+        self.exempt = frozenset(exempt)
+
+    def identity_argument(self, op, caller, slots):
+        """Whether call op, in function caller whose stack slots are slots, keeps its callee's
+        %idret stores in caller's own memory, as the callee's summary assumes."""
+        if op.get("op") != "call" or op.get("text") not in self.exempt:
+            return True
+        last = op["operands"][-1] if op.get("operands") else {}
+        value = last.get("value")
+        return last.get("type") == "*dyn" and (
+            value in slots or value == "null" or (value == IDENTITY_RETURN and caller in self.exempt))
+
+
 def literal(value):
     try:
         return int(value)
@@ -36,48 +68,57 @@ def literal(value):
         return None
 
 
-def fresh_addresses(operations):
-    """Addresses inside memory this body allocates itself: a register an allocator returns (a
-    fixed object's or tuple's alloc.fixed, or a runtime allocation of a literal byte size) and a
-    field of such an object or a word at a literal index within such a tuple or allocation (a
-    fixed tuple has lowering.py's 8 * tslots bytes). A store there changes
-    nothing that existed when the function was called, which is all its callers' facts describe
-    (each execution of an allocation is new memory). Any other derivation, such as a phi, a
-    select, a load or a computed index, is not fresh."""
-    sizes, fresh = {}, set()
+def fresh_addresses(operations, tagged=lambda cls: False):
+    """Addresses inside memory this body allocates itself, each with the bytes from it to the
+    end of that memory (None for a field of a fixed object, which the IR types): a register an
+    allocator returns (a runtime allocation of a literal n bytes holds n + 1; a fixed tuple
+    lowering.py's 8 * tslots; a fixed object of a class tagged(cls) holds its first field, the
+    8-byte class tag, and of another class nothing is assumed), a field of such an object, and
+    an element at a literal index within such a tuple or allocation. A store that fits there
+    (fresh_store) changes nothing that existed when the function was called, which is all its
+    callers' facts describe: each execution of an allocation is new memory. Any other
+    derivation, such as a phi, a select, a load or a computed index, is not fresh."""
+    room, objects = {}, set()
     for op in operations:
-        if op["op"] == "alloc.fixed" and len(op["results"]) == 1:
-            fresh.add(f"%t{op['results'][0]}")
+        if len(op["results"]) != 1:
+            continue
+        result = f"%t{op['results'][0]}"
+        if op["op"] == "alloc.fixed":
             if is_tuple(op["type"]) and op["type"].endswith("]") and "..." not in targs(op["type"]):
-                sizes[f"%t{op['results'][0]}"] = WORD * tslots(op["type"])
-        elif (op["op"] == "rt" and op["text"] in FRESH_RUNTIME and len(op["results"]) == 1
-              and len(op["operands"]) == 1):
+                room[result] = WORD * tslots(op["type"])
+            else:
+                objects.add(result)
+                room[result] = WORD if tagged(op["type"]) else 0
+        elif op["op"] == "rt" and op["text"] in FRESH_RUNTIME and len(op["operands"]) == 1:
             size = literal(op["operands"][0]["value"])
             if size is not None and size > 0:
-                sizes[f"%t{op['results'][0]}"] = size + 1
-                fresh.add(f"%t{op['results'][0]}")
-    changed = True
-    while changed:
-        changed = False
-        for op in operations:
-            if len(op["results"]) != 1 or f"%t{op['results'][0]}" in fresh or not op["operands"]:
-                continue
-            base = op["operands"][0]["value"]
-            derived = False
-            if op["op"] == "field.addr" and len(op["operands"]) == 1:
-                # (a field of an object: the IR types it, and the object is base's)
-                derived = base in fresh and base not in sizes
-            elif op["op"] == "mach.addr" and len(op["operands"]) == 2 and base in sizes:
-                # (getelementptr of the element type: a word, or a byte; a word store at a byte
-                # index must still end inside the allocation)
-                index = literal(op["operands"][1]["value"])
-                width = ELEMENT_BYTES.get(op["text"])
-                derived = (width is not None and index is not None and 0 <= index
-                           and index * width + WORD <= sizes[base])
-            if derived:
-                fresh.add(f"%t{op['results'][0]}")
-                changed = True
+                room[result] = size + 1
+    fresh = dict(room)
+    for op in operations:
+        if len(op["results"]) != 1 or not op["operands"]:
+            continue
+        result, base = f"%t{op['results'][0]}", op["operands"][0]["value"]
+        if op["op"] == "field.addr" and len(op["operands"]) == 1 and base in objects:
+            fresh[result] = None
+        elif op["op"] == "mach.addr" and len(op["operands"]) == 2 and base in room and base not in objects:
+            # (getelementptr of the element type, a word or a byte, at a literal index)
+            index = literal(op["operands"][1]["value"])
+            width = ELEMENT_BYTES.get(op["text"])
+            if width is not None and index is not None and 0 <= index * width < room[base]:
+                fresh[result] = room[base] - index * width
     return fresh
+
+
+def fresh_store(op, fresh):
+    """Whether store op writes only memory its function allocated (fresh_addresses): its value,
+    of 16 bytes for a promoting int and at most 8 otherwise (utils.lt), fits from its address."""
+    if op["op"] not in ("mem.store", "mach.store") or len(op["operands"]) != 2:
+        return False
+    address, value = op["operands"]
+    if address["value"] not in fresh:
+        return False
+    room = fresh[address["value"]]
+    return room is None or (16 if value["type"] == "int+" else WORD) <= room
 
 
 def writes(tokens):
@@ -112,10 +153,11 @@ def slot_names(function):
     return slots
 
 
-def local_writes(function, identity_slot=False):
+def local_writes(function, identity_slot=False, tagged=lambda cls: False):
     """Body writes and direct callees, without using the compiler's analysis. identity_slot: every
     direct call of the function passes a slot of its caller as the identity-return buffer
-    (summaries checks this), so storing through %idret writes no state of its caller."""
+    (summaries checks this), so storing through %idret writes no state of its caller. tagged:
+    fresh_addresses's class-tag rule."""
     require(isinstance(function.get("blocks"), list), "invalid effect function blocks")
     require(all(isinstance(block, dict) and isinstance(block.get("operations"), list)
                 for block in function["blocks"]), "invalid effect block")
@@ -133,7 +175,7 @@ def local_writes(function, identity_slot=False):
     slots = slot_names(function)
     fields = {f"%t{op['results'][0]}" for op in operations
               if op["op"] == "field.addr" and len(op["results"]) == 1}
-    fresh = fresh_addresses(operations)
+    fresh = fresh_addresses(operations, tagged)
     result, callees = set(), set()
     for op in operations:
         kind = op["op"]
@@ -144,7 +186,7 @@ def local_writes(function, identity_slot=False):
         elif kind in {"mem.store", "mach.store"}:
             require(bool(op["operands"]), "memory store lacks its address")
             address = op["operands"][0]["value"]
-            if address in slots or address in fresh or (identity_slot and address == IDENTITY_RETURN):
+            if address in slots or fresh_store(op, fresh) or (identity_slot and address == IDENTITY_RETURN):
                 # (the function's own stack slots, escaped or not, which no global, object, list
                 # or dict shares; memory it allocated; and its caller's identity-return slot)
                 continue
@@ -182,26 +224,40 @@ cycle cannot conceal a write reachable elsewhere in the cycle.
         by_symbol[symbol] = function
     # A function that stores through %idret writes the identity-return buffer its caller passes
     # last (calls.py's idresult: a dyn slot it allocates). That is no state of the caller only where
-    # every direct call in the snapshot passes one of its own slots, its own %idret (forwarding a
-    # buffer) or null; any other argument keeps the store unknown.
+    # every direct call in the snapshot passes one of its own slots or null, or forwards its own
+    # %idret where that caller's is such a buffer too (to a fixed point); any other argument keeps
+    # the stores unknown. A call outside the snapshot (a pass's input function) is checked where
+    # it is normalized (Summaries.identity_argument).
     returners = {symbol for symbol, function in by_symbol.items()
                  if any(isinstance(operand, dict) and operand.get("value") == IDENTITY_RETURN
                         for block in function.get("blocks", []) if isinstance(block, dict)
                         for op in block.get("operations", []) if isinstance(op, dict)
                         for operand in op.get("operands", []))}
-    unverified = set()
-    for function in by_symbol.values():
+    unverified, forwards = set(), []
+    for symbol, function in by_symbol.items():
         own = slot_names(function)
         for block in function.get("blocks", []):
             for op in block.get("operations", []) if isinstance(block, dict) else []:
                 if isinstance(op, dict) and op.get("op") == "call" and op.get("text") in returners:
                     last = op["operands"][-1] if op.get("operands") else {}
-                    if not (last.get("type") == "*dyn"
-                            and (last.get("value") in own or last.get("value") in (IDENTITY_RETURN, "null"))):
+                    value = last.get("value") if isinstance(last, dict) else None
+                    if not (isinstance(last, dict) and last.get("type") == "*dyn"
+                            and (value in own or value in (IDENTITY_RETURN, "null"))):
                         unverified.add(op["text"])
+                    elif value == IDENTITY_RETURN:
+                        forwards.append((symbol, op["text"]))
+    changed = True
+    while changed:
+        changed = False
+        for caller, callee in forwards:
+            if (caller in unverified or caller not in returners) and callee not in unverified:
+                unverified.add(callee)
+                changed = True
+    exempt = returners - unverified
+    tagged = tagged_classes(snapshot)
     inferred, declared, callers = {}, {}, {symbol: set() for symbol in by_symbol}
     for symbol, function in by_symbol.items():
-        body, callees = local_writes(function, symbol in returners and symbol not in unverified)
+        body, callees = local_writes(function, symbol in exempt, tagged)
         tokens = function.get("effects")
         declared[symbol] = set(tokens.split()) if isinstance(tokens, str) else {"U"}
         inferred[symbol] = body | writes(declared[symbol])
@@ -220,4 +276,4 @@ cycle cannot conceal a write reachable elsewhere in the cycle.
             if len(inferred[caller]) != before and caller not in queued:
                 pending.append(caller)
                 queued.add(caller)
-    return {symbol: declared[symbol] | inferred[symbol] for symbol in by_symbol}
+    return Summaries({symbol: declared[symbol] | inferred[symbol] for symbol in by_symbol}, returners, exempt)

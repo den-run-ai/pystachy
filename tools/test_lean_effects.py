@@ -145,6 +145,23 @@ class EffectSummaryTests(unittest.TestCase):
                 found = effects.summaries({"functions": [function("@stale", copy.deepcopy(operations))]})
                 self.assertIn("wL", found["@stale"])
                 self.assert_verdict(self.guarded("list", copy.deepcopy(operations)), False)
+        # (a promoting int's two words need 16 bytes from the address: 15 requested holds them, 8
+        # does not, nor does the last word of a 23-byte cell)
+        for size, index, fits in (("15", "0", True), ("8", "0", False), ("23", "2", False), ("23", "1", True)):
+            with self.subTest(size=size, index=index):
+                body = [op("rt", [(size, "int")], [1], text="alloc", typ="%ptr"),
+                        op("mach.addr", [("%t1", "%ptr"), (index, "int")], [2], text="%ptr", typ="%ptr"),
+                        op("mem.store", [("%t2", "*int+"), ("%a0", "int+")])]
+                found = effects.summaries({"functions": [function("@wide", body)]})["@wide"]
+                self.assertEqual(found & effects.WRITES, set() if fits else effects.WRITES)
+        # (an object's first word is its class tag only for a tagged class)
+        header = [op("alloc.fixed", [], [1], typ="Thing"), op("mach.store", [("%t1", "%ptr"), ("2", "int")])]
+        for tagged in (True, False):
+            with self.subTest(tagged=tagged):
+                snapshot = {"functions": [function("@header", copy.deepcopy(header))],
+                            "classes": {"Thing": {"base": "", "role": "", "overlaps": [], "tagged": tagged}}}
+                found = effects.summaries(snapshot)["@header"]
+                self.assertEqual(found & effects.WRITES, set() if tagged else effects.WRITES)
         # (a field of memory that is not a fixed object's stays an object write)
         untyped = [alloc, op("field.addr", [("%t1", "Thing")], [2], typ="*int"),
                    op("mem.store", [("%t2", "*int"), ("1", "int")])]

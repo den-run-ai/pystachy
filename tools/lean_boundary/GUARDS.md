@@ -51,8 +51,9 @@ literal-sized runtime allocation's words within the n + 1 bytes it holds) or thr
 that existed when the function was called. Inside the function, such a store may
 change only that new memory's cells; a box payload read and a closure cell, the
 function's own or one its environment names, are cells as well. A write of one class's field keeps the fields of
-classes that the snapshot's `classes` table relates to it neither way (`Gen.disjoint`'s
-rule; `writeField`'s `unrelated` list). Lean refuses a write that lists its own class,
+classes that the snapshot's `classes` table relates to it in no way, by base, secondary
+base or overlap through a common subclass (`Gen.disjoint`'s rule; `writeField`'s
+`unrelated` list). Lean refuses a write that lists its own class,
 and `accepted_write_progress` shows every accepted write can happen.
 
 [`examples/null_reloads.py`](examples/null_reloads.py) has removals justified through

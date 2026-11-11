@@ -386,10 +386,13 @@ class Observer:
     @staticmethod
     def classes(gen) -> dict:
         # Each class of the program: its single base (a class of the program, a builtin
-        # exception class or none) and its fieldless secondary base, which Gen.derives follows.
-        # An object of one class is never one of a class that neither derives from: their fields
-        # are other memory (Gen.disjoint).
-        return {name: {"base": info.base, "role": info.role} for name, info in sorted(gen.classes.items())}
+        # exception class or none) and its fieldless secondary base, which Gen.derives follows;
+        # the unrelated classes whose objects it may also be (a primary chain's and a secondary
+        # base's common subclass); and whether its objects begin with the class tag. An object of
+        # one class is no object of a class related to it none of these ways: their fields are
+        # other memory (Gen.disjoint).
+        return {name: {"base": info.base, "role": info.role, "overlaps": sorted(info.overlaps),
+                       "tagged": info.tag != 0} for name, info in sorted(gen.classes.items())}
 
     @staticmethod
     def boundary_function(gen, fn) -> dict:

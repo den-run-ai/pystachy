@@ -29,7 +29,7 @@ import sys
 from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OP_KEYS, OUTCOMES, SEVERITY,
                                  TERMINATORS, Unsupported, check_header, name, read_snapshot,
                                  require, unique_object)
-from check_lean_effects import fresh_addresses, summaries
+from check_lean_effects import WORD, fresh_addresses, fresh_store, summaries, tagged_classes
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -72,7 +72,8 @@ LIMITATIONS = [
     "the independent body-effect scan, the runtime's lookup, length, slicing and unpacking contracts, the List "
     "header layout and LLVM lowering are not proved.",
     "Fields of one class at different indices are assumed to be distinct memory, as are fields of "
-    "classes neither of which derives from the other, by the snapshot's trusted classes table.",
+    "classes neither of which derives from the other and that overlap through no common subclass, "
+    "by the snapshot's trusted classes table.",
     "Closure environments hold pointers to cells; recognized native-container cell loads use the "
     "same heap model and are invalidated by writes or callbacks, not assumed immutable.",
     "A suspended generator's caller may change any list, dict, field or global; phi and select "
@@ -980,16 +981,18 @@ def check_dominance(blocks, block_edges, sites):
 def class_relation(snapshot):
     """related(c, d): whether an object of class c may also be one of class d, so that their
     fields may share memory: one is the other or derives from it, by the snapshot's classes
-    table (each class's base and fieldless secondary base, as Gen.derives follows them). A
-    class the table lacks, such as the closure-cell label, is related to every class. And
+    table (each class's base and fieldless secondary base, as Gen.derives follows them), or the
+    table lists them as overlapping (a common subclass of a primary chain and a secondary base).
+    A class the table lacks, such as the closure-cell label, is related to every class. And
     known(c): whether the table lists c, so that its objects are no dynamic or union boxes."""
     table = snapshot.get("classes")
     if table is None:
         return (lambda c, d: True), (lambda c: False)
     require(isinstance(table, dict) and len(table) <= 65536 and all(
-        isinstance(name_, str) and isinstance(entry, dict) and set(entry) == {"base", "role"}
-        and all(isinstance(entry[key], str) for key in ("base", "role")) for name_, entry in table.items()),
-        "invalid classes table")
+        isinstance(name_, str) and isinstance(entry, dict) and set(entry) == {"base", "role", "overlaps", "tagged"}
+        and all(isinstance(entry[key], str) for key in ("base", "role")) and type(entry["tagged"]) is bool
+        and isinstance(entry["overlaps"], list) and all(isinstance(other, str) for other in entry["overlaps"])
+        for name_, entry in table.items()), "invalid classes table")
 
     @functools.lru_cache(maxsize=None)
     def ancestors(c):
@@ -1004,7 +1007,8 @@ def class_relation(snapshot):
         return frozenset(found)
 
     def related(c, d):
-        return c == d or c not in table or d not in table or d in ancestors(c) or c in ancestors(d)
+        return (c == d or c not in table or d not in table or d in ancestors(c) or c in ancestors(d)
+                or d in table[c]["overlaps"] or c in table[d]["overlaps"])
 
     return related, (lambda c: c in table)
 
@@ -1128,12 +1132,13 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
     # Addresses inside memory this function allocates (check_lean_effects.fresh_addresses): a
     # store there may change that new object's fields, but no list, dict or global, nor any
     # object that existed before it.
-    fresh = fresh_addresses([op for block in live_blocks for op in block["operations"]])
+    fresh = fresh_addresses([op for block in live_blocks for op in block["operations"]], tagged_classes(snapshot))
     # The cells of the variables this function's closures take (functions.py allocates one per
-    # variable as the function begins): a runtime allocation whose first word a typed load or
-    # store reads or writes, like a closure's own reads through its environment.
+    # variable as the function begins): a runtime allocation of at least a word whose first word
+    # a typed load or store reads or writes, like a closure's own reads through its environment.
     own_cells = {f"%t{op['results'][0]}" for op in definitions.values() if op["op"] == "rt"
-                 and op["text"] in ("alloc", "alloc_atomic", "new") and len(op["results"]) == 1}
+                 and op["text"] in ("alloc", "alloc_atomic", "new") and len(op["results"]) == 1
+                 and (fresh.get(f"%t{op['results'][0]}") or 0) >= WORD}
     # Each field address: the object register and the field's label (its class and index). A
     # field.addr's operands are SSA values, unchanged wherever its result is used.
     field_of = {f"%t{op['results'][0]}": (op["operands"][0]["value"], op["operands"][0]["type"], op["immediate"])
@@ -1339,7 +1344,7 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
                     else {"op": "havoc", "dst": stored})
             return [], [held, {"op": "write_field", "object": obj, "class": cls, "index": index, "value": stored,
                                "unrelated": unrelated_to(cls)}]
-        if kind in ("mem.store", "mach.store") and values and values[0] in fresh:
+        if fresh_store(op, fresh):
             return kill_nodes(False, False, False, True), []
         if kind in ("mem.store", "mach.store") and values and values[0] in slots:
             # (an escaped slot of this function: its own stack memory, which no global, object,
@@ -1430,6 +1435,11 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
                 return before, [{"op": "entry", "dst": f"%t{op['results'][0]}", "dict": values[0]}]
             return before, havocs(op)
         if kind == "call":
+            # (a callee whose summary leaves out its stores through %idret writes anything where
+            # this call passes it no buffer of this function's own: check_lean_effects.Summaries)
+            checked = getattr(effects_of, "identity_argument", None)
+            if checked is not None and not checked(op, symbol, set(slots)):
+                return kill_nodes(True, True, True, True), havocs(op)
             return kill_nodes(*kills(effects_of.get(op["text"]))), havocs(op)
         if kind in ("icall", "init", "gen.resume", "gen.drop"):
             return kill_nodes(True, True, True, True), havocs(op)
