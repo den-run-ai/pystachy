@@ -911,6 +911,8 @@ RUNTIME: dict[str, str] = {
     "dict.prev": "int:S,int,int,int|R rD|", "dict.key": "*K:S,int|rD|", "dict.val": "*V:S,int|rD|",
     "dict.val_or_zero": "*V:S,int|rD|",
     "dict.find": "int:S,*K|R? rD U?|", "dict.entry": "int:S,*K|R A I rD U?|", "dict.entry_set": "None:S,int,*V|rD wD|",
+    "dict.lookup_slot": "%ptr:S,*K|R? rD U?|",
+    "dict.slot_value": "*V:%ptr|rD|",
     "dict.key_error": "exc:S,*K|R A I rD U?|",
     # a dict of ints whose values may be past 64 bits (int_lists, runtime.c's dbig): a store of a
     # promoting int, the Mpz of an entry's value that reads -2**63, pop() and setdefault() of

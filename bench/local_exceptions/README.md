@@ -21,7 +21,9 @@ python3.13 bench/local_exceptions/run.py \
 ```
 
 Use `--repeats 10 --samples 1` first to calibrate. Each batch performs 512
-operations. The runner builds the same workload with each native compiler,
+operations. Hit-only cases use 100 times as many repeats by default
+(`--hit-multiplier`) so their very short native loops are measurable. The runner
+builds the same workload with each native compiler,
 checks all variants against CPython before measurement, then rotates their
 execution order every sample. Every timed checksum must also match. It records
 raw timings, medians, source/compiler/executable hashes, compiler source manifests,

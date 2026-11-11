@@ -5,8 +5,9 @@
 # its key is in the dict), so a handler's code fuses only its own lookups, and so does the
 # code after the try statement, where the handler's end joins. Inside a try body, and in a
 # clause, the passes rewrite as anywhere. Covered getitem/entry reads then become
-# find plus a guarded value read, constructing KeyError on a miss before taking the
-# landing continuation. Reads outside a local handler keep their raising calls.
+# a nonraising lookup plus a guarded value read, constructing KeyError on a miss
+# before taking the landing continuation. Reads outside a local handler keep
+# their raising calls.
 # passes_exc.calls pins these paths (invokes included).
 
 

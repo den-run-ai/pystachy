@@ -4326,6 +4326,11 @@ LOOKUP I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d
    pys_dict_val reads that entry's value, and entry_set writes it as pys_dict_set overwrites one,
    which moves no entry */
 LOOKUP I pys_dict_find(Dict *d, I k) { return entry(d, k); }
+/* Borrow the found value's slot only until the compiler's immediate checked
+   load. All hash/equality callbacks finish before the backing pointer is read;
+   NULL denotes a miss even when the value itself is zero or a null reference. */
+LOOKUP I *pys_dict_lookup_slot(Dict *d, I k) { I e = entry(d, k); return e < 0 ? NULL : d->vals + e; }
+I pys_dict_slot_value(I *slot) { return *slot; }   /* only a non-null, still-current lookup slot */
 /* Equality reuses the source entry's stored hash: rerunning __hash__ here
    would add effects and could hide a key whose hash changed since insertion.
    The source key/value can disappear during lookup; snapshot its key/hash

@@ -681,7 +681,10 @@ exception edge is included when optimization passes compute predecessors; handle
 cannot reuse facts that are valid only at the end of a successful try body.
 
 After optimization, `Gen.eh_ir` turns covered may-raise calls into LLVM `invoke` operations.
-A covered `dict.getitem` or fused `dict.entry` first uses `dict.find`; a covered
+A covered `dict.getitem` looks up a value slot, while a fused `dict.entry` uses
+`dict.find`. The slot is loaded immediately after a non-null check, with no
+intervening call or allocation. The slot address distinguishes a miss from a
+zero or null value. A covered
 plain `list.get` normalizes a negative index and checks its unsigned bound before
 an inline slot load. On a miss, a runtime helper constructs the same exception
 and a local `throw` takes the common landing continuation without unwinding.

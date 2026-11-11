@@ -577,7 +577,7 @@ def local_lookups(self, fn: IFn) -> None:
     # A failed lookup covered by this function's try can construct its exception
     # and use the same landing path as an explicit throw. Run after the ordinary
     # passes (dictfuse may have made getitem an entry) but before invoke splitting.
-    # Callback failures in find or key_error still unwind to the original pad.
+    # Callback failures in the lookup or key_error still unwind to the original pad.
     blocks: list[Blk] = []
     ren: dict[str, str] = {}
     for b in fn.blocks:
@@ -595,8 +595,8 @@ def local_lookups(self, fn: IFn) -> None:
             dictionary = i.s != "list.get"
             args = i.a
             if dictionary:
-                self.runtime("pys_dict_find")
-                find = Ins("rt", "int", "dict.find")
+                self.runtime("pys_dict_find" if entry else "pys_dict_lookup_slot")
+                find = Ins("rt", "int" if entry else "%ptr", "dict.find" if entry else "dict.lookup_slot")
                 find.line = i.line
                 find.a = args
                 find.x = i.x
@@ -606,9 +606,9 @@ def local_lookups(self, fn: IFn) -> None:
                     fn.n += 1
                     find.r = one_num(fn.n)
                 cur.code.append(find)
-                index = Val(tmpname(find.r[0]), "int")
-                test = Ins("num.cmp", "bool", ">=")
-                test.a = [index, Val("0", "int")]
+                index = Val(tmpname(find.r[0]), find.t)
+                test = Ins("num.cmp" if entry else "scalar.cmp", "bool", ">=" if entry else "ne")
+                test.a = [index, Val("0", "int") if entry else Val("null", "%ptr")]
             else:
                 length = Ins("list.len", "int", "")
                 length.line = i.line
@@ -671,8 +671,12 @@ def local_lookups(self, fn: IFn) -> None:
                 i.a = [args[0], index]
                 i.x = ""
                 if dictionary:
-                    self.runtime("pys_dict_val")
-                    i.s = "dict.val"
+                    # The borrowed slot stays valid: no allocation, mutation or
+                    # yield separates lookup from this hit-path load (including tuples
+                    # and null/zero payloads). Fused entries keep their index form.
+                    self.runtime("pys_dict_slot_value")
+                    i.s = "dict.slot_value"
+                    i.a = [index]
                 else:
                     i.op = "list.load"
                     i.s = ""

@@ -41,11 +41,12 @@ def main():
     parser.add_argument("--llvm", type=Path, required=True)
     parser.add_argument("--cpu", type=int, required=True)
     parser.add_argument("--repeats", type=int, default=1000)
+    parser.add_argument("--hit-multiplier", type=int, default=100)
     parser.add_argument("--samples", type=int, default=7)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if args.repeats < 1 or args.samples < 1:
-        parser.error("repeats and samples must be positive")
+    if args.repeats < 1 or args.samples < 1 or args.hit_multiplier < 1:
+        parser.error("repeats, samples and hit-multiplier must be positive")
     os.sched_setaffinity(0, {args.cpu})
     roots = {"baseline": args.baseline.resolve(), "candidate": args.candidate.resolve()}
     work = args.output.resolve().parent
@@ -60,6 +61,7 @@ def main():
               "environment": {key: value for key, value in env.items() if key.startswith("PYSTACHY_")},
               "source_sha256": sha(source), "runner_sha256": sha(Path(__file__)),
               "load_before": os.getloadavg(), "repeats": args.repeats, "batch_size": 512,
+              "hit_multiplier": args.hit_multiplier,
               "scope": "in-process workload time; excludes startup, input creation and AOT build; includes containers and GC",
               "variants": {}, "samples": [], "medians_s": {}}
     try:
@@ -75,6 +77,7 @@ def main():
                                            build_stderr=result.stderr, executable_sha256=sha(binary))
             commands[name] = [str(binary)]
         for case in CASES:
+            repeats = args.repeats * (args.hit_multiplier if case.endswith("_hit") else 1)
             expected = int(output(commands["cpython"] + [case, "1"], env=env).splitlines()[0])
             for command in commands.values():
                 if int(output(command + [case, "1"], env=env).splitlines()[0]) != expected:
@@ -83,11 +86,11 @@ def main():
             for sample in range(args.samples):
                 order = names[sample % 3:] + names[:sample % 3]
                 for name in order:
-                    checksum, seconds = output(commands[name] + [case, str(args.repeats)], env=env).splitlines()
-                    if int(checksum) != expected * args.repeats:
+                    checksum, seconds = output(commands[name] + [case, str(repeats)], env=env).splitlines()
+                    if int(checksum) != expected * repeats:
                         raise RuntimeError(f"timed checksum mismatch: {case}/{name}")
                     report["samples"].append(dict(case=case, variant=name, sample=sample,
-                                                  checksum=int(checksum), seconds=float(seconds)))
+                                                  repeats=repeats, checksum=int(checksum), seconds=float(seconds)))
             medians = {name: statistics.median(row["seconds"] for row in report["samples"]
                        if row["case"] == case and row["variant"] == name) for name in names}
             report["medians_s"][case] = medians
