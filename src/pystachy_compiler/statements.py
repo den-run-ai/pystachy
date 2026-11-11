@@ -666,7 +666,7 @@ def gen_stmt_main(self, n: Node) -> None:
                 vs.append(self.expr(val.kids[i], self.target_type(t0.kids[i])))
             for i in range(len(vs)):
                 self.assign(t0.kids[i], vs[i])
-        elif len(n.kids) == 2 and t0.kind == "slice" and (self.iterator_call(val) or self.is_mapcall(val) or (val.kind == "listcomp" and val.s == "gen")):
+        elif len(n.kids) == 2 and t0.kind == "slice" and self.dry(t0.kids[0]) not in self.classes and (self.iterator_call(val) or self.is_mapcall(val) or (val.kind == "listcomp" and val.s == "gen")):
             self.slice_assign(t0, val)  # (xs[a:b] = range(n), = (f(x) for x in ys), ...)
         elif len(n.kids) == 2 and t0.kind == "slice" and val.kind == "list" and len(val.kids) == 0 and self.target_type(t0) == "":
             self.assign(t0, Val("null", "tuple[]"))  # (f()[a:b] = []: no item to type, as ())
@@ -924,6 +924,9 @@ def gen_stmt_main(self, n: Node) -> None:
             if dt.kind == "slice":
                 bnd: list[str] = []
                 o = self.slice_target(dt, bnd, "TypeError: 'NoneType' object does not support item deletion")
+                if o.t in self.classes:
+                    self.protocol(o, "__delitem__", [Val(bnd[0], "_pystachy_slice$slice")])
+                    continue
                 self.rt("pys_dyn_list_del_slice" if o.t == "dyn" else "pys_list_del_slice", "void", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"])
                 continue
             if dt.kind == "index" and dt.kids[0].kind == "attr" and self.dotted(dt.kids[0]) == "os.environ":
@@ -936,7 +939,11 @@ def gen_stmt_main(self, n: Node) -> None:
             if o.t == "dyn":
                 self.dyn_delitem(o, self.expr(dt.kids[1], "dyn"))  # (by its box's type: dynamic.py)
             elif is_list(unopt(o.t)):
-                ix = self.ival(dt.kids[1])
+                indexkey = self.expr(dt.kids[1], "int")
+                if indexkey.t == "_pystachy_slice$slice":
+                    self.stmt(mk("del", "", dt.line, [self.slice_node(o, indexkey)]))
+                    continue
+                ix = self.ival(self.vnode(indexkey))
                 self.rt("pys_list_del", "void", [f"ptr {self.unwrap(o, nodel).v}", f"i64 {ix.v}"])
             elif is_dict(unopt(o.t)):
                 # del d[k] looks k up as d[k] does (dkey): a key that may be None raises
@@ -1289,6 +1296,11 @@ def gen_augassign(self, n: Node) -> None:
         raw: list[str] = []
         values: list[Val] = []
         o = self.slice_target(t, bnd, "TypeError: 'NoneType' object is not subscriptable", raw, values)
+        if o.t in self.classes:
+            slicekey = Val(bnd[0], "_pystachy_slice$slice")
+            cur = self.protocol(o, "__getitem__", [slicekey])
+            self.slice_store(o, bnd, self.inplace(op, cur, n.kids[1]))
+            return
         if o.t == "dyn":
             cur = Val(self.rt("pys_dyn_list_slice", "ptr", [f"ptr {o.v}", f"i64 {bnd[0]}", f"i64 {bnd[1]}", f"i64 {bnd[2]}"]), "dyn")
             value = self.inplace(op, cur, n.kids[1])
@@ -1310,7 +1322,11 @@ def gen_augassign(self, n: Node) -> None:
             return
         if is_list(unopt(o.t)):
             et = elem(unopt(o.t))
-            i = self.ival(t.kids[1])
+            indexkey = self.expr(t.kids[1], "int")
+            if indexkey.t == "_pystachy_slice$slice":
+                self.augassign(mk(n.kind, n.s, n.line, [self.slice_node(o, indexkey), n.kids[1]]))
+                return
+            i = self.ival(self.vnode(indexkey))
             o = self.unwrap(o, sub)
             cur = self.list_item(o, i)
             r = self.list_hold(self.inplace(op, cur, n.kids[1]), et)

@@ -29,6 +29,7 @@ from src.pystachy_compiler.specs import (
     PYBUILTINS,
     RANGEC,
     RANGES,
+    SLICEC,
     REFL,
     STUB,
     TYPE_SIZE,
@@ -487,6 +488,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
     if c.s == "type" and t.startswith("fn[b:"):
         # a builtin's value: one of CPython's builtin classes (int, list, ...) is a type
         return 1 if t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split() else 0
+    if c.s == "slice" and SLICEC in self.classes:
+        return -2 if t == SLICEC else 0
     if c.s == "range" and RANGEC in self.classes:
         return -2 if t == RANGEC else 0  # (an object of lib/_pystachy_range.py's class, unless it is None)
     if c.s in "bytearray memoryview complex range slice type".split():
@@ -1079,6 +1082,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.index(n, want)
     if k == "slice":
         o = self.expr(n.kids[0], "")
+        if o.t in self.classes and o.t != RANGEC and o.t not in self.nts:
+            key = self.slice_object(n.kids[1:])
+            self.argtype(o.t, "__getitem__", 1, f"'{tname(o.t)}' object is not subscriptable")
+            self.notnone(o, "TypeError: 'NoneType' object is not subscriptable")
+            return self.protocol(o, "__getitem__", [key])
         if o.t == RANGEC:
             # a range object's slice: the range of those items (lib/_pystachy_range.py's _slice,
             # of the bounds given, a bool as an int, else None)
@@ -2817,6 +2825,11 @@ def gen_index(self, n: Node, want: str = "") -> Val:
 
 def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     # o[i], where o is the value of n.kids[0] and n.kids[1] the index
+    if SLICEC in self.classes and (unopt(o.t) in ["str", "bytes", RANGEC] or is_list(unopt(o.t)) or is_vtuple(unopt(o.t))):
+        indexkey = self.expr(n.kids[1], "int")
+        if indexkey.t == SLICEC:
+            return self.expr(self.slice_node(o, indexkey), want)
+        n = mk("index", "", n.line, [n.kids[0], self.vnode(indexkey)])
     if self.curfn.cmpops:
         if self.term and o.v == "undef":
             return Val("undef", "int")

@@ -36,7 +36,7 @@ their own contracts; [interoperability](ffi.md) covers C, embedded CPython and e
 |---|---|---|---|---|
 | [Numbers](language/compatibility.md#numbers) | 🟢 Native<br>🧪 Big ints | Checked 64-bit `int`, `float` and `bool`; unbounded `int` with [promoting ints](python-int.md) or explicit [`mpz`](mpz.md) | `complex` | `int` overflow raises `OverflowError` unless the module opts in; a NaN has no identity |
 | [Text and bytes](language/compatibility.md#text-and-file-positions) | 🟡 Bounded | `str` with code-point lengths, indexing and slicing; `bytes`; f-strings, `%` and `str.format()`; UTF-8, Latin-1 and ASCII codecs; [binary files](../lib/compatibility.md#binary-files) | `bytearray`, `memoryview` | Incomplete Unicode case mapping; `%` and `str.format()` need a constant format; no `\N{...}` escapes |
-| [Containers](language/semantics.md#operators-and-containers) | 🟢 Native<br>🟡 Union items | `list`, `dict`, `set`, `frozenset`, fixed-shape and runtime-length `tuple`; displays, comprehensions, slices with steps, unpacking | Slice objects | Keys and set elements are ints, strs, bytes, objects or tuples (no floats); fixed tuples hold up to nine items; dict views are snapshots |
+| [Containers](language/semantics.md#operators-and-containers) | 🟢 Native<br>🟡 Union items | `list`, `dict`, `set`, `frozenset`, fixed-shape and runtime-length `tuple`; displays, comprehensions, slices with steps, native slice values, unpacking | Arbitrary slice bounds and slice hashing | Keys and set elements are ints, strs, bytes, objects or tuples (no floats); fixed tuples hold up to nine items; dict views are snapshots |
 | [Static typing](language/typing.md) | 🟢 Native<br>🟡 Unions | Inferred locals, returns and per-call specializations; closed unions; `T \| None` narrowing; `Callable`; generic functions and classes, including PEP 695; type aliases | General object unions | Mutable containers are invariant; empty containers need a type; recursive value aliases are a prototype |
 | [`Any` values](dynamic-any.md) | 🟢 Native<br>🧪 Dynamic | `Any` annotations specialize to concrete types; with `# pystachy: dynamic-any`, runtime-typed values with lazy iteration, comparisons and numeric protocols | Runtime-typed values in modules that do not opt in | Unsupported cross-type comparison bodies raise `TypeError`; some typed boundaries lose numeric identity |
 | [Functions](language/typing.md#functions-callables-and-closures) | 🟢 Native | Every parameter kind and default; lambdas, closures and `nonlocal`; function decorators; `*args` and `**kwargs` per call shape; `Callable` values and bound methods | — | `f(*xs)` of a list and run-time `**` expansion; `Callable[..., R]`; keyword calls through a `Callable` |
@@ -339,7 +339,7 @@ can avoid compiling unused branches that contain one. The main gaps:
 - **Object model:** multiple inheritance beyond [one method-only secondary base](language/typing.md#a-method-only-secondary-base), subclasses of builtin types, general metaclasses and
   class decorators, dynamic attribute hooks, and attribute values looked up by names only the
   run time knows (their text and `hasattr()` are supported).
-- **Values:** `complex` numbers, `bytearray`, `memoryview`, slice objects and
+- **Values:** `complex` numbers, `bytearray`, `memoryview`, arbitrary slice bounds and
   general object unions; arbitrary-precision ints and dynamic `Any` values outside their opt-in
   prototypes ([promoting ints](python-int.md), [dynamic `Any`](dynamic-any.md)).
 - **Syntax and calls:** `match`, `async` / `await`, `except*` and unrestricted argument

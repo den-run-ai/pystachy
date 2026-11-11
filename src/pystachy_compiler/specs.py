@@ -354,6 +354,8 @@ READ_HELPERS: list[str] = [ITERS, "heapq", "bisect"]
 # A deep copy of a typed list must also pass its original integers through without narrowing them.
 INT_HELPERS: dict[str, list[str]] = {"collections": ["Counter", "_count", "_count_elements"], "copy": ["_deepcopy_list"]}
 TEXTVIEW = "re"  # lib's regex engine, which reads a str whose every byte is a code point in place (__pys_text_bytes)
+SLICES = "_pystachy_slice"
+SLICEC = "_pystachy_slice$slice"
 RANGES = "_pystachy_range"  # lib's module of the class of range objects, range() as a value (Loader.program)
 RANGEC = "_pystachy_range$range"  # (that class)
 OBJECTS = "_pystachy_object"  # lib's module of the class of the objects object() makes, sentinels (Loader.program)

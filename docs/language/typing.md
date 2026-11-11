@@ -8,6 +8,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | Type | Constraint |
 |---|---|
 | `int` | Signed 64-bit; overflow raises `OverflowError` |
+| `slice` | Native read-only start/stop/step fields (`int`, `bool` or `None`), `indices()`, and forwarding to user containers and supported builtin sequences |
 | `float`, `bool`, `str` | Double-precision floats; strings hold UTF-8, with code-point lengths, indexing and slicing |
 | `bytes` | Immutable bytes, whose items are ints; also a dict key and set element |
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |

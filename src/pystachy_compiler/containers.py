@@ -803,6 +803,8 @@ def gen_hash_classes(self, t: str) -> list[ClassInfo]:
     return cs
 
 def gen_hash_desc(self, t: str) -> str:
+    if t == "_pystachy_slice$slice":
+        self.err("hashing slice values is not supported")
     # runtime.c's descriptor of keys of type t (Dict.kind): desc's, but an object is P<id> where
     # it hashes and compares by identity alone (no class it may be of defines __eq__ or
     # __hash__), else H<id>, which hashes through the program (obj_hash) and compares as O<id>
@@ -1147,6 +1149,8 @@ def gen_obj_str(self, v: Val, m: str) -> Val:
     return Val(self.phi(ph), "str")
 
 def gen_obj_hash(self, v: Val) -> Val:
+    if v.t == "_pystachy_slice$slice":
+        self.err("hashing slice values is not supported")
     # hash(v) of an object as CPython takes it from its class (hash_kind): object's identity hash,
     # the class's __hash__ (-1 is -2, as in slot_tp_hash), or TypeError: unhashable type; None's
     # is a constant

@@ -337,6 +337,16 @@ common items are equal. Sorting and `min()` use `<`; `max()` uses `>`.
 
 Object calls accept the keyword and default arguments of `__call__`.
 For `o[k] += value`, both indexing and assignment methods are used.
+User containers also receive native `slice` values for `o[start:stop:step]`,
+including assignment, deletion and augmented assignment. A `slice` stores its raw
+`int`, `bool` or `None` bounds; `.start`, `.stop` and `.step` are read-only, and
+`.indices(length)` returns normalized integer bounds. Omitted bounds remain `None`;
+a zero step reaches the user method and raises only when a builtin consumer
+normalizes it. Methods can use an unannotated key to specialize for `int` and
+`slice`, or annotate `int | slice` and narrow with `isinstance` before forwarding.
+Lists, strings, bytes and ranges accept stored slices. Arbitrary bound objects,
+`__index__` coercion, slice hashing, ordered slice comparisons and heterogeneous tuple forwarding
+remain outside this bounded slice contract.
 Membership uses `__contains__`, taking its result's truth; without it, membership searches
 the supported iterator.
 

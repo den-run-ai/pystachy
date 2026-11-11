@@ -40,6 +40,7 @@ from src.pystachy_compiler.specs import (
     OBJECTC,
     RANGEC,
     RANGES,
+    SLICEC,
     TYPESMOD,
     TYPESUSE,
     VERSIONINFO,
@@ -430,6 +431,13 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if len(args) > 0:
             self.err("object() takes no arguments")
         return self.new_obj(OBJECTC)
+    if name == "slice" and SLICEC in self.classes:
+        if any(a.kind in ["kw", "dstar"] for a in args):
+            self.err("slice() takes no keyword arguments")
+        if len(args) < 1 or len(args) > 3:
+            self.err("slice() takes 1 to 3 arguments")
+        bs = args if len(args) > 1 else [mk("None", "", self.line, []), args[0]]
+        return self.slice_object(bs)
     if name == "range" and RANGEC in self.classes:
         # range() as a value: an object of lib's class (lib/_pystachy_range.py), of its arguments
         # evaluated in turn, then checked (where a loop or a consumer takes its numbers at once,

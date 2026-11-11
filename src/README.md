@@ -19,6 +19,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Promoting ints | [bigints](pystachy_compiler/bigints.py): `int` as CPython's arbitrary-precision int in modules that opt in ([promoting ints](../docs/python-int.md)): its two-word value, the inline 64-bit paths and the calls of `runtime.c`'s `pys_big_*` functions. |
 | Calls | [calls](pystachy_compiler/calls.py), [builtins](pystachy_compiler/builtins.py), [structs](pystachy_compiler/structs.py): function dispatch, builtin operations and `struct` calls whose format is known at compile time; [callable keywords](pystachy_compiler/callable_keywords.py): deferred signature dispatch for typed keyword calls. |
 | Reflection | [reflection](pystachy_compiler/reflection.py): `type()` names and identity, `getattr`/`setattr`/`hasattr`, `vars`, `dir` and `dataclasses`' introspection, and classes' reflection records. |
+| Slice values | [slices](pystachy_compiler/slices.py): native slice carriers and forwarding to existing slicing operations. |
 | Containers | [containers](pystachy_compiler/containers.py), [conversions](pystachy_compiler/conversions.py): collection operations, coercion and runtime slots. |
 | Control flow | [statements](pystachy_compiler/statements.py), [exceptions](pystachy_compiler/exceptions.py): statements, loops and exceptional cleanup. |
 | Generators | [generators](pystachy_compiler/generators.py): generator functions as LLVM coroutines, `yield`, `yield from`, loops that own generators, generator expressions as values, `send()`, `throw()` and `close()`. |
