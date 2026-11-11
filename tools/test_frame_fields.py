@@ -56,15 +56,23 @@ NOT_RESET = {
 # Gen's fields that hold the program's state (#767): each nested compile reads and extends them,
 # and the function it interrupts sees what it added. Only Gen.__init__ assigns them of the lists.
 # source_lines accumulates metadata across module lowering, outside AST/dry traversal.
+# cvpending/cvwhy retain deferred Callable bodies and their conversion diagnostics alongside
+# adapters, including discoveries from dry runs, for program's later declaration worklist.
+# cvwait is the driver's replayed declaration/signature facts; newcv collects this pass's
+# discoveries for Rejoin. A fresh Gen rebuilds the pending bodies, not those stable facts.
+# typemarkers is declaration metadata collected before function compilation; dry runs only read it.
+# adcodes retains published adapter signatures across nested/dry discovery; kwfns/kwnames
+# hold the program's deferred keyword dispatchers and call shapes. kwsig records their
+# last whole-program adapter universe for fixed-point regeneration. Rejoin rebuilds all four.
 PROGRAM = """
     classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
     consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll summaries xcls xvals
-    xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
+    xmods xsigs xctors xtypes exctree eh opts reds lazy cvpending cvwhy cvwait newcv lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
     template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
     noneglobals intglobals rangeused objectused intat strglobals strtuples abstracts abcmeta
     constflags late ext libdir prefix csyms csymline cdirect extvars unicode_audit rtmode rtdefs
-    rtcache externs deps comp flowctx closures clokeys adapters adrets ncv cacheforms decorated
+    rtcache externs deps comp flowctx closures clokeys adapters adrets adcodes kwfns kwnames kwsig ncv cacheforms decorated typemarkers
     decoexprs cvos ngenexp vowned gendrops gproto excread causeread coros tbaa tbaacls vrets vconst vcalls
     gkk holes twin_of twin_set origin inits mfile compiled pending qret qholes qused qforward qroot
     inited guessed galias nts cnts ntdflts hasfrozen cvars typevars tvtuples tvdefaults tparams
@@ -87,10 +95,10 @@ SCOPED = {
     "vaggs": "lowering: results of calls that take slots, per function",
     "specing": "specializations in progress: a recursion guard, which a nested compile must see",
     "selfcls": "the class whose methods and fields are declared: gen_function saves, clears and restores it",
-    "compshare": "names a comprehension's for clauses share: listcomp, hidden_loop and compfor save and restore it",
     "fchk": "records whose fields plain_desc checks: a recursion guard, around code that compiles nothing",
     "appending": "set around str_append's read of an owned str local, which compiles nothing",
     "building": "functions being compiled: a recursion guard, which a nested compile must see",
+    "cvactive": "the outer Callable conversion key: adapter saves and restores it across nested compilation; errors end the pass",
     "soft": "the display operand of a comparison, matched by identity at that node",
     "fieldbusy": "fields and globals that none_field and none_global search: a recursion guard",
     "xtry": "the comparison method whose call with an Any value dyn_xbody compiles: set around it",
