@@ -185,7 +185,8 @@ jobs:
 
       # The hosted compiler compiles each dynamic-Any test program, and the pinned Lean checker
       # must prove every dynamic payload read guarded: in the short PR opt-in group and the first
-      # full opt-in shard (about two minutes; the release archive is for x86_64 Linux).
+      # full opt-in shard (in two workers, about four minutes; the release archive is for x86_64
+      # Linux).
       - name: Lean proof of the dynamic-Any corpus's payload guards
         if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0')
         run: |
@@ -199,7 +200,7 @@ jobs:
             "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -
           tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
           PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
-            make check-lean-corpus LEAN_CORPUS_FLAGS='--report build/verify/lean-corpus.json'
+            make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
 
       - name: Require C, embedding and extension FFI coverage
         if: matrix.group == 'contracts'
