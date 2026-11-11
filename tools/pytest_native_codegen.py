@@ -10,6 +10,7 @@ import ast
 from dataclasses import dataclass
 import io
 import itertools
+import keyword
 import re
 import tokenize
 
@@ -37,11 +38,57 @@ class Parameter:
     names: list[str]
     values: list[list[str]]
     ids: list[str]
+    marks: list[list[tuple]]
 
 
 def _bound_names(node):
     return [item.id for item in ast.walk(node)
             if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Store)]
+
+
+def _local_bindings(function):
+    """Names bound in this function, excluding nested lexical scopes."""
+    names = set()
+
+    class Bindings(ast.NodeVisitor):
+        def visit_Name(self, node):
+            if isinstance(node.ctx, (ast.Store, ast.Del)):
+                names.add(node.id)
+
+        def visit_FunctionDef(self, node):
+            names.add(node.name)
+            for expression in node.decorator_list + node.args.defaults + [
+                    value for value in node.args.kw_defaults if value is not None]:
+                self.visit(expression)
+
+        visit_AsyncFunctionDef = visit_FunctionDef
+
+        def visit_ClassDef(self, node):
+            names.add(node.name)
+            for expression in node.decorator_list + node.bases + [kw.value for kw in node.keywords]:
+                self.visit(expression)
+
+        def visit_Lambda(self, node):
+            for expression in node.args.defaults + [value for value in node.args.kw_defaults if value is not None]:
+                self.visit(expression)
+
+        def visit_comprehension(self, node):
+            # Comprehension targets stay in their own scope; a walrus in an
+            # iterable/filter/body still binds in the containing function.
+            self.visit(node.iter)
+            for condition in node.ifs:
+                self.visit(condition)
+
+        def visit_Import(self, node):
+            names.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+
+        def visit_ImportFrom(self, node):
+            names.update(alias.asname or alias.name for alias in node.names)
+
+    visitor = Bindings()
+    for statement in function.body if not isinstance(function, ast.Lambda) else [function.body]:
+        visitor.visit(statement)
+    return names
 
 
 class Generator:
@@ -117,7 +164,7 @@ class Generator:
             pending.extend(ast.iter_child_nodes(node))
         return found
 
-    def parameter(self, decorator):
+    def parameter(self, decorator, function):
         if not isinstance(decorator, ast.Call) or len(decorator.args) != 2:
             self.error(decorator, "parametrize requires argument names and a literal value table")
         kws = self.keywords(decorator, {"ids"})
@@ -129,7 +176,9 @@ class Generator:
                 or any(not isinstance(name, str) or not name.isidentifier() for name in names)
                 or len(set(names)) != len(names)):
             self.error(decorator, "parametrize names must be distinct identifiers")
-        rows = self.constant(decorator.args[1], True)
+        table = decorator.args[1]
+        inline = isinstance(table, (ast.List, ast.Tuple))
+        rows = table.elts if inline else self.constant(table, True)
         if not isinstance(rows, (list, tuple)) or not rows:
             self.error(decorator, "parametrize needs a nonempty literal list or tuple")
         if len(rows) > 10000:
@@ -140,33 +189,69 @@ class Generator:
             self.error(decorator, "ids must be a literal string list matching the value table")
         result = []
         generated_ids = []
+        row_marks = []
         prelude = []
-        table = decorator.args[1]
-        self.metadata_constants.update(node.id for node in ast.walk(table) if isinstance(node, ast.Name))
+        annotations = {arg.arg: arg.annotation for arg in function.args.args + function.args.kwonlyargs
+                       if arg.annotation is not None}
         for index, row in enumerate(rows):
-            single_value = string_names and len(names) == 1
-            items = [row] if single_value else row
+            expr = row if inline else ast.Subscript(value=table, slice=ast.Constant(index), ctx=ast.Load())
+            explicit_id = None
+            marks = []
+            parameter_set = isinstance(expr, ast.Call) and self.name(expr.func) == "pytest.param"
+            if parameter_set:
+                items = [self.constant(item, True) for item in expr.args]
+                expressions = expr.args
+                seen = set()
+                for kw in expr.keywords:
+                    if kw.arg not in {"id", "marks"} or kw.arg in seen:
+                        self.error(kw, "pytest.param supports id= and static marks= only")
+                    seen.add(kw.arg)
+                    if kw.arg == "id":
+                        explicit_id = self.constant(kw.value, True)
+                        if explicit_id is not None and not isinstance(explicit_id, str):
+                            self.error(kw, "pytest.param id must be a literal string or None")
+                    else:
+                        declarations = kw.value.elts if isinstance(kw.value, (ast.List, ast.Tuple)) else [kw.value]
+                        marks = [self.marker(mark) for mark in declarations]
+            else:
+                value = self.constant(row, True) if inline else row
+                single_value = string_names and len(names) == 1
+                items = [value] if single_value else value
+                if single_value:
+                    expressions = [expr]
+                elif isinstance(expr, (ast.List, ast.Tuple)):
+                    expressions = expr.elts
+                else:
+                    expressions = [ast.Subscript(value=expr, slice=ast.Constant(i), ctx=ast.Load())
+                                   for i in range(len(names))]
             if not isinstance(items, (list, tuple)) or len(items) != len(names):
                 self.error(decorator, "parametrize row width does not match argument names")
             # Inline tables have no observable outer container. Retain their actual
             # row expressions once; named tables retain the original stored values.
-            expr = table.elts[index] if isinstance(table, (ast.List, ast.Tuple)) else ast.Subscript(
-                value=table, slice=ast.Constant(index), ctx=ast.Load())
-            if single_value:
-                expressions = [expr]
-            elif isinstance(expr, (ast.List, ast.Tuple)):
-                expressions = expr.elts
-            else:
-                expressions = [ast.Subscript(value=expr, slice=ast.Constant(i), ctx=ast.Load())
-                               for i in range(len(names))]
             variables = []
-            for expression in expressions:
+            for name, expression in zip(names, expressions):
                 variable = f"_pyn_param_{self.counter}"
                 self.counter += 1
-                prelude.append(f"{variable} = {ast.unparse(expression)}")
+                annotation = annotations.get(name)
+                # Hoisting []/{} loses the contextual element type supplied by
+                # the test's argument. Restore it only for fresh container
+                # literals, including nested empties; never convert shared
+                # names/subscripts or copy their storage to make typing fit.
+                empty = any(isinstance(part, (ast.List, ast.Tuple, ast.Set)) and not part.elts
+                            or isinstance(part, ast.Dict) and not part.keys for part in ast.walk(expression))
+                declaration = variable
+                if (annotation is not None and empty
+                        and isinstance(expression, (ast.List, ast.Tuple, ast.Set, ast.Dict))):
+                    hint = annotation.value if isinstance(annotation, ast.Constant) and isinstance(
+                        annotation.value, str) else ast.unparse(annotation)
+                    # Strings preserve CPython's annotation evaluation count.
+                    declaration += ": " + repr(hint)
+                prelude.append(f"{declaration} = {ast.unparse(expression)}")
                 variables.append(variable)
             result.append(variables)
-            generated_ids.append(self.parameter_id("", ids[index], index) if ids is not None else "-".join(
+            row_marks.append(marks)
+            label = explicit_id if explicit_id is not None else ids[index] if ids is not None else None
+            generated_ids.append(self.parameter_id("", label, index) if label is not None else "-".join(
                 self.parameter_id(name, item, index) for name, item in zip(names, items)))
         counts = {value: generated_ids.count(value) for value in generated_ids}
         used = set(generated_ids)
@@ -183,7 +268,7 @@ class Generator:
             generated_ids[index] = candidate
             suffixes[value] = suffix + 1
             used.add(candidate)
-        return Parameter(list(names), result, generated_ids), prelude
+        return Parameter(list(names), result, generated_ids, row_marks), prelude
 
     @staticmethod
     def parameter_id(name, value, index):
@@ -235,7 +320,7 @@ class Generator:
             if isinstance(node, ast.Name) and node.id.startswith("_pyn_"):
                 self.error(node, "names beginning _pyn_ are reserved by the native runner")
             if isinstance(node, ast.Name) and node.id in {
-                    "__file__", "__name__", "__package__", "__spec__", "__test__",
+                    "__file__", "__name__", "__package__", "__spec__", "__test__", "__annotations__",
                     "pytestmark", "pytest_plugins"}:
                 self.error(node, "module metadata and dynamic pytest collection are unsupported: " + node.id)
             if (isinstance(node, ast.Name) and node.id.startswith(("test", "Test"))
@@ -278,7 +363,7 @@ class Generator:
                         self.error(node, "pytest internals are unsupported")
             elif isinstance(node, ast.ImportFrom) and node.module == "pytest":
                 for alias in node.names:
-                    if alias.name not in {"fixture", "mark", "raises", "fail", "skip", "xfail"}:
+                    if alias.name not in {"fixture", "mark", "param", "raises", "fail", "skip", "xfail"}:
                         self.error(node, "unsupported pytest import: " + alias.name)
                     self.aliases[alias.asname or alias.name] = "pytest." + alias.name
             elif isinstance(node, ast.ImportFrom):
@@ -313,13 +398,20 @@ class Generator:
                     if isinstance(decorator, ast.Call):
                         if decorator.args:
                             self.error(decorator, "fixture options must be keywords")
-                        kws = self.keywords(decorator, {"scope", "autouse"})
+                        kws = self.keywords(decorator, {"scope", "autouse", "name"})
                     if kws.get("scope", "function") != "function":
                         self.error(decorator, "only function-scoped fixtures are supported")
                     if not isinstance(kws.get("autouse", False), bool):
                         self.error(decorator, "autouse must be a literal boolean")
-                    self.fixtures[node.name] = Fixture(node, self.arguments(node), self.is_generator(node),
-                                                       kws.get("autouse", False))
+                    fixture_name = kws.get("name", node.name)
+                    if (not isinstance(fixture_name, str) or not fixture_name.isidentifier()
+                            or keyword.iskeyword(fixture_name) or fixture_name == "request"
+                            or fixture_name.startswith("_pyn_") or fixture_name in self.aliases):
+                        self.error(decorator, "fixture name must be a non-reserved literal identifier")
+                    if fixture_name in self.fixtures:
+                        self.error(decorator, "duplicate fixture name: " + fixture_name)
+                    self.fixtures[fixture_name] = Fixture(node, self.arguments(node), self.is_generator(node),
+                                                         kws.get("autouse", False))
                 elif node.name.startswith("test"):
                     if isinstance(node, ast.AsyncFunctionDef) or self.is_generator(node):
                         self.error(node, "async and generator tests are unsupported")
@@ -330,7 +422,7 @@ class Generator:
                     for decorator in node.decorator_list:
                         name = self.name(decorator.func if isinstance(decorator, ast.Call) else decorator)
                         if name == "pytest.mark.parametrize":
-                            parameter, setup = self.parameter(decorator)
+                            parameter, setup = self.parameter(decorator, node)
                             parameters.append(parameter)
                             prelude.extend(setup)
                         elif name in {"pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"}:
@@ -352,7 +444,7 @@ class Generator:
         self.validate_constants()
 
     def validate_declarations(self):
-        declarations = {function.name for function in self.tests} | set(self.fixtures)
+        declarations = {function.name for function in self.tests} | self.fixture_functions()
         for name in declarations:
             bindings = 0
             for node in self.tree.body:
@@ -373,15 +465,23 @@ class Generator:
         # silently collecting a stale subset of the real pytest cases.
         if not self.metadata_constants:
             return
+        postponed = any(isinstance(node, ast.ImportFrom) and node.module == "__future__"
+                        and any(alias.name == "annotations" for alias in node.names) for node in self.tree.body)
         for node in self.tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 # Function bodies run later; arbitrary decorators and defaults
                 # could mutate a parameter table before pytest collects it.
-                if node not in self.tests and node.name not in self.fixtures and node.decorator_list:
+                if node not in self.tests and node.name not in self.fixture_functions() and node.decorator_list:
                     self.error(node, "named parameter tables require static module initialization")
                 evaluated = list(node.args.defaults) + [value for value in node.args.kw_defaults if value]
+                if not postponed:
+                    arguments = node.args.posonlyargs + node.args.args + node.args.kwonlyargs
+                    arguments += [arg for arg in (node.args.vararg, node.args.kwarg) if arg is not None]
+                    evaluated += [arg.annotation for arg in arguments if arg.annotation is not None]
+                    if node.returns is not None:
+                        evaluated.append(node.returns)
                 if any(isinstance(part, ast.Call) for value in evaluated for part in ast.walk(value)):
-                    self.error(node, "named parameter tables require static default values")
+                    self.error(node, "named parameter tables require static defaults and evaluated annotations")
                 continue
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 continue
@@ -406,6 +506,9 @@ class Generator:
             if len(definitions) != 1:
                 self.error(self.tree, "parametrize constants require one literal binding: " + name)
 
+    def fixture_functions(self):
+        return {fixture.function.name for fixture in self.fixtures.values()}
+
     def fixture_order(self, function, parameters):
         order = []
         visiting = set()
@@ -425,7 +528,9 @@ class Generator:
             visiting.remove(name)
             order.append(name)
 
-        for name in sorted(self.fixtures):
+        # Pytest discovers module fixtures in attribute (function-name) order;
+        # a public fixture alias must not change autouse setup/teardown order.
+        for name in sorted(self.fixtures, key=lambda name: self.fixtures[name].function.name):
             fixture = self.fixtures[name]
             if fixture.autouse:
                 visit(name)
@@ -443,15 +548,24 @@ class Generator:
             if (isinstance(node, ast.Attribute) and node.attr in {"__test__", "pytestmark"}
                     and isinstance(node.value, ast.Name)):
                 self.error(node, "runtime pytest collection metadata is unsupported")
-            if isinstance(node, ast.Global) and any(name in self.fixtures for name in node.names):
+            if isinstance(node, ast.Global) and any(name in self.fixture_functions() for name in node.names):
                 self.error(node, "mutating fixture declarations through globals is unsupported")
-            if isinstance(node, ast.Name) and node.id in self.fixtures:
+            if isinstance(node, ast.Name) and node.id in self.fixture_functions():
                 scope = parents.get(node)
+                ancestors = {node}
+                comprehension_names = set()
                 while scope is not None and not isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                    if isinstance(scope, (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)):
+                        # The first iterable is evaluated outside the implicit
+                        # comprehension scope; targets only shadow inside it.
+                        if scope.generators[0].iter not in ancestors:
+                            for generator in scope.generators:
+                                comprehension_names.update(_bound_names(generator.target))
+                    ancestors.add(scope)
                     scope = parents.get(scope)
                 arguments = [] if scope is None else scope.args.posonlyargs + scope.args.args + scope.args.kwonlyargs
-                local_names = set() if scope is None else set(_bound_names(scope))
-                if node.id not in {argument.arg for argument in arguments} | local_names:
+                local_names = set() if scope is None else _local_bindings(scope)
+                if node.id not in {argument.arg for argument in arguments} | local_names | comprehension_names:
                     self.error(node, "fixture functions may only be requested by argument name")
             name = self.name(node)
             if not name:
@@ -483,7 +597,7 @@ class Generator:
 
             def visit_ImportFrom(self, node):
                 if node.module == "pytest":
-                    node.names = [alias for alias in node.names if alias.name not in {"fixture", "mark"}]
+                    node.names = [alias for alias in node.names if alias.name not in {"fixture", "mark", "param"}]
                     node.module = "pytest_native_support"
                     return node if node.names else None
                 return node
@@ -509,9 +623,9 @@ class Generator:
                 output.append(ast.unparse(rewritten))
         return "\n\n".join(output)
 
-    def wrapper(self, function, case_number, nodeid, parameters):
+    def wrapper(self, function, case_number, nodeid, parameters, parameter_marks):
         order = self.fixture_order(function, parameters)
-        marks = self.marks[function.name]
+        marks = self.marks[function.name] + parameter_marks
         skip = next((mark for mark in marks if mark[0] in {"skip", "skipif"} and mark[1]), None)
         xfail = next((mark for mark in marks if mark[0] == "xfail" and mark[1]), None)
         lines = [f"def _pyn_case_{case_number}(_pyn_report: _pyn_support.Report) -> None:",
@@ -534,14 +648,14 @@ class Generator:
             p = "    " * indent
             if fixture.generator:
                 generator = f"_pyn_generator_{index}"
-                lines += [p + f"{generator} = {name}({args})", p + "try:",
+                lines += [p + f"{generator} = {fixture.function.name}({args})", p + "try:",
                           p + f"    {variable} = next({generator})", p + "except StopIteration:",
                           p + f"    raise RuntimeError({('fixture ' + name + ' did not yield')!r})",
                           p + "try:"]
                 generators.append((indent, generator, name))
                 indent += 1
             else:
-                lines.append(p + f"{variable} = {name}({args})")
+                lines.append(p + f"{variable} = {fixture.function.name}({args})")
             values[name] = variable
         p = "    " * indent
         args = ", ".join(f"{name}={values[name]}" for name in self.arguments(function))
@@ -600,13 +714,15 @@ class Generator:
             for indexes in combinations:
                 values = {}
                 ids = []
+                marks = []
                 for parameter, index in zip(params, indexes):
                     values.update(zip(parameter.names, parameter.values[index]))
                     ids.append(parameter.ids[index])
+                    marks.extend(parameter.marks[index])
                 nodeid = f"{self.filename}::{function.name}" + ("[" + "-".join(ids) + "]" if ids else "")
                 if len(cases) >= 10000:
                     self.error(function, "more than 10000 generated cases in one module")
-                wrappers.append(self.wrapper(function, len(cases), nodeid, values))
+                wrappers.append(self.wrapper(function, len(cases), nodeid, values, marks))
                 cases.append(nodeid)
         original = self.transform_source()
         # Pragmas are comments and therefore absent from the AST. Preserve their

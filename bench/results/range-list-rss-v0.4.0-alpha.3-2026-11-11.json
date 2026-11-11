@@ -1,0 +1,209 @@
+{
+ "schema": 1,
+ "description": "One program under CPython, the Pystachy JIT and AOT (whole process; JIT includes compilation and startup; AOT excludes its build), 5 rounds, mode order rotated each round, every process pinned to one CPU; wall time and peak RSS from wait4; combined stdout+stderr of every run equals CPython's",
+ "measured_utc": "2026-11-11T06:31:56Z",
+ "source": "xs = list(range(4194305))\nprint(len(xs), xs[-1])\n",
+ "source_sha256": "06fd08c5eb3625b7fb08389fc27eea2e138cfacee83bfec460601a955c2939e7",
+ "output": "4194305 4194304\n",
+ "compiler": {
+  "revision": "f07472a535f165f939fdda774b1fcd4813e5c66d",
+  "version": "v0.4.0-alpha.3",
+  "status": "",
+  "binary_sha256": "57664c4c84b043001137b7b6a052fd1fa4d6f82e48dd565025877de4b26aa4bd"
+ },
+ "python": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]",
+ "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+ "host": {
+  "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "cpus": 4,
+  "pinned_cpu": 2
+ },
+ "environment": {
+  "PYTHONHASHSEED": "0",
+  "PYSTACHY_PROGRAM_CACHE": "0"
+ },
+ "aot_build_s": 0.36560602599990943,
+ "executable_sha256": "71ce7e5a9b97034d4032b0cdc1410460f87d91deff1ae322e6b257314a446b0e",
+ "executable_bytes": 47496,
+ "load_before": [
+  0.91162109375,
+  0.6826171875,
+  0.37109375
+ ],
+ "load_after": [
+  0.9189453125,
+  0.68798828125,
+  0.37451171875
+ ],
+ "samples": {
+  "cpython": [
+   {
+    "wall_s": 0.18383916400000544,
+    "user_s": 0.09945699999999999,
+    "sys_s": 0.083533,
+    "maxrss_kib": 175324,
+    "exit": 0,
+    "round": 0
+   },
+   {
+    "wall_s": 0.18152074600004653,
+    "user_s": 0.11251799999999999,
+    "sys_s": 0.068314,
+    "maxrss_kib": 175348,
+    "exit": 0,
+    "round": 1
+   },
+   {
+    "wall_s": 0.1857790039999827,
+    "user_s": 0.11232199999999999,
+    "sys_s": 0.07235799999999999,
+    "maxrss_kib": 175320,
+    "exit": 0,
+    "round": 2
+   },
+   {
+    "wall_s": 0.18256608300009702,
+    "user_s": 0.110707,
+    "sys_s": 0.071168,
+    "maxrss_kib": 175304,
+    "exit": 0,
+    "round": 3
+   },
+   {
+    "wall_s": 0.18159932499997922,
+    "user_s": 0.112401,
+    "sys_s": 0.068276,
+    "maxrss_kib": 175356,
+    "exit": 0,
+    "round": 4
+   }
+  ],
+  "jit": [
+   {
+    "wall_s": 0.052469309000002795,
+    "user_s": 0.018248999999999998,
+    "sys_s": 0.032902,
+    "maxrss_kib": 93312,
+    "exit": 0,
+    "round": 0
+   },
+   {
+    "wall_s": 0.05075126999997792,
+    "user_s": 0.025192,
+    "sys_s": 0.024307,
+    "maxrss_kib": 93044,
+    "exit": 0,
+    "round": 1
+   },
+   {
+    "wall_s": 0.052751877999980934,
+    "user_s": 0.017502999999999998,
+    "sys_s": 0.033918,
+    "maxrss_kib": 93280,
+    "exit": 0,
+    "round": 2
+   },
+   {
+    "wall_s": 0.0523510499999702,
+    "user_s": 0.022092,
+    "sys_s": 0.02895,
+    "maxrss_kib": 93180,
+    "exit": 0,
+    "round": 3
+   },
+   {
+    "wall_s": 0.05190671299999394,
+    "user_s": 0.013434999999999999,
+    "sys_s": 0.037153,
+    "maxrss_kib": 93244,
+    "exit": 0,
+    "round": 4
+   }
+  ],
+  "aot": [
+   {
+    "wall_s": 0.017254638000054,
+    "user_s": 0.004151,
+    "sys_s": 0.012454999999999999,
+    "maxrss_kib": 34996,
+    "exit": 0,
+    "round": 0
+   },
+   {
+    "wall_s": 0.016029357999968852,
+    "user_s": 0.0,
+    "sys_s": 0.015484999999999999,
+    "maxrss_kib": 34996,
+    "exit": 0,
+    "round": 1
+   },
+   {
+    "wall_s": 0.01631538599997384,
+    "user_s": 0.0,
+    "sys_s": 0.01573,
+    "maxrss_kib": 35040,
+    "exit": 0,
+    "round": 2
+   },
+   {
+    "wall_s": 0.0168653919999997,
+    "user_s": 0.008034,
+    "sys_s": 0.008034,
+    "maxrss_kib": 34996,
+    "exit": 0,
+    "round": 3
+   },
+   {
+    "wall_s": 0.015590900999995938,
+    "user_s": 0.0,
+    "sys_s": 0.015028,
+    "maxrss_kib": 35132,
+    "exit": 0,
+    "round": 4
+   }
+  ]
+ },
+ "summary": {
+  "cpython": {
+   "median_wall_s": 0.18256608300009702,
+   "min_wall_s": 0.18152074600004653,
+   "max_wall_s": 0.1857790039999827,
+   "median_maxrss_mib": 171.21484375,
+   "min_maxrss_mib": 171.1953125,
+   "max_maxrss_mib": 171.24609375
+  },
+  "jit": {
+   "median_wall_s": 0.0523510499999702,
+   "min_wall_s": 0.05075126999997792,
+   "max_wall_s": 0.052751877999980934,
+   "median_maxrss_mib": 91.05859375,
+   "min_maxrss_mib": 90.86328125,
+   "max_maxrss_mib": 91.125
+  },
+  "aot": {
+   "median_wall_s": 0.01631538599997384,
+   "min_wall_s": 0.015590900999995938,
+   "max_wall_s": 0.017254638000054,
+   "median_maxrss_mib": 34.17578125,
+   "min_maxrss_mib": 34.17578125,
+   "max_maxrss_mib": 34.30859375
+  },
+  "cpython_over_aot_wall": 11.189810832571766,
+  "cpython_over_jit_wall": 3.4873432911126128,
+  "cpython_over_aot_maxrss": 5.009829694822265
+ },
+ "aot_gc_stats": {
+  "record": {
+   "wall_s": 0.01680367500000557,
+   "user_s": 0.004043,
+   "sys_s": 0.01213,
+   "maxrss_kib": 35160,
+   "exit": 0
+  },
+  "stderr": "gc: 2 collections, 0.0 ms; heap peak 32.3 MiB; live 32.0 MiB at the last\n"
+ },
+ "status": "ok",
+ "recorded_date": "2026-11-11",
+ "note": "the compiler, runtime and library sources of the measured commit equal those of the v0.4.0-alpha.3 release commit c5cebb8bdeb71e7e099b48e4400119dd1e5b29e2"
+}

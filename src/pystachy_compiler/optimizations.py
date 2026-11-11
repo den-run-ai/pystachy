@@ -688,9 +688,10 @@ def gen_dictfuse(self, fn: IFn) -> int:
                         st[c] = False
         for x in range(len(b.code)):
             i = b.code[x]
-            if i.op == "rt" and (i.s == "dict.has" or i.s == "dict.getitem" or i.s == "dict.set") and "H" not in i.x:
-                # (but a lookup of keys hashed by their class: CPython runs __hash__ and __eq__
-                # at each, which its effects, U, show)
+            if i.op == "rt" and (i.s == "dict.has" or i.s == "dict.getitem" or i.s == "dict.set") and self.opfx(i, vs.fn.fa) & FXBIT["U"] == 0:
+                # (but not a lookup that may run user code, U: CPython runs a key's __hash__ and
+                # __eq__ at each lookup of keys hashed by their class or held as dynamic values,
+                # and that code can change any dict. Such an op ends what the others found)
                 d = self.canon(vs, i.a[0].v)
                 k = self.canon(vs, i.a[1].v)
                 m = -1

@@ -443,6 +443,36 @@ class TestsAfter(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             self.export([("SampleTests", "test_asserts")])
 
+    def test_custom_collection_needs_explicit_method_only_scope(self):
+        self.src.write_text('''
+import unittest
+class Cases(unittest.TestCase):
+    def test_ok(self):
+        self.assertEqual(1, 1)
+def load_tests(loader, tests, pattern):
+    return tests
+''')
+        with self.assertRaisesRegex(ctm.Unsupported, "custom collection"):
+            self.export([("Cases", "test_ok")])
+        manifest = ctm.pytest_suite(self.src, self.out, [("Cases", "test_ok")], selected_methods_only=True)
+        self.assertEqual(manifest["excluded_collection_hooks"], [
+            {"name": "load_tests", "reason": "explicit method selection; custom collection is not qualified"}])
+        result, oracle = self.run_export()
+        self.assertEqual(result.state, "passed")
+        self.assertEqual(pytest_runner.compare([result], oracle), [])
+
+    def test_method_only_scope_still_rejects_module_lifecycle(self):
+        self.src.write_text('''
+import unittest
+def setUpModule():
+    raise RuntimeError("setup")
+class Cases(unittest.TestCase):
+    def test_ok(self):
+        pass
+''')
+        with self.assertRaisesRegex(ctm.Unsupported, "setUpModule"):
+            ctm.pytest_suite(self.src, self.out, [("Cases", "test_ok")], selected_methods_only=True)
+
 
 if __name__ == "__main__":
     unittest.main()

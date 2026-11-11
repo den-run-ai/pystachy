@@ -560,11 +560,13 @@ class TestFile:
         return "\n".join(lines) + "\n"
 
 
-def pytest_suite(path, outdir, selection):
+def pytest_suite(path, outdir, selection, *, selected_methods_only=False):
     """Adapt an explicit method selection, retaining the existing extraction boundary.
 
     Real pytest compares the adapted wrappers, not the original unittest suite.
     This deliberately rejects lifecycle/decorator features the extractor discards.
+    selected_methods_only explicitly excludes load_tests additions; callers must
+    qualify the exact selected methods against original unittest separately.
     """
     tf = TestFile(path)
     available, left = tf.tests()
@@ -578,7 +580,8 @@ def pytest_suite(path, outdir, selection):
         raise Unsupported("not extracted from this file: " + ", ".join(".".join(x) for x in sorted(missing)))
     original = ast.parse(Path(path).read_text(encoding="utf-8"))
     for node in original.body:
-        if isinstance(node, ast.FunctionDef) and node.name in DROP_FUNCTIONS:
+        if (isinstance(node, ast.FunctionDef) and node.name in DROP_FUNCTIONS
+                and not (selected_methods_only and node.name == "load_tests")):
             raise Unsupported("module lifecycle/custom collection: " + node.name)
         if (not isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.ClassDef))
                 and uses(node) & tf.dropped and not is_fresh_module(node)
@@ -642,6 +645,11 @@ def pytest_suite(path, outdir, selection):
         "selected": [".".join(x) for x in selection],
         "not_selected": [".".join(x) for x in available if x not in selection],
         "left_out": [list(x) for x in left],
+        "excluded_collection_hooks": [
+            {"name": node.name, "reason": "explicit method selection; custom collection is not qualified"}
+            for node in original.body
+            if isinstance(node, ast.FunctionDef) and node.name == "load_tests" and selected_methods_only
+        ],
     }
     # A fresh directory prevents stale generated tests from expanding the selection.
     output = Path(outdir)

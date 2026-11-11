@@ -1,0 +1,10 @@
+get 0 47 1 1
+has 0 43 1 1
+set 0 42 2 2
+get 1 47 1 1
+has 1 43 1 1
+set 1 42 2 2
+repr hit 9 1 0
+repr shown
+repr victim 42 1
+[exit 0]

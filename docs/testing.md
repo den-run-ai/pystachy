@@ -9,6 +9,9 @@ For user-authored pytest-style tests, the experimental [native pytest runner](py
 collects a bounded source subset, generates typed calls and fixtures, and compares
 native phase outcomes with the original files under CPython pytest. Run its
 hosted/native parity and failure controls with `make test-pytest-native`.
+`make test-pytest-workloads` applies shared pytest assertions to maintained
+application and pyperformance APIs, comparing each independent suite with
+CPython pytest in JIT and AOT modes.
 
 ## Commands
 
@@ -35,7 +38,8 @@ Run these from the repository root:
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
-| `make bench-pyperformance-check` | Check the pyperformance runner and the ported benchmarks' CPython/JIT/AOT output; no timing thresholds. |
+| `make bench-pyperformance-check` | Check the pyperformance runner, ported benchmarks' CPython/JIT/AOT output, and shared pytest API assertions; no timing thresholds. |
+| `make test-pytest-workloads` | Run independent example and pyperformance pytest suites in JIT/AOT, with original CPython pytest as the oracle; no skipped or xfailed workload cases. |
 | `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases, a native replay of the JSON repair corpus and the agent's loopback HTTP transport. |
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
 
@@ -406,8 +410,18 @@ phases; these are evidence checks, with no speed threshold.
 The `benchmarks` group also runs `make bench-pyperformance-check` with that run's verified
 native compiler. Every delivered adaptation must match CPython stdout in JIT and AOT on
 bounded smoke inputs; a mismatch or failed build fails the group and aggregate gate.
-The group's artifact includes `pyperformance-smoke.json`. This is correctness coverage,
+It also runs the shared pytest API assertions for all 25 delivered workloads.
+The group's artifact includes `pyperformance-smoke.json` and `pytest-pyperformance.json`. This is correctness coverage,
 with no timing thresholds or claim to run the upstream pyperf harness.
+
+The `hosted` CI job runs 19 independent example API suites through
+`make test-pytest-workloads PYTEST_WORKLOAD_ARGS='--group examples'`, reusing the
+verified compiler. Splitting these checks between existing jobs leaves more room
+within the 15-minute budget without adding workers. `pytest-workloads.json` records every
+original-pytest comparison.
+Missing modules/results, empty suites, skips, xfails and failed builds fail this
+check. These tests supplement the exact CLI, FFI, upstream-reference and timing
+contracts below; they do not replace those distinct observations.
 
 The `example-cli` verification step runs in the `benchmarks` group: on x86-64 in
 PR CI and on both architectures in full CI. `tools/check_example_cli.py` runs 24 tiny cases through
@@ -497,7 +511,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | PR work | Jobs | Coverage |
 |---|---:|---|
 | Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack, JIT runner and sanitizer linkage smoke. |
-| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
+| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs. |
 | Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |

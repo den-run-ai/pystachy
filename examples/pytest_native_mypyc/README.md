@@ -57,5 +57,16 @@ unknown modules, global names, missing-module errors and separate compilation.
 They passed under generated CPython and native AOT with CPython 3.13.16,
 pytest 9.2.0 and LLVM 18. This optional check performs no automatic download
 during normal example tests or CI. Upstream's own `test_namegen.py` uses
-`unittest.TestCase`; it requires an explicit adapter before this runner can
-collect it.
+`unittest.TestCase`. The separate [upstream qualification](../../tests/upstream/pytest/README.md)
+runs all five of its original methods in real unittest, exports them with an
+explicit method-to-pytest mapping, then checks adapted pytest, generated CPython,
+native JIT and native AOT. Run it with:
+
+```sh
+python3 tools/pytest_native_upstream.py --suite mypyc-namegen --fetch \
+  --compiler ./pystachy --json build/pytest-upstream-mypyc.json
+```
+
+The upstream module, tests, package initializers and MIT license are hash-pinned.
+Those five upstream methods are distinct from the ten original cases above;
+neither suite qualifies the complete mypy/mypyc package.
