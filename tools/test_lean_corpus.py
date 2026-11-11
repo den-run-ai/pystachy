@@ -115,6 +115,43 @@ class SelectionTests(unittest.TestCase):
 
 
 class AccountingTests(unittest.TestCase):
+    def gate_report(self, records, *, explicit=False):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            checker = base / "checker"
+            checker.touch()
+            report = base / "report.json"
+            programs = [record["program"] for record in records]
+            with (mock.patch.object(corpus, "select", return_value=programs),
+                  mock.patch.object(corpus, "check_program", side_effect=records),
+                  redirect_stdout(io.StringIO())):
+                code = corpus.main(["--checker", str(checker), "--access-checker", str(checker),
+                                    "--jobs", "1", "--report", str(report)] +
+                                   (programs if explicit else []))
+            return code, json.loads(report.read_text())
+
+    def test_empty_or_vanished_default_inventory_cannot_pass(self):
+        for records in ([], [{"program": "case.py", "status": "accepted", "totals": {}}]):
+            with self.subTest(records=records):
+                code, report = self.gate_report(records)
+                self.assertEqual((code, report["status"]), (3, "error"))
+                self.assertTrue(report["inventory_errors"])
+
+    def test_explicit_vacuous_program_is_distinguished_from_broken_corpus(self):
+        code, report = self.gate_report(
+            [{"program": "case.py", "status": "accepted", "totals": {}}], explicit=True)
+        self.assertEqual((code, report["status"]), (0, "accepted"))
+        self.assertEqual(report["totals"]["reads"], 0)
+
+    def test_claimed_success_must_account_for_every_obligation(self):
+        for key in ("proved_reads", "proved_accesses"):
+            totals = {"reads": 1, "proved_reads": 1, "accesses": 1, "proved_accesses": 1}
+            totals[key] = 0
+            code, report = self.gate_report(
+                [{"program": "case.py", "status": "accepted", "totals": totals}])
+            self.assertEqual((code, report["status"]), (3, "error"))
+            self.assertIn("accepted report has unproved obligations", report["inventory_errors"])
+
     def run_report(self, status, payloads=0):
         """Exercise program and corpus accounting without compiling or running Lean."""
         payload = {"status": "accepted", "functions": [{"function": "@payload", "status": "accepted"}] * payloads,

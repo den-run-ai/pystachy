@@ -1,4 +1,26 @@
-# Lean payload-guard prototype
+# Lean compiler safety checks
+
+The checkers prove selected properties of normalized generated IR. There is no
+compiler-wide verified-code percentage: obligations overlap, and a theorem about
+the model does not establish that the exporter or runtime implements that model.
+
+| Area | Enforced property | Current boundary |
+|---|---|---|
+| Dynamic `Any` | Payload reads have matching type guards | Runtime tag/layout contracts |
+| Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
+| Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
+| Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
+| Integer storage | Low-word, tuple-tail, narrowing and complete stack-copy obligations | Exported representations, fresh allocation and stack ABI |
+| Null-check removal | Removed checks are redundant in the captured before-pass graph | Whole-pass equivalence and broader heap correlations |
+| Closed unions | Inventoried tag/payload reads have nonnull/member guards | Raw transport, dynamic reconstruction and unsupported forms |
+
+All accepted certificates are checked by Lean. Mutation controls exercise the
+Python adapters, including lost inventories, exceptional edges and forged facts.
+Parsing, inference, specialization, GC/lifetime, general optimization equivalence,
+exception semantics and LLVM lowering remain unproved.
+
+[GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
+full-corpus inventory command; full-corpus acceptance is not claimed.
 
 The same Lean project also builds the [unchecked-access checker](ACCESS.md), which proves list
 reads within bounds and reused dict entries live.
@@ -34,7 +56,8 @@ audit; that historical comparison found no copied implementation. The shared log
 and dependency review, not a formal proof of authorship.
 
 Current Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`,
-`PystachyAccess`, `PystachyInt` and `PystachyStorage` modules; `lake-manifest.json`
+`PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage` and
+`PystachyGuards` modules; `lake-manifest.json`
 contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
 [Apache-2.0 license](https://github.com/leanprover/lean4/blob/v4.35.0/LICENSE).

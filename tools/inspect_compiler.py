@@ -129,7 +129,7 @@ def tool_diagnostic(code: str, phase: str, message: str, source: str) -> dict:
 class Observer:
     """Read snapshots immediately: the compiler mutates ops and frees typed IR."""
 
-    def __init__(self, report: dict, output: Path, function: str, typed_after_only: bool = False):
+    def __init__(self, report: dict, output: Path, function: str, typed_after_only: bool = False, guard_evidence: bool = False):
         from src.pystachy_compiler import diagnostics
         from src.pystachy_compiler.utils import fxs, typestr
         self.diagnostics = diagnostics
@@ -140,6 +140,8 @@ class Observer:
         self.function = function
         # (only the typed-after snapshot: no typed-before snapshot, pass records or diffs)
         self.typed_after_only = typed_after_only
+        self.guard_evidence = guard_evidence
+        self.nullcheck_evidence: list[dict] = []
         self.before: list[dict] = []
         self.after: list[dict] = []
         self.captured_before = False
@@ -511,10 +513,13 @@ class Observer:
             def wrapped(gen, fn, *args, **kwargs):
                 old = self.diagnostics.PHASE
                 self.diagnostics.PHASE = "exceptions" if name == "exceptions" else "optimize"
-                before = self.snapshot(fn) if self.selected(fn) and not self.typed_after_only else None
+                before = self.snapshot(fn) if self.selected(fn) and (not self.typed_after_only or (self.guard_evidence and name == "nullcheck")) else None
                 result = original(gen, fn, *args, **kwargs)
                 if before is not None:
                     after = self.snapshot(fn)
+                    if self.guard_evidence and name == "nullcheck":
+                        self.nullcheck_evidence.append({"before": before, "after": after,
+                                                        "reported_rewrites": result})
                     # Function metadata is not itself a typed operation rewrite.
                     previous, current = self.render(before), self.render(after)
                     changed = previous != current
@@ -675,6 +680,11 @@ class Observer:
                             "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
                 if name == "typed-after" and self.gen is not None:
                     snapshot["dynamic_types"] = self.dynamic_types(self.gen)
+                    if self.guard_evidence:
+                        snapshot["union_tags"] = dict(self.gen.utags)
+                        snapshot["nullcheck_evidence"] = self.nullcheck_evidence
+                        snapshot["guard_inventory"] = {"nullcheck_passes": len(self.nullcheck_evidence),
+                            "removed_checks": sum(r["reported_rewrites"] for r in self.nullcheck_evidence)}
                 write_json(self.output / artifact, snapshot)
                 self.report["artifacts"][name] = artifact
                 for stage in self.report["stages"]:
@@ -690,7 +700,7 @@ def worker(args) -> int:
     report = base_report(args.source, args.function, typed_after_only)
     if typed_after_only:
         report["stages"][0]["status"] = "skipped"
-    observer = Observer(report, output, args.function, typed_after_only)
+    observer = Observer(report, output, args.function, typed_after_only, getattr(args, "guard_evidence", False))
     diagnostics.CAPTURE = True
     diagnostics.CAPTURED.clear()
     diagnostics.PHASE = "input"
@@ -769,7 +779,7 @@ def run_worker(args, output: Path) -> int:
     env["PYSTACHY_IRCHECK"] = "1"
     typed_after_only = getattr(args, "typed_after_only", False)
     command = [sys.executable, str(Path(__file__).resolve()), args.source, "--output", str(output),
-               "--function", args.function, "--_worker"] + (["--typed-after-only"] if typed_after_only else [])
+               "--function", args.function, "--_worker"] + (["--typed-after-only"] if typed_after_only else []) + (["--guard-evidence"] if getattr(args, "guard_evidence", False) else [])
     start = time.monotonic()
     try:
         with (output / "worker.stderr").open("w", encoding="utf-8") as errors:
@@ -802,6 +812,8 @@ def main() -> int:
     parser.add_argument("--timeout", type=positive_timeout, default=120.0, help="worker deadline in seconds (default: 120)")
     parser.add_argument("--typed-after-only", action="store_true",
                         help="record only the typed-after snapshot: no typed-before snapshot, pass records or diffs")
+    parser.add_argument("--guard-evidence", action="store_true",
+                        help="retain union tags and nullcheck pass inputs/outputs for independent checking")
     parser.add_argument("--_worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
     args.source = str(Path(args.source).absolute())

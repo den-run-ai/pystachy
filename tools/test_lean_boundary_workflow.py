@@ -99,6 +99,10 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
                      "tools/test_lean_layout_metadata.py", "tools/check_lean_corpus.py",
                      "tools/lean_boundary/PystachyBoundary.lean", "tools/lean_boundary/PystachyInt.lean",
                      "tools/check_lean_int.py", "tools/test_lean_int.py", "Makefile",
+                     "tools/check_lean_effects.py", "tools/check_lean_inline.py", "tools/test_lean_inline.py",
+                     "tools/check_lean_guards.py", "tools/check_lean_guard_corpus.py",
+                     "tools/test_lean_guards.py", "tools/test_lean_effects.py",
+                     "tools/test_lean_range_bounds.py", "tools/test_lean_closure_cells.py",
                      ".github/workflows/lint.yml", "tools/requirements-dev.txt", ".python-version"):
             with self.subTest(path=name):
                 self.merge_pr(name)
@@ -126,13 +130,13 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertEqual(pins(corpus["run"]), pins(boundary["run"]))
         self.assertEqual([len(found) for found in pins(boundary["run"])[:2]], [1, 1])
         self.assertEqual(corpus["if"], "matrix.machine == 'x86_64' && "
-                                       "(matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling')")
+                                       "(matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling' || matrix.group == 'contracts')")
         for event in ("pull_request", "push", "workflow_dispatch"):
             with self.subTest(event=event):
                 selected = [(row["machine"], row["group"]) for row in matrix_rows(verification, event)
                             if self.selects_matrix_row(corpus["if"], row)]
                 group = "opt-in" if event == "pull_request" else "runtime-cache"
-                self.assertEqual(selected, [("x86_64", group)] if event == "pull_request" else [("x86_64", "runtime-cache"), ("x86_64", "scaling")])
+                self.assertEqual(set(selected), {("x86_64", group), ("x86_64", "contracts")} if event == "pull_request" else {("x86_64", "runtime-cache"), ("x86_64", "scaling"), ("x86_64", "contracts")})
         # (two workers, explicitly: the runner would otherwise start up to four)
         self.assertIn("LEAN_CORPUS_FLAGS='--jobs 2 ", corpus["run"])
         self.assertEqual(verification["timeout-minutes"], "15")
@@ -155,7 +159,7 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         make.chmod(0o755)
         for group, expected in (("opt-in", ["check-lean-corpus", "check-lean-int", "check-lean-storage"]),
                                 ("runtime-cache", ["check-lean-corpus", "check-lean-int"]),
-                                ("scaling", ["check-lean-storage"]), ("hosted", [])):
+                                ("scaling", ["check-lean-storage"]), ("contracts", ["check-lean-guards"]), ("hosted", [])):
             with self.subTest(group=group):
                 env = dict(os.environ, VERIFY_GROUP=group, lean_boundary_dir=str(self.directory),
                            PATH=str(bin_dir) + os.pathsep + os.environ["PATH"])
