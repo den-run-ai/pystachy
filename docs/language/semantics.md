@@ -619,7 +619,12 @@ class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, 
 - `contextlib.suppress()` given class objects (`suppress(type(e))`), or kept as a value, tests
   its classes as CPython's does.
 
-An `except` clause names its classes; one that takes class objects is not supported.
+An `except` clause names its classes, or takes class objects as `isinstance()` does: a
+variable such as `StatisticsError = statistics.StatisticsError`, a parameter, a field, a call
+or a tuple of them with classes named ([test](../../tests/programs/exceptions/except_class_values.py)).
+As in CPython, the clause's expression is evaluated only when an exception gets to that clause,
+and its classes are tested in turn. A class object that may be `None` is rejected, since CPython
+raises `TypeError` where it tests `None` ([error test](../../tests/errors/exceptions/except_class_value_optional.py)).
 
 ## Syntax errors
 

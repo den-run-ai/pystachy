@@ -68,14 +68,24 @@ def gen_try_(self, n: Node) -> None:
         else:
             fin = k.kids
             hasfin = True
-    sets = [self.catches(h) for h in hs]
-    self.line = n.line
     # what narrowed holds (see narrow_by) where an exception may come from: in a clause, what
     # held before the statement but for the names B binds; in F on the way out of an
     # exception, but for those that B, L and the clauses bind; after the statement, what holds
     # at the end of each way that goes on (ends)
     hst = self.unnarrowed([n.kids[0].kids])
     fst = self.unnarrowed([n.kids[0].kids, orelse] + [h.kids[1].kids for h in hs])
+    # a clause whose classes values hold (catch_values, typed as where the clause runs, hst)
+    # tests them at run time, "\2" for its set
+    vals: list[bool] = []
+    sets: list[str] = []
+    before = self.narrowed
+    for h in hs:
+        self.line = h.line
+        self.narrowed = dict(hst)
+        vals.append(self.catch_values(h.kids[0]))
+        self.narrowed = before
+        sets.append("\x02" if vals[-1] else self.catches(h))
+    self.line = n.line
     ends: list[dict[str, str]] = []
     # the try notes the depth of the unwind actions (pys_exc_begin runs those added since) and
     # the exception being handled, which every way out of its clauses restores
@@ -126,19 +136,28 @@ def gen_try_(self, n: Node) -> None:
             self.line = h.line
             if h.s != "" and not self.modlevel and h.s in self.gdecl:
                 self.err(f"except ... as {h.s}, of the global '{h.s}', in a function is not supported: the end of the clause deletes the global, as del would")
-            for c in h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]] if h.kids[0].kind == "name" else NOKIDS:
+            # (a clause of values: exc_test reads each item as an expression, with its checks)
+            for c in (h.kids[0].kids if h.kids[0].kind == "tuple" else [h.kids[0]] if h.kids[0].kind == "name" else NOKIDS) if not vals[j] else NOKIDS:
                 self.modchk(c)  # (read through an import that may have raised)
                 if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
                     # a class whose class statement may not have run yet
                     self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{c.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(c.s))
-            if sets[j] != "":
+            if vals[j]:
+                # the clause's expression, evaluated when an exception gets to the clause (where
+                # what held before the statement holds), then its classes tested in turn
+                self.narrowed = dict(hst)
+                l = self.label()
+                nxt = self.label()
+                self.cbr(self.exc_test(e, h.kids[0], "isinstance").v, l, nxt)
+                self.place(l)
+            elif sets[j] != "":
                 l = self.label()
                 nxt = self.label()
                 self.cbr(self.exc_match(e, sets[j]), l, nxt)
                 self.place(l)
             self.narrowed = dict(hst)
             if h.s != "":
-                self.bind_as(h.s, e, self.as_type(h))
+                self.bind_as(h.s, e, "exc" if vals[j] else self.as_type(h))
             x = Exit("handler", old, self.handler)
             x.name = h.s
             up = self.handler
@@ -315,15 +334,59 @@ def gen_exc_isinst(self, v: Val, t: Node) -> Val:
     self.incoming(ph, r, e1)
     return Val(self.phi(ph), "bool")
 
+def gen_catch_item(self, c: Node) -> Node:
+    # item c of an except clause as catch_set reads it: builtins.X and os.error as the names of
+    # their classes, the frozen-instance error by its own name
+    if c.kind == "attr" and (self.dotted(c) == "builtins." + c.s or self.dotted(c) == "os.error"):
+        c = mk("name", "OSError" if c.s == "error" else c.s, c.line, [])  # (builtins.ValueError, os.error)
+    if self.dotted(c) == FROZENERR or (c.kind == "name" and c.s not in self.ltype and c.s not in self.gtypes and self.imported(c.s) == FROZENERR):
+        c = mk("name", FROZENERR, c.line, [])
+    return c
+
+def gen_catch_named(self, c: Node) -> bool:
+    # is item c of an except clause (as catch_item reads it) a name that catch_set takes: not a
+    # variable, a function or another expression, whose value catch_values tests at run time
+    return c.kind == "name" and c.s not in self.ltype and c.s not in self.gtypes and c.s not in self.funcs and c.s not in self.assigned
+
+def gen_catch_values(self, t: Node) -> bool:
+    # does except clause expression t hold its classes in values, which CPython tests when an
+    # exception gets to the clause (try_): an item that catch_set refuses (a variable, a field or
+    # a call), each such item of a class object's type or a tuple of them (exc_strict: never
+    # None, for which CPython raises TypeError before testing any), the other items exception
+    # classes named. Else catch_set gives its error, as before
+    if t.kind == "omit":
+        return False
+    cs = t.kids if t.kind == "tuple" else [t]
+    named: list[Node] = []
+    for c in cs:
+        if c.kind == "starred":
+            return False
+        if self.catch_named(self.catch_item(c)):
+            named.append(c)
+            continue
+        ct = self.dry(c)
+        if is_opt(ct) and self.exc_strict(unopt(ct)):
+            self.err("an except clause's class object may be None, for which CPython raises TypeError: test that it is not None before the try statement")
+        if not self.exc_strict(ct):
+            return False
+    if len(named) == len(cs):
+        return False  # (names alone: catch_set's)
+    for c in named:
+        self.catch_set(c)  # (its errors for a name that is no exception class)
+    return True
+
+def gen_exc_strict(self, t: str) -> bool:
+    # is t a class object's type (not None's too) or a tuple's of such items
+    if is_tuple(t):
+        return len(targs(t)) > 0 and len([x for x in targs(t) if not self.exc_strict(x)]) == 0
+    return t == "exctype"
+
 def gen_catch_set(self, t: Node) -> str:
     # the classes that t, the classes an except clause names, catches (catches)
     names: list[str] = []
     for c in t.kids if t.kind == "tuple" else [t] if t.kind != "omit" else t.kids:
-        if c.kind == "attr" and (self.dotted(c) == "builtins." + c.s or self.dotted(c) == "os.error"):
-            c = mk("name", "OSError" if c.s == "error" else c.s, c.line, [])  # (builtins.ValueError, os.error)
-        if self.dotted(c) == FROZENERR or (c.kind == "name" and c.s not in self.ltype and c.s not in self.gtypes and self.imported(c.s) == FROZENERR):
-            c = mk("name", FROZENERR, c.line, [])
-        if c.kind != "name" or c.s in self.ltype or c.s in self.gtypes or c.s in self.funcs or c.s in self.assigned:
+        c = self.catch_item(c)
+        if not self.catch_named(c):
             self.err("an except clause needs exception classes: a name, or a tuple of names")
         if c.s in self.unsupported:
             self.err(self.unsupported[c.s])

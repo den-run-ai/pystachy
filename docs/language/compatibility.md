@@ -611,8 +611,8 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 See [user exception classes](semantics.md#user-exception-classes) and
 [class objects](semantics.md#exception-classes-as-values).
 
-- **Raising/catching:** raising nonexceptions; handlers naming nonclasses, including variables
-  holding class objects; `except*`; function handlers binding globals with `as`, or module
+- **Raising/catching:** raising nonexceptions; handlers naming nonclasses, or class objects
+  that may be `None`; `except*`; function handlers binding globals with `as`, or module
   handlers rebinding differently typed globals read by functions.
 - **Class-object calls:** multiple arguments or keywords; equality with program objects.
   A mismatched user-constructor argument type raises `TypeError` instead of constructing
