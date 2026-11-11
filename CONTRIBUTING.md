@@ -85,35 +85,26 @@ revision before merge. Focused tests alone are not full verification. Documentat
 changes need link/command review and `git diff --check`; explain that runtime tests were
 not rerun. Report the tested revision, platform/toolchain, commands and results.
 
-## Rights and sign-off
+## Contribution rights
 
 Submit only work you have the right to contribute under the applicable project license:
 [MIT](LICENSE) for original project code; preserve third-party licenses, attribution and
 [notices](THIRD_PARTY_NOTICES) for adapted material. Identify upstream sources and changes.
 
-Contributors certify the [Developer Certificate of Origin 1.1](https://developercertificate.org/)
-once per GitHub account. After reading it, add your own line to
-[`.github/dco-signers.txt`](.github/dco-signers.txt) in your first PR from a fork:
-
-```text
-@your-login Your Name <your-email>
-```
-
-Append ` for COMPANY` if you contribute for your employer. The line certifies the DCO for
-each contribution you submit from that account, including work your coding agents prepare,
-so commits need no `Signed-off-by`. Add only your own line. Lines are public provenance
-attestations, not cryptographic signatures.
-
-The [DCO workflow](.github/workflows/dco.yml) checks that a fork PR's author is listed, on
-`main` or in the PR. PRs from this repository's own branches, which only the owner and
-collaborators can push, skip it. No separate CLA is required.
+By submitting a pull request, you acknowledge these contribution guidelines and
+confirm that you have the right to license your contribution under the project's
+MIT license (or have identified and preserved licenses for included third-party
+material). Contributors retain copyright; no DCO sign-off, signer registry or
+contributor license agreement is required. Git history records authorship.
 
 ## AI assistance and review
 
-AI-assisted contributions are welcome. Disclose substantive generated code or text
-and the tools used in the PR. Review and understand the whole diff, verify test claims,
-check provenance, and be able to explain or revise the work. The submitter remains
-responsible for it; private prompts and conversation transcripts are not required.
+AI-assisted contributions are welcome. Disclose substantial generated content
+and the tools used in the PR description or a PR comment. Review and understand
+the diff, verify test claims, check provenance, and be able to explain the work.
+The submitting human is accountable; owner-authorized coding agents may prepare
+PRs and post review comments. Private prompts and transcripts are not required.
+A bot sends a one-time, non-blocking acknowledgment reminder to new PRs.
 
 Before approving fork workflows, maintainers inspect the full diff, especially workflows,
 build/test scripts, dependency changes and executable test fixtures. Run untrusted code
@@ -122,8 +113,9 @@ Pending workflow approval is not a test failure. Approval permits CI execution, 
 
 Merge requires maintainer review and passing applicable checks on the current revision.
 For `main`, configure GitHub branch protection to require the GitHub Actions checks
-`Verification`, `make lint (ruff, shellcheck, clang -Wall -Wextra)` and
-`DCO certified (fork pull requests)`, plus the `Submission format` commit status.
+`Verification` and `make lint (ruff, shellcheck, clang -Wall -Wextra)`, plus the
+`Submission format` commit status. A temporary always-skipped DCO job preserves
+branch-protection compatibility until its required status is removed.
 Apply the rule to administrators and other
 credentials with bypass access. Documentation-only changes still receive `Verification`.
 
