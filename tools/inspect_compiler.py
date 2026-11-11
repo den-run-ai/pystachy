@@ -222,6 +222,39 @@ class Observer:
                     self.representation_origins[ins] = entry
                     return
 
+    def clone_instruction_wrapper(self, original):
+        def wrapped(source, numbers, labels):
+            # The compiler's explicit cloning boundary supplies both actual
+            # instruction objects. Never infer provenance from matching temp IDs
+            # or types: discarded functions and dry runs may reuse either.
+            observed = self.representation_origins.get(source)
+            signature = self.representation_signature(source)
+            target = original(source, numbers, labels)
+            if observed is None or observed["signature"] != signature:
+                return target
+            if (target is source or target in self.representation_origins
+                    or len(set(numbers.values())) != len(numbers)
+                    or len(set(labels.values())) != len(labels)):
+                return target
+
+            def renamed(value):
+                if value.startswith("%t") and value[2:].isdigit() and int(value[2:]) in numbers:
+                    return "%t" + str(numbers[int(value[2:])])
+                return value
+
+            expected = (source.op, source.t, source.s, source.k, source.x,
+                        tuple(numbers[r] for r in source.r),
+                        tuple((renamed(a.v), a.t) for a in source.a))
+            if (self.representation_signature(source) != signature
+                    or self.representation_signature(target) != expected
+                    or target.b != [labels.get(label, label) for label in source.b]):
+                return target
+            self.representation_origins[target] = dict(observed,
+                value=renamed(observed["value"]), definition_type=target.t,
+                signature=self.representation_signature(target))
+            return target
+        return wrapped
+
     def held_representation_wrapper(self, name: str):
         def decorate(original):
             def wrapped(gen, value, *args, **kwargs):
@@ -629,6 +662,7 @@ class Observer:
         return wrapped
 
     def install(self) -> None:
+        from src.pystachy_compiler import optimizations
         from src.pystachy_compiler.gen import Gen
         from src.pystachy_compiler.lexer import Lexer
         from src.pystachy_compiler.loader import Loader
@@ -644,6 +678,7 @@ class Observer:
             self.wrap(Gen, name, self.held_representation_wrapper(name))
         self.wrap(Gen, "big_popitem", self.big_popitem_wrapper)
         self.wrap(Gen, "search_hold", self.search_hold_wrapper)
+        self.wrap(optimizations, "clone_instruction", self.clone_instruction_wrapper)
         self.wrap(Gen, "effects", self.effects_wrapper)
         self.wrap(Gen, "verify", self.verify_wrapper)
         for contract in PASS_CONTRACTS:

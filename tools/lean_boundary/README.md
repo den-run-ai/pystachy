@@ -21,6 +21,8 @@ exception semantics and LLVM lowering remain unproved.
 
 [GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
 full-corpus inventory command; full-corpus acceptance is not claimed.
+Broader null/union correlations and unsupported forms are tracked in
+[#1270](https://github.com/den-run-ai/pystachy/issues/1270).
 
 The same Lean project also builds the [unchecked-access checker](ACCESS.md), which proves list
 reads within bounds and reused dict entries live.
@@ -313,7 +315,7 @@ and manual dispatch. PR selection uses the cumulative merge diff and runs
 conservatively if its history is missing. Five workflow tests exercise the
 actual selector against temporary Git histories. `make check-lean-corpus` runs in
 the x86_64 verification group `opt-in` of every PR that changes code, and in
-`dynany-optin-0` on main and manual runs; a sixth test keeps both jobs on one
+`runtime-cache` on main and manual runs; a sixth test keeps both jobs on one
 Lean archive; that target first runs the corpus tool's own tests
 (`tools/test_lean_corpus.py`). Both jobs download the pinned, SHA-256-checked
 Linux Lean release; no PR job is added. Lean is not a compiler, runtime or

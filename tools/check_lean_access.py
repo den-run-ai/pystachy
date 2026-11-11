@@ -258,7 +258,16 @@ def nonneg_fact(facts, x):
     return None
 
 
+def encodable_fact(fact):
+    """Fact constants fit the Lean checker's bounded JSON representation."""
+    return all(type(part) is not int or MIN_I64 <= part <= MAX_I64 for part in fact)
+
+
 def generated(facts, node, edge):
+    return [fact for fact in generated_unbounded(facts, node, edge) if encodable_fact(fact)]
+
+
+def generated_unbounded(facts, node, edge):
     op = node["op"]
     dst = node.get("dst")
     if op == "copy":
@@ -467,6 +476,11 @@ def closure(start, new, relevant, lower_bounds=()):
     while pending:
         fact = pending.popleft()
         for derived, needs in conclusions(fact, by_name, index, relevant, lower_bounds):
+            # Rules use mathematical integers, but the checked wire format
+            # accepts i64 constants. An impossible overflow-free path can
+            # suggest >= INT64_MAX+1; keep representable weaker facts instead.
+            if not encodable_fact(derived):
+                continue
             if derived in index or (derived[0] == "eq" and derived[1] == derived[2]) or any(
                     part not in relevant for part in mentions(derived)):
                 continue

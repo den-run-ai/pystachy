@@ -44,6 +44,28 @@ class RangeLowerBoundTests(unittest.TestCase):
         self.assert_checked(self.candidate(0, 2, -1), False)
         self.assert_checked(self.candidate(1, -2, -1), False)
 
+    def test_overflowing_bound_derivation_keeps_encodable_weaker_facts(self):
+        candidate = self.candidate(1, access.MAX_I64, -1)
+        self.assert_checked(candidate, True)
+        self.assertTrue(all(access.MIN_I64 <= part <= access.MAX_I64
+                            for facts in candidate["certificate"] for fact in facts
+                            for part in fact if type(part) is int))
+
+    def test_out_of_range_branch_facts_do_not_reach_wire_format(self):
+        nodes = [
+            {"op": "length", "dst": "n", "list": "xs", "next": 1},
+            {"op": "test", "cond": {"cmp": "slt", "a": access.MAX_I64, "b": "i"}, "yes": 2, "no": 4},
+            {"op": "test", "cond": {"cmp": "slt", "a": "i", "b": "n"}, "yes": 3, "no": 4},
+            {"op": "load", "list": "xs", "index": "i", "next": 4}, {"op": "stop"},
+        ]
+        certificate, _ = access.infer_certificate(nodes)
+        candidate = {"schema_version": 1, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
+        self.assertTrue(all(access.encodable_fact(fact) for facts in certificate for fact in facts))
+        # Dropping the unencodable fact can lose a proof of an impossible path;
+        # it must produce a normal rejection, never malformed checker input.
+        if CHECKER.is_file():
+            self.assertFalse(access.run_checker(CHECKER, access.encode(candidate), {"nodes": 5, "accesses": 1}))
+
     @unittest.skipUnless(CHECKER.is_file(), "build the Lean checker")
     def test_compiled_stride_two_and_reused_index_loop(self):
         source = """def offsets(xs: list[int], out: list[int], n: int, step: int) -> None:

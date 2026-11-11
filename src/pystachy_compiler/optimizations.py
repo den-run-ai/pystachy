@@ -844,6 +844,24 @@ def gen_listguard(self, fn: IFn) -> int:
     return n
 
 
+def clone_instruction(i: Ins, numbers: dict[int, int], labels: dict[str, str]) -> Ins:
+    # A fresh instruction with the caller's SSA and block renaming. Keep this
+    # boundary explicit so hosted inspection can follow exact clone provenance.
+    d = Ins(i.op, i.t, i.s)
+    d.line = i.line
+    d.k = i.k
+    d.x = i.x
+    d.r = [numbers[r] for r in i.r]
+    d.b = [labels[l] if l in labels else l for l in i.b]
+    d.a = []
+    for v in i.a:
+        w = Val(tmpname(numbers[int(v.v[2:])]) if v.v.startswith("%t") and v.v[2:].isdigit() and int(v.v[2:]) in numbers else v.v, v.t).identity(v)
+        w.lit = v.lit
+        w.infer_from = v.infer_from
+        d.a.append(w)
+    return d
+
+
 def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
     # the copy of plan's loop and the test before it (gen_listguard); how many accesses it unchecks
     lp = plan.lp
@@ -880,18 +898,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         last = j
         c = Blk(labels[b.label])
         for i in b.code:
-            d = Ins(i.op, i.t, i.s)
-            d.line = i.line
-            d.k = i.k
-            d.x = i.x
-            d.r = [numbers[r] for r in i.r]
-            d.b = [labels[l] if l in labels else l for l in i.b]
-            d.a = []
-            for v in i.a:
-                w = Val(tmpname(numbers[int(v.v[2:])]) if v.v.startswith("%t") and v.v[2:].isdigit() and int(v.v[2:]) in numbers else v.v, v.t).identity(v)
-                w.lit = v.lit
-                w.infer_from = v.infer_from
-                d.a.append(w)
+            d = clone_instruction(i, numbers, labels)
             if i.op == "rt" and i.s == "list.get" and len(i.r) == 1 and i.r[0] in reads and b.label not in slow:
                 d.op = "list.load"  # (as listget makes it: the slot pys_list_get would have returned)
                 d.s = ""
