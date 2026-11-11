@@ -16,11 +16,20 @@ python3 tools/pytest_native.py path/to/tests --mode jit --compare
 python3 tools/pytest_native.py path/to/tests --mode aot --compare --json build/test-results.json
 ```
 
-`--compare` runs the **original** files in real CPython pytest, independently of
+Oracle comparison is enabled by default; `--compare` also selects it explicitly.
+It runs the **original** files in real CPython pytest, independently of
 the transformed programs. It compares collected test IDs/order and every
 setup/call/teardown outcome. It does not claim exact traceback, warning, failure
 message or captured-output parity. Both executions must have equivalent external
 inputs; tests which modify persistent external state need their own isolation.
+
+Use `--no-compare` only for repeated runs of previously qualified, unchanged inputs.
+The CLI prints `UNVERIFIED` and records `"qualification": "unverified"` in JSON
+when the oracle is disabled. Static collection cannot identify pytest behavior
+hidden in imported objects, such as an imported autouse fixture. Default comparison
+turns these omissions into errors; disabling it removes that check. The direct
+execution timings below and in the benchmark are measured **after** oracle
+qualification, without repeating comparison inside every timed execution.
 
 `--mode python` runs generated code under CPython and is useful for distinguishing
 collector/helper mistakes from native compiler behavior. `--compiler './pystachy'`
@@ -55,7 +64,8 @@ This hosted tool currently targets Linux and macOS.
 - Inline `pytest.param(..., id="case", marks=...)` entries with static
   skip/skipif/xfail marks. Named tables containing `pytest.param` and computed
   parameter metadata remain unsupported.
-- Function-scoped return/yield fixtures, dependencies and literal `autouse`.
+- Function-scoped return/yield fixtures defined in the selected module,
+  dependencies and literal `autouse`.
   `@pytest.fixture(name="alias")` exposes an explicit public fixture name.
   Repeated requests share one fixture value within a test. Teardown resumes yield
   fixtures in reverse setup order, including after a test fails or later fixture
@@ -69,7 +79,9 @@ This hosted tool currently targets Linux and macOS.
 - Explicit per-source dynamic `Any` opt-in for supported open payloads. The runner
   itself stores metadata, statuses and exceptions in concrete types.
 
-Unsupported collection is an error, never an implicit skip. The collector rejects
+Unsupported source forms detected by the collector are errors, never implicit skips.
+Imported fixtures are unsupported; the default oracle checks their observable
+collection and phase effects. The collector rejects
 test classes, async/generator tests, xunit setup/teardown hooks, conftest files,
 pytest configuration, test packages, relative test imports, custom decorators,
 plugins, dynamic test creation and unsupported pytest APIs. It also rejects
@@ -181,6 +193,81 @@ real CPython pytest. It does not validate the extraction against original unitte
 Retain the upstream pin, license, source and adaptation review, and run the original
 selected unittest methods separately where available. The three fnmatch methods
 above are a bounded qualification, not complete fnmatch coverage.
+
+## Qualify original upstream tests
+
+Use the maintained [upstream qualifier](../tools/pytest_native_upstream.py) to run
+the original methods before extraction. It executes real unittest in an isolated
+CPython process, records the full original inventory, and checks the explicit
+method-to-pytest mapping through adapted pytest, generated CPython, native JIT
+and native AOT. An original failure, skip, expected failure, missing method or
+changed source hash fails qualification. Generated CPython always runs before
+the native modes, distinguishing extraction errors from compiler/library gaps.
+
+```sh
+# Bundled sources, also checked offline in the existing Lint job:
+python3 tools/pytest_native_upstream.py --suite fnmatch --suite textwrap \
+  --compiler ./pystachy --json build/pytest-upstream-bundled.json
+
+# Explicitly fetch hash-pinned statistics support and mypyc sources once:
+python3 tools/pytest_native_upstream.py --fetch --compiler ./pystachy \
+  --json build/pytest-upstream-all.json
+```
+
+The [selection manifest](../tests/upstream/pytest/manifest.json) pins 3 fnmatch,
+6 textwrap, 2 statistics and all 5 upstream mypyc NameGenerator methods. It
+records complete inventories of 17, 66, 401 and 5 cases respectively; statistics
+includes its original doctests, which remain excluded from the selected methods.
+Sources and licenses are verified before copying them to a fresh import snapshot.
+No replacement `test.support` stubs are used. The exact methods, exclusions,
+original outcomes, source hashes and every generated phase appear in the JSON
+report. See [scope and reproduction](../tests/upstream/pytest/README.md).
+
+JSON repair has a separate source-backed qualifier for **53 cases from 40 test
+functions**, including all 21 strict-mode cases in its pinned source module:
+
+```sh
+git clone --depth 1 --branch v0.64.8 \
+  https://github.com/mangiucugna/json_repair.git build/json-repair-upstream
+python3 tools/pytest_native_json_repair.py --upstream build/json-repair-upstream \
+  --compiler ./pystachy --json build/pytest-json-upstream.json
+```
+
+It first runs the selected original files/functions against the pristine upstream
+implementation in real pytest. Test functions and decorators are copied exactly;
+the adapter changes public import paths, enables the port's existing dynamic
+JSON-value contract, and explicitly annotates one open-mapping helper as
+`dict[Any, Any]`. Assertions and helper bodies are unchanged. The
+[selection file](../tests/upstream/json_repair/pytest-selection.json) records that
+refinement and the current typed-dictionary-to-Any representation limitation.
+Adapted pytest and generated CPython/JIT/AOT must match the original case IDs
+and phase outcomes. The report inventories all **261 cases in the five selected
+source modules**, lists the 208 unselected cases, and records every other upstream
+test module as outside this scope. This supplements the existing 943-call API
+replay; it does not qualify JSON repair's complete upstream test tree.
+
+## Preserve deliberate failures
+
+```sh
+python3 tools/pytest_native_controls.py --compiler ./pystachy \
+  --json build/pytest-controls.json
+```
+
+The control command succeeds only when its known-failing suite has the exact
+independent inventory: 30 cases, 90 setup/call/teardown phases, 14 failed phases
+and one expected xfail. Three seeded success/failure pairs each cover mutable
+fixture aliases, Unicode, numeric boundaries and exception checks. Other cases
+cover cleanup errors, remaining cleanup after two errors, and strict XPASS.
+Runtime input supplies the seed offset. Both ordinary pytest and generated
+CPython/JIT/AOT must preserve every expected success and failure; two engines
+agreeing on an incorrectly passing suite cannot qualify it. The unit tests also
+mutate assertions, cleanup, skips and reports to verify these rejection gates.
+
+`make test-pytest-native` includes these controls and the bundled original
+fnmatch/textwrap qualification without adding a CI job. The optional
+`make test-pytest-upstream PYTEST_UPSTREAM_ARGS=--fetch` and
+`make test-pytest-json-upstream JSON_REPAIR_UPSTREAM=PATH` targets run the remaining
+source-backed qualifications. Timing measurements are a separate workload.
 
 Keep existing stdlib differential corpus tests, upstream inventories, JIT/AOT,
 GC-stress and sanitizer gates. Add this runner for convenient new cases and

@@ -30,13 +30,25 @@ test-py:
 	$(PY) -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
-.PHONY: test-pytest-native test-pytest-workloads
+.PHONY: test-pytest-native test-pytest-workloads test-pytest-upstream test-pytest-json-upstream
 
 # Hosted collection/oracle and real native execution; no compiler bootstrap needed.
 test-pytest-native:
 	PYSTACHY_PYTEST_NATIVE_COMPILER="$(PY) $(CURDIR)/pystachy.py" $(PY) -m unittest discover -s tools -p 'test_pytest_native*.py'
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode jit --compare --json build/pytest-native/examples.json
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode aot --compare --work-dir build/pytest-native-aot --json build/pytest-native-aot/examples.json
+	$(PY) tools/pytest_native_controls.py --compiler "$(PY) $(CURDIR)/pystachy.py" --json build/pytest-controls.json
+	$(PY) tools/pytest_native_upstream.py --suite fnmatch --suite textwrap --compiler "$(PY) $(CURDIR)/pystachy.py" --json build/pytest-upstream-bundled.json
+
+# Complete optional upstream qualification uses only explicitly fetched pinned
+# sources. The bundled fnmatch/textwrap subset above remains offline in CI.
+PYTEST_UPSTREAM_ARGS ?=
+test-pytest-upstream:
+	$(PY) tools/pytest_native_upstream.py --compiler "$(PYTEST_WORKLOAD_COMPILER)" --json build/pytest-upstream.json $(PYTEST_UPSTREAM_ARGS)
+
+JSON_REPAIR_UPSTREAM ?= build/json-repair-upstream
+test-pytest-json-upstream:
+	$(PY) tools/pytest_native_json_repair.py --upstream "$(JSON_REPAIR_UPSTREAM)" --compiler "$(PYTEST_WORKLOAD_COMPILER)" --json build/pytest-json-upstream.json
 
 # Independent application/benchmark suites share original pytest assertions.
 # CI supplies its already verified compiler; local users can use hosted compilation.

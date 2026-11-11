@@ -184,6 +184,51 @@ class ReportTests(TemporarySuite):
 
 
 class CollectionControls(TemporarySuite):
+    @unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
+    def test_default_oracle_rejects_imported_autouse_fixture_omission(self):
+        self.source("import pytest\n@pytest.fixture(autouse=True)\ndef guard():\n    assert False\n",
+                    "helper.py")
+        path = self.source("from helper import guard\ndef test_local():\n    pass\n")
+        evidence = self.root / "result.json"
+        arguments = [str(path), "--root", str(self.root), "--mode", "python",
+                     "--work-dir", str(self.work), "--json", str(evidence)]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            status = runner.main(arguments)
+        report = json.loads(evidence.read_text())
+        self.assertEqual(status, 2)
+        self.assertEqual(report["qualification"], "pytest-mismatch")
+        self.assertEqual(report["oracle"]["exit_code"], 1)
+        self.assertIn("setup/call/teardown outcomes differ from pytest", report["differences"])
+
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as error:
+            status = runner.main([*arguments, "--no-compare"])
+        report = json.loads(evidence.read_text())
+        self.assertEqual(status, 0)
+        self.assertEqual(report["qualification"], "unverified")
+        self.assertIsNone(report["oracle"])
+        self.assertIn("UNVERIFIED", error.getvalue())
+
+    def test_imported_test_classes_cannot_disappear(self):
+        self.source("class TestImported:\n    def test_failure(self):\n        assert False\n", "helper.py")
+        for statement in ("from helper import TestImported", "from helper import TestImported as TestAlias",
+                          "import helper as TestModule"):
+            with self.subTest(statement=statement):
+                path = self.source(statement + "\ndef test_local():\n    pass\n")
+                actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
+                self.assertEqual(actual.state, "collection-error")
+                self.assertIn("imported tests", actual.error)
+        path = self.source("from helper import TestImported\ndef test_local():\n    pass\n")
+        if importlib.util.find_spec("pytest"):
+            expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+            self.assertEqual(expected["exit_code"], 1, expected)
+            self.assertEqual(expected["cases"], ["test_suite.py::TestImported::test_failure",
+                                                  "test_suite.py::test_local"])
+
+    def test_dynamic_test_class_aliases_are_rejected(self):
+        for statement in ("TestAlias = Helper", "if True:\n    TestAlias = Helper"):
+            with self.subTest(statement=statement), self.assertRaisesRegex(CollectionError, "dynamically assigning"):
+                generate("class Helper:\n    pass\n" + statement + "\ndef test_local(): pass\n", "test_suite.py")
+
     def test_unsupported_test_shapes_fail_explicitly(self):
         sources = {
             "test_class": "class TestThings:\n    def test_one(self): pass\n",
@@ -513,6 +558,15 @@ class OriginalPytestParity(TemporarySuite):
                               (EMPTY_PARAMETERS, "passed")):
             with self.subTest(source=source):
                 self.check_parity(source, state, mode="jit")
+
+    def test_explicit_parameter_ids_escape_unicode_and_controls(self):
+        self.check_parity(r'''
+            import pytest
+            @pytest.mark.parametrize("value", [1, 2, 3, 4, 5],
+                                     ids=["café", "café", "café0", "line\nfeed", "☃"])
+            def test_value(value):
+                assert value > 0
+        ''')
 
     def test_partial_setup_still_cleans_successful_fixtures(self):
         self.check_parity(PARTIAL_SETUP, "test-failed")

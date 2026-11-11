@@ -1,7 +1,7 @@
 """Collect a bounded pytest dialect and run generated typed Python test programs.
 
 The collector is hosted Python; the generated tests and fixtures run under Pystachy.
-Use --compare to retain original-source, real-pytest outcomes as an independent oracle.
+The CLI compares original-source, real-pytest outcomes by default as an independent oracle.
 """
 from __future__ import annotations
 
@@ -368,7 +368,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--compiler", default=shlex.join([sys.executable, str(REPO / "pystachy.py")]))
     parser.add_argument("--python", default=sys.executable, help="CPython executable for generated/original tests")
     parser.add_argument("--work-dir", type=Path, default=REPO / "build" / "pytest-native")
-    parser.add_argument("--compare", action="store_true", help="compare phase outcomes with real pytest")
+    parser.add_argument("--compare", action=argparse.BooleanOptionalAction, default=True,
+                        help="compare phase outcomes with real pytest (default); --no-compare is unverified")
     parser.add_argument("--json", type=Path, help="write complete machine-readable evidence")
     parser.add_argument("--timeout", type=float, default=120)
     args = parser.parse_args(argv)
@@ -384,6 +385,9 @@ def main(argv: list[str] | None = None) -> int:
 
 def execute(args) -> int:
     root, work = args.root.resolve(), args.work_dir.resolve()
+    if not args.compare:
+        print("UNVERIFIED: pytest oracle comparison is disabled (--no-compare). "
+              "Use only for previously qualified, unchanged inputs.", file=sys.stderr)
     try:
         paths = discover(args.paths, root)
     except (CollectionError, OSError, UnicodeError) as error:
@@ -398,7 +402,10 @@ def execute(args) -> int:
         status = 5
     else:
         status = int(any(result.state == "test-failed" for result in results))
-    evidence = {"mode": args.mode, "execution": "one process; suite timings/output on first module", "root": str(root), "results": [asdict(result) for result in results],
+    qualification = ("unverified" if not args.compare else "pytest-mismatch" if differences
+                     else "pytest-matched" if reference is not None else "no-tests")
+    evidence = {"mode": args.mode, "qualification": qualification,
+                "execution": "one process; suite timings/output on first module", "root": str(root), "results": [asdict(result) for result in results],
                 "oracle": reference, "differences": differences, "exit_code": status}
     if args.json:
         write_changed(args.json.resolve(), json.dumps(evidence, indent=2) + "\n")
