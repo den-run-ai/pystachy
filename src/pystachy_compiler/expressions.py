@@ -4566,6 +4566,22 @@ def gen_compare(self, n: Node) -> Val:
 def gen_exc_id(self, v: Val) -> Val:
     # what an exception is, for is and ==: the object of an exception class it raises, if it
     # raises one (each raise of it makes an exception of its own), else itself
+    if v.t == "opt[exc]":
+        # A nullable caught exception still holds an Exc wrapper, unlike a user
+        # exception object's pointer. Do not read that wrapper when it is None.
+        e0 = self.cur
+        lsome = self.label()
+        ldone = self.label()
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, ldone, lsome)
+        self.place(lsome)
+        identity = self.rt("pys_exc_id", "ptr", [f"ptr {v.v}"])
+        e1 = self.cur
+        self.br(ldone)
+        self.place(ldone)
+        ph = Ins("phi", "opt[exc]", "")
+        self.incoming(ph, "null", e0)
+        self.incoming(ph, identity, e1)
+        return Val(self.phi(ph), "opt[exc]")
     return Val(self.rt("pys_exc_id", "ptr", [f"ptr {v.v}"]), "exc") if v.t == "exc" else v
 
 def gen_exc_eq(self, t: str, what: str = "") -> None:
@@ -4807,6 +4823,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.ptr_cmp('==' if op == '==' else '!=', a, b)
     xa = a.t == "exc" or (a.t in self.classes and self.classes[a.t].exc != "")
     xb = b.t == "exc" or (b.t in self.classes and self.classes[b.t].exc != "")
+    if (op == "is" or op == "is not") and (xa or a.t == "opt[exc]") and (xb or b.t == "opt[exc]"):
+        return self.ptr_cmp('==' if op == 'is' else '!=', self.exc_id(a), self.exc_id(b))
     if xa and xb and a.t != b.t and a.t in self.classes and b.t in self.classes and (op == "==" or op == "!="):
         # objects of exception classes with a base class in common: as objects of that base,
         # by identity (where a class they may be of has __eq__, see exc_kinds)
@@ -4816,14 +4834,14 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         if cb in self.classes:
             a = self.coerce(a, cb)
             b = self.coerce(b, cb)
-    if xa and xb and (a.t != b.t or a.t == "exc") and (op == "==" or op == "!=" or op == "is" or op == "is not"):
+    if xa and xb and (a.t != b.t or a.t == "exc") and (op == "==" or op == "!="):
         # exceptions, builtin or objects of exception classes of different classes: by identity
         # (an exception class's object is an exception of its own that each raise of it makes)
         if op == "==" or op == "!=":
             x = "an exception" if a.t == "exc" else f"an object of {short(a.t)}"
             y = "an exception" if b.t == "exc" else f"an object of {short(b.t)}"
             self.exc_eq("exc", "between exceptions" if a.t == b.t else f"between {x} and {y}")
-        return self.ptr_cmp('==' if op == '==' or op == 'is' else '!=', self.exc_id(a), self.exc_id(b))
+        return self.ptr_cmp(op, self.exc_id(a), self.exc_id(b))
     if (op == "==" or op == "!=") and (unopt(a.t) == "exctype" or unopt(b.t) == "exctype"):
         # class objects of exception classes: by identity (each class has one), and never equal
         # to a value of another type (but None, which a class object that may be None is)

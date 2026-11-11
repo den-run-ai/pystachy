@@ -2,6 +2,7 @@
 
 usage: python3 tools/cpython_test_methods.py extract TESTFILE OUTDIR
        python3 tools/cpython_test_methods.py combine TESTFILE OUT.py CLASS.METHOD...
+       python3 tools/cpython_test_methods.py pytest TESTFILE OUTDIR CLASS.METHOD...
        python3 tools/cpython_test_methods.py triage [--compiler CMD] [-j N] OUT.json WORKDIR TESTFILE...
 
 Native execution of CPython's Lib/test files needs unittest and test.support before any
@@ -44,6 +45,7 @@ import argparse
 import ast
 import concurrent.futures
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -354,6 +356,7 @@ class TestFile:
                         for it in c.body) or any(uses(d) & cvariant for d in c.decorator_list))
         self.concrete = [c for c in classes.values() if self.testcase(c) and not cvariant_class(c)]
         excluded = {c.name for c in classes.values() if self.testcase(c) and cvariant_class(c)}
+        self.excluded_variants = excluded
         # every class of the file that a test class derives from, directly or not
         self.mixins = set()
         todo = [b.id for c in self.concrete for b in c.bases if isinstance(b, ast.Name) and b.id in classes]
@@ -483,7 +486,7 @@ class TestFile:
         out.update(self.original.get(c.name, {}))
         return out
 
-    def program(self, selection):
+    def program(self, selection, *, library=False):
         """The source of a program running the selected (class, method) tests in order."""
         # a selected test stays in its class and the classes of the file it derives from, and only
         # there: another class can have a test of the same name
@@ -539,6 +542,8 @@ class TestFile:
                 kept.insert(at, ast.Import([ast.alias("random")]))
         module = ast.Module(kept, [])
         lines = [ast.unparse(ast.fix_missing_locations(module)), "", ""]
+        if library:
+            return "\n".join(lines), rand
         for cname, name in selection:
             ms = self.methods(next(c for c in self.concrete if c.name == cname))
             lines.append(f"def _{cname}__{name}():")
@@ -553,6 +558,106 @@ class TestFile:
             lines += [f"    print('ok {cname}.{name}')", "", ""]
         lines += [f"_{cname}__{name}()" for cname, name in selection]
         return "\n".join(lines) + "\n"
+
+
+def pytest_suite(path, outdir, selection, *, selected_methods_only=False):
+    """Adapt an explicit method selection, retaining the existing extraction boundary.
+
+    Real pytest compares the adapted wrappers, not the original unittest suite.
+    This deliberately rejects lifecycle/decorator features the extractor discards.
+    selected_methods_only explicitly excludes load_tests additions; callers must
+    qualify the exact selected methods against original unittest separately.
+    """
+    tf = TestFile(path)
+    available, left = tf.tests()
+    for cname in sorted(tf.excluded_variants):
+        left += [(cname, name, "C-accelerator variant")
+                 for name in sorted(tf.methods_of_original(tf.classes[cname])) if name.startswith("test")]
+    if not selection or len(set(selection)) != len(selection):
+        raise Unsupported("select at least one method, without duplicates")
+    missing = set(selection) - set(available)
+    if missing:
+        raise Unsupported("not extracted from this file: " + ", ".join(".".join(x) for x in sorted(missing)))
+    original = ast.parse(Path(path).read_text(encoding="utf-8"))
+    for node in original.body:
+        if (isinstance(node, ast.FunctionDef) and node.name in DROP_FUNCTIONS
+                and not (selected_methods_only and node.name == "load_tests")):
+            raise Unsupported("module lifecycle/custom collection: " + node.name)
+        if (not isinstance(node, (ast.Import, ast.ImportFrom, ast.FunctionDef, ast.ClassDef))
+                and uses(node) & tf.dropped and not is_fresh_module(node)
+                and not (isinstance(node, ast.If) and isinstance(node.test, ast.Compare)
+                         and dotted(node.test.left) == "__name__")):
+            raise Unsupported("module statement depends on removed unittest/test.support imports")
+    helper, rand = tf.program(selection, library=True)
+    kept_tree = ast.parse(helper)
+    kept_classes = {n.name for n in kept_tree.body if isinstance(n, ast.ClassDef)} & (
+        {c.name for c in tf.concrete} | tf.mixins)
+    for node in original.body:
+        if not isinstance(node, ast.ClassDef) or node.name not in kept_classes:
+            continue
+        if node.decorator_list:
+            raise Unsupported("class decorators: " + node.name)
+        if node.keywords:
+            raise Unsupported("class keywords/metaclass: " + node.name)
+        for method in node.body:
+            if not isinstance(method, ast.FunctionDef):
+                continue
+            if method.name in ("setUpClass", "tearDownClass", "__init__"):
+                raise Unsupported("class lifecycle: " + node.name + "." + method.name)
+            selected = not method.name.startswith("test") or any(
+                method.name == name and method.name in tf.methods_of_original(tf.classes[cname])
+                for cname, name in selection)
+            if selected and method.decorator_list:
+                raise Unsupported("method decorators: " + node.name + "." + method.name)
+    if uses(kept_tree) & tf.dropped:
+        raise Unsupported("selected code still depends on unittest/test.support")
+    for node in ast.walk(kept_tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "NotImplementedError":
+            if node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str):
+                if node.args[0].value.startswith(("tools/cpython_test_methods.py:", "test called skipTest")):
+                    raise Unsupported(node.args[0].value)
+        if self_call(node, ("addCleanup", "addClassCleanup", "enterContext", "enterClassContext", "doCleanups")):
+            raise Unsupported("unittest cleanup stacks")
+    digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    header = (f"# Adapted by tools/cpython_test_methods.py from {Path(path).name}\n"
+              f"# Source SHA-256: {digest}; preserve the upstream license when distributing.\n")
+    helper_name = "_unittest_cases"
+    lines = [header, "import pytest", f"import {helper_name} as _cases", "", ""]
+    for cname in dict.fromkeys(cname for cname, _ in selection):
+        methods = tf.methods(tf.classes[cname])
+        fixture = f"_case_{cname}"
+        lines += ["@pytest.fixture", f"def {fixture}():"]
+        if rand:
+            lines.append(f"    _cases.{rand}.seed(0)")
+        lines.append(f"    value = _cases.{cname}()")
+        if "setUp" in methods:
+            lines.append("    value.setUp()")
+        lines.append("    yield value")
+        if "tearDown" in methods:
+            lines.append("    value.tearDown()")
+        lines += ["", ""]
+    for cname, name in selection:
+        fixture = f"_case_{cname}"
+        lines += [f"def test_{cname}__{name}({fixture}):", f"    {fixture}.{name}()", "", ""]
+    manifest = {
+        "source": str(path), "source_sha256": digest,
+        "oracle": "adapted pytest wrappers; not the original unittest suite",
+        "selected": [".".join(x) for x in selection],
+        "not_selected": [".".join(x) for x in available if x not in selection],
+        "left_out": [list(x) for x in left],
+        "excluded_collection_hooks": [
+            {"name": node.name, "reason": "explicit method selection; custom collection is not qualified"}
+            for node in original.body
+            if isinstance(node, ast.FunctionDef) and node.name == "load_tests" and selected_methods_only
+        ],
+    }
+    # A fresh directory prevents stale generated tests from expanding the selection.
+    output = Path(outdir)
+    output.mkdir(parents=True, exist_ok=False)
+    (output / f"{helper_name}.py").write_text(header + helper)
+    (output / "test_selected.py").write_text("\n".join(lines))
+    (output / "selection.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    return manifest
 
 
 def extract(path, outdir, setup_init=True):
@@ -659,6 +764,10 @@ def main(argv=None):
     c.add_argument("out")
     c.add_argument("tests", nargs="+", help="CLASS.METHOD, in the order to run them")
     c.add_argument("--no-setup-init", action="store_true")
+    p = sub.add_parser("pytest", help="adapt selected methods into a new pytest suite directory")
+    p.add_argument("testfile")
+    p.add_argument("outdir")
+    p.add_argument("tests", nargs="+", help="CLASS.METHOD, in the order to run them")
     t = sub.add_parser("triage")
     t.add_argument("--compiler", default=str(ROOT / "pystachy"), help="shell-split command")
     t.add_argument("-j", type=int, default=2)
@@ -677,6 +786,11 @@ def main(argv=None):
         if missing:
             parser.error("not extracted from this file: " + ", ".join(missing))
         Path(args.out).write_text(tf.program(selection))
+    elif args.command == "pytest":
+        try:
+            pytest_suite(args.testfile, args.outdir, [tuple(x.split(".", 1)) for x in args.tests])
+        except (Unsupported, FileExistsError) as error:
+            parser.error(str(error))
     else:
         triage(shlex.split(args.compiler), args.j, args.out, args.workdir, args.testfiles)
 

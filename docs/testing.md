@@ -5,6 +5,14 @@ checks rejected programs, documented deviations, the self-hosting fixed point an
 contracts. Use the CPython version in `.python-version` and install the development tools
 with `python3 -m pip install -r tools/requirements-dev.txt`.
 
+For user-authored pytest-style tests, the experimental [native pytest runner](pytest-native.md)
+collects a bounded source subset, generates typed calls and fixtures, and compares
+native phase outcomes with the original files under CPython pytest. Run its
+hosted/native parity and failure controls with `make test-pytest-native`.
+`make test-pytest-workloads` applies shared pytest assertions to maintained
+application and pyperformance APIs, comparing each independent suite with
+CPython pytest in JIT and AOT modes.
+
 ## Commands
 
 Run these from the repository root:
@@ -30,7 +38,8 @@ Run these from the repository root:
 | `make check-runtime` | Check runtime declarations, effects and source agreement. |
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
-| `make bench-pyperformance-check` | Check the pyperformance runner and the ported benchmarks' CPython/JIT/AOT output; no timing thresholds. |
+| `make bench-pyperformance-check` | Check the pyperformance runner, ported benchmarks' CPython/JIT/AOT output, and shared pytest API assertions; no timing thresholds. |
+| `make test-pytest-workloads` | Run independent example and pyperformance pytest suites in JIT/AOT, with original CPython pytest as the oracle; no skipped or xfailed workload cases. |
 | `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases, a native replay of the JSON repair corpus and the agent's loopback HTTP transport. |
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
 
@@ -401,8 +410,27 @@ phases; these are evidence checks, with no speed threshold.
 The `benchmarks` group also runs `make bench-pyperformance-check` with that run's verified
 native compiler. Every delivered adaptation must match CPython stdout in JIT and AOT on
 bounded smoke inputs; a mismatch or failed build fails the group and aggregate gate.
-The group's artifact includes `pyperformance-smoke.json`. This is correctness coverage,
+It also runs the shared pytest API assertions for all 25 delivered workloads.
+The group's artifact includes `pyperformance-smoke.json` and `pytest-pyperformance.json`. This is correctness coverage,
 with no timing thresholds or claim to run the upstream pyperf harness.
+
+The `hosted` CI job runs 19 independent example API suites through
+`make test-pytest-workloads PYTEST_WORKLOAD_ARGS='--group examples'`, reusing the
+verified compiler. Splitting these checks between existing jobs leaves more room
+within the 15-minute budget without adding workers. `pytest-workloads.json` records every
+original-pytest comparison.
+Missing modules/results, empty suites, skips, xfails and failed builds fail this
+check. These tests supplement the exact CLI, FFI, upstream-reference and timing
+contracts below; they do not replace those distinct observations.
+
+The x86-64 `hosted` job also runs `make test-pytest-native` with the hosted compiler
+and pinned original pytest oracle. This covers collection, fixture lifecycle,
+JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
+methods. The existing job runs once on code PRs, main pushes and manual runs;
+documentation-only PRs retain their lightweight plan. Its artifact includes both
+example-mode reports, `pytest-controls.json` and `pytest-upstream-bundled.json`.
+Keeping this check outside Lint preserves the same coverage within the existing
+job, worker and 15-minute limits.
 
 The `example-cli` verification step runs in the `benchmarks` group: on x86-64 in
 PR CI and on both architectures in full CI. `tools/check_example_cli.py` runs 24 tiny cases through
@@ -492,7 +520,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | PR work | Jobs | Coverage |
 |---|---:|---|
 | Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack, JIT runner and sanitizer linkage smoke. |
-| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
+| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs and native runner qualification. |
 | Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
@@ -889,6 +917,15 @@ unittest processes. Lint waits for both, prints their logs separately and fails 
 either suite fails; the same coverage runs for documentation PRs, main and manual runs.
 The coordinator preserves normal SIGINT handling, cancels both process groups and
 reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
+
+Generated-user and generated-runtime ASan controls run in the existing x86-64
+`contracts` job on code PRs, main pushes and manual runs, using LLVM 18 and its
+compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;
+Lint discovers every other `test_runtime_*.py` file. This preserves the code
+verification coverage with the same jobs, workers and 15-minute timeouts.
+The ASan step is required by the contracts job's result and the aggregate gate;
+documentation-only PRs use the existing plan that skips native verification.
+
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
 the Git index and tests the gate against temporary repositories. It checks tracked
 files even when ignored; local untracked experiments are outside the merge gate.
@@ -909,7 +946,13 @@ the prototype, compiler, inspection exporter, boundary tests, Makefile, Lint wor
 Python/development dependency pins. Missing merge history runs the check;
 documentation-only PRs skip it. The selector has temporary-Git-history controls.
 It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
-`make check-lean-boundary`; no extra PR job is added. The bridge's Python tests
+`make check-lean-boundary`; no extra PR job is added. The x86_64 verification
+group `opt-in` on PRs, and `dynany-optin-0` on main and manual runs, run
+`make check-lean-corpus` with the same archive: the corpus tool's tests
+(`tools/test_lean_corpus.py`), then each dynamic-`Any` test program compiled by
+the hosted compiler, failing unless Lean proves every dynamic payload read guarded
+(in two workers, about four minutes; its report is uploaded as `lean-corpus.json`). Lint, already
+near its 15-minute bound, runs neither. The bridge's Python tests
 also run in `make check-fast`. Those tests skip executable checks when Lean has
 not been built; the dedicated target requires them and fails if the executable
 is missing. Lean is a development-only dependency for this bounded prototype.
