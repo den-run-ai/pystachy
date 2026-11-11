@@ -102,6 +102,27 @@ class InspectionTests(unittest.TestCase):
             self.assertEqual(footprint["totals"]["numeric_companion_slots"], 0)
             self.assertEqual(footprint["totals"]["numeric_generation_slots"], 0)
 
+    def test_typed_after_only_skips_pass_records_not_the_final_snapshot(self):
+        # The Lean corpus check's mode: the same LLVM, typed-after snapshot and descriptor
+        # table, without the typed-before snapshot, pass records or diffs.
+        program = self.source("# pystachy: dynamic-any\nfrom typing import Any\n" + LOOP
+                              + "x: Any = 2.5\nif isinstance(x, float):\n    print(x + 1.0)\n")
+        full, complete = self.inspect(program, "complete")
+        self.assertEqual(full.returncode, 0, full.stderr)
+        light, quick = self.inspect(program, "quick", ("--typed-after-only",))
+        self.assertEqual(light.returncode, 0, light.stderr)
+        self.assertEqual(self.snapshot(quick, "typed-after"), self.snapshot(complete, "typed-after"))
+        self.assertTrue(self.snapshot(quick, "typed-after")["dynamic_types"] is not None)
+        self.assertEqual((quick / "llvm.ll").read_bytes(), (complete / "llvm.ll").read_bytes())
+        self.assertFalse((quick / "typed-before.json").exists())
+        self.assertFalse((quick / "passes").exists() or (quick / "program-passes").exists())
+        report, reference = self.report(quick), self.report(complete)
+        self.assertEqual((report["status"], report["passes"], report["program_passes"]), ("ok", [], []))
+        self.assertGreater(len(reference["passes"]), 0)
+        self.assertEqual((report["settings"]["captures"], reference["settings"]["captures"]), ("typed-after", "all"))
+        self.assertEqual([stage["status"] for stage in report["stages"]], ["skipped", "completed", "completed"])
+        self.assertEqual(report["attempts"][-1]["dynamic_boundary"], reference["attempts"][-1]["dynamic_boundary"])
+
     def test_dynamic_boundary_records_transitive_graph_outside_snapshot_filter(self):
         self.source("def number(text: str) -> int:\n    return int(text)\n", "boundary_leaf.py")
         self.source("import boundary_leaf\ndef number(text: str) -> int:\n"
