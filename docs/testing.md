@@ -913,7 +913,9 @@ group `opt-in` on PRs, and `dynany-optin-0` on main and manual runs, run
 `make check-lean-corpus` with the same archive: the corpus tool's tests
 (`tools/test_lean_corpus.py`), then each dynamic-`Any` test program compiled by
 the hosted compiler, failing unless Lean proves every dynamic payload read guarded
-(in two workers, about four minutes; its report is uploaded as `lean-corpus.json`). Lint, already
+and every [unchecked list read and dict entry](../tools/lean_boundary/ACCESS.md) in
+bounds and live (in two workers, about four minutes; its report is uploaded as
+`lean-corpus.json`). Lint, already
 near its 15-minute bound, runs neither. The bridge's Python tests
 also run in `make check-fast`. Those tests skip executable checks when Lean has
 not been built; the dedicated target requires them and fails if the executable

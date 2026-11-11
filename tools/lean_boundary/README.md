@@ -95,7 +95,9 @@ of a file, wherever it is, so the selection over-approximates.
 Each program is compiled by the hosted compiler under
 `tools/inspect_compiler.py --typed-after-only`, which records only the final
 snapshot, and the run fails unless Lean accepts every function that reads a
-payload. `--list` prints the selection; named programs are checked instead of it.
+payload and, by the [unchecked-access checker](ACCESS.md), every function with an
+unchecked list read or dict entry. `--list` prints the selection; named programs
+are checked instead of it.
 
 `--checker PATH` selects another built checker. `--emit NEW_FILE` writes only the
 candidate program and certificate: its report says `prepared`, `checked: false`.
@@ -223,10 +225,11 @@ checker has a ten-second subprocess deadline.
 
 ## Coverage of compiled code
 
-On 2026-11-11, `make check-lean-corpus` checked the 479 programs it selects
-from this checkout: 1,150 functions read a dynamic payload, 2,573 times. Lean
-accepted every function, so every one of those reads is proved to be guarded,
-in about 90 seconds with four workers. An earlier sweep found the two forms
+On 2026-11-11, `make check-lean-corpus` checked the 480 programs it selects
+from this checkout: 1,153 functions read a dynamic payload, 2,579 times. Lean
+accepted every function, so every one of those reads is proved to be guarded.
+The same run proved all 7,500 of their [unchecked accesses](ACCESS.md), in about
+250 seconds with two workers. An earlier sweep found the two forms
 this needed: slice bounds of an `Any` value and `sum()` of `Any` values read int
 payloads that no tag test guarded (their compiler guards are
 [#1227](https://github.com/den-run-ai/pystachy/pull/1227)), and two length-hint

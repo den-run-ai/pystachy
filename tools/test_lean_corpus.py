@@ -122,16 +122,22 @@ class CorpusRunTests(unittest.TestCase):
 
     def test_named_programs_are_inspected_and_every_read_is_proved(self):
         completed, report = self.run_tool("tests/programs/inference/dynany_slices.py",
-                                          "tests/programs/strings/bom.py")
+                                          "tests/programs/strings/bom.py",
+                                          "tools/lean_boundary/examples/unchecked_accesses.py")
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
         self.assertEqual(report["status"], "accepted")
         records = {record["program"]: record for record in report["programs"]}
         dynamic = records["tests/programs/inference/dynany_slices.py"]["totals"]
         self.assertGreater(dynamic["reads"], 0)
         self.assertEqual(dynamic["proved_reads"], dynamic["reads"])
+        # (the same snapshots' unchecked list reads and dict entries are proved too)
+        accesses = records["tools/lean_boundary/examples/unchecked_accesses.py"]["totals"]
+        self.assertGreater(accesses["accesses"], 0)
+        self.assertEqual(report["totals"]["proved_accesses"], report["totals"]["accesses"])
         self.assertEqual(records["tests/programs/strings/bom.py"]["totals"]["reads"], 0)
-        self.assertEqual(report["totals"]["programs"], 2)
-        self.assertIn("2 programs", completed.stdout)
+        self.assertEqual(report["totals"]["programs"], 3)
+        self.assertIn("3 programs", completed.stdout)
+        self.assertIn("unchecked accesses proved", completed.stdout)
 
     def test_a_namespace_packages_dynamic_module_is_selected_and_proved(self):
         with tempfile.TemporaryDirectory() as temporary:
