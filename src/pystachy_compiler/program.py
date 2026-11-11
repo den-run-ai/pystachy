@@ -315,8 +315,35 @@ def gen_init_template(self, st: Node) -> bool:
                     return True  # (also *args or **kwargs without an annotation, or with Any, which only a template takes)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
-            if self.makes_tmpl(d.kids[2]):
+            fixed: dict[str, bool] = {}
+            for b in st.kids[0].kids:
+                if b.kind == "annassign" and b.kids[0].kind == "name" and self.fixed_ann(b.kids[1]):
+                    fixed[b.kids[0].s] = True
+            if self.init_makes_tmpl(d.kids[2], ps[0].s if len(ps) > 0 else "", fixed):
                 return True  # (a field may hold an object of a class template: typed where the object is made)
+    return False
+
+def gen_fixed_ann(self, a: Node) -> bool:
+    # does annotation a give a field a type of its own: no Any, object or class template (whose
+    # specializations are types of their own, see tmpl_ann), as init_template requires of the
+    # annotations of __init__'s parameters
+    if a.kind == "str":
+        a = self.parse_expr(a.s)
+    return a.kind != "noann" and not self.any_in([a]) and not (a.kind == "name" and a.s == "object") and not self.tmpl_ann(a)
+
+def gen_init_makes_tmpl(self, n: Node, me: str, fixed: dict[str, bool]) -> bool:
+    # makes_tmpl for __init__'s statements n, me its first parameter, but for the value it stores into
+    # a field of me that the class body, or the store itself, annotates with a type of its own
+    # (fixed_ann, fixed): the field takes the object as that type, as a store by another method does
+    if (n.kind == "assign" or n.kind == "annassign") and len(n.kids) == (2 if n.kind == "assign" else 3):
+        t = n.kids[0]
+        if t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s == me and (t.s in fixed or (n.kind == "annassign" and self.fixed_ann(n.kids[1]))):
+            return False
+    if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.tmpl or (n.kids[0].s == "iter" and len(n.kids) == 2 and ITERS + "$list_iterator" in self.classes)):
+        return True
+    for k in n.kids:
+        if self.init_makes_tmpl(k, me, fixed):
+            return True
     return False
 
 def gen_template_fix(self, cs: list[Node]) -> str:
