@@ -5,6 +5,8 @@ CPython files, CPython modules with marked edits, and subset implementations of 
 CPython writes in C. All of them remain valid Python. A few modules, such as `sys`, `os` and
 `math`, are built into the compiler instead. Importing a module does not mean that every API in
 it works: each module supports its own subset, which compiles with the program that uses it.
+Native `zip`, `map`, `filter`, `enumerate` and `reversed` values can be passed directly to
+iterator consumers such as `itertools.islice`; their source and item types stay concrete.
 
 | Question | Reference |
 |---|---|

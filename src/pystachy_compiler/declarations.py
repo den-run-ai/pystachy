@@ -2445,6 +2445,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return "str"
         if c == "open":
             return "file"
+        if c in ["zip", "enumerate", "map", "filter", "reversed"] and not self.bound(c) and self.compiling:
+            return self.guess_iterator_value(e, f)
         if c == "iter" and len(e.kids) == 2 and not self.bound(c) and self.compiling:
             return self.guess_iter(e.kids[1], f)
         if c == "next" and (len(e.kids) == 2 or len(e.kids) == 3) and not self.bound(c) and self.compiling:
@@ -2503,6 +2505,55 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return b
     return ""
 
+def gen_guess_iterator_value(self, e: Node, f: FnInfo) -> str:
+    # Constructor fields need the same concrete adapter type as value lowering.
+    # Guessing never evaluates arguments or emits a diagnostic for a bad call.
+    name = e.kids[0].s
+    args = e.kids[1:]
+    if any(a.kind in ["starred", "dstar"] or (a.kind == "kw" and not (name == "enumerate" and a.s == "start")) for a in args):
+        return ""
+    ts: list[str] = []
+    adapter = ""
+    if name == "enumerate" and 1 <= len(args) <= 2 and args[0].kind != "kw":
+        ts = [self.guess_iter(args[0], f), "int"]
+        adapter = "enumerate_iterator"
+    elif name == "filter" and len(args) == 2:
+        fn = "None" if args[0].kind == "None" else self.guess(args[0], f)
+        ts = [self.guess_iter(args[1], f)] if fn == "None" else [fn, self.guess_iter(args[1], f)]
+        adapter = "filter_truth_iterator" if fn == "None" else "filter_iterator"
+    elif name == "zip" or (name == "map" and len(args) >= 2):
+        sources = args[1:] if name == "map" else args
+        its = [self.guess_iter(a, f) for a in sources]
+        if any(t == "" or t.startswith("!") for t in its):
+            return ""
+        packed = self.ctype("tuple", its)
+        ts = [self.guess(args[0], f), packed] if name == "map" else [packed]
+        adapter = "map_iterator" if name == "map" else "zip_iterator"
+    elif name == "reversed" and len(args) == 1:
+        t = unopt(self.guess(args[0], f))
+        if t == RANGEC:
+            adapter = "reversed_range_iterator"
+            ts = ["int", "int", "int"]
+        elif t == "str":
+            adapter = "reversed_str_iterator"
+            ts = [t]
+        elif is_dict(t):
+            adapter = "dict_reversekeyiterator"
+            ts = [t]
+        elif is_list(t):
+            adapter = "list_reverseiterator"
+            ts = [t]
+        else:
+            if is_tuple(t) and t != "tuple[]" and all(x == targs(t)[0] for x in targs(t)):
+                t = self.ctype("list", [targs(t)[0]])
+            if is_list(t) or is_vtuple(t) or t == "bytes":
+                adapter = "reversed_iterator"
+                ts = [t]
+    c = ITERS + "$" + adapter
+    if adapter == "" or c not in self.tmpl or any(t == "" or t.startswith("!") for t in ts):
+        return ""
+    return self.specialize(c, ts, {}, False, {})
+
 def gen_guess_iter(self, a: Node, f: FnInfo) -> str:
     # the type of iter(a) (guess, see iter_): a file itself, an object's iterator object, or the
     # specialization of lib/_pystachy_iterators.py's class for a builtin container
@@ -2533,6 +2584,8 @@ def gen_guess_iter(self, a: Node, f: FnInfo) -> str:
         name = "list_iterator"
     elif t == "str":
         name = "str_ascii_iterator"
+    elif t == "bytes":
+        name = "bytes_iterator"
     elif is_tuple(t) and t != "tuple[]" and len([x for x in targs(t) if x != targs(t)[0]]) == 0:
         name = "tuple_iterator"
         t = self.ctype("list", [targs(t)[0]])

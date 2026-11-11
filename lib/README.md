@@ -219,8 +219,9 @@ compiler's, which only it may import. `_collections_abc` has no file here: it is
 `collections.abc`, as CPython's `collections` makes it `collections.abc`.
 
 `_pystachy_iterators.py` holds the iterator classes of `iter()` over builtin containers
-(`list_iterator`, `dict_keyiterator`, ...). The compiler loads it for a program that calls
-`iter()`; programs do not import it. See [iterators](../docs/language/semantics.md#iterators). In
+(`list_iterator`, `dict_keyiterator`, ...), plus native `zip`, `enumerate`, `map`, `filter`
+and `reversed` adapters. The compiler loads it for a program that calls `iter()` or keeps an
+adapter as a value; programs do not import it. Direct loops retain their existing lowering. See [iterators](../docs/language/semantics.md#iterators). In
 a program where a module opts in to [promoting ints](../docs/python-int.md), its classes read a
 container's ints as that module does (`specs.READ_HELPERS`).
 

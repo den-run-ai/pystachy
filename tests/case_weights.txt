@@ -353,7 +353,7 @@ default rejection 3
 3 tests/errors/containers/list_add_nested.py
 3 tests/errors/containers/list_extend_nested.py
 3 tests/errors/containers/list_iadd_nested.py
-4 tests/errors/containers/map_value.py
+4 tests/programs/generators/map_value.py
 3 tests/errors/containers/max_not_iterable.py
 4 tests/errors/containers/min_key_none.py
 26 tests/errors/containers/namedtuple_subclass_field_defaults.py
@@ -531,7 +531,7 @@ default rejection 3
 4 tests/errors/generators/iterator_cycle.py
 3 tests/errors/generators/iterator_items_no_iter.py
 3 tests/errors/generators/iterator_join_not_iterable.py
-3 tests/errors/generators/iterator_nested.py
+3 tests/programs/generators/iterator_nested.py
 3 tests/errors/generators/iterator_no_next.py
 2 tests/errors/generators/iterator_private_dict_key.py
 3 tests/errors/generators/iterator_private_dict_next.py
@@ -1119,7 +1119,7 @@ default rejection 3
 22 tests/errors/library/lib_itertools_star_list.py
 23 tests/errors/library/lib_itertools_starmap_list.py
 23 tests/errors/library/lib_itertools_type_name.py
-22 tests/errors/library/lib_itertools_zip_argument.py
+22 tests/programs/library/lib_itertools_zip_argument.py
 4 tests/errors/library/lib_keyword_nonstring.py
 11 tests/errors/library/lib_operator_attrgetter_missing.py
 11 tests/errors/library/lib_operator_attrgetter_names.py

@@ -48,6 +48,7 @@ from src.pystachy_compiler.utils import (
     contains_typed_vtuple,
     disjoint_sets,
     elem,
+    gelem,
     fbits,
     fconst,
     fmt_index,
@@ -3080,6 +3081,8 @@ def gen_next_type(self, t: str) -> str:
     # __iter__'s iterator's (the list's items, see iter_ret); "" where that is not known
     seen: list[str] = []
     while t not in seen:
+        if is_gen(t):
+            return gelem(t)
         seen.append(t)
         ms = self.classes[t].methods if t in self.classes and t not in self.nts else {}
         m = "__next__" if "__next__" in ms else "__iter__"

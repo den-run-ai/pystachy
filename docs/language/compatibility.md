@@ -123,20 +123,18 @@ no effect. The shared runtime cache is independent of this setting.
   constant displays do not reuse CPython's frozenset constants or `.pyc` layouts.
   Identity-hashed objects depend on addresses in both runtimes. Use `sorted()`
   when order matters.
-- **Set callbacks may run later.** `min()`/`max()` snapshot a set before calling
-  `key=`, so size changes are not detected. `intersection()` and
+- **Set intersection callbacks may run later.** `intersection()` and
   `intersection_update()` consume a generator expression before testing its items;
   CPython interleaves generation and testing.
 - **Hash callbacks can repeat.** `dict.fromkeys(set_of_objects)` recomputes user
   hashes; CPython reuses the set's hashes. `cache()`/`lru_cache()` may hash an
   argument more than once per call; CPython does so once.
-- **Some consumers materialize inputs.** `min()`/`max()` stream scalar generator
-  expressions and iterator objects (`int`, `float`, `bool`, `str`) without keywords,
-  and iterator objects with `key=`. Other types and generator expressions with
-  `key=` materialize first. With `default=`, lists and dynamic inputs stay live;
-  other inputs materialize, as do those of `math.fsum()`/`math.prod()`.
-  Later input effects or exceptions can therefore
-  precede a comparison error or `fsum()` overflow.
+- **Some consumers materialize inputs.** `min()`/`max()` stream concrete iterator
+  objects, generator values, dictionaries and sets, including `key=` and `default=`;
+  lists and dynamic inputs stay live. Direct generator expressions and direct adapter
+  syntax with `key=` or `default=` still materialize first, as do some
+  `math.fsum()`/`math.prod()` inputs. In those remaining cases, later input effects or
+  exceptions can precede a comparison error or `fsum()` overflow.
 
 ### Functions and object identity
 
@@ -477,8 +475,8 @@ See [object protocols](semantics.md#object-protocols) and
   classes, or calling that method directly. Omit the annotation for iterator-object returns.
   Non-generator `__reversed__` has the same source restriction and must return `iter(xs)`
   or `reversed(xs)`.
-- **Iterator operations:** `iter(callable, sentinel)`; `iter()` of `enumerate`, `zip`, `map`,
-  `filter` or `reversed`; `next(it, default)` without a common item/default type; iterator
+- **Iterator operations:** `iter(callable, sentinel)`; `next(it, default)` without a common
+  item/default type; iterator
   classes lacking `__iter__` in comprehensions or `str.join`; inheritance-hierarchy
   constructors calling `iter()` or accepting `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
@@ -654,8 +652,9 @@ See [user exception classes](semantics.md#user-exception-classes) and
 
 ### Builtins
 
-- **Iterator wrappers:** nested `enumerate`, `zip` or `reversed` wrappers; `zip(strict=...)`.
-  Materialize the inner iterator first. `reversed(range(...))` works.
+- **Iterator wrappers:** `zip(strict=...)`, `enumerate(iterable=...)`, iterator pickling
+  and `__length_hint__`. Nested and stored adapters are supported; their source and item
+  types remain concrete. Other dictionary view and generator lifetime deviations remain.
 - **Ranges:** ordering, attribute assignment, non-int/bool membership, non-int indexing /
   `index` / `count`, equality with optional nonranges, `dir` and `vars`.
 - **Sentinels:** `object()` arguments, attribute assignment, equality with user/exception

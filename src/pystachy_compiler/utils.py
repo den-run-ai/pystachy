@@ -216,8 +216,25 @@ class RtFn:
         self.rq = "R?" in fx  # and R? (R when it holds a recursive alias's edge)
 
 
+def iterator_name(t: str) -> str:
+    # Several concrete payload layouts implement one builtin iterator family.
+    name = short(t)
+    if t.startswith("_pystachy_iterators$"):
+        if name in ["enumerate_iterator", "zip_iterator", "map_iterator"]:
+            return name[:-9]
+        if name in ["filter_iterator", "filter_truth_iterator"]:
+            return "filter"
+        if name in ["reversed_iterator", "reversed_str_iterator"]:
+            return "reversed"
+        if name == "reversed_range_iterator":
+            return "range_iterator"
+    return name
+
+
 def tname(t: str) -> str:
     # the CPython name of a type, for error messages
+    if t.startswith("_pystachy_iterators$"):
+        return iterator_name(t)
     if t == "None":
         return "NoneType"
     if t == "int+":

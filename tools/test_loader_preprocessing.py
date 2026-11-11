@@ -21,6 +21,32 @@ def parsed(source):
     return Parser(Lexer(source, 1).file()).module()
 
 
+class NativeIteratorLoadingTests(unittest.TestCase):
+    def test_direct_consumers_keep_their_existing_lowering(self):
+        sources = [
+            "for a, b in zip([1], [2]):\n    print(a, b)\n",
+            "print(list(enumerate([1])))\n",
+            "print(sum(map(int, [1, 2])))\n",
+            "print(list(reversed([1, 2])))\n",
+            "print([x for x in enumerate([1])])\n",
+        ]
+        for source in sources:
+            with self.subTest(source=source):
+                self.assertFalse(analysis.iterator_values(parsed(source)))
+
+    def test_escaping_and_nested_adapters_load_native_types(self):
+        sources = [
+            "saved = zip([1], [2])\n",
+            "print(next(map(int, [1])))\n",
+            "print(list(enumerate(zip([1], [2]))))\n",
+            "for value in filter(None, [0, 1]):\n    print(value)\n",
+            "class C:\n    def __init__(self, xs):\n        self.it = reversed(xs)\n",
+        ]
+        for source in sources:
+            with self.subTest(source=source):
+                self.assertTrue(analysis.iterator_values(parsed(source)))
+
+
 class ImportFileKindTests(unittest.TestCase):
     @staticmethod
     def candidate(path, kind, target):

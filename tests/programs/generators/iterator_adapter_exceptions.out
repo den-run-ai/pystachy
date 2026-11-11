@@ -1,0 +1,13 @@
+(1, 10)
+zip pause
+(3, 20) (4, 30)
+zip finished
+3
+map callback
+9 None
+1
+filter predicate
+3 None
+(10, 1)
+None (11, 3)
+[exit 0]
