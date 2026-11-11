@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 import unittest
+from unittest.mock import patch
 
 import yaml
 
@@ -298,6 +299,51 @@ class LimitTests(unittest.TestCase):
             "python3 -m unittest discover -s tools -p test_lint_controls.py",
             "python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'",
         ])
+
+    def test_generated_asan_runs_once_in_existing_x86_contracts_job(self):
+        found = workflows()
+        job = found["ci.yml"]["jobs"]["verification"]
+        controls = [step for step in job["steps"] if "test_runtime_asan.py" in step.get("run", "")]
+        self.assertEqual(len(controls), 1)
+        control = controls[0]
+        self.assertEqual(control["if"], "matrix.group == 'contracts' && matrix.machine == 'x86_64'")
+        self.assertEqual(job["env"]["PYSTACHY_LLVM"], "/usr/lib/llvm-18/bin")
+        self.assertEqual(control["run"].splitlines(), [
+            "sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev",
+            "python3 -m unittest discover -s tools -p test_runtime_asan.py -v",
+        ])
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            self.assertEqual(sum(row["group"] == "contracts" and row["machine"] == "x86_64"
+                                 for row in matrix_rows(job, event)), 1)
+        self.assertNotIn("continue-on-error", control)
+        self.assertNotIn("continue-on-error", job)
+        toolchains = [step for step in job["steps"] if "tools/setup.sh --minimal" in step.get("run", "")]
+        self.assertEqual(len(toolchains), 1)
+        self.assertLess(job["steps"].index(toolchains[0]), job["steps"].index(control))
+
+    def test_lint_runtime_discovery_omits_only_asan_and_preserves_failure(self):
+        steps = workflows()["lint.yml"]["jobs"]["lint"]["steps"]
+        controls = [step for step in steps if "test_runtime_*.py" in step.get("run", "")]
+        self.assertEqual(len(controls), 1)
+        control = controls[0]
+        self.assertNotIn("if", control)
+        self.assertNotIn("continue-on-error", control)
+        self.assertIn('PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 -', control["run"])
+        self.assertIn("<<'PY'\n", control["run"])
+        script = control["run"].split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+        paths = [*sorted((ROOT / "tools").glob("test_runtime_*.py")), Path("test_runtime_added.py")]
+        self.assertIn("test_runtime_asan.py", [path.name for path in paths])
+        expected = [path.name for path in paths if path.name != "test_runtime_asan.py"]
+        for success in (True, False):
+            with self.subTest(success=success), patch.object(Path, "glob", return_value=iter(paths)), \
+                    patch.object(unittest.defaultTestLoader, "discover", return_value=unittest.TestSuite()) as discover, \
+                    patch.object(unittest, "TextTestRunner") as runner:
+                runner.return_value.run.return_value.wasSuccessful.return_value = success
+                with self.assertRaises(SystemExit) as raised:
+                    exec(compile(script, "<Lint runtime discovery>", "exec"), {})
+                self.assertEqual(raised.exception.code, not success)
+                self.assertCountEqual(discover.call_args_list,
+                                      [unittest.mock.call("tools", pattern=name) for name in expected])
 
     def test_program_cache_probe_runs_once_per_machine_outside_compact_gc(self):
         # Full runs probe on both architectures' runtime-cache jobs; a pull request probes once,

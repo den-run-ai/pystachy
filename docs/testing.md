@@ -894,6 +894,15 @@ unittest processes. Lint waits for both, prints their logs separately and fails 
 either suite fails; the same coverage runs for documentation PRs, main and manual runs.
 The coordinator preserves normal SIGINT handling, cancels both process groups and
 reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
+
+Generated-user and generated-runtime ASan controls run in the existing x86-64
+`contracts` job on code PRs, main pushes and manual runs, using LLVM 18 and its
+compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;
+Lint discovers every other `test_runtime_*.py` file. This preserves the code
+verification coverage with the same jobs, workers and 15-minute timeouts.
+The ASan step is required by the contracts job's result and the aggregate gate;
+documentation-only PRs use the existing plan that skips native verification.
+
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
 the Git index and tests the gate against temporary repositories. It checks tracked
 files even when ignored; local untracked experiments are outside the merge gate.
