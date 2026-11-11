@@ -5,6 +5,10 @@ from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import clone, is_tuple, is_union, targs, typestr, unopt
 
 
+# subject types that are never sequences to a sequence pattern (CPython excludes str and bytes)
+SEQ_SCALARS: list[str] = ["int", "int+", "float", "bool", "str", "bytes", "None"]
+
+
 def pattern_then(test: Node, tail: Node, line: int) -> Node:
     # Only test's compiler-generated conjunction is flattened. Its operands
     # already produce condition booleans, so reassociation preserves callback
@@ -55,6 +59,19 @@ def unsupported_reason(node: Node) -> str:
     return "complex literal patterns are not supported"
 
 
+def wildcard(pattern: Node) -> bool:
+    return pattern.kind == "pas" and pattern.s == "" and len(pattern.kids) == 0
+
+
+def leaf_pattern(pattern: Node) -> bool:
+    # a pattern that only compares or binds its subject: no nested sequence or class pattern
+    if pattern.kind == "pvalue" or pattern.kind == "pconst":
+        return True
+    if pattern.kind == "pas" or pattern.kind == "por":
+        return all(leaf_pattern(p) for p in pattern.kids)
+    return False
+
+
 def pattern_captures(pattern: Node, out: list[str]) -> None:
     # The retained tree has already had private names mangled. OR alternatives
     # bind the same names, but may encounter them in different orders.
@@ -98,9 +115,22 @@ def pattern_test(pattern: Node, subject: Node, counter: list[int], captures: dic
         if len(stars) > 0:
             return mk("matchunsupported", unsupported_reason(stars[0]), line, [])
         parts = [mk("matchseq", str(len(pattern.kids)), line, [clone(subject)])]
+        items: list[Node] = []
         for i in range(len(pattern.kids)):
             item = mk("index", "", line, [clone(subject), mk("int", str(i), line, [])])
-            parts.append(pattern_test(pattern.kids[i], item, counter, captures))
+            if leaf_pattern(pattern.kids[i]) and not wildcard(pattern.kids[i]):
+                # CPython unpacks every item (UNPACK_SEQUENCE) before it matches the first
+                # subpattern; reading a fixed tuple's items first runs no code. Staged reads
+                # leave the comparisons free of loads, which branch-free code can then join.
+                # A nested sequence or class pattern keeps its item's index expression, from
+                # which pattern_type knows the item's type before any of it is compiled.
+                counter[0] += 1
+                name = f"__pys_match_item_{line}.{counter[0]}"
+                parts.append(mk("matchbind", "", line, [mk("walrus", name, line, [item])]))
+                item = made_var(name, line)
+            items.append(item)
+        for i in range(len(pattern.kids)):
+            parts.append(pattern_test(pattern.kids[i], items[i], counter, captures))
         return conjunction(parts, line)
     if k == "pclass":
         cls = pattern.kids[0]
@@ -214,7 +244,7 @@ def pattern_static(self, node: Node) -> int:
         return -1
     if is_tuple(t):
         return 1 if len(targs(t)) == int(node.s) else 0
-    if t in ["int", "int+", "float", "bool", "str", "bytes", "None"]:
+    if t in SEQ_SCALARS:
         return 0
     self.err(f"sequence patterns require a fixed tuple subject, got {typestr(t)}")
     return -1
@@ -255,6 +285,8 @@ def pattern_expr(self, node: Node) -> Val:
         return self.expr(mk("cmp", "==", node.line, [self.vnode(left), self.vnode(right)]), "bool")
     if k == "matchseq":
         value = self.expr(node.kids[0], "")
+        if value.t in SEQ_SCALARS:
+            return Val("false", "bool")  # (as pattern_static decides where it knows the type)
         if not is_tuple(value.t):
             self.err(f"sequence patterns require a fixed tuple subject, got {typestr(value.t)}")
         return Val("true" if len(targs(value.t)) == int(node.s) else "false", "bool")

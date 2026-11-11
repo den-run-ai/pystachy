@@ -61,7 +61,9 @@ positional fields follow generated `__match_args__`, including `init=False`, `kw
 and `match_args=False`; keywords can select initialized plain fields. Field values are
 obtained before their subpatterns run, so an equality callback cannot change a later
 field's already selected value. Captures retain their concrete storage; the lowering
-uses ordinary assignments and branches, without a runtime pattern matcher.
+uses ordinary assignments and branches, without a runtime pattern matcher. Where a case's
+test is true its captures are bound, so its guard and body read them without an
+unbound-local check.
 
 Mapping patterns, starred sequence patterns, list or other general sequence subjects,
 complex literals, arbitrary class patterns, dataclass hierarchies, custom `__match_args__`
@@ -137,10 +139,11 @@ module code around it, also from a comprehension or generator expression (PEP 57
 `v`. Tests such as `if (m := pattern.match(s)) is not None:` narrow `x` as a test of the name
 does. Where the expression may not have run (after `and` or `or`, in one arm of a conditional
 expression, in a comprehension over nothing), a later read of `x` raises `UnboundLocalError` or
-`NameError`. This also covers assignment expressions in lambda defaults: the defaults run
-when the lambda is created. A comprehension's filters run before its element. An unannotated
-template parameter specialized to `None` cannot be rebound by a conditional assignment
-expression; annotate that parameter as `T | None` to allow both values.
+`NameError`. This also covers assignment expressions in lambda defaults: the defaults run when
+the lambda is created. Where an `if` statement's test is true, each operand of its `and` has
+run, so the branch reads what they bound without that check. A comprehension's filters run
+before its element. An unannotated template parameter specialized to `None` cannot be rebound by
+a conditional assignment expression; annotate that parameter as `T | None` to allow both values.
 
 `is` and `is not` are supported for identity-bearing values, not numbers.
 Booleans use their two fixed values, so `flag is True` behaves as equality. A number or bool is
