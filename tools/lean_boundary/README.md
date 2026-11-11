@@ -170,6 +170,10 @@ explicit role:
   Loads and stores become copies or unknown assignments; a null store (an
   unbound local, or an identity box not made yet) is an unknown assignment. A
   stack tuple's register is a tuple value, not storage.
+- A numeric parameter's identity companion (`%aidN`) also starts with an unknown
+  tag, since the caller's box may be null. The compiler's numeric-identity
+  predicate identifies the eligible parameters, including optional and joined
+  numeric types; a nonexistent companion or a non-box annotation is malformed.
 - A slot paired with a box, because the box was loaded from or stored into it and
   no path since writes the slot, is guarded together with the box: a later reload
   of the slot keeps the fact. Paths on which the two tests would disagree stop.
