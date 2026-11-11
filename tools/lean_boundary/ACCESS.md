@@ -108,9 +108,13 @@ with several predecessors is reached through a jump of its own from each.
 
 ## Coverage of compiled code
 
-On 2026-11-11, the hosted compiler compiled every differential test program and deviation of
-this checkout, 2,407 programs; 1,174 of them have unchecked accesses, 84,731 in 16,062
-functions. Lean accepted every function but one, proving 84,730 accesses. The exception is
+The historical sweep recorded on 2026-11-11 at
+[`12cca46d`](https://github.com/den-run-ai/pystachy/commit/12cca46dcffd8ee9290d9cf362ba3f4bafb34511)
+compiled every differential test program and deviation of that revision with the hosted
+compiler: 2,407 programs; 1,174 of them have unchecked accesses, 84,731 in 16,062
+functions. Lean accepted every function but one, proving 84,730 accesses. These counts
+predate the merge of released alpha.4 main and the negated-guard adapter fix; fresh corpus
+qualification of the refreshed tree remains pending. The exception in the historical sweep is
 `fib_memo`'s `fib` in [`closures.py`](../../tests/programs/language/closures.py): it loads its
 captured dict from the closure's cell for `k in memo` and again for `memo[k]`, and the adapter
 does not track cells, so it cannot tell that the second load gives the dict whose entry the

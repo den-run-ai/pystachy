@@ -931,11 +931,10 @@ def normalize_program(snapshot, function, effects_of=None):
     def comparison(value):
         op = definitions.get(value)
         if op is None or len(op["operands"]) != 2:
-            if op is not None and op["op"] == "scalar.bin" and op["text"] == "xor" and len(op["operands"]) == 2:
-                if op["operands"][1]["value"] == "true":
-                    inner = comparison(op["operands"][0]["value"])
-                    return None if inner is None else (inner[0], not inner[1])
             return None
+        if op["op"] == "scalar.bin" and op["text"] == "xor" and op["operands"][1]["value"] == "true":
+            inner = comparison(op["operands"][0]["value"])
+            return None if inner is None else (inner[0], not inner[1])
         a, b = (operand_of(operand["value"]) for operand in op["operands"])
         if a is None or b is None:
             return None

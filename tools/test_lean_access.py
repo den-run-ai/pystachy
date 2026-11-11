@@ -35,6 +35,56 @@ def op(kind, operands=(), results=(), text="", typ="", targets=(), immediate=0, 
             "targets": list(targets)}
 
 
+class NegatedComparisonTests(unittest.TestCase):
+    @staticmethod
+    def snapshot(kind, negations, safe_branch=True):
+        if kind == "list":
+            prefix = [op("list.len", [("%a0", "list[int]")], [1], typ="int"),
+                      op("int.ucmp", [("%a1", "int"), ("%t1", "int")], [2], text="<", typ="bool")]
+            read = op("list.load", [("%a0", "list[int]"), ("%a1", "int")], [50, 51, 52, 53], typ="int")
+        else:
+            prefix = [op("rt", [("%a0", "dict[str,int]"), ("%a1", "str")], [1],
+                         text="dict.find", typ="int", descriptor="S"),
+                      op("num.cmp", [("%t1", "int"), ("-1", "int")], [2], text="!=", typ="bool")]
+            read = op("rt", [("%a0", "dict[str,int]"), ("%t1", "int")], [50], text="dict.val", typ="int")
+        flag = "%t2"
+        for index in range(negations):
+            number = 3 + index
+            prefix.append(op("scalar.bin", [(flag, "bool"), ("true", "bool")], [number], text="xor", typ="bool"))
+            flag = f"%t{number}"
+        # Both original comparisons hold exactly on the safe path. Each Boolean
+        # negation swaps that branch; the corruption selects its unsafe complement.
+        targets = ["read", "done"] if (negations % 2 == 0) == safe_branch else ["done", "read"]
+        prefix.append(op("cbr", [(flag, "bool")], targets=targets))
+        function = {"name": "guarded", "symbol": "@f.guarded", "recursion": {}, "slots": [],
+                    "blocks": [{"label": "entry", "handler": "", "operations": prefix},
+                               {"label": "read", "handler": "", "operations": [read, op("ret")]},
+                               {"label": "done", "handler": "", "operations": [op("ret")]}]}
+        return {"schema_version": 1, "stage": "typed-after", "status": "completed", "functions": [function]}
+
+    def test_negated_list_guard_preserves_safe_branch(self):
+        for negations in (0, 1, 2, 3):
+            with self.subTest(negations=negations):
+                candidate, metadata = normalize_snapshot(self.snapshot("list", negations), "@f.guarded")
+                self.assertEqual(metadata["unproved"], 0)
+                self.assertIsNone(explain(candidate))
+
+    def test_negated_missing_entry_guard_preserves_comparison_polarity(self):
+        for negations in (0, 1, 2, 3):
+            with self.subTest(negations=negations):
+                candidate, metadata = normalize_snapshot(self.snapshot("dict", negations), "@f.guarded")
+                self.assertEqual(metadata["unproved"], 0)
+                self.assertIsNone(explain(candidate))
+
+    def test_selecting_the_complement_cannot_justify_an_unchecked_access(self):
+        for kind in ("list", "dict"):
+            for negations in (0, 1, 2, 3):
+                with self.subTest(kind=kind, negations=negations):
+                    candidate, metadata = normalize_snapshot(self.snapshot(kind, negations, False), "@f.guarded")
+                    self.assertEqual(metadata["unproved"], 1)
+                    self.assertIsNotNone(explain(candidate))
+
+
 class SnapshotFixture(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -141,6 +191,14 @@ class ProvedCheckerTests(SnapshotFixture):
         self.assertEqual((fields["status"], code), ("accepted", 0), fields)
         self.assertEqual(fields["totals"]["proved_accesses"], 20)
         self.assertEqual(fields["totals"]["accesses"], 20)
+
+    def test_negated_guards_prove_only_the_safe_branch(self):
+        for kind in ("list", "dict"):
+            for negations in (0, 1, 2, 3):
+                for safe_branch in (False, True):
+                    with self.subTest(kind=kind, negations=negations, safe_branch=safe_branch):
+                        snapshot = NegatedComparisonTests.snapshot(kind, negations, safe_branch)
+                        self.assertEqual(self.verdict(snapshot, "@f.guarded"), safe_branch)
 
     def test_identical_functions_reuse_their_verdicts(self):
         # (a corpus's programs share library functions: their normalized nodes and the checker,
