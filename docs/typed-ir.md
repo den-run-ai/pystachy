@@ -549,14 +549,25 @@ before the next pass. Normal compilation does not add these verification scans.
 `unionslots` also splits private `int | None`, `float | None` and `bool | None`
 locals into a presence slot (zero or one) and a payload slot. Inferred None-first
 locals whose slot still has the provisional `opt[None]` type use the same checks.
-Stores must come from
-`None`, scalar `box` operations, or phis of those values. Loads may only test against
+Stores must come from `None`, scalar `box` operations, phis of those values,
+or the eligible dictionary lookup described below. Loads may only test against
 `None` or read the packed scalar payload; no nullable pointer is dereferenced to
 extract its parts. The payload stays as bits, so zero, `False`, negative zero and
-NaN remain distinct from absence. An optional parameter, call or dictionary-lookup
-result, an optional copy, an escaping or identity-sensitive pointer use, and a
+NaN remain distinct from absence. A plain scalar dictionary `get` result can also
+split when its default is `None` and it has exactly one private local consumer.
+The original `dict.getbox` is replaced by one `dict.find`, a presence test on the
+entry index, and an immediate `dict.val_or_zero` payload snapshot. A negative
+index produces zero without reading dictionary storage; absence is carried by
+the separate presence slot. Lookup callbacks, exceptions and evaluation order
+remain on the original call, before the payload snapshot. Dynamic-`Any` and
+promoting-int programs retain the existing representation.
+
+An optional parameter or other call result, an optional copy, a phi-produced
+lookup, a non-`None` default, an escaping or identity-sensitive pointer use, and a
 generator frame retain their boxes. Numeric identity companions remain unchanged.
-This uses the existing slot/phi rewrite and adds no runtime ABI or LLVM operation;
+This uses the existing typed slot/phi operations. The dictionary path adds the
+internal runtime entry `pys_dict_val_or_zero(Dict *, I)` and changes no object
+layout or public ABI.
 `PYSTACHY_OPT=-unionslots` disables both scalar-union and optional-local splitting.
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
