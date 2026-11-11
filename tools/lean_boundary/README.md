@@ -1,5 +1,8 @@
 # Lean payload-guard prototype
 
+The same Lean project also builds the [unchecked-access checker](ACCESS.md), which proves list
+reads within bounds and reused dict entries live.
+
 This optional developer tool checks the guards of `dyn.payload` operations in
 one selected function, or in every function, of a completed Pystachy typed-IR
 snapshot; `make check-lean-corpus` checks every such read of the dynamic-`Any`

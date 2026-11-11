@@ -1,6 +1,7 @@
 -- SPDX-License-Identifier: MIT
 import Lean
 import PystachyBoundary
+import PystachyAccess
 
 /- Fail the build if the public guarantees depend on an admitted proof, a
 custom assumption, or native computation trusted by the kernel. The three
@@ -9,7 +10,8 @@ open Lean in
 run_cmd do
   let allowed := #[``propext, ``Classical.choice, ``Quot.sound]
   for theoremName in #[``PystachyBoundary.check_iff,
-      ``PystachyBoundary.reachable_facts, ``PystachyBoundary.accepted_payload_safe] do
+      ``PystachyBoundary.reachable_facts, ``PystachyBoundary.accepted_payload_safe,
+      ``PystachyAccess.reachable_invariant, ``PystachyAccess.accepted_access_safe] do
     let axioms ← collectAxioms theoremName
     for axiomName in axioms do
       unless allowed.contains axiomName do
@@ -17,3 +19,4 @@ run_cmd do
     logInfo m!"{theoremName}: axiom audit passed ({axioms})"
 
 #print axioms PystachyBoundary.accepted_payload_safe
+#print axioms PystachyAccess.accepted_access_safe

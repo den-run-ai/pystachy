@@ -31,6 +31,7 @@ which checks each kind of change needs.
 | Inspect typed stages or a compiler diagnostic | [inspect_compiler.py](inspect_compiler.py) | Same-run typed snapshots, pass diffs and structured diagnostics in the [hosted inspection prototype](../docs/compiler-inspection.md). |
 | Check a dynamic payload's guard | [check_lean_boundary.py](check_lean_boundary.py), `make check-lean-boundary` | A [Lean prototype](lean_boundary/README.md) checks tag guards in a supported fragment of one exported function, or every function of a snapshot (`--all`); its IR normalization and runtime correspondence remain unproved. |
 | Prove every dynamic payload read of the test corpus | [check_lean_corpus.py](check_lean_corpus.py), `make check-lean-corpus` | Compiles each dynamic-`Any` test program with the hosted compiler and requires Lean to accept every function that reads a payload. |
+| Check unchecked list reads and dict entries | [check_lean_access.py](check_lean_access.py), `make check-lean-boundary` | A [Lean prototype](lean_boundary/ACCESS.md) proves each `list.load` index within its list's length and each dict or set entry it reads or writes live, in every function of a snapshot; its IR normalization and runtime contracts remain unproved. |
 | Check release/install tooling | `make test-install`, [release_smoke.py](release_smoke.py) | Installation unit tests and release-artifact checks described in the [release guide](../docs/releasing.md); release publication has additional gates. |
 
 For an import survey, use the CPython source directory for your installation:
