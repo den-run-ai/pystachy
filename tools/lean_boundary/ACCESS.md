@@ -42,7 +42,8 @@ its certificate, every reachable `load` reads an index within the current length
 every `value` uses a live entry of its dict, and every `deref` reads a non-null pointer, for all
 well-formed initial states, all nondeterministic choices and every finite execution. Values are
 64-bit integers; lists have lengths and dicts live entries, by address, and objects have fields
-by address, class and index. Each can change arbitrarily where the program may write them.
+by address, class and index. Each can change arbitrarily where the program may write them, a
+list's length to at most 2^62 items, which no memory holds.
 
 Facts relate values: equality, signed and unsigned order, a lower and an upper bound by a
 constant, a difference bound `a + k ≤ b`, `0 ≤ i < n`, an exact offset, inequality to a
@@ -59,9 +60,10 @@ class may view one object differently.
 
 Difference bounds and upper bounds prove `listguard`'s copies of range loops. A test before the
 loop, `stop <= len(xs) - c`, gives `stop + c ≤ n` for the length `n`; the loop's own test `i <
-stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is `0 ≤ j < n`. Where
-the stop is a constant, the loop's test bounds `i` above, the test before it bounds the length
-below, and the first must lie under the second.
+stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is `0 ≤ j < n`. A 1-based
+loop's test, `stop <= len(xs) + 1`, adds to a length, which with at most 2^62 items cannot wrap.
+Where the stop is a constant, the loop's test bounds `i` above, the test before it bounds the
+length below, and the first must lie under the second.
 
 The build checks 40 examples by kernel reduction: 13 shapes the compiler emits and 27
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
@@ -148,8 +150,8 @@ Not proved by this version:
 - The runtime contracts the adapter relies on: `RUNTIME`'s effects and the compiler's
   descriptor rule for `U?`, the function summaries in the snapshot, the unpacking checks, the
   lookups' and iteration steps' results, entry writes moving no entry, `list.slice` changing no
-  other list, `list.set` changing no length, and the `List` header layout. Effect summaries are
-  the compiler's own analysis.
+  other list, `list.set` changing no length, lists holding at most 2^62 items, and the `List`
+  header layout. Effect summaries are the compiler's own analysis.
 - Fields of one class at different indices being distinct memory, for any objects; fields of
   different classes are treated as possibly the same memory.
 - Null checks the `nullcheck` pass removes are not yet normalized: the model's `deref` node

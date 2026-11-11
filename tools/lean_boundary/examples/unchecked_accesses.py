@@ -121,6 +121,15 @@ def pairs(xs: list[int]) -> int:
     return s
 
 
+def shifted(xs: list[int]) -> int:
+    # listguard with a negative offset, a 1-based loop: xs[i - 1] for 1 <= i < len(xs) + 1, where
+    # the test before it finds the stop at most len(xs) + 1 (a length plus one never wraps)
+    s = 0
+    for i in range(1, len(xs) + 1):
+        s += xs[i - 1]
+    return s
+
+
 def main() -> None:
     cache = Cache()
     print(item([1, 2, 3], 1), last([4, 5]), pair([4, 5]), ends([1, 2, 3, 4]), total([1, 2, 3]))
@@ -130,7 +139,7 @@ def main() -> None:
     print(list(every_other(["a", "b", "c"])))
     smooth = [0.0] * 5
     smoothed([1.0, 2.0, 3.0, 4.0, 5.0], smooth)
-    print(smooth, pairs([1, 2, 3, 4, 5]))
+    print(smooth, pairs([1, 2, 3, 4, 5]), shifted([1, 2, 3]))
 
 
 main()

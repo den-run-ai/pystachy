@@ -35,6 +35,8 @@ def maxI64 : Int := 9223372036854775807
 def twoTo64 : Int := 18446744073709551616
 /-- Every live dict entry index is below this: a dict's entry table is far smaller. -/
 def entryBound : Int := 4611686018427387904
+/-- The most items a list holds: a list of 8-byte slots this long exceeds any memory. -/
+def maxLen : Int := 4611686018427387904
 
 def I64 (x : Int) : Prop := minI64 ≤ x ∧ x ≤ maxI64
 
@@ -204,6 +206,11 @@ def noWrap (facts : Facts) (src : Name) (k : Int) : Bool :=
   -- (src = b + c exactly, so src + k ≤ b where c + k ≤ 0: `n - 3 + 2` of a length)
   (decide (0 ≤ k) && facts.any fun f => match f with
     | .off a _ c => a == src && decide (c + k ≤ 0)
+    | _ => false) ||
+  -- (a length plus a constant: a list has at most maxLen items, as a guarded range loop's
+  -- `len(xs) + 1` of a 1-based index)
+  (decide (0 ≤ k) && decide (k ≤ maxI64 - maxLen) && facts.any fun f => match f with
+    | .len a _ => a == src
     | _ => false)
 
 /-- What a branch learns from its outcome. -/
@@ -407,7 +414,7 @@ structure Mem where
 /-- Values fit in 64 bits, lengths are nonnegative 64-bit integers and live entries
 are below `entryBound`. -/
 def WF (m : Mem) : Prop :=
-  (∀ n, I64 (m.val n)) ∧ (∀ a, 0 ≤ m.len a ∧ m.len a ≤ maxI64) ∧
+  (∀ n, I64 (m.val n)) ∧ (∀ a, 0 ≤ m.len a ∧ m.len a ≤ maxLen) ∧
   (∀ d e, m.live d e → 0 ≤ e ∧ e < entryBound) ∧ (∀ a c i, I64 (m.cell a c i))
 
 def Mem.set (m : Mem) (dst : Name) (v : Int) : Mem :=
@@ -459,7 +466,7 @@ inductive Move : Node → Mem → Nat → Mem → Prop where
   | length {dst l : Name} {next : Nat} {m : Mem} :
       Move (.length dst l next) m next (m.set dst (m.len (m.val l)))
   | lists {next : Nat} {m : Mem} {len : Int → Int} :
-      (∀ a, 0 ≤ len a ∧ len a ≤ maxI64) → Move (.lists next) m next { m with len := len }
+      (∀ a, 0 ≤ len a ∧ len a ≤ maxLen) → Move (.lists next) m next { m with len := len }
   | dicts {next : Nat} {m : Mem} {live : Int → Int → Prop} :
       (∀ d e, live d e → 0 ≤ e ∧ e < entryBound) → Move (.dicts next) m next { m with live := live }
   | find {dst d : Name} {next : Nat} {m : Mem} {e : Int} :
@@ -594,7 +601,8 @@ theorem noWrap_sound {m : Mem} {facts : Facts} {src : Name} {k : Int} (wf : WF m
   unfold noWrap at fits
   simp only [Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq, List.any_eq_true] at fits
   unfold I64 minI64 maxI64
-  rcases fits with (⟨k0, f, member, isBound⟩ | ⟨⟨k0, k1⟩, f, member, isBound⟩) | ⟨k0, f, member, isBound⟩
+  rcases fits with ((⟨k0, f, member, isBound⟩ | ⟨⟨k0, k1⟩, f, member, isBound⟩) | ⟨k0, f, member, isBound⟩) |
+    ⟨⟨k0, kMax⟩, f, member, isBound⟩
   · have holds := known f member
     cases f with
     | ge a g =>
@@ -631,6 +639,17 @@ theorem noWrap_sound {m : Mem} {facts : Facts} {src : Name} {k : Int} (wf : WF m
         simp only [Fact.Holds] at holds
         have := wf.1 b
         unfold I64 minI64 maxI64 at this
+        omega
+    | _ => simp at isBound
+  · have holds := known f member
+    cases f with
+    | len a l =>
+        simp only [beq_iff_eq] at isBound
+        subst isBound
+        simp only [Fact.Holds] at holds
+        have := wf.2.1 (m.val l)
+        unfold maxLen at this
+        unfold maxI64 maxLen at kMax
         omega
     | _ => simp at isBound
 
@@ -1060,7 +1079,8 @@ theorem move_sound {node : Node} {m : Mem} {target : Nat} {after : Mem} {facts :
       exact kept_set (fun f h => by simpa [survives] using h) f member
   | @length dst l next _ =>
       have range := wf.2.1 (m.val l)
-      refine ⟨wf_set wf ⟨by unfold minI64; omega, range.2⟩ dst, 0, by simp [edges], ?_⟩
+      unfold maxLen at range
+      refine ⟨wf_set wf ⟨by unfold minI64; omega, by unfold maxI64; omega⟩ dst, 0, by simp [edges], ?_⟩
       intro f member
       simp only [immediates, List.mem_append] at member
       rcases member with h | h

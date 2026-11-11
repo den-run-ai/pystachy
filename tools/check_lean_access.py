@@ -42,6 +42,7 @@ MAX_FACTS = 1048576
 MAX_CANDIDATE_BYTES = 64 * 1024 * 1024
 MIN_I64 = -(2 ** 63)
 MAX_I64 = 2 ** 63 - 1
+MAX_LEN = 2 ** 62  # (PystachyAccess.maxLen: the most items a list holds)
 # Runtime operations that read or write a dict's or set's entry by its index without checking
 # it (runtime.c: d->vals[e] and the like): the entry must be live. A write of an entry's value
 # moves no entry; deleting one is a dict write after it.
@@ -184,7 +185,10 @@ def no_wrap(facts, src, k):
     if 0 <= k <= 1 and any(f[0] in ("below", "found") and f[1] == src for f in facts):
         return True
     # (src = b + c exactly, so src + k <= b where c + k <= 0)
-    return 0 <= k and any(f[0] == "off" and f[1] == src and f[3] + k <= 0 for f in facts)
+    if 0 <= k and any(f[0] == "off" and f[1] == src and f[3] + k <= 0 for f in facts):
+        return True
+    # (a length plus a constant: a list has at most MAX_LEN items)
+    return 0 <= k <= MAX_I64 - MAX_LEN and any(f[0] == "len" and f[1] == src for f in facts)
 
 
 def cond_facts(cond, outcome):
@@ -673,6 +677,8 @@ def generation_premises(facts, node, fact):
             if 0 <= k <= 1 and f[0] in ("below", "found") and f[1] == src:
                 return [f]
             if 0 <= k and f[0] == "off" and f[1] == src and f[3] + k <= 0:
+                return [f]
+            if 0 <= k <= MAX_I64 - MAX_LEN and f[0] == "len" and f[1] == src:
                 return [f]
     return []
 

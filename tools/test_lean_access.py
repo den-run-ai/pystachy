@@ -83,7 +83,7 @@ class AdapterTests(SnapshotFixture):
         self.assertEqual({symbol: count for symbol, count in counts.items() if not symbol.startswith("@m._")},
                          {"@f.item": 1, "@f.last": 1, "@f.pair": 2, "@f.ends": 2, "@f.tail3": 4,
                           "@f.class_lookup": 2, "@f.total": 1, "@f.odd_lengths": 1, "@f.ranked": 1,
-                          "@f.counted": 3, "@f.global_lookup": 1, "@f.smoothed": 4, "@f.pairs": 4,
+                          "@f.counted": 3, "@f.global_lookup": 1, "@f.smoothed": 4, "@f.pairs": 4, "@f.shifted": 2,
                           "@m.Cache.lookup": 1})
 
     def test_selection_and_snapshot_header_are_checked(self):
@@ -140,8 +140,8 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_every_access_of_the_example_is_proved(self):
         fields, code = check_all(self.snapshot, CHECKER)
         self.assertEqual((fields["status"], code), ("accepted", 0), fields)
-        self.assertEqual(fields["totals"]["proved_accesses"], 28)
-        self.assertEqual(fields["totals"]["accesses"], 28)
+        self.assertEqual(fields["totals"]["proved_accesses"], 30)
+        self.assertEqual(fields["totals"]["accesses"], 30)
 
     def test_identical_functions_reuse_their_verdicts(self):
         # (a corpus's programs share library functions: their normalized nodes and the checker,
@@ -309,8 +309,14 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_a_guarded_copy_is_proved_and_each_corruption_of_its_tests_rejects(self):
         # (listguard: the copy's unchecked reads and stores of xs[i + c] hold where the tests
         # before the loop found the stop at most len(xs) - c)
-        for symbol in ("@f.smoothed", "@f.pairs"):
+        for symbol in ("@f.smoothed", "@f.pairs", "@f.shifted"):
             self.assertTrue(self.verdict(copy.deepcopy(self.snapshot), symbol), symbol)
+        # (a 1-based loop's test against len(xs) + 2 lets xs[i - 1] reach the length)
+        snapshot, function = self.selected("@f.shifted")
+        block, index = self.find(function, "scalar.bin", "sub")
+        self.assertEqual(block["operations"][index]["operands"][1]["value"], "-1")
+        block["operations"][index]["operands"][1]["value"] = "-2"
+        self.assertFalse(self.verdict(snapshot, "@f.shifted"))
 
         def further(symbol):
             # (the copy's read of xs[i + 1] reads xs[i + 2]: one past what the test allows)
@@ -381,7 +387,7 @@ class ProvedCheckerTests(SnapshotFixture):
         code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.total")
         self.assertEqual((code, report["status"], report["checked"]), (0, "accepted", True))
         code, report = run("--snapshot", str(self.snapshot_path), "--all")
-        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 28))
+        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 30))
         with tempfile.TemporaryDirectory() as temporary:
             emitted = Path(temporary) / "candidate.json"
             code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.item", "--emit", str(emitted))
