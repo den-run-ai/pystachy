@@ -858,6 +858,8 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
                 for r in i.r:
                     fn.n += 1
                     numbers[r] = fn.n
+                    if tmpname(r) in fn.fa:
+                        fn.fa[tmpname(fn.n)] = True
     fn.n += 1
     test = Blk(f"L{fn.n}")
     reads: dict[int, bool] = {}
@@ -905,6 +907,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
                 n += 1
             elif i.op == "cbr" and len([x for x in folds if x is i]) > 0:
                 d.a = [Val("true", "bool")]  # (listfast's check, which the test before the loop makes)
+                n += 1
             c.code.append(d)
         copies.append(c)
     # the tests, each list's in turn: stop <= len(xs) - c, for its largest c. A list the loop loads
