@@ -1,7 +1,7 @@
 # Null-check redundancy and closed-union guards
 
 `tools/check_lean_guards.py` checks two independently inventoried obligations with
-Lean's existing finite-tag certificate checker:
+Lean's existing certificate checkers:
 
 - **Closed unions:** every `union.tag`, `union.payload` and recognized machine
   read through a union-derived address. Tag reads require nonnullness; a payload
@@ -13,6 +13,8 @@ Lean's existing finite-tag certificate checker:
   manifest. Lean proves that the check's pointer is nonnull at that point in the
   **before-pass** control-flow graph. This proves redundancy in that graph; it
   does not prove that other changes to the after-pass graph preserve semantics.
+  The proof uses the [access model](ACCESS.md), else the finite-tag model; see
+  [Removed checks through memory](#removed-checks-through-memory).
   When identical check keys occur more than once and only some disappear, the
   removed locations are ambiguous: their validated count remains inventoried,
   but the pass record is explicitly unsupported and receives no proof credit.
@@ -23,6 +25,44 @@ certificate inference and executable checker, and builds a separate normalized
 graph. Certificates are untrusted; Lean checks each edge and obligation.
 `PystachyGuards.lean` specializes the existing safety theorem to nonnullness and
 exact member agreement. `GuardAudit.lean` audits all three public corollaries.
+
+## Removed checks through memory
+
+The pass treats two values as one where `Gen.canon` follows a load to the value an
+earlier load or store of the same address left there: a parameter's slot, a module
+global, an object's field or a closure cell, unless an operation between may write
+that memory. A removal can therefore depend on memory that the finite-tag model does
+not represent. Each nullcheck invocation's removals are first normalized to the
+access model's `deref` obligations (`check_lean_access.normalize_program` with the
+removal inventory and the pass's input function). There a field read is a cell of
+its object, class and index, a tracked global and a private slot hold what was last
+stored, and every write, call, callback, generator suspension and exception edge
+invalidates what it may change. `PystachyAccess.accepted_access_safe` then proves
+each pointer nonzero where its removed check ran. If that model does not accept the
+record, the finite-tag model of this module is tried; either acceptance is a Lean
+proof of every obligation of the record, and the report names the model.
+
+Effects come from runtime contracts and from the compiler's summaries joined with an
+independent scan of every function body (`check_lean_effects.py`), never from
+`Gen.canon`. The scan does not count stores to a function's own stack slots, to memory
+it allocated itself (an `alloc.fixed` object's fields, a fixed tuple's words and a
+literal-sized runtime allocation's words within its size) or through `%idret` where
+every direct call passes a slot of its caller there: none changes state that existed
+when the function was called. A write of one class's field keeps the fields of
+classes that the snapshot's `classes` table relates to it neither way (`Gen.disjoint`'s
+rule; `writeField`'s `unrelated` list). Lean refuses a write that lists its own class,
+and `accepted_write_progress` shows every accepted write can happen.
+
+[`examples/null_reloads.py`](examples/null_reloads.py) has removals justified through
+a field reloaded from the same object, a field reloaded across a write of another
+field, a global reloaded across a list write and a closure cell reloaded in a lambda.
+[`test_lean_null_access.py`](../test_lean_null_access.py) corrupts the pass input of
+each: a null store to the tested field, to the same field of another object or
+through a related or unknown class view, object-writing and unknown calls, raw and
+unknown stores, global writes, cell writes and callbacks, a reversed test, an
+exception edge around it and an escaped parameter slot. Lean must reject every one,
+while writes of another field, global or unrelated class and a store to an escaped
+slot of the function keep the proof.
 
 ## Run
 
@@ -48,9 +88,10 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI selection exercises seven inventoried union reads and six removed
-null checks in `examples/union_guards.py` and `examples/null_guards.py`. This small
-gate does not claim complete-corpus acceptance. Existing programs with calls,
+The bounded CI selection exercises seven inventoried union reads and eighteen
+removed null checks in `examples/union_guards.py`, `examples/null_guards.py` and
+`examples/null_reloads.py`. This small gate does not claim complete-corpus
+acceptance. Existing programs with calls,
 storage writes and container-result domains remain investigation targets rather
 than qualifying examples until those effects and representations are proved.
 
@@ -87,7 +128,8 @@ and `ubox_opt` construction retains its trusted fresh-allocation, fixed-tag and
 no-user-callback ABI contract. Runtime effect summaries are not used to exempt
 byte copies or other calls from this rule.
 
-Nullness has only two states, null and nonnull; no parameter is assumed nonnull.
+In the finite-tag model, nullness has only two states, null and nonnull; no
+parameter is assumed nonnull.
 Private storage is copied and overwritten explicitly. Must-pairing follows a
 loaded immutable SSA value and its private slot only until a write, redefinition,
 escape or incompatible join. Entry-only slot aliases additionally require a
@@ -96,7 +138,8 @@ handler. An exception before initialization cannot borrow the parameter's facts.
 Calls cannot mutate nonescaping local slots; escaped or external storage has no
 retained facts. A union loaded from such storage additionally permits null: its
 load annotation is not accepted as initialization proof. Closure-cell correlation
-and hidden interprocedural storage aliases are outside this abstraction.
+and hidden interprocedural storage aliases are outside this abstraction; the access
+model covers removals that need closure cells, fields or globals.
 
 The graph includes branch, switch, check-failure, invoke/unwind and handler edges.
 A handler conservatively receives an edge before every covered operation. Pure

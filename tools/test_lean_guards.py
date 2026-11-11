@@ -8,8 +8,10 @@ import sys
 import tempfile
 import unittest
 
+import check_lean_access as access
 import check_lean_boundary as boundary
 import check_lean_guards as guards
+from check_lean_effects import summaries
 
 ROOT = Path(__file__).resolve().parent.parent
 CHECKER = boundary.DEFAULT_CHECKER
@@ -68,6 +70,14 @@ class GuardTests(unittest.TestCase):
     def union(self, snap):
         return next(fn for fn in snap["functions"] if fn["name"] == "narrow")
 
+    def removal_proof(self, snap, fn, removed):
+        """Both Lean models' verdict on removed checks, as check_all reaches them."""
+        if not (CHECKER.is_file() and access.DEFAULT_CHECKER.is_file()):
+            if os.environ.get("LEAN_BOUNDARY_REQUIRED") == "1":
+                self.fail("Lean checkers required")
+            self.skipTest("Lean checkers not built")
+        return guards.prove_removals(snap, fn, removed, summaries(snap), CHECKER, access.DEFAULT_CHECKER)
+
     def nullrecord(self, snap):
         return next(record for record in snap["nullcheck_evidence"] if record["reported_rewrites"])
 
@@ -124,6 +134,9 @@ class GuardTests(unittest.TestCase):
                 if op["op"] == "check" and (block["label"], offset) not in removed:
                     op["operands"][0]["value"] = "false"
         self.assertFalse(self.lean(*guards.normalize(snap, record["before"], removed)))
+        result = self.removal_proof(snap, record["before"], removed)
+        self.assertEqual([(a["model"], a["status"]) for a in result["attempts"]],
+                         [("access", "rejected"), ("finite-tag", "rejected")])
 
     def test_removed_count_mismatch_fails_closed(self):
         record = self.nullrecord(self.sample())
@@ -377,6 +390,10 @@ class GuardTests(unittest.TestCase):
         removed = guards.removed_checks(record)
         self.assertEqual(len(removed), 2)
         self.assertFalse(self.lean(*guards.normalize(snap, before, removed)))
+        self.assertEqual(self.removal_proof(snap, before, removed)["status"], "rejected")
+        snap["guard_inventory"]["removed_checks"] += 1
+        report, code = guards.check_all(snap, CHECKER)
+        self.assertEqual((code, report["removed_checks"], report["proved_removed_checks"]), (1, 2, 0))
 
     def test_declared_domains_parse_nested_members(self):
         self.assertEqual(guards.union_members("opt[union[int,tuple[int,str]]]"),

@@ -15,6 +15,7 @@ run_cmd do
   for theoremName in #[``PystachyBoundary.check_iff,
       ``PystachyBoundary.reachable_facts, ``PystachyBoundary.accepted_payload_safe,
       ``PystachyAccess.reachable_invariant, ``PystachyAccess.accepted_access_safe,
+      ``PystachyAccess.writeField_step, ``PystachyAccess.accepted_write_progress,
       ``PystachyInt.known_fits, ``PystachyInt.mod_fits, ``PystachyInt.floordiv_fits,
       ``PystachyInt.shr_fits, ``PystachyInt.shl_exact, ``PystachyInt.bitwise_fits,
       ``PystachyInt.and_mask,

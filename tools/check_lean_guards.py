@@ -11,13 +11,22 @@ import subprocess
 import json
 from pathlib import Path
 
+import check_lean_access as access
 import check_lean_boundary as boundary
+from check_lean_effects import summaries
 
 NULL = "null"
 NONNULL = "nonnull"
+REMOVALS = "removed null checks (before-pass redundancy)"
+REMOVAL_CHAIN = 8  # field cells that certificate inference follows from live values
+# The facts a deref's proof can use (PystachyAccess: ne by itself or through equal values and
+# cells); inference suggests no others for removals. Lean checks whatever is suggested.
+REMOVAL_FACTS = frozenset({"eq", "ne", "cell", "absurd"})
 LIMITATIONS = (
-    "Proves guard safety in a normalized finite-tag model. The Python adapter, "
-    "inspection fidelity, declared union domains and union tag/layout ABI are trusted. "
+    "Proves union guard safety in a normalized finite-tag model, and removed null checks redundant "
+    "in the before-pass graph in the access model (fields, tracked globals, closure cells and write "
+    "effects) or the finite-tag model. The Python adapters, inspection fidelity, declared union "
+    "domains, the classes table, runtime effect contracts and union tag/layout ABI are trusted. "
     "Does not prove raw union reconstruction, payload unpacking, GC, lifetime, pass "
     "equivalence or source/LLVM semantics. Unsupported forms fail closed."
 )
@@ -526,7 +535,56 @@ def normalize(snapshot, fn, null_obligations=None):
                        "payloads": payloads, "omitted_unreachable_obligations": obligations - payloads, "scope": "removed null checks (before-pass redundancy)" if null_mode else "closed-union guards"}
 
 
-def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
+def prove_removals(snapshot, fn, removed, effects_of, checker=boundary.DEFAULT_CHECKER,
+                   access_checker=access.DEFAULT_CHECKER):
+    """One nullcheck invocation's removed checks of one function, proved in the before-pass
+    graph by either Lean model: the access model (PystachyAccess.lean: field cells, tracked
+    globals, private slots and write effects), else the finite-tag model of this module. Each is
+    a separately audited theorem over the same inventory, so either acceptance proves every
+    obligation; both verdicts are reported where the first does not accept."""
+    attempts = []
+    try:
+        nodes, meta = access.normalize_program(snapshot, fn["symbol"], effects_of, derefs=removed, record=fn)
+        # (a removal may rest on a chain of field reloads from a global or slot: pi.pong.ping)
+        candidate, meta = access.certify(nodes, meta, chain=REMOVAL_CHAIN, kinds=REMOVAL_FACTS)
+        encoded = access.encode(candidate)
+        accepted = access.run_checker(access_checker, encoded, meta)
+        attempt = {"model": "access", "status": "accepted" if accepted else "rejected", "nodes": meta["nodes"],
+                   "payloads": meta["derefs"], "candidate_sha256": hashlib.sha256(encoded.encode()).hexdigest()}
+        if not accepted:
+            attempt["error"] = (access.explain(candidate) or "")[:1000]
+    except (boundary.Unsupported, ValueError, KeyError, OSError, subprocess.SubprocessError, RecursionError) as error:
+        attempt = {"model": "access", "status": "unsupported" if isinstance(error, boundary.Unsupported) else "error",
+                   "error": str(error)}
+    attempts.append(attempt)
+    if attempt["status"] != "accepted":
+        try:
+            candidate, meta = normalize(snapshot, fn, removed)
+            encoded = boundary.encode(candidate)
+            accepted = boundary.run_checker(checker, encoded, meta)
+            attempt = {"model": "finite-tag", "status": "accepted" if accepted else "rejected", "nodes": meta["nodes"],
+                       "payloads": meta["payloads"], "candidate_sha256": hashlib.sha256(encoded.encode()).hexdigest()}
+        except (boundary.Unsupported, ValueError, KeyError, OSError, subprocess.SubprocessError,
+                RecursionError) as error:
+            attempt = {"model": "finite-tag", "status": "unsupported" if isinstance(error, boundary.Unsupported)
+                       else "error", "error": str(error)}
+        attempts.append(attempt)
+    proof = next((a for a in attempts if a["status"] == "accepted"), None)
+    if proof is not None:
+        status = "accepted"
+    else:
+        status = max((a["status"] for a in attempts), key=boundary.SEVERITY.index)
+    record = {"function": fn["symbol"], "scope": REMOVALS, "obligations": len(removed), "status": status,
+              "checked": status == "accepted", "attempts": attempts}
+    if proof is not None:
+        record.update(model=proof["model"], nodes=proof["nodes"], payloads=proof["payloads"],
+                      candidate_sha256=proof["candidate_sha256"])
+    else:
+        record["error"] = "; ".join(f"{a['model']}: {a.get('error', a['status'])}" for a in attempts)
+    return record
+
+
+def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.DEFAULT_CHECKER):
     boundary.check_header(snapshot)
     boundary.require("nullcheck_evidence" in snapshot and "union_tags" in snapshot,
                      "guard inventory missing: inspect with --guard-evidence")
@@ -538,16 +596,21 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
                      "guard inventory manifest mismatch")
     records, codes = [], [0]
     work = [(fn, None) for fn in snapshot["functions"] if inventory(fn) or union_writes(fn)]
+    effects_of = None
     for record in snapshot["nullcheck_evidence"]:
         try:
             removed = removed_checks(record)
         except boundary.Unsupported as error:
             records.append({"function": record["before"]["symbol"], "status": "unsupported",
-                            "scope": "removed null checks (before-pass redundancy)", "error": str(error)})
+                            "scope": REMOVALS, "error": str(error)})
             codes.append(2)
             continue
         if removed:
-            work.append((record["before"], removed))
+            if effects_of is None:
+                effects_of = summaries(snapshot)
+            proved = prove_removals(snapshot, record["before"], removed, effects_of, checker, access_checker)
+            records.append(proved)
+            codes.append(boundary.OUTCOMES[proved["status"]])
     for fn, removed in work:
         try:
             candidate, meta = normalize(snapshot, fn, removed)
@@ -570,7 +633,7 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
             "proved_union_reads": sum(r.get("obligations", 0) for r in records if r["status"] == "accepted"
                                       and r.get("scope") == "closed-union guards"),
             "proved_removed_checks": sum(r.get("obligations", 0) for r in records if r["status"] == "accepted"
-                                         and r.get("scope") == "removed null checks (before-pass redundancy)"),
+                                         and r.get("scope") == REMOVALS),
             "limitations": LIMITATIONS}, code
 
 

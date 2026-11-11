@@ -106,9 +106,11 @@ private def parseNode (json : Json) : Except String Node := do
       return .readField (← nameField json "dst") (← nameField json "object") (← nameField json "class")
         (← indexField json "index") (← indexField json "next")
   | "write_field" =>
-      fields json ["op", "object", "class", "index", "value", "next"]
+      fields json ["op", "object", "class", "index", "value", "unrelated", "next"]
+      let unrelated ← (← json.getObjVal? "unrelated").getArr?
+      if unrelated.size > 4096 then throw "more than 4096 unrelated classes"
       return .writeField (← nameField json "object") (← nameField json "class") (← indexField json "index")
-        (← nameField json "value") (← indexField json "next")
+        (← nameField json "value") (← unrelated.toList.mapM nameText) (← indexField json "next")
   | "heap" =>
       fields json ["op", "next"]
       return .heap (← indexField json "next")

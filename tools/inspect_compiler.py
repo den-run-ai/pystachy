@@ -384,6 +384,14 @@ class Observer:
         return sorted(types, key=lambda t: t["symbol"])
 
     @staticmethod
+    def classes(gen) -> dict:
+        # Each class of the program: its single base (a class of the program, a builtin
+        # exception class or none) and its fieldless secondary base, which Gen.derives follows.
+        # An object of one class is never one of a class that neither derives from: their fields
+        # are other memory (Gen.disjoint).
+        return {name: {"base": info.base, "role": info.role} for name, info in sorted(gen.classes.items())}
+
+    @staticmethod
     def boundary_function(gen, fn) -> dict:
         operations, calls = Counter(), Counter()
         for block in fn.blocks:
@@ -715,6 +723,7 @@ class Observer:
                             "attempt": self.attempt["index"] if self.attempt else 0, "functions": functions}
                 if name == "typed-after" and self.gen is not None:
                     snapshot["dynamic_types"] = self.dynamic_types(self.gen)
+                    snapshot["classes"] = self.classes(self.gen)
                     if self.guard_evidence:
                         snapshot["union_tags"] = dict(self.gen.utags)
                         snapshot["nullcheck_evidence"] = self.nullcheck_evidence
