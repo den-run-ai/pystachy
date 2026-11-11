@@ -237,13 +237,14 @@ class Generator:
                     "__file__", "__name__", "__package__", "__spec__", "__test__",
                     "pytestmark", "pytest_plugins"}:
                 self.error(node, "module metadata and dynamic pytest collection are unsupported: " + node.id)
-            if isinstance(node, ast.Name) and node.id.startswith("test") and isinstance(node.ctx, ast.Store):
+            if (isinstance(node, ast.Name) and node.id.startswith(("test", "Test"))
+                    and isinstance(node.ctx, ast.Store)):
                 scope = parents.get(node)
                 while scope is not None and not isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
                     scope = parents.get(scope)
                 if scope is None:
                     self.error(node, "dynamically assigning tests is unsupported")
-            if isinstance(node, ast.Global) and any(name.startswith("test") for name in node.names):
+            if isinstance(node, ast.Global) and any(name.startswith(("test", "Test")) for name in node.names):
                 self.error(node, "mutating test bindings through globals is unsupported")
             if isinstance(node, ast.ImportFrom) and node.level:
                 self.error(node, "relative imports require package-aware collection")
@@ -268,7 +269,7 @@ class Generator:
         for node in self.tree.body:
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if (alias.asname or alias.name).startswith("test"):
+                    if (alias.asname or alias.name).startswith(("test", "Test")):
                         self.error(node, "imported tests require package-aware collection")
                     if alias.name == "pytest":
                         self.aliases[alias.asname or alias.name] = "pytest"
@@ -280,12 +281,12 @@ class Generator:
                         self.error(node, "unsupported pytest import: " + alias.name)
                     self.aliases[alias.asname or alias.name] = "pytest." + alias.name
             elif isinstance(node, ast.ImportFrom):
-                if any((alias.asname or alias.name).startswith("test") or alias.name == "*"
+                if any((alias.asname or alias.name).startswith(("test", "Test")) or alias.name == "*"
                        for alias in node.names):
                     self.error(node, "imported tests and star imports are unsupported")
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 names = _bound_names(node)
-                if any(name in self.aliases or name.startswith("test") for name in names):
+                if any(name in self.aliases or name.startswith(("test", "Test")) for name in names):
                     self.error(node, "rebinding pytest or dynamically assigning tests is unsupported")
                 try:
                     value = self.constant(node.value) if node.value is not None else None

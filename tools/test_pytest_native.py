@@ -184,6 +184,27 @@ class ReportTests(TemporarySuite):
 
 
 class CollectionControls(TemporarySuite):
+    def test_imported_test_classes_cannot_disappear(self):
+        self.source("class TestImported:\n    def test_failure(self):\n        assert False\n", "helper.py")
+        for statement in ("from helper import TestImported", "from helper import TestImported as TestAlias",
+                          "import helper as TestModule"):
+            with self.subTest(statement=statement):
+                path = self.source(statement + "\ndef test_local():\n    pass\n")
+                actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
+                self.assertEqual(actual.state, "collection-error")
+                self.assertIn("imported tests", actual.error)
+        path = self.source("from helper import TestImported\ndef test_local():\n    pass\n")
+        if importlib.util.find_spec("pytest"):
+            expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+            self.assertEqual(expected["exit_code"], 1, expected)
+            self.assertEqual(expected["cases"], ["test_suite.py::TestImported::test_failure",
+                                                  "test_suite.py::test_local"])
+
+    def test_dynamic_test_class_aliases_are_rejected(self):
+        for statement in ("TestAlias = Helper", "if True:\n    TestAlias = Helper"):
+            with self.subTest(statement=statement), self.assertRaisesRegex(CollectionError, "dynamically assigning"):
+                generate("class Helper:\n    pass\n" + statement + "\ndef test_local(): pass\n", "test_suite.py")
+
     def test_unsupported_test_shapes_fail_explicitly(self):
         sources = {
             "test_class": "class TestThings:\n    def test_one(self): pass\n",
