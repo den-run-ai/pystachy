@@ -455,6 +455,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_lean_range_bounds.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_null_access.py
+	$(PY) -m unittest discover -s tools -p test_lean_union_effects.py
 	$(PY) -m unittest discover -s tools -p test_lean_int.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
@@ -475,6 +476,7 @@ check-lean-boundary:
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_range_bounds.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_null_access.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_effects.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_int.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
@@ -540,6 +542,7 @@ check-lean-guards:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_null_access.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_effects.py
 	$(PY) tools/check_lean_guard_corpus.py $(LEAN_GUARD_FLAGS)
 
 .PHONY: check-lean-guards

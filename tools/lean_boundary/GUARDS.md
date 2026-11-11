@@ -80,8 +80,20 @@ objects (`dynany_graph.py`'s `render` and `checksum`, `lib_tomllib.py`'s `typed`
 which needs box immutability across calls, and a `repr` of exceptions that runs no
 user code because the program defines no exception class and exception arguments are
 formatted at construction (`exc_values.py`). Each was traced to the compiler's
-justification and found sound; no removal was found to be wrong. Union reads are
-unchanged by this route: 393 of 9,108 proved.
+justification and found sound; no removal was found to be wrong.
+
+A union sweep on 2026-11-11 over the 288 programs with union records (snapshots of the
+same compiler revision) found no possible box write in any of them, and Lean proved
+2,298 of the 8,916 inventoried union reads (393 of 9,108 before box immutability, joins
+and return domains; the inventory lost 192 reads that only a shared literal had tainted)
+and 286 of 316 union return domains. 1,304 reads in 136 functions are rejected: a value
+loaded from a field, global or container, or returned by a function whose own returns
+are unproved, has no known tag; an "is assigned" flag, a boolean phi with more than one
+use and a `None`-typed join operand are not correlated with what they guard. Each kind
+was traced to the compiler's IR and found guarded; no union read was found to be wrong.
+5,314 reads remain unsupported, 4,908 of them reads of values of no union type, which
+the conservative inventory derives from union values through memory and arithmetic, the
+rest raw union transport (361), generators (24) and dynamic tag reconstruction (21).
 
 ## Run
 
@@ -107,20 +119,28 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI selection exercises seven inventoried union reads and twenty-two
-removed null checks in `examples/union_guards.py`, `examples/null_guards.py` and
-`examples/null_reloads.py`. This small gate does not claim complete-corpus
-acceptance. Existing programs with calls,
-storage writes and container-result domains remain investigation targets rather
-than qualifying examples until those effects and representations are proved.
+The bounded CI selection exercises nineteen inventoried union reads, one proved union
+return domain and twenty-two removed null checks in `examples/union_guards.py`,
+`examples/union_effects.py`, `examples/null_guards.py` and `examples/null_reloads.py`.
+This small gate does not claim complete-corpus acceptance. Programs whose union values
+come from memory, containers or unproved callees remain investigation targets rather
+than qualifying examples until those representations are proved.
+[`test_lean_union_effects.py`](../test_lean_union_effects.py) corrupts
+`union_effects.py`: each kind of possible box write, placed in the callee `bump`,
+restores the conservative rules; a return outside its declared
+domain (another member's tag, or a reachable null) is not assumed by its caller; a join
+whose test is removed, and phis that swap their boxes in a loop, are rejected.
 
-Union domain facts come only from parameter declarations, modeled private-slot
-copies and literal-tag `ubox`/`ubox_opt` construction. Optional domains include
-null, as do reference union domains. Runtime constructors' tag and null behavior
-remain ABI assumptions. Other producers, including calls, phis, selects, casts
-and slot unpacking, have unknown tags: their destination annotations cannot
-discard null or an incoming union member. An unknown result may cause rejection
-even when the actual operation is safe.
+Union domain facts come only from parameter declarations, modeled private-slot copies,
+literal-tag `ubox`/`ubox_opt` construction, joins of such values and proved return
+domains (below). Optional domains include null, as do reference union domains. Runtime
+constructors' tag and null behavior remain ABI assumptions. A phi is its incoming value
+on each edge (edge copies; parallel, so where one phi feeds another of its block they
+havoc instead) and a select is either operand as its condition decides, whatever their
+annotations. Other producers, including other calls, loads from memory, casts and slot
+unpacking, have unknown tags: their destination annotations cannot discard null or an
+incoming union member. An unknown result may cause rejection even when the actual
+operation is safe; a rejection names the first read the inferred facts do not cover.
 
 Inventory follows union-derived operands through every result-producing
 operation, including opaque operations, and conservatively tracks raw memory,
@@ -129,23 +149,43 @@ in the denominator and fail unsupported; they cannot disappear when their
 address loses its union annotation. This overapproximation can also inventory
 reads that would need additional analysis to distinguish from union reads.
 
-Union member proofs require stable box contents. Any write through a derived
-box address, or through an address that is not a declared local storage slot,
-fails unsupported: an unrelated raw pointer may alias a box. This conservative
-rule also rejects writes to globals and fresh heap objects whose disjointness
-has not been established. Write-only functions are inspected too, receive an
-explicit unsupported record, and cannot make a program pass vacuously. The
-`union_box_writes` diagnostic counts these potential mutations; it does not
-assert that each destination really aliases a box.
+Union member proofs require stable box contents. `box_writes` scans every compiled
+function of the snapshot for an operation that may write a union box: a store (or raw
+`memmove`) whose address is not shown to lie outside boxes, an unknown runtime function,
+a box passed to a runtime function other than as a value word (`*T`, `*V`), a list write
+into a box, a call or initialization of code the snapshot does not define, and a
+generator operation on a value that is no generator.
+Addresses outside boxes are stack slots, module globals, the caller's identity-return
+slot, fields of classes of the classes table, closure cells an environment holds, a
+generator's promise, memory the function allocated itself (unless it is made into a
+union value) and words at offsets of these. Where it finds none, no execution changes a
+box's tag: pys_ubox and pys_ubox_opt alone make boxes (a fresh allocation with a fixed
+tag, running no user code: a trusted ABI contract), the compiler treats them as immutable
+values, and the runtime functions it passes them to read them or store them whole. Writes and calls then leave the finite-tag state alone but for escaped slots,
+which the graph does not track. This rests on typed memory (a field, list or tuple
+address lies in its object, and indexing stays in bounds), the runtime ABI, complete
+inspection evidence (every compiled function, generator body and callback is in the
+snapshot) and FFI code respecting its declared C types.
 
-Opaque calls and generator operations that can precede a later union read also
-fail unsupported, including paths through handlers, unwind edges and loop
-backedges. Merely clearing a box's tag facts would be insufficient: a comparison
-computed before a mutation could otherwise reintroduce a stale fact at a later
-branch. Calls strictly after all covered reads remain admitted. Exact `ubox`
-and `ubox_opt` construction retains its trusted fresh-allocation, fixed-tag and
-no-user-callback ABI contract. Runtime effect summaries are not used to exempt
-byte copies or other calls from this rule.
+Where `box_writes` finds an operation, the conservative rules apply to every function of
+the program: any write through a derived box address, or through an address that is not
+a declared local storage slot, fails unsupported, as do opaque calls and generator
+operations that can precede a later union read, including paths through handlers,
+unwind edges and loop backedges. Merely clearing a box's tag facts would be
+insufficient: a comparison computed before a mutation could otherwise reintroduce a
+stale fact at a later branch. Write-only functions are inspected too and cannot make a
+program pass vacuously. The `union_box_writes` diagnostic counts writes through
+nonprivate addresses; `possible_box_writes` counts what `box_writes` found.
+
+A function returning a union proves its returns: each returned value must be in its
+declared return domain, null included only where that domain has it (a dead block's
+return is unchecked). A direct call of such a function assumes that domain for its
+result. `proved_returns` takes a greatest fixed point: it assumes every declared domain,
+drops each function whose proof Lean rejects and proves the rest again, so each kept
+proof rests only on kept domains, and by induction over the returns of a run each kept
+function returns a value of its domain. Like every union proof, return proofs assume
+that parameters hold their declared domains; call sites, indirect calls and callbacks
+are not checked against them.
 
 In the finite-tag model, nullness has only two states, null and nonnull; no
 parameter is assumed nonnull.
