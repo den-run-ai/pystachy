@@ -39,6 +39,7 @@ Run these from the repository root:
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
 | `make bench-pyperformance-check` | Check the pyperformance runner, ported benchmarks' CPython/JIT/AOT output, and shared pytest API assertions; no timing thresholds. |
+| `make bench-match-check` | Check literal, tuple and dataclass `match` dispatch against handwritten branches under CPython/JIT/AOT, including mixed and skewed inputs; no timing thresholds. |
 | `make test-pytest-workloads` | Run independent example and pyperformance pytest suites in JIT/AOT, with original CPython pytest as the oracle; no skipped or xfailed workload cases. |
 | `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases, a native replay of the JSON repair corpus and the agent's loopback HTTP transport. |
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
@@ -414,7 +415,14 @@ It also runs the shared pytest API assertions for all 25 delivered workloads.
 The group's artifact includes `pyperformance-smoke.json` and `pytest-pyperformance.json`. This is correctness coverage,
 with no timing thresholds or claim to run the upstream pyperf harness.
 
-The `hosted` CI job runs 19 independent example API suites through
+The same group runs `make bench-match-check`: six workload/distribution combinations
+validate literal, tuple and dataclass patterns against equivalent handwritten branches
+under CPython, JIT and AOT. The controller rejects mismatched checksums, work counts and
+unexpected output. Its `match-dispatch-smoke.json` artifact is correctness evidence;
+paired performance and optional pyperf measurements have separate reproduction commands
+in [the match benchmark](../bench/match_dispatch/README.md).
+
+The `hosted` CI job runs 20 independent example API suites through
 `make test-pytest-workloads PYTEST_WORKLOAD_ARGS='--group examples'`, reusing the
 verified compiler. Splitting these checks between existing jobs leaves more room
 within the 15-minute budget without adding workers. `pytest-workloads.json` records every

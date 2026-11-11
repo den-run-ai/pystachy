@@ -161,6 +161,16 @@ bench-pyperformance-check: $(BENCH_COMPILER)
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" --smoke --json build/pyperformance-smoke.json
 	$(PY) tools/pytest_native_suites.py --group pyperformance --compiler "$(BENCH_COMPILER)" --json build/pytest-pyperformance.json
 
+# CPython/JIT/AOT checksums for match and equivalent handwritten branches.
+# Smoke reports validate execution and contain no performance thresholds.
+.PHONY: bench-match-check bench-match
+bench-match-check: $(BENCH_COMPILER)
+	$(PY) -m unittest discover -s bench/match_dispatch -p test_bench.py
+	$(PY) bench/match_dispatch/bench.py --compiler "$(BENCH_COMPILER)" --smoke --json build/match-dispatch-smoke.json
+
+bench-match: $(BENCH_COMPILER)
+	$(PY) bench/match_dispatch/bench.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
+
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
 # (it includes runtime.c, whose hash functions are runtime.py's: llvm-link adds those). It also

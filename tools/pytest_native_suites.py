@@ -19,7 +19,7 @@ from pytest_native_codegen import generate
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ("agent", "byte_bpe", "column", "csvstat", "cut", "guarded_score", "id_filter", "latency",
-            "linediff", "mailmerge", "mazepath", "miniui", "montecarlo", "nanogpt", "ndarray",
+            "linediff", "mailmerge", "match_dispatch", "mazepath", "miniui", "montecarlo", "nanogpt", "ndarray",
             "route", "suggest", "topk", "urlstats")
 IMPORTS = {"byte_bpe": ("bench/pyperformance",), "nanogpt": ("examples/ndarray",)}
 

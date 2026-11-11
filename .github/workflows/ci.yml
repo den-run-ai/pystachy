@@ -266,6 +266,12 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-pyperformance-check BENCH_COMPILER=build/verify/pystachy2
 
+      - name: Bounded match dispatch correctness
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make bench-match-check BENCH_COMPILER=build/verify/pystachy2
+
       - name: Shared pytest example assertions
         if: matrix.group == 'hosted'
         env:
@@ -304,6 +310,7 @@ jobs:
           name: ${{ matrix.machine }}-verification-${{ matrix.group }}
           path: |
             build/pyperformance-smoke.json
+            build/match-dispatch-smoke.json
             build/pytest-pyperformance.json
             build/pytest-workloads.json
             build/pytest-native/examples.json
