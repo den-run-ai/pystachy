@@ -423,6 +423,15 @@ Missing modules/results, empty suites, skips, xfails and failed builds fail this
 check. These tests supplement the exact CLI, FFI, upstream-reference and timing
 contracts below; they do not replace those distinct observations.
 
+The x86-64 `hosted` job also runs `make test-pytest-native` with the hosted compiler
+and pinned original pytest oracle. This covers collection, fixture lifecycle,
+JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
+methods. The existing job runs once on code PRs, main pushes and manual runs;
+documentation-only PRs retain their lightweight plan. Its artifact includes both
+example-mode reports, `pytest-controls.json` and `pytest-upstream-bundled.json`.
+Keeping this check outside Lint preserves the same coverage within the existing
+job, worker and 15-minute limits.
+
 The `example-cli` verification step runs in the `benchmarks` group: on x86-64 in
 PR CI and on both architectures in full CI. `tools/check_example_cli.py` runs 24 tiny cases through
 the actual `csvstat`, `latency`, `mailmerge`, `topk`, `urlstats` and `route` entry points.
@@ -511,7 +520,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | PR work | Jobs | Coverage |
 |---|---:|---|
 | Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack, JIT runner and sanitizer linkage smoke. |
-| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs. |
+| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs and native runner qualification. |
 | Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |

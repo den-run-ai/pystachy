@@ -345,6 +345,36 @@ class LimitTests(unittest.TestCase):
                 self.assertCountEqual(discover.call_args_list,
                                       [unittest.mock.call("tools", pattern=name) for name in expected])
 
+    def test_native_pytest_parity_runs_once_with_oracle_in_existing_x86_hosted_job(self):
+        found = workflows()
+        job = found["ci.yml"]["jobs"]["verification"]
+        steps = job["steps"]
+        probes = [step for step in steps if "make test-pytest-native" in step.get("run", "")]
+        self.assertEqual(len(probes), 1)
+        probe = probes[0]
+        self.assertEqual(probe["run"], "make test-pytest-native")
+        self.assertEqual(probe["if"], "matrix.group == 'hosted' && matrix.machine == 'x86_64'")
+        self.assertNotIn("continue-on-error", probe)
+        self.assertNotIn("continue-on-error", job)
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertEqual(sum(row["group"] == "hosted" and row["machine"] == "x86_64"
+                                     for row in matrix_rows(job, event)), 1)
+        oracles = [step for step in steps if "/^pytest==/p" in step.get("run", "")]
+        self.assertEqual(len(oracles), 1)
+        self.assertIn("matrix.group == 'hosted'", oracles[0]["if"])
+        self.assertIn("tools/requirements-dev.txt", oracles[0]["run"])
+        self.assertLess(steps.index(oracles[0]), steps.index(probe))
+        self.assertNotIn("continue-on-error", oracles[0])
+        lint_steps = found["lint.yml"]["jobs"]["lint"]["steps"]
+        self.assertFalse(any("make test-pytest-native" in step.get("run", "") for step in lint_steps))
+        reports = [step for step in steps if "build/pytest-controls.json" in step.get("with", {}).get("path", "")]
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(reports[0]["if"], "always()")
+        for path in ("build/pytest-native/examples.json", "build/pytest-native-aot/examples.json",
+                     "build/pytest-controls.json", "build/pytest-upstream-bundled.json"):
+            self.assertIn(path, reports[0]["with"]["path"].splitlines())
+
     def test_program_cache_probe_runs_once_per_machine_outside_compact_gc(self):
         # Full runs probe on both architectures' runtime-cache jobs; a pull request probes once,
         # in the first native JIT worker, outside the contracts and compact cache/GC jobs.
