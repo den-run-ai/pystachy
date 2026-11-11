@@ -18,6 +18,7 @@ CHECKER = PROJECT / ".lake" / "build" / "bin" / "pystachy-boundary"
 TOOL = ROOT / "tools" / "check_lean_boundary.py"
 EXAMPLE = PROJECT / "examples" / "narrowed_float.py"
 STATE_EXAMPLE = PROJECT / "examples" / "guarded_state.py"
+CLASS_EXAMPLE = PROJECT / "examples" / "classes_and_ints.py"
 
 if os.environ.get("LEAN_BOUNDARY_REQUIRED") == "1" and not CHECKER.is_file():
     raise RuntimeError("Lean boundary checker is required; build tools/lean_boundary first")
@@ -130,7 +131,7 @@ class AdapterTests(SnapshotFixture):
         original = copy.deepcopy(self.snapshot)
         candidate = self.normalized()
         self.assertEqual(self.snapshot, original)
-        self.assertEqual(candidate["schema_version"], 1)
+        self.assertEqual(candidate["schema_version"], 2)
         self.assertTrue(any(node["op"] == "payload" for node in candidate["program"]["nodes"]))
         self.assertEqual(len(candidate["program"]["nodes"]), len(candidate["certificate"]))
         self.assertEqual(candidate["certificate"][candidate["program"]["entry"]], [])
@@ -344,14 +345,18 @@ class ProvedCheckerTests(SnapshotFixture):
         block["operations"].insert(index, copy.deepcopy(unrelated))
         self.assertTrue(self.check(self.normalized(snapshot)))
 
-    def test_cross_block_comparison_does_not_invent_guard(self):
+    def test_cross_block_comparison_guards_its_value_and_slot_until_a_store(self):
         snapshot, function = self.selected()
         block, index, branch = self.operation(function, "cbr")
-        function["blocks"].insert(1, {"label": "split_guard", "handler": "",
-                                      "operations": [copy.deepcopy(branch)]})
-        block["operations"][index] = {"op": "br", "type": "", "text": "", "immediate": 0,
-                                      "descriptor": "", "results": [], "operands": [],
-                                      "targets": ["split_guard"]}
+        split = {"label": "split_guard", "handler": "", "operations": [copy.deepcopy(branch)]}
+        function["blocks"].insert(1, split)
+        block["operations"][index] = instruction("br", targets=["split_guard"])
+        # (the compared box, defined before the comparison, is unchanged where its result is used)
+        self.assertTrue(self.check(self.normalized(snapshot)))
+        # A store into the slot it was loaded from, before the branch, ends their pairing: the
+        # payload's reload of the slot then has no fact.
+        _, _, load = self.operation(function, "mem.load")
+        split["operations"].insert(0, store(load["operands"][0]["value"], "%a1", "dyn"))
         self.assertFalse(self.check(self.normalized(snapshot)))
 
     def test_guard_survives_shared_slot_numbers_but_never_proves_the_companion_box(self):
@@ -488,19 +493,24 @@ class ProvedCheckerTests(SnapshotFixture):
 
     def test_certificate_cannot_seed_entry_or_cycle(self):
         candidate = self.normalized()
-        candidate["certificate"][candidate["program"]["entry"]] = [["%a0", "float"]]
+        candidate["certificate"][candidate["program"]["entry"]] = [["%a0", ["@pys_dyntype_float"]]]
         self.assertFalse(self.check(candidate))
-        circular = {"schema_version": 1, "program": {"entry": 0, "nodes": [
+        circular = {"schema_version": 2, "program": {"entry": 0, "nodes": [
             {"op": "jump", "next": 1},
-            {"op": "payload", "value": "x", "tag": "float", "next": 1}]},
-            "certificate": [[], [["x", "float"]]]}
+            {"op": "payload", "value": "x", "tags": ["float"], "next": 1}]},
+            "certificate": [[], [["x", ["float"]]]]}
         self.assertFalse(self.check(circular))
 
     def test_checker_schema_and_input_limits_fail_closed(self):
-        too_large = {"schema_version": 1, "program": {"entry": 0, "nodes": [{"op": "stop"}] * 4097},
+        too_large = {"schema_version": 2, "program": {"entry": 0, "nodes": [{"op": "stop"}] * 16385},
                      "certificate": []}
-        for candidate in ({}, {**self.normalized(), "schema_version": 2},
-                          {**self.normalized(), "ignored": "field"}, too_large):
+        def read(tags):
+            return {"schema_version": 2, "program": {"entry": 0, "nodes": [
+                {"op": "payload", "value": "x", "tags": tags, "next": 1}, {"op": "stop"}]},
+                "certificate": [[], []]}
+        # (an empty or repeating set of accepted tags is malformed, not merely unprovable)
+        for candidate in ({}, {**self.normalized(), "schema_version": 1},
+                          {**self.normalized(), "ignored": "field"}, too_large, read([]), read(["a", "a"])):
             completed = subprocess.run([str(CHECKER)], input=json.dumps(candidate),
                                        capture_output=True, text=True, timeout=10)
             self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
@@ -567,7 +577,7 @@ class StateGuardTests(SnapshotFixture):
         _, _, load = self.operation(function, "mem.load")
         slot = load["operands"][0]["value"]
         for facts in candidate["certificate"][1:]:
-            facts.append([slot, "bool"])
+            facts.append([slot, ["@pys_dyntype_bool"]])
         self.assertFalse(self.check(candidate))
 
     def test_string_and_bool_payloads_reject_wrong_descriptor(self):
@@ -627,6 +637,85 @@ class SharedSlotNumberTests(SnapshotFixture):
                 self.assertFalse(ProvedCheckerTests.check(self, self.normalized(mutated, "flagged_word")))
 
 
+@unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+class ClassAndIntTests(SnapshotFixture):
+    example = CLASS_EXAMPLE
+    function_filter = ""
+    check = ProvedCheckerTests.check
+
+    def mutated(self, name, mutate):
+        snapshot, function = self.selected(name)
+        mutate(snapshot, function)
+        return self.check(self.normalized(snapshot, function["symbol"]))
+
+    def test_class_int_and_dispatch_reads_accept(self):
+        for name in ("boundary_class", "boundary_int", "dyn.call.label.0"):
+            with self.subTest(function=name):
+                self.assertTrue(self.check(self.normalized(function=self.selected(name)[1]["symbol"])))
+
+    def test_isinstance_of_a_class_needs_its_none_exclusion(self):
+        # pys_dyn_isa also admits None, which the compiled test excludes with a second comparison.
+        def drop_none_test(snapshot, function):
+            _, _, both = self.operation(function, "scalar.bin")
+            self.assertEqual(both["text"], "and")
+            for operand in both["operands"]:
+                definition = next(op for block in function["blocks"] for op in block["operations"]
+                                  if op["results"] and f"%t{op['results'][0]}" == operand["value"])
+                if definition["op"] == "ptr.cmp":
+                    operand["value"] = "true"
+        self.assertFalse(self.mutated("boundary_class", drop_none_test))
+
+    def test_a_base_class_test_does_not_prove_a_subclass_read(self):
+        def read_subclass(snapshot, function):
+            _, _, payload = self.operation(function, "dyn.payload")
+            payload["text"] = "Sub"
+        self.assertFalse(self.mutated("boundary_class", read_subclass))
+
+    def test_int_read_accepts_bool_but_not_another_tag(self):
+        def float_instead_of_bool(snapshot, function):
+            for block in function["blocks"]:
+                for op in block["operations"]:
+                    for operand in op["operands"]:
+                        if operand["value"] == "@pys_dyntype_bool":
+                            operand["value"] = "@pys_dyntype_float"
+        self.assertFalse(self.mutated("boundary_int", float_instead_of_bool))
+
+        def read_as_bool(snapshot, function):
+            _, _, payload = self.operation(function, "dyn.payload")
+            payload["text"] = "bool"
+        self.assertFalse(self.mutated("boundary_int", read_as_bool))
+
+    def test_dispatch_cases_select_their_own_class(self):
+        def swap_cases(snapshot, function):
+            _, _, switch = self.operation(function, "switch")
+            switch["targets"][1:] = switch["targets"][:0:-1]
+        self.assertFalse(self.mutated("dyn.call.label.0", swap_cases))
+
+        def read_another_word(snapshot, function):
+            _, _, address = self.operation(function, "mach.addr")
+            address["operands"][1]["value"] = "2"
+        self.assertFalse(self.mutated("dyn.call.label.0", read_another_word))
+
+        def renumber_subclass(snapshot, function):
+            # (the class number the case names now belongs to no descriptor)
+            next(t for t in snapshot["dynamic_types"] if t["symbol"] == "@dt.Sub")["cls"] = 7
+        self.assertFalse(self.mutated("dyn.call.label.0", renumber_subclass))
+
+    def test_descriptor_table_is_required_and_validated(self):
+        snapshot, function = self.selected("dyn.call.label.0")
+        del snapshot["dynamic_types"]
+        with self.assertRaisesRegex(Unsupported, "dynamic_types"):
+            self.normalized(snapshot, function["symbol"])
+        for corrupt in (lambda types: types.append(dict(types[0])),
+                        lambda types: types[0].update(base=types[1]["symbol"]),
+                        lambda types: types[1].update(base="@dt.Missing"),
+                        lambda types: types[0].update(symbol="@pys_dyntype_int")):
+            snapshot, function = self.selected("dyn.call.label.0")
+            corrupt(snapshot["dynamic_types"])
+            with self.subTest(table=snapshot["dynamic_types"]), self.assertRaises(ValueError):
+                self.normalized(snapshot, function["symbol"])
+
+
 class LibraryFunctionTests(SnapshotFixture):
     function_filter = "_Writer.key"
     symbol = "@m._pystachy_json_any$_Writer.key"
@@ -642,7 +731,8 @@ class LibraryFunctionTests(SnapshotFixture):
     def test_shipped_json_key_writer_normalizes(self):
         _, metadata = normalize_snapshot(self.snapshot, self.symbol)
         self.assertEqual(metadata["payloads"], 2)
-        self.assertEqual(metadata["remapped_guards"], 2)
+        # (each type test also guards the slot its box was loaded from, which the reads reload)
+        self.assertGreaterEqual(metadata["paired_guards"], 2)
 
     @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
     def test_shipped_json_key_writer_is_accepted_and_needs_both_guards(self):

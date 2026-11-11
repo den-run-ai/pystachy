@@ -21,10 +21,30 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CHECKER = ROOT / "tools/lean_boundary/.lake/build/bin/pystachy-boundary"
 MAX_BYTES = 4 * 1024 * 1024
-MAX_INSTRUCTIONS = 1024
-MAX_NODES = 4096
-MAX_FACTS = 16384
-TAGS = {"float", "str", "bool"}
+MAX_INSTRUCTIONS = 4096
+MAX_NODES = 16384
+MAX_FACTS = 65536
+# runtime.c's builtin DynTypes and their kinds (DK_*); their cls word is -1 and they have no
+# base. A dynamic box's tag is the address of its DynType: one of these, or one the program
+# emits, which the snapshot's dynamic_types table lists.
+DK_NONE, DK_INT, DK_OBJ = 0, 2, 8
+DF_ROLE = 256
+BUILTIN_TYPES = {"@pys_dyntype_none": 0, "@pys_dyntype_bool": 1, "@pys_dyntype_int": 2,
+                 "@pys_dyntype_bigint": 2, "@pys_dyntype_float": 3, "@pys_dyntype_str": 4,
+                 "@pys_dyntype_list": 5, "@pys_dyntype_intlist": 5, "@pys_dyntype_biglist": 5,
+                 "@pys_dyntype_dict": 6, "@pys_dyntype_tuple": 7, "@pys_dyntype_type": 12}
+# Builtin payload types and the tags of the boxes whose payload has that layout (dynamic.py's
+# BUILTIN and ListLayout): a bool's payload is its int value, 0 or 1, and checked and promoting
+# int lists share one layout. A class's payload is read from its own and its subclasses' boxes.
+BUILTIN_PAYLOADS = {
+    "bool": ("@pys_dyntype_bool",), "int": ("@pys_dyntype_int", "@pys_dyntype_bool"),
+    "float": ("@pys_dyntype_float",), "str": ("@pys_dyntype_str",),
+    "dict[dyn,dyn]": ("@pys_dyntype_dict",), "vtuple[dyn]": ("@pys_dyntype_tuple",),
+    "list[dyn]": ("@pys_dyntype_list",), "list[int]": ("@pys_dyntype_intlist", "@pys_dyntype_biglist")}
+# struct DynType's cls word, in i64 words: class dispatchers switch on it
+CLASS_WORD = "3"
+MAX_TAGS = 262144
+MAX_CONDITION = 64
 OP_KEYS = {"op", "type", "text", "immediate", "descriptor", "results", "operands", "targets"}
 # How each typed-IR operation (IROPS, src/pystachy_compiler/specs.py) is normalized. Ordinary
 # operations write no private slot (a slot whose address reaches any other operation is not
@@ -36,21 +56,24 @@ ORDINARY = {"rt", "call", "icall", "init", "phi", "select", "ovf", "list.load", 
             "mach.addr", "tuple.load", "tuple.store", "field.addr", "slot.pack", "slot.unpack",
             "scalar.bin", "scalar.cast", "scalar.cmp", "num.cast", "num.cmp", "int.ucmp",
             "empty.kind", "union.tag", "union.payload", "union.raw", "dyn.raw", "big.make",
-            "big.lo", "big.hi", "exc.match"}
+            "big.lo", "big.hi", "exc.match", "gen.promise", "gen.resume", "gen.drop"}
 TAG_OPS = {"dyn.type", "ptr.cmp", "dyn.payload"}
 TERMINATORS = {"br", "cbr", "switch", "check", "ret", "ret.none", "raise", "throw",
                "unreachable", "landing"}
 # A call that may raise inside a try statement is an invoke: it ends its block, and its second
-# target is the unwind edge to a landing block.
-INVOKES = {"rt", "call", "icall", "init"}
+# target is the unwind edge to a landing block. Resuming a generator runs its code as a call
+# does; outside a generator, its promise and frame operations write no private slot or box.
+INVOKES = {"rt", "call", "icall", "init", "gen.resume"}
 # Operations that may read or write a slot named as their first operand; any other use of a
 # slot's address makes it escape.
 SLOT_ACCESS = {"mem.load", "mem.store", "mach.load", "mach.store", "landing"}
 SUPPORTED_OPS = ORDINARY | TAG_OPS | TERMINATORS
 LIMITATIONS = [
     "Only dyn.payload guard safety in the selected normalized function is checked.",
-    "Python normalization, snapshot fidelity, runtime tag contracts and LLVM lowering are not proved.",
-    "Generators, other payload types and stores into boxes are rejected; null values get unknown tags.",
+    "Python normalization, snapshot fidelity, the descriptor table, runtime tag and payload layout "
+    "contracts and LLVM lowering are not proved.",
+    "Generators, unlisted payload types and stores into boxes or descriptors are rejected; null "
+    "values get unknown tags.",
     "The native Lean executable adds the Lean compiler and runtime to the trusted base.",
 ]
 
@@ -127,34 +150,128 @@ def successors(node):
     return [node["next"]]
 
 
+def live_locations(nodes):
+    """The locations each node may still read (as a guard, read or copy source) before they
+    are written: facts about others need not be kept."""
+    reads = [{node["value"]} if node["op"] in {"guard", "payload"} else {node["src"]} if node["op"] == "copy"
+             else set() for node in nodes]
+    predecessors = [[] for _ in nodes]
+    for index, node in enumerate(nodes):
+        for target in successors(node):
+            predecessors[target].append(index)
+    live = [set() for _ in nodes]
+    pending = deque(range(len(nodes) - 1, -1, -1))
+    queued = [True] * len(nodes)
+    while pending:
+        index = pending.popleft()
+        queued[index] = False
+        node = nodes[index]
+        later = set().union(*(live[target] for target in successors(node)))
+        if node["op"] in {"copy", "havoc"}:
+            later.discard(node["dst"])
+        later |= reads[index]
+        if later != live[index]:
+            live[index] = later
+            for predecessor in predecessors[index]:
+                if not queued[predecessor]:
+                    queued[predecessor] = True
+                    pending.append(predecessor)
+    return live
+
+
 def infer_certificate(nodes, entry=0):
-    """Suggest forward must-facts. Lean independently checks every transfer."""
+    """Suggest forward must-facts: each confines a location's tag to a set. Lean independently
+    checks every transfer. Facts about locations no later node reads are dropped: a successor
+    that needs one still reads it, so its predecessors keep it too."""
+    live = live_locations(nodes)
     facts = [None] * len(nodes)
-    facts[entry] = set()
+    facts[entry] = {}
     pending = deque([entry])
     iterations = 0
     while pending:
         index = pending.popleft()
         known = facts[index]
         node = nodes[index]
-        outgoing = set(known)
+        outgoing = known
         if node["op"] in {"copy", "havoc"}:
-            outgoing = {(value, tag) for value, tag in known if value != node["dst"]}
-            if node["op"] == "copy":
-                outgoing.update((node["dst"], tag) for value, tag in known if value == node["src"])
+            outgoing = {value: tags for value, tags in known.items() if value != node["dst"]}
+            if node["op"] == "copy" and node["src"] in known:
+                outgoing[node["dst"]] = known[node["src"]]
         for edge, target in enumerate(successors(node)):
-            transferred = set(outgoing)
-            if node["op"] == "guard" and edge == 0:
-                transferred.add((node["value"], node["tag"]))
+            transferred = outgoing
+            if node["op"] == "guard":
+                value, tested = node["value"], frozenset(node["tags"])
+                transferred = dict(outgoing)
+                if edge == 0:
+                    transferred[value] = known[value] & tested if value in known else tested
+                elif value in known:
+                    transferred[value] = known[value] - tested
+            transferred = {value: tags for value, tags in transferred.items() if value in live[target]}
             previous = facts[target]
-            merged = transferred if previous is None else previous & transferred
+            merged = (dict(transferred) if previous is None else
+                      {value: previous[value] | transferred[value] for value in previous.keys() & transferred.keys()})
             if merged != previous:
                 facts[target] = merged
                 pending.append(target)
         iterations += 1
-        if iterations > 20000 or sum(len(f or ()) for f in facts) > MAX_FACTS:
+        if iterations > 200000 or sum(len(f or ()) for f in facts) > MAX_FACTS:
             raise Unsupported("candidate inference exceeds the prototype's resource bound")
-    return [[list(fact) for fact in sorted(known or ())] for known in facts]
+    certificate = [[[value, sorted(tags)] for value, tags in sorted((known or {}).items())] for known in facts]
+    if sum(len(tags) for known in certificate for _, tags in known) > MAX_TAGS:
+        raise Unsupported("candidate certificate exceeds the prototype's resource bound")
+    return certificate
+
+
+def descriptor_table(snapshot):
+    """The tags of the program's boxes: runtime.c's builtin DynTypes and the program's own."""
+    raw = snapshot.get("dynamic_types")
+    if raw is None:
+        raise Unsupported("the snapshot has no dynamic_types table; inspect the program again")
+    require(isinstance(raw, list) and len(raw) <= 65536, "invalid dynamic_types table")
+    types = {symbol: {"kind": kind, "cls": -1, "flags": 0, "base": "", "role": "", "payload": ""}
+             for symbol, kind in BUILTIN_TYPES.items()}
+    for entry in raw:
+        require(isinstance(entry, dict) and set(entry) == {"symbol", "kind", "cls", "flags", "base", "role", "payload"},
+                "invalid descriptor fields")
+        symbol = name(entry["symbol"], "descriptor symbol")
+        require(symbol.startswith("@") and symbol not in types, "duplicate or invalid descriptor")
+        require(all(type(entry[key]) is int and -1 <= entry[key] < 2 ** 31 for key in ("kind", "cls", "flags")),
+                "invalid descriptor word")
+        require(all(isinstance(entry[key], str) and len(entry[key]) <= 4096 for key in ("base", "role", "payload")),
+                "invalid descriptor reference")
+        types[symbol] = {key: entry[key] for key in ("kind", "cls", "flags", "base", "role", "payload")}
+    derived = {symbol: {symbol} for symbol in types}
+    for symbol in types:
+        # (pys_dyn_isa follows bases: each of a descriptor's ancestors admits it)
+        seen = [symbol]
+        base = types[symbol]["base"]
+        while base:
+            require(base in types and base not in seen, "invalid or cyclic descriptor base")
+            derived[base].add(symbol)
+            seen.append(base)
+            base = types[base]["base"]
+        require(types[symbol]["role"] == "" or types[symbol]["role"] in types, "invalid descriptor role")
+    roles = {symbol: {other for other, entry in types.items() if entry["flags"] & DF_ROLE and entry["role"] == symbol}
+             for symbol in types}
+    classes = {}
+    for symbol, entry in types.items():
+        if entry["kind"] == DK_OBJ and entry["cls"] >= 0:
+            classes.setdefault(entry["cls"], set()).add(symbol)
+    return types, derived, roles, classes
+
+
+def isa_tags(types, derived, symbol):
+    """The tags for which runtime.c's pys_dyn_isa(x, symbol) is true."""
+    tags = {symbol}
+    if types[symbol]["kind"] == DK_INT:
+        tags |= {other for other, entry in types.items() if entry["kind"] == DK_INT}
+    if types[symbol]["kind"] == DK_OBJ:
+        tags |= derived[symbol] | {other for other, entry in types.items() if entry["kind"] == DK_NONE}
+    return tags
+
+
+def condition_size(condition):
+    return 1 if condition[0] in {"atom", "const", "opaque"} else sum(condition_size(c) for c in condition[1:])
 
 
 def normalize_snapshot(snapshot, function):
@@ -171,6 +288,20 @@ def normalize_snapshot(snapshot, function):
     require(len(selected) == 1, "--function must select exactly one function by exact name or symbol")
     fn = selected[0]
     symbol = name(fn.get("symbol"), "function symbol")
+    types, derived, roles, classes = descriptor_table(snapshot)
+
+    def accepted(payload):
+        # the tags of the boxes whose payload a read of static type payload may take
+        if payload in BUILTIN_PAYLOADS:
+            return set(BUILTIN_PAYLOADS[payload])
+        holders = [symbol for symbol, entry in types.items() if entry["payload"] == payload]
+        if len(holders) != 1:
+            raise Unsupported(f"unsupported payload type: {payload}")
+        holder = holders[0]
+        if types[holder]["kind"] == DK_OBJ:
+            # (a subclass's objects share its layout, and a role is a fieldless secondary base)
+            return derived[holder] | roles[holder]
+        return {holder}
     name(fn.get("return_representation"), "return representation")
     recursion = fn.get("recursion")
     require(isinstance(recursion, dict), "invalid recursion record")
@@ -191,8 +322,8 @@ def normalize_snapshot(snapshot, function):
         for key, label in targets_of_checks.items()), "invalid check targets")
     blocks = fn.get("blocks")
     require(isinstance(blocks, list) and blocks, "invalid blocks")
-    if len(blocks) > 256:
-        raise Unsupported("function exceeds 256 blocks")
+    if len(blocks) > 1024:
+        raise Unsupported("function exceeds 1024 blocks")
     slots = {}
     require(isinstance(fn.get("slots"), list) and len(fn["slots"]) <= MAX_INSTRUCTIONS, "invalid slots")
     for raw in fn["slots"]:
@@ -316,14 +447,15 @@ def normalize_snapshot(snapshot, function):
         changed = False
         for block in live:
             for op in block["operations"]:
-                derived = set()
-                if op["op"] in {"dyn.payload", "dyn.raw"} and op["results"]:
-                    derived.add(f"%t{op['results'][0]}")
+                derived_addresses = set()
+                if op["op"] in {"dyn.payload", "dyn.raw", "dyn.type"} and op["results"]:
+                    # (a box's payload address and its immutable DynType)
+                    derived_addresses.add(f"%t{op['results'][0]}")
                 if op["op"] in {"mach.addr", "field.addr", "select", "phi"} and any(
                         operand["value"] in boxes for operand in op["operands"]):
-                    derived.update(f"%t{number}" for number in op["results"])
-                if not derived <= boxes:
-                    boxes |= derived
+                    derived_addresses.update(f"%t{number}" for number in op["results"])
+                if not derived_addresses <= boxes:
+                    boxes |= derived_addresses
                     changed = True
 
     def check_operand(operand, label, offset, predecessor=None):
@@ -343,10 +475,68 @@ def normalize_snapshot(snapshot, function):
                     require((defined_offset < offset if defined_block == label
                              else defined_block in dominators[label]), f"definition does not dominate use: {value}")
 
+    # A private slot that holds the same box as an SSA value: one loaded from it or stored into
+    # it, with no write to the slot on any path since. A guard of that value then also guards
+    # the slot, whose later reloads keep the fact. Each definition of the value (a loop runs it
+    # again) or write to the slot ends the pairing; joins keep the pairs every predecessor has,
+    # and a landing block those its covered block has at every point.
+    def pairing(state, op):
+        kind, operands = op["op"], op["operands"]
+        address = operands[0]["value"] if operands else ""
+        results = {f"%t{n}" for n in op["results"]}
+        state = {pair for pair in state if pair[0] not in results}
+        if address in slots and address not in escaped and kind in {"mem.store", "mach.store", "landing"}:
+            state = {pair for pair in state if pair[1] != address}
+            if (kind == "mem.store" and len(operands) == 2 and operands[1]["type"] == "dyn"
+                    and operands[1]["value"] in definitions and slots[address] == "dyn"):
+                state.add((operands[1]["value"], address))
+        elif (kind == "mem.load" and address in slots and address not in escaped
+              and slots[address] == "dyn" and op["type"] == "dyn" and len(results) == 1):
+            state.add((f"%t{op['results'][0]}", address))
+        return frozenset(state)
+
+    entry_pairs = {entry_label: frozenset()}
+    exit_pairs = {}
+    order = [block["label"] for block in live]
+    by_label = {block["label"]: block for block in live}
+    changed = True
+    rounds = 0
+    while changed:
+        changed = False
+        rounds += 1
+        if rounds > 1000:
+            raise Unsupported("slot pairing exceeds the prototype's resource bound")
+        for label in order:
+            if label not in entry_pairs:
+                continue
+            block = by_label[label]
+            state = entry_pairs[label]
+            everywhere = state
+            for op in block["operations"]:
+                if op["op"] == "phi":
+                    state = frozenset(pair for pair in state if pair[0] not in {f"%t{n}" for n in op["results"]})
+                    continue
+                state = pairing(state, op)
+                everywhere = everywhere & state
+            exit_pairs[label] = state
+            last = block["operations"][-1]
+            outgoing = [(target, state) for target in last["targets"]]
+            if last["op"] in INVOKES and len(last["targets"]) == 2:
+                outgoing[1] = (last["targets"][1], everywhere)
+            if last["op"] == "check":
+                outgoing.append((targets_of_checks[last["descriptor"] or last["text"]], state))
+            if block["handler"] != "":
+                outgoing.append((block["handler"], everywhere))
+            for target, pairs in outgoing:
+                merged = pairs if target not in entry_pairs else entry_pairs[target] & pairs
+                if target not in entry_pairs or merged != entry_pairs[target]:
+                    entry_pairs[target] = merged
+                    changed = True
+
     # A block that holds only a bool phi and a branch on it joins a short-circuit condition
     # ("flag and isinstance(x, str)"). An edge into it whose incoming value is known (a constant,
-    # the branch condition that chose the edge, or a tag comparison of its own block) goes
-    # straight to the matching successor, as that guard where it is a comparison.
+    # the branch condition that chose the edge, or a condition of its own block) goes straight
+    # to the matching successor, through that condition's guards.
     joins = {}
     for block in live:
         operations = block["operations"]
@@ -361,8 +551,9 @@ def normalize_snapshot(snapshot, function):
 
     nodes = []
     payloads = 0
-    remapped_guards = 0
+    paired_guards = 0
     threaded = 0
+    stop = ("node", {"op": "stop"})
 
     def emit(node):
         nodes.append(node)
@@ -372,48 +563,123 @@ def normalize_snapshot(snapshot, function):
         node["next"] = len(nodes) + 1
         return emit(node)
 
-    def guarded(state, value):
-        # the guard's location: a private slot the compared value was just loaded from
-        nonlocal remapped_guards
-        loaded = state["loads"].get(value)
-        if loaded and state["writes"].get(loaded[0], -1) == loaded[1]:
-            remapped_guards += 1
-            return loaded[0]
-        return value
+    # A condition is a tree over atoms: ("atom", box, tags) holds when the box's tag is one of
+    # tags. Unknown booleans are opaque: both outcomes stay possible. A reference to code is a
+    # block label, a node index or a ("node", fields) tree that is placed once, at the end.
+    def decide(state, condition, yes, no):
+        nonlocal paired_guards
+        kind = condition[0]
+        if kind == "const":
+            return yes if condition[1] else no
+        if kind == "not":
+            return decide(state, condition[1], no, yes)
+        if kind == "and":
+            return decide(state, condition[1], decide(state, condition[2], yes, no), no)
+        if kind == "or":
+            return decide(state, condition[1], yes, decide(state, condition[2], yes, no))
+        if kind == "opaque":
+            return ("node", {"op": "choice", "yes": yes, "no": no})
+        box, tags = condition[1], sorted(condition[2])
+        slots_of = sorted(slot for value, slot in state["pairs"] if value == box)
+        if not slots_of:
+            return ("node", {"op": "guard", "value": box, "tags": tags, "yes": yes, "no": no})
+        # (the slot holds this box: a path on which their tests disagree cannot run)
+        paired_guards += 1
+        return ("node", {"op": "guard", "value": slots_of[0], "tags": tags,
+                         "yes": ("node", {"op": "guard", "value": box, "tags": tags, "yes": yes, "no": stop}),
+                         "no": ("node", {"op": "guard", "value": box, "tags": tags, "yes": stop, "no": no})})
 
     def edge(state, target, known=None):
-        # an edge to target, threaded through a short-circuit join when its value is known
+        # a reference to target, threaded through a short-circuit join when its value is known
         # here; known is a branch condition and its value on this edge
         nonlocal threaded
         if target not in joins:
-            return {"op": "jump", "next": target}
+            return target
         incoming, (yes, no) = joins[target]
         value = incoming.get(state["label"])
         if value in {"true", "false"}:
             outcome = value == "true"
         elif known is not None and value == known[0]:
             outcome = known[1]
-        elif value in state["comparisons"]:
-            compared, tag, predicate = state["comparisons"][value]
+        elif value in conditions:
             threaded += 1
-            return {"op": "guard", "value": guarded(state, compared), "tag": tag,
-                    "yes": yes if predicate == "==" else no, "no": no if predicate == "==" else yes}
+            return decide(state, conditions[value], yes, no)
         else:
-            return {"op": "jump", "next": target}
+            return target
         threaded += 1
-        return {"op": "jump", "next": yes if outcome else no}
+        return yes if outcome else no
 
-    def branch_to(state, node, key, target, known):
-        # point node's edge at target, or at a new node that threads the join
-        threaded_node = edge(state, target, known)
-        node[key] = threaded_node["next"] if threaded_node["op"] == "jump" else ("pending", threaded_node)
+    # Tests of a box's tag: pys_dyn_isa and pys_dyn_role_isa (runtime.c), comparisons of its
+    # DynType with a descriptor, the class number a DynType holds, and boolean combinations of
+    # these. Operands are SSA values whose definitions dominate their uses (check_operand), so
+    # wherever a test's result is used its boxes still hold the values it tested.
+    tag_reads, class_addresses, class_reads, conditions = {}, {}, {}, {}
+
+    def condition_of(value):
+        if value in {"true", "false"}:
+            return ("const", value == "true")
+        return conditions.get(value, ("opaque",))
+
+    changed = True
+    while changed:
+        changed = False
+        for block in live:
+            for op in block["operations"]:
+                kind, operands, results = op["op"], op["operands"], [f"%t{n}" for n in op["results"]]
+                if len(results) != 1:
+                    continue
+                result = results[0]
+                found, test = None, None
+                if kind == "dyn.type" and len(operands) == 1:
+                    found = tag_reads, operands[0]["value"]
+                elif (kind == "mach.addr" and op["text"] == "int" and len(operands) == 2
+                      and operands[0]["value"] in tag_reads and operands[1]["value"] == CLASS_WORD):
+                    found = class_addresses, tag_reads[operands[0]["value"]]
+                elif (kind == "mach.load" and op["type"] == "int" and len(operands) == 1
+                      and operands[0]["value"] in class_addresses):
+                    found = class_reads, class_addresses[operands[0]["value"]]
+                elif kind == "rt" and op["text"] in {"dyn.isa", "dyn.role_isa"} and not op["targets"]:
+                    shape(op, 2, 1, texts=(op["text"],))
+                    box, descriptor = operands[0]["value"], operands[1]["value"]
+                    if (box in dynamic or box.startswith("@")) and descriptor in types:
+                        tags = isa_tags(types, derived, descriptor)
+                        if op["text"] == "dyn.role_isa":
+                            tags |= roles[descriptor]
+                        test = ("atom", box, frozenset(tags))
+                elif kind == "ptr.cmp" and op["text"] in {"==", "!="} and len(operands) == 2:
+                    for read, descriptor in (operands, operands[::-1]):
+                        if (read["value"] in tag_reads and descriptor["value"] in types
+                                and read["type"] == descriptor["type"] == "dyntype"):
+                            atom = ("atom", tag_reads[read["value"]], frozenset({descriptor["value"]}))
+                            test = atom if op["text"] == "==" else ("not", atom)
+                            break
+                elif kind == "num.cmp" and op["text"] in {"==", "!="} and len(operands) == 2:
+                    for tested, zero in (operands, operands[::-1]):
+                        if tested["value"] in conditions and zero["value"] == "0":
+                            test = conditions[tested["value"]]
+                            test = test if op["text"] == "!=" else ("not", test)
+                            break
+                elif (kind == "scalar.bin" and op["type"] == "bool" and op["text"] in {"and", "or", "xor"}
+                      and len(operands) == 2):
+                    left, right = (condition_of(operand["value"]) for operand in operands)
+                    if op["text"] == "xor":
+                        if operands[1]["value"] == "true":
+                            test = ("not", left)
+                        elif operands[0]["value"] == "true":
+                            test = ("not", right)
+                    elif left != ("opaque",) or right != ("opaque",):
+                        test = (op["text"], left, right)
+                if test is not None and condition_size(test) <= MAX_CONDITION:
+                    found = conditions, test
+                if found is not None and found[0].get(result) != found[1]:
+                    found[0][result] = found[1]
+                    changed = True
 
     for block in live:
         label = block["label"]
         starts[label] = len(nodes)
         handler = block["handler"]
-        state = {"label": label, "loads": {}, "tag_reads": {}, "comparisons": {}, "writes": {}}
-        loads, tag_reads, comparisons, writes = (state[key] for key in ("loads", "tag_reads", "comparisons", "writes"))
+        state = {"label": label, "pairs": entry_pairs[label]}
 
         for offset, op in enumerate(block["operations"]):
             kind, operands, results = op["op"], op["operands"], [f"%t{n}" for n in op["results"]]
@@ -425,16 +691,17 @@ def normalize_snapshot(snapshot, function):
                 emit({"op": "choice", "yes": len(nodes) + 1, "no": handler})
             address = operands[0]["value"] if operands else ""
             private = address in slots and address not in escaped
+            if kind in {"gen.promise", "gen.resume", "gen.drop"} and len(operands) != 1:
+                # (without a handle, gen.promise is a generator's own suspension state)
+                raise Unsupported("a generator's own suspension is outside the prototype")
             if kind in {"mem.store", "mach.store"}:
                 require(len(operands) == 2 and not results, f"invalid {kind} shape")
                 if address in boxes:
-                    raise Unsupported("a store into a dynamic box is outside the prototype")
+                    raise Unsupported("a store into a dynamic box or its descriptor is outside the prototype")
             if kind == "mem.load" and private:
                 shape(op, 1, 1)
                 following({"op": "copy", "dst": results[0], "src": address})
-                loads[results[0]] = (address, writes.get(address, -1))
             elif kind in {"mem.store", "mach.store"} and private:
-                writes[address] = offset
                 source = operands[1]["value"]
                 if kind == "mem.store" and source in definitions:
                     following({"op": "copy", "dst": address, "src": source})
@@ -445,60 +712,60 @@ def normalize_snapshot(snapshot, function):
             elif kind == "landing":
                 require(len(op["targets"]) == 1, "invalid landing shape")
                 if private:
-                    writes[address] = offset
                     following({"op": "havoc", "dst": address})
                 emit({"op": "jump", "next": op["targets"][0]})
             elif kind == "dyn.type":
                 shape(op, 1, 1, typ="dyntype")
                 # (a dyn operand is in `dynamic`, so each of its definitions resets its tag)
-                require(operands[0]["type"] == "dyn" and operands[0]["value"] in definitions,
-                        "dyn.type must read a dynamic argument or SSA value")
-                tag_reads[results[0]] = operands[0]["value"]
+                require(operands[0]["type"] == "dyn" and (operands[0]["value"] in definitions
+                                                          or operands[0]["value"].startswith("@")),
+                        "dyn.type must read a dynamic argument, SSA value or constant box")
                 emit({"op": "jump", "next": len(nodes) + 1})
             elif kind == "ptr.cmp":
                 shape(op, 2, 1, typ="bool", texts=("==", "!="))
-                for read, descriptor in (operands, operands[::-1]):
-                    expected = "@pys_dyntype_"
-                    if read["value"] in tag_reads and descriptor["value"].startswith(expected):
-                        tag = descriptor["value"][len(expected):]
-                        if tag in TAGS and read["type"] == descriptor["type"] == "dyntype":
-                            comparisons[results[0]] = (tag_reads[read["value"]], tag, op["text"])
                 emit({"op": "jump", "next": len(nodes) + 1})
             elif kind == "dyn.payload":
-                if op["text"] not in TAGS:
-                    raise Unsupported(f"unsupported payload type: {op['text']}")
-                shape(op, 1, 2, typ="%slot", texts=tuple(TAGS))
-                require(operands[0]["type"] == "dyn" and operands[0]["value"] in definitions,
-                        "dyn.payload requires a dynamic register")
-                following({"op": "payload", "value": operands[0]["value"], "tag": op["text"]})
+                tags = accepted(op["text"])
+                shape(op, 1, 2, typ="%slot", texts=(op["text"],))
+                require(operands[0]["type"] == "dyn" and (operands[0]["value"] in definitions
+                                                          or operands[0]["value"].startswith("@")),
+                        "dyn.payload requires a dynamic register or constant box")
+                following({"op": "payload", "value": operands[0]["value"], "tags": sorted(tags)})
                 payloads += 1
             elif kind == "br":
                 shape(op, 0, 0, 1, "")
-                emit(edge(state, op["targets"][0]))
+                emit({"op": "jump", "next": edge(state, op["targets"][0])})
             elif kind == "cbr":
                 shape(op, 1, 0, 2, "")
                 condition = operands[0]["value"]
                 yes, no = op["targets"]
-                comparison = comparisons.get(condition)
-                if comparison:
-                    value, tag, predicate = comparison
-                    node = {"op": "guard", "value": guarded(state, value), "tag": tag}
-                    keys = ("yes", "no") if predicate == "==" else ("no", "yes")
-                else:
-                    node = {"op": "choice"}
-                    keys = ("yes", "no")
-                branch_to(state, node, keys[0], yes, (condition, True))
-                branch_to(state, node, keys[1], no, (condition, False))
-                emit(node)
+                emit({"op": "jump", "next": decide(state, condition_of(condition),
+                                                   edge(state, yes, (condition, True)),
+                                                   edge(state, no, (condition, False)))})
+            elif kind == "check":
+                # (its error block runs where its condition holds)
+                require(len(op["targets"]) == 1 and len(operands) == 1, "invalid check shape")
+                emit({"op": "jump", "next": decide(state, condition_of(operands[0]["value"]),
+                                                   targets_of_checks[op["descriptor"] or op["text"]],
+                                                   op["targets"][0])})
+            elif kind == "switch" and operands and operands[0]["value"] in class_reads:
+                # A class dispatcher: its cases are class numbers, whose program DynTypes it
+                # takes (no builtin descriptor has one); the first target is the default.
+                require(len(op["targets"]) == len(operands), "invalid switch shape")
+                cases = [operand["value"] for operand in operands[1:]]
+                require(len(set(cases)) == len(cases), "a switch repeats a case")
+                choice = op["targets"][0]
+                for case, target in reversed(list(zip(cases, op["targets"][1:]))):
+                    number = int(case) if case.isdigit() else -1
+                    tags = classes.get(number, set())
+                    test = ("atom", class_reads[operands[0]["value"]], frozenset(tags)) if tags else ("opaque",)
+                    choice = decide(state, test, target, choice)
+                emit({"op": "jump", "next": choice})
             elif kind == "switch" or (kind in {"raise", "throw"} and op["targets"]):
                 # (a raise or throw in a try statement may branch to the code that handles it)
                 for target in op["targets"][:-1]:
                     emit({"op": "choice", "yes": target, "no": len(nodes) + 1})
                 emit({"op": "jump", "next": op["targets"][-1]})
-            elif kind == "check":
-                require(len(op["targets"]) == 1, "invalid check shape")
-                emit({"op": "choice", "yes": op["targets"][0],
-                      "no": targets_of_checks[op["descriptor"] or op["text"]]})
             elif kind in {"ret", "ret.none", "raise", "throw", "unreachable"}:
                 emit({"op": "stop"})
             elif kind in INVOKES and len(op["targets"]) == 2:
@@ -512,21 +779,37 @@ def normalize_snapshot(snapshot, function):
                 # and every access to a slot that escaped: dyn results get unknown tags.
                 require(not op["targets"] or kind == "phi", f"invalid {kind} targets")
                 unknown = [result for result in results if result in dynamic]
-                if kind in {"mem.store", "mach.store"} and address in slots:
-                    writes[address] = offset
                 if not unknown:
                     emit({"op": "jump", "next": len(nodes) + 1})
                 for result in unknown:
                     following({"op": "havoc", "dst": result})
+            if kind != "phi":
+                state["pairs"] = pairing(state["pairs"], op)
+            else:
+                state["pairs"] = frozenset(pair for pair in state["pairs"] if pair[0] not in results)
             if len(nodes) > MAX_NODES:
                 raise Unsupported(f"normalized function exceeds {MAX_NODES} nodes")
 
-    # Threaded edges become their own nodes; then labels become node indices.
+    # Condition trees become their own nodes; then labels become node indices.
+    placed = {}
+
+    def place(reference):
+        if not isinstance(reference, tuple):
+            return reference
+        if id(reference) not in placed:
+            node = dict(reference[1])
+            for key in ("yes", "no", "next"):
+                if key in node:
+                    node[key] = place(node[key])
+            placed[id(reference)] = emit(node)
+            if len(nodes) > MAX_NODES:
+                raise Unsupported(f"normalized function exceeds {MAX_NODES} nodes")
+        return placed[id(reference)]
+
     for node in list(nodes):
-        for key in ("yes", "no"):
+        for key in ("yes", "no", "next"):
             if isinstance(node.get(key), tuple):
-                node[key] = emit(node[key][1])
-    require(len(nodes) <= MAX_NODES, f"normalized function exceeds {MAX_NODES} nodes")
+                node[key] = place(node[key])
     for node in nodes:
         for key in ("next", "yes", "no"):
             if isinstance(node.get(key), str):
@@ -549,9 +832,9 @@ def normalize_snapshot(snapshot, function):
             if key in node:
                 node[key] = renumber[node[key]]
     certificate = infer_certificate(nodes)
-    candidate = {"schema_version": 1, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
+    candidate = {"schema_version": 2, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
     return candidate, {"function": symbol, "stage": "typed-after", "nodes": len(nodes),
-                       "payloads": payloads, "remapped_guards": remapped_guards,
+                       "payloads": payloads, "paired_guards": paired_guards,
                        "threaded_edges": threaded, "omitted_blocks": len(blocks) - len(live),
                        "escaped_slots": len(escaped),
                        "scope": "dyn.payload guards in one normalized function", "limitations": LIMITATIONS}

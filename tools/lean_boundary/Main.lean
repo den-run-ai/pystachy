@@ -20,8 +20,22 @@ private def textField (json : Json) (name : String) : Except String String := do
 
 private def indexField (json : Json) (name : String) : Except String Nat := do
   let value ← (← json.getObjVal? name).getNat?
-  if value > 4096 then throw s!"{name} exceeds the prototype limit"
+  if value > 16384 then throw s!"{name} exceeds the prototype limit"
   return value
+
+private def tagText (json : Json) : Except String Tag := do
+  let value ← json.getStr?
+  if value.isEmpty || value.length > 256 then throw "invalid tag length"
+  return value
+
+/-- A set of distinct tags, at most 4096 of them; a guard or read names at least one,
+while a fact's empty set marks a point that no execution reaches. -/
+private def tagSet (json : Json) (nonempty : Bool := true) : Except String TagSet := do
+  let raw ← json.getArr?
+  if (nonempty && raw.isEmpty) || raw.size > 4096 then throw "invalid tag set size"
+  let tags ← raw.toList.mapM tagText
+  if tags.eraseDups.length != tags.length then throw "a tag set repeats a tag"
+  return tags
 
 private def parseNode (json : Json) : Except String Node := do
   match ← textField json "op" with
@@ -32,8 +46,8 @@ private def parseNode (json : Json) : Except String Node := do
       fields json ["op", "dst", "next"]
       return .havoc (← textField json "dst") (← indexField json "next")
   | "guard" =>
-      fields json ["op", "value", "tag", "yes", "no"]
-      return .guard (← textField json "value") (← textField json "tag")
+      fields json ["op", "value", "tags", "yes", "no"]
+      return .guard (← textField json "value") (← tagSet (← json.getObjVal? "tags"))
         (← indexField json "yes") (← indexField json "no")
   | "choice" =>
       fields json ["op", "yes", "no"]
@@ -42,8 +56,8 @@ private def parseNode (json : Json) : Except String Node := do
       fields json ["op", "next"]
       return .jump (← indexField json "next")
   | "payload" =>
-      fields json ["op", "value", "tag", "next"]
-      return .payload (← textField json "value") (← textField json "tag")
+      fields json ["op", "value", "tags", "next"]
+      return .payload (← textField json "value") (← tagSet (← json.getObjVal? "tags"))
         (← indexField json "next")
   | "stop" =>
       fields json ["op"]
@@ -52,31 +66,33 @@ private def parseNode (json : Json) : Except String Node := do
 
 private def parseInput (json : Json) : Except String (Program × Certificate) := do
   fields json ["schema_version", "program", "certificate"]
-  if (← (← json.getObjVal? "schema_version").getNat?) != 1 then
+  if (← (← json.getObjVal? "schema_version").getNat?) != 2 then
     throw "unsupported boundary schema version"
   let program ← json.getObjVal? "program"
   fields program ["entry", "nodes"]
   let rawNodes ← (← program.getObjVal? "nodes").getArr?
-  if rawNodes.size > 4096 then throw "more than 4096 nodes"
+  if rawNodes.size > 16384 then throw "more than 16384 nodes"
   let nodes ← rawNodes.toList.mapM parseNode
   let entry ← indexField program "entry"
   let rawCertificate ← (← json.getObjVal? "certificate").getArr?
-  if rawCertificate.size > 4096 then throw "more than 4096 certificate entries"
+  if rawCertificate.size > 16384 then throw "more than 16384 certificate entries"
   let mut certificate : Certificate := []
   let mut count := 0
+  let mut members := 0
   for rawFacts in rawCertificate do
     let rawFacts ← rawFacts.getArr?
     count := count + rawFacts.size
-    if count > 16384 then throw "more than 16384 certificate facts"
+    if count > 65536 then throw "more than 65536 certificate facts"
     let mut facts : Facts := []
     for rawFact in rawFacts do
       let pair ← rawFact.getArr?
-      if pair.size != 2 then throw "a fact must be a pair of strings"
+      if pair.size != 2 then throw "a fact must pair a location with a tag set"
       let value ← (← rawFact.getArrVal? 0).getStr?
-      let tag ← (← rawFact.getArrVal? 1).getStr?
-      if value.isEmpty || tag.isEmpty || value.length > 256 || tag.length > 256 then
-        throw "invalid fact string length"
-      facts := (value, tag) :: facts
+      if value.isEmpty || value.length > 256 then throw "invalid fact location length"
+      let tags ← tagSet (← rawFact.getArrVal? 1) (nonempty := false)
+      members := members + tags.length
+      if members > 262144 then throw "more than 262144 certificate tags"
+      facts := (value, tags) :: facts
     certificate := facts.reverse :: certificate
   return (⟨nodes, entry⟩, certificate.reverse)
 

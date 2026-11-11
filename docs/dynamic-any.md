@@ -1295,10 +1295,12 @@ the verifier permits only in direct integer equality comparisons. See the
 [IR contracts](typed-ir.md) for the exact scope and remaining assumptions.
 
 The optional
-[Lean checker](../tools/lean_boundary/README.md) checks those guards in selected
-normalized functions exported from actual typed IR. It rejects unsupported
-forms and does not establish adapter fidelity, identity/GC preservation or LLVM
-correctness. It is separate from the built-in closed-union proof and does not
+[Lean checker](../tools/lean_boundary/README.md) checks the guards of payload
+reads of every builtin, class, function and generator type, including int/bool
+sharing and class inheritance, in selected normalized functions exported from
+actual typed IR. It rejects unsupported forms and does not establish adapter
+fidelity, the descriptor table, payload layouts, identity/GC preservation or
+LLVM correctness. It is separate from the built-in closed-union proof and does not
 justify removing `Any` or identity bookkeeping. These box reads are effect-free because boxes are
 immutable. Runtime calls with an `A` descriptor receive every effect, as `O` calls
 do: the box may contain an object whose equality, hashing or repr runs program code.
