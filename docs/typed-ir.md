@@ -120,9 +120,10 @@ box of a `DynType` pointer and an eight-byte payload, which is a number's bits o
 own pointer. `dyn.type` reads the `DynType` (type `dyntype`), and `dyn.payload` reads the payload
 as the static type its `s` names. With `PYSTACHY_IRCHECK=1`, the stock verifier
 additionally requires an exact `float`, `str` or `bool` tag on every reachable
-payload read of those types. Other dynamic payload representations retain their
-frontend obligations; in particular an integer payload can legitimately contain
-bool bits, and user classes need inheritance-aware rules.
+payload read of those types, and an `int` or `bool` tag on every reachable `int`
+read: a bool's payload is its int value, while a wide int's box and None's hold
+none. Other dynamic payload representations retain their frontend obligations;
+in particular user classes need inheritance-aware rules.
 Neither instruction has a memory effect, since a box never changes. A box in a container slot
 is descriptor `A`, which runtime walks follow
 through the box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor
@@ -137,8 +138,8 @@ float's or reference's identity bits from a typed integer extraction while keepi
 the same LLVM loads. A live, non-null box remains a frontend obligation. The result
 does not establish that its source has any particular dynamic type.
 
-The exact builtin guard proof uses the actual typed-IR control-flow graph, with
-an open unknown-tag case. It follows copies, private scalar slots, boolean
+The builtin guard proof uses the actual typed-IR control-flow graph, with an
+open unknown-tag case for every other DynType, a wide int's among them. It follows copies, private scalar slots, boolean
 conditions, simultaneous phis, selects, joins and loop backedges to a fixed point.
 It checks exception and cold-check edges as well as normal flow. Rebinding loses
 the old slot's facts while preserving earlier SSA copies. A slot whose address

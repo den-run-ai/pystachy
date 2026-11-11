@@ -3070,10 +3070,21 @@ def index_bound(self, v: Val, bound: bool) -> str:
     self.guard(self.scalar("xor", [Val(ok, "bool"), Val("true", "bool")]), "TypeError: slice indices must be integers or None or have an __index__ method")
     if int_program():
         return self.rt("pys_dyn_index_bound", "i64", [f"ptr {v.v}", f"i64 {1 if bound else 0}"])
+    # Read the payload only where the test found an int or a bool: a None box holds no int
+    # (its payload word is no part of its contract, though runtime.c's happens to be 0).
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", "int", "")
+    self.incoming(ph, "-9223372036854775808" if bound else "1", self.cur)
+    self.cbr(none, end, some)
+    self.place(some)
     x = Val(self.to_slot(self.dyn_payload(v, "int")), "int")
     if bound:
         x = Val(self.select(self.num_cmp("==", x, Val("-9223372036854775808", "int")).v, Val("-9223372036854775807", "int"), x), "int")
-    return self.select(none, Val("-9223372036854775808" if bound else "1", "int"), x)
+    self.incoming(ph, x.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return self.phi(ph)
 
 
 def gen_dyn_slice(self, o: Val, bs: list[Node]) -> Val:
@@ -5120,7 +5131,12 @@ def gen_dyn_sum_end(self, r: Reduce) -> Val:
     self.place(ints)
     # Even an empty small-int sum returns a freshly boxed result (subject to the
     # runtime's small-int cache); bool/wide/custom starts retain their identity.
-    n = self.dyn_payload(self.mem_load(Val(r.acc, "*dyn")), "int")
+    # The small-int phase keeps an int box, and testing its tag guards the read.
+    acc = self.mem_load(Val(r.acc, "*dyn"))
+    small = self.label()
+    self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(acc), "dyntype"), Val(self.dyn_type("int"), "dyntype")).v, small, end)
+    self.place(small)
+    n = self.dyn_payload(acc, "int")
     self.mem_store(Val(r.acc, "*dyn"), Val(self.rt("pys_dyn_int", "ptr", [f"i64 {n.v}"]), DYN))
     self.br(end)
     self.place(end)

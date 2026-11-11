@@ -249,10 +249,10 @@ This is a verification building block for
 [#1210](https://github.com/den-run-ai/pystachy/issues/1210). The compiler already
 has a separate [closed-union proof](../../docs/typed-ir.md) from
 [#840](https://github.com/den-run-ai/pystachy/pull/840). With
-`PYSTACHY_IRCHECK=1`, the stock verifier also checks exact `float`, `str` and
-`bool` dynamic payload tags over its actual control-flow graph. That compiler
-analysis is not proved here, and does not yet check the int, class, container
-and function reads this optional checker covers. Runtime layout, lifetime,
+`PYSTACHY_IRCHECK=1`, the stock verifier also checks `float`, `str`, `bool` and
+`int` dynamic payload tags over its actual control-flow graph. That compiler
+analysis is not proved here, and does not yet check the class, container and
+function reads this optional checker covers. Runtime layout, lifetime,
 identity, GC and LLVM obligations remain outside both checks. Neither satisfies
 #1210's acceptance requirement of reducing a consumer's dynamic footprint; the
 typed TOML namespace state in
