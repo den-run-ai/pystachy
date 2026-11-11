@@ -3566,6 +3566,8 @@ class Loader:
                 chk = self.fragile_chk(m, d.s[: d.s.find(".")] if "." in d.s else d.s, loc)
                 if chk != "":
                     checks.insert(0, chk)
+                if self.deco_target(m, d, loc) == "typing.final":
+                    m.finals.append(st.s)  # (whose __final__ CPython sets: Gen checks that none binds one)
             elif self.deco_target(m, d, loc) == "dataclasses.dataclass":
                 kept.append(d)  # (@dataclass returns the class it takes, which @final above it takes)
             else:

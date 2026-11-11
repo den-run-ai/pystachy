@@ -1038,6 +1038,16 @@ def gen_program(self, mods: list[Mod]) -> str:
         tops.append(top)
     for ci in self.classes.values():
         self.inherit(ci)
+    for m in mods:
+        for q in m.finals:
+            # CPython's @final sets the class's __final__ to True, over what its body or a base's
+            # binds, which the class would read where the loader dropped the decorator
+            c = q
+            while c in self.classes and q in self.classes:
+                if "__final__" in self.body_names(self.classes[c].node):
+                    self.line = self.classes[q].node.line
+                    self.err(f"@final on class {short(q)} is not supported where {'its body' if c == q else 'the body of ' + short(c)} binds __final__ (CPython's @final sets __final__ to True)")
+                c = self.classes[c].base
     for ci in [x for x in self.classes.values()]:
         # (a dataclass's field annotated C[X] makes that specialization of generic class C here,
         # which specialize declares itself)
