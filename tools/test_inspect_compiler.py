@@ -1,6 +1,7 @@
 """Black-box inspection contracts: real compilation, immutable snapshots and isolation."""
 import hashlib
 import json
+import re
 import os
 from pathlib import Path
 import signal
@@ -100,6 +101,27 @@ class InspectionTests(unittest.TestCase):
             self.assertEqual(footprint["totals"]["dynamic_runtime_calls"], {})
             self.assertEqual(footprint["totals"]["numeric_companion_slots"], 0)
             self.assertEqual(footprint["totals"]["numeric_generation_slots"], 0)
+
+    def test_typed_after_only_skips_pass_records_not_the_final_snapshot(self):
+        # The Lean corpus check's mode: the same LLVM, typed-after snapshot and descriptor
+        # table, without the typed-before snapshot, pass records or diffs.
+        program = self.source("# pystachy: dynamic-any\nfrom typing import Any\n" + LOOP
+                              + "x: Any = 2.5\nif isinstance(x, float):\n    print(x + 1.0)\n")
+        full, complete = self.inspect(program, "complete")
+        self.assertEqual(full.returncode, 0, full.stderr)
+        light, quick = self.inspect(program, "quick", ("--typed-after-only",))
+        self.assertEqual(light.returncode, 0, light.stderr)
+        self.assertEqual(self.snapshot(quick, "typed-after"), self.snapshot(complete, "typed-after"))
+        self.assertTrue(self.snapshot(quick, "typed-after")["dynamic_types"] is not None)
+        self.assertEqual((quick / "llvm.ll").read_bytes(), (complete / "llvm.ll").read_bytes())
+        self.assertFalse((quick / "typed-before.json").exists())
+        self.assertFalse((quick / "passes").exists() or (quick / "program-passes").exists())
+        report, reference = self.report(quick), self.report(complete)
+        self.assertEqual((report["status"], report["passes"], report["program_passes"]), ("ok", [], []))
+        self.assertGreater(len(reference["passes"]), 0)
+        self.assertEqual((report["settings"]["captures"], reference["settings"]["captures"]), ("typed-after", "all"))
+        self.assertEqual([stage["status"] for stage in report["stages"]], ["skipped", "completed", "completed"])
+        self.assertEqual(report["attempts"][-1]["dynamic_boundary"], reference["attempts"][-1]["dynamic_boundary"])
 
     def test_dynamic_boundary_records_transitive_graph_outside_snapshot_filter(self):
         self.source("def number(text: str) -> int:\n    return int(text)\n", "boundary_leaf.py")
@@ -450,6 +472,30 @@ print(kernel(3))
         ordinary = self.ordinary_ir(program)
         self.assertEqual(ordinary.returncode, 0, ordinary.stderr)
         self.assertEqual((destination / "llvm.ll").read_bytes(), ordinary.stdout)
+
+    def test_dynamic_types_match_the_emitted_descriptors(self):
+        program = self.source("# pystachy: dynamic-any\nfrom typing import Any\n"
+                              "class Base:\n    pass\nclass Sub(Base):\n    pass\n"
+                              "def name(x: Any) -> str:\n    return type(x).__name__\n"
+                              "def call(f: Any) -> Any:\n    return f()\n"
+                              "print(name(Base()), name(Sub()), call(lambda: 1))\n")
+        completed, destination = self.inspect(program)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        types = {entry["symbol"]: entry for entry in self.snapshot(destination, "typed-after")["dynamic_types"]}
+        self.assertEqual(types["@dt.Sub"]["base"], "@dt.Base")
+        self.assertEqual((types["@dt.Base"]["payload"], types["@dt.Sub"]["payload"]), ("Base", "Sub"))
+        self.assertNotEqual(types["@dt.Base"]["cls"], types["@dt.Sub"]["cls"])
+        self.assertTrue(any(entry["kind"] == 9 and entry["payload"].startswith("fn[") for entry in types.values()))
+        # Each entry's kind, class number, base and flags are those of the descriptor in the LLVM.
+        emitted = {}
+        for line in (destination / "llvm.ll").read_text().splitlines():
+            found = re.match(r"(@dtf?\.\S+) = internal constant .*?\{i64 (-?\d+), ptr [^,]+, ptr [^,]+, "
+                             r"i64 (-?\d+), ptr ([^,]+), i64 (-?\d+),", line)
+            if found:
+                symbol, kind, cls, base, flags = found.groups()
+                emitted[symbol] = (int(kind), int(cls), "" if base == "null" else base, int(flags))
+        self.assertEqual(emitted, {symbol: (entry["kind"], entry["cls"], entry["base"], entry["flags"])
+                                   for symbol, entry in types.items()})
 
     def test_repaired_import_uses_current_bytes_and_no_prior_failure_state(self):
         support = self.source("def add(value):\n    return value + 'x'\n", "worker_support.py")

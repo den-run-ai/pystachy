@@ -48,11 +48,24 @@ not come from separate compilations with different optimization settings.
 Failed compilations may stop before any typed IR or LLVM output is available;
 read `report.json` first.
 
+`--typed-after-only` records only `typed-after.json`, `llvm.ll` and the report:
+no `typed-before.json`, pass records or diffs, with `"captures": "typed-after"`
+in the report's settings. The snapshot is the same; the compilation is about
+three times faster for large programs.
+
 The optional [Lean payload-guard prototype](../tools/lean_boundary/README.md)
-consumes a completed `typed-after.json` and checks one explicitly selected
-function. Its theorem establishes guard safety in a small normalized model;
+consumes a completed `typed-after.json` and checks one selected function, or every
+function that reads a dynamic payload. Its theorem establishes guard safety in a small normalized model;
 the inspection export, normalization and native execution remain separate trust
 obligations. Unsupported instructions are reported rather than skipped.
+A `check` op's error block is not among its targets, so each function snapshot
+also maps the op's key (its descriptor, else its text) to that block's label in
+`check_targets`. `typed-after.json` also lists, in `dynamic_types`, every
+DynType descriptor the program emits for its classes, functions and generators.
+A dynamic box's tag is the address of one of these or of a runtime.c builtin.
+Each entry records the descriptor's kind, class number (the word class
+dispatchers switch on), base, secondary role, flags and the static type of the
+payload its boxes hold.
 
 ## Three questions to try
 

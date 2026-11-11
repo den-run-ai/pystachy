@@ -1,4 +1,5 @@
 """Checks of the pyperformance controller and of the ports' records; LLVM is not required."""
+import ast
 import contextlib
 import io
 import json
@@ -16,6 +17,7 @@ import unittest
 from unittest import mock
 
 import bench_pyperformance as bench
+from pytest_native_codegen import generate
 
 
 class CensusTests(unittest.TestCase):
@@ -279,6 +281,32 @@ class OutputTests(unittest.TestCase):
 
 
 class RecordTests(unittest.TestCase):
+    def test_pytest_correctness_suite_covers_every_delivered_benchmark(self):
+        imported = set()
+        cases = []
+        for path in sorted((bench.BENCH / "pytest").glob("test_*.py")):
+            source = path.read_text()
+            for node in ast.parse(source).body:
+                if isinstance(node, ast.Import):
+                    imported.update(alias.name for alias in node.names)
+            cases.extend(generate(source, path.name).cases)
+        modules = {bench.port_path(name).stem for name in bench.BENCHMARKS}
+        self.assertEqual(imported & modules, modules)
+        self.assertEqual(len(cases), 39)
+        self.assertEqual(len(set(cases)), len(cases))
+
+    def test_pytest_correctness_suite_matches_original_pytest(self):
+        with tempfile.TemporaryDirectory(prefix="pyperformance-pytest-") as temporary:
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(bench.BENCH)
+            result = subprocess.run([
+                sys.executable, str(bench.ROOT / "tools/pytest_native.py"),
+                str(bench.BENCH / "pytest"), "--mode", "python", "--compare",
+                "--work-dir", temporary,
+            ], cwd=bench.ROOT, env=env, capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("pytest collection and phase outcomes match", result.stdout)
+
     def test_ports_tables_and_files_agree(self):
         self.assertEqual(set(bench.BENCH.glob("*.py")), {bench.port_path(n) for n in bench.BENCHMARKS})
         self.assertLessEqual(set(bench.BENCHMARKS), set(bench.UPSTREAM))

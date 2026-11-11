@@ -9,6 +9,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cpython_test_methods as ctm
+import pytest_native as pytest_runner
 
 SOURCE = '''
 import random
@@ -342,6 +343,135 @@ class Active(unittest.TestCase):
                 ctm.main(["combine", str(self.src), str(self.dir / "x.py"), "SampleTests.test_skipped"])
             finally:
                 sys.stderr = stderr
+
+
+class PytestExportTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.src = self.root / "upstream.py"
+        self.src.write_text(SOURCE)
+        self.out = self.root / "adapted"
+
+    def export(self, selection):
+        return ctm.pytest_suite(str(self.src), self.out, selection)
+
+    def run_export(self):
+        result = pytest_runner.run_module(self.out / "test_selected.py", self.out,
+                                         self.root / "work", "python", [], sys.executable, 30)
+        oracle = pytest_runner.oracle([self.out / "test_selected.py"], self.out,
+                                     self.root / "oracle", sys.executable, 30)
+        return result, oracle
+
+    def test_exports_only_selected_methods_without_import_time_execution(self):
+        selected = [("SampleTests", "test_asserts"), ("BisectPython", "test_module_attribute")]
+        manifest = self.export(selected)
+        self.assertEqual(manifest["selected"], ["SampleTests.test_asserts", "BisectPython.test_module_attribute"])
+        self.assertIn("SampleTests.test_warns", manifest["not_selected"])
+        self.assertIn(["SampleTests", "test_skipped", "skip decorator"], manifest["left_out"])
+        self.assertIn(["BisectC", "test_module_attribute", "C-accelerator variant"], manifest["left_out"])
+        self.assertEqual(len(manifest["source_sha256"]), 64)
+        helper = self.out / "_unittest_cases.py"
+        self.assertEqual(run(helper).stdout, "")
+        result, oracle = self.run_export()
+        self.assertEqual(result.state, "passed", result.error + result.stderr)
+        self.assertEqual(len(result.cases), 2)
+        self.assertEqual(pytest_runner.compare([result], oracle), [])
+
+    def test_lifecycle_failures_stay_in_their_phases_and_cleanup_runs(self):
+        self.src.write_text('''
+import unittest
+events = []
+class TestsCall(unittest.TestCase):
+    def setUp(self):
+        events.append("setup")
+    def test_fail(self):
+        self.fail("expected")
+    def tearDown(self):
+        events.append("teardown")
+class TestsCleanup(unittest.TestCase):
+    def test_fail(self):
+        self.assertEqual(events, ["setup", "teardown"])
+    def tearDown(self):
+        raise RuntimeError("cleanup")
+class TestsSetup(unittest.TestCase):
+    def setUp(self):
+        raise ValueError("setup")
+    def test_unused(self):
+        self.fail("must not run")
+    def tearDown(self):
+        events.append("must not run")
+class TestsAfter(unittest.TestCase):
+    def test_pass(self):
+        self.assertEqual(events, ["setup", "teardown"])
+''')
+        self.export([("TestsCall", "test_fail"), ("TestsCleanup", "test_fail"),
+                     ("TestsSetup", "test_unused"), ("TestsAfter", "test_pass")])
+        result, oracle = self.run_export()
+        self.assertEqual(result.state, "test-failed", result.error + result.stderr)
+        self.assertEqual(pytest_runner.compare([result], oracle), [])
+        failures = [(e["nodeid"].split("::")[-1], e["phase"]) for e in result.events
+                    if e["outcome"] in ("failed", "error")]
+        self.assertEqual(failures, [("test_TestsCall__test_fail", "call"),
+                                    ("test_TestsCleanup__test_fail", "teardown"),
+                                    ("test_TestsSetup__test_unused", "setup")])
+
+    def test_unknown_skipped_duplicate_and_unsupported_methods_rejected(self):
+        for selection in ([("SampleTests", "missing")], [("SampleTests", "test_skipped")],
+                          [("SampleTests", "test_asserts")] * 2, [("SampleTests", "test_warns")]):
+            with self.subTest(selection=selection), self.assertRaises(ctm.Unsupported):
+                self.export(selection)
+            self.assertFalse(self.out.exists())
+
+    def test_discarded_lifecycle_and_decorators_are_rejected(self):
+        for source in (
+            "def setUpModule(): pass\nclass Cases(unittest.TestCase):\n    def test_ok(self): pass\n",
+            "class Cases(unittest.TestCase):\n    @classmethod\n    def setUpClass(cls): pass\n    def test_ok(self): pass\n",
+            "class Cases(unittest.TestCase):\n    @support.requires\n    def test_ok(self): pass\n",
+            "class Cases(unittest.TestCase):\n    def test_ok(self): self.addCleanup(print)\n",
+            "class Cases(unittest.TestCase):\n    def test_ok(self): self.skipTest('reason')\n",
+            "class Cases(unittest.TestCase, metaclass=type):\n    def test_ok(self): pass\n",
+        ):
+            self.src.write_text("import unittest\nfrom test import support\n" + source)
+            with self.subTest(source=source), self.assertRaises(ctm.Unsupported):
+                self.export([("Cases", "test_ok")])
+            self.assertFalse(self.out.exists())
+
+    def test_existing_output_cannot_retain_stale_cases(self):
+        self.out.mkdir()
+        with self.assertRaises(FileExistsError):
+            self.export([("SampleTests", "test_asserts")])
+
+    def test_custom_collection_needs_explicit_method_only_scope(self):
+        self.src.write_text('''
+import unittest
+class Cases(unittest.TestCase):
+    def test_ok(self):
+        self.assertEqual(1, 1)
+def load_tests(loader, tests, pattern):
+    return tests
+''')
+        with self.assertRaisesRegex(ctm.Unsupported, "custom collection"):
+            self.export([("Cases", "test_ok")])
+        manifest = ctm.pytest_suite(self.src, self.out, [("Cases", "test_ok")], selected_methods_only=True)
+        self.assertEqual(manifest["excluded_collection_hooks"], [
+            {"name": "load_tests", "reason": "explicit method selection; custom collection is not qualified"}])
+        result, oracle = self.run_export()
+        self.assertEqual(result.state, "passed")
+        self.assertEqual(pytest_runner.compare([result], oracle), [])
+
+    def test_method_only_scope_still_rejects_module_lifecycle(self):
+        self.src.write_text('''
+import unittest
+def setUpModule():
+    raise RuntimeError("setup")
+class Cases(unittest.TestCase):
+    def test_ok(self):
+        pass
+''')
+        with self.assertRaisesRegex(ctm.Unsupported, "setUpModule"):
+            ctm.pytest_suite(self.src, self.out, [("Cases", "test_ok")], selected_methods_only=True)
 
 
 if __name__ == "__main__":
