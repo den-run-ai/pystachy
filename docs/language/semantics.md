@@ -65,8 +65,10 @@ uses ordinary assignments and branches, without a runtime pattern matcher.
 
 Mapping patterns, starred sequence patterns, list or other general sequence subjects,
 complex literals, arbitrary class patterns, dataclass hierarchies, custom `__match_args__`
-and attribute hooks remain unsupported. Dataclass patterns require a concrete subject
-type; dynamic `Any` and union subjects are rejected rather than treated as mismatches.
+and attribute hooks remain unsupported; the error names the statement's first such pattern.
+A class body rejects a `match` statement as it rejects an `if` statement there. Dataclass
+patterns require a concrete subject type; dynamic `Any` and union subjects are rejected
+rather than treated as mismatches.
 Sequence patterns require a concrete fixed tuple; known scalar subjects, including
 promoting integers, fall through. Optional, union and dynamic sequence subjects need
 explicit narrowing before matching.

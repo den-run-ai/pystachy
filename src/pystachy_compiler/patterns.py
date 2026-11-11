@@ -25,10 +25,34 @@ def conjunction(parts: list[Node], line: int) -> Node:
     return out
 
 
-def bounded_pattern(node: Node) -> bool:
+def unsupported_pattern(node: Node) -> Node | None:
+    # the first pattern in node, in source order, that this lowering does not support: a
+    # mapping, a starred name in a sequence, or a complex literal
     if node.kind in ["pmap", "pstar"] or (node.kind == "pnum" and "j" in node.s):
-        return False
-    return all(bounded_pattern(child) for child in node.kids)
+        return node
+    for child in node.kids:
+        bad = unsupported_pattern(child)
+        if bad is not None:
+            return bad
+    return None
+
+
+def unsupported_match(st: Node) -> Node | None:
+    # the first unsupported pattern among the cases of match statement st, or None
+    for i in range(1, len(st.kids), 2):
+        bad = unsupported_pattern(st.kids[i].kids[-1])
+        if bad is not None:
+            return bad
+    return None
+
+
+def unsupported_reason(node: Node) -> str:
+    # the diagnostic for unsupported_pattern's node
+    if node.kind == "pmap":
+        return "mapping patterns are not supported"
+    if node.kind == "pstar":
+        return "starred sequence patterns are not supported; use a fixed tuple pattern"
+    return "complex literal patterns are not supported"
 
 
 def pattern_captures(pattern: Node, out: list[str]) -> None:
@@ -57,7 +81,7 @@ def pattern_test(pattern: Node, subject: Node, counter: list[int], captures: dic
         value = clone(pattern.kids[0])
         if value.kind == "pnum":
             if "j" in value.s:
-                return mk("matchunsupported", "complex literal patterns are not supported", line, [])
+                return mk("matchunsupported", unsupported_reason(value), line, [])
             # Very large binary/octal/hex literals retain a canonical 0x form.
             # Its hexadecimal 'e' digits are not a floating-point exponent.
             digits = value.s[1:] if value.s.startswith("-") else value.s
@@ -70,8 +94,9 @@ def pattern_test(pattern: Node, subject: Node, counter: list[int], captures: dic
             out = mk("boolop", "or", line, [out, pattern_test(alt, clone(subject), counter, captures)])
         return out
     if k == "pseq":
-        if any(p.kind == "pstar" for p in pattern.kids):
-            return mk("matchunsupported", "starred sequence patterns are not supported; use a fixed tuple pattern", line, [])
+        stars = [p for p in pattern.kids if p.kind == "pstar"]
+        if len(stars) > 0:
+            return mk("matchunsupported", unsupported_reason(stars[0]), line, [])
         parts = [mk("matchseq", str(len(pattern.kids)), line, [clone(subject)])]
         for i in range(len(pattern.kids)):
             item = mk("index", "", line, [clone(subject), mk("int", str(i), line, [])])
@@ -96,25 +121,29 @@ def pattern_test(pattern: Node, subject: Node, counter: list[int], captures: dic
             part = pattern.kids[i + 1]
             parts.append(pattern_test(part.kids[0] if part.kind == "pkw" else part, held[i], counter, captures))
         return conjunction(parts, line)
-    return mk("matchunsupported", "mapping patterns are not supported" if k == "pmap" else "unsupported pattern", line, [])
+    return mk("matchunsupported", unsupported_reason(pattern) if k == "pmap" else "unsupported pattern", line, [])
 
 
-def lower_matches(node: Node, counter: list[int]) -> None:
+def lower_matches(node: Node, counter: list[int], class_body: bool = False) -> None:
     # Parsing and symbol-table checks still see the original patterns. Afterwards,
     # rewrite each match to one subject assignment and an if/elif chain. No runtime
     # matcher, boxed subject, or compiler-wide speculative state is introduced.
     for child in node.kids:
-        lower_matches(child, counter)
-    if node.kind != "block":
+        lower_matches(child, counter, node.kind == "class" and child.kind == "block")
+    if node.kind != "block" or class_body:
+        # A class body holds fields and methods only: the class-body check rejects
+        # its match statements as it rejects an if statement there, rather than
+        # the subject and captures becoming class attributes.
         return
     body: list[Node] = []
     for st in node.kids:
         if st.kind != "match":
             body.append(st)
             continue
-        if any(not bounded_pattern(st.kids[i].kids[-1]) for i in range(1, len(st.kids), 2)):
+        if unsupported_match(st) is not None:
             # Keep unsupported patterns in their original AST: captures in a
-            # dropped or uncalled match must still be locals of that scope.
+            # dropped or uncalled match must still be locals of that scope. Code
+            # generation reports the first such pattern (unsupported_reason).
             body.append(st)
             continue
         counter[0] += 1
