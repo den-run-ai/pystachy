@@ -170,6 +170,10 @@ jobs:
         if: startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in'
         run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
 
+      - name: Workload pytest oracle dependency
+        if: matrix.group == 'benchmarks' || matrix.group == 'hosted'
+        run: python3 -m pip install "$(sed -n '/^pytest==/p' tools/requirements-dev.txt)"
+
       # No run-id or token: download-artifact can only select this workflow run here.
       - name: Download verified bootstrap
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
@@ -182,6 +186,25 @@ jobs:
           VERIFY_GROUP: ${{ matrix.group }}
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: tests/verify.sh "$VERIFY_GROUP"
+
+      # The hosted compiler compiles each dynamic-Any test program, and the pinned Lean checker
+      # must prove every dynamic payload read guarded: in the short PR opt-in group and the first
+      # full opt-in shard (in two workers, about four minutes; the release archive is for x86_64
+      # Linux).
+      - name: Lean proof of the dynamic-Any corpus's payload guards
+        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0')
+        run: |
+          lean_boundary_dir=$(mktemp -d)
+          trap 'rm -rf "$lean_boundary_dir"' EXIT
+          curl --fail --location --silent --show-error --retry 2 --retry-max-time 240 \
+            --connect-timeout 20 --max-time 120 \
+            'https://github.com/leanprover/lean4/releases/download/v4.35.0/lean-4.35.0-linux.tar.zst' \
+            --output "$lean_boundary_dir/lean.tar.zst"
+          printf '%s  %s\n' '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d' \
+            "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -
+          tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
+          PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+            make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
 
       - name: Require C, embedding and extension FFI coverage
         if: matrix.group == 'contracts'
@@ -199,6 +222,14 @@ jobs:
           python3 -m unittest discover -s tools -p test_runtime_thread.py
           python3 -m unittest discover -s tools -p test_stack_floor.py
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
+
+      # Keep the existing hosted ASan controls out of Lint's 15-minute budget.
+      # setup.sh already validates LLVM; compiler-rt supplies the runtime and preload library.
+      - name: Generated user and runtime ASan controls
+        if: matrix.group == 'contracts' && matrix.machine == 'x86_64'
+        run: |
+          sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
+          python3 -m unittest discover -s tools -p test_runtime_asan.py -v
 
       - name: Sanitized shared and object JIT linkage controls
         if: matrix.group == 'ubsan-0' || matrix.group == 'safety-1'
@@ -223,6 +254,17 @@ jobs:
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-pyperformance-check BENCH_COMPILER=build/verify/pystachy2
+
+      - name: Shared pytest example assertions
+        if: matrix.group == 'hosted'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make test-pytest-workloads PYTEST_WORKLOAD_COMPILER=build/verify/pystachy2 PYTEST_WORKLOAD_ARGS='--group examples'
+
+      # Retain the hosted compiler and original pytest oracle without using Lint's budget.
+      - name: Generated native pytest runner parity
+        if: matrix.group == 'hosted' && matrix.machine == 'x86_64'
+        run: make test-pytest-native
 
       # tools/setup.sh installs both of Ubuntu's LP64 libblas.so.3 providers: OpenBLAS
       # (libopenblas0-pthread), checked on one thread, and the reference BLAS (libblas3).
@@ -251,6 +293,12 @@ jobs:
           name: ${{ matrix.machine }}-verification-${{ matrix.group }}
           path: |
             build/pyperformance-smoke.json
+            build/pytest-pyperformance.json
+            build/pytest-workloads.json
+            build/pytest-native/examples.json
+            build/pytest-native-aot/examples.json
+            build/pytest-controls.json
+            build/pytest-upstream-bundled.json
             build/verification.json
             build/extended-smoke.json
             build/program-cache-checks.json
@@ -258,6 +306,7 @@ jobs:
             build/verify/example-cli.json
             build/verify/dynany-fuzz/*.py
             build/verify/dynany-optin-*.json
+            build/verify/lean-corpus.json
             build/verify/dynany-optin-*/tests/programs/*/*
             build/verify/python-int-optin-*.json
             build/verify/python-int-optin-*/tests/programs/*/*

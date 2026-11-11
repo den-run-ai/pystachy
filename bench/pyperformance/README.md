@@ -36,6 +36,36 @@ signed coefficients and an empty row. These run in the differential corpus. The 
 sparse timing workloads retain upstream's zero-filled inputs; their zero checksums alone
 cannot validate the kernels.
 
+## Shared pytest correctness suite
+
+The [pytest tests](pytest/) import all 25 delivered benchmark modules and exercise
+their existing workload functions with 39 ordinary pytest cases. The same files
+run under original CPython pytest and the [native runner](../../docs/pytest-native.md):
+
+```sh
+PYTHONPATH=bench/pyperformance python3 -m pytest -q bench/pyperformance/pytest
+python3 tools/pytest_native_suites.py --group pyperformance --mode jit
+python3 tools/pytest_native_suites.py --group pyperformance --mode aot
+```
+
+The registry preserves all 39 cases in five independent categories, each with
+its own original-pytest oracle. This bounds native build memory and separates
+the JSON opt-in from typed workloads. `make bench-pyperformance-check` includes
+both native modes in addition to its existing process/timing/provenance checks.
+
+These original tests check full discrete results where available, finite numeric
+reference values with explicit tolerances, complete generator order, nonuniform
+SOR and signed sparse-matrix inputs, fixture cleanup, and JSON values. Reference
+values were checked with pinned CPython 3.13.16. The JSON tests retain the workloads'
+existing dynamic `Any` contract; the other tests use concrete types. They do not
+require importing pyperf or changing any timed workload source.
+
+Keep `bench-pyperformance-check`, the corpus controls and controller unit tests:
+they also verify subprocess behavior, exact CLI output, timed regions, negative
+controls and upstream provenance. Pytest results are correctness evidence, not
+benchmark measurements. Use the timing controller above for comparable timings;
+the native pytest invocation's compilation/startup cost is a separate measurement.
+
 ## Byte BPE
 
 `bpe_tokeniser.py` provides the reusable `SimpleBytePairEncoding`, `bpe_train`,

@@ -129,11 +129,15 @@ class OptionalSlotsTests(unittest.TestCase):
                 self.assertTrue(any(s.s.endswith(".tag") for s in fn.slots))
                 self.assertTrue(any(s.s.endswith(".pay") for s in fn.slots))
 
-    def test_rank_minimum_keeps_lookup_but_not_minimum_box(self):
+    def test_rank_minimum_keeps_one_lookup_without_optional_boxes(self):
         fn = compile_functions()["rank_minimum"]
-        self.assertTrue(calls(fn, "dict.getbox"))
+        self.assertEqual(len(calls(fn, "dict.find")), 1)
+        self.assertEqual(len(calls(fn, "dict.val_or_zero")), 1)
+        self.assertFalse(calls(fn, "dict.getbox"))
         self.assertFalse(calls(fn, "box"))
-        self.assertEqual([s.s for s in optional_slots(fn)], ["rank"])
+        self.assertFalse(optional_slots(fn))
+        before = compile_functions(options="-unionslots")["rank_minimum"]
+        self.assertEqual(len(calls(before, "dict.getbox")), 1)
 
     def test_disabled_pass_retains_representation(self):
         functions = compile_functions(options="-unionslots")
@@ -144,18 +148,17 @@ class OptionalSlotsTests(unittest.TestCase):
 
     def test_escape_unknown_producer_and_optional_copy_keep_boxes(self):
         functions = compile_functions()
-        for name in ("escaped", "argument", "looked_up", "produced", "copied", "string_value"):
+        for name in ("escaped", "argument", "produced", "copied", "string_value"):
             with self.subTest(function=name):
                 self.assertTrue(optional_slots(functions[name]))
         self.assertTrue(calls(functions["escaped"], "box"))
-        self.assertTrue(calls(functions["looked_up"], "dict.getbox"))
         self.assertTrue(calls(functions["copied"], "box"))
 
     def test_nonnull_pointer_comparison_keeps_box(self):
         split = Gen.unionslots
 
         def compare_value(gen, fn):
-            if fn.f.name == "chosen":
+            if fn.f.name in ("chosen", "looked_up"):
                 for block in fn.blocks:
                     for op in block.code:
                         if op.op == "ptr.cmp":
@@ -164,9 +167,11 @@ class OptionalSlotsTests(unittest.TestCase):
             return split(gen, fn)
 
         with patch.object(Gen, "unionslots", compare_value):
-            fn = compile_functions()["chosen"]
-        self.assertTrue(optional_slots(fn))
-        self.assertTrue(calls(fn, "box"))
+            functions = compile_functions()
+        self.assertTrue(optional_slots(functions["chosen"]))
+        self.assertTrue(calls(functions["chosen"], "box"))
+        self.assertTrue(optional_slots(functions["looked_up"]))
+        self.assertTrue(calls(functions["looked_up"], "dict.getbox"))
 
     def test_generator_frame_stays_boxed(self):
         functions = compile_functions("""
