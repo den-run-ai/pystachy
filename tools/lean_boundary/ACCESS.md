@@ -86,9 +86,12 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   `dict.eq_find` and `dict.eq_pair_find`, which restart where a key's `__eq__` changes the
   table) return -1 or a live entry; `dict.entry` and `dict.big_entry` a live entry or raise, as
   `dict.big_put` returns the entry it finds or adds. A write of an entry's value
-  (`dict.entry_set`) moves no entry; deleting one (`dict.entry_del`) is a dict write after it. A
-  phi of -1 and of lookups of one dict, each of which only a jump separates from the phi, is
-  that dict's lookup there.
+  (`dict.entry_set`) moves no entry; deleting one (`dict.entry_del` or `set.slot_del`) is a dict
+  write after it. A comparison lookup first reads its source entry's key and hash; the adapter
+  checks that entry is live before invalidating facts for a callback and recording the target
+  lookup's result. `dict.val_or_zero` reads no entry on its negative-index branch; its
+  nonnegative branch must use a live entry. A phi of -1 and of lookups of one dict, each of
+  which only a jump separates from the phi, is that dict's lookup there.
 - Every other operation defines its results with unknown values, and so does any other phi. What
   it may change comes from its effects: a runtime operation's `RUNTIME` entry, with a possible
   user-code effect (`U?`) resolved from its descriptor as the compiler does; a direct call's
@@ -112,9 +115,11 @@ The historical sweep recorded on 2026-11-11 at
 [`12cca46d`](https://github.com/den-run-ai/pystachy/commit/12cca46dcffd8ee9290d9cf362ba3f4bafb34511)
 compiled every differential test program and deviation of that revision with the hosted
 compiler: 2,407 programs; 1,174 of them have unchecked accesses, 84,731 in 16,062
-functions. Lean accepted every function but one, proving 84,730 accesses. These counts
-predate the merge of released alpha.4 main and the negated-guard adapter fix; fresh corpus
-qualification of the refreshed tree remains pending. The exception in the historical sweep is
+functions. Lean accepted every function but one, proving 84,730 accesses. These historical
+adapter counts predate the merge of released alpha.4 main, the negated-guard fix and the
+direct-entry coverage corrections. Selected-corpus qualification after these corrections is
+recorded separately in [#1241](https://github.com/den-run-ai/pystachy/pull/1241); the broader
+sweep has not been rerun. The exception in the historical sweep is
 `fib_memo`'s `fib` in [`closures.py`](../../tests/programs/language/closures.py): it loads its
 captured dict from the closure's cell for `k in memo` and again for `memo[k]`, and the adapter
 does not track cells, so it cannot tell that the second load gives the dict whose entry the

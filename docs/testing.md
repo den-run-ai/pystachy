@@ -947,16 +947,16 @@ Python/development dependency pins. Missing merge history runs the check;
 documentation-only PRs skip it. The selector has temporary-Git-history controls.
 It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
 `make check-lean-boundary`; no extra PR job is added. The x86_64 verification
-group `opt-in` on PRs, and `dynany-optin-0` on main and manual runs, run
+group `opt-in` on PRs, and `runtime-cache` on main and manual runs, run
 `make check-lean-corpus` with the same archive: the corpus tool's tests
 (`tools/test_lean_corpus.py`), then each dynamic-`Any` test program compiled by
 the hosted compiler, failing unless Lean proves every dynamic payload read guarded
 and every [unchecked list read and dict entry](../tools/lean_boundary/ACCESS.md) in
-bounds and live (in two workers, about four minutes; its report is uploaded as
-`lean-corpus.json`). Lint, already
-near its 15-minute bound, runs neither. The bridge's Python tests
-also run in `make check-fast`. Those tests skip executable checks when Lean has
-not been built; the dedicated target requires them and fails if the executable
+bounds and live. Both placements use two corpus workers within the existing jobs
+and their 15-minute limits, install the pinned `typing_extensions` dependency,
+and upload `lean-corpus.json`. Lint runs neither the corpus tests nor the sweep.
+The bridge's Python tests also run in `make check-fast`. Those tests skip executable checks
+when Lean has not been built; the dedicated target requires them and fails if the executable
 is missing. Lean is a development-only dependency for this bounded prototype.
 
 `make typecheck` uses the mypy version pinned in `tools/requirements-dev.txt` and
