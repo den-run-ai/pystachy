@@ -11,6 +11,7 @@ which checks each kind of change needs.
 | Task | Entry point | What it establishes |
 |---|---|---|
 | Check source hygiene and compiler unit tests | `make check-fast` | Python lint/type checks, repository hygiene and selected fast compiler tests. |
+| Run adapted pytest tests natively | [pytest_native.py](pytest_native.py) | Static collection, generated typed fixtures/tests and independent original-pytest phase comparison; see the [bounded source contract](../docs/pytest-native.md). |
 | Verify compiler and runtime changes | `make verify` | The complete verification plan, including bootstrap, native execution and configuration variants. `tests/verify.sh --list` lists its groups. |
 | Check the temporary bootstrap tier | `python3 tools/check_bootstrap_tier.py build/ci-bootstrap` | Force an O1 temporary/O2 final Make bootstrap and compare all witnesses with a same-checkout verified O2 bundle; preserves the bundle and records diagnostic timings. Use an exclusive checkout. |
 | Compare a program with CPython | `make test FILES="tests/programs/AREA/CASE.py"` | JIT/AOT output and status agree with the recorded CPython reference. Use `make test-py` for the hosted compiler. |

@@ -153,6 +153,9 @@ jobs:
       - name: CPython test-method extraction tests
         run: python3 -m unittest discover -s tools -p test_cpython_test_methods.py
 
+      - name: Generated native pytest runner parity
+        run: make test-pytest-native
+
       - name: Dynamic Any fuzzer generator and comparison tests
         run: python3 -m unittest discover -s tools -p test_dynany_fuzz.py
 

@@ -5,6 +5,11 @@ checks rejected programs, documented deviations, the self-hosting fixed point an
 contracts. Use the CPython version in `.python-version` and install the development tools
 with `python3 -m pip install -r tools/requirements-dev.txt`.
 
+For user-authored pytest-style tests, the experimental [native pytest runner](pytest-native.md)
+collects a bounded source subset, generates typed calls and fixtures, and compares
+native phase outcomes with the original files under CPython pytest. Run its
+hosted/native parity and failure controls with `make test-pytest-native`.
+
 ## Commands
 
 Run these from the repository root:

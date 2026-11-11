@@ -30,6 +30,13 @@ test-py:
 	$(PY) -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
+.PHONY: test-pytest-native
+
+# Hosted collection/oracle and real native execution; no compiler bootstrap needed.
+test-pytest-native:
+	PYSTACHY_PYTEST_NATIVE_COMPILER="$(PY) $(CURDIR)/pystachy.py" $(PY) -m unittest discover -s tools -p 'test_pytest_native*.py'
+	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode jit --compare --json build/pytest-native/examples.json
+
 # the statements and branches of the compiler's own source (src/pystachy_compiler/) that the corpus, the
 # FFI and runtime-cache suites, the IR checks and the compiler's unit tests run (or FILES of the corpus
 # alone), measured in the CPython-hosted compiler as test-py runs it (tools/coverage.sh, .coveragerc):
