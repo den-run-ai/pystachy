@@ -1,0 +1,749 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-11T20:27:41.949752+00:00",
+  "assessment": "all_31_differences_manually_classified_no_blocker",
+  "base_commit": "b40ee875bf72b86804c4f5a300066f4f7c3eb20b",
+  "candidate_commit": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+  "candidate_tree": "0e4c2682f25b0555cac052fa36830ed567c3fa1e",
+  "review_method": "Read all 31 saved diff sections, inspect each source/expected diagnostic and the unchanged rejection exit path; independently verify exact inventory/timing coverage. No compiler, backend, benchmark or native executable was run.",
+  "evidence": {
+    "match-irsame-report.json": {
+      "bytes": 70489,
+      "sha256": "98c362657017b8b3e499d01ce22a687c4ff69c0cf6e238895385b0729e2c8340"
+    },
+    "match-irsame-full.log": {
+      "bytes": 9044,
+      "sha256": "3a59429f31d80560a228c9e3cb2b2b4c964d3ae77c2ac3b6fc62d7fbe62536a9"
+    },
+    "match-irsame-inputs.txt": {
+      "bytes": 211329,
+      "sha256": "2581c1c97c98d7def2803351631f9ecf95de75dd0b2e5c6ffbc8697756717384"
+    },
+    "match-irsame-case-times.log": {
+      "bytes": 225013,
+      "sha256": "8070c6b10ae66e2f89f2784dcc6b8a56ba1c01aa2cccb45a140cfedb1dcad87d"
+    },
+    "match-identical-inputs.json": {
+      "bytes": 53228,
+      "sha256": "51374495bb01a44396c8dd2caf79d0a3574825697a75a62d0857fbe0e64d8d1e"
+    },
+    "match-syntax-baseline.json": {
+      "bytes": 5591,
+      "sha256": "9b4519b478e01af6811fc51e5651e2948c428f1b68fb2133eb745f485ed643ca"
+    }
+  },
+  "counts": {
+    "inputs": 4438,
+    "identical": 4407,
+    "differing": 31,
+    "new_acceptance": 16,
+    "bounded_pattern_rejection": 13,
+    "existing_decorated_method_rejection": 1,
+    "existing_function_storage_rejection": 1,
+    "rejections_with_changed_diagnostics": 15,
+    "new_negative_fixtures_with_changed_diagnostics": 14,
+    "previously_accepted_newly_rejected": 0,
+    "accepted_to_accepted_ir_differences": 0,
+    "unclassified": 0,
+    "unexpected": 0,
+    "blockers": 0
+  },
+  "status_evidence_limit": "All 16 unequal status pairs are explicitly logged as 1 -> 0. The 15 equal rejection status pairs are established by unchanged oracle status comparison and diagnostics.fail()->sys.exit(1); the oracle does not retain individual equal status numbers. The 4407 identical inputs include both successful compilations and rejection fixtures.",
+  "comparison_scope": "IR bytes and exit statuses are compared exactly. The repository oracle retains its existing narrow library-location normalization for diagnostics; this run adds no further normalization and changes only SHOW=3 to SHOW=4438.",
+  "runtime_limit": "This classification is a compile/diagnostic oracle result, not execution or performance evidence for the newly accepted programs.",
+  "rejection_exit_source": {
+    "path": "src/pystachy_compiler/diagnostics.py",
+    "identical_base_candidate": true,
+    "candidate_sha256": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131",
+    "line": 156
+  },
+  "unchanged_controls": [
+    {
+      "case": "tests/errors/syntax/syntax_match_duplicate_key_over_limit.py",
+      "comparison": "identical",
+      "inventory_occurrences": 1,
+      "completed_timing_ms": 15,
+      "present_in_base_tree": true,
+      "source_identical_base_candidate": true,
+      "candidate_source_sha256": "44eced3b763bf14d2cd9867d56fb4b4065cbff99d3e090916b4f75e95eea96b5",
+      "reason": "This pre-existing CPython-vs-Pystachy syntax-diagnostic discrepancy is unchanged between the two Pystachy compilers. It remains an intentional rejection, not a new match regression."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_args_property.py",
+      "comparison": "identical",
+      "inventory_occurrences": 1,
+      "completed_timing_ms": 14,
+      "present_in_base_tree": false,
+      "source_identical_base_candidate": null,
+      "candidate_source_sha256": "9642cc2a49a693801d3a9746b3b65962c64ea471df89a6aa4384953ccb811831",
+      "reason": "Directly declared @property on special method __match_args__ is rejected before match lowering by both compilers, so this fifteenth new negative fixture does not appear among the differences."
+    }
+  ],
+  "cases": [
+    {
+      "case": "tests/programs/apps/match_dispatch_workloads.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "examples/match_dispatch/dispatch.py:16: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 1,
+      "log_last_line": 6,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "35bc035c7711f6661f46565609d20a15ed01ad5d895d192de98a1437ac345b59",
+      "rationale": "Application consumer imports the new tuple/dataclass command dispatcher and independently checks match/if benchmark results.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/generators/gen_match_dispatch.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/generators/gen_match_dispatch.py:15: error: 'match' statements are not supported (compiling select(list[tuple[int,str]]) for the call at tests/programs/generators/gen_match_dispatch.py:26)"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 7,
+      "log_last_line": 12,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "a47601c8c635b27a1aaa698e96b57498397f30df115919cc8437f2896f6f1fea",
+      "rationale": "Fixed-tuple patterns, literal OR and guards inside a generator; subject effects, yield and close/finally paths.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/inference/dynany_match_literals.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/inference/dynany_match_literals.py:7: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 13,
+      "log_last_line": 18,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "c5443738f1c63a5ee67795fb14a0d5cb7abc942d3cad7286586b779ee45a4e22",
+      "rationale": "Dynamic Any singleton/literal/capture matching plus a known concrete dataclass mismatch.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/inference/dynany_match_python_int.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/inference/dynany_match_python_int.py:7: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 19,
+      "log_last_line": 24,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "9c0c39970eb288a820161cf3330333ad854ecfc290cbd7a03aee188335329430",
+      "rationale": "Dynamic Any literal/capture matching with promoting integers, bool identity and float/integer equality.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_binding.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_binding.py:6: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 25,
+      "log_last_line": 30,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "2c0665f103e3457d9aa53af3dcb76a242dcc4f1b1788be857fe07d26fd77ef5c",
+      "rationale": "Captures before false guards, closure visibility, unbound locals, private names and loop control.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_capture_staging.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_capture_staging.py:7: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 31,
+      "log_last_line": 36,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "8d26caca71f6a59b409d5cb9585ca8c11b0d31ad1fdd058940e6c2dcb9e8f692",
+      "rationale": "Partial-pattern failures, OR/as/nested patterns, callback visibility, nonlocal/closure captures and alias retention.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_condition_order.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_condition_order.py:25: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 37,
+      "log_last_line": 42,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "c0393e912320fff87c45c31cfc27f1734a9baf059e04fcdc8e86e845c39435b1",
+      "rationale": "Equality and guard-truthiness order, false-guard captures, OR staging and guard analysis after union rebinding.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_dataclasses.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_dataclasses.py:12: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 43,
+      "log_last_line": 48,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "14dd25ef28db9ac5bcd8d1498d24a058b42e1bb4bb655f773ba9c5ad735033f2",
+      "rationale": "Plain dataclass fields, keyword-only/match_args options, preloaded fields under callback mutation and scalar mismatch.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_exceptions.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_exceptions.py:9: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 49,
+      "log_last_line": 54,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "bf3f258a85b7f56603820ee5073b20f23f096c36cbf00f1bc3334bf09f4acab0",
+      "rationale": "Exceptions during pattern/guard evaluation and preservation of old or committed local/global bindings.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_large_hex.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_large_hex.py:5: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 55,
+      "log_last_line": 60,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "e89bb6d67e67247519a315b1d8d7820edd1a41d4f50c475136c56f8fdcc8530f",
+      "rationale": "Positive and negative huge hexadecimal integer literals with e digits, plus a no-match control.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_literals.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_literals.py:32: error: 'match' statements are not supported (compiling singleton(bool) for the call at tests/programs/language/match_literals.py:51)"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 61,
+      "log_last_line": 66,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "4abdce3e9ec596f78624ecbd6e7482c8faccdb7c5585fbc1452bee89386310b2",
+      "rationale": "One subject evaluation, case order, literals/singletons, guards and capture without invoking object truthiness.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_nested_dataclasses.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_nested_dataclasses.py:15: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 67,
+      "log_last_line": 72,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "8e5218f7523a56a17f0fec506b20d4fa125e34b2c367cc8a29aaadecd54f35e0",
+      "rationale": "Empty/nested plain dataclass patterns with nullable concrete dataclass values.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_python_int.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_python_int.py:6: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 73,
+      "log_last_line": 78,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "f066f4df3fba078d03898350b7a032109d8a652f6cacd53641ec79dcfd3545d3",
+      "rationale": "Promoting-int scalar sequence mismatch, huge literals, tuple OR/guard and concrete dataclass captures.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/programs/language/match_tuples.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "tests/programs/language/match_tuples.py:2: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 79,
+      "log_last_line": 84,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "21c4b7b1ab747586918e63dd80a9ca7b60424b99a85ec04c2b102d303808555e",
+      "rationale": "Fixed tuple length tests, OR/as/captures, nested tuples, guards and scalar sequence mismatch.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "tests/errors/language/match_boolean_optional_union.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_boolean_optional_union.py:3: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_boolean_optional_union.py:3: error: boolean singleton patterns require a concrete bool or dynamic Any subject"
+      ],
+      "log_first_line": 85,
+      "log_last_line": 89,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "8503f5c2eb603b75d4b3aeb8e73d5fb248b41c90f05d64f3f9631ee3461f3501",
+      "rationale": "Boolean singleton matching on a union that can contain bool/int/None requires unsupported representation dispatch; explicit rejection is the documented boundary.",
+      "declared_fixture_error": "boolean singleton patterns require a concrete bool or dynamic Any subject",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_any.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_any.py:13: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_any.py:14: error: class patterns require a concrete subject type; dynamic Any and union subjects are not supported"
+      ],
+      "log_first_line": 90,
+      "log_last_line": 94,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "bb9f03eec14a236cae6878ceceb7118f4bf4c6d608cac10f1b4a2016ffeca636",
+      "rationale": "A dynamic Any subject requires class-tag dispatch; reject before folding its storage type to a mismatch.",
+      "declared_fixture_error": "class patterns require a concrete subject type; dynamic Any and union subjects are not supported",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_any_field.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_any_field.py:18: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_any_field.py:18: error: class patterns require a concrete subject type; dynamic Any and union subjects are not supported"
+      ],
+      "log_first_line": 95,
+      "log_last_line": 99,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "30e9c764f0730749f3147b55d254a0ba5f9f8c6b4cf8790c3243492b579eb794",
+      "rationale": "A nested dynamic Any field has the same unsupported class-dispatch requirement as a top-level Any subject.",
+      "declared_fixture_error": "class patterns require a concrete subject type; dynamic Any and union subjects are not supported",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_args_inherited.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_args_inherited.py:18: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_args_inherited.py:19: error: class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__"
+      ],
+      "log_first_line": 100,
+      "log_last_line": 104,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "15df72556a5af4cc663d34fa3d2d447177bdecf5997dda1ba9d6df34d905b155",
+      "rationale": "Inherited dataclass hierarchy and custom __match_args__ are explicitly outside the concrete plain-dataclass contract.",
+      "declared_fixture_error": "class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_args_method.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_args_method.py:13: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_args_method.py:14: error: class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__"
+      ],
+      "log_first_line": 105,
+      "log_last_line": 109,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "39ce2015c229744bc2b1b20c32d8762839dfafef915b55411298c44c1a358307",
+      "rationale": "A method named __match_args__ is custom class metadata and must not be treated as generated dataclass fields.",
+      "declared_fixture_error": "class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_args_qualified_method.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_args_qualified_method.py:5: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_args_qualified_method.py:6: error: class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__"
+      ],
+      "log_first_line": 110,
+      "log_last_line": 114,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "b0364289792f26ecb61ac484b093ba8166ac4e5f5640617e51f3fb47f9126ee1",
+      "rationale": "Imported qualified class with custom __match_args__ method reaches the same bounded class-pattern rejection.",
+      "declared_fixture_error": "class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_args_qualified_property.py",
+      "classification": "existing_decorated_method_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_args_qualified_property.py:5: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_args_qualified_property.py:5: error: class match_attribute_defs.PropertyPoint is not supported: method __match_args__() has a decorator"
+      ],
+      "log_first_line": 115,
+      "log_last_line": 119,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "bb1ae05d1aadd584fc3a4dc58c2ada4244bb4f89824b3278d6d88c063416b0fc",
+      "rationale": "Lowering exposes an existing imported-class restriction: special method __match_args__ has a decorator. The property is unsupported and is not executed.",
+      "declared_fixture_error": "class match_attribute_defs.PropertyPoint is not supported: method __match_args__() has a decorator",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_duplicate.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_duplicate.py:10: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_duplicate.py:10: error: Point() got multiple sub-patterns for attribute 'x'"
+      ],
+      "log_first_line": 120,
+      "log_last_line": 124,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "05726f6adcec417f7552f1ef82ac465c5746465882e95f89e6afcd0f20237db5",
+      "rationale": "The positional first field and explicit x keyword select the same field; duplicate subpatterns are rejected.",
+      "declared_fixture_error": "Point() got multiple sub-patterns for attribute 'x'",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_keyword_only.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_keyword_only.py:11: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_keyword_only.py:11: error: Point() accepts 1 positional sub-patterns (2 given)"
+      ],
+      "log_first_line": 125,
+      "log_last_line": 129,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "8e2b956705cf5c9a91ae5964083c3e389f91cf4e41debce04cfc01913cf2871f",
+      "rationale": "The keyword-only y field is absent from generated positional __match_args__; two positional subpatterns exceed its one field.",
+      "declared_fixture_error": "Point() accepts 1 positional sub-patterns (2 given)",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_no_args.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_no_args.py:10: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_no_args.py:10: error: Point() accepts 0 positional sub-patterns (1 given)"
+      ],
+      "log_first_line": 130,
+      "log_last_line": 134,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "4e9a8555625cd751d0f0359e18bf19e6be085f210832397429d00528fc245bf1",
+      "rationale": "match_args=False provides no positional fields, so the single positional subpattern is invalid.",
+      "declared_fixture_error": "Point() accepts 0 positional sub-patterns (1 given)",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_dataclass_union.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_dataclass_union.py:16: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_dataclass_union.py:17: error: class patterns require a concrete subject type; dynamic Any and union subjects are not supported"
+      ],
+      "log_first_line": 135,
+      "log_last_line": 139,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "57d3ca6983778c4ab97f53483b7b1f26f838c4fca9b9c4e46aa9f5276ffe5782",
+      "rationale": "A union of two dataclass types requires unsupported runtime class dispatch; reject instead of silently folding false.",
+      "declared_fixture_error": "class patterns require a concrete subject type; dynamic Any and union subjects are not supported",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_list_subject.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_list_subject.py:3: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_list_subject.py:4: error: sequence patterns require a fixed tuple subject, got list[int]"
+      ],
+      "log_first_line": 140,
+      "log_last_line": 144,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "89decd7dacb16767265d085fe8289c79415c42ad4bc3700df9a2127769655b92",
+      "rationale": "A list subject requires general-sequence matching, outside the fixed-tuple contract.",
+      "declared_fixture_error": "sequence patterns require a fixed tuple subject, got list[int]",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_plain_class.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_plain_class.py:7: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_plain_class.py:8: error: class patterns require a statically known dataclass"
+      ],
+      "log_first_line": 145,
+      "log_last_line": 149,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "233729890eb661e4ce24294ed37b106ee383ae1bf45ee2350ecd3b92ac950be5",
+      "rationale": "An arbitrary non-dataclass class pattern is outside the supported concrete dataclass contract.",
+      "declared_fixture_error": "class patterns require a statically known dataclass",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/language/match_shadow_class.py",
+      "classification": "bounded_pattern_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "tests/errors/language/match_shadow_class.py:11: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [
+        "tests/errors/language/match_shadow_class.py:12: error: class patterns require a statically known dataclass"
+      ],
+      "log_first_line": 150,
+      "log_last_line": 154,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "66b4aba3d41df72c5788083526d3adda9dac6312341ca0f5f5a490b98590572d",
+      "rationale": "A local integer parameter shadows the dataclass name; the pattern target is not a statically known dataclass.",
+      "declared_fixture_error": "class patterns require a statically known dataclass",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "tests/errors/library/lib_statistics_kde.py",
+      "classification": "existing_function_storage_rejection",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 1,
+      "exit_status_change_explicitly_logged": false,
+      "exit_status_evidence": "Oracle emits a transition for every unequal exit status; none is present. Both error diagnostics use the unchanged diagnostics.fail() path ending in sys.exit(1). Equal numeric statuses are inferred from that path, not individually retained by the log.",
+      "base_diagnostics": [
+        "lib/statistics.py:1045: error: 'match' statements are not supported (compiling statistics.kde(list[float], float, str, bool) for the call at tests/errors/library/lib_statistics_kde.py:6)"
+      ],
+      "candidate_diagnostics": [
+        "/workspace/scratch/0bc6e8bc1edf/match-main/lib/statistics.py:1056: error: expected <function kde.<locals>.<lambda> (/workspace/scratch/0bc6e8bc1edf/match-main/lib/statistics.py:1050)>, got <function kde.<locals>.<lambda> (/workspace/scratch/0bc6e8bc1edf/match-main/lib/statistics.py:1056)> (each function is a type of its own: a variable, a list's items or a dict's values hold one function) (compiling statistics.kde(list[float], float, str, bool) for the call at tests/errors/library/lib_statistics_kde.py:6)"
+      ],
+      "log_first_line": 155,
+      "log_last_line": 159,
+      "present_in_base_tree": true,
+      "candidate_source_sha256": "0a31a199f3ed519f2dcb5273187a863e60fd326e02d8be5f83279180d358846f",
+      "rationale": "Existing KDE kernel-selection literals now lower. Different branch lambdas then meet the unchanged one-function-type-per-slot restriction; KDE remains unsupported.",
+      "declared_fixture_error": "each function is a type of its own",
+      "ir_result": "Both remain rejected; only their diagnostic changes."
+    },
+    {
+      "case": "bench/match_dispatch/workload.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "bench/match_dispatch/workload.py:14: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 160,
+      "log_last_line": 165,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "98bd8300b8221557c1c0a10441d706f1260416ad1732c16344688581fa381e55",
+      "rationale": "New focused consumer uses scalar OR routing, fixed tuples and concrete dataclasses with captures/guards and known-answer checks.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    },
+    {
+      "case": "examples/match_dispatch/dispatch.py",
+      "classification": "new_acceptance",
+      "expected": true,
+      "blocker": false,
+      "base_exit_status": 1,
+      "candidate_exit_status": 0,
+      "exit_status_change_explicitly_logged": true,
+      "exit_status_evidence": "Explicit 1 -> 0 line in saved oracle output.",
+      "base_diagnostics": [
+        "examples/match_dispatch/dispatch.py:16: error: 'match' statements are not supported"
+      ],
+      "candidate_diagnostics": [],
+      "log_first_line": 166,
+      "log_last_line": 171,
+      "present_in_base_tree": false,
+      "candidate_source_sha256": "c27062d4a912befc9e42eccf2fdf7c5d3b6e38cd0ffe1fc37705dcdb3f7b1c4d",
+      "rationale": "New end-to-end command consumer uses fixed-tuple parsing and concrete dataclass dispatch with bounded literals, alternatives and guards.",
+      "ir_result": "Candidate alone emits IR after its unsupported-match error is removed."
+    }
+  ]
+}

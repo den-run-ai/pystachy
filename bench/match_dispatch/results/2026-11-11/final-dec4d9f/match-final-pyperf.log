@@ -1,0 +1,166 @@
+literal/mixed worker 1/3 match
+.
+literal-mixed: Mean +- std dev: 748 ms +- 54 ms
+literal/mixed worker 1/3 if
+.
+literal-mixed: Mean +- std dev: 962 ms +- 17 ms
+literal/mixed worker 2/3 if
+.
+literal-mixed: Mean +- std dev: 963 ms +- 14 ms
+literal/mixed worker 2/3 match
+.
+literal-mixed: Mean +- std dev: 717 ms +- 12 ms
+literal/mixed worker 3/3 match
+.
+literal-mixed: Mean +- std dev: 713 ms +- 13 ms
+literal/mixed worker 3/3 if
+.
+literal-mixed: Mean +- std dev: 980 ms +- 32 ms
+literal/skewed worker 1/3 if
+.
+literal-skewed: Mean +- std dev: 811 ms +- 18 ms
+literal/skewed worker 1/3 match
+.
+literal-skewed: Mean +- std dev: 435 ms +- 17 ms
+literal/skewed worker 2/3 match
+.
+WARNING: the benchmark result may be unstable
+* the standard deviation (61.4 ms) is 12% of the mean (495 ms)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+literal-skewed: Mean +- std dev: 495 ms +- 61 ms
+literal/skewed worker 2/3 if
+.
+WARNING: the benchmark result may be unstable
+* the standard deviation (98.6 ms) is 11% of the mean (885 ms)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+literal-skewed: Mean +- std dev: 885 ms +- 99 ms
+literal/skewed worker 3/3 if
+.
+literal-skewed: Mean +- std dev: 846 ms +- 29 ms
+literal/skewed worker 3/3 match
+.
+WARNING: the benchmark result may be unstable
+* the standard deviation (57.6 ms) is 13% of the mean (460 ms)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+literal-skewed: Mean +- std dev: 460 ms +- 58 ms
+tuple/mixed worker 1/3 match
+.
+tuple-mixed: Mean +- std dev: 805 ms +- 17 ms
+tuple/mixed worker 1/3 if
+.
+tuple-mixed: Mean +- std dev: 865 ms +- 40 ms
+tuple/mixed worker 2/3 if
+.
+tuple-mixed: Mean +- std dev: 848 ms +- 17 ms
+tuple/mixed worker 2/3 match
+.
+tuple-mixed: Mean +- std dev: 798 ms +- 28 ms
+tuple/mixed worker 3/3 match
+.
+WARNING: the benchmark result may be unstable
+* the standard deviation (89.6 ms) is 11% of the mean (808 ms)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+tuple-mixed: Mean +- std dev: 808 ms +- 90 ms
+tuple/mixed worker 3/3 if
+.
+tuple-mixed: Mean +- std dev: 846 ms +- 23 ms
+tuple/skewed worker 1/3 if
+.
+WARNING: the benchmark result may be unstable
+* the standard deviation (98.5 ms) is 16% of the mean (623 ms)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+tuple-skewed: Mean +- std dev: 623 ms +- 98 ms
+tuple/skewed worker 1/3 match
+.
+tuple-skewed: Mean +- std dev: 517 ms +- 20 ms
+tuple/skewed worker 2/3 match
+.
+tuple-skewed: Mean +- std dev: 513 ms +- 12 ms
+tuple/skewed worker 2/3 if
+.
+tuple-skewed: Mean +- std dev: 593 ms +- 36 ms
+tuple/skewed worker 3/3 if
+.
+tuple-skewed: Mean +- std dev: 597 ms +- 29 ms
+tuple/skewed worker 3/3 match
+.
+tuple-skewed: Mean +- std dev: 521 ms +- 19 ms
+dataclass/mixed worker 1/3 match
+.
+dataclass-mixed: Mean +- std dev: 811 ms +- 37 ms
+dataclass/mixed worker 1/3 if
+.
+dataclass-mixed: Mean +- std dev: 726 ms +- 5 ms
+dataclass/mixed worker 2/3 if
+.
+dataclass-mixed: Mean +- std dev: 724 ms +- 12 ms
+dataclass/mixed worker 2/3 match
+.
+dataclass-mixed: Mean +- std dev: 799 ms +- 15 ms
+dataclass/mixed worker 3/3 match
+.
+dataclass-mixed: Mean +- std dev: 805 ms +- 12 ms
+dataclass/mixed worker 3/3 if
+.
+dataclass-mixed: Mean +- std dev: 743 ms +- 23 ms
+dataclass/skewed worker 1/3 if
+.
+dataclass-skewed: Mean +- std dev: 596 ms +- 25 ms
+dataclass/skewed worker 1/3 match
+.
+dataclass-skewed: Mean +- std dev: 548 ms +- 18 ms
+dataclass/skewed worker 2/3 match
+.
+dataclass-skewed: Mean +- std dev: 532 ms +- 14 ms
+dataclass/skewed worker 2/3 if
+.
+dataclass-skewed: Mean +- std dev: 586 ms +- 26 ms
+dataclass/skewed worker 3/3 if
+.
+dataclass-skewed: Mean +- std dev: 607 ms +- 12 ms
+dataclass/skewed worker 3/3 match
+.
+WARNING: the benchmark result may be unstable
+* the standard deviation (104 ms) is 14% of the mean (742 ms)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+dataclass-skewed: Mean +- std dev: 742 ms +- 104 ms
+| Benchmark       | match-final-pyperf-if | match-final-pyperf-match |
+|-----------------|:---------------------:|:------------------------:|
+| literal-mixed   | 968 ms                | 726 ms: 1.33x faster     |
+| literal-skewed  | 847 ms                | 463 ms: 1.83x faster     |
+| tuple-mixed     | 853 ms                | 804 ms: 1.06x faster     |
+| tuple-skewed    | 604 ms                | 517 ms: 1.17x faster     |
+| dataclass-mixed | 731 ms                | 805 ms: 1.10x slower     |
+| Geometric mean  | (ref)                 | 1.18x faster             |
+
+Benchmark hidden because not significant (1): dataclass-skewed

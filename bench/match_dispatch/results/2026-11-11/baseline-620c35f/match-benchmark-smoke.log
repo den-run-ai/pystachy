@@ -1,0 +1,13 @@
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s bench/match_dispatch -p test_bench.py
+......
+----------------------------------------------------------------------
+Ran 6 tests in 0.007s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python bench/match_dispatch/bench.py --compiler "./pystachy" --smoke --json build/match-dispatch-smoke.json
+literal/mixed: validated cpython, jit, aot; 1 paired sample(s)
+literal/skewed: validated cpython, jit, aot; 1 paired sample(s)
+tuple/mixed: validated cpython, jit, aot; 1 paired sample(s)
+tuple/skewed: validated cpython, jit, aot; 1 paired sample(s)
+dataclass/mixed: validated cpython, jit, aot; 1 paired sample(s)
+dataclass/skewed: validated cpython, jit, aot; 1 paired sample(s)

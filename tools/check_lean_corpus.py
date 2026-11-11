@@ -215,8 +215,18 @@ def main(argv=None):
                           "access_accepted", "access_unsupported", "access_rejected", "access_error")}
     totals["programs"] = len(records)
     totals["failed_programs"] = sum(record["status"] != "accepted" for record in records)
+    inventory_errors = []
+    if not records:
+        inventory_errors.append("empty program inventory")
+    if not args.programs and (not totals["reads"] or not totals["accesses"]):
+        inventory_errors.append("default corpus lost its payload or access obligations")
+    if worst == "accepted" and (totals["proved_reads"] != totals["reads"] or
+                                totals["proved_accesses"] != totals["accesses"]):
+        inventory_errors.append("accepted report has unproved obligations")
+    if inventory_errors:
+        worst = "error"
     summary = {"status": worst, "totals": totals, "seconds": round(time.monotonic() - started, 1),
-               "programs": records,
+               "programs": records, "inventory_errors": inventory_errors,
                "scope": "dyn.payload guards and unchecked accesses of the dynamic-Any test programs",
                "limitations": bridge.LIMITATIONS + access.LIMITATIONS}
     if args.report:
@@ -228,6 +238,8 @@ def main(argv=None):
             print(f"{record['status']}: {record['program']}: {record.get('message', '')}")
             for function in record.get("failures", []):
                 print(f"  {function['status']}: {function['function']}: {function.get('message', '')}")
+    for message in inventory_errors:
+        print(f"error: {message}")
     print(f"check_lean_corpus: {worst}: {totals['programs']} programs, {totals['payload_functions']} "
           f"functions reading payloads, {totals['proved_reads']} of {totals['reads']} reads proved; "
           f"{totals['proved_accesses']} of {totals['accesses']} unchecked accesses proved "

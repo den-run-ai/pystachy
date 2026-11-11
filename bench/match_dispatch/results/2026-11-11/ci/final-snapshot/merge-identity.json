@@ -1,0 +1,40 @@
+{
+  "sha": "d7572fad12cde21f0ff34d98e417e1a7d88826dd",
+  "node_id": "C_kwDOU_6QTtoAKGQ3NTcyZmFkMTJjZGUyMWYwZmYzNGQ5OGU0MTdlMWE3ZDg4ODI2ZGQ",
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/d7572fad12cde21f0ff34d98e417e1a7d88826dd",
+  "html_url": "https://github.com/den-run-ai/pystachy/commit/d7572fad12cde21f0ff34d98e417e1a7d88826dd",
+  "author": {
+    "name": "Denis Akhiyarov",
+    "email": "denis.akhiyarov@gmail.com",
+    "date": "2026-11-11T20:32:43Z"
+  },
+  "committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "date": "2026-11-11T20:32:43Z"
+  },
+  "tree": {
+    "sha": "b28d80a94d0ac11e18cd6da7c6586e704a757bfd",
+    "url": "https://api.github.com/repos/den-run-ai/pystachy/git/trees/b28d80a94d0ac11e18cd6da7c6586e704a757bfd"
+  },
+  "message": "Merge 601807e3686fa83a362cceb0d962d8e6332fbc34 into a339ab3748a59d6e4da899f0f3f2d5965b95e5ba",
+  "parents": [
+    {
+      "sha": "a339ab3748a59d6e4da899f0f3f2d5965b95e5ba",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/a339ab3748a59d6e4da899f0f3f2d5965b95e5ba",
+      "html_url": "https://github.com/den-run-ai/pystachy/commit/a339ab3748a59d6e4da899f0f3f2d5965b95e5ba"
+    },
+    {
+      "sha": "601807e3686fa83a362cceb0d962d8e6332fbc34",
+      "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/601807e3686fa83a362cceb0d962d8e6332fbc34",
+      "html_url": "https://github.com/den-run-ai/pystachy/commit/601807e3686fa83a362cceb0d962d8e6332fbc34"
+    }
+  ],
+  "verification": {
+    "verified": true,
+    "reason": "valid",
+    "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsFcBAABCAAQBQJq9NDrCRC1aQ7uu5UhlAAAxawQAJ3PEGS21cjBZSOmiLOYQum7\nG0anuf/NbsE/ZVgeY5uhi4zBy0rKmqrav4swuQWBNmHiGWYGCy4Uurhbzlp+6+90\ndefLZEXUHIW+l4WQ7+CDVIFyr0gJsM2cmwat0H+eRieiZHbNKAQuq35dBrSXMA5l\nFm5/lKj4p5dKNX9yPfPo9EaW9bGBCfGgxG+cNINA7y6pAHGA1Nx+dCa3LOfTOHFy\n5vJCqoGR42SDOn3M2TpoKXlozZMZQyPx3bLoAZwzLGR4B0Odi4Sl7us6sMXrrIDW\nLWQr4qihjDf2/hfneXlOlKEKYt1X9MjwZJp1naEOpLMWDb3PsmS2ssgkWefLiaHO\ndkZRWfvc57+fhNDsFoFKJyWoyuIwsYBIALmKwxdlxLpyzt57wPyBwlv8ONHKHIJS\nVLDH3x9YrkDpxD2b3yH1cOkhwolCGnl7igYBLzz7/rJ2TGKztF0Ygi38viTvvjiK\n8n9UmZYXTaBBBymus3n2BrooK1vALE3zbM/OxLQc0drS9k/eagSVFQnp5XoUQKK5\nqHH7VWxSt/vCNWrYJN4i+FsFtsy5de0wV7/XfoBhUnSkPqKo8TJ6r2zYOfCgNmEq\noIfs7mHuoZ/ZvKsT6gvSMDPSgRCV1X+KNw4jKlSgq3YFu/m1qKpzHHh/7gtlUibh\ntIWtYy5Ms8M8/ljTFMb8\n=jSjC\n-----END PGP SIGNATURE-----\n",
+    "payload": "tree b28d80a94d0ac11e18cd6da7c6586e704a757bfd\nparent a339ab3748a59d6e4da899f0f3f2d5965b95e5ba\nparent 601807e3686fa83a362cceb0d962d8e6332fbc34\nauthor Denis Akhiyarov <denis.akhiyarov@gmail.com> 1794429163 +0000\ncommitter GitHub <noreply@github.com> 1794429163 +0000\n\nMerge 601807e3686fa83a362cceb0d962d8e6332fbc34 into a339ab3748a59d6e4da899f0f3f2d5965b95e5ba\n",
+    "verified_at": "2026-11-11T20:32:44Z"
+  }
+}

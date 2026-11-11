@@ -1,0 +1,63 @@
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_bench_pyperformance.py
+.................................
+----------------------------------------------------------------------
+Ran 33 tests in 12.568s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python tools/bench_pyperformance.py --compiler "./pystachy" --smoke --json build/pyperformance-smoke.json
+| Benchmark | Arguments | CPython | JIT | AOT | CPython/AOT | CPython timed | JIT timed | AOT timed | AOT build |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `barnes_hut` | 1 5 50 | 0.034 | 0.184 | 0.005 | 6.3x | 0.0093 | 0.0004 | 0.0002 | 2.0 |
+| `bpe_tokeniser` | 1 260 smoke | 0.035 | 2.086 | 0.003 | 12.6x | 0.0007 | 0.0005 | 0.0002 | 9.4 |
+| `chaos` | 1 200 | 0.057 | 0.209 | 0.004 | 15.8x | 0.0036 | 0.0005 | 0.0005 | 2.6 |
+| `comprehensions` | 1 | 0.076 | 0.163 | 0.003 | 30.3x | 0.0000 | 0.0001 | 0.0000 | 2.7 |
+| `fannkuch` | 1 7 | 0.032 | 0.078 | 0.004 | 8.9x | 0.0049 | 0.0021 | 0.0015 | 1.6 |
+| `float` | 1 1000 | 0.021 | 0.156 | 0.002 | 8.8x | 0.0012 | 0.0001 | 0.0001 | 1.9 |
+| `generators` | 1 100 | 0.021 | 0.280 | 0.005 | 4.0x | 0.0000 | 0.0000 | 0.0000 | 1.6 |
+| `go` | 1 | 0.202 | 0.221 | 0.020 | 10.1x | 0.1786 | 0.0148 | 0.0152 | 2.7 |
+| `hexiom` | 1 | 0.031 | 0.432 | 0.003 | 9.2x | 0.0068 | 0.0008 | 0.0009 | 3.9 |
+| `json_dumps` | 1 smoke | 0.037 | 0.206 | 0.003 | 14.4x | 0.0000 | 0.0001 | 0.0000 | 3.9 |
+| `json_loads` | 1 | 0.040 | 0.547 | 0.004 | 11.0x | 0.0005 | 0.0009 | 0.0008 | 6.2 |
+| `logging` | 1 | 0.034 | 6.759 | 0.010 | 3.5x | 0.0006 | 0.0002 | 0.0002 | 21.2 |
+| `meteor_contest` | 1 | 0.177 | 0.251 | 0.123 | 1.4x | 0.1505 | 0.1083 | 0.1149 | 2.3 |
+| `nbody` | 1 100 | 0.017 | 0.088 | 0.003 | 5.4x | 0.0004 | 0.0001 | 0.0001 | 1.8 |
+| `nqueens` | 1 6 | 0.027 | 0.066 | 0.004 | 6.5x | 0.0022 | 0.0008 | 0.0011 | 1.8 |
+| `pidigits` | 1 200 | 0.021 | 0.225 | 0.008 | 2.6x | 0.0028 | 0.0052 | 0.0051 | 2.8 |
+| `raytrace` | 1 20 20 | 0.027 | 0.289 | 0.005 | 4.9x | 0.0088 | 0.0027 | 0.0022 | 1.7 |
+| `regex_dna` | 1 1000 | 0.035 | 2.156 | 0.004 | 9.4x | 0.0049 | 0.0015 | 0.0009 | 9.1 |
+| `regex_effbot` | 1 | 0.063 | 2.189 | 0.020 | 3.1x | 0.0290 | 0.0205 | 0.0147 | 8.6 |
+| `regex_v8` | 1 | 0.862 | 6.260 | 1.351 | 0.6x | 0.0364 | 0.0454 | 0.0269 | 16.0 |
+| `richards` | 1 | 0.101 | 0.437 | 0.003 | 35.3x | 0.0696 | 0.0014 | 0.0007 | 3.0 |
+| `richards_super` | 1 | 0.085 | 0.302 | 0.004 | 23.1x | 0.0572 | 0.0011 | 0.0011 | 2.5 |
+| `scimark` | 1 | 0.528 | 0.236 | 0.011 | 47.6x | 0.4749 | 0.0226 | 0.0070 | 2.0 |
+| `spectral_norm` | 1 | 0.110 | 0.084 | 0.003 | 31.6x | 0.0859 | 0.0033 | 0.0013 | 1.4 |
+| `unpack_sequence` | 1 | 0.021 | 0.212 | 0.002 | 9.2x | 0.0000 | 0.0000 | 0.0000 | 1.6 |
+Raw report: build/pyperformance-smoke.json
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python tools/pytest_native_suites.py --group pyperformance --compiler "./pystachy" --json build/pytest-pyperformance.json
+pyperformance-algorithms/jit: passed (22 cases)
+pyperformance-algorithms/aot: passed (22 cases)
+pyperformance-json/jit: passed (2 cases)
+pyperformance-json/aot: passed (2 cases)
+pyperformance-logging/jit: passed (1 cases)
+pyperformance-logging/aot: passed (1 cases)
+pyperformance-numeric/jit: passed (11 cases)
+pyperformance-numeric/aot: passed (11 cases)
+pyperformance-regex/jit: passed (3 cases)
+pyperformance-regex/aot: passed (3 cases)
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_bench_extended.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 2.055s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python tools/bench_extended.py --compiler "./pystachy" --smoke --json build/extended-smoke.json
+| case | N | hosted IR | native IR | AOT build | JIT process | CPython hot | JIT hot | AOT hot |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| object_dispatch | 2 | 0.094322 | 0.007132 | 0.614916 | 0.052807 | 0.000016 | 0.000001 | 0.000001 |
+| text_pipeline | 2 | 0.093083 | 0.007901 | 1.497208 | 0.058195 | 0.000032 | 0.000025 | 0.000024 |
+| list_churn | 2 | 0.106316 | 0.008079 | 0.638540 | 0.081413 | 0.000029 | 0.000112 | 0.000009 |
+| exception_local | 2 | 0.194452 | 0.009505 | 0.603481 | 0.068860 | 0.000001 | 0.000000 | 0.000000 |
+| exception_unwind | 2 | 0.133582 | 0.006934 | 0.817116 | 0.068436 | 0.000001 | 0.000001 | 0.000001 |
+| long_string_keys | 2 | 0.099306 | 0.007158 | 1.286956 | 0.066802 | 0.000032 | 0.000149 | 0.000186 |
+| sort_records | 2 | 0.108553 | 0.006915 | 1.710829 | 0.072848 | 0.000104 | 0.000072 | 0.000023 |
+Raw report: build/extended-smoke.json

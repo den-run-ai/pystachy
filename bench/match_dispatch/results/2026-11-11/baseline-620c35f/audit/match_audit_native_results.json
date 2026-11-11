@@ -1,0 +1,548 @@
+{
+  "started": 1794425354.5611908,
+  "source_hash": "bab41351e8ae5f2cdcbba2a1e85d2354c84990ba0fca6aa6a29fcb24c585d932",
+  "cases": [
+    {
+      "name": "module_binding",
+      "expected_rc": 0,
+      "expected_stdout": "8\n3\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 23.806365733002167,
+          "rc": 0,
+          "stdout": "8\n3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.15262611100115464,
+          "rc": 0,
+          "stdout": "8\n3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.002090693000354804,
+          "rc": 0,
+          "stdout": "8\n3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.002134472000761889,
+          "rc": 0,
+          "stdout": "8\n3\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 0.696328474998154
+      }
+    },
+    {
+      "name": "global_binding",
+      "expected_rc": 0,
+      "expected_stdout": "8\n3\n3\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.3909425040001224,
+          "rc": 0,
+          "stdout": "8\n3\n3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.2401481889974093,
+          "rc": 0,
+          "stdout": "8\n3\n3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.003141320001304848,
+          "rc": 0,
+          "stdout": "8\n3\n3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.002861411001504166,
+          "rc": 0,
+          "stdout": "8\n3\n3\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 0.8946573819994228
+      }
+    },
+    {
+      "name": "empty_class_none",
+      "expected_rc": 0,
+      "expected_stdout": "0 1\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.2813819170005445,
+          "rc": 0,
+          "stdout": "0 1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.35901054900023155,
+          "rc": 0,
+          "stdout": "0 1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.002464638000674313,
+          "rc": 0,
+          "stdout": "0 1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.002658751000126358,
+          "rc": 0,
+          "stdout": "0 1\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 0.6846425460025785
+      }
+    },
+    {
+      "name": "nested_dc",
+      "expected_rc": 0,
+      "expected_stdout": "0 3\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.2178118519987038,
+          "rc": 0,
+          "stdout": "0 3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.22854903800180182,
+          "rc": 0,
+          "stdout": "0 3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.002806544998747995,
+          "rc": 0,
+          "stdout": "0 3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.002783672996883979,
+          "rc": 0,
+          "stdout": "0 3\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 0.7353372469988244
+      }
+    },
+    {
+      "name": "guard_exception_capture",
+      "expected_rc": 0,
+      "expected_stdout": "3\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.2751623969998036,
+          "rc": 0,
+          "stdout": "3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.20602631899964763,
+          "rc": 0,
+          "stdout": "3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.002263918999233283,
+          "rc": 0,
+          "stdout": "3\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.0037101249981787987,
+          "rc": 0,
+          "stdout": "3\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 0.8273175860012998
+      }
+    },
+    {
+      "name": "pattern_exception_capture",
+      "expected_rc": 0,
+      "expected_stdout": "100\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.5386020580008335,
+          "rc": 0,
+          "stdout": "100\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.14334019400121178,
+          "rc": 0,
+          "stdout": "100\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.00299822500164737,
+          "rc": 0,
+          "stdout": "100\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.0025325049973616842,
+          "rc": 0,
+          "stdout": "100\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 0.9586833520006621
+      }
+    },
+    {
+      "name": "value_enum",
+      "expected_rc": 0,
+      "expected_stdout": "a b\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.3383784830002696,
+          "rc": 0,
+          "stdout": "a b\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.4129447170016647,
+          "rc": 0,
+          "stdout": "a b\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.002854316000593826,
+          "rc": 0,
+          "stdout": "a b\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.002462006999849109,
+          "rc": 0,
+          "stdout": "a b\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 1.773688539997238
+      }
+    },
+    {
+      "name": "empty_sequence",
+      "expected_rc": 0,
+      "expected_stdout": "some\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.19943013600277482,
+          "rc": 0,
+          "stdout": "some\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.26325200899736956,
+          "rc": 0,
+          "stdout": "some\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.0020971310004824772,
+          "rc": 0,
+          "stdout": "some\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.0022494189979624934,
+          "rc": 0,
+          "stdout": "some\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 0.9229399839969119
+      }
+    },
+    {
+      "name": "huge_hex",
+      "expected_rc": 0,
+      "expected_stdout": "1\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.2185095549975813,
+          "rc": 0,
+          "stdout": "1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.15493094300109078,
+          "rc": 0,
+          "stdout": "1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.002573350000602659,
+          "rc": 0,
+          "stdout": "1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.0021963660001347307,
+          "rc": 0,
+          "stdout": "1\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 1.0127139889991668
+      }
+    },
+    {
+      "name": "huge_hex_no_e",
+      "expected_rc": 0,
+      "expected_stdout": "1\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.1579665829995065,
+          "rc": 0,
+          "stdout": "1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.21922551700117765,
+          "rc": 0,
+          "stdout": "1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.002748285998677602,
+          "rc": 0,
+          "stdout": "1\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.0024518949976481963,
+          "rc": 0,
+          "stdout": "1\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 0.8359354910026013
+      }
+    },
+    {
+      "name": "promoting_scalar",
+      "expected_rc": 0,
+      "expected_stdout": "scalar scalar scalar\n",
+      "expected_stderr": "",
+      "checks": [
+        {
+          "mode": "jit",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.20845038299739826,
+          "rc": 0,
+          "stdout": "scalar scalar scalar\n",
+          "stderr": ""
+        },
+        {
+          "mode": "jit",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.15828399200108834,
+          "rc": 0,
+          "stdout": "scalar scalar scalar\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": false,
+          "ok": true,
+          "seconds": 0.0036817569998675026,
+          "rc": 0,
+          "stdout": "scalar scalar scalar\n",
+          "stderr": ""
+        },
+        {
+          "mode": "aot",
+          "gc_stress": true,
+          "ok": true,
+          "seconds": 0.0037541339988820255,
+          "rc": 0,
+          "stdout": "scalar scalar scalar\n",
+          "stderr": ""
+        }
+      ],
+      "build": {
+        "rc": 0,
+        "stderr": "",
+        "seconds": 1.2668403770003351
+      }
+    }
+  ],
+  "finished": 1794425394.7276561,
+  "passed": 44,
+  "comparisons": 44
+}

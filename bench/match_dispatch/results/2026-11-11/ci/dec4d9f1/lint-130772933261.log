@@ -1,0 +1,1360 @@
+﻿2026-11-11T20:01:04.9578766Z Current runner version: '2.338.2'
+2026-11-11T20:01:04.9605880Z ##[group]Runner Image Provisioner
+2026-11-11T20:01:04.9606950Z Hosted Compute Agent
+2026-11-11T20:01:04.9607632Z Version: 20261028.624
+2026-11-11T20:01:04.9608352Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-11T20:01:04.9609223Z Build Date: 2026-10-28T21:51:42Z
+2026-11-11T20:01:04.9609981Z Worker ID: {86fdea22-a115-4036-9e15-1e5ddf69439c}
+2026-11-11T20:01:04.9610833Z Region: southcentralus
+2026-11-11T20:01:04.9611487Z Cloud: Azure
+2026-11-11T20:01:04.9612067Z ##[endgroup]
+2026-11-11T20:01:04.9613907Z ##[group]Operating System
+2026-11-11T20:01:04.9614770Z Ubuntu
+2026-11-11T20:01:04.9615851Z 24.04.5
+2026-11-11T20:01:04.9616648Z LTS
+2026-11-11T20:01:04.9617448Z ##[endgroup]
+2026-11-11T20:01:04.9618501Z ##[group]Runner Image
+2026-11-11T20:01:04.9619483Z Image: ubuntu-24.04
+2026-11-11T20:01:04.9620494Z Version: 20261101.360.1
+2026-11-11T20:01:04.9622795Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-11T20:01:04.9625780Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+2026-11-11T20:01:04.9627453Z ##[endgroup]
+2026-11-11T20:01:04.9629451Z ##[group]GITHUB_TOKEN Permissions
+2026-11-11T20:01:04.9632353Z Contents: read
+2026-11-11T20:01:04.9633668Z Metadata: read
+2026-11-11T20:01:04.9634590Z ##[endgroup]
+2026-11-11T20:01:04.9637211Z Secret source: Actions
+2026-11-11T20:01:04.9638805Z Cache mode: write
+2026-11-11T20:01:04.9640483Z Prepare workflow directory
+2026-11-11T20:01:05.0078025Z Prepare all required actions
+2026-11-11T20:01:05.0132617Z Getting action download info
+2026-11-11T20:01:05.2935581Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-11T20:01:05.3781534Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-11T20:01:05.9402111Z Complete job name: make lint (ruff, shellcheck, clang -Wall -Wextra)
+2026-11-11T20:01:06.0528450Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-11T20:01:06.0529554Z with:
+2026-11-11T20:01:06.0530019Z   persist-credentials: false
+2026-11-11T20:01:06.0530528Z   fetch-depth: 2
+2026-11-11T20:01:06.0530994Z   repository: den-run-ai/pystachy
+2026-11-11T20:01:06.0535630Z   token: ***
+2026-11-11T20:01:06.0536078Z   ssh-strict: true
+2026-11-11T20:01:06.0536530Z   ssh-user: git
+2026-11-11T20:01:06.0536957Z   clean: true
+2026-11-11T20:01:06.0537416Z   sparse-checkout-cone-mode: true
+2026-11-11T20:01:06.0537958Z   fetch-tags: false
+2026-11-11T20:01:06.0538413Z   show-progress: true
+2026-11-11T20:01:06.0538870Z   lfs: false
+2026-11-11T20:01:06.0539289Z   submodules: false
+2026-11-11T20:01:06.0539747Z   set-safe-directory: true
+2026-11-11T20:01:06.0540258Z   allow-unsafe-pr-checkout: false
+2026-11-11T20:01:06.0541372Z env:
+2026-11-11T20:01:06.0541826Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:06.0542631Z ##[endgroup]
+2026-11-11T20:01:06.3186839Z Syncing repository: den-run-ai/pystachy
+2026-11-11T20:01:06.3190009Z ##[group]Getting Git version info
+2026-11-11T20:01:06.3191349Z Working directory is '/home/runner/work/pystachy/pystachy'
+2026-11-11T20:01:06.3193299Z [command]/usr/bin/git version
+2026-11-11T20:01:06.3261542Z git version 2.56.0
+2026-11-11T20:01:06.3283413Z ##[endgroup]
+2026-11-11T20:01:06.3300565Z Temporarily overriding HOME='/home/runner/work/_temp/22efce3a-9c01-457d-9129-a28a9ecae602' before making global git config changes
+2026-11-11T20:01:06.3303628Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-11T20:01:06.3313052Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-11T20:01:06.3354296Z Deleting the contents of '/home/runner/work/pystachy/pystachy'
+2026-11-11T20:01:06.3363939Z ##[group]Determining repository object format
+2026-11-11T20:01:06.3365708Z ##[endgroup]
+2026-11-11T20:01:06.3367520Z ##[group]Initializing the repository
+2026-11-11T20:01:06.3368769Z [command]/usr/bin/git init /home/runner/work/pystachy/pystachy
+2026-11-11T20:01:06.3491411Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-11T20:01:06.3493276Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-11T20:01:06.3494824Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-11T20:01:06.3495851Z hint: call:
+2026-11-11T20:01:06.3496466Z hint:
+2026-11-11T20:01:06.3497222Z hint: 	git config --global init.defaultBranch <name>
+2026-11-11T20:01:06.3498040Z hint:
+2026-11-11T20:01:06.3499330Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-11T20:01:06.3500736Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-11T20:01:06.3502262Z hint:
+2026-11-11T20:01:06.3503553Z hint: 	git branch -m <name>
+2026-11-11T20:01:06.3504891Z hint:
+2026-11-11T20:01:06.3506512Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-11T20:01:06.3509025Z Initialized empty Git repository in /home/runner/work/pystachy/pystachy/.git/
+2026-11-11T20:01:06.3514228Z [command]/usr/bin/git remote add origin https://github.com/den-run-ai/pystachy
+2026-11-11T20:01:06.3568927Z ##[endgroup]
+2026-11-11T20:01:06.3570380Z ##[group]Disabling automatic garbage collection
+2026-11-11T20:01:06.3573332Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-11T20:01:06.3612795Z ##[endgroup]
+2026-11-11T20:01:06.3614265Z ##[group]Setting up auth
+2026-11-11T20:01:06.3618290Z Removing SSH command configuration
+2026-11-11T20:01:06.3619974Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-11T20:01:06.3663430Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-11T20:01:06.4078112Z Removing HTTP extra header
+2026-11-11T20:01:06.4083973Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-11T20:01:06.4136080Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-11T20:01:06.4405972Z Removing includeIf entries pointing to credentials config files
+2026-11-11T20:01:06.4411373Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-11T20:01:06.4460705Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-11T20:01:06.4722308Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-11T20:01:06.4777542Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git.path /home/runner/work/_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config
+2026-11-11T20:01:06.4829094Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config
+2026-11-11T20:01:06.4881005Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config
+2026-11-11T20:01:06.4927482Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config
+2026-11-11T20:01:06.4975477Z ##[endgroup]
+2026-11-11T20:01:06.4976811Z ##[group]Fetching the repository
+2026-11-11T20:01:06.4984669Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=2 origin +eec775a41eed1bf730a07bc41e4a5c278ed8398e:refs/remotes/pull/1272/merge
+2026-11-11T20:01:07.9804296Z From https://github.com/den-run-ai/pystachy
+2026-11-11T20:01:07.9806224Z  * [new ref]         eec775a41eed1bf730a07bc41e4a5c278ed8398e -> pull/1272/merge
+2026-11-11T20:01:07.9808926Z ##[endgroup]
+2026-11-11T20:01:07.9810283Z ##[group]Determining the checkout info
+2026-11-11T20:01:07.9811485Z ##[endgroup]
+2026-11-11T20:01:07.9816585Z [command]/usr/bin/git sparse-checkout disable
+2026-11-11T20:01:07.9884120Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-11T20:01:07.9929390Z ##[group]Checking out the ref
+2026-11-11T20:01:07.9934021Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1272/merge
+2026-11-11T20:01:08.5082012Z Note: switching to 'refs/remotes/pull/1272/merge'.
+2026-11-11T20:01:08.5082692Z 
+2026-11-11T20:01:08.5083011Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-11T20:01:08.5083821Z changes and commit them, and you can discard any commits you make in this
+2026-11-11T20:01:08.5084716Z state without impacting any branches by switching back to a branch.
+2026-11-11T20:01:08.5085320Z 
+2026-11-11T20:01:08.5085674Z If you want to create a new branch to retain commits you create, you may
+2026-11-11T20:01:08.5086396Z do so (now or later) by using -c with the switch command. Example:
+2026-11-11T20:01:08.5086814Z 
+2026-11-11T20:01:08.5086978Z   git switch -c <new-branch-name>
+2026-11-11T20:01:08.5087268Z 
+2026-11-11T20:01:08.5087444Z Or undo this operation with:
+2026-11-11T20:01:08.5093417Z 
+2026-11-11T20:01:08.5093593Z   git switch -
+2026-11-11T20:01:08.5093842Z 
+2026-11-11T20:01:08.5094202Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-11T20:01:08.5094713Z 
+2026-11-11T20:01:08.5095294Z HEAD is now at eec775a Merge dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6 into b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:01:08.5109518Z ##[endgroup]
+2026-11-11T20:01:08.5173801Z [command]/usr/bin/git log -1 --format=%H
+2026-11-11T20:01:08.5215632Z eec775a41eed1bf730a07bc41e4a5c278ed8398e
+2026-11-11T20:01:08.5225424Z ##[group]Removing auth
+2026-11-11T20:01:08.5225897Z Removing SSH command configuration
+2026-11-11T20:01:08.5230320Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-11T20:01:08.5276918Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-11T20:01:08.5553608Z Removing HTTP extra header
+2026-11-11T20:01:08.5558414Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-11T20:01:08.5606586Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-11T20:01:08.5880461Z Removing includeIf entries pointing to credentials config files
+2026-11-11T20:01:08.5884925Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-11T20:01:08.5927424Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-11T20:01:08.5928265Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-11T20:01:08.5928762Z includeif.gitdir:/github/workspace/.git.path
+2026-11-11T20:01:08.5929145Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-11T20:01:08.5937300Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-11T20:01:08.5975555Z /home/runner/work/_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config
+2026-11-11T20:01:08.5988444Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-ec87aa0d\-4781\-4131\-90fc\-d860ccb233bb\.config
+2026-11-11T20:01:08.6043289Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-11T20:01:08.6082729Z /home/runner/work/_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config
+2026-11-11T20:01:08.6091716Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-ec87aa0d\-4781\-4131\-90fc\-d860ccb233bb\.config
+2026-11-11T20:01:08.6139661Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-11T20:01:08.6178882Z /github/runner_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config
+2026-11-11T20:01:08.6188281Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-ec87aa0d\-4781\-4131\-90fc\-d860ccb233bb\.config
+2026-11-11T20:01:08.6239606Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-11T20:01:08.6279146Z /github/runner_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config
+2026-11-11T20:01:08.6287266Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-ec87aa0d\-4781\-4131\-90fc\-d860ccb233bb\.config
+2026-11-11T20:01:08.6335337Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-11T20:01:08.6606634Z Removing credentials config '/home/runner/work/_temp/git-credentials-ec87aa0d-4781-4131-90fc-d860ccb233bb.config'
+2026-11-11T20:01:08.6616572Z ##[endgroup]
+2026-11-11T20:01:08.6894158Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-11T20:01:08.6894592Z with:
+2026-11-11T20:01:08.6894836Z   python-version-file: .python-version
+2026-11-11T20:01:08.6895129Z   cache: pip
+2026-11-11T20:01:08.6895404Z   cache-dependency-path: tools/requirements-dev.txt
+2026-11-11T20:01:08.6895761Z   check-latest: false
+2026-11-11T20:01:08.6898518Z   token: ***
+2026-11-11T20:01:08.6898857Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-11T20:01:08.6899259Z   update-environment: true
+2026-11-11T20:01:08.6899516Z   allow-prereleases: false
+2026-11-11T20:01:08.6899752Z   freethreaded: false
+2026-11-11T20:01:08.6899973Z env:
+2026-11-11T20:01:08.6900200Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:08.6900480Z ##[endgroup]
+2026-11-11T20:01:08.8218736Z Resolved .python-version as 3.13.16
+2026-11-11T20:01:08.8219595Z ##[group]Installed versions
+2026-11-11T20:01:08.8230082Z Version 3.13.16 was not found in the local cache
+2026-11-11T20:01:09.8298146Z Version 3.13.16 is available for downloading
+2026-11-11T20:01:09.8299042Z Download from "https://github.com/actions/python-versions/releases/download/3.13.16-36805956071/python-3.13.16-linux-24.04-x64.tar.gz"
+2026-11-11T20:01:10.6257969Z Extract downloaded archive
+2026-11-11T20:01:10.6402776Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/0e23228c-48c7-47e9-9564-0c65f5206d63 -f /home/runner/work/_temp/34f25adf-4b72-4453-916e-a9d089cf472a
+2026-11-11T20:01:12.9112353Z Execute installation script
+2026-11-11T20:01:12.9230958Z Check if Python hostedtoolcache folder exist...
+2026-11-11T20:01:12.9231817Z Create Python 3.13.16 folder
+2026-11-11T20:01:12.9246232Z Copy Python binaries to hostedtoolcache folder
+2026-11-11T20:01:13.3934389Z Create additional symlinks (Required for the UsePythonVersion Azure Pipelines task and the setup-python GitHub Action)
+2026-11-11T20:01:13.3982022Z Upgrading pip...
+2026-11-11T20:01:15.2092203Z Collecting pip
+2026-11-11T20:01:15.3049916Z Downloading pip-26.3-py3-none-any.whl.metadata (4.6 kB)
+2026-11-11T20:01:15.3238407Z Downloading pip-26.3-py3-none-any.whl (2.0 MB)
+2026-11-11T20:01:15.5189270Z ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 11.4 MB/s  0:00:00
+2026-11-11T20:01:15.5189746Z 
+2026-11-11T20:01:15.6233552Z Installing collected packages: pip
+2026-11-11T20:01:15.6234559Z Attempting uninstall: pip
+2026-11-11T20:01:15.6270787Z Found existing installation: pip 26.2.1
+2026-11-11T20:01:15.6580983Z Uninstalling pip-26.2.1:
+2026-11-11T20:01:15.6638888Z Successfully uninstalled pip-26.2.1
+2026-11-11T20:01:16.7134053Z Successfully installed pip-26.3
+2026-11-11T20:01:16.7778151Z Create complete file
+2026-11-11T20:01:16.7817271Z Successfully set up CPython (3.13.16)
+2026-11-11T20:01:16.7818384Z ##[endgroup]
+2026-11-11T20:01:16.8083951Z [command]/opt/hostedtoolcache/Python/3.13.16/x64/bin/pip cache dir
+2026-11-11T20:01:16.9659240Z /home/runner/.cache/pip
+2026-11-11T20:01:17.1626452Z Cache hit for: setup-python-Linux-x64-24.04-Ubuntu-python-3.13.16-pip-1aae6a492a841f2c802a95114ba38e013026d5fa37b34831af2d4165a21ab83b
+2026-11-11T20:01:18.2793588Z Received 87558691 of 87558691 (100.0%), 88.6 MBs/sec
+2026-11-11T20:01:18.2794407Z Cache Size: ~84 MB (87558691 B)
+2026-11-11T20:01:18.2905947Z [command]/usr/bin/tar -xf /home/runner/work/_temp/526f3db4-ed54-4e71-9f82-c3f5fc198dab/cache.tzst -P -C /home/runner/work/pystachy/pystachy --use-compress-program unzstd
+2026-11-11T20:01:18.4292832Z Cache restored successfully
+2026-11-11T20:01:18.4342227Z Cache restored from key: setup-python-Linux-x64-24.04-Ubuntu-python-3.13.16-pip-1aae6a492a841f2c802a95114ba38e013026d5fa37b34831af2d4165a21ab83b
+2026-11-11T20:01:18.4586802Z ##[group]Run python3 -m pip install -r tools/requirements-dev.txt
+2026-11-11T20:01:18.4587392Z [36;1mpython3 -m pip install -r tools/requirements-dev.txt[0m
+2026-11-11T20:01:18.4615534Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:01:18.4615828Z env:
+2026-11-11T20:01:18.4616067Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:18.4616453Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:18.4616921Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:01:18.4617373Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:18.4617767Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:18.4618193Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:18.4618581Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:01:18.4618914Z ##[endgroup]
+2026-11-11T20:01:19.2727463Z Collecting coverage==7.17.1 (from -r tools/requirements-dev.txt (line 6))
+2026-11-11T20:01:19.2743262Z   Using cached coverage-7.17.1-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (8.1 kB)
+2026-11-11T20:01:19.3128562Z Collecting PyYAML==6.0.3 (from -r tools/requirements-dev.txt (line 7))
+2026-11-11T20:01:19.3142770Z   Using cached pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-11-11T20:01:19.4138908Z Collecting mypy==2.4.1 (from -r tools/requirements-dev.txt (line 8))
+2026-11-11T20:01:19.4152940Z   Using cached mypy-2.4.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+2026-11-11T20:01:19.4373879Z Collecting packaging==26.3 (from -r tools/requirements-dev.txt (line 9))
+2026-11-11T20:01:19.4386053Z   Using cached packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+2026-11-11T20:01:19.4660464Z Collecting pytest==9.2.0 (from -r tools/requirements-dev.txt (line 10))
+2026-11-11T20:01:19.4672714Z   Using cached pytest-9.2.0-py3-none-any.whl.metadata (7.9 kB)
+2026-11-11T20:01:19.7581373Z Collecting ruff==0.17.3 (from -r tools/requirements-dev.txt (line 11))
+2026-11-11T20:01:19.7595728Z   Using cached ruff-0.17.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+2026-11-11T20:01:19.7794250Z Collecting shellcheck-py==0.11.0.1 (from -r tools/requirements-dev.txt (line 12))
+2026-11-11T20:01:19.7806718Z   Using cached shellcheck_py-0.11.0.1-py2.py3-none-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl.metadata (1.7 kB)
+2026-11-11T20:01:19.8019739Z Collecting typing_extensions==4.16.0 (from -r tools/requirements-dev.txt (line 13))
+2026-11-11T20:01:19.8031857Z   Using cached typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+2026-11-11T20:01:19.8210151Z Collecting mypy_extensions>=1.0.0 (from mypy==2.4.1->-r tools/requirements-dev.txt (line 8))
+2026-11-11T20:01:19.8227804Z   Using cached mypy_extensions-1.2.0-py3-none-any.whl.metadata (1.1 kB)
+2026-11-11T20:01:19.8392896Z Collecting pathspec>=1.0.0 (from mypy==2.4.1->-r tools/requirements-dev.txt (line 8))
+2026-11-11T20:01:19.8404363Z   Using cached pathspec-1.1.1-py3-none-any.whl.metadata (14 kB)
+2026-11-11T20:01:19.9669275Z Collecting librt>=0.16.0 (from mypy==2.4.1->-r tools/requirements-dev.txt (line 8))
+2026-11-11T20:01:19.9683598Z   Using cached librt-0.16.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (1.3 kB)
+2026-11-11T20:01:20.0223787Z Collecting ast-serialize<1.0.0,>=0.12.1 (from mypy==2.4.1->-r tools/requirements-dev.txt (line 8))
+2026-11-11T20:01:20.0237936Z   Using cached ast_serialize-0.13.1-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (1.4 kB)
+2026-11-11T20:01:20.0404852Z Collecting iniconfig>=2 (from pytest==9.2.0->-r tools/requirements-dev.txt (line 10))
+2026-11-11T20:01:20.0415838Z   Using cached iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+2026-11-11T20:01:20.0591724Z Collecting pluggy<2,>=1.6 (from pytest==9.2.0->-r tools/requirements-dev.txt (line 10))
+2026-11-11T20:01:20.0602775Z   Using cached pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+2026-11-11T20:01:20.0831415Z Collecting pygments>=2.15 (from pytest==9.2.0->-r tools/requirements-dev.txt (line 10))
+2026-11-11T20:01:20.0843331Z   Using cached pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+2026-11-11T20:01:20.0893566Z Using cached coverage-7.17.1-cp313-cp313-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (261 kB)
+2026-11-11T20:01:20.0905410Z Using cached pyyaml-6.0.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (801 kB)
+2026-11-11T20:01:20.0919060Z Using cached mypy-2.4.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (15.5 MB)
+2026-11-11T20:01:20.0987432Z Using cached packaging-26.3-py3-none-any.whl (129 kB)
+2026-11-11T20:01:20.0998387Z Using cached pytest-9.2.0-py3-none-any.whl (411 kB)
+2026-11-11T20:01:20.1011016Z Using cached ruff-0.17.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.6 MB)
+2026-11-11T20:01:20.1059477Z Using cached shellcheck_py-0.11.0.1-py2.py3-none-manylinux1_x86_64.manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_5_x86_64.whl (3.8 MB)
+2026-11-11T20:01:20.1083305Z Using cached typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+2026-11-11T20:01:20.1094639Z Using cached ast_serialize-0.13.1-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.3 MB)
+2026-11-11T20:01:20.1110026Z Using cached pluggy-1.7.0-py3-none-any.whl (27 kB)
+2026-11-11T20:01:20.1120710Z Using cached iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+2026-11-11T20:01:20.1131874Z Using cached librt-0.16.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (531 kB)
+2026-11-11T20:01:20.1144630Z Using cached mypy_extensions-1.2.0-py3-none-any.whl (5.1 kB)
+2026-11-11T20:01:20.1155182Z Using cached pathspec-1.1.1-py3-none-any.whl (57 kB)
+2026-11-11T20:01:20.1166204Z Using cached pygments-2.21.0-py3-none-any.whl (1.3 MB)
+2026-11-11T20:01:20.2381246Z Installing collected packages: typing_extensions, shellcheck-py, ruff, PyYAML, pygments, pluggy, pathspec, packaging, mypy_extensions, librt, iniconfig, coverage, ast-serialize, pytest, mypy
+2026-11-11T20:01:23.5245993Z 
+2026-11-11T20:01:23.5280950Z Successfully installed PyYAML-6.0.3 ast-serialize-0.13.1 coverage-7.17.1 iniconfig-2.3.1 librt-0.16.0 mypy-2.4.1 mypy_extensions-1.2.0 packaging-26.3 pathspec-1.1.1 pluggy-1.7.0 pygments-2.21.0 pytest-9.2.0 ruff-0.17.3 shellcheck-py-0.11.0.1 typing_extensions-4.16.0
+2026-11-11T20:01:23.6646897Z ##[group]Run # PR checkout is the synthetic merge: its first parent is the base,
+2026-11-11T20:01:23.6647843Z [36;1m# PR checkout is the synthetic merge: its first parent is the base,[0m
+2026-11-11T20:01:23.6648843Z [36;1m# so this compares the whole PR, including earlier commits. Missing[0m
+2026-11-11T20:01:23.6649622Z [36;1m# merge history fails safe; main pushes and manual runs always check.[0m
+2026-11-11T20:01:23.6650299Z [36;1mif [ "$GITHUB_EVENT_NAME" != pull_request ] ||[0m
+2026-11-11T20:01:23.6650935Z [36;1m    ! git rev-parse --verify 'HEAD^2^{commit}' >/dev/null 2>&1 ||[0m
+2026-11-11T20:01:23.6651782Z [36;1m    ! git diff --quiet HEAD^ HEAD -- tools/lean_boundary tools/check_lean_boundary.py \[0m
+2026-11-11T20:01:23.6652959Z [36;1m      tools/check_lean_access.py 'tools/test_lean_boundary*.py' tools/test_lean_access.py \[0m
+2026-11-11T20:01:23.6653922Z [36;1m      'tools/test_lean_boundary*.py' tools/check_lean_int.py tools/test_lean_int.py \[0m
+2026-11-11T20:01:23.6655008Z [36;1m      'tools/check_lean_storage*.py' 'tools/test_lean_storage*.py' tools/test_lean_layout_metadata.py \[0m
+2026-11-11T20:01:23.6655823Z [36;1m      tools/check_lean_corpus.py \[0m
+2026-11-11T20:01:23.6656365Z [36;1m      src pystachy.py tools/inspect_compiler.py \[0m
+2026-11-11T20:01:23.6657050Z [36;1m      Makefile .github/workflows/lint.yml tools/requirements-dev.txt .python-version; then[0m
+2026-11-11T20:01:23.6657561Z [36;1m  echo 'run=true' >> "$GITHUB_OUTPUT"[0m
+2026-11-11T20:01:23.6657869Z [36;1melse[0m
+2026-11-11T20:01:23.6658121Z [36;1m  echo 'run=false' >> "$GITHUB_OUTPUT"[0m
+2026-11-11T20:01:23.6658419Z [36;1mfi[0m
+2026-11-11T20:01:23.6688869Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:01:23.6689259Z env:
+2026-11-11T20:01:23.6689602Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:23.6690143Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:23.6690829Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:01:23.6691538Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:23.6692158Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:23.6692941Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:23.6693549Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:01:23.6694174Z ##[endgroup]
+2026-11-11T20:01:23.7126152Z ##[group]Run lean_boundary_dir=$(mktemp -d)
+2026-11-11T20:01:23.7126714Z [36;1mlean_boundary_dir=$(mktemp -d)[0m
+2026-11-11T20:01:23.7127205Z [36;1mtrap 'rm -rf "$lean_boundary_dir"' EXIT[0m
+2026-11-11T20:01:23.7127912Z [36;1mcurl --fail --location --silent --show-error --retry 2 --retry-max-time 240 \[0m
+2026-11-11T20:01:23.7128638Z [36;1m  --connect-timeout 20 --max-time 120 \[0m
+2026-11-11T20:01:23.7129464Z [36;1m  'https://github.com/leanprover/lean4/releases/download/v4.35.0/lean-4.35.0-linux.tar.zst' \[0m
+2026-11-11T20:01:23.7130300Z [36;1m  --output "$lean_boundary_dir/lean.tar.zst"[0m
+2026-11-11T20:01:23.7131060Z [36;1mprintf '%s  %s\n' '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d' \[0m
+2026-11-11T20:01:23.7131931Z [36;1m  "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -[0m
+2026-11-11T20:01:23.7132911Z [36;1mtar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"[0m
+2026-11-11T20:01:23.7133908Z [36;1mPATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" make check-lean-boundary[0m
+2026-11-11T20:01:23.7164521Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:01:23.7164920Z env:
+2026-11-11T20:01:23.7165270Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:23.7165811Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:23.7166487Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:01:23.7167164Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:23.7168104Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:23.7168725Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:01:23.7169332Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:01:23.7170100Z ##[endgroup]
+2026-11-11T20:01:27.7186437Z /tmp/tmp.SvPgd03P7p/lean.tar.zst: OK
+2026-11-11T20:01:33.4770552Z cd tools/lean_boundary && lake build
+2026-11-11T20:01:35.1304196Z ✔ [2/23] Built PystachyInt (1.5s)
+2026-11-11T20:01:35.3305510Z ✔ [4/23] Built PystachyBoundary (1.8s)
+2026-11-11T20:01:35.7314072Z ✔ [6/23] Built PystachyInt:c.o (644ms)
+2026-11-11T20:01:36.3334009Z ✔ [7/23] Built PystachyBoundary:c.o (997ms)
+2026-11-11T20:01:37.4344185Z ✔ [8/23] Built IntMain (2.3s)
+2026-11-11T20:01:38.1334102Z ✔ [9/23] Built PystachyStorage (1.8s)
+2026-11-11T20:01:38.1376164Z ✔ [11/23] Built IntMain:c.o (725ms)
+2026-11-11T20:01:38.2333994Z ✔ [12/23] Built Main (2.4s)
+2026-11-11T20:01:39.0435284Z ✔ [13/23] Built Main:c.o (890ms)
+2026-11-11T20:01:39.2438017Z ✔ [14/23] Built «pystachy-int»:exe (1.1s)
+2026-11-11T20:01:39.8467490Z ✔ [15/23] Built «pystachy-boundary»:exe (794ms)
+2026-11-11T20:01:42.0514205Z ✔ [16/23] Built PystachyAccess (8.5s)
+2026-11-11T20:01:43.0506068Z ℹ [18/23] Built Audit (1.0s)
+2026-11-11T20:01:43.0507324Z info: Audit.lean:12:0: PystachyBoundary.check_iff: axiom audit passed ([propext])
+2026-11-11T20:01:43.0508516Z info: Audit.lean:12:0: PystachyBoundary.reachable_facts: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0509760Z info: Audit.lean:12:0: PystachyBoundary.accepted_payload_safe: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0511088Z info: Audit.lean:12:0: PystachyAccess.reachable_invariant: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0512817Z info: Audit.lean:12:0: PystachyAccess.accepted_access_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0514075Z info: Audit.lean:12:0: PystachyInt.known_fits: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0515111Z info: Audit.lean:12:0: PystachyInt.mod_fits: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0516266Z info: Audit.lean:12:0: PystachyInt.floordiv_fits: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0517416Z info: Audit.lean:12:0: PystachyInt.shr_fits: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0519069Z info: Audit.lean:12:0: PystachyInt.shl_exact: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0520181Z info: Audit.lean:12:0: PystachyInt.bitwise_fits: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0521268Z info: Audit.lean:12:0: PystachyInt.and_mask: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0522609Z info: Audit.lean:12:0: PystachyStorage.low_of_fit: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0523784Z info: Audit.lean:12:0: PystachyStorage.promoting_decode: axiom audit passed ([propext])
+2026-11-11T20:01:43.0524999Z info: Audit.lean:12:0: PystachyStorage.plain_view_safe: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0526243Z info: Audit.lean:12:0: PystachyStorage.plain_marker_has_no_tail: axiom audit passed ([propext])
+2026-11-11T20:01:43.0527533Z info: Audit.lean:12:0: PystachyStorage.null_digits_narrow: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0528734Z info: Audit.lean:12:0: PystachyStorage.slot_fits_iff: axiom audit passed ([propext])
+2026-11-11T20:01:43.0529833Z info: Audit.lean:12:0: PystachyStorage.pair_truth_zero: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0530918Z info: Audit.lean:12:0: PystachyStorage.layout_has_tail: axiom audit passed ([])
+2026-11-11T20:01:43.0532062Z info: Audit.lean:12:0: PystachyStorage.accepted_low_word: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0533587Z info: Audit.lean:12:0: PystachyStorage.accepted_plain_view: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0534972Z info: Audit.lean:12:0: PystachyStorage.accepted_tail_read: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0536343Z info: Audit.lean:12:0: PystachyStorage.accepted_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0538040Z info: Audit.lean:12:0: PystachyStorage.accepted_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0539539Z info: Audit.lean:12:0: PystachyStorage.accepted_optional_slot_narrowing: axiom audit passed ([propext, Classical.choice, Quot.sound])
+2026-11-11T20:01:43.0540921Z info: Audit.lean:12:0: PystachyStorage.accepted_stack_copy: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0542051Z info: Audit.lean:12:0: PystachyStorage.erase_read_move_iff: axiom audit passed ([propext])
+2026-11-11T20:01:43.0543256Z info: Audit.lean:12:0: PystachyStorage.projected_reachable: axiom audit passed ([propext])
+2026-11-11T20:01:43.0544418Z info: Audit.lean:12:0: PystachyStorage.accepted_projected_payload: axiom audit passed ([propext, Quot.sound])
+2026-11-11T20:01:43.0545647Z info: Audit.lean:37:0: 'PystachyBoundary.accepted_payload_safe' depends on axioms: [propext, Quot.sound]
+2026-11-11T20:01:43.0546962Z info: Audit.lean:38:0: 'PystachyAccess.accepted_access_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+2026-11-11T20:01:43.0548185Z info: Audit.lean:39:0: 'PystachyInt.known_fits' depends on axioms: [propext, Quot.sound]
+2026-11-11T20:01:43.5514564Z ✔ [20/23] Built AccessMain (1.5s)
+2026-11-11T20:01:44.5525793Z ✔ [21/23] Built AccessMain:c.o (929ms)
+2026-11-11T20:01:46.6538275Z ✔ [22/23] Built PystachyAccess:c.o (4.6s)
+2026-11-11T20:01:47.3547118Z ✔ [23/23] Built «pystachy-access»:exe (615ms)
+2026-11-11T20:01:47.3552682Z Build completed successfully (23 jobs).
+2026-11-11T20:01:47.3605363Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_lean_boundary*.py'
+2026-11-11T20:01:56.0309732Z .............................................................
+2026-11-11T20:01:56.0310394Z ----------------------------------------------------------------------
+2026-11-11T20:01:56.0310987Z Ran 61 tests in 8.367s
+2026-11-11T20:01:56.0311196Z 
+2026-11-11T20:01:56.0311327Z OK
+2026-11-11T20:01:56.0540294Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_access.py
+2026-11-11T20:02:03.6524534Z ...............................
+2026-11-11T20:02:03.6525119Z ----------------------------------------------------------------------
+2026-11-11T20:02:03.6525517Z Ran 31 tests in 7.469s
+2026-11-11T20:02:03.6525681Z 
+2026-11-11T20:02:03.6525772Z OK
+2026-11-11T20:02:03.6748151Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_int.py
+2026-11-11T20:02:04.6276029Z .............
+2026-11-11T20:02:04.6276588Z ----------------------------------------------------------------------
+2026-11-11T20:02:04.6277000Z Ran 13 tests in 0.873s
+2026-11-11T20:02:04.6277165Z 
+2026-11-11T20:02:04.6277262Z OK
+2026-11-11T20:02:04.6422908Z LEAN_BOUNDARY_REQUIRED=1 /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_lean_storage*.py'
+2026-11-11T20:02:20.0181430Z .......................................
+2026-11-11T20:02:20.0182095Z ----------------------------------------------------------------------
+2026-11-11T20:02:20.0182714Z Ran 39 tests in 15.265s
+2026-11-11T20:02:20.0182885Z 
+2026-11-11T20:02:20.0182974Z OK
+2026-11-11T20:02:20.0513064Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_layout_metadata.py
+2026-11-11T20:02:21.3983088Z ..........
+2026-11-11T20:02:21.3983620Z ----------------------------------------------------------------------
+2026-11-11T20:02:21.3984206Z Ran 10 tests in 1.263s
+2026-11-11T20:02:21.3984397Z 
+2026-11-11T20:02:21.3984489Z OK
+2026-11-11T20:02:23.2634897Z ##[group]Run actionlint_dir=$(mktemp -d)
+2026-11-11T20:02:23.2635380Z [36;1mactionlint_dir=$(mktemp -d)[0m
+2026-11-11T20:02:23.2635687Z [36;1mtrap 'rm -rf "$actionlint_dir"' EXIT[0m
+2026-11-11T20:02:23.2636074Z [36;1mcurl --fail --location --silent --show-error --retry 3 \[0m
+2026-11-11T20:02:23.2637031Z [36;1m  "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \[0m
+2026-11-11T20:02:23.2637750Z [36;1m  --output "$actionlint_dir/actionlint.tar.gz"[0m
+2026-11-11T20:02:23.2638257Z [36;1mprintf '%s  %s\n' '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8' \[0m
+2026-11-11T20:02:23.2638796Z [36;1m  "$actionlint_dir/actionlint.tar.gz" | sha256sum --check -[0m
+2026-11-11T20:02:23.2639360Z [36;1mtar --no-same-owner -xzf "$actionlint_dir/actionlint.tar.gz" -C "$actionlint_dir" actionlint[0m
+2026-11-11T20:02:23.2639861Z [36;1mcommand -v shellcheck >/dev/null[0m
+2026-11-11T20:02:23.2640231Z [36;1m"$actionlint_dir/actionlint" -pyflakes=[0m
+2026-11-11T20:02:23.2663280Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:02:23.2663557Z env:
+2026-11-11T20:02:23.2663797Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:02:23.2664154Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:02:23.2664606Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:02:23.2665033Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:02:23.2665428Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:02:23.2665808Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:02:23.2666186Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:02:23.2666530Z   ACTIONLINT_VERSION: 1.7.12
+2026-11-11T20:02:23.2666784Z ##[endgroup]
+2026-11-11T20:02:23.5099787Z /tmp/tmp.Eznl60fHQG/actionlint.tar.gz: OK
+2026-11-11T20:02:24.0675982Z ##[group]Run make check-fast lint
+2026-11-11T20:02:24.0676319Z [36;1mmake check-fast lint[0m
+2026-11-11T20:02:24.0698939Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:02:24.0699210Z env:
+2026-11-11T20:02:24.0699455Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:02:24.0700130Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:02:24.0700754Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:02:24.0701365Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:02:24.0701969Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:02:24.0702968Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:02:24.0703545Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:02:24.0704116Z ##[endgroup]
+2026-11-11T20:02:24.0800152Z ruff check
+2026-11-11T20:02:24.2224460Z All checks passed!
+2026-11-11T20:02:24.2261069Z ruff check --no-force-exclude bench/pyperformance/pytest/*.py
+2026-11-11T20:02:24.2339464Z All checks passed!
+2026-11-11T20:02:24.2355101Z mypy --config-file mypy.ini
+2026-11-11T20:02:30.0451657Z Success: no issues found in 57 source files
+2026-11-11T20:02:30.0685362Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 tools/check_repository_hygiene.py
+2026-11-11T20:02:30.1141204Z repository hygiene: tracked paths are clean
+2026-11-11T20:02:30.1193788Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_repository_hygiene.py
+2026-11-11T20:02:30.3917770Z ...........
+2026-11-11T20:02:30.3918307Z ----------------------------------------------------------------------
+2026-11-11T20:02:30.3918713Z Ran 11 tests in 0.187s
+2026-11-11T20:02:30.3918876Z 
+2026-11-11T20:02:30.3918964Z OK
+2026-11-11T20:02:30.4259752Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_function_summaries.py
+2026-11-11T20:02:30.5700812Z .......
+2026-11-11T20:02:30.5701369Z ----------------------------------------------------------------------
+2026-11-11T20:02:30.5701924Z Ran 7 tests in 0.057s
+2026-11-11T20:02:30.5702134Z 
+2026-11-11T20:02:30.5702248Z OK
+2026-11-11T20:02:30.5848321Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_typed*.py'
+2026-11-11T20:02:41.2098272Z ..........................................................................................................................................................................................................................................................................................................................
+2026-11-11T20:02:41.2100218Z ----------------------------------------------------------------------
+2026-11-11T20:02:41.2100778Z Ran 314 tests in 10.393s
+2026-11-11T20:02:41.2101024Z 
+2026-11-11T20:02:41.2101165Z OK
+2026-11-11T20:02:41.2419179Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_json*.py'
+2026-11-11T20:02:43.0698289Z installed API (normal): 1/1 corpus cases
+2026-11-11T20:02:43.0701968Z installed API (forced_gc): 1/1 corpus cases
+2026-11-11T20:02:43.0702825Z installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+2026-11-11T20:02:43.0729243Z installed API (normal): 1/1 corpus cases
+2026-11-11T20:02:43.0730896Z installed API (forced_gc): 1/1 corpus cases
+2026-11-11T20:02:43.0734857Z installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+2026-11-11T20:02:43.0761269Z installed API (normal): 1/1 corpus cases
+2026-11-11T20:02:43.0763105Z installed API (forced_gc): 1/1 corpus cases
+2026-11-11T20:02:43.0766669Z installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+2026-11-11T20:02:44.1353098Z ................................................................
+2026-11-11T20:02:44.1353743Z ----------------------------------------------------------------------
+2026-11-11T20:02:44.1354281Z Ran 64 tests in 2.722s
+2026-11-11T20:02:44.1354485Z 
+2026-11-11T20:02:44.1354606Z OK
+2026-11-11T20:02:44.1355712Z /tmp/pystachy-repair-wheel-test-71sefgf8/dist/pystachy_json_repair-0.1.0.dev3-cp312-abi3-linux_x86_64.whl
+2026-11-11T20:02:44.1550903Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_numeric_identity.py
+2026-11-11T20:02:44.7164011Z ........................................................
+2026-11-11T20:02:44.7164683Z ----------------------------------------------------------------------
+2026-11-11T20:02:44.7165456Z Ran 56 tests in 0.436s
+2026-11-11T20:02:44.7165655Z 
+2026-11-11T20:02:44.7165749Z OK
+2026-11-11T20:02:44.7382581Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_identity_scope.py
+2026-11-11T20:02:58.2465152Z ...................
+2026-11-11T20:02:58.2465681Z ----------------------------------------------------------------------
+2026-11-11T20:02:58.2466217Z Ran 19 tests in 13.390s
+2026-11-11T20:02:58.2466438Z 
+2026-11-11T20:02:58.2466567Z OK
+2026-11-11T20:02:58.2782135Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_toml_boundary.py
+2026-11-11T20:02:58.3634645Z .....
+2026-11-11T20:02:58.3635162Z ----------------------------------------------------------------------
+2026-11-11T20:02:58.3635714Z Ran 5 tests in 0.005s
+2026-11-11T20:02:58.3635885Z 
+2026-11-11T20:02:58.3635978Z OK
+2026-11-11T20:02:58.3743487Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_dynamic_any_inventory.py
+2026-11-11T20:02:58.4557329Z ........
+2026-11-11T20:02:58.4557827Z ----------------------------------------------------------------------
+2026-11-11T20:02:58.4558355Z Ran 8 tests in 0.023s
+2026-11-11T20:02:58.4558563Z 
+2026-11-11T20:02:58.4558688Z OK
+2026-11-11T20:02:58.4666440Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_dynany_comparisons.py
+2026-11-11T20:03:06.9341557Z ..................................................
+2026-11-11T20:03:06.9342204Z ----------------------------------------------------------------------
+2026-11-11T20:03:06.9342991Z Ran 50 tests in 8.340s
+2026-11-11T20:03:06.9343200Z 
+2026-11-11T20:03:06.9343323Z OK
+2026-11-11T20:03:06.9565217Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_dynany_dict_kinds.py
+2026-11-11T20:03:07.0561784Z ...
+2026-11-11T20:03:07.0562308Z ----------------------------------------------------------------------
+2026-11-11T20:03:07.0563671Z Ran 3 tests in 0.008s
+2026-11-11T20:03:07.0563907Z 
+2026-11-11T20:03:07.0564031Z OK
+2026-11-11T20:03:07.0717270Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_diagnostic_capture.py
+2026-11-11T20:03:07.3093053Z ........
+2026-11-11T20:03:07.3093589Z ----------------------------------------------------------------------
+2026-11-11T20:03:07.3094175Z Ran 8 tests in 0.142s
+2026-11-11T20:03:07.3094348Z 
+2026-11-11T20:03:07.3094436Z OK
+2026-11-11T20:03:07.3248498Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_loader_preprocessing.py
+2026-11-11T20:03:07.7218078Z ..............
+2026-11-11T20:03:07.7218634Z ----------------------------------------------------------------------
+2026-11-11T20:03:07.7219220Z Ran 14 tests in 0.299s
+2026-11-11T20:03:07.7219444Z 
+2026-11-11T20:03:07.7219575Z OK
+2026-11-11T20:03:07.7384090Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_ctypes_schema.py
+2026-11-11T20:03:07.9170738Z ..............................
+2026-11-11T20:03:07.9171370Z ----------------------------------------------------------------------
+2026-11-11T20:03:07.9171897Z Ran 30 tests in 0.079s
+2026-11-11T20:03:07.9172105Z 
+2026-11-11T20:03:07.9172236Z OK
+2026-11-11T20:03:07.9345306Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_ffi_twin.py
+2026-11-11T20:03:08.1619919Z ............
+2026-11-11T20:03:08.1620330Z ----------------------------------------------------------------------
+2026-11-11T20:03:08.1620726Z Ran 12 tests in 0.132s
+2026-11-11T20:03:08.1621224Z 
+2026-11-11T20:03:08.1621326Z OK
+2026-11-11T20:03:08.1774818Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_parser_allocations.py
+2026-11-11T20:03:08.2752578Z ........
+2026-11-11T20:03:08.2753100Z ----------------------------------------------------------------------
+2026-11-11T20:03:08.2753710Z Ran 8 tests in 0.007s
+2026-11-11T20:03:08.2753870Z 
+2026-11-11T20:03:08.2753963Z OK
+2026-11-11T20:03:08.2906817Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_exception_bindings.py
+2026-11-11T20:03:08.7074728Z ............
+2026-11-11T20:03:08.7075250Z ----------------------------------------------------------------------
+2026-11-11T20:03:08.7075785Z Ran 12 tests in 0.287s
+2026-11-11T20:03:08.7075994Z 
+2026-11-11T20:03:08.7076116Z OK
+2026-11-11T20:03:08.7294443Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_inspect_compiler.py
+2026-11-11T20:03:26.4367300Z ............................
+2026-11-11T20:03:26.4367883Z ----------------------------------------------------------------------
+2026-11-11T20:03:26.4368380Z Ran 28 tests in 17.634s
+2026-11-11T20:03:26.4368551Z 
+2026-11-11T20:03:26.4479201Z OK
+2026-11-11T20:03:26.4479736Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_lean_boundary*.py'
+2026-11-11T20:03:34.2361074Z .............................................................
+2026-11-11T20:03:34.2361762Z ----------------------------------------------------------------------
+2026-11-11T20:03:34.2362322Z Ran 61 tests in 7.681s
+2026-11-11T20:03:34.2362701Z 
+2026-11-11T20:03:34.2362838Z OK
+2026-11-11T20:03:34.2577772Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_access.py
+2026-11-11T20:03:41.7678199Z ...............................
+2026-11-11T20:03:41.7678770Z ----------------------------------------------------------------------
+2026-11-11T20:03:41.7679351Z Ran 31 tests in 7.415s
+2026-11-11T20:03:41.7679550Z 
+2026-11-11T20:03:41.7679680Z OK
+2026-11-11T20:03:41.7896960Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_int.py
+2026-11-11T20:03:42.7231596Z .............
+2026-11-11T20:03:42.7232123Z ----------------------------------------------------------------------
+2026-11-11T20:03:42.7233385Z Ran 13 tests in 0.859s
+2026-11-11T20:03:42.7233608Z 
+2026-11-11T20:03:42.7233727Z OK
+2026-11-11T20:03:42.7377340Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p 'test_lean_storage*.py'
+2026-11-11T20:03:57.6106699Z .......................................
+2026-11-11T20:03:57.6107328Z ----------------------------------------------------------------------
+2026-11-11T20:03:57.6107777Z Ran 39 tests in 14.796s
+2026-11-11T20:03:57.6107939Z 
+2026-11-11T20:03:57.6108037Z OK
+2026-11-11T20:03:57.6427068Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_lean_layout_metadata.py
+2026-11-11T20:03:58.9659497Z ..........
+2026-11-11T20:03:58.9660009Z ----------------------------------------------------------------------
+2026-11-11T20:03:58.9660432Z Ran 10 tests in 1.254s
+2026-11-11T20:03:58.9660598Z 
+2026-11-11T20:03:58.9660690Z OK
+2026-11-11T20:03:58.9792166Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_source_lines.py
+2026-11-11T20:04:32.0002195Z ........
+2026-11-11T20:04:32.0004278Z ----------------------------------------------------------------------
+2026-11-11T20:04:32.0004870Z Ran 8 tests in 32.958s
+2026-11-11T20:04:32.0005106Z 
+2026-11-11T20:04:32.0005229Z OK
+2026-11-11T20:04:32.0250568Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_pystachy_toolchain.py
+2026-11-11T20:04:32.1666012Z ........
+2026-11-11T20:04:32.1666387Z ----------------------------------------------------------------------
+2026-11-11T20:04:32.1666778Z Ran 8 tests in 0.039s
+2026-11-11T20:04:32.1667424Z 
+2026-11-11T20:04:32.1667518Z OK
+2026-11-11T20:04:32.1858465Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_retained_ir.py
+2026-11-11T20:04:32.3803597Z s.........
+2026-11-11T20:04:32.3804112Z ----------------------------------------------------------------------
+2026-11-11T20:04:32.3804634Z Ran 10 tests in 0.077s
+2026-11-11T20:04:32.3804788Z 
+2026-11-11T20:04:32.3804892Z OK (skipped=1)
+2026-11-11T20:04:32.3995647Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_jitfdprobe.py
+2026-11-11T20:04:32.7900756Z ........
+2026-11-11T20:04:32.7901145Z ----------------------------------------------------------------------
+2026-11-11T20:04:32.7901535Z Ran 8 tests in 0.247s
+2026-11-11T20:04:32.7901705Z 
+2026-11-11T20:04:32.7901800Z OK
+2026-11-11T20:04:32.8152923Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 tools/runtime_roots.py
+2026-11-11T20:04:33.8038656Z 68 static pointer stores: 0 GC root problems
+2026-11-11T20:04:33.8100883Z shellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_cpu_buffers.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh
+2026-11-11T20:04:37.3189539Z "/usr/lib/llvm-18/bin/"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c tools/floatprobe.c pyext.c pyembed.c
+2026-11-11T20:04:39.9403351Z "/usr/lib/llvm-18/bin/"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
+2026-11-11T20:04:39.9759155Z "/usr/lib/llvm-18/bin/"clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=18 lljit.c
+2026-11-11T20:04:40.0143579Z "/usr/lib/llvm-18/bin/"clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=21 lljit.c
+2026-11-11T20:04:40.0570047Z ##[group]Run PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py
+2026-11-11T20:04:40.0570866Z [36;1mPYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py[0m
+2026-11-11T20:04:40.0571869Z [36;1mPYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_bootstrap_tier.py[0m
+2026-11-11T20:04:40.0594828Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:04:40.0595098Z env:
+2026-11-11T20:04:40.0595329Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:04:40.0595691Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:04:40.0596139Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:04:40.0596570Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:04:40.0596952Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:04:40.0597390Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:04:40.0597787Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:04:40.0598122Z ##[endgroup]
+2026-11-11T20:04:57.5311935Z ..........
+2026-11-11T20:04:57.5312811Z ----------------------------------------------------------------------
+2026-11-11T20:04:57.5313375Z Ran 10 tests in 17.353s
+2026-11-11T20:04:57.5313539Z 
+2026-11-11T20:04:57.5313636Z OK
+2026-11-11T20:05:16.5010013Z ........
+2026-11-11T20:05:16.5010403Z ----------------------------------------------------------------------
+2026-11-11T20:05:16.5010808Z Ran 8 tests in 18.793s
+2026-11-11T20:05:16.5010972Z 
+2026-11-11T20:05:16.5011068Z OK
+2026-11-11T20:05:16.5272025Z ##[group]Run python3 -m unittest discover -s tools -p test_lint_controls.py
+2026-11-11T20:05:16.5272893Z [36;1mpython3 -m unittest discover -s tools -p test_lint_controls.py[0m
+2026-11-11T20:05:16.5273429Z [36;1mpython3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'[0m
+2026-11-11T20:05:16.5295035Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:05:16.5295303Z env:
+2026-11-11T20:05:16.5295539Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:05:16.5295907Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:05:16.5296347Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:05:16.5296811Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:05:16.5297210Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:05:16.5297598Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:05:16.5298026Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:05:16.5298366Z ##[endgroup]
+2026-11-11T20:05:18.6950295Z ......
+2026-11-11T20:05:18.6950832Z ----------------------------------------------------------------------
+2026-11-11T20:05:18.6951432Z Ran 6 tests in 2.072s
+2026-11-11T20:05:18.6951656Z 
+2026-11-11T20:05:18.6951792Z OK
+2026-11-11T20:09:38.9448223Z ....s.........................................................................................tools/case_weights.py: [Errno 2] No such file or directory: '/tmp/tmp6cpmi97r/missing'
+2026-11-11T20:09:38.9449231Z .............................................................................
+2026-11-11T20:09:38.9449878Z ----------------------------------------------------------------------
+2026-11-11T20:09:38.9450483Z Ran 171 tests in 259.941s
+2026-11-11T20:09:38.9450738Z 
+2026-11-11T20:09:38.9450877Z OK (skipped=1)
+2026-11-11T20:09:38.9451477Z /tmp/tmp6cpmi97r/weights.txt: 20 of 4335 cases weighed; the rest weigh their kind's default
+2026-11-11T20:09:38.9452361Z ....................................................................................................................................
+2026-11-11T20:09:38.9453287Z ----------------------------------------------------------------------
+2026-11-11T20:09:38.9453768Z Ran 132 tests in 184.366s
+2026-11-11T20:09:38.9453982Z 
+2026-11-11T20:09:38.9454108Z OK
+2026-11-11T20:09:38.9565102Z ##[group]Run python3 -m unittest discover -s tools -p 'test_ci_*.py'
+2026-11-11T20:09:38.9565956Z [36;1mpython3 -m unittest discover -s tools -p 'test_ci_*.py'[0m
+2026-11-11T20:09:38.9566673Z [36;1mpython3 -m unittest discover -s tools -p 'test_pr_*.py'[0m
+2026-11-11T20:09:38.9595677Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:09:38.9596379Z env:
+2026-11-11T20:09:38.9596751Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:09:38.9597350Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:38.9598085Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:09:38.9598633Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:38.9599044Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:38.9599444Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:38.9599835Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:09:38.9600216Z ##[endgroup]
+2026-11-11T20:09:40.3612580Z ........................
+2026-11-11T20:09:40.3613067Z ----------------------------------------------------------------------
+2026-11-11T20:09:40.3613463Z Ran 24 tests in 1.286s
+2026-11-11T20:09:40.3613631Z 
+2026-11-11T20:09:40.3613727Z OK
+2026-11-11T20:09:40.5393133Z .......
+2026-11-11T20:09:40.5393690Z ----------------------------------------------------------------------
+2026-11-11T20:09:40.5394255Z Ran 7 tests in 0.061s
+2026-11-11T20:09:40.5394473Z 
+2026-11-11T20:09:40.5394609Z OK
+2026-11-11T20:09:40.5593137Z ##[group]Run make port-check
+2026-11-11T20:09:40.5593478Z [36;1mmake port-check[0m
+2026-11-11T20:09:40.5614913Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:09:40.5615183Z env:
+2026-11-11T20:09:40.5615428Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:09:40.5615791Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:40.5616252Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:09:40.5616694Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:40.5617090Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:40.5617480Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:40.5617874Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:09:40.5618232Z ##[endgroup]
+2026-11-11T20:09:40.5701044Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 -m unittest discover -s tools -p test_port_check.py
+2026-11-11T20:09:40.9279525Z ...............
+2026-11-11T20:09:40.9280496Z ----------------------------------------------------------------------
+2026-11-11T20:09:40.9281673Z Ran 15 tests in 0.267s
+2026-11-11T20:09:40.9282103Z 
+2026-11-11T20:09:40.9282617Z OK
+2026-11-11T20:09:40.9453679Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 tools/port_check.py --json build/port-check.json
+2026-11-11T20:09:41.1267630Z .................
+2026-11-11T20:09:41.1268544Z ----------------------------------------------------------------------
+2026-11-11T20:09:41.1269470Z Ran 17 tests in 0.006s
+2026-11-11T20:09:41.1269740Z 
+2026-11-11T20:09:41.1270073Z OK
+2026-11-11T20:09:41.2606529Z ..................................................................
+2026-11-11T20:09:41.2607171Z ----------------------------------------------------------------------
+2026-11-11T20:09:41.2607719Z Ran 66 tests in 0.006s
+2026-11-11T20:09:41.2608065Z 
+2026-11-11T20:09:41.2608265Z OK
+2026-11-11T20:09:41.2609294Z fnmatch: CPython-hosted 17/17 passed, 0 skipped; compiled mapping: {'compiled': 12, 'unsupported': 3, 'partial': 2}
+2026-11-11T20:09:41.2610455Z textwrap: CPython-hosted 66/66 passed, 0 skipped; compiled mapping: {'compiled': 65, 'partial': 1}
+2026-11-11T20:09:41.2771345Z ##[group]Run python3 -m unittest discover -s tools -p test_route_bench.py
+2026-11-11T20:09:41.2772057Z [36;1mpython3 -m unittest discover -s tools -p test_route_bench.py[0m
+2026-11-11T20:09:41.2794151Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:09:41.2794659Z env:
+2026-11-11T20:09:41.2795057Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:09:41.2795611Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:41.2796308Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:09:41.2796898Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:41.2797663Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:41.2798266Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:41.2798847Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:09:41.2799401Z ##[endgroup]
+2026-11-11T20:09:41.3941600Z ...........
+2026-11-11T20:09:41.3942815Z ----------------------------------------------------------------------
+2026-11-11T20:09:41.3943559Z Ran 11 tests in 0.007s
+2026-11-11T20:09:41.3943941Z 
+2026-11-11T20:09:41.3944192Z OK
+2026-11-11T20:09:41.4140941Z ##[group]Run python3 -m unittest discover -s tools -p test_example_bench.py
+2026-11-11T20:09:41.4141862Z [36;1mpython3 -m unittest discover -s tools -p test_example_bench.py[0m
+2026-11-11T20:09:41.4173198Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:09:41.4173612Z env:
+2026-11-11T20:09:41.4173978Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:09:41.4174549Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:41.4175325Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:09:41.4176056Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:41.4176691Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:41.4177366Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:41.4177972Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:09:41.4178514Z ##[endgroup]
+2026-11-11T20:09:43.9882909Z ..........................
+2026-11-11T20:09:43.9883542Z ----------------------------------------------------------------------
+2026-11-11T20:09:43.9884061Z Ran 26 tests in 2.463s
+2026-11-11T20:09:43.9884284Z 
+2026-11-11T20:09:43.9884406Z OK
+2026-11-11T20:09:44.0098808Z ##[group]Run python3 -m unittest discover -s tools -p test_check_example_cli.py
+2026-11-11T20:09:44.0099393Z [36;1mpython3 -m unittest discover -s tools -p test_check_example_cli.py[0m
+2026-11-11T20:09:44.0120815Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:09:44.0121102Z env:
+2026-11-11T20:09:44.0121340Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:09:44.0121703Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:44.0122148Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:09:44.0122701Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:44.0123127Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:44.0123527Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:44.0123919Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:09:44.0124255Z ##[endgroup]
+2026-11-11T20:09:44.1730441Z ok json_repair/replay/jit: 943/943 recorded cases match CPython 3.13.16
+2026-11-11T20:09:45.6921866Z .........
+2026-11-11T20:09:45.6922315Z ----------------------------------------------------------------------
+2026-11-11T20:09:45.6922995Z Ran 9 tests in 1.579s
+2026-11-11T20:09:45.6923186Z 
+2026-11-11T20:09:45.6923281Z OK
+2026-11-11T20:09:45.7126475Z ##[group]Run PYSTACHY_TEXT_READ_COMPILER='python3 -m pystachy' python3 -m unittest discover -s tools -p test_text_read_progress.py
+2026-11-11T20:09:45.7127408Z [36;1mPYSTACHY_TEXT_READ_COMPILER='python3 -m pystachy' python3 -m unittest discover -s tools -p test_text_read_progress.py[0m
+2026-11-11T20:09:45.7149195Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:09:45.7149460Z env:
+2026-11-11T20:09:45.7149687Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:09:45.7150058Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:45.7150503Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:09:45.7150940Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:45.7151329Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:45.7151725Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:45.7152114Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:09:45.7152874Z ##[endgroup]
+2026-11-11T20:09:50.7958567Z ......
+2026-11-11T20:09:50.7959077Z ----------------------------------------------------------------------
+2026-11-11T20:09:50.7959472Z Ran 6 tests in 5.017s
+2026-11-11T20:09:50.7959635Z 
+2026-11-11T20:09:50.7959722Z OK
+2026-11-11T20:09:50.8125597Z ##[group]Run python3 -m unittest discover -s tools -p 'test_comm_*.py'
+2026-11-11T20:09:50.8126157Z [36;1mpython3 -m unittest discover -s tools -p 'test_comm_*.py'[0m
+2026-11-11T20:09:50.8126809Z [36;1mpython3 examples/comm/check.py --compiler 'python3 -m pystachy' --cc "$PYSTACHY_LLVM/clang" --sanitizers --leak-check[0m
+2026-11-11T20:09:50.8148447Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:09:50.8148718Z env:
+2026-11-11T20:09:50.8148947Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:09:50.8149319Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:50.8149780Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:09:50.8150232Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:50.8150761Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:50.8151265Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:09:50.8151689Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:09:50.8152026Z ##[endgroup]
+2026-11-11T20:09:57.6946834Z .............................................................................
+2026-11-11T20:09:57.6947333Z ----------------------------------------------------------------------
+2026-11-11T20:09:57.6947703Z Ran 77 tests in 6.752s
+2026-11-11T20:09:57.6947869Z 
+2026-11-11T20:09:57.6947957Z OK
+2026-11-11T20:10:08.8880623Z cpython: collectives, leases, cancellation, bounds and cleanup passed
+2026-11-11T20:10:15.8915670Z jit: collectives, leases, cancellation, bounds and cleanup passed
+2026-11-11T20:10:15.8936524Z aot: collectives, leases, cancellation, bounds and cleanup passed
+2026-11-11T20:10:16.4368759Z jit_gc: collectives, leases, cancellation, bounds and cleanup passed
+2026-11-11T20:10:16.4400285Z aot_gc: collectives, leases, cancellation, bounds and cleanup passed
+2026-11-11T20:10:19.0872354Z compatibility_probe: all requested modes passed
+2026-11-11T20:10:23.8606662Z record_worker: all requested modes passed
+2026-11-11T20:10:23.9097230Z hosted ownership, reentrancy, completion retry, signals and constructor cleanup passed
+2026-11-11T20:10:25.0516048Z comm ownership: 300 cycles passed
+2026-11-11T20:10:25.0535807Z Local CPU reference backend only; no network or device-backend validation
+2026-11-11T20:10:25.0661322Z ##[group]Run sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
+2026-11-11T20:10:25.0662264Z [36;1msudo apt-get update && sudo apt-get install -y libclang-rt-18-dev[0m
+2026-11-11T20:10:25.0691839Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:10:25.0692259Z env:
+2026-11-11T20:10:25.0692841Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:10:25.0693445Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:10:25.0694204Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:10:25.0694925Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:10:25.0695559Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:10:25.0696196Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:10:25.0696827Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:10:25.0697390Z ##[endgroup]
+2026-11-11T20:10:25.1497402Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+2026-11-11T20:10:25.1823083Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2026-11-11T20:10:25.1928003Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+2026-11-11T20:10:25.1983737Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+2026-11-11T20:10:25.1992754Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+2026-11-11T20:10:25.2023586Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+2026-11-11T20:10:25.2714101Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [12.6 kB]
+2026-11-11T20:10:25.2874635Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [764 kB]
+2026-11-11T20:10:25.3003767Z Get:9 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [694 kB]
+2026-11-11T20:10:25.3896494Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1444 kB]
+2026-11-11T20:10:25.3973305Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [315 kB]
+2026-11-11T20:10:25.3992900Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1711 kB]
+2026-11-11T20:10:25.4078658Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [344 kB]
+2026-11-11T20:10:25.4101061Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1879 kB]
+2026-11-11T20:10:25.4200111Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [429 kB]
+2026-11-11T20:10:25.4225463Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [50.7 kB]
+2026-11-11T20:10:25.4263880Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.3 kB]
+2026-11-11T20:10:25.5063742Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1160 kB]
+2026-11-11T20:10:25.5103175Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [234 kB]
+2026-11-11T20:10:25.5550028Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+2026-11-11T20:10:25.5614077Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+2026-11-11T20:10:25.5630438Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1729 kB]
+2026-11-11T20:10:25.5715280Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [396 kB]
+2026-11-11T20:10:25.5737663Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [45.4 kB]
+2026-11-11T20:10:25.5744516Z Get:25 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [12.4 kB]
+2026-11-11T20:10:29.2343883Z Fetched 13.1 MB in 1s (9311 kB/s)
+2026-11-11T20:10:30.4489420Z Reading package lists...
+2026-11-11T20:10:30.4909961Z Reading package lists...
+2026-11-11T20:10:30.7549088Z Building dependency tree...
+2026-11-11T20:10:30.7556104Z Reading state information...
+2026-11-11T20:10:30.9616576Z libclang-rt-18-dev is already the newest version (1:18.1.3-1ubuntu1).
+2026-11-11T20:10:30.9617317Z libclang-rt-18-dev set to manually installed.
+2026-11-11T20:10:30.9617969Z 0 upgraded, 0 newly installed, 0 to remove and 40 not upgraded.
+2026-11-11T20:10:30.9670791Z ##[group]Run # Generated-code ASan controls run in the existing x86 contracts job.
+2026-11-11T20:10:30.9671510Z [36;1m# Generated-code ASan controls run in the existing x86 contracts job.[0m
+2026-11-11T20:10:30.9672013Z [36;1mPYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 - <<'PY'[0m
+2026-11-11T20:10:30.9672396Z [36;1mfrom pathlib import Path[0m
+2026-11-11T20:10:30.9672932Z [36;1mimport unittest[0m
+2026-11-11T20:10:30.9673202Z [36;1msuite = unittest.TestSuite([0m
+2026-11-11T20:10:30.9673612Z [36;1m    unittest.defaultTestLoader.discover("tools", pattern=path.name)[0m
+2026-11-11T20:10:30.9674157Z [36;1m    for path in sorted(Path("tools").glob("test_runtime_*.py"))[0m
+2026-11-11T20:10:30.9674576Z [36;1m    if path.name != "test_runtime_asan.py"[0m
+2026-11-11T20:10:30.9674881Z [36;1m)[0m
+2026-11-11T20:10:30.9675237Z [36;1mraise SystemExit(not unittest.TextTestRunner().run(suite).wasSuccessful())[0m
+2026-11-11T20:10:30.9675650Z [36;1mPY[0m
+2026-11-11T20:10:30.9675999Z [36;1mPY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \[0m
+2026-11-11T20:10:30.9676678Z [36;1m  tools/check_cpu_buffers.sh '-fsanitize=address,undefined'[0m
+2026-11-11T20:10:30.9677127Z [36;1mPY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \[0m
+2026-11-11T20:10:30.9677640Z [36;1m  tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'[0m
+2026-11-11T20:10:30.9699219Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:10:30.9699512Z env:
+2026-11-11T20:10:30.9699741Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:10:30.9700093Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:10:30.9700544Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:10:30.9700979Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:10:30.9701371Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:10:30.9701776Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:10:30.9702173Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:10:30.9702725Z ##[endgroup]
+2026-11-11T20:13:05.5436514Z ..............ssssssss................................................................
+2026-11-11T20:13:05.5437045Z ----------------------------------------------------------------------
+2026-11-11T20:13:05.5437446Z Ran 86 tests in 154.381s
+2026-11-11T20:13:05.5437616Z 
+2026-11-11T20:13:05.5437717Z OK (skipped=8)
+2026-11-11T20:13:06.3650253Z PASS CPU buffer malformed exports, arithmetic, and four allocation-failure paths (19 exports released)
+2026-11-11T20:13:07.3653740Z PASS missing-release negative control: release assertion failed as required
+2026-11-11T20:13:07.3718159Z ##[group]Run python3 -m unittest discover -s tools -p test_bench_pyperformance.py
+2026-11-11T20:13:07.3719143Z [36;1mpython3 -m unittest discover -s tools -p test_bench_pyperformance.py[0m
+2026-11-11T20:13:07.3744389Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:07.3744666Z env:
+2026-11-11T20:13:07.3744902Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:07.3745297Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:07.3745763Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:07.3746227Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:07.3746619Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:07.3747005Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:07.3747401Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:07.3747741Z ##[endgroup]
+2026-11-11T20:13:18.8118622Z .................................
+2026-11-11T20:13:18.8119234Z ----------------------------------------------------------------------
+2026-11-11T20:13:18.8119760Z Ran 33 tests in 11.312s
+2026-11-11T20:13:18.8119941Z 
+2026-11-11T20:13:18.8120034Z OK
+2026-11-11T20:13:18.8344503Z ##[group]Run python3 -m unittest discover -s tools -p test_perf_smoke.py
+2026-11-11T20:13:18.8345044Z [36;1mpython3 -m unittest discover -s tools -p test_perf_smoke.py[0m
+2026-11-11T20:13:18.8366522Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:18.8366793Z env:
+2026-11-11T20:13:18.8367024Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:18.8367391Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:18.8367859Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:18.8368289Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:18.8368674Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:18.8369059Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:18.8369453Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:18.8369831Z ##[endgroup]
+2026-11-11T20:13:19.5077184Z ........................
+2026-11-11T20:13:19.5077679Z ----------------------------------------------------------------------
+2026-11-11T20:13:19.5078074Z Ran 24 tests in 0.563s
+2026-11-11T20:13:19.5078530Z 
+2026-11-11T20:13:19.5078616Z OK
+2026-11-11T20:13:19.5306092Z ##[group]Run python3 -m unittest discover -s tools -p test_check_nanogpt.py
+2026-11-11T20:13:19.5306678Z [36;1mpython3 -m unittest discover -s tools -p test_check_nanogpt.py[0m
+2026-11-11T20:13:19.5353486Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:19.5353777Z env:
+2026-11-11T20:13:19.5354021Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:19.5354402Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:19.5354845Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:19.5355274Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:19.5355681Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:19.5356074Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:19.5356463Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:19.5356796Z ##[endgroup]
+2026-11-11T20:13:19.6355503Z ........
+2026-11-11T20:13:19.6356116Z ----------------------------------------------------------------------
+2026-11-11T20:13:19.6356524Z Ran 8 tests in 0.015s
+2026-11-11T20:13:19.6356694Z 
+2026-11-11T20:13:19.6356781Z OK
+2026-11-11T20:13:19.6501765Z ##[group]Run python3 -m unittest discover -s tools -p test_import_sweep.py
+2026-11-11T20:13:19.6502315Z [36;1mpython3 -m unittest discover -s tools -p test_import_sweep.py[0m
+2026-11-11T20:13:19.6503091Z [36;1mpython3 -m unittest discover -s tools -p 'test_pypi_*.py'[0m
+2026-11-11T20:13:19.6524360Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:19.6524629Z env:
+2026-11-11T20:13:19.6524861Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:19.6525226Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:19.6525690Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:19.6526128Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:19.6526537Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:19.6526951Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:19.6527351Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:19.6527715Z ##[endgroup]
+2026-11-11T20:13:20.3950100Z ..........
+2026-11-11T20:13:20.3950509Z ----------------------------------------------------------------------
+2026-11-11T20:13:20.3950896Z Ran 10 tests in 0.639s
+2026-11-11T20:13:20.3951063Z 
+2026-11-11T20:13:20.3951174Z OK
+2026-11-11T20:13:20.6453579Z .....................
+2026-11-11T20:13:20.6454139Z ----------------------------------------------------------------------
+2026-11-11T20:13:20.6454590Z Ran 21 tests in 0.103s
+2026-11-11T20:13:20.6454748Z 
+2026-11-11T20:13:20.6454836Z OK
+2026-11-11T20:13:20.6680896Z ##[group]Run python3 -m unittest discover -s tools -p test_cpython_test_methods.py
+2026-11-11T20:13:20.6681532Z [36;1mpython3 -m unittest discover -s tools -p test_cpython_test_methods.py[0m
+2026-11-11T20:13:20.6703514Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:20.6703783Z env:
+2026-11-11T20:13:20.6704019Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:20.6704385Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:20.6704842Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:20.6705277Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:20.6705663Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:20.6706050Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:20.6706446Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:20.6706780Z ##[endgroup]
+2026-11-11T20:13:22.3572656Z .......................
+2026-11-11T20:13:22.3573284Z ----------------------------------------------------------------------
+2026-11-11T20:13:22.3573826Z Ran 23 tests in 1.584s
+2026-11-11T20:13:22.3574032Z 
+2026-11-11T20:13:22.3574156Z OK
+2026-11-11T20:13:22.3574417Z {}
+2026-11-11T20:13:22.3741406Z ##[group]Run python3 -m unittest discover -s tools -p test_dynany_fuzz.py
+2026-11-11T20:13:22.3741948Z [36;1mpython3 -m unittest discover -s tools -p test_dynany_fuzz.py[0m
+2026-11-11T20:13:22.3763562Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:22.3763827Z env:
+2026-11-11T20:13:22.3764060Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:22.3764427Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:22.3764882Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:22.3765316Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:22.3765714Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:22.3766132Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:22.3766541Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:22.3766873Z ##[endgroup]
+2026-11-11T20:13:22.7363749Z ......................
+2026-11-11T20:13:22.7364387Z ----------------------------------------------------------------------
+2026-11-11T20:13:22.7364802Z Ran 22 tests in 0.263s
+2026-11-11T20:13:22.7364961Z 
+2026-11-11T20:13:22.7365050Z OK
+2026-11-11T20:13:22.7556718Z ##[group]Run python3 -m unittest discover -s tools -p test_dynany_calls.py
+2026-11-11T20:13:22.7557265Z [36;1mpython3 -m unittest discover -s tools -p test_dynany_calls.py[0m
+2026-11-11T20:13:22.7578699Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:22.7578961Z env:
+2026-11-11T20:13:22.7579195Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:22.7579550Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:22.7579989Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:22.7580426Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:22.7580820Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:22.7581209Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:22.7581618Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:22.7581949Z ##[endgroup]
+2026-11-11T20:13:23.0210330Z ....
+2026-11-11T20:13:23.0210935Z ----------------------------------------------------------------------
+2026-11-11T20:13:23.0211498Z Ran 4 tests in 0.143s
+2026-11-11T20:13:23.0211705Z 
+2026-11-11T20:13:23.0211822Z OK
+2026-11-11T20:13:23.0464962Z ##[group]Run python3 -m unittest discover -s tools -p test_dynany_optin.py
+2026-11-11T20:13:23.0465554Z [36;1mpython3 -m unittest discover -s tools -p test_dynany_optin.py[0m
+2026-11-11T20:13:23.0487065Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:23.0487340Z env:
+2026-11-11T20:13:23.0487581Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:23.0487957Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:23.0488432Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:23.0488886Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:23.0489305Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:23.0489706Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:23.0490117Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:23.0490464Z ##[endgroup]
+2026-11-11T20:13:24.0933236Z .............................
+2026-11-11T20:13:24.0933786Z ----------------------------------------------------------------------
+2026-11-11T20:13:24.0934174Z Ran 29 tests in 0.944s
+2026-11-11T20:13:24.0934335Z 
+2026-11-11T20:13:24.0934424Z OK
+2026-11-11T20:13:24.1144499Z ##[group]Run python3 -m unittest discover -s tools -p 'test_python_int*.py'
+2026-11-11T20:13:24.1145042Z [36;1mpython3 -m unittest discover -s tools -p 'test_python_int*.py'[0m
+2026-11-11T20:13:24.1166523Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:24.1166792Z env:
+2026-11-11T20:13:24.1167027Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:24.1167390Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:24.1168066Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:24.1168507Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:24.1168893Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:24.1169275Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:24.1169695Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:24.1170026Z ##[endgroup]
+2026-11-11T20:13:25.1039467Z ............................................
+2026-11-11T20:13:25.1040067Z ----------------------------------------------------------------------
+2026-11-11T20:13:25.1040517Z Ran 44 tests in 0.848s
+2026-11-11T20:13:25.1040680Z 
+2026-11-11T20:13:25.1040774Z OK
+2026-11-11T20:13:25.1304251Z ##[group]Run python3 -m unittest discover -s tools -p test_local_join_retry.py
+2026-11-11T20:13:25.1304937Z [36;1mpython3 -m unittest discover -s tools -p test_local_join_retry.py[0m
+2026-11-11T20:13:25.1327509Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:25.1327773Z env:
+2026-11-11T20:13:25.1328012Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:25.1328369Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.1328812Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:25.1329245Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.1329644Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.1330040Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.1330424Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:25.1330762Z ##[endgroup]
+2026-11-11T20:13:25.4323577Z ..............
+2026-11-11T20:13:25.4324013Z ----------------------------------------------------------------------
+2026-11-11T20:13:25.4324412Z Ran 14 tests in 0.178s
+2026-11-11T20:13:25.4324568Z 
+2026-11-11T20:13:25.4324664Z OK
+2026-11-11T20:13:25.4569974Z ##[group]Run python3 -m unittest discover -s tools -p test_bench_microgpt.py
+2026-11-11T20:13:25.4570565Z [36;1mpython3 -m unittest discover -s tools -p test_bench_microgpt.py[0m
+2026-11-11T20:13:25.4592286Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:25.4592697Z env:
+2026-11-11T20:13:25.4592924Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:25.4593280Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.4593726Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:25.4594168Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.4594555Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.4594945Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.4595342Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:25.4595679Z ##[endgroup]
+2026-11-11T20:13:25.5620236Z ...
+2026-11-11T20:13:25.5620839Z ----------------------------------------------------------------------
+2026-11-11T20:13:25.5621433Z Ran 3 tests in 0.010s
+2026-11-11T20:13:25.5621644Z 
+2026-11-11T20:13:25.5621767Z OK
+2026-11-11T20:13:25.5774589Z ##[group]Run python3 -m unittest discover -s tools -p test_bench_integers.py
+2026-11-11T20:13:25.5775152Z [36;1mpython3 -m unittest discover -s tools -p test_bench_integers.py[0m
+2026-11-11T20:13:25.5796681Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:25.5796949Z env:
+2026-11-11T20:13:25.5797179Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:25.5797579Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.5798045Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:25.5798479Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.5798875Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.5799265Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:25.5799657Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:25.5800206Z ##[endgroup]
+2026-11-11T20:13:26.4151249Z ....
+2026-11-11T20:13:26.4151804Z ----------------------------------------------------------------------
+2026-11-11T20:13:26.4152353Z Ran 4 tests in 0.761s
+2026-11-11T20:13:26.4152755Z 
+2026-11-11T20:13:26.4152864Z OK
+2026-11-11T20:13:26.4300072Z ##[group]Run python3 -m unittest discover -s tools -p test_frame_fields.py
+2026-11-11T20:13:26.4300621Z [36;1mpython3 -m unittest discover -s tools -p test_frame_fields.py[0m
+2026-11-11T20:13:26.4322159Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:26.4322674Z env:
+2026-11-11T20:13:26.4322931Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:26.4323294Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:26.4323751Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:26.4324192Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:26.4324613Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:26.4325046Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:26.4325459Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:26.4325795Z ##[endgroup]
+2026-11-11T20:13:31.4289297Z ..................
+2026-11-11T20:13:31.4289937Z ----------------------------------------------------------------------
+2026-11-11T20:13:31.4290520Z Ran 18 tests in 4.930s
+2026-11-11T20:13:31.4290750Z 
+2026-11-11T20:13:31.4290868Z OK
+2026-11-11T20:13:31.4435689Z ##[group]Run python3 -m unittest discover -s tools -p test_bench_json.py
+2026-11-11T20:13:31.4436228Z [36;1mpython3 -m unittest discover -s tools -p test_bench_json.py[0m
+2026-11-11T20:13:31.4457858Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:31.4458130Z env:
+2026-11-11T20:13:31.4458367Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:31.4458729Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.4459182Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:31.4459634Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.4460020Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.4460407Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.4460796Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:31.4461130Z ##[endgroup]
+2026-11-11T20:13:31.5703816Z ...........
+2026-11-11T20:13:31.5704394Z ----------------------------------------------------------------------
+2026-11-11T20:13:31.5704828Z Ran 11 tests in 0.020s
+2026-11-11T20:13:31.5704999Z 
+2026-11-11T20:13:31.5705085Z OK
+2026-11-11T20:13:31.5906607Z ##[group]Run python3 -m unittest discover -s tools -p test_ir_cost_report.py
+2026-11-11T20:13:31.5907156Z [36;1mpython3 -m unittest discover -s tools -p test_ir_cost_report.py[0m
+2026-11-11T20:13:31.5928583Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:31.5928852Z env:
+2026-11-11T20:13:31.5929094Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:31.5929472Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.5929923Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:31.5930358Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.5930746Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.5931137Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.5931535Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:31.5931870Z ##[endgroup]
+2026-11-11T20:13:31.6651425Z .......
+2026-11-11T20:13:31.6652031Z ----------------------------------------------------------------------
+2026-11-11T20:13:31.6652847Z Ran 7 tests in 0.004s
+2026-11-11T20:13:31.6653056Z 
+2026-11-11T20:13:31.6653179Z OK
+2026-11-11T20:13:31.6774482Z ##[group]Run python3 -m unittest discover -s tools -p test_submission.py
+2026-11-11T20:13:31.6775006Z [36;1mpython3 -m unittest discover -s tools -p test_submission.py[0m
+2026-11-11T20:13:31.6796594Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:31.6796851Z env:
+2026-11-11T20:13:31.6797078Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:31.6797432Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.6797875Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:31.6798305Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.6798687Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.6799072Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.6799463Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:31.6799796Z ##[endgroup]
+2026-11-11T20:13:31.7992281Z ..........................
+2026-11-11T20:13:31.7993087Z ----------------------------------------------------------------------
+2026-11-11T20:13:31.7993633Z Ran 26 tests in 0.011s
+2026-11-11T20:13:31.7993876Z 
+2026-11-11T20:13:31.7993989Z OK
+2026-11-11T20:13:31.8190759Z ##[group]Run python3 -m unittest discover -s tools -p test_coverage_report.py
+2026-11-11T20:13:31.8191326Z [36;1mpython3 -m unittest discover -s tools -p test_coverage_report.py[0m
+2026-11-11T20:13:31.8213232Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:31.8213501Z env:
+2026-11-11T20:13:31.8213735Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:31.8214105Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.8214559Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:31.8215001Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.8215391Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.8215789Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.8216173Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:31.8216508Z ##[endgroup]
+2026-11-11T20:13:31.9071635Z ................
+2026-11-11T20:13:31.9072626Z ----------------------------------------------------------------------
+2026-11-11T20:13:31.9073220Z Ran 16 tests in 0.012s
+2026-11-11T20:13:31.9073462Z 
+2026-11-11T20:13:31.9073573Z OK
+2026-11-11T20:13:31.9197649Z ##[group]Run python3 -m unittest discover -s tools -p test_workflow_limits.py
+2026-11-11T20:13:31.9198215Z [36;1mpython3 -m unittest discover -s tools -p test_workflow_limits.py[0m
+2026-11-11T20:13:31.9219626Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:31.9219891Z env:
+2026-11-11T20:13:31.9220122Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:31.9220476Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.9220930Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:31.9221362Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.9221749Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.9222138Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:31.9222822Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:31.9223164Z ##[endgroup]
+2026-11-11T20:13:33.0144805Z .....................
+2026-11-11T20:13:33.0145420Z ----------------------------------------------------------------------
+2026-11-11T20:13:33.0145948Z Ran 21 tests in 0.991s
+2026-11-11T20:13:33.0146108Z 
+2026-11-11T20:13:33.0146195Z OK
+2026-11-11T20:13:33.0346212Z ##[group]Run python3 -m unittest discover -s tools -p test_linux_abi.py
+2026-11-11T20:13:33.0346732Z [36;1mpython3 -m unittest discover -s tools -p test_linux_abi.py[0m
+2026-11-11T20:13:33.0368113Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:33.0368376Z env:
+2026-11-11T20:13:33.0368610Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:33.0368965Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:33.0369405Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:33.0369843Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:33.0370452Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:33.0370842Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:33.0371234Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:33.0371568Z ##[endgroup]
+2026-11-11T20:13:33.1912122Z .............
+2026-11-11T20:13:33.1912882Z ----------------------------------------------------------------------
+2026-11-11T20:13:33.1913422Z Ran 13 tests in 0.060s
+2026-11-11T20:13:33.1913636Z 
+2026-11-11T20:13:33.1913759Z OK
+2026-11-11T20:13:33.2095177Z ##[group]Run python3 -m unittest discover -s tools -p test_json_repair_wheel.py
+2026-11-11T20:13:33.2095761Z [36;1mpython3 -m unittest discover -s tools -p test_json_repair_wheel.py[0m
+2026-11-11T20:13:33.2117186Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:33.2117456Z env:
+2026-11-11T20:13:33.2117685Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:33.2118047Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:33.2118523Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:33.2118955Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:33.2119341Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:33.2119735Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:33.2120148Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:33.2120494Z ##[endgroup]
+2026-11-11T20:13:33.4344685Z installed API (normal): 1/1 corpus cases
+2026-11-11T20:13:33.4345204Z installed API (forced_gc): 1/1 corpus cases
+2026-11-11T20:13:33.4351940Z installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+2026-11-11T20:13:33.4378791Z installed API (normal): 1/1 corpus cases
+2026-11-11T20:13:33.4380528Z installed API (forced_gc): 1/1 corpus cases
+2026-11-11T20:13:33.4384004Z installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+2026-11-11T20:13:33.4409499Z installed API (normal): 1/1 corpus cases
+2026-11-11T20:13:33.4411206Z installed API (forced_gc): 1/1 corpus cases
+2026-11-11T20:13:33.4414347Z installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+2026-11-11T20:13:34.4950775Z ..........................
+2026-11-11T20:13:34.4951186Z ----------------------------------------------------------------------
+2026-11-11T20:13:34.4951727Z Ran 26 tests in 1.182s
+2026-11-11T20:13:34.4951887Z 
+2026-11-11T20:13:34.4951978Z OK
+2026-11-11T20:13:34.4952696Z /tmp/pystachy-repair-wheel-test-_o48msr0/dist/pystachy_json_repair-0.1.0.dev3-cp312-abi3-linux_x86_64.whl
+2026-11-11T20:13:34.5157215Z ##[group]Run python3 -m unittest discover -s tools -p test_re_specialize.py
+2026-11-11T20:13:34.5157763Z [36;1mpython3 -m unittest discover -s tools -p test_re_specialize.py[0m
+2026-11-11T20:13:34.5179123Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:34.5179388Z env:
+2026-11-11T20:13:34.5179615Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:34.5179993Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:34.5180440Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:34.5180871Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:34.5181254Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:34.5181647Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:34.5182063Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:34.5182553Z ##[endgroup]
+2026-11-11T20:13:37.8156360Z ...............
+2026-11-11T20:13:37.8156835Z ----------------------------------------------------------------------
+2026-11-11T20:13:37.8157238Z Ran 15 tests in 3.215s
+2026-11-11T20:13:37.8157391Z 
+2026-11-11T20:13:37.8157485Z OK
+2026-11-11T20:13:37.8602190Z ##[group]Run python3 -m unittest discover -s tools -p test_concurrency_contract.py
+2026-11-11T20:13:37.8603069Z [36;1mpython3 -m unittest discover -s tools -p test_concurrency_contract.py[0m
+2026-11-11T20:13:37.8603821Z [36;1mpython3 -m unittest discover -s tools -p 'test_process_worker*.py'[0m
+2026-11-11T20:13:37.8625267Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:37.8625529Z env:
+2026-11-11T20:13:37.8625757Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:37.8626105Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:37.8626539Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:37.8626972Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:37.8627360Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:37.8627745Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:37.8628161Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:37.8628498Z ##[endgroup]
+2026-11-11T20:13:38.1897507Z .....
+2026-11-11T20:13:38.1898047Z ----------------------------------------------------------------------
+2026-11-11T20:13:38.1898689Z Ran 5 tests in 0.268s
+2026-11-11T20:13:38.1898924Z 
+2026-11-11T20:13:38.1899046Z OK
+2026-11-11T20:13:57.7090977Z .......................................
+2026-11-11T20:13:57.7091583Z ----------------------------------------------------------------------
+2026-11-11T20:13:57.7091984Z Ran 39 tests in 19.399s
+2026-11-11T20:13:57.7092150Z 
+2026-11-11T20:13:57.7092240Z OK
+2026-11-11T20:13:57.7286251Z ##[group]Run python3 -m unittest discover -s tools -p 'test_program_cache*.py'
+2026-11-11T20:13:57.7286877Z [36;1mpython3 -m unittest discover -s tools -p 'test_program_cache*.py'[0m
+2026-11-11T20:13:57.7287363Z [36;1mpython3 -m unittest discover -s tools -p 'test_cached_run*.py'[0m
+2026-11-11T20:13:57.7287839Z [36;1mpython3 -m unittest discover -s tools -p test_cache_toolchain.py[0m
+2026-11-11T20:13:57.7309009Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:13:57.7309275Z env:
+2026-11-11T20:13:57.7309508Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:13:57.7309876Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:57.7310341Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:13:57.7310777Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:57.7311162Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:57.7311582Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:13:57.7311969Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:13:57.7312314Z ##[endgroup]
+2026-11-11T20:14:18.2857307Z .....................................................................................s......
+2026-11-11T20:14:18.2858061Z ----------------------------------------------------------------------
+2026-11-11T20:14:18.2858631Z Ran 92 tests in 20.439s
+2026-11-11T20:14:19.3943097Z 
+2026-11-11T20:14:19.3943652Z OK (skipped=1)
+2026-11-11T20:14:19.3944056Z .................................
+2026-11-11T20:14:19.3944495Z ----------------------------------------------------------------------
+2026-11-11T20:14:19.3944914Z Ran 33 tests in 0.986s
+2026-11-11T20:14:19.3945071Z 
+2026-11-11T20:14:19.3945169Z OK
+2026-11-11T20:14:19.5173137Z ........................
+2026-11-11T20:14:19.5173558Z ----------------------------------------------------------------------
+2026-11-11T20:14:19.5174121Z Ran 24 tests in 0.016s
+2026-11-11T20:14:19.5174353Z 
+2026-11-11T20:14:19.5174526Z OK
+2026-11-11T20:14:19.5360774Z ##[group]Run make check-recordings
+2026-11-11T20:14:19.5361103Z [36;1mmake check-recordings[0m
+2026-11-11T20:14:19.5382338Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:14:19.5382715Z env:
+2026-11-11T20:14:19.5382950Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:14:19.5383318Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:14:19.5383773Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib/pkgconfig
+2026-11-11T20:14:19.5384211Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:14:19.5384600Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:14:19.5386891Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/x64
+2026-11-11T20:14:19.5387305Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/x64/lib
+2026-11-11T20:14:19.5387642Z ##[endgroup]
+2026-11-11T20:14:19.5467570Z PYTHON="/opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13" tests/record.sh --check
+2026-11-11T20:15:35.3379041Z CPython 3.13.16: 2300 recordings, 130 deviations, 11 files of lib/ checked; 0 failed
+2026-11-11T20:15:35.5087134Z /opt/hostedtoolcache/Python/3.13.16/x64/bin/python3.13 tools/check_agent_source.py
+2026-11-11T20:15:35.5366678Z 6 pinned AskMe files verified at 9256333b07628f6e4b399f41916f36d463914501
+2026-11-11T20:15:35.5519294Z Post job cleanup.
+2026-11-11T20:15:35.6704072Z Cache hit occurred on the primary key setup-python-Linux-x64-24.04-Ubuntu-python-3.13.16-pip-1aae6a492a841f2c802a95114ba38e013026d5fa37b34831af2d4165a21ab83b, not saving cache.
+2026-11-11T20:15:35.6871296Z Post job cleanup.
+2026-11-11T20:15:35.7832585Z [command]/usr/bin/git version
+2026-11-11T20:15:35.7881896Z git version 2.56.0
+2026-11-11T20:15:35.7919638Z Temporarily overriding HOME='/home/runner/work/_temp/acb367d6-8dae-4f48-b266-6c6b442e2c07' before making global git config changes
+2026-11-11T20:15:35.7921167Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-11T20:15:35.7926369Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-11T20:15:35.7968812Z Removing SSH command configuration
+2026-11-11T20:15:35.7976080Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-11T20:15:35.8021373Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-11T20:15:35.8343113Z Removing HTTP extra header
+2026-11-11T20:15:35.8352939Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-11T20:15:35.8395458Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-11T20:15:35.8744634Z Removing includeIf entries pointing to credentials config files
+2026-11-11T20:15:35.8754754Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-11T20:15:35.8830075Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-11T20:15:35.9413398Z Cleaning up orphan processes
+

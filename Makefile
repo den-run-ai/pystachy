@@ -459,6 +459,11 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_access.py
+	$(PY) -m unittest discover -s tools -p test_lean_inline.py
+	$(PY) -m unittest discover -s tools -p test_lean_effects.py
+	$(PY) -m unittest discover -s tools -p test_lean_closure_cells.py
+	$(PY) -m unittest discover -s tools -p test_lean_range_bounds.py
+	$(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_int.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
@@ -473,6 +478,11 @@ check-lean-boundary:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_access.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_inline.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_effects.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_closure_cells.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_range_bounds.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_int.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
 	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
@@ -531,3 +541,12 @@ test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
 .PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary check-lean-corpus check-lean-int lint clean install uninstall test-install
+
+# Explicit programs give a bounded gate; without them this inventories the entire corpus.
+LEAN_GUARD_FLAGS ?=
+check-lean-guards:
+	cd tools/lean_boundary && lake build
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
+	$(PY) tools/check_lean_guard_corpus.py $(LEAN_GUARD_FLAGS)
+
+.PHONY: check-lean-guards

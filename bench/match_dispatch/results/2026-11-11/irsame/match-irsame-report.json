@@ -1,0 +1,1865 @@
+{
+  "artifact_directory": "/workspace/scratch/0bc6e8bc1edf/match_irsame_evidence",
+  "base_commit": "b40ee875bf72b86804c4f5a300066f4f7c3eb20b",
+  "base_tree": "1dab862e00dd0bdcca2fa198ce698408cc5a6b6f",
+  "binary_provenance_limit": "Executable hashes and source snapshots are recorded; native binary-to-source provenance also relies on the accompanying successful build/fixed-point logs.",
+  "candidate_commit": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+  "candidate_executable": {
+    "bytes": 6499560,
+    "git_blob_id": "297d81124d2862f3d035e81bcccc3028701e774c",
+    "mode": "100755",
+    "path": "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+    "sha256": "39177cf908ec1b681ea133db3d830e5c9c12dff6ddbb7de46189166a913e74dc"
+  },
+  "candidate_tree": "0e4c2682f25b0555cac052fa36830ed567c3fa1e",
+  "case_times": "match-irsame-case-times.log",
+  "comparison_complete": true,
+  "comparison_executed": true,
+  "comparison_exit_status": 1,
+  "comparison_started_utc": "2026-11-11T20:19:39.623108+00:00",
+  "completed_timing_rows": 4438,
+  "controller": {
+    "bytes": 20932,
+    "git_blob_id": "92f2520748d8e878ab420074c1ef3ced48ecfd73",
+    "mode": "100644",
+    "sha256": "3af5c75bd7a42e542f39b6397c974fc9ff5a16806ff73fe51edb7f7a27e6e03e"
+  },
+  "difference_policy": "Candidate list is not an allowlist. Every difference requires review. Any previously accepted program newly rejected is a blocker. No IR bytes are normalized.",
+  "differing_cases": [
+    "tests/programs/apps/match_dispatch_workloads.py",
+    "tests/programs/generators/gen_match_dispatch.py",
+    "tests/programs/inference/dynany_match_literals.py",
+    "tests/programs/inference/dynany_match_python_int.py",
+    "tests/programs/language/match_binding.py",
+    "tests/programs/language/match_capture_staging.py",
+    "tests/programs/language/match_condition_order.py",
+    "tests/programs/language/match_dataclasses.py",
+    "tests/programs/language/match_exceptions.py",
+    "tests/programs/language/match_large_hex.py",
+    "tests/programs/language/match_literals.py",
+    "tests/programs/language/match_nested_dataclasses.py",
+    "tests/programs/language/match_python_int.py",
+    "tests/programs/language/match_tuples.py",
+    "tests/errors/language/match_boolean_optional_union.py",
+    "tests/errors/language/match_dataclass_any.py",
+    "tests/errors/language/match_dataclass_any_field.py",
+    "tests/errors/language/match_dataclass_args_inherited.py",
+    "tests/errors/language/match_dataclass_args_method.py",
+    "tests/errors/language/match_dataclass_args_qualified_method.py",
+    "tests/errors/language/match_dataclass_args_qualified_property.py",
+    "tests/errors/language/match_dataclass_duplicate.py",
+    "tests/errors/language/match_dataclass_keyword_only.py",
+    "tests/errors/language/match_dataclass_no_args.py",
+    "tests/errors/language/match_dataclass_union.py",
+    "tests/errors/language/match_list_subject.py",
+    "tests/errors/language/match_plain_class.py",
+    "tests/errors/language/match_shadow_class.py",
+    "tests/errors/library/lib_statistics_kde.py",
+    "bench/match_dispatch/workload.py",
+    "examples/match_dispatch/dispatch.py"
+  ],
+  "differing_count": 31,
+  "environment": {
+    "LC_ALL": "C",
+    "PYSTACHY_CASE_TIMES": "/workspace/scratch/0bc6e8bc1edf/match_irsame_evidence/match-irsame-case-times.log",
+    "PYSTACHY_HOME": "/workspace/scratch/0bc6e8bc1edf/match-main",
+    "PYSTACHY_JOBS": "2",
+    "PYSTACHY_LLVM": "/workspace/scratch/0bc6e8bc1edf/llvm18/usr/lib/llvm-18/bin",
+    "PYSTACHY_PROGRAM_CACHE": "0",
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "expected_difference_candidates": {
+    "bench/match_dispatch/workload.py": "new bounded-match consumer: base rejection to IR expected",
+    "examples/match_dispatch/dispatch.py": "new bounded-match consumer: base rejection to IR expected",
+    "tests/errors/language/match_boolean_optional_union.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_any.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_any_field.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_args_inherited.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_args_method.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_args_property.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_args_qualified_method.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_args_qualified_property.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_duplicate.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_keyword_only.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_no_args.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_dataclass_union.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_list_subject.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_plain_class.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/language/match_shadow_class.py": "new bounded rejection diagnostic; earlier existing rejection may remain identical",
+    "tests/errors/library/lib_statistics_kde.py": "match lowers; next existing function-storage rejection becomes visible",
+    "tests/programs/apps/match_dispatch_workloads.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/generators/gen_match_dispatch.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/inference/dynany_match_literals.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/inference/dynany_match_python_int.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_binding.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_capture_staging.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_condition_order.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_dataclasses.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_exceptions.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_large_hex.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_literals.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_nested_dataclasses.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_python_int.py": "new bounded-match executable regression: base rejection to IR expected",
+    "tests/programs/language/match_tuples.py": "new bounded-match executable regression: base rejection to IR expected"
+  },
+  "finished_utc": "2026-11-11T20:21:59.826744+00:00",
+  "identical_count": 4407,
+  "infrastructure_errors": [],
+  "inventory": {
+    "count": 4438,
+    "default_count": 4436,
+    "extra_consumers": [
+      "bench/match_dispatch/workload.py",
+      "examples/match_dispatch/dispatch.py"
+    ],
+    "path": "match-irsame-inputs.txt",
+    "sha256": "2581c1c97c98d7def2803351631f9ecf95de75dd0b2e5c6ffbc8697756717384"
+  },
+  "irsame_script": {
+    "bytes": 9405,
+    "executed_text_sha256": "23c6b87e8fea7e0e7e038b22b122b3f105076d95f9162b0742413078d8f2ff9d",
+    "git_blob_id": "875ea0ff512dab27b5f3dd19428f23eeb9be69ac",
+    "mode": "100755",
+    "only_change": "SHOW=3 -> SHOW=4438 (in memory only)",
+    "path": "tools/irsame.sh",
+    "sha256": "7baa4d09a86103485f6b6c87a739162347b97542051d80b6cfb57c8a108587d5"
+  },
+  "log": "match-irsame-full.log",
+  "manual_difference_review_required": true,
+  "reference_executable": {
+    "bytes": 6484040,
+    "git_blob_id": "92be8cd6382d46281be7eb7cfaffa8b909797179",
+    "mode": "100755",
+    "path": "/workspace/scratch/0bc6e8bc1edf/match-main/build/ref/pystachy",
+    "sha256": "915710b8f89d8473e8e0711267f16eec2f39119d6c81e63f102b22c3d2ae0c84"
+  },
+  "reference_source_snapshot": {
+    "file_count": 156,
+    "files": [
+      {
+        "blob_id": "93f05a46bda315c62a8adf473b8e00c440ff67b6",
+        "mode": "100644",
+        "path": "lib/_argparse_help.py",
+        "worktree": {
+          "bytes": 6004,
+          "git_blob_id": "93f05a46bda315c62a8adf473b8e00c440ff67b6",
+          "mode": "100644",
+          "sha256": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42"
+        }
+      },
+      {
+        "blob_id": "5180374f86c05cc1c538a745865d27229a81932d",
+        "mode": "100644",
+        "path": "lib/_markupbase.py",
+        "worktree": {
+          "bytes": 15388,
+          "git_blob_id": "5180374f86c05cc1c538a745865d27229a81932d",
+          "mode": "100644",
+          "sha256": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1"
+        }
+      },
+      {
+        "blob_id": "67a7d62cddc3489f80c04784e96c11cf1c7a16bd",
+        "mode": "100644",
+        "path": "lib/_pyrandom.py",
+        "worktree": {
+          "bytes": 10644,
+          "git_blob_id": "67a7d62cddc3489f80c04784e96c11cf1c7a16bd",
+          "mode": "100644",
+          "sha256": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09"
+        }
+      },
+      {
+        "blob_id": "a9e3f0afcccf5718826bd733fcc725ec8a58d580",
+        "mode": "100644",
+        "path": "lib/_pystachy__io.py",
+        "worktree": {
+          "bytes": 2289,
+          "git_blob_id": "a9e3f0afcccf5718826bd733fcc725ec8a58d580",
+          "mode": "100644",
+          "sha256": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117"
+        }
+      },
+      {
+        "blob_id": "bf8f67dd778db1f3f44c1bf8a80367d4459aa8b5",
+        "mode": "100644",
+        "path": "lib/_pystachy_abc.py",
+        "worktree": {
+          "bytes": 3586,
+          "git_blob_id": "bf8f67dd778db1f3f44c1bf8a80367d4459aa8b5",
+          "mode": "100644",
+          "sha256": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8"
+        }
+      },
+      {
+        "blob_id": "3b44d2f301568599701c1ad99a782d75799a64e3",
+        "mode": "100644",
+        "path": "lib/_pystachy_atexit.py",
+        "worktree": {
+          "bytes": 2975,
+          "git_blob_id": "3b44d2f301568599701c1ad99a782d75799a64e3",
+          "mode": "100644",
+          "sha256": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c"
+        }
+      },
+      {
+        "blob_id": "5611ebe5bf1bd93dc0c862bf47662515b819ec04",
+        "mode": "100644",
+        "path": "lib/_pystachy_bfile.py",
+        "worktree": {
+          "bytes": 9044,
+          "git_blob_id": "5611ebe5bf1bd93dc0c862bf47662515b819ec04",
+          "mode": "100644",
+          "sha256": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826"
+        }
+      },
+      {
+        "blob_id": "1ac3445a085cc502957f434979437de37e4380fd",
+        "mode": "100644",
+        "path": "lib/_pystachy_binascii.py",
+        "worktree": {
+          "bytes": 13018,
+          "git_blob_id": "1ac3445a085cc502957f434979437de37e4380fd",
+          "mode": "100644",
+          "sha256": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848"
+        }
+      },
+      {
+        "blob_id": "3a630865fdec11e5fd109d56772b776dd2c4a1f7",
+        "mode": "100644",
+        "path": "lib/_pystachy_bytescan.py",
+        "worktree": {
+          "bytes": 1333,
+          "git_blob_id": "3a630865fdec11e5fd109d56772b776dd2c4a1f7",
+          "mode": "100644",
+          "sha256": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63"
+        }
+      },
+      {
+        "blob_id": "ac8cf72414fe1c4009e6b0f026ec4f6db0fac616",
+        "mode": "100644",
+        "path": "lib/_pystachy_cache.py",
+        "worktree": {
+          "bytes": 1137,
+          "git_blob_id": "ac8cf72414fe1c4009e6b0f026ec4f6db0fac616",
+          "mode": "100644",
+          "sha256": "884b77660eb425052dcce3a5fa622360e692b1469d395f84ecf457345fefa3d6"
+        }
+      },
+      {
+        "blob_id": "0928fb00041abd6d83a9a99e0d84a19fda8db6e9",
+        "mode": "100644",
+        "path": "lib/_pystachy_codecs.py",
+        "worktree": {
+          "bytes": 19730,
+          "git_blob_id": "0928fb00041abd6d83a9a99e0d84a19fda8db6e9",
+          "mode": "100644",
+          "sha256": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf"
+        }
+      },
+      {
+        "blob_id": "79c624b3e814919b0efc2f735130dc3ad1872c8e",
+        "mode": "100644",
+        "path": "lib/_pystachy_copy.py",
+        "worktree": {
+          "bytes": 2211,
+          "git_blob_id": "79c624b3e814919b0efc2f735130dc3ad1872c8e",
+          "mode": "100644",
+          "sha256": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f"
+        }
+      },
+      {
+        "blob_id": "f8865c2733af90367d50e30a5012d62946c3ee53",
+        "mode": "100644",
+        "path": "lib/_pystachy_ctypes.py",
+        "worktree": {
+          "bytes": 197,
+          "git_blob_id": "f8865c2733af90367d50e30a5012d62946c3ee53",
+          "mode": "100644",
+          "sha256": "2ec7e8b16ce0a2648b1ee1e343aa7ca0db8cee8d0d941a1bac7e26dba9a727f8"
+        }
+      },
+      {
+        "blob_id": "31af24edac4767b2229b1bad1b8921ccaf6a063f",
+        "mode": "100644",
+        "path": "lib/_pystachy_iterators.py",
+        "worktree": {
+          "bytes": 6592,
+          "git_blob_id": "31af24edac4767b2229b1bad1b8921ccaf6a063f",
+          "mode": "100644",
+          "sha256": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e"
+        }
+      },
+      {
+        "blob_id": "c634705d539c295a57e2500ce49157ee043b005c",
+        "mode": "100644",
+        "path": "lib/_pystachy_itertools.py",
+        "worktree": {
+          "bytes": 33009,
+          "git_blob_id": "c634705d539c295a57e2500ce49157ee043b005c",
+          "mode": "100644",
+          "sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+        }
+      },
+      {
+        "blob_id": "30d5a31c6b05c64738587702b570ea190d43fb2d",
+        "mode": "100644",
+        "path": "lib/_pystachy_json_any.py",
+        "worktree": {
+          "bytes": 11494,
+          "git_blob_id": "30d5a31c6b05c64738587702b570ea190d43fb2d",
+          "mode": "100644",
+          "sha256": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af"
+        }
+      },
+      {
+        "blob_id": "f98fc146b4a7abdbd8427e8d06c509f2b99d4894",
+        "mode": "100644",
+        "path": "lib/_pystachy_json_int.py",
+        "worktree": {
+          "bytes": 157,
+          "git_blob_id": "f98fc146b4a7abdbd8427e8d06c509f2b99d4894",
+          "mode": "100644",
+          "sha256": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0"
+        }
+      },
+      {
+        "blob_id": "c06322c64ce94d4d4b26b7a42e972717cfb64f7a",
+        "mode": "100644",
+        "path": "lib/_pystachy_mappingproxy.py",
+        "worktree": {
+          "bytes": 3283,
+          "git_blob_id": "c06322c64ce94d4d4b26b7a42e972717cfb64f7a",
+          "mode": "100644",
+          "sha256": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c"
+        }
+      },
+      {
+        "blob_id": "b18e39b6eea8fe847ab7d8f80ab399e553fbf2bc",
+        "mode": "100644",
+        "path": "lib/_pystachy_object.py",
+        "worktree": {
+          "bytes": 626,
+          "git_blob_id": "b18e39b6eea8fe847ab7d8f80ab399e553fbf2bc",
+          "mode": "100644",
+          "sha256": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c"
+        }
+      },
+      {
+        "blob_id": "abbd20f70eb64945e985155766ff41342ff03f64",
+        "mode": "100644",
+        "path": "lib/_pystachy_percent.py",
+        "worktree": {
+          "bytes": 11840,
+          "git_blob_id": "abbd20f70eb64945e985155766ff41342ff03f64",
+          "mode": "100644",
+          "sha256": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3"
+        }
+      },
+      {
+        "blob_id": "c3ce6cd5128bc56834535bff4f5ac44cfb2b0752",
+        "mode": "100644",
+        "path": "lib/_pystachy_range.py",
+        "worktree": {
+          "bytes": 6321,
+          "git_blob_id": "c3ce6cd5128bc56834535bff4f5ac44cfb2b0752",
+          "mode": "100644",
+          "sha256": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2"
+        }
+      },
+      {
+        "blob_id": "cc6f34eca5b8b27cd5d9f4d06aad4b3a32a35b0a",
+        "mode": "100644",
+        "path": "lib/_pystachy_re_specialized.py",
+        "worktree": {
+          "bytes": 1376,
+          "git_blob_id": "cc6f34eca5b8b27cd5d9f4d06aad4b3a32a35b0a",
+          "mode": "100644",
+          "sha256": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf"
+        }
+      },
+      {
+        "blob_id": "b1a5a4b6d9be511cc2b6c83f5ef44457f3dcdce6",
+        "mode": "100644",
+        "path": "lib/_pystachy_string.py",
+        "worktree": {
+          "bytes": 6644,
+          "git_blob_id": "b1a5a4b6d9be511cc2b6c83f5ef44457f3dcdce6",
+          "mode": "100644",
+          "sha256": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434"
+        }
+      },
+      {
+        "blob_id": "5863abe70fcfffb3a5859d5f47ef3782c3f58ca2",
+        "mode": "100644",
+        "path": "lib/_pystachy_struct.py",
+        "worktree": {
+          "bytes": 16477,
+          "git_blob_id": "5863abe70fcfffb3a5859d5f47ef3782c3f58ca2",
+          "mode": "100644",
+          "sha256": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6"
+        }
+      },
+      {
+        "blob_id": "0fa4b3d2552e955c415f9a4d7f1adc83b1d66bc3",
+        "mode": "100644",
+        "path": "lib/_pystachy_thread.py",
+        "worktree": {
+          "bytes": 16867,
+          "git_blob_id": "0fa4b3d2552e955c415f9a4d7f1adc83b1d66bc3",
+          "mode": "100644",
+          "sha256": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc"
+        }
+      },
+      {
+        "blob_id": "9512a8518a603edf01871cc17429c5fe196dbe66",
+        "mode": "100644",
+        "path": "lib/_pystachy_time.py",
+        "worktree": {
+          "bytes": 733,
+          "git_blob_id": "9512a8518a603edf01871cc17429c5fe196dbe66",
+          "mode": "100644",
+          "sha256": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39"
+        }
+      },
+      {
+        "blob_id": "b0d3a87f6c85a95c037d98170a5612611f9f5e92",
+        "mode": "100644",
+        "path": "lib/_pystachy_types.py",
+        "worktree": {
+          "bytes": 759,
+          "git_blob_id": "b0d3a87f6c85a95c037d98170a5612611f9f5e92",
+          "mode": "100644",
+          "sha256": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70"
+        }
+      },
+      {
+        "blob_id": "8c309988b0027bb3874e070ac42c1e25492b30a1",
+        "mode": "100644",
+        "path": "lib/_pystachy_unicodedata.py",
+        "worktree": {
+          "bytes": 31260,
+          "git_blob_id": "8c309988b0027bb3874e070ac42c1e25492b30a1",
+          "mode": "100644",
+          "sha256": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0"
+        }
+      },
+      {
+        "blob_id": "cdb9abf5984767c6c04d1aa46eb7f5c925a99f18",
+        "mode": "100644",
+        "path": "lib/_pystachy_unicodedata_db.py",
+        "worktree": {
+          "bytes": 138851,
+          "git_blob_id": "cdb9abf5984767c6c04d1aa46eb7f5c925a99f18",
+          "mode": "100644",
+          "sha256": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2"
+        }
+      },
+      {
+        "blob_id": "769da060ec5b5d76b21bb8c07874f539dab17e9e",
+        "mode": "100644",
+        "path": "lib/_pystachy_unicodedata_names.py",
+        "worktree": {
+          "bytes": 713163,
+          "git_blob_id": "769da060ec5b5d76b21bb8c07874f539dab17e9e",
+          "mode": "100644",
+          "sha256": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28"
+        }
+      },
+      {
+        "blob_id": "5fd0755f362a672cbb4356bcdcb7409a466376ea",
+        "mode": "100644",
+        "path": "lib/_pystachy_weakref.py",
+        "worktree": {
+          "bytes": 4552,
+          "git_blob_id": "5fd0755f362a672cbb4356bcdcb7409a466376ea",
+          "mode": "100644",
+          "sha256": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb"
+        }
+      },
+      {
+        "blob_id": "489eec714e0d4881e0803b0e2781776c8a462c5d",
+        "mode": "100644",
+        "path": "lib/_weakrefset.py",
+        "worktree": {
+          "bytes": 5893,
+          "git_blob_id": "489eec714e0d4881e0803b0e2781776c8a462c5d",
+          "mode": "100644",
+          "sha256": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac"
+        }
+      },
+      {
+        "blob_id": "b7888318ecbec5a5c8f8cf5e7d9f9c8ea68e553c",
+        "mode": "100644",
+        "path": "lib/argparse.py",
+        "worktree": {
+          "bytes": 12528,
+          "git_blob_id": "b7888318ecbec5a5c8f8cf5e7d9f9c8ea68e553c",
+          "mode": "100644",
+          "sha256": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936"
+        }
+      },
+      {
+        "blob_id": "ca6ca7240840bbee58c1bbc79b56998c5ae2dbbd",
+        "mode": "100644",
+        "path": "lib/bisect.py",
+        "worktree": {
+          "bytes": 3423,
+          "git_blob_id": "ca6ca7240840bbee58c1bbc79b56998c5ae2dbbd",
+          "mode": "100644",
+          "sha256": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999"
+        }
+      },
+      {
+        "blob_id": "3cac856ae9277a5639060ed376c20a69ffcf915c",
+        "mode": "100644",
+        "path": "lib/codecs.py",
+        "worktree": {
+          "bytes": 37536,
+          "git_blob_id": "3cac856ae9277a5639060ed376c20a69ffcf915c",
+          "mode": "100644",
+          "sha256": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42"
+        }
+      },
+      {
+        "blob_id": "1e4a30fafb21cc8e16590b5e9565c645dfe151c4",
+        "mode": "100644",
+        "path": "lib/collections/__init__.py",
+        "worktree": {
+          "bytes": 48812,
+          "git_blob_id": "1e4a30fafb21cc8e16590b5e9565c645dfe151c4",
+          "mode": "100644",
+          "sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+        }
+      },
+      {
+        "blob_id": "e97f91718a3a30a4dbe502a7ff2fa30cb7b8ac3a",
+        "mode": "100644",
+        "path": "lib/colorsys.py",
+        "worktree": {
+          "bytes": 4062,
+          "git_blob_id": "e97f91718a3a30a4dbe502a7ff2fa30cb7b8ac3a",
+          "mode": "100644",
+          "sha256": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d"
+        }
+      },
+      {
+        "blob_id": "3f520030061b11e3120e90cb7f7742899a0b435e",
+        "mode": "100644",
+        "path": "lib/contextlib.py",
+        "worktree": {
+          "bytes": 11276,
+          "git_blob_id": "3f520030061b11e3120e90cb7f7742899a0b435e",
+          "mode": "100644",
+          "sha256": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665"
+        }
+      },
+      {
+        "blob_id": "7434660b1bfe61ddeac9cf9aba55a41ded4e81a8",
+        "mode": "100644",
+        "path": "lib/copy.py",
+        "worktree": {
+          "bytes": 8284,
+          "git_blob_id": "7434660b1bfe61ddeac9cf9aba55a41ded4e81a8",
+          "mode": "100644",
+          "sha256": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969"
+        }
+      },
+      {
+        "blob_id": "139a774518c7d814fa2ad902527dfda1a2ac0de0",
+        "mode": "100644",
+        "path": "lib/csv.py",
+        "worktree": {
+          "bytes": 42860,
+          "git_blob_id": "139a774518c7d814fa2ad902527dfda1a2ac0de0",
+          "mode": "100644",
+          "sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+        }
+      },
+      {
+        "blob_id": "6a3bc3aa2362b68a90b8b3d81f890a5e49ffe950",
+        "mode": "100644",
+        "path": "lib/ctypes.py",
+        "worktree": {
+          "bytes": 2496,
+          "git_blob_id": "6a3bc3aa2362b68a90b8b3d81f890a5e49ffe950",
+          "mode": "100644",
+          "sha256": "a422b62cc141173af5a710817fa683f9b4810a7a0652694c0b43bc71b5649601"
+        }
+      },
+      {
+        "blob_id": "965f6d2b1848b63ed0add3c8d5c255fe3e051622",
+        "mode": "100644",
+        "path": "lib/curses/__init__.py",
+        "worktree": {
+          "bytes": 187,
+          "git_blob_id": "965f6d2b1848b63ed0add3c8d5c255fe3e051622",
+          "mode": "100644",
+          "sha256": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394"
+        }
+      },
+      {
+        "blob_id": "95acff33925ed7a22224b54bc63ec5bbfdd2e949",
+        "mode": "100644",
+        "path": "lib/curses/ascii.py",
+        "worktree": {
+          "bytes": 2543,
+          "git_blob_id": "95acff33925ed7a22224b54bc63ec5bbfdd2e949",
+          "mode": "100644",
+          "sha256": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6"
+        }
+      },
+      {
+        "blob_id": "39eb300f7fbd2dadf7067632906f246d26af54ca",
+        "mode": "100644",
+        "path": "lib/datetime.py",
+        "worktree": {
+          "bytes": 117346,
+          "git_blob_id": "39eb300f7fbd2dadf7067632906f246d26af54ca",
+          "mode": "100644",
+          "sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+        }
+      },
+      {
+        "blob_id": "b8c8b141bbb78f6a1c7045233c3526edfe815b50",
+        "mode": "100644",
+        "path": "lib/difflib.py",
+        "worktree": {
+          "bytes": 85162,
+          "git_blob_id": "b8c8b141bbb78f6a1c7045233c3526edfe815b50",
+          "mode": "100644",
+          "sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+        }
+      },
+      {
+        "blob_id": "f5846b68ff54b851af402916b45e70eef1c2e6ec",
+        "mode": "100644",
+        "path": "lib/enum.py",
+        "worktree": {
+          "bytes": 28117,
+          "git_blob_id": "f5846b68ff54b851af402916b45e70eef1c2e6ec",
+          "mode": "100644",
+          "sha256": "5966e540800846a58328cfcf50029b5c6b79c27194ed01f30a432d45a81401ed"
+        }
+      },
+      {
+        "blob_id": "ff1232a90eafc5a48d82342c30185859767b309d",
+        "mode": "100644",
+        "path": "lib/fnmatch.py",
+        "worktree": {
+          "bytes": 9201,
+          "git_blob_id": "ff1232a90eafc5a48d82342c30185859767b309d",
+          "mode": "100644",
+          "sha256": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5"
+        }
+      },
+      {
+        "blob_id": "35c4ecde3016c7f1eb0a7dd03025a35a97f8ff2e",
+        "mode": "100644",
+        "path": "lib/functools.py",
+        "worktree": {
+          "bytes": 16995,
+          "git_blob_id": "35c4ecde3016c7f1eb0a7dd03025a35a97f8ff2e",
+          "mode": "100644",
+          "sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+        }
+      },
+      {
+        "blob_id": "9363f564aab7a6d8378e23fb60a9e9ddcb1c45d9",
+        "mode": "100644",
+        "path": "lib/genericpath.py",
+        "worktree": {
+          "bytes": 6247,
+          "git_blob_id": "9363f564aab7a6d8378e23fb60a9e9ddcb1c45d9",
+          "mode": "100644",
+          "sha256": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4"
+        }
+      },
+      {
+        "blob_id": "1c52eb9926c7eafe564e9992b6c63003a2ddaca2",
+        "mode": "100644",
+        "path": "lib/getopt.py",
+        "worktree": {
+          "bytes": 8019,
+          "git_blob_id": "1c52eb9926c7eafe564e9992b6c63003a2ddaca2",
+          "mode": "100644",
+          "sha256": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241"
+        }
+      },
+      {
+        "blob_id": "9a63e7cf7e86b9aa4df0930f8ea031e69df110d7",
+        "mode": "100644",
+        "path": "lib/gettext.py",
+        "worktree": {
+          "bytes": 22096,
+          "git_blob_id": "9a63e7cf7e86b9aa4df0930f8ea031e69df110d7",
+          "mode": "100644",
+          "sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+        }
+      },
+      {
+        "blob_id": "e7de90585fe0c92c4874729881d83186f296c95e",
+        "mode": "100644",
+        "path": "lib/glob.py",
+        "worktree": {
+          "bytes": 8650,
+          "git_blob_id": "e7de90585fe0c92c4874729881d83186f296c95e",
+          "mode": "100644",
+          "sha256": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78"
+        }
+      },
+      {
+        "blob_id": "408c8b360f056b078873ecbcf2d7081d8cb89913",
+        "mode": "100644",
+        "path": "lib/heapq.py",
+        "worktree": {
+          "bytes": 25127,
+          "git_blob_id": "408c8b360f056b078873ecbcf2d7081d8cb89913",
+          "mode": "100644",
+          "sha256": "89bfee37cf47aecdf2a5ae8706b9805f1b1789d6e2edb7e3556fe8b42c5ecba3"
+        }
+      },
+      {
+        "blob_id": "3c85ebd3c25a6d6555fde4a89c250c144d9cd0b4",
+        "mode": "100644",
+        "path": "lib/html/__init__.py",
+        "worktree": {
+          "bytes": 5713,
+          "git_blob_id": "3c85ebd3c25a6d6555fde4a89c250c144d9cd0b4",
+          "mode": "100644",
+          "sha256": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893"
+        }
+      },
+      {
+        "blob_id": "9f9e44787126d065cd62cb1c16f61c2d2de459e2",
+        "mode": "100644",
+        "path": "lib/html/entities.py",
+        "worktree": {
+          "bytes": 75594,
+          "git_blob_id": "9f9e44787126d065cd62cb1c16f61c2d2de459e2",
+          "mode": "100644",
+          "sha256": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f"
+        }
+      },
+      {
+        "blob_id": "6e0d8e1fa27622117424cf51fba924b8a0d8c613",
+        "mode": "100644",
+        "path": "lib/html/parser.py",
+        "worktree": {
+          "bytes": 25963,
+          "git_blob_id": "6e0d8e1fa27622117424cf51fba924b8a0d8c613",
+          "mode": "100644",
+          "sha256": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90"
+        }
+      },
+      {
+        "blob_id": "54fe283cd1f110163ad58198e5932b1a2401c516",
+        "mode": "100644",
+        "path": "lib/io.py",
+        "worktree": {
+          "bytes": 44286,
+          "git_blob_id": "54fe283cd1f110163ad58198e5932b1a2401c516",
+          "mode": "100644",
+          "sha256": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f"
+        }
+      },
+      {
+        "blob_id": "1f20d79e625875143f48534a7cc8630bdb27156c",
+        "mode": "100644",
+        "path": "lib/json.py",
+        "worktree": {
+          "bytes": 32753,
+          "git_blob_id": "1f20d79e625875143f48534a7cc8630bdb27156c",
+          "mode": "100644",
+          "sha256": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39"
+        }
+      },
+      {
+        "blob_id": "494850fdbd5a1fee00d23e08009f07ccbd3ed1a9",
+        "mode": "100644",
+        "path": "lib/keyword.py",
+        "worktree": {
+          "bytes": 1406,
+          "git_blob_id": "494850fdbd5a1fee00d23e08009f07ccbd3ed1a9",
+          "mode": "100644",
+          "sha256": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9"
+        }
+      },
+      {
+        "blob_id": "23a8102d4e57de5b9f03e31242c755addd1af4f1",
+        "mode": "100644",
+        "path": "lib/logging/__init__.py",
+        "worktree": {
+          "bytes": 102786,
+          "git_blob_id": "23a8102d4e57de5b9f03e31242c755addd1af4f1",
+          "mode": "100644",
+          "sha256": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3"
+        }
+      },
+      {
+        "blob_id": "f73ea5a3cc6823c5a4ab5fc946d3f9189fd8d3b9",
+        "mode": "100644",
+        "path": "lib/mpz.py",
+        "worktree": {
+          "bytes": 4316,
+          "git_blob_id": "f73ea5a3cc6823c5a4ab5fc946d3f9189fd8d3b9",
+          "mode": "100644",
+          "sha256": "03446eef1f51aacb8ed978aea17db754ff1049ec2f1bab9eb15a9521d42c4434"
+        }
+      },
+      {
+        "blob_id": "96237559c2433052320e4c7ae7b15074432543e7",
+        "mode": "100644",
+        "path": "lib/operator.py",
+        "worktree": {
+          "bytes": 11429,
+          "git_blob_id": "96237559c2433052320e4c7ae7b15074432543e7",
+          "mode": "100644",
+          "sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+        }
+      },
+      {
+        "blob_id": "e2e8613b77c6080d6085ecba00f02144326c51b4",
+        "mode": "100644",
+        "path": "lib/pathlib.py",
+        "worktree": {
+          "bytes": 28194,
+          "git_blob_id": "e2e8613b77c6080d6085ecba00f02144326c51b4",
+          "mode": "100644",
+          "sha256": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2"
+        }
+      },
+      {
+        "blob_id": "4b3b7880a47a1e6fea154eb44b20c84829cd0c3d",
+        "mode": "100644",
+        "path": "lib/posixpath.py",
+        "worktree": {
+          "bytes": 18233,
+          "git_blob_id": "4b3b7880a47a1e6fea154eb44b20c84829cd0c3d",
+          "mode": "100644",
+          "sha256": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e"
+        }
+      },
+      {
+        "blob_id": "8e7e16d38249ea27985a777722efae43c8b08c1c",
+        "mode": "100644",
+        "path": "lib/pyobj.py",
+        "worktree": {
+          "bytes": 18492,
+          "git_blob_id": "8e7e16d38249ea27985a777722efae43c8b08c1c",
+          "mode": "100644",
+          "sha256": "7469a60287c88b96a812c29024edc2532dab06e29c32f856661527e498250b50"
+        }
+      },
+      {
+        "blob_id": "e12f8f3c5ce78599448e75c780c573d5f54c1b9c",
+        "mode": "100644",
+        "path": "lib/random.py",
+        "worktree": {
+          "bytes": 42756,
+          "git_blob_id": "e12f8f3c5ce78599448e75c780c573d5f54c1b9c",
+          "mode": "100644",
+          "sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+        }
+      },
+      {
+        "blob_id": "2cbf6c1832d83210de4a88599711e00557051165",
+        "mode": "100644",
+        "path": "lib/re/__init__.py",
+        "worktree": {
+          "bytes": 102521,
+          "git_blob_id": "2cbf6c1832d83210de4a88599711e00557051165",
+          "mode": "100644",
+          "sha256": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412"
+        }
+      },
+      {
+        "blob_id": "d2065313ee1a01ce571a713a0c7ae67657d1fc8d",
+        "mode": "100644",
+        "path": "lib/re/_constants.py",
+        "worktree": {
+          "bytes": 3062,
+          "git_blob_id": "d2065313ee1a01ce571a713a0c7ae67657d1fc8d",
+          "mode": "100644",
+          "sha256": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe"
+        }
+      },
+      {
+        "blob_id": "fb563f8414acafc886251105d8f3a9b224235979",
+        "mode": "100644",
+        "path": "lib/re/_sre.py",
+        "worktree": {
+          "bytes": 81213,
+          "git_blob_id": "fb563f8414acafc886251105d8f3a9b224235979",
+          "mode": "100644",
+          "sha256": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5"
+        }
+      },
+      {
+        "blob_id": "3cab08f065afd0beef6855eab3b5431197cacf88",
+        "mode": "100644",
+        "path": "lib/re/_unicode.py",
+        "worktree": {
+          "bytes": 26866,
+          "git_blob_id": "3cab08f065afd0beef6855eab3b5431197cacf88",
+          "mode": "100644",
+          "sha256": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2"
+        }
+      },
+      {
+        "blob_id": "21a87d93d0c4da475d8e644ef6a8dc257c2d5e63",
+        "mode": "100644",
+        "path": "lib/shlex.py",
+        "worktree": {
+          "bytes": 16501,
+          "git_blob_id": "21a87d93d0c4da475d8e644ef6a8dc257c2d5e63",
+          "mode": "100644",
+          "sha256": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4"
+        }
+      },
+      {
+        "blob_id": "1925a75ccd65d9ce29c5ed196c9c2c6f84952677",
+        "mode": "100644",
+        "path": "lib/shutil.py",
+        "worktree": {
+          "bytes": 7768,
+          "git_blob_id": "1925a75ccd65d9ce29c5ed196c9c2c6f84952677",
+          "mode": "100644",
+          "sha256": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1"
+        }
+      },
+      {
+        "blob_id": "81f694329bf4ff04aeed40a03e43798639fd2ddb",
+        "mode": "100644",
+        "path": "lib/stat.py",
+        "worktree": {
+          "bytes": 6308,
+          "git_blob_id": "81f694329bf4ff04aeed40a03e43798639fd2ddb",
+          "mode": "100644",
+          "sha256": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6"
+        }
+      },
+      {
+        "blob_id": "de8d7011c2547cd333d5c75fda3455d81ed73250",
+        "mode": "100644",
+        "path": "lib/statistics.py",
+        "worktree": {
+          "bytes": 68829,
+          "git_blob_id": "de8d7011c2547cd333d5c75fda3455d81ed73250",
+          "mode": "100644",
+          "sha256": "05a091943eb6a01272f95c190e99bab0d33c72a108aef45261c838842301991b"
+        }
+      },
+      {
+        "blob_id": "bb61e74125744fa24994fafc70e4a4cd01a737b7",
+        "mode": "100644",
+        "path": "lib/string.py",
+        "worktree": {
+          "bytes": 15680,
+          "git_blob_id": "bb61e74125744fa24994fafc70e4a4cd01a737b7",
+          "mode": "100644",
+          "sha256": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27"
+        }
+      },
+      {
+        "blob_id": "d6bba58863649898a3f075cdda51cade9dc07f06",
+        "mode": "100644",
+        "path": "lib/struct.py",
+        "worktree": {
+          "bytes": 257,
+          "git_blob_id": "d6bba58863649898a3f075cdda51cade9dc07f06",
+          "mode": "100644",
+          "sha256": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856"
+        }
+      },
+      {
+        "blob_id": "4482f188f092fd5c0af8edd8889a600f3a6df8c7",
+        "mode": "100644",
+        "path": "lib/textwrap.py",
+        "worktree": {
+          "bytes": 21831,
+          "git_blob_id": "4482f188f092fd5c0af8edd8889a600f3a6df8c7",
+          "mode": "100644",
+          "sha256": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b"
+        }
+      },
+      {
+        "blob_id": "e68dd3ff39b04ff857420b98889bee590b344024",
+        "mode": "100644",
+        "path": "lib/this.py",
+        "worktree": {
+          "bytes": 1003,
+          "git_blob_id": "e68dd3ff39b04ff857420b98889bee590b344024",
+          "mode": "100644",
+          "sha256": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71"
+        }
+      },
+      {
+        "blob_id": "9d691a2a2224e360865e5d6d95e40bfb2e839597",
+        "mode": "100644",
+        "path": "lib/threading.py",
+        "worktree": {
+          "bytes": 61330,
+          "git_blob_id": "9d691a2a2224e360865e5d6d95e40bfb2e839597",
+          "mode": "100644",
+          "sha256": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9"
+        }
+      },
+      {
+        "blob_id": "00cf43173bcfb6b5522f35317c22bf28fca1db57",
+        "mode": "100644",
+        "path": "lib/token.py",
+        "worktree": {
+          "bytes": 4576,
+          "git_blob_id": "00cf43173bcfb6b5522f35317c22bf28fca1db57",
+          "mode": "100644",
+          "sha256": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2"
+        }
+      },
+      {
+        "blob_id": "ef91cb9d25dd794b2668b9557adca0601b5069f4",
+        "mode": "100644",
+        "path": "lib/tomllib/__init__.py",
+        "worktree": {
+          "bytes": 308,
+          "git_blob_id": "ef91cb9d25dd794b2668b9557adca0601b5069f4",
+          "mode": "100644",
+          "sha256": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51"
+        }
+      },
+      {
+        "blob_id": "60be7a0e9c6df8901dc17750202dd59381a9f7e6",
+        "mode": "100644",
+        "path": "lib/tomllib/_parser.py",
+        "worktree": {
+          "bytes": 24804,
+          "git_blob_id": "60be7a0e9c6df8901dc17750202dd59381a9f7e6",
+          "mode": "100644",
+          "sha256": "90eb6012af1c47527350e6bfae364eaafc1ad0bffaf89bd481471ac8406a6d8f"
+        }
+      },
+      {
+        "blob_id": "6a9d370e79a0c38c77e5c08beb98424eea80898a",
+        "mode": "100644",
+        "path": "lib/tomllib/_re.py",
+        "worktree": {
+          "bytes": 3475,
+          "git_blob_id": "6a9d370e79a0c38c77e5c08beb98424eea80898a",
+          "mode": "100644",
+          "sha256": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056"
+        }
+      },
+      {
+        "blob_id": "93d4dcbfb9574ac478e3990020bf5d13ac54c284",
+        "mode": "100644",
+        "path": "lib/tomllib/_types.py",
+        "worktree": {
+          "bytes": 459,
+          "git_blob_id": "93d4dcbfb9574ac478e3990020bf5d13ac54c284",
+          "mode": "100644",
+          "sha256": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0"
+        }
+      },
+      {
+        "blob_id": "70900baccaf667e06831cbed238772efccbc74a9",
+        "mode": "100644",
+        "path": "lib/traceback.py",
+        "worktree": {
+          "bytes": 7004,
+          "git_blob_id": "70900baccaf667e06831cbed238772efccbc74a9",
+          "mode": "100644",
+          "sha256": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1"
+        }
+      },
+      {
+        "blob_id": "3c8bd90e83226887a039b6798c283a1f737ef4fc",
+        "mode": "100644",
+        "path": "lib/types.py",
+        "worktree": {
+          "bytes": 1719,
+          "git_blob_id": "3c8bd90e83226887a039b6798c283a1f737ef4fc",
+          "mode": "100644",
+          "sha256": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2"
+        }
+      },
+      {
+        "blob_id": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "mode": "100644",
+        "path": "lib/urllib/__init__.py",
+        "worktree": {
+          "bytes": 0,
+          "git_blob_id": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "mode": "100644",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "blob_id": "97b7081208d4a1f3d0c126dfb4adb17442899f44",
+        "mode": "100644",
+        "path": "lib/urllib/parse.py",
+        "worktree": {
+          "bytes": 66448,
+          "git_blob_id": "97b7081208d4a1f3d0c126dfb4adb17442899f44",
+          "mode": "100644",
+          "sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+        }
+      },
+      {
+        "blob_id": "57f14bddbf9bb01fe3765894f27fc28fdb7e292c",
+        "mode": "100644",
+        "path": "lib/warnings.py",
+        "worktree": {
+          "bytes": 31522,
+          "git_blob_id": "57f14bddbf9bb01fe3765894f27fc28fdb7e292c",
+          "mode": "100644",
+          "sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+        }
+      },
+      {
+        "blob_id": "e7d0fbe59a95a9282aa3086f2b02eed824b245c7",
+        "mode": "100644",
+        "path": "lib/weakref.py",
+        "worktree": {
+          "bytes": 16983,
+          "git_blob_id": "e7d0fbe59a95a9282aa3086f2b02eed824b245c7",
+          "mode": "100644",
+          "sha256": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a"
+        }
+      },
+      {
+        "blob_id": "e45ee5e2d15b536ad1938a2bc2b8ad51ecdf47d1",
+        "mode": "100644",
+        "path": "mpz/mpz.c",
+        "worktree": {
+          "bytes": 22409,
+          "git_blob_id": "e45ee5e2d15b536ad1938a2bc2b8ad51ecdf47d1",
+          "mode": "100644",
+          "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+        }
+      },
+      {
+        "blob_id": "e58146c8f62316ebcd77e46d1d3c21ce8f7fa122",
+        "mode": "100644",
+        "path": "pystachy.py",
+        "worktree": {
+          "bytes": 945,
+          "git_blob_id": "e58146c8f62316ebcd77e46d1d3c21ce8f7fa122",
+          "mode": "100644",
+          "sha256": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29"
+        }
+      },
+      {
+        "blob_id": "a7b5e190443cfbe26057a9daa7e83c68fd441946",
+        "mode": "100644",
+        "path": "runtime.c",
+        "worktree": {
+          "bytes": 530625,
+          "git_blob_id": "a7b5e190443cfbe26057a9daa7e83c68fd441946",
+          "mode": "100644",
+          "sha256": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe"
+        }
+      },
+      {
+        "blob_id": "ec44c04542fcf603ad443bc9d930bc3d8bf04cda",
+        "mode": "100644",
+        "path": "runtime.py",
+        "worktree": {
+          "bytes": 87997,
+          "git_blob_id": "ec44c04542fcf603ad443bc9d930bc3d8bf04cda",
+          "mode": "100644",
+          "sha256": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb"
+        }
+      },
+      {
+        "blob_id": "36b7cd93cdfbac762f5be4c6ce276df2ea6305c2",
+        "mode": "100644",
+        "path": "ryu/LICENSE-Boost",
+        "worktree": {
+          "bytes": 1338,
+          "git_blob_id": "36b7cd93cdfbac762f5be4c6ce276df2ea6305c2",
+          "mode": "100644",
+          "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+        }
+      },
+      {
+        "blob_id": "7dc130947ac797284cb23194abaf11b0a76000a4",
+        "mode": "100644",
+        "path": "ryu/common.h",
+        "worktree": {
+          "bytes": 3648,
+          "git_blob_id": "7dc130947ac797284cb23194abaf11b0a76000a4",
+          "mode": "100644",
+          "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+        }
+      },
+      {
+        "blob_id": "bed7307cbeacdda7e2a0eb5cabb728942ba11f98",
+        "mode": "100644",
+        "path": "ryu/d2s.c",
+        "worktree": {
+          "bytes": 17681,
+          "git_blob_id": "bed7307cbeacdda7e2a0eb5cabb728942ba11f98",
+          "mode": "100644",
+          "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+        }
+      },
+      {
+        "blob_id": "3d53ed3b3b81608450c1f9a52b241ad86e552a9c",
+        "mode": "100644",
+        "path": "ryu/d2s_intrinsics.h",
+        "worktree": {
+          "bytes": 13011,
+          "git_blob_id": "3d53ed3b3b81608450c1f9a52b241ad86e552a9c",
+          "mode": "100644",
+          "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+        }
+      },
+      {
+        "blob_id": "494ab054337217c1416a3bbc47f00814bb6b2322",
+        "mode": "100644",
+        "path": "ryu/d2s_small_table.h",
+        "worktree": {
+          "bytes": 7637,
+          "git_blob_id": "494ab054337217c1416a3bbc47f00814bb6b2322",
+          "mode": "100644",
+          "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+        }
+      },
+      {
+        "blob_id": "02219bc6d53bd579dd429f47ebb7603af222eafa",
+        "mode": "100644",
+        "path": "ryu/digit_table.h",
+        "worktree": {
+          "bytes": 1745,
+          "git_blob_id": "02219bc6d53bd579dd429f47ebb7603af222eafa",
+          "mode": "100644",
+          "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+        }
+      },
+      {
+        "blob_id": "558822ab8bf16e55d6f05317c8afb9babd85e406",
+        "mode": "100644",
+        "path": "ryu/ryu.h",
+        "worktree": {
+          "bytes": 1360,
+          "git_blob_id": "558822ab8bf16e55d6f05317c8afb9babd85e406",
+          "mode": "100644",
+          "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+        }
+      },
+      {
+        "blob_id": "7bd782ccd01aceae0982c879b7df7876402e9782",
+        "mode": "100644",
+        "path": "src/__init__.py",
+        "worktree": {
+          "bytes": 32,
+          "git_blob_id": "7bd782ccd01aceae0982c879b7df7876402e9782",
+          "mode": "100644",
+          "sha256": "c443ed6062edae246598189fb20f12799a5e87a04049acb855894652e3875af7"
+        }
+      },
+      {
+        "blob_id": "f186f4c1948bd4161604782818abe20fc001cf11",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/__init__.py",
+        "worktree": {
+          "bytes": 79,
+          "git_blob_id": "f186f4c1948bd4161604782818abe20fc001cf11",
+          "mode": "100644",
+          "sha256": "f60cd281f8ed4fd35776c9f4d40d6a1313c49a3cae5df61841028f711b9f13c8"
+        }
+      },
+      {
+        "blob_id": "e841e42c81e599b160b11a295f8d56e2fe4fbd62",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/analysis.py",
+        "worktree": {
+          "bytes": 95763,
+          "git_blob_id": "e841e42c81e599b160b11a295f8d56e2fe4fbd62",
+          "mode": "100644",
+          "sha256": "29c2f37070a8f802a768f90b086c2c469dda1643130ec08dee2f9c0d4f476b64"
+        }
+      },
+      {
+        "blob_id": "741219a42571e980bc34b7b6ef9a5999b8e7178a",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/argparse_schema.py",
+        "worktree": {
+          "bytes": 19202,
+          "git_blob_id": "741219a42571e980bc34b7b6ef9a5999b8e7178a",
+          "mode": "100644",
+          "sha256": "8cfb408e9066ddb51d89be371cab2c4b769c1108da3d1554391bc799a83082a5"
+        }
+      },
+      {
+        "blob_id": "ea64c34e49af8ef9646196cf0b2e470935e1e751",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/bigints.py",
+        "worktree": {
+          "bytes": 76220,
+          "git_blob_id": "ea64c34e49af8ef9646196cf0b2e470935e1e751",
+          "mode": "100644",
+          "sha256": "e2765d3ff75b6b0f79bf2f8efc187b0a4ec1e8fcae24f13c74e3cd8f83ebb96d"
+        }
+      },
+      {
+        "blob_id": "3677ad367e22f678cbf84b86403e3f1f6da6e9ba",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/builtins.py",
+        "worktree": {
+          "bytes": 190675,
+          "git_blob_id": "3677ad367e22f678cbf84b86403e3f1f6da6e9ba",
+          "mode": "100644",
+          "sha256": "8f35ea2bdf159cd8c2b388b88197bb019b64499afa4e783eb3f2eded20b351c4"
+        }
+      },
+      {
+        "blob_id": "87b15a69d2ccec6b9bb7c90ab35baa0febcae272",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/cache_toolchain.py",
+        "worktree": {
+          "bytes": 13981,
+          "git_blob_id": "87b15a69d2ccec6b9bb7c90ab35baa0febcae272",
+          "mode": "100644",
+          "sha256": "2b179901cb2dafb543359828afe83c5b5f9b869a3ca0c7dfafc7f0306e0f03f7"
+        }
+      },
+      {
+        "blob_id": "a9e680bc32f84a71a896dc5ff98b7a2753b51f0c",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/cached_run.py",
+        "worktree": {
+          "bytes": 12397,
+          "git_blob_id": "a9e680bc32f84a71a896dc5ff98b7a2753b51f0c",
+          "mode": "100644",
+          "sha256": "c3435842d6048af697e6cc7dc12e59a313aefaecc35559034303d62fdc6bc03a"
+        }
+      },
+      {
+        "blob_id": "0adcd8e1d38db2d5b72b0eb8a723ae4948df1076",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/callbacks.py",
+        "worktree": {
+          "bytes": 8638,
+          "git_blob_id": "0adcd8e1d38db2d5b72b0eb8a723ae4948df1076",
+          "mode": "100644",
+          "sha256": "7366a851db14c32112a090d3dd0d0409851661f74ad5e1d2c4c2dc4beaf8dcde"
+        }
+      },
+      {
+        "blob_id": "539de13ee75885b9999285a57630826385a025df",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/calls.py",
+        "worktree": {
+          "bytes": 101728,
+          "git_blob_id": "539de13ee75885b9999285a57630826385a025df",
+          "mode": "100644",
+          "sha256": "21bd33cce31d89560690d17d08e768ff7f6af815435bb3357da01a4bd20fb543"
+        }
+      },
+      {
+        "blob_id": "86bd26e8cea9019d9194e8d0d38fae2d83836255",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/containers.py",
+        "worktree": {
+          "bytes": 65893,
+          "git_blob_id": "86bd26e8cea9019d9194e8d0d38fae2d83836255",
+          "mode": "100644",
+          "sha256": "a60d8c504bde351666f39b6f6e93ecd5dd8bd351d791dbf51d0a17160b9ce691"
+        }
+      },
+      {
+        "blob_id": "9c2af9e4da6cd458121875c6f7e2b4c01d41f070",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/conversions.py",
+        "worktree": {
+          "bytes": 20173,
+          "git_blob_id": "9c2af9e4da6cd458121875c6f7e2b4c01d41f070",
+          "mode": "100644",
+          "sha256": "6c4cfb75f0cd472f3712b267826aee63845a8bdd8a4e3be02f5619fe62d492c0"
+        }
+      },
+      {
+        "blob_id": "cba0a21f5d1058201f6728b5523add74a789ed3d",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/ctypes_schema.py",
+        "worktree": {
+          "bytes": 14216,
+          "git_blob_id": "cba0a21f5d1058201f6728b5523add74a789ed3d",
+          "mode": "100644",
+          "sha256": "9152db34ca5a236c5305938cf222e1a0d875948e64bfbdfb87c67939a51e3fe4"
+        }
+      },
+      {
+        "blob_id": "bcfff0954af2c677d9518c982b0c414149f47c02",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/declarations.py",
+        "worktree": {
+          "bytes": 172630,
+          "git_blob_id": "bcfff0954af2c677d9518c982b0c414149f47c02",
+          "mode": "100644",
+          "sha256": "8938cecf19e9d33ef7013d06e94eff2492cfffda985cf1cee9cac627110dc31d"
+        }
+      },
+      {
+        "blob_id": "e171569f3a5c1c4954adc11e2c2a132b41fd769e",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/diagnostics.py",
+        "worktree": {
+          "bytes": 7402,
+          "git_blob_id": "e171569f3a5c1c4954adc11e2c2a132b41fd769e",
+          "mode": "100644",
+          "sha256": "529f5423decb512a61505a289bf3a5fb9b59c3bb1bfaf512b8059893fd79b131"
+        }
+      },
+      {
+        "blob_id": "d83a0caca677d565424173957c1c6062ab73fc4e",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/driver.py",
+        "worktree": {
+          "bytes": 81115,
+          "git_blob_id": "d83a0caca677d565424173957c1c6062ab73fc4e",
+          "mode": "100644",
+          "sha256": "3ea5e60c39c837f0f58828738a3a54cda7e2c4a77b33facbc721c4775aee96e9"
+        }
+      },
+      {
+        "blob_id": "e9ce110d9e9530bd1600f8d982befda05b935eba",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/dynamic.py",
+        "worktree": {
+          "bytes": 275063,
+          "git_blob_id": "e9ce110d9e9530bd1600f8d982befda05b935eba",
+          "mode": "100644",
+          "sha256": "7952c260e9c39efb3f8680eb31dbc1a55bf6118939d0eb8d86141fc411a47b47"
+        }
+      },
+      {
+        "blob_id": "9f6b596583a5d30dbdf79f9585272b6e673b5c07",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/dynamic_proof.py",
+        "worktree": {
+          "bytes": 25091,
+          "git_blob_id": "9f6b596583a5d30dbdf79f9585272b6e673b5c07",
+          "mode": "100644",
+          "sha256": "859e305282d11c975754f25115e16ec9aa6988e707f8407440ac8fd794025e9a"
+        }
+      },
+      {
+        "blob_id": "5dbd466b1f2b6129fb009a5bbdfbb7a3138c8011",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/emission.py",
+        "worktree": {
+          "bytes": 31025,
+          "git_blob_id": "5dbd466b1f2b6129fb009a5bbdfbb7a3138c8011",
+          "mode": "100644",
+          "sha256": "dae312d3d4386404369a0430b4e99c5bfde2fafc65498d99cc3db2fc05788a96"
+        }
+      },
+      {
+        "blob_id": "5ee48f24d44339682acaaa706b1988e087997109",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/exceptions.py",
+        "worktree": {
+          "bytes": 83874,
+          "git_blob_id": "5ee48f24d44339682acaaa706b1988e087997109",
+          "mode": "100644",
+          "sha256": "05abab080546bfa14e8809f1df31224306327fc104dc3f88caa3ac14abce7d06"
+        }
+      },
+      {
+        "blob_id": "4dcc58bb4e2d191a259058f0aabad38dbac58f1a",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/expressions.py",
+        "worktree": {
+          "bytes": 301349,
+          "git_blob_id": "4dcc58bb4e2d191a259058f0aabad38dbac58f1a",
+          "mode": "100644",
+          "sha256": "8cc78be83f6074a0c897d790c486d7190391a16dde6bfe5bd393bbe1b94f5383"
+        }
+      },
+      {
+        "blob_id": "aab411e55c1c1d19e30a995a96d515f3aecafcc1",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/flow.py",
+        "worktree": {
+          "bytes": 42553,
+          "git_blob_id": "aab411e55c1c1d19e30a995a96d515f3aecafcc1",
+          "mode": "100644",
+          "sha256": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9"
+        }
+      },
+      {
+        "blob_id": "10871c828a2c8792f9c11b1f13cc4066f185a20e",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/functions.py",
+        "worktree": {
+          "bytes": 27000,
+          "git_blob_id": "10871c828a2c8792f9c11b1f13cc4066f185a20e",
+          "mode": "100644",
+          "sha256": "909be9e207959b61cbe5dd4fe948b33cd473b8e49aa5e7b0e18ebd4539e25aa6"
+        }
+      },
+      {
+        "blob_id": "1429a009db0d75fcbf92c15750bef20ebf105c88",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/gen.py",
+        "worktree": {
+          "bytes": 210079,
+          "git_blob_id": "1429a009db0d75fcbf92c15750bef20ebf105c88",
+          "mode": "100644",
+          "sha256": "797095c2615fe3f2f283e30c435e6dcb11ecce8004c22ce6b78f9cce42d794aa"
+        }
+      },
+      {
+        "blob_id": "5a45ca6671870035faa70f9b623337b49f8de5e1",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/generators.py",
+        "worktree": {
+          "bytes": 61423,
+          "git_blob_id": "5a45ca6671870035faa70f9b623337b49f8de5e1",
+          "mode": "100644",
+          "sha256": "32766d6e1082584c09fb820c970d48d7089aa92bd384061a594e593626a2f904"
+        }
+      },
+      {
+        "blob_id": "da23adac6d70dbd132bb6ce8f05eeb14bce238bf",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/ir.py",
+        "worktree": {
+          "bytes": 37768,
+          "git_blob_id": "da23adac6d70dbd132bb6ce8f05eeb14bce238bf",
+          "mode": "100644",
+          "sha256": "9b306ebded8757f45fd72264a0a6f051180c5329189ef21fcb1a78717ab8da5e"
+        }
+      },
+      {
+        "blob_id": "c9cd4459cc9428dbf559810a7859974c10ccc85b",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/ircheck.py",
+        "worktree": {
+          "bytes": 36021,
+          "git_blob_id": "c9cd4459cc9428dbf559810a7859974c10ccc85b",
+          "mode": "100644",
+          "sha256": "99cebd4faf231c3f92dad0ea732faf4bde6cbcc724bc2dfb6780b51d1febf60f"
+        }
+      },
+      {
+        "blob_id": "ebcaf34c0c550e3f0d6c26068fc7af5f0c64812c",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/lexer.py",
+        "worktree": {
+          "bytes": 37663,
+          "git_blob_id": "ebcaf34c0c550e3f0d6c26068fc7af5f0c64812c",
+          "mode": "100644",
+          "sha256": "5d727507498549788d7d428b067e4bf794dbe49199286577cd1cd2d47d0b16f7"
+        }
+      },
+      {
+        "blob_id": "0c862ce0c2dd3389d71fa0ab7fd209699c8b1e2e",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/llvm_abi.py",
+        "worktree": {
+          "bytes": 558,
+          "git_blob_id": "0c862ce0c2dd3389d71fa0ab7fd209699c8b1e2e",
+          "mode": "100644",
+          "sha256": "7485f63097d4abac3de8b1fbfb782944ff7e3b68989d2fb266e40ebb8f8889ae"
+        }
+      },
+      {
+        "blob_id": "5d42995c6ce07fc6682c37f0fb8879089bb9d6f3",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/loader.py",
+        "worktree": {
+          "bytes": 216498,
+          "git_blob_id": "5d42995c6ce07fc6682c37f0fb8879089bb9d6f3",
+          "mode": "100644",
+          "sha256": "9bf4d445e35df0308d52fa5e63a4d2c9d229f225dd930b7cdac0525a5ee2b06f"
+        }
+      },
+      {
+        "blob_id": "44c20a1204071c1d9449c90717cb5b2f25fac228",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/local_versions.py",
+        "worktree": {
+          "bytes": 2431,
+          "git_blob_id": "44c20a1204071c1d9449c90717cb5b2f25fac228",
+          "mode": "100644",
+          "sha256": "10bb0f2f0fb57c442af0807b5b4af6c95e8b950a97430161c97f766a3dc4b375"
+        }
+      },
+      {
+        "blob_id": "2c7323c1bfa1277b55468d8df9246b2538014255",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/lower_module.py",
+        "worktree": {
+          "bytes": 46765,
+          "git_blob_id": "2c7323c1bfa1277b55468d8df9246b2538014255",
+          "mode": "100644",
+          "sha256": "0a19ee18b24a487c70a9e00e9dd51766db631d2c8b4047bc020618c7a9fcfd97"
+        }
+      },
+      {
+        "blob_id": "fa776ab3420723c0e246084f5a20d0dd31c33224",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/lowering.py",
+        "worktree": {
+          "bytes": 40849,
+          "git_blob_id": "fa776ab3420723c0e246084f5a20d0dd31c33224",
+          "mode": "100644",
+          "sha256": "6e62b04362d99bc2189a933545253e9cb8f09ec7bcd7629332b632a2ebbd1d63"
+        }
+      },
+      {
+        "blob_id": "628d97fed4aa76ab7cf8853b31b7b03cb934e5a4",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/memory_ir.py",
+        "worktree": {
+          "bytes": 915,
+          "git_blob_id": "628d97fed4aa76ab7cf8853b31b7b03cb934e5a4",
+          "mode": "100644",
+          "sha256": "00f8e49817740ef7b65066f104cadeec0cd2ab267240089c29b1450c7ac5e611"
+        }
+      },
+      {
+        "blob_id": "d03cd0dd07419eac8a66d3024c39752340da92f5",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/module.py",
+        "worktree": {
+          "bytes": 3710,
+          "git_blob_id": "d03cd0dd07419eac8a66d3024c39752340da92f5",
+          "mode": "100644",
+          "sha256": "3349556dee4dcda00013d770743f27d5dc3525b76cbd5e2ab312b14506e1f601"
+        }
+      },
+      {
+        "blob_id": "4cf6d5efbd135ad8320a9f466987e06640396f68",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/names.py",
+        "worktree": {
+          "bytes": 2216,
+          "git_blob_id": "4cf6d5efbd135ad8320a9f466987e06640396f68",
+          "mode": "100644",
+          "sha256": "1b114c50d950b971dc4e72afd87fa0daa3e71c653101747733ceb89777d07e1c"
+        }
+      },
+      {
+        "blob_id": "82c88b1d5a49cc2280df4708a2095466c5413726",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/optimizations.py",
+        "worktree": {
+          "bytes": 92352,
+          "git_blob_id": "82c88b1d5a49cc2280df4708a2095466c5413726",
+          "mode": "100644",
+          "sha256": "9c9299073d98308473f7e5267ba08f90c65d414e389a5fd3f8ccb8fed2ac6b65"
+        }
+      },
+      {
+        "blob_id": "2c354def2749d53abfa46997f0e1f2ed2093d702",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/parser.py",
+        "worktree": {
+          "bytes": 115416,
+          "git_blob_id": "2c354def2749d53abfa46997f0e1f2ed2093d702",
+          "mode": "100644",
+          "sha256": "0ebba19e45b2d0396ce427894463c61fc41834aca13ba8e8383efa6ec634d6bc"
+        }
+      },
+      {
+        "blob_id": "2c7ab1273f85ea9165f7ce902494cbdc55b8c547",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/program.py",
+        "worktree": {
+          "bytes": 75882,
+          "git_blob_id": "2c7ab1273f85ea9165f7ce902494cbdc55b8c547",
+          "mode": "100644",
+          "sha256": "44b8a84208ddfa6161b5a322d1b6df64f7d1006e981c606114f9b047da26a874"
+        }
+      },
+      {
+        "blob_id": "0165e64229c860eac0b4e66b8badf100434a9296",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/program_cache.py",
+        "worktree": {
+          "bytes": 28062,
+          "git_blob_id": "0165e64229c860eac0b4e66b8badf100434a9296",
+          "mode": "100644",
+          "sha256": "648f6d3733c8bffabb2bde7057db379185862ae23cbc5a9ae22a89f8e3568b25"
+        }
+      },
+      {
+        "blob_id": "0d0355d37854925d1f854789662499cd07bc2836",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/reflection.py",
+        "worktree": {
+          "bytes": 161220,
+          "git_blob_id": "0d0355d37854925d1f854789662499cd07bc2836",
+          "mode": "100644",
+          "sha256": "b708e176649abccc1c364b19616661df790096f5af6f4b93cb4aedec7abcf2f5"
+        }
+      },
+      {
+        "blob_id": "a079c2db35a9545e0ede6453496edce03101f6ee",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/scalar_ir.py",
+        "worktree": {
+          "bytes": 2865,
+          "git_blob_id": "a079c2db35a9545e0ede6453496edce03101f6ee",
+          "mode": "100644",
+          "sha256": "7e11da58cee27ef8109ed5afb7766c8b7f6f30bd37340e34e10313a13a679868"
+        }
+      },
+      {
+        "blob_id": "a692cb2a98899398e63779a643fb81b2553d06a3",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/scope.py",
+        "worktree": {
+          "bytes": 29196,
+          "git_blob_id": "a692cb2a98899398e63779a643fb81b2553d06a3",
+          "mode": "100644",
+          "sha256": "d9af25da84ba62a17a6a1a0b7d48d078977dd364528c8ec8e4135cc438f10a97"
+        }
+      },
+      {
+        "blob_id": "1eebf456e38f642db9db50827525aa17d9bf51c6",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/source_lines.py",
+        "worktree": {
+          "bytes": 8122,
+          "git_blob_id": "1eebf456e38f642db9db50827525aa17d9bf51c6",
+          "mode": "100644",
+          "sha256": "29b49e6e94513ab66452b019b4b5b0f991d4ae1555c421c9134add318e13d7c2"
+        }
+      },
+      {
+        "blob_id": "603bef249a3e7ae694087b4d7eb73a4b1a1c12e5",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/specs.py",
+        "worktree": {
+          "bytes": 99180,
+          "git_blob_id": "603bef249a3e7ae694087b4d7eb73a4b1a1c12e5",
+          "mode": "100644",
+          "sha256": "a8fb9140a05e3bece3783dfaba24c1e2201a680cb5027ab279db4360488ff223"
+        }
+      },
+      {
+        "blob_id": "abe93401ecb6c5aab4460325db11a2fd9648af03",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/statements.py",
+        "worktree": {
+          "bytes": 115613,
+          "git_blob_id": "abe93401ecb6c5aab4460325db11a2fd9648af03",
+          "mode": "100644",
+          "sha256": "15186dfa8fbfc7f0ddd1c9b1697db294d2a84d65565435ca9fd829abeaf9d010"
+        }
+      },
+      {
+        "blob_id": "bc06c8d11b68cb3ca39cd536d47b3d2dc8d01418",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/structs.py",
+        "worktree": {
+          "bytes": 13621,
+          "git_blob_id": "bc06c8d11b68cb3ca39cd536d47b3d2dc8d01418",
+          "mode": "100644",
+          "sha256": "e873fd6a6aeaebf39f740de2859a5de9a2da316d7a8993c728889677125c3090"
+        }
+      },
+      {
+        "blob_id": "358dfd2eff934ddec5677064486efc4eb7004252",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/syntax.py",
+        "worktree": {
+          "bytes": 10540,
+          "git_blob_id": "358dfd2eff934ddec5677064486efc4eb7004252",
+          "mode": "100644",
+          "sha256": "9d4da3abe7447fa31031ba44936be765240dc60ab51d74728a9ed80c9a7674c3"
+        }
+      },
+      {
+        "blob_id": "dfdec4657ca2c2828a382ace7916470f363c00f8",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/templates.py",
+        "worktree": {
+          "bytes": 53326,
+          "git_blob_id": "dfdec4657ca2c2828a382ace7916470f363c00f8",
+          "mode": "100644",
+          "sha256": "618b43dddc2bef0d042a4cdfceade32d1f85ba9c7138be66303c98f149f1a43b"
+        }
+      },
+      {
+        "blob_id": "614e19a6c4f473025a36374e00c4294ae2cdb4d4",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/union_arithmetic.py",
+        "worktree": {
+          "bytes": 8490,
+          "git_blob_id": "614e19a6c4f473025a36374e00c4294ae2cdb4d4",
+          "mode": "100644",
+          "sha256": "2264c8ff82170a113a62e7f0068cf05703d79765b40de502e9347778bd274d61"
+        }
+      },
+      {
+        "blob_id": "d0d7769316fc308416dc224750c79160a55d1569",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/union_proof.py",
+        "worktree": {
+          "bytes": 43600,
+          "git_blob_id": "d0d7769316fc308416dc224750c79160a55d1569",
+          "mode": "100644",
+          "sha256": "7c066ea713efaa408865ec9140de6ddd31d073b69ebc2ee4507a8efc711a647b"
+        }
+      },
+      {
+        "blob_id": "1a16a123391220c7e7d9b4279e114d577a79df79",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/union_state.py",
+        "worktree": {
+          "bytes": 9414,
+          "git_blob_id": "1a16a123391220c7e7d9b4279e114d577a79df79",
+          "mode": "100644",
+          "sha256": "b845af16073f24e1e1245bdcb00d4324dbf1d657874604cb4b991d852a07b026"
+        }
+      },
+      {
+        "blob_id": "416129c8ee09b8c5367af247b27ae0e377a758bb",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/unions.py",
+        "worktree": {
+          "bytes": 29777,
+          "git_blob_id": "416129c8ee09b8c5367af247b27ae0e377a758bb",
+          "mode": "100644",
+          "sha256": "601cfb63970009603adcbceba11882c35d36c88f5a9d3fa6463936541ae593f1"
+        }
+      },
+      {
+        "blob_id": "18a67fce14a0c36836c02ab0ecd12c3ce034a781",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/utils.py",
+        "worktree": {
+          "bytes": 46614,
+          "git_blob_id": "18a67fce14a0c36836c02ab0ecd12c3ce034a781",
+          "mode": "100644",
+          "sha256": "52a792d18b5b607d8393fe319f69daf23acc605e419279a3dfb8f2d424e5caeb"
+        }
+      },
+      {
+        "blob_id": "429f4c95abdb4b96c0685bb327257acb8b6de3a8",
+        "mode": "100644",
+        "path": "src/pystachy_compiler/variables.py",
+        "worktree": {
+          "bytes": 129921,
+          "git_blob_id": "429f4c95abdb4b96c0685bb327257acb8b6de3a8",
+          "mode": "100644",
+          "sha256": "0718fc550c5211c27955543441df2b62c6bd0cd8fa253919acfa4fbd08affca2"
+        }
+      }
+    ]
+  },
+  "repository": "/workspace/scratch/0bc6e8bc1edf/match-main",
+  "schema_version": 1,
+  "shared_input_proof": "match-identical-inputs.json",
+  "started_utc": "2026-11-11T20:19:38.795009+00:00",
+  "status": "completed_with_differences",
+  "syntax_baseline": "match-syntax-baseline.json",
+  "total_inputs": 4438,
+  "unexpected_differing_cases": []
+}

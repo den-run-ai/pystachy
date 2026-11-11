@@ -1,0 +1,172 @@
+DIFF tests/programs/apps/match_dispatch_workloads.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-examples/match_dispatch/dispatch.py:16: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/generators/gen_match_dispatch.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/generators/gen_match_dispatch.py:15: error: 'match' statements are not supported (compiling select(list[tuple[int,str]]) for the call at tests/programs/generators/gen_match_dispatch.py:26)
+  IR written by only one compiler
+DIFF tests/programs/inference/dynany_match_literals.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/inference/dynany_match_literals.py:7: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/inference/dynany_match_python_int.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/inference/dynany_match_python_int.py:7: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_binding.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_binding.py:6: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_capture_staging.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_capture_staging.py:7: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_condition_order.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_condition_order.py:25: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_dataclasses.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_dataclasses.py:12: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_exceptions.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_exceptions.py:9: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_large_hex.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_large_hex.py:5: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_literals.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_literals.py:32: error: 'match' statements are not supported (compiling singleton(bool) for the call at tests/programs/language/match_literals.py:51)
+  IR written by only one compiler
+DIFF tests/programs/language/match_nested_dataclasses.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_nested_dataclasses.py:15: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_python_int.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_python_int.py:6: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/programs/language/match_tuples.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-tests/programs/language/match_tuples.py:2: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF tests/errors/language/match_boolean_optional_union.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_boolean_optional_union.py:3: error: 'match' statements are not supported
++tests/errors/language/match_boolean_optional_union.py:3: error: boolean singleton patterns require a concrete bool or dynamic Any subject
+DIFF tests/errors/language/match_dataclass_any.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_any.py:13: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_any.py:14: error: class patterns require a concrete subject type; dynamic Any and union subjects are not supported
+DIFF tests/errors/language/match_dataclass_any_field.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_any_field.py:18: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_any_field.py:18: error: class patterns require a concrete subject type; dynamic Any and union subjects are not supported
+DIFF tests/errors/language/match_dataclass_args_inherited.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_args_inherited.py:18: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_args_inherited.py:19: error: class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__
+DIFF tests/errors/language/match_dataclass_args_method.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_args_method.py:13: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_args_method.py:14: error: class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__
+DIFF tests/errors/language/match_dataclass_args_qualified_method.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_args_qualified_method.py:5: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_args_qualified_method.py:6: error: class patterns require a dataclass without a hierarchy, attribute hooks or custom __match_args__
+DIFF tests/errors/language/match_dataclass_args_qualified_property.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_args_qualified_property.py:5: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_args_qualified_property.py:5: error: class match_attribute_defs.PropertyPoint is not supported: method __match_args__() has a decorator
+DIFF tests/errors/language/match_dataclass_duplicate.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_duplicate.py:10: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_duplicate.py:10: error: Point() got multiple sub-patterns for attribute 'x'
+DIFF tests/errors/language/match_dataclass_keyword_only.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_keyword_only.py:11: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_keyword_only.py:11: error: Point() accepts 1 positional sub-patterns (2 given)
+DIFF tests/errors/language/match_dataclass_no_args.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_no_args.py:10: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_no_args.py:10: error: Point() accepts 0 positional sub-patterns (1 given)
+DIFF tests/errors/language/match_dataclass_union.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_dataclass_union.py:16: error: 'match' statements are not supported
++tests/errors/language/match_dataclass_union.py:17: error: class patterns require a concrete subject type; dynamic Any and union subjects are not supported
+DIFF tests/errors/language/match_list_subject.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_list_subject.py:3: error: 'match' statements are not supported
++tests/errors/language/match_list_subject.py:4: error: sequence patterns require a fixed tuple subject, got list[int]
+DIFF tests/errors/language/match_plain_class.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_plain_class.py:7: error: 'match' statements are not supported
++tests/errors/language/match_plain_class.py:8: error: class patterns require a statically known dataclass
+DIFF tests/errors/language/match_shadow_class.py
+  messages:
+@@ -1 +1 @@
+-tests/errors/language/match_shadow_class.py:11: error: 'match' statements are not supported
++tests/errors/language/match_shadow_class.py:12: error: class patterns require a statically known dataclass
+DIFF tests/errors/library/lib_statistics_kde.py
+  messages:
+@@ -1 +1 @@
+-lib/statistics.py:1045: error: 'match' statements are not supported (compiling statistics.kde(list[float], float, str, bool) for the call at tests/errors/library/lib_statistics_kde.py:6)
++/workspace/scratch/0bc6e8bc1edf/match-main/lib/statistics.py:1056: error: expected <function kde.<locals>.<lambda> (/workspace/scratch/0bc6e8bc1edf/match-main/lib/statistics.py:1050)>, got <function kde.<locals>.<lambda> (/workspace/scratch/0bc6e8bc1edf/match-main/lib/statistics.py:1056)> (each function is a type of its own: a variable, a list's items or a dict's values hold one function) (compiling statistics.kde(list[float], float, str, bool) for the call at tests/errors/library/lib_statistics_kde.py:6)
+DIFF bench/match_dispatch/workload.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-bench/match_dispatch/workload.py:14: error: 'match' statements are not supported
+  IR written by only one compiler
+DIFF examples/match_dispatch/dispatch.py
+  exit status 1 -> 0
+  messages:
+@@ -1 +0,0 @@
+-examples/match_dispatch/dispatch.py:16: error: 'match' statements are not supported
+  IR written by only one compiler
+31 of 4438 differ

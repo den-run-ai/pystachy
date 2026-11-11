@@ -1,0 +1,22 @@
+focused-native PASS selected 31 cases
+45 passed, 0 failed
+focused-hosted PASS selected 31 cases
+45 passed, 0 failed
+focused-program-gc PASS selected 31 cases
+45 passed, 0 failed
+compiler-and-program-gc PASS selected 3 cases
+6 passed, 0 failed
+optimizer-off PASS selected 14 cases
+28 passed, 0 failed
+python_int PASS 14 programs, 28 checks: 28 passed, 0 failed
+dynany PASS 14 programs, 28 checks: 28 passed, 0 AOT checks of unchanged IR left to tests-native, 0 expected failures, 0 failures
+combined-matrix PASS python-int-gc PASS selected 14 cases
+28 passed, 0 failed
+dynamic-any-gc PASS selected 14 cases
+28 passed, 0 failed
+combined PASS selected 14 cases
+28 passed, 0 failed
+combined-gc PASS selected 14 cases
+28 passed, 0 failed
+example-pytest PASS match_dispatch/jit: passed (11 cases)
+match_dispatch/aot: passed (11 cases)

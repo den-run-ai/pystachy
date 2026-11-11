@@ -1,0 +1,174 @@
+ruff check
+All checks passed!
+ruff check --no-force-exclude bench/pyperformance/pytest/*.py
+All checks passed!
+mypy --config-file mypy.ini
+Success: no issues found in 57 source files
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python tools/check_repository_hygiene.py
+repository hygiene: tracked paths are clean
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_repository_hygiene.py
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.530s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_function_summaries.py
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.086s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p 'test_typed*.py'
+..........................................................................................................................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 314 tests in 9.889s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p 'test_json*.py'
+...............................................installed API (normal): 1/1 corpus cases
+installed API (forced_gc): 1/1 corpus cases
+installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+installed API (normal): 1/1 corpus cases
+installed API (forced_gc): 1/1 corpus cases
+installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+installed API (normal): 1/1 corpus cases
+installed API (forced_gc): 1/1 corpus cases
+installed CLI: 1 cases; spawned workers: 2; thread rejections: 2
+.................
+----------------------------------------------------------------------
+Ran 64 tests in 3.056s
+
+OK
+/tmp/pystachy-repair-wheel-test-wd_zy3sp/dist/pystachy_json_repair-0.1.0.dev3-cp312-abi3-linux_x86_64.whl
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_numeric_identity.py
+........................................................
+----------------------------------------------------------------------
+Ran 56 tests in 0.702s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_identity_scope.py
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 17.603s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_toml_boundary.py
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.004s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_dynamic_any_inventory.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.046s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_dynany_comparisons.py
+..................................................
+----------------------------------------------------------------------
+Ran 50 tests in 8.780s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_dynany_dict_kinds.py
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.011s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_diagnostic_capture.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.221s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_loader_preprocessing.py
+..............
+----------------------------------------------------------------------
+Ran 14 tests in 0.413s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_ctypes_schema.py
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 0.141s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_ffi_twin.py
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.114s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_parser_allocations.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.014s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_exception_bindings.py
+............
+----------------------------------------------------------------------
+Ran 12 tests in 0.430s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_inspect_compiler.py
+............................
+----------------------------------------------------------------------
+Ran 28 tests in 20.478s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p 'test_lean_boundary*.py'
+...............sssssss.s.ssssssssssssssss..s..sssssss........
+----------------------------------------------------------------------
+Ran 61 tests in 3.632s
+
+OK (skipped=32)
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_lean_access.py
+..............sssssssssssssssss
+----------------------------------------------------------------------
+Ran 31 tests in 0.488s
+
+OK (skipped=17)
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_lean_int.py
+....sssssssss
+----------------------------------------------------------------------
+Ran 13 tests in 0.396s
+
+OK (skipped=9)
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p 'test_lean_storage*.py'
+ssssssssss...ss......s.s.sssssss....sss
+----------------------------------------------------------------------
+Ran 39 tests in 6.409s
+
+OK (skipped=24)
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_lean_layout_metadata.py
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 1.319s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_source_lines.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 21.325s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_pystachy_toolchain.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.029s
+
+OK
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_retained_ir.py
+s.........
+----------------------------------------------------------------------
+Ran 10 tests in 0.081s
+
+OK (skipped=1)
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python -m unittest discover -s tools -p test_jitfdprobe.py
+........
+----------------------------------------------------------------------
+Ran 8 tests in 0.320s
+
+OK

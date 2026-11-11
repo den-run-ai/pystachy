@@ -1,0 +1,27 @@
+Read-only audit of den-run-ai/pystachy #1252, head 1d900cac8707763bfa81e545de39c8ad3db0e4dd.
+
+Confirmed findings:
+1. patterns.py pattern_static excludes int+ from scalar sequence mismatch types. This is the reported match_tuples.py promoting-int rejection.
+2. patterns.py pattern_test classifies pnum as float when its spelling contains e. Parser number_repr intentionally retains hexadecimal spelling for ints >14,285 bits, so a pattern literal of 0x followed by 3600 e digits becomes a float node and crashes hosted compilation with ValueError in fbits. Repro audit_huge_hex.py; CPython prints 1. Control 3600 a digits compiles. Exempt +/-0x prefix from float classification or retain parsed numeric kind.
+
+Source-reviewed guarantees:
+- Subject stored once before cases.
+- User bindings committed after entire pattern success, before guard, and retained on guard false or exception.
+- OR alternatives stage into shared capture slots, with source-order short circuit.
+- Class attributes all obtained before subpattern comparisons, preserving CPython mutation ordering.
+- Tuple slots immutable, so staged per-subpattern indexing preserves selected objects.
+- Dynamic Any class subjects rejected; nullable concrete class gets runtime null check.
+- Custom match_args and hierarchy restrictions checked.
+
+Host IR probes only (no native execution yet):
+module_binding, global_binding, empty_class_none, nested_dc, guard_exception_capture,
+pattern_exception_capture, value_enum, empty_sequence all compile, CPython output captured in tool record.
+optional_int and optional_tuple with sequence patterns reject explicitly.
+generic_dc rejects pre-existing generic-dataclass TypeVar boundary.
+bool_int rejects bool argument to int annotation.
+args_assign and args_field reject existing dataclass metadata restrictions.
+
+Integration dependency:
+composed_native_features.py uses earlier stack features: slice-property Any, closures capturing comprehension variables, native iterator adapters. Bounded match lowering itself uses existing compiler APIs; dropping/reducing that composition fixture on current main may be necessary to avoid unrelated new stack dependencies.
+
+No source modifications, commits, or GitHub writes performed.

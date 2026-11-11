@@ -1,0 +1,12 @@
+{
+  "measurement_build_revision": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+  "measurement_checkout_revision": "62b93c370d5bfa52f22199c31efcb6764b77e6f5",
+  "published_integration_revision": "601807e3686fa83a362cceb0d962d8e6332fbc34",
+  "integration_tree": "b28d80a94d0ac11e18cd6da7c6586e704a757bfd",
+  "source_equivalence_report": "match-integration-equivalence.json",
+  "source_equivalence_report_sha256": "c83de18498650fe1fe855e59366b81ea10bfc6ed0bdc286fb2d20c6e39aa9e23",
+  "aot_binary_sha256": "da6dcda2fa6ed927bed503f5e7ca6e079d15bd474fcf5db57bae65806246bc46",
+  "pyperf_started_utc": "2026-11-11T20:34:20Z",
+  "pyperf_finished_utc": "2026-11-11T20:37:21Z",
+  "note": "The retained AOT executable and its original build revision were preserved. All compiler/runtime/library/workload sources match the integration tree; the local checkout remained at the equivalent local merge throughout pyperf."
+}

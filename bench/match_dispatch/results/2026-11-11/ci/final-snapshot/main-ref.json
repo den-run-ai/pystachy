@@ -1,0 +1,10 @@
+{
+  "ref": "refs/heads/main",
+  "node_id": "REF_kwDOU_6QTq9yZWZzL2hlYWRzL21haW4",
+  "url": "https://api.github.com/repos/den-run-ai/pystachy/git/refs/heads/main",
+  "object": {
+    "sha": "a339ab3748a59d6e4da899f0f3f2d5965b95e5ba",
+    "type": "commit",
+    "url": "https://api.github.com/repos/den-run-ai/pystachy/git/commits/a339ab3748a59d6e4da899f0f3f2d5965b95e5ba"
+  }
+}

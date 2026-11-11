@@ -1,0 +1,6 @@
+make: -c: No such file or directory
+make: -c: No such file or directory
+PYTHON="/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python3.13" tests/record.sh --check
+CPython 3.13.16: 2299 recordings, 130 deviations, 11 files of lib/ checked; 0 failed
+/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python3.13 tools/check_agent_source.py
+6 pinned AskMe files verified at 9256333b07628f6e4b399f41916f36d463914501

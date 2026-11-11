@@ -1,0 +1,4129 @@
+{
+  "schema_version": 1,
+  "analysis_script_sha256": "2aa3b6ff85ad9a44ad42de253839593c557b66deaf4d886c303efff4c6b6dd09",
+  "ratio_direction": "If/match ratios above 1 favor match; below 1 favor handwritten conditions.",
+  "measurement_scope": "Controller kernel timers exclude input construction, validation, warm-up, compilation and startup. Pyperf command timings include the complete AOT subprocess. Correctness is established by the controller and the manifest's checksum-checked preflight; pyperf command itself discards child stdout/stderr and checks exit status.",
+  "primary": {
+    "prefix": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final",
+    "controller": {
+      "settings": {
+        "samples": 7,
+        "loops": 10000,
+        "size": 4096
+      },
+      "measured_modes": [
+        "aot",
+        "jit"
+      ],
+      "rows": [
+        {
+          "cell": "literal-mixed",
+          "kind": "literal",
+          "shape": "mixed",
+          "mode": "jit",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 62962481.14285714,
+              "median": 62779753,
+              "sample_stdev": 1897474.0131832662,
+              "cv_percent": 3.013658259238609,
+              "min": 59925932,
+              "max": 66374380
+            },
+            "if": {
+              "n": 7,
+              "mean": 75548535.42857143,
+              "median": 71195852,
+              "sample_stdev": 7345081.096916762,
+              "cv_percent": 9.722334199133861,
+              "min": 69755463,
+              "max": 88650444
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.20977023571426148,
+              "median": 0.18927352800164954,
+              "sample_stdev": 0.03235301752487012,
+              "cv_percent": 15.42307344734063,
+              "min": 0.18351235700174584,
+              "max": 0.26389209799890523
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.20034532228601165,
+              "median": 0.19838301100026,
+              "sample_stdev": 0.00936196971948596,
+              "cv_percent": 4.672916548618427,
+              "min": 0.1893062449998979,
+              "max": 0.21606682300262037
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.2015307290062789,
+            "median": 1.119431164375559,
+            "sample_stdev": 0.13332746605027712,
+            "cv_percent": 11.09646743371641,
+            "min": 1.1148423698787973,
+            "max": 1.4793335880032705
+          }
+        },
+        {
+          "cell": "literal-mixed",
+          "kind": "literal",
+          "shape": "mixed",
+          "mode": "aot",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 73128345.57142857,
+              "median": 70763264,
+              "sample_stdev": 7269652.821951446,
+              "cv_percent": 9.940950756024924,
+              "min": 68391094,
+              "max": 89322470
+            },
+            "if": {
+              "n": 7,
+              "mean": 95958598.42857143,
+              "median": 95713324,
+              "sample_stdev": 2647491.386932849,
+              "cv_percent": 2.7589933891162013,
+              "min": 93146783,
+              "max": 101274815
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.0765501941418084,
+              "median": 0.0742935239977669,
+              "sample_stdev": 0.007503166753384367,
+              "cv_percent": 9.801629946861835,
+              "min": 0.07244603099752567,
+              "max": 0.09339481899951352
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.09930804042908546,
+              "median": 0.09910938000030001,
+              "sample_stdev": 0.002711387980984786,
+              "cv_percent": 2.7302804176475037,
+              "min": 0.09646934900229098,
+              "max": 0.10484682300011627
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.3223279091069264,
+            "median": 1.3397759751579301,
+            "sample_stdev": 0.12425947961236626,
+            "cv_percent": 9.397024653006726,
+            "min": 1.057124819768195,
+            "max": 1.4395841839309644
+          }
+        },
+        {
+          "cell": "literal-skewed",
+          "kind": "literal",
+          "shape": "skewed",
+          "mode": "jit",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 42575883.28571428,
+              "median": 40697479,
+              "sample_stdev": 4767361.906656577,
+              "cv_percent": 11.197329423946902,
+              "min": 39108975,
+              "max": 53080555
+            },
+            "if": {
+              "n": 7,
+              "mean": 47982953.28571428,
+              "median": 46038645,
+              "sample_stdev": 5297897.88976756,
+              "cv_percent": 11.041208443801386,
+              "min": 43640250,
+              "max": 59351981
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.17664324557180017,
+              "median": 0.1633876269988832,
+              "sample_stdev": 0.027433951503518322,
+              "cv_percent": 15.530710735479126,
+              "min": 0.15933509699971182,
+              "max": 0.23452254299991182
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.1703223527152399,
+              "median": 0.1702181680011563,
+              "sample_stdev": 0.005673503541997463,
+              "cv_percent": 3.3310387342305754,
+              "min": 0.16501125500144553,
+              "max": 0.1817795050010318
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.1417746519116363,
+            "median": 1.1091579161451253,
+            "sample_stdev": 0.2014313284991665,
+            "cv_percent": 17.641951339690067,
+            "min": 0.8521409582096494,
+            "max": 1.51760512772324
+          }
+        },
+        {
+          "cell": "literal-skewed",
+          "kind": "literal",
+          "shape": "skewed",
+          "mode": "aot",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 41422872.14285714,
+              "median": 41580918,
+              "sample_stdev": 1118954.806489733,
+              "cv_percent": 2.7012970096103848,
+              "min": 39908481,
+              "max": 43300994
+            },
+            "if": {
+              "n": 7,
+              "mean": 78894846.14285715,
+              "median": 79126842,
+              "sample_stdev": 960903.1680197938,
+              "cv_percent": 1.2179542961270993,
+              "min": 77582617,
+              "max": 80360990
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.04409201800029093,
+              "median": 0.04394456500085653,
+              "sample_stdev": 0.0010739353097806853,
+              "cv_percent": 2.435668310245177,
+              "min": 0.042358694998256397,
+              "max": 0.045757513002172345
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.08155581399997962,
+              "median": 0.08157505100098206,
+              "sample_stdev": 0.0014539466435237595,
+              "cv_percent": 1.78276271453084,
+              "min": 0.07970111800023005,
+              "max": 0.08395553499940434
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.9056368797565673,
+            "median": 1.8994429848997536,
+            "sample_stdev": 0.049398447677621006,
+            "cv_percent": 2.592227732490743,
+            "min": 1.839138588827776,
+            "max": 1.9924448196775353
+          }
+        },
+        {
+          "cell": "tuple-mixed",
+          "kind": "tuple",
+          "shape": "mixed",
+          "mode": "jit",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 137779231.42857143,
+              "median": 138129121,
+              "sample_stdev": 1894976.1146219282,
+              "cv_percent": 1.375371378526187,
+              "min": 134602472,
+              "max": 140377846
+            },
+            "if": {
+              "n": 7,
+              "mean": 65360770.71428572,
+              "median": 64026708,
+              "sample_stdev": 1931902.7383081613,
+              "cv_percent": 2.95575268956538,
+              "min": 63782432,
+              "max": 68269707
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.2694179382846674,
+              "median": 0.2684008590003941,
+              "sample_stdev": 0.007295491789343716,
+              "cv_percent": 2.7078715826394926,
+              "min": 0.2628282859986939,
+              "max": 0.28504877199884504
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.19938598014310369,
+              "median": 0.19528814599834732,
+              "sample_stdev": 0.017466600393487564,
+              "cv_percent": 8.760194864729907,
+              "min": 0.18880621500284178,
+              "max": 0.23839870300071198
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.4744094595507456,
+            "median": 0.4738578055238094,
+            "sample_stdev": 0.013348653896846148,
+            "cv_percent": 2.813741089709089,
+            "min": 0.4581592184585788,
+            "max": 0.49817315537006696
+          }
+        },
+        {
+          "cell": "tuple-mixed",
+          "kind": "tuple",
+          "shape": "mixed",
+          "mode": "aot",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 76293729.28571428,
+              "median": 76520823,
+              "sample_stdev": 968486.8480686275,
+              "cv_percent": 1.2694186758674715,
+              "min": 75021738,
+              "max": 77782036
+            },
+            "if": {
+              "n": 7,
+              "mean": 81943982.57142857,
+              "median": 82370216,
+              "sample_stdev": 960332.2914165106,
+              "cv_percent": 1.1719375374261465,
+              "min": 79947113,
+              "max": 82765050
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.0798016488572882,
+              "median": 0.07976742100072443,
+              "sample_stdev": 0.0013905486272487535,
+              "cv_percent": 1.742506135099433,
+              "min": 0.07752075600001263,
+              "max": 0.08193260100233601
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.08544692200043105,
+              "median": 0.08575143100097193,
+              "sample_stdev": 0.0010151078660788884,
+              "cv_percent": 1.1879981657780108,
+              "min": 0.08356296899728477,
+              "max": 0.0864818030022434
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.0742663494746671,
+            "median": 1.076917299803932,
+            "sample_stdev": 0.022186056379512292,
+            "cv_percent": 2.0652286456111764,
+            "min": 1.043965283420824,
+            "max": 1.1032142443834079
+          }
+        },
+        {
+          "cell": "tuple-skewed",
+          "kind": "tuple",
+          "shape": "skewed",
+          "mode": "jit",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 100627545.71428572,
+              "median": 95954120,
+              "sample_stdev": 11013176.265815865,
+              "cv_percent": 10.944494559259002,
+              "min": 95031190,
+              "max": 125300999
+            },
+            "if": {
+              "n": 7,
+              "mean": 61828330.28571428,
+              "median": 60466561,
+              "sample_stdev": 4914810.867318217,
+              "cv_percent": 7.94912436516793,
+              "min": 58166056,
+              "max": 72326219
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.2245212508574436,
+              "median": 0.21934564500043052,
+              "sample_stdev": 0.012264461046942966,
+              "cv_percent": 5.462494530074617,
+              "min": 0.21538323699860484,
+              "max": 0.2507069640014379
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.18537381628578128,
+              "median": 0.18440287499834085,
+              "sample_stdev": 0.003903789296905208,
+              "cv_percent": 2.1059011327074026,
+              "min": 0.18149026899845921,
+              "max": 0.19083374100227957
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.6207012277876883,
+            "median": 0.6322837582369525,
+            "sample_stdev": 0.08289893723124485,
+            "cv_percent": 13.355690873484228,
+            "min": 0.47191527180082576,
+            "max": 0.7448616815942534
+          }
+        },
+        {
+          "cell": "tuple-skewed",
+          "kind": "tuple",
+          "shape": "skewed",
+          "mode": "aot",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 51375660.14285714,
+              "median": 50657935,
+              "sample_stdev": 3112114.4787894306,
+              "cv_percent": 6.057565917665613,
+              "min": 48318481,
+              "max": 57907245
+            },
+            "if": {
+              "n": 7,
+              "mean": 57095683.28571428,
+              "median": 53159141,
+              "sample_stdev": 12424951.695589669,
+              "cv_percent": 21.76163061822657,
+              "min": 49685839,
+              "max": 85114680
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.05457623042821069,
+              "median": 0.05378837899843347,
+              "sample_stdev": 0.003446231094976258,
+              "cv_percent": 6.314527529543129,
+              "min": 0.05144919500162359,
+              "max": 0.061825836997741135
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.06016956557141384,
+              "median": 0.056200464998255484,
+              "sample_stdev": 0.013218752464301911,
+              "cv_percent": 21.969167200672047,
+              "min": 0.05186033499921905,
+              "max": 0.08990198299943586
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.1043278480128358,
+            "median": 1.059624499103645,
+            "sample_stdev": 0.16681891207224264,
+            "cv_percent": 15.105922790267595,
+            "min": 0.9509492269057837,
+            "max": 1.469845094512785
+          }
+        },
+        {
+          "cell": "dataclass-mixed",
+          "kind": "dataclass",
+          "shape": "mixed",
+          "mode": "jit",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 142720744.85714287,
+              "median": 139153298,
+              "sample_stdev": 10539712.946238406,
+              "cv_percent": 7.384850013772133,
+              "min": 136918908,
+              "max": 166310766
+            },
+            "if": {
+              "n": 7,
+              "mean": 78476936.42857143,
+              "median": 74649533,
+              "sample_stdev": 9753312.509856755,
+              "cv_percent": 12.428253387202593,
+              "min": 73610962,
+              "max": 100462274
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.2683388309997099,
+              "median": 0.26497756299795583,
+              "sample_stdev": 0.010379742670140819,
+              "cv_percent": 3.8681478306626595,
+              "min": 0.2598333089990774,
+              "max": 0.2870847300000605
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.20093458828549565,
+              "median": 0.1966424080019351,
+              "sample_stdev": 0.010704645822813526,
+              "cv_percent": 5.327428151694794,
+              "min": 0.19467616899783025,
+              "max": 0.2248146989986708
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.5529188555502411,
+            "median": 0.5358207777532391,
+            "sample_stdev": 0.08462750724207985,
+            "cv_percent": 15.305592564366822,
+            "min": 0.4488556862277936,
+            "max": 0.7287786400584577
+          }
+        },
+        {
+          "cell": "dataclass-mixed",
+          "kind": "dataclass",
+          "shape": "mixed",
+          "mode": "aot",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 80174636.71428572,
+              "median": 79744645,
+              "sample_stdev": 2361763.590245696,
+              "cv_percent": 2.9457739841867854,
+              "min": 76661968,
+              "max": 84466347
+            },
+            "if": {
+              "n": 7,
+              "mean": 71030389.28571428,
+              "median": 71804629,
+              "sample_stdev": 2400348.990794652,
+              "cv_percent": 3.379326813400153,
+              "min": 66361846,
+              "max": 73374088
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.08306749685756845,
+              "median": 0.08294608099822653,
+              "sample_stdev": 0.0023095908405263103,
+              "cv_percent": 2.780378520959222,
+              "min": 0.07992216300044674,
+              "max": 0.0868574650012306
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.07428090471512405,
+              "median": 0.07427085300150793,
+              "sample_stdev": 0.002504857089485631,
+              "cv_percent": 3.3721413317353233,
+              "min": 0.06961303000207408,
+              "max": 0.07712271000127657
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.8862154626719733,
+            "median": 0.8858502034838829,
+            "sample_stdev": 0.028060659484557878,
+            "cv_percent": 3.1663473124192536,
+            "min": 0.8352433960056816,
+            "max": 0.9158413469615714
+          }
+        },
+        {
+          "cell": "dataclass-skewed",
+          "kind": "dataclass",
+          "shape": "skewed",
+          "mode": "jit",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 127364907.14285715,
+              "median": 118218412,
+              "sample_stdev": 22023556.101040445,
+              "cv_percent": 17.291698785080584,
+              "min": 116331935,
+              "max": 176987572
+            },
+            "if": {
+              "n": 7,
+              "mean": 60571523,
+              "median": 60535209,
+              "sample_stdev": 2680915.5153927673,
+              "cv_percent": 4.426032865960408,
+              "min": 57258829,
+              "max": 64602830
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.2543253315712458,
+              "median": 0.24899939700117102,
+              "sample_stdev": 0.021813261831389822,
+              "cv_percent": 8.576912766268872,
+              "min": 0.23835343300015666,
+              "max": 0.30260948999784887
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.19261179314240248,
+              "median": 0.18374156400022912,
+              "sample_stdev": 0.022060382364657495,
+              "cv_percent": 11.453287467371082,
+              "min": 0.1798417669997434,
+              "max": 0.24198522599908756
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.4833211220022163,
+            "median": 0.49556638021733823,
+            "sample_stdev": 0.05458553451590163,
+            "cv_percent": 11.293844202333728,
+            "min": 0.3650133694133055,
+            "max": 0.5281699267957696
+          }
+        },
+        {
+          "cell": "dataclass-skewed",
+          "kind": "dataclass",
+          "shape": "skewed",
+          "mode": "aot",
+          "dispatches_per_process": 40960000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 52775524.428571425,
+              "median": 52389657,
+              "sample_stdev": 1242609.2174613676,
+              "cv_percent": 2.354517990897781,
+              "min": 51802000,
+              "max": 55455633
+            },
+            "if": {
+              "n": 7,
+              "mean": 63276653.428571425,
+              "median": 57934959,
+              "sample_stdev": 19524380.828172997,
+              "cv_percent": 30.85558380582295,
+              "min": 52045408,
+              "max": 106863624
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.05607444742885751,
+              "median": 0.05581815900222864,
+              "sample_stdev": 0.0013142408023443667,
+              "cv_percent": 2.3437427609282526,
+              "min": 0.05467281500023091,
+              "max": 0.05847437299962621
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.06669757514256551,
+              "median": 0.060610644999542274,
+              "sample_stdev": 0.019396591655631325,
+              "cv_percent": 29.081404555070065,
+              "min": 0.05561705500076641,
+              "max": 0.1100275060016429
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.2023315533900103,
+            "median": 1.1058472667610708,
+            "sample_stdev": 0.3865075115190839,
+            "cv_percent": 32.146499892589055,
+            "min": 0.9596924445889924,
+            "max": 2.0629246747229835
+          }
+        }
+      ],
+      "recorded_identity": {
+        "created_utc": "2026-11-11T20:25:20Z",
+        "git_revision": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+        "git_status": "",
+        "compiler_command": [
+          "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy"
+        ],
+        "compiler_executable_sha256": "39177cf908ec1b681ea133db3d830e5c9c12dff6ddbb7de46189166a913e74dc",
+        "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+        "python_executable": "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+        "repository_python_version": "3.13.16",
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "cpu_count": 9,
+        "cpu_affinity": [
+          0
+        ],
+        "load_average_start": [
+          0.1357421875,
+          0.82177734375,
+          1.0380859375
+        ],
+        "environment": {
+          "LANG": "C.UTF-8",
+          "PYSTACHY_LLVM": "/workspace/scratch/0bc6e8bc1edf/llvm18/usr/lib/llvm-18/bin",
+          "LC_ALL": "C.UTF-8",
+          "PYSTACHY_HOME": "/workspace/scratch/0bc6e8bc1edf/match-main",
+          "PYSTACHY_CACHE": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/cache",
+          "PYSTACHY_PROGRAM_CACHE": "0",
+          "PYTHONHASHSEED": "0"
+        },
+        "llvm": {
+          "clang": {
+            "version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/0bc6e8bc1edf/llvm18/usr/lib/llvm-18/bin",
+            "sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+          },
+          "opt": {
+            "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: sapphirerapids",
+            "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+          },
+          "lli": {
+            "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+            "sha256": "f787c770f5281ab909eac3d28ed984d8f0759caf87def4794f432fd008ef4f8c"
+          },
+          "llvm-link": {
+            "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+            "sha256": "e340363ed9e5346f0d6dc4441f4953c5f516ff73fa0a03e1955c1adaad68b651"
+          },
+          "llvm-as": {
+            "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+            "sha256": "8e7460eff4ba4e22d8ae881404bb24c5fc346996264e883ba26d41da4188215d"
+          }
+        },
+        "aot_binary_sha256": "da6dcda2fa6ed927bed503f5e7ca6e079d15bd474fcf5db57bae65806246bc46",
+        "aot_binary_bytes": 91288,
+        "artifact_directory": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts",
+        "source_files": 161,
+        "source_manifest_sha256": "b869aaef104ac16a198351f5c9fb491cb5bb3976a9810baaf5c7a5bbb89409b3",
+        "source_manifest_encoding": "sha256 of UTF-8 json.dumps(source_sha256, sort_keys=True, separators=(',', ':'))",
+        "source_manifest_reference": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-dispatch-measured.json : metadata.source_sha256",
+        "selected_source_sha256": {
+          "bench/match_dispatch/workload.py": "98bd8300b8221557c1c0a10441d706f1260416ad1732c16344688581fa381e55",
+          "bench/match_dispatch/bench.py": "7c387d094c846fb1e7d605d7fb5cdca830c9f787f1cb53299fb642f5806af27c",
+          "src/pystachy_compiler/patterns.py": "43d4b10314b87f6015edde218202c83863d7989d3056a2e9a57d1c707c4dd411",
+          "src/pystachy_compiler/expressions.py": "e910b81aeeb2041953c74175ff7efc150cfc641800fdabd946d2bd778d1a2554",
+          "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+          "src/pystachy_compiler/driver.py": "2ffc148873348b01194d57798c8bab0230bc9aba659e86547fe0a61b868798f8",
+          "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+          "runtime.py": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb",
+          "runtime.c": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe",
+          "VERSION": "4d9ab8cc8d569d6d9f4c0df1fdb2ca109d41fccc8ec3fd2f0374b443f5e6cd80"
+        }
+      },
+      "evidence": {
+        "path": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-dispatch-measured.json",
+        "bytes": 172582,
+        "sha256": "75882bfc1a16069f9b1c70c750d91067d7e54837c9eb574c46986be49d751050"
+      }
+    },
+    "pyperf": {
+      "rows": [
+        {
+          "cell": "literal-mixed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe literal match mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.7260741913999179,
+            "median": 0.7170026839994534,
+            "sample_stdev": 0.03469484313720521,
+            "cv_percent": 4.778415697480075,
+            "min": 0.6992696570014232,
+            "max": 0.8214465060009388
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7484750182004063,
+                "median": 0.7298540379997576,
+                "sample_stdev": 0.05417581542348103,
+                "cv_percent": 7.238159471740084,
+                "min": 0.7004802139999811,
+                "max": 0.8214465060009388
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:34:27.944696",
+                "duration": 4.803586591002386,
+                "load_avg_1min": 0.45,
+                "runnable_threads": 2,
+                "uptime": 20620.947693824768
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7168270349990052,
+                "median": 0.7183691729987913,
+                "sample_stdev": 0.012352257815596514,
+                "cv_percent": 1.723185261227439,
+                "min": 0.703357900998526,
+                "max": 0.7311281599977519
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:34:45.349965",
+                "duration": 4.607089805002033,
+                "load_avg_1min": 0.54,
+                "runnable_threads": 1,
+                "uptime": 20638.353495836258
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.712920521000342,
+                "median": 0.7137930690005305,
+                "sample_stdev": 0.013230939361021866,
+                "cv_percent": 1.8558785967412934,
+                "min": 0.6992696570014232,
+                "max": 0.7324120449993643
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 21:34:50.105957",
+                "duration": 4.533817284001998,
+                "load_avg_1min": 0.58,
+                "runnable_threads": 1,
+                "uptime": 20643.109069108963
+              }
+            }
+          ]
+        },
+        {
+          "cell": "literal-skewed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe literal match skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.4629739186668303,
+            "median": 0.44494920299985097,
+            "sample_stdev": 0.05257217744054521,
+            "cv_percent": 11.355321611189442,
+            "min": 0.4132447419979144,
+            "max": 0.5841978630014637
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.43452812420073317,
+                "median": 0.4332001510010741,
+                "sample_stdev": 0.017442697277934276,
+                "cv_percent": 4.014169925138495,
+                "min": 0.4175825199999963,
+                "max": 0.4583119160015485
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:06.049225",
+                "duration": 2.8258904560025258,
+                "load_avg_1min": 0.67,
+                "uptime": 20659.05166745186
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.49474001720009253,
+                "median": 0.49534038199999486,
+                "sample_stdev": 0.06139302481588651,
+                "cv_percent": 12.409148781481472,
+                "min": 0.4358868329982215,
+                "max": 0.5841978630014637
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:09.551430",
+                "duration": 3.224767376003001,
+                "load_avg_1min": 0.7,
+                "uptime": 20662.555886030197
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.45965361459966514,
+                "median": 0.44727351700203144,
+                "sample_stdev": 0.057562804276315285,
+                "cv_percent": 12.523083132164544,
+                "min": 0.4132447419979144,
+                "max": 0.5571516140007589
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:24.297840",
+                "duration": 3.1805429109990655,
+                "load_avg_1min": 0.76,
+                "uptime": 20677.464469909668
+              }
+            }
+          ]
+        },
+        {
+          "cell": "tuple-mixed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe tuple match mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.8035308282669575,
+            "median": 0.7938829929989879,
+            "sample_stdev": 0.05120184570964583,
+            "cv_percent": 6.372107193457301,
+            "min": 0.7568801390007138,
+            "max": 0.966268628002581
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.80530022439998,
+                "median": 0.8090063170020585,
+                "sample_stdev": 0.0174517214939694,
+                "cv_percent": 2.167107491739802,
+                "min": 0.7815173079980013,
+                "max": 0.8235569499993289
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 21:35:31.991784",
+                "duration": 5.282701416999771,
+                "load_avg_1min": 0.78,
+                "runnable_threads": 2,
+                "uptime": 20684.994473934174
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.797602260200074,
+                "median": 0.7945266560018354,
+                "sample_stdev": 0.02790821799336964,
+                "cv_percent": 3.499014406800831,
+                "min": 0.7694293169988669,
+                "max": 0.8350137720008206
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 21:35:48.550112",
+                "duration": 5.016217324999161,
+                "load_avg_1min": 0.83,
+                "runnable_threads": 1,
+                "uptime": 20701.553254842758
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8076900002008187,
+                "median": 0.7650745210012246,
+                "sample_stdev": 0.08957007624270227,
+                "cv_percent": 11.0896601691778,
+                "min": 0.7568801390007138,
+                "max": 0.966268628002581
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:35:53.911922",
+                "duration": 5.069242518002284,
+                "load_avg_1min": 0.85,
+                "runnable_threads": 1,
+                "uptime": 20706.916033506393
+              }
+            }
+          ]
+        },
+        {
+          "cell": "tuple-skewed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe tuple match skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.5169677867997962,
+            "median": 0.5119473589984409,
+            "sample_stdev": 0.01665159200791639,
+            "cv_percent": 3.2210115278159446,
+            "min": 0.4995742600003723,
+            "max": 0.5510725869971793
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5171886557989638,
+                "median": 0.5119473589984409,
+                "sample_stdev": 0.0200813523103152,
+                "cv_percent": 3.8827905610754567,
+                "min": 0.5010167910004384,
+                "max": 0.5510725869971793
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:36:08.350101",
+                "duration": 3.3904152840004826,
+                "load_avg_1min": 0.96,
+                "uptime": 20721.354001522064
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5125113928006613,
+                "median": 0.5080543229996692,
+                "sample_stdev": 0.012000999569222372,
+                "cv_percent": 2.3416063989605984,
+                "min": 0.5014104139991105,
+                "max": 0.5325164839996432
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:36:11.989774",
+                "duration": 3.39723514599973,
+                "load_avg_1min": 0.96,
+                "uptime": 20724.992574691772
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5212033117997634,
+                "median": 0.5203477539980668,
+                "sample_stdev": 0.019387360002133005,
+                "cv_percent": 3.7197307774554713,
+                "min": 0.4995742600003723,
+                "max": 0.5480691459997615
+              },
+              "metadata": {
+                "command_max_rss": 13279232,
+                "date": "2026-11-11 21:36:23.932183",
+                "duration": 3.389370664001035,
+                "load_avg_1min": 0.97,
+                "uptime": 20736.93478322029
+              }
+            }
+          ]
+        },
+        {
+          "cell": "dataclass-mixed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe dataclass match mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.8048938093995578,
+            "median": 0.8075728080002591,
+            "sample_stdev": 0.022778301517761987,
+            "cv_percent": 2.829975985870031,
+            "min": 0.7775557289969584,
+            "max": 0.8687999760004459
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.810792131999915,
+                "median": 0.8111768160015345,
+                "sample_stdev": 0.03675724402417963,
+                "cv_percent": 4.533497868746399,
+                "min": 0.7775557289969584,
+                "max": 0.8687999760004459
+              },
+              "metadata": {
+                "date": "2026-11-11 21:36:30.902348",
+                "duration": 5.138090788001136,
+                "load_avg_1min": 0.97,
+                "uptime": 20743.90885257721
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7989334339996276,
+                "median": 0.7961826659993676,
+                "sample_stdev": 0.01536450937008252,
+                "cv_percent": 1.9231275994001875,
+                "min": 0.7816002869985823,
+                "max": 0.8204059480012802
+              },
+              "metadata": {
+                "date": "2026-11-11 21:36:45.858951",
+                "duration": 5.037274124999385,
+                "load_avg_1min": 0.98,
+                "uptime": 20758.861245393753
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.804955862199131,
+                "median": 0.8106056039978284,
+                "sample_stdev": 0.011870773563165111,
+                "cv_percent": 1.4747111140646,
+                "min": 0.7861645320008392,
+                "max": 0.8139928259988665
+              },
+              "metadata": {
+                "date": "2026-11-11 21:36:51.189076",
+                "duration": 5.108697502000723,
+                "load_avg_1min": 0.98,
+                "uptime": 20764.191900253296
+              }
+            }
+          ]
+        },
+        {
+          "cell": "dataclass-skewed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe dataclass match skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.6071598467339451,
+            "median": 0.5477400230010971,
+            "sample_stdev": 0.1140803742911529,
+            "cv_percent": 18.78918293177949,
+            "min": 0.5203446470004565,
+            "max": 0.8133618399988336
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5476138832018478,
+                "median": 0.5434138190030353,
+                "sample_stdev": 0.018112439633885806,
+                "cv_percent": 3.307520168770018,
+                "min": 0.5295604900020408,
+                "max": 0.5777018860026146
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:37:05.062655",
+                "duration": 3.5406698130027507,
+                "uptime": 20778.065806865692
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5320477748005942,
+                "median": 0.5236707650001335,
+                "sample_stdev": 0.013531937621408998,
+                "cv_percent": 2.543368896990618,
+                "min": 0.5203446470004565,
+                "max": 0.5480288530015969
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:37:08.706584",
+                "duration": 3.4306332810010645,
+                "uptime": 20781.709445238113
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7418178821993934,
+                "median": 0.7815078130006441,
+                "sample_stdev": 0.1043483250513716,
+                "cv_percent": 14.066569107500133,
+                "min": 0.55857405200004,
+                "max": 0.8133618399988336
+              },
+              "metadata": {
+                "command_max_rss": 13279232,
+                "date": "2026-11-11 21:37:21.901868",
+                "duration": 4.710575450000761,
+                "uptime": 20794.907135486603
+              }
+            }
+          ]
+        },
+        {
+          "cell": "literal-mixed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe literal if mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.9681218494661152,
+            "median": 0.9671138919984514,
+            "sample_stdev": 0.02241609308031701,
+            "cv_percent": 2.3154206356027074,
+            "min": 0.941938582000148,
+            "max": 1.0253749469993636
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.9616121777995431,
+                "median": 0.9597703189974709,
+                "sample_stdev": 0.0166257938076921,
+                "cv_percent": 1.7289500062007221,
+                "min": 0.941938582000148,
+                "max": 0.9845148290005454
+              },
+              "metadata": {
+                "date": "2026-11-11 21:34:34.233462",
+                "duration": 6.051148835002095,
+                "load_avg_1min": 0.49,
+                "uptime": 20627.23617529869
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.9629374505995656,
+                "median": 0.9671138919984514,
+                "sample_stdev": 0.01364876020950275,
+                "cv_percent": 1.417408804798739,
+                "min": 0.9488778560007631,
+                "max": 0.9804846160004672
+              },
+              "metadata": {
+                "date": "2026-11-11 21:34:40.510197",
+                "duration": 6.033016535999195,
+                "load_avg_1min": 0.5,
+                "uptime": 20633.512408971786
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.9798159199992369,
+                "median": 0.9712652029993478,
+                "sample_stdev": 0.032225335504801673,
+                "cv_percent": 3.2889173207990714,
+                "min": 0.9503095580002991,
+                "max": 1.0253749469993636
+              },
+              "metadata": {
+                "date": "2026-11-11 21:34:56.426797",
+                "duration": 6.111393487997702,
+                "load_avg_1min": 0.61,
+                "uptime": 20649.429134845734
+              }
+            }
+          ]
+        },
+        {
+          "cell": "literal-skewed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe literal if skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.8472229836663853,
+            "median": 0.831938925999566,
+            "sample_stdev": 0.06385721249623075,
+            "cv_percent": 7.537237979532444,
+            "min": 0.7886565900007554,
+            "max": 1.054049287999078
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8113839208002901,
+                "median": 0.8117255020006269,
+                "sample_stdev": 0.018139863145025855,
+                "cv_percent": 2.235669536947936,
+                "min": 0.7886565900007554,
+                "max": 0.8386942479992285
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:03.003330",
+                "duration": 5.126630240996747,
+                "load_avg_1min": 0.64,
+                "uptime": 20656.00634288788
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8847267995988659,
+                "median": 0.8644036830010009,
+                "sample_stdev": 0.0985876322283339,
+                "cv_percent": 11.143285393076532,
+                "min": 0.80212420299722,
+                "max": 1.054049287999078
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:15.389000",
+                "duration": 5.610076025001035,
+                "load_avg_1min": 0.72,
+                "uptime": 20668.39263677597
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8455582305999997,
+                "median": 0.8470036649996473,
+                "sample_stdev": 0.02926335839773876,
+                "cv_percent": 3.4608330140638297,
+                "min": 0.8130288520005706,
+                "max": 0.887259056999028
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:21.057382",
+                "duration": 5.453489837000234,
+                "load_avg_1min": 0.74,
+                "uptime": 20674.06050300598
+              }
+            }
+          ]
+        },
+        {
+          "cell": "tuple-mixed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe tuple if mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.852888241600643,
+            "median": 0.8443298380007036,
+            "sample_stdev": 0.027965682884271984,
+            "cv_percent": 3.2789387307987594,
+            "min": 0.8273207480015117,
+            "max": 0.9338905020013044
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8647039593997761,
+                "median": 0.8446137509999971,
+                "sample_stdev": 0.04023073055504952,
+                "cv_percent": 4.652543811985688,
+                "min": 0.8374738659986178,
+                "max": 0.9338905020013044
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:37.703548",
+                "duration": 5.503062883999519,
+                "load_avg_1min": 0.8,
+                "uptime": 20690.70632505417
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8482411056000274,
+                "median": 0.8443298380007036,
+                "sample_stdev": 0.01739722875854465,
+                "cv_percent": 2.0509768559539716,
+                "min": 0.8292556730011711,
+                "max": 0.8748600510007236
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:43.302204",
+                "duration": 5.381117838998762,
+                "load_avg_1min": 0.82,
+                "uptime": 20696.30619764328
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8457196598021255,
+                "median": 0.834756111002207,
+                "sample_stdev": 0.023459714113218386,
+                "cv_percent": 2.77393505534769,
+                "min": 0.8273207480015117,
+                "max": 0.884413065003173
+              },
+              "metadata": {
+                "date": "2026-11-11 21:35:59.462566",
+                "duration": 5.306740264000837,
+                "load_avg_1min": 0.87,
+                "uptime": 20712.466241121292
+              }
+            }
+          ]
+        },
+        {
+          "cell": "tuple-skewed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe tuple if skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.6043587792000229,
+            "median": 0.6003076870001678,
+            "sample_stdev": 0.059887272395990794,
+            "cv_percent": 9.909225191576157,
+            "min": 0.5261772640005802,
+            "max": 0.7684368000009272
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6232993218000047,
+                "median": 0.6275797529997362,
+                "sample_stdev": 0.09848782948165803,
+                "cv_percent": 15.801048715605596,
+                "min": 0.5261772640005802,
+                "max": 0.7684368000009272
+              },
+              "metadata": {
+                "date": "2026-11-11 21:36:04.712427",
+                "duration": 3.9509303550003096,
+                "load_avg_1min": 0.96,
+                "runnable_threads": 2,
+                "uptime": 20717.71599316597
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5926312541996595,
+                "median": 0.5764140310020593,
+                "sample_stdev": 0.03611114519568722,
+                "cv_percent": 6.093358212174421,
+                "min": 0.5529503709985875,
+                "max": 0.6378775519988267
+              },
+              "metadata": {
+                "date": "2026-11-11 21:36:16.128395",
+                "duration": 3.9157891719987674,
+                "load_avg_1min": 0.97,
+                "runnable_threads": 1,
+                "uptime": 20729.137308359146
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5971457616004046,
+                "median": 0.6003076870001678,
+                "sample_stdev": 0.029384489869199757,
+                "cv_percent": 4.920823651238296,
+                "min": 0.550029510002787,
+                "max": 0.6228402609995101
+              },
+              "metadata": {
+                "date": "2026-11-11 21:36:20.310916",
+                "duration": 3.879977360000339,
+                "load_avg_1min": 0.97,
+                "runnable_threads": 1,
+                "uptime": 20733.315660476685
+              }
+            }
+          ]
+        },
+        {
+          "cell": "dataclass-mixed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe dataclass if mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.7311056392000561,
+            "median": 0.7267137140006525,
+            "sample_stdev": 0.01673726569174621,
+            "cv_percent": 2.2893087940149655,
+            "min": 0.7150369959999807,
+            "max": 0.7788592130018515
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7261812630000349,
+                "median": 0.7267137140006525,
+                "sample_stdev": 0.0052630701413110235,
+                "cv_percent": 0.7247598374499468,
+                "min": 0.7191319730009127,
+                "max": 0.7334331149977515
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:36:35.787544",
+                "duration": 4.6568842380002025,
+                "uptime": 20748.790467500687
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7240455597995605,
+                "median": 0.7206159600027604,
+                "sample_stdev": 0.011618240861351005,
+                "cv_percent": 1.6046284248421208,
+                "min": 0.7150369959999807,
+                "max": 0.743724072999612
+              },
+              "metadata": {
+                "command_max_rss": 13279232,
+                "date": "2026-11-11 21:36:40.597948",
+                "duration": 4.5906506499995885,
+                "uptime": 20753.601087093353
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7430900948005729,
+                "median": 0.7431906290003099,
+                "sample_stdev": 0.02335896121887486,
+                "cv_percent": 3.143489784390657,
+                "min": 0.7152951960015344,
+                "max": 0.7788592130018515
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 21:36:56.093672",
+                "duration": 4.680465420002292,
+                "uptime": 20769.096942424774
+              }
+            }
+          ]
+        },
+        {
+          "cell": "dataclass-skewed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-artifacts/dispatch.exe dataclass if skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.5964281662003487,
+            "median": 0.6066013880008541,
+            "sample_stdev": 0.022321984979355575,
+            "cv_percent": 3.7426108028334304,
+            "min": 0.5419820570023148,
+            "max": 0.617101661999186
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5963760852006089,
+                "median": 0.6066013880008541,
+                "sample_stdev": 0.025200654757673396,
+                "cv_percent": 4.2256313395256955,
+                "min": 0.551716388999921,
+                "max": 0.6107661710011598
+              },
+              "metadata": {
+                "date": "2026-11-11 21:37:01.300908",
+                "duration": 3.8310705670010066,
+                "uptime": 20774.303517580032
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5862771858002815,
+                "median": 0.5951419709999755,
+                "sample_stdev": 0.02635185656680323,
+                "cv_percent": 4.494777761278968,
+                "min": 0.5419820570023148,
+                "max": 0.6114999829987937
+              },
+              "metadata": {
+                "date": "2026-11-11 21:37:12.732554",
+                "duration": 3.7822513919963967,
+                "uptime": 20785.735374450684
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6066312276001554,
+                "median": 0.6097099979997438,
+                "sample_stdev": 0.01247079510017568,
+                "cv_percent": 2.055745654491013,
+                "min": 0.5853627889991913,
+                "max": 0.617101661999186
+              },
+              "metadata": {
+                "date": "2026-11-11 21:37:16.894341",
+                "duration": 3.9398749950014462,
+                "uptime": 20789.89793562889
+              }
+            }
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "cell": "literal-mixed",
+          "ratio_of_means_if_over_match": 1.333364910822011,
+          "ratio_of_medians_if_over_match": 1.3488288308822964
+        },
+        {
+          "cell": "literal-skewed",
+          "ratio_of_means_if_over_match": 1.829958339999001,
+          "ratio_of_medians_if_over_match": 1.8697391081737584
+        },
+        {
+          "cell": "tuple-mixed",
+          "ratio_of_means_if_over_match": 1.0614256623359912,
+          "ratio_of_medians_if_over_match": 1.0635444334323712
+        },
+        {
+          "cell": "tuple-skewed",
+          "ratio_of_means_if_over_match": 1.1690453344128195,
+          "ratio_of_medians_if_over_match": 1.1725965110447927
+        },
+        {
+          "cell": "dataclass-mixed",
+          "ratio_of_means_if_over_match": 0.9083255836511566,
+          "ratio_of_medians_if_over_match": 0.8998739269096582
+        },
+        {
+          "cell": "dataclass-skewed",
+          "ratio_of_means_if_over_match": 0.9823247854888221,
+          "ratio_of_medians_if_over_match": 1.1074622312192057
+        }
+      ],
+      "recorded_manifest": {
+        "status": "passed",
+        "started_utc": "2026-11-11T20:34:20Z",
+        "git_revision": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+        "controller_sha256": "75882bfc1a16069f9b1c70c750d91067d7e54837c9eb574c46986be49d751050",
+        "runner_sha256": "ee58dedf1eb77b2e813423e1ff65fa03485a82cb8d41479183f61e939f34514e",
+        "executable_sha256": "da6dcda2fa6ed927bed503f5e7ca6e079d15bd474fcf5db57bae65806246bc46",
+        "pyperf_version": "2.11.0",
+        "workload_loops": 100000,
+        "input_size": 4096,
+        "worker_processes": 3,
+        "values_per_worker": 5,
+        "warmups_per_worker": 1,
+        "pyperf_loops": 1,
+        "cpu_affinity": [
+          0
+        ],
+        "load_average_start": [
+          0.400390625,
+          0.59814453125,
+          0.82080078125
+        ],
+        "scope": "Full AOT process timings; each worker block alternates match/if order. The preflight checksum scales the independently validated CPython controller checksum by the exact linear outer-loop count.",
+        "finished_utc": "2026-11-11T20:37:21Z",
+        "load_average_end": [
+          0.9912109375,
+          0.78955078125,
+          0.85595703125
+        ],
+        "successful_preflight_cases": 12,
+        "recorded_worker_commands": 36
+      },
+      "recorded_suite_metadata": {
+        "match": {
+          "aslr": "Full randomization",
+          "boot_time": "2026-11-11 15:50:47",
+          "cpu_affinity": "0",
+          "cpu_count": 9,
+          "cpu_freq": "0=2300 MHz",
+          "cpu_model_name": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "hostname": "aa52a87b682e",
+          "loops": 1,
+          "perf_version": "2.11.0",
+          "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+          "unit": "second"
+        },
+        "if": {
+          "aslr": "Full randomization",
+          "boot_time": "2026-11-11 15:50:47",
+          "cpu_affinity": "0",
+          "cpu_count": 9,
+          "cpu_freq": "0=2300 MHz",
+          "cpu_model_name": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "hostname": "aa52a87b682e",
+          "loops": 1,
+          "perf_version": "2.11.0",
+          "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+          "unit": "second"
+        }
+      },
+      "evidence": [
+        {
+          "path": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-pyperf-manifest.json",
+          "bytes": 28999,
+          "sha256": "e70754008ef5bd13eba60c8ac67d973ae22cc79ac3659630d8fd6f8470d6a7af"
+        },
+        {
+          "path": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-pyperf-match.json",
+          "bytes": 6794,
+          "sha256": "5d770fe8e8233417d0bceffffd58b9db8e807b54ccbfed5e08d16c14e11f0382"
+        },
+        {
+          "path": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-pyperf-if.json",
+          "bytes": 6517,
+          "sha256": "0d19e78b6c2162e446db443c07fcd44b01ed71c8c7520abf2c2a35eb6db59d6e"
+        }
+      ]
+    },
+    "warnings": [
+      "kernel literal-mixed/jit/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel literal-mixed/aot/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel literal-skewed/jit/match: CV 11.197% exceeds the analyzer's descriptive 10% flag.",
+      "kernel literal-skewed/jit/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel literal-skewed/jit/if: CV 11.041% exceeds the analyzer's descriptive 10% flag.",
+      "kernel literal-skewed/jit/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel tuple-skewed/jit/match: CV 10.944% exceeds the analyzer's descriptive 10% flag.",
+      "kernel tuple-skewed/jit/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel tuple-skewed/aot/if: CV 21.762% exceeds the analyzer's descriptive 10% flag.",
+      "kernel tuple-skewed/aot/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel dataclass-mixed/jit/if: CV 12.428% exceeds the analyzer's descriptive 10% flag.",
+      "kernel dataclass-mixed/jit/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel dataclass-skewed/jit/match: CV 17.292% exceeds the analyzer's descriptive 10% flag.",
+      "kernel dataclass-skewed/jit/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel dataclass-skewed/aot/if: CV 30.856% exceeds the analyzer's descriptive 10% flag.",
+      "kernel dataclass-skewed/aot/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "pyperf literal-skewed/match: CV 11.355% exceeds the analyzer's descriptive 10% flag.",
+      "pyperf literal-skewed/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "pyperf tuple-mixed/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "pyperf dataclass-skewed/match: CV 18.789% exceeds the analyzer's descriptive 10% flag.",
+      "pyperf dataclass-skewed/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "pyperf literal-skewed/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "pyperf tuple-skewed/if: maximum exceeds the median by more than 20%; inspect the retained observations."
+    ]
+  },
+  "pilots": [
+    {
+      "evidence": {
+        "path": "/workspace/scratch/0bc6e8bc1edf/match-right-association-pilot.json",
+        "bytes": 38322,
+        "sha256": "348f3697f8def04298d36f3358cbe3488e375679c1cc3d6426edd6eae0c79d00"
+      },
+      "loops": 2000,
+      "size": 4096,
+      "rows": [
+        {
+          "cell": "tuple-mixed",
+          "pairs": 3,
+          "baseline_over_trial_match": {
+            "n": 3,
+            "mean": 1.7658708217250647,
+            "median": 1.797942143481726,
+            "sample_stdev": 0.15775371263334362,
+            "cv_percent": 8.933479770577744,
+            "min": 1.5945457323907406,
+            "max": 1.9051245893027273
+          },
+          "trial_if_over_match": {
+            "n": 3,
+            "mean": 0.45364397702796233,
+            "median": 0.4708373622071329,
+            "sample_stdev": 0.04243791794919276,
+            "cv_percent": 9.354895049466712,
+            "min": 0.40530728557799806,
+            "max": 0.4847872832987561
+          }
+        },
+        {
+          "cell": "tuple-skewed",
+          "pairs": 3,
+          "baseline_over_trial_match": {
+            "n": 3,
+            "mean": 1.9245258678505273,
+            "median": 1.85590205374317,
+            "sample_stdev": 0.13468226215951207,
+            "cv_percent": 6.998204825894939,
+            "min": 1.8379767355101038,
+            "max": 2.079698814298308
+          },
+          "trial_if_over_match": {
+            "n": 3,
+            "mean": 0.6709831403122509,
+            "median": 0.6725568473546188,
+            "sample_stdev": 0.06929486938809036,
+            "cv_percent": 10.327363718236358,
+            "min": 0.6009148209569704,
+            "max": 0.7394777526251637
+          }
+        },
+        {
+          "cell": "dataclass-mixed",
+          "pairs": 3,
+          "baseline_over_trial_match": {
+            "n": 3,
+            "mean": 2.1284158468121532,
+            "median": 2.1051382811034083,
+            "sample_stdev": 0.10891194585739462,
+            "cv_percent": 5.117042612726179,
+            "min": 2.0330245957907467,
+            "max": 2.2470846635423043
+          },
+          "trial_if_over_match": {
+            "n": 3,
+            "mean": 0.5070824189544938,
+            "median": 0.5040826469275844,
+            "sample_stdev": 0.012867841388992624,
+            "cv_percent": 2.537623255707353,
+            "min": 0.49597943355496477,
+            "max": 0.5211851763809321
+          }
+        },
+        {
+          "cell": "dataclass-skewed",
+          "pairs": 3,
+          "baseline_over_trial_match": {
+            "n": 3,
+            "mean": 2.1144796392476333,
+            "median": 1.997767960520616,
+            "sample_stdev": 0.21145666541557523,
+            "cv_percent": 10.000411519252793,
+            "min": 1.9870998886311497,
+            "max": 2.3585710685911336
+          },
+          "trial_if_over_match": {
+            "n": 3,
+            "mean": 0.5107329159183073,
+            "median": 0.5129264118870007,
+            "sample_stdev": 0.009049407505584868,
+            "cv_percent": 1.7718473244110113,
+            "min": 0.5007883881119584,
+            "max": 0.5184839477559628
+          }
+        }
+      ],
+      "scope": "Short diagnostic native-JIT kernel pilot. Baseline compiler native; trial compiler CPython-hosted. Process wall times are not comparable. These results do not replace final native qualification."
+    }
+  ],
+  "warnings": [],
+  "baseline": {
+    "prefix": "/workspace/scratch/0bc6e8bc1edf/match-evidence-baseline-620c35f/match",
+    "controller": {
+      "settings": {
+        "samples": 7,
+        "loops": 2000,
+        "size": 4096
+      },
+      "measured_modes": [
+        "aot",
+        "cpython",
+        "jit"
+      ],
+      "rows": [
+        {
+          "cell": "literal-mixed",
+          "kind": "literal",
+          "shape": "mixed",
+          "mode": "cpython",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 1209252112,
+              "median": 1204584191,
+              "sample_stdev": 27175836.00533893,
+              "cv_percent": 2.247325907944243,
+              "min": 1173246581,
+              "max": 1244889097
+            },
+            "if": {
+              "n": 7,
+              "mean": 1114573878.7142856,
+              "median": 1107489088,
+              "sample_stdev": 18185238.279269982,
+              "cv_percent": 1.631586620372579,
+              "min": 1095528418,
+              "max": 1143039191
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 1.260694098143826,
+              "median": 1.257779109000694,
+              "sample_stdev": 0.025542325505880526,
+              "cv_percent": 2.0260525962235874,
+              "min": 1.223685185002978,
+              "max": 1.2990496109996457
+            },
+            "if": {
+              "n": 7,
+              "mean": 1.1648193037149863,
+              "median": 1.1554746110014094,
+              "sample_stdev": 0.02152176039759958,
+              "cv_percent": 1.847647985310658,
+              "min": 1.1427951990008296,
+              "max": 1.1942029600031674
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.9220779734498565,
+            "median": 0.9218173425650593,
+            "sample_stdev": 0.024533190248069096,
+            "cv_percent": 2.6606416110647104,
+            "min": 0.8896287152557494,
+            "max": 0.9584565744411063
+          }
+        },
+        {
+          "cell": "literal-mixed",
+          "kind": "literal",
+          "shape": "mixed",
+          "mode": "jit",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 13368235.714285715,
+              "median": 13314905,
+              "sample_stdev": 220205.00949018265,
+              "cv_percent": 1.6472256638537925,
+              "min": 13072156,
+              "max": 13730203
+            },
+            "if": {
+              "n": 7,
+              "mean": 16358366.857142856,
+              "median": 16347652,
+              "sample_stdev": 434437.8981045233,
+              "cv_percent": 2.6557534862645937,
+              "min": 15547076,
+              "max": 16982996
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.13348199599983804,
+              "median": 0.12579262199869845,
+              "sample_stdev": 0.020420526421670863,
+              "cv_percent": 15.298337628765784,
+              "min": 0.12175721300081932,
+              "max": 0.17918178200125112
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.129346478142127,
+              "median": 0.12873929399938788,
+              "sample_stdev": 0.003508742300129463,
+              "cv_percent": 2.712669374943497,
+              "min": 0.12604995599758695,
+              "max": 0.1363639820010576
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.2242039978829644,
+            "median": 1.225509054400283,
+            "sample_stdev": 0.04660230302787487,
+            "cv_percent": 3.806743247731994,
+            "min": 1.1508392195087576,
+            "max": 1.299173296279512
+          }
+        },
+        {
+          "cell": "literal-mixed",
+          "kind": "literal",
+          "shape": "mixed",
+          "mode": "aot",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 12645397.285714285,
+              "median": 12498400,
+              "sample_stdev": 493346.5158968607,
+              "cv_percent": 3.9013919827904684,
+              "min": 12153920,
+              "max": 13311232
+            },
+            "if": {
+              "n": 7,
+              "mean": 13977923.285714285,
+              "median": 13774031,
+              "sample_stdev": 774904.3041515329,
+              "cv_percent": 5.543772764467097,
+              "min": 13278034,
+              "max": 15614604
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.015366254428954562,
+              "median": 0.015331156002503121,
+              "sample_stdev": 0.0007376598855925913,
+              "cv_percent": 4.800518493320156,
+              "min": 0.013989039001899073,
+              "max": 0.016313010000885697
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.017181949570970443,
+              "median": 0.016922023001825437,
+              "sample_stdev": 0.0012442976674099313,
+              "cv_percent": 7.2418887174027065,
+              "min": 0.01594036399910692,
+              "max": 0.01979197800028487
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.1074296744437422,
+            "median": 1.1058871874394263,
+            "sample_stdev": 0.08453297682218355,
+            "cv_percent": 7.6332591380707004,
+            "min": 0.9975060159720753,
+            "max": 1.2493282340139538
+          }
+        },
+        {
+          "cell": "literal-skewed",
+          "kind": "literal",
+          "shape": "skewed",
+          "mode": "cpython",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 447576321.71428573,
+              "median": 446182534,
+              "sample_stdev": 8174616.703381607,
+              "cv_percent": 1.8264184915036559,
+              "min": 437877852,
+              "max": 461807030
+            },
+            "if": {
+              "n": 7,
+              "mean": 398898354.5714286,
+              "median": 393057930,
+              "sample_stdev": 13762315.824745992,
+              "cv_percent": 3.4500808707351154,
+              "min": 387910447,
+              "max": 425211806
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.5059160035717858,
+              "median": 0.4985314860023209,
+              "sample_stdev": 0.023188025500633834,
+              "cv_percent": 4.583374579362091,
+              "min": 0.4846526030014502,
+              "max": 0.5429354360021534
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.4483416912854799,
+              "median": 0.44045989599908353,
+              "sample_stdev": 0.016142294420704598,
+              "cv_percent": 3.6004446462298887,
+              "min": 0.43544348100112984,
+              "max": 0.4745248119979806
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.8917140670866999,
+            "median": 0.8897604519133196,
+            "sample_stdev": 0.04103202173869612,
+            "cv_percent": 4.601477452604394,
+            "min": 0.8399838499643455,
+            "max": 0.9710740199757808
+          }
+        },
+        {
+          "cell": "literal-skewed",
+          "kind": "literal",
+          "shape": "skewed",
+          "mode": "jit",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 9257974.714285715,
+              "median": 9313985,
+              "sample_stdev": 409560.16994849255,
+              "cv_percent": 4.423863561827535,
+              "min": 8645407,
+              "max": 9757793
+            },
+            "if": {
+              "n": 7,
+              "mean": 13307238.857142856,
+              "median": 12494949,
+              "sample_stdev": 2959791.102694323,
+              "cv_percent": 22.241962697660693,
+              "min": 11582613,
+              "max": 19949966
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.13933085385724553,
+              "median": 0.12919717900149408,
+              "sample_stdev": 0.0198960685071028,
+              "cv_percent": 14.279729116917457,
+              "min": 0.1237404739986232,
+              "max": 0.17177422000168008
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.13726624071516977,
+              "median": 0.13220591000208515,
+              "sample_stdev": 0.01326216083672056,
+              "cv_percent": 9.661633310290629,
+              "min": 0.1251434430014342,
+              "max": 0.16297838900209172
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.4375158981406548,
+            "median": 1.3499410509039143,
+            "sample_stdev": 0.3127170724465315,
+            "cv_percent": 21.753990536801247,
+            "min": 1.2728146153846154,
+            "max": 2.1419366683540932
+          }
+        },
+        {
+          "cell": "literal-skewed",
+          "kind": "literal",
+          "shape": "skewed",
+          "mode": "aot",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 8121732.285714285,
+              "median": 8087184,
+              "sample_stdev": 482918.50503292796,
+              "cv_percent": 5.946003734724883,
+              "min": 7461502,
+              "max": 8825313
+            },
+            "if": {
+              "n": 7,
+              "mean": 8229580.428571428,
+              "median": 8041458,
+              "sample_stdev": 605266.6281088737,
+              "cv_percent": 7.354768974703877,
+              "min": 7793143,
+              "max": 9546195
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.012864756570447103,
+              "median": 0.01142731000072672,
+              "sample_stdev": 0.004472232292890043,
+              "cv_percent": 34.76344280904349,
+              "min": 0.010385723999206675,
+              "max": 0.022886537997692358
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.012084292428231233,
+              "median": 0.011199061998922843,
+              "sample_stdev": 0.002378034779463413,
+              "cv_percent": 19.67872586323603,
+              "min": 0.010509643998375395,
+              "max": 0.017358544002490817
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.018752467905633,
+            "median": 0.976665796153519,
+            "sample_stdev": 0.12442431071421332,
+            "cv_percent": 12.213399685794796,
+            "min": 0.8830443747434227,
+            "max": 1.2575915361313055
+          }
+        },
+        {
+          "cell": "tuple-mixed",
+          "kind": "tuple",
+          "shape": "mixed",
+          "mode": "cpython",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 1451104870.142857,
+              "median": 1443782776,
+              "sample_stdev": 34429201.37655882,
+              "cv_percent": 2.372619793714107,
+              "min": 1403460646,
+              "max": 1516169582
+            },
+            "if": {
+              "n": 7,
+              "mean": 774862299.8571428,
+              "median": 761241493,
+              "sample_stdev": 21457847.62920277,
+              "cv_percent": 2.769246565894203,
+              "min": 753271214,
+              "max": 802278363
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 1.5137110385720527,
+              "median": 1.505165106998902,
+              "sample_stdev": 0.041114374390522505,
+              "cv_percent": 2.7161309749915956,
+              "min": 1.456779625001218,
+              "max": 1.5856389559994568
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.8277965777139927,
+              "median": 0.8129896620012005,
+              "sample_stdev": 0.026111529539336074,
+              "cv_percent": 3.1543413251894017,
+              "min": 0.8037649910002074,
+              "max": 0.8677294069966592
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.5341866978005668,
+            "median": 0.5272548652429692,
+            "sample_stdev": 0.017943323931740304,
+            "cv_percent": 3.358998643286932,
+            "min": 0.5167597499091965,
+            "max": 0.5678258704804466
+          }
+        },
+        {
+          "cell": "tuple-mixed",
+          "kind": "tuple",
+          "shape": "mixed",
+          "mode": "jit",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 47868279.85714286,
+              "median": 47566464,
+              "sample_stdev": 1703983.2042314294,
+              "cv_percent": 3.559733521481789,
+              "min": 46536341,
+              "max": 51523721
+            },
+            "if": {
+              "n": 7,
+              "mean": 12360241.142857144,
+              "median": 12207512,
+              "sample_stdev": 772696.0401914043,
+              "cv_percent": 6.251464120001715,
+              "min": 11744308,
+              "max": 14025340
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.17571522742842458,
+              "median": 0.16841022600056021,
+              "sample_stdev": 0.020391362784493945,
+              "cv_percent": 11.604778415006814,
+              "min": 0.15862429000117118,
+              "max": 0.2131625419970078
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.1275314051438597,
+              "median": 0.1254569110024022,
+              "sample_stdev": 0.00541937185883054,
+              "cv_percent": 4.249441031969582,
+              "min": 0.12133169000298949,
+              "max": 0.13589171599960537
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.25855428141627557,
+            "median": 0.2543344527580078,
+            "sample_stdev": 0.019454323713548972,
+            "cv_percent": 7.524270573662354,
+            "min": 0.23186617286433953,
+            "max": 0.29415330730934897
+          }
+        },
+        {
+          "cell": "tuple-mixed",
+          "kind": "tuple",
+          "shape": "mixed",
+          "mode": "aot",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 12893132.57142857,
+              "median": 12720693,
+              "sample_stdev": 435649.11627970246,
+              "cv_percent": 3.3789237321976295,
+              "min": 12345024,
+              "max": 13388731
+            },
+            "if": {
+              "n": 7,
+              "mean": 13274153.285714285,
+              "median": 13314672,
+              "sample_stdev": 247314.62937906597,
+              "cv_percent": 1.8631292260669259,
+              "min": 12806279,
+              "max": 13546287
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.016142355000608535,
+              "median": 0.016180261001863983,
+              "sample_stdev": 0.00048432869810750053,
+              "cv_percent": 3.000359601119182,
+              "min": 0.015543343000899768,
+              "max": 0.016667229003360262
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.016217385856829684,
+              "median": 0.016512517002411187,
+              "sample_stdev": 0.0007008311362796403,
+              "cv_percent": 4.321480308026937,
+              "min": 0.014839199997368269,
+              "max": 0.01681643600022653
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.0306424749156873,
+            "median": 1.006823628566337,
+            "sample_stdev": 0.04233097020070479,
+            "cv_percent": 4.107240991030155,
+            "min": 0.9831237179983674,
+            "max": 1.0785456553182886
+          }
+        },
+        {
+          "cell": "tuple-skewed",
+          "kind": "tuple",
+          "shape": "skewed",
+          "mode": "cpython",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 1138776628.5714285,
+              "median": 1120914258,
+              "sample_stdev": 56760536.72770537,
+              "cv_percent": 4.984343312253455,
+              "min": 1089646564,
+              "max": 1248342899
+            },
+            "if": {
+              "n": 7,
+              "mean": 714768930,
+              "median": 695005343,
+              "sample_stdev": 51352212.7586038,
+              "cv_percent": 7.18444949175446,
+              "min": 672298298,
+              "max": 788072890
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 1.2014485397147447,
+              "median": 1.1823625050019473,
+              "sample_stdev": 0.05601849488303434,
+              "cv_percent": 4.662579630446311,
+              "min": 1.1395783939988178,
+              "max": 1.3072972010013473
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.7826148201430831,
+              "median": 0.7849720470003376,
+              "sample_stdev": 0.061157743039899765,
+              "cv_percent": 7.814539345002242,
+              "min": 0.7230410349984595,
+              "max": 0.8742360230025952
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.6284919903677635,
+            "median": 0.6301794103448495,
+            "sample_stdev": 0.0482362380437829,
+            "cv_percent": 7.674916909530916,
+            "min": 0.5787967841305464,
+            "max": 0.7207978385769744
+          }
+        },
+        {
+          "cell": "tuple-skewed",
+          "kind": "tuple",
+          "shape": "skewed",
+          "mode": "jit",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 38078570,
+              "median": 36071725,
+              "sample_stdev": 6053301.698997389,
+              "cv_percent": 15.896872437692354,
+              "min": 33604056,
+              "max": 51328530
+            },
+            "if": {
+              "n": 7,
+              "mean": 12838213.42857143,
+              "median": 12124500,
+              "sample_stdev": 2030071.437957776,
+              "cv_percent": 15.812725417384433,
+              "min": 11339828,
+              "max": 17292800
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.1658764109997719,
+              "median": 0.15363079600138008,
+              "sample_stdev": 0.025982594815351888,
+              "cv_percent": 15.663827459702883,
+              "min": 0.14746678699884797,
+              "max": 0.21831158300119569
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.1379786815710499,
+              "median": 0.129738029998407,
+              "sample_stdev": 0.016782940844524964,
+              "cv_percent": 12.163430359988517,
+              "min": 0.12225133000174537,
+              "max": 0.16316244200061192
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.34450137250310675,
+            "median": 0.32110455713841224,
+            "sample_stdev": 0.07842001689037853,
+            "cv_percent": 22.763339466716154,
+            "min": 0.23621366129129356,
+            "max": 0.48996187047862716
+          }
+        },
+        {
+          "cell": "tuple-skewed",
+          "kind": "tuple",
+          "shape": "skewed",
+          "mode": "aot",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 8954859.142857144,
+              "median": 8839983,
+              "sample_stdev": 412321.7721777611,
+              "cv_percent": 4.604447324072653,
+              "min": 8572243,
+              "max": 9633163
+            },
+            "if": {
+              "n": 7,
+              "mean": 11976577.42857143,
+              "median": 11838294,
+              "sample_stdev": 477850.21493380715,
+              "cv_percent": 3.9898728813278783,
+              "min": 11304261,
+              "max": 12532023
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.01225479000017263,
+              "median": 0.012130801002058433,
+              "sample_stdev": 0.0003800137692979795,
+              "cv_percent": 3.1009406876219527,
+              "min": 0.011855003001983277,
+              "max": 0.012833890999900177
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.015319249000770339,
+              "median": 0.015488158001971897,
+              "sample_stdev": 0.0005145377336966927,
+              "cv_percent": 3.358766044411308,
+              "min": 0.014673474001028808,
+              "max": 0.015952051999192918
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.340461919916491,
+            "median": 1.3389136608068137,
+            "sample_stdev": 0.09233880140015278,
+            "cv_percent": 6.888580721927958,
+            "min": 1.2265950118037128,
+            "max": 1.4504233899951253
+          }
+        },
+        {
+          "cell": "dataclass-mixed",
+          "kind": "dataclass",
+          "shape": "mixed",
+          "mode": "cpython",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 3426486565,
+              "median": 3373075270,
+              "sample_stdev": 329912904.8000228,
+              "cv_percent": 9.628314558998506,
+              "min": 3066942756,
+              "max": 4004297917
+            },
+            "if": {
+              "n": 7,
+              "mean": 913672185.1428572,
+              "median": 910895153,
+              "sample_stdev": 76806814.23528098,
+              "cv_percent": 8.406386391555943,
+              "min": 821346942,
+              "max": 1049202277
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 3.4834254382866283,
+              "median": 3.4365157510001154,
+              "sample_stdev": 0.3240968477292302,
+              "cv_percent": 9.303969712314032,
+              "min": 3.119699164002668,
+              "max": 4.054058096000517
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.9681532478565974,
+              "median": 0.9623203679984726,
+              "sample_stdev": 0.08057610165540892,
+              "cv_percent": 8.322659850989192,
+              "min": 0.8663179819996003,
+              "max": 1.1075113419974514
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.2679332069297969,
+            "median": 0.2678064141866233,
+            "sample_stdev": 0.025699293850249886,
+            "cv_percent": 9.591679263923245,
+            "min": 0.23946927523274988,
+            "max": 0.3110521387801702
+          }
+        },
+        {
+          "cell": "dataclass-mixed",
+          "kind": "dataclass",
+          "shape": "mixed",
+          "mode": "jit",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 74200361.42857143,
+              "median": 72286055,
+              "sample_stdev": 14535273.798821012,
+              "cv_percent": 19.589222368968258,
+              "min": 60649424,
+              "max": 97312832
+            },
+            "if": {
+              "n": 7,
+              "mean": 15319305.142857144,
+              "median": 14442700,
+              "sample_stdev": 2505654.0755471033,
+              "cv_percent": 16.35618621197974,
+              "min": 13829428,
+              "max": 20913561
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.2695234791437023,
+              "median": 0.23966161600037594,
+              "sample_stdev": 0.09062099818041523,
+              "cv_percent": 33.62267304812382,
+              "min": 0.18810914500136278,
+              "max": 0.4488240800019412
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.19204320557141077,
+              "median": 0.1507656629983103,
+              "sample_stdev": 0.07298759568015657,
+              "cv_percent": 38.00582033766163,
+              "min": 0.12711942000169074,
+              "max": 0.33202785100002075
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.21252894717732287,
+            "median": 0.2236348725579412,
+            "sample_stdev": 0.047796261342431756,
+            "cv_percent": 22.489294741837256,
+            "min": 0.1484151648160851,
+            "max": 0.2776416416296284
+          }
+        },
+        {
+          "cell": "dataclass-mixed",
+          "kind": "dataclass",
+          "shape": "mixed",
+          "mode": "aot",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 13637257.857142856,
+              "median": 13249197,
+              "sample_stdev": 1003127.6187615128,
+              "cv_percent": 7.355786839772187,
+              "min": 12496129,
+              "max": 14825186
+            },
+            "if": {
+              "n": 7,
+              "mean": 18114656.85714286,
+              "median": 17321196,
+              "sample_stdev": 1579095.0831869317,
+              "cv_percent": 8.717223271962078,
+              "min": 16619164,
+              "max": 20253564
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.016945871713687666,
+              "median": 0.016759786998591153,
+              "sample_stdev": 0.0012750124241067396,
+              "cv_percent": 7.52402972032932,
+              "min": 0.015081189998454647,
+              "max": 0.01855277700087754
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.022237728284380864,
+              "median": 0.021270367000397528,
+              "sample_stdev": 0.0021655427308962163,
+              "cv_percent": 9.738147274770107,
+              "min": 0.020114723996812245,
+              "max": 0.026448206997883972
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 1.3407465630914515,
+            "median": 1.307339305166947,
+            "sample_stdev": 0.20719220361997243,
+            "cv_percent": 15.453495039527464,
+            "min": 1.1314057712328196,
+            "max": 1.6020115509370942
+          }
+        },
+        {
+          "cell": "dataclass-skewed",
+          "kind": "dataclass",
+          "shape": "skewed",
+          "mode": "cpython",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 2673955912.428571,
+              "median": 2577158878,
+              "sample_stdev": 249053573.88626176,
+              "cv_percent": 9.31404937264143,
+              "min": 2523735278,
+              "max": 3224247513
+            },
+            "if": {
+              "n": 7,
+              "mean": 765438210,
+              "median": 748562359,
+              "sample_stdev": 43092224.8200692,
+              "cv_percent": 5.629745713905398,
+              "min": 736369716,
+              "max": 858161161
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 2.736854385285239,
+              "median": 2.6513959969997813,
+              "sample_stdev": 0.24899854719734568,
+              "cv_percent": 9.097983017879654,
+              "min": 2.587367942000128,
+              "max": 3.2883701780010597
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.815178322570968,
+              "median": 0.7958208529998956,
+              "sample_stdev": 0.047364996958867714,
+              "cv_percent": 5.8103847523183125,
+              "min": 0.78418973099906,
+              "max": 0.9165773059976345
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.2882981336040615,
+            "median": 0.2917777163156175,
+            "sample_stdev": 0.030519099987726703,
+            "cv_percent": 10.58595128806507,
+            "min": 0.23216653063446124,
+            "max": 0.3369230831667919
+          }
+        },
+        {
+          "cell": "dataclass-skewed",
+          "kind": "dataclass",
+          "shape": "skewed",
+          "mode": "jit",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 45678260.428571425,
+              "median": 45524593,
+              "sample_stdev": 656558.0531173811,
+              "cv_percent": 1.4373534520739075,
+              "min": 45068196,
+              "max": 46691131
+            },
+            "if": {
+              "n": 7,
+              "mean": 20716986.57142857,
+              "median": 20392531,
+              "sample_stdev": 1921601.63635207,
+              "cv_percent": 9.27548815908492,
+              "min": 19401061,
+              "max": 24824669
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.16856901085702702,
+              "median": 0.1666966949997004,
+              "sample_stdev": 0.009428074862921283,
+              "cv_percent": 5.593005983120925,
+              "min": 0.15825429500182508,
+              "max": 0.1878782140011026
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.15768016528610523,
+              "median": 0.13892784099880373,
+              "sample_stdev": 0.03685948170080871,
+              "cv_percent": 23.376105443527692,
+              "min": 0.13776839400088647,
+              "max": 0.2350257389989565
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.4537349557820141,
+            "median": 0.44757926296537986,
+            "sample_stdev": 0.04422215641352142,
+            "cv_percent": 9.74625292805672,
+            "min": 0.41742061226471583,
+            "max": 0.5484914924023911
+          }
+        },
+        {
+          "cell": "dataclass-skewed",
+          "kind": "dataclass",
+          "shape": "skewed",
+          "mode": "aot",
+          "dispatches_per_process": 8192000,
+          "pairs": 7,
+          "kernel_ns": {
+            "match": {
+              "n": 7,
+              "mean": 13348043.57142857,
+              "median": 12085353,
+              "sample_stdev": 2623675.382765105,
+              "cv_percent": 19.655879670493967,
+              "min": 10751680,
+              "max": 18241967
+            },
+            "if": {
+              "n": 7,
+              "mean": 11911026.142857144,
+              "median": 10604708,
+              "sample_stdev": 2203550.3666767282,
+              "cv_percent": 18.500088407564807,
+              "min": 10309626,
+              "max": 15391140
+            }
+          },
+          "command_wall_s": {
+            "match": {
+              "n": 7,
+              "mean": 0.019128604142419396,
+              "median": 0.016148913000506582,
+              "sample_stdev": 0.006858672026901239,
+              "cv_percent": 35.855580343635836,
+              "min": 0.014028195000719279,
+              "max": 0.03333865699823946
+            },
+            "if": {
+              "n": 7,
+              "mean": 0.01828675871417675,
+              "median": 0.014331897000374738,
+              "sample_stdev": 0.008158070069421135,
+              "cv_percent": 44.61189758629351,
+              "min": 0.012586083998030517,
+              "max": 0.034916603999590734
+            }
+          },
+          "paired_if_over_match": {
+            "n": 7,
+            "mean": 0.901016066033579,
+            "median": 0.922642061013857,
+            "sample_stdev": 0.12012034753928891,
+            "cv_percent": 13.331654347527724,
+            "min": 0.7116722710516644,
+            "max": 1.085014417145088
+          }
+        }
+      ],
+      "recorded_identity": {
+        "created_utc": "2026-11-11T19:45:51Z",
+        "git_revision": "620c35f42d8c35d7a27341bbe4ba259b043b959d",
+        "git_status": "",
+        "compiler_command": [
+          "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy"
+        ],
+        "compiler_executable_sha256": "4b8df6bceb078a25130d98006ed0831d03f9381b9c7ec74f61ec2ad95fd6ce02",
+        "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+        "python_executable": "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+        "repository_python_version": "3.13.16",
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "cpu_count": 9,
+        "cpu_affinity": [
+          0
+        ],
+        "load_average_start": [
+          1.35107421875,
+          2.3388671875,
+          2.19580078125
+        ],
+        "environment": {
+          "LANG": "C.UTF-8",
+          "PYSTACHY_LLVM": "/workspace/scratch/0bc6e8bc1edf/llvm18/usr/lib/llvm-18/bin",
+          "LC_ALL": "C.UTF-8",
+          "PYSTACHY_HOME": "/workspace/scratch/0bc6e8bc1edf/match-main",
+          "PYSTACHY_CACHE": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/cache",
+          "PYSTACHY_PROGRAM_CACHE": "0",
+          "PYTHONHASHSEED": "0"
+        },
+        "llvm": {
+          "clang": {
+            "version": "Ubuntu clang version 18.1.3 (1ubuntu1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/0bc6e8bc1edf/llvm18/usr/lib/llvm-18/bin",
+            "sha256": "8ef402d453d1ba4902e4ee0f0f847f6cfa01400c95aa43c24e97818b9c0e3f45"
+          },
+          "opt": {
+            "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: sapphirerapids",
+            "sha256": "67ebe8635087b5ebe22d8f085d5e5857e431f86be9ed76576e59b86b9743c0fb"
+          },
+          "lli": {
+            "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+            "sha256": "f787c770f5281ab909eac3d28ed984d8f0759caf87def4794f432fd008ef4f8c"
+          },
+          "llvm-link": {
+            "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+            "sha256": "e340363ed9e5346f0d6dc4441f4953c5f516ff73fa0a03e1955c1adaad68b651"
+          },
+          "llvm-as": {
+            "version": "Ubuntu LLVM version 18.1.3\n  Optimized build.",
+            "sha256": "8e7460eff4ba4e22d8ae881404bb24c5fc346996264e883ba26d41da4188215d"
+          }
+        },
+        "aot_binary_sha256": "d95ef2725651c0b377ee5315a97d8943d05dd2e8bb61aa7f304690ccf0e53573",
+        "aot_binary_bytes": 91288,
+        "artifact_directory": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts",
+        "source_files": 161,
+        "source_manifest_sha256": "da1220a7ac3a14bdd40f1edfaddfac31ff7866d1c95353902e823cb255b1f1f6",
+        "source_manifest_encoding": "sha256 of UTF-8 json.dumps(source_sha256, sort_keys=True, separators=(',', ':'))",
+        "source_manifest_reference": "/workspace/scratch/0bc6e8bc1edf/match-evidence-baseline-620c35f/match-dispatch-measured.json : metadata.source_sha256",
+        "selected_source_sha256": {
+          "bench/match_dispatch/workload.py": "98bd8300b8221557c1c0a10441d706f1260416ad1732c16344688581fa381e55",
+          "bench/match_dispatch/bench.py": "7c387d094c846fb1e7d605d7fb5cdca830c9f787f1cb53299fb642f5806af27c",
+          "src/pystachy_compiler/patterns.py": "bab41351e8ae5f2cdcbba2a1e85d2354c84990ba0fca6aa6a29fcb24c585d932",
+          "src/pystachy_compiler/expressions.py": "e910b81aeeb2041953c74175ff7efc150cfc641800fdabd946d2bd778d1a2554",
+          "src/pystachy_compiler/flow.py": "cb6238905238d5dcd042b568f56243e9b407723a6e047d5f0cad478b060439c9",
+          "src/pystachy_compiler/driver.py": "2ffc148873348b01194d57798c8bab0230bc9aba659e86547fe0a61b868798f8",
+          "pystachy.py": "a413782632f88d4746a81fd7cfb529d695ab36a35618522a83be1e25e1e31f29",
+          "runtime.py": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb",
+          "runtime.c": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe",
+          "VERSION": "4d9ab8cc8d569d6d9f4c0df1fdb2ca109d41fccc8ec3fd2f0374b443f5e6cd80"
+        }
+      },
+      "evidence": {
+        "path": "/workspace/scratch/0bc6e8bc1edf/match-evidence-baseline-620c35f/match-dispatch-measured.json",
+        "bytes": 245842,
+        "sha256": "3f7ea1669ecbc2c5639c3b3fe6131e24e75de31a89d31700c4da045545601042"
+      }
+    },
+    "pyperf": {
+      "rows": [
+        {
+          "cell": "literal-mixed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe literal match mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.660969692733488,
+            "median": 0.6602901449987257,
+            "sample_stdev": 0.01714022097958258,
+            "cv_percent": 2.5931931778441992,
+            "min": 0.6409868629998527,
+            "max": 0.6945649469998898
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6554033362001064,
+                "median": 0.6504097940014617,
+                "sample_stdev": 0.014523486600676469,
+                "cv_percent": 2.2159616526947596,
+                "min": 0.6409868629998527,
+                "max": 0.6781828940002015
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:49:38.136500",
+                "duration": 4.223918933999812,
+                "load_avg_1min": 0.93,
+                "uptime": 17931.141568422318
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.665577459200722,
+                "median": 0.6682817440014333,
+                "sample_stdev": 0.015179254103579926,
+                "cv_percent": 2.280614208571362,
+                "min": 0.6433123690003413,
+                "max": 0.6854817400017055
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:49:52.048539",
+                "duration": 4.2252134820009815,
+                "load_avg_1min": 0.94,
+                "uptime": 17945.051587581635
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6619282827996358,
+                "median": 0.6535508439992554,
+                "sample_stdev": 0.02281436565817467,
+                "cv_percent": 3.446652190427785,
+                "min": 0.6413491269995575,
+                "max": 0.6945649469998898
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 20:49:56.479199",
+                "duration": 4.209669504998601,
+                "load_avg_1min": 0.95,
+                "uptime": 17949.482799768448
+              }
+            }
+          ]
+        },
+        {
+          "cell": "literal-skewed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe literal match skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.40468923459920914,
+            "median": 0.4044618129992159,
+            "sample_stdev": 0.010825518950307221,
+            "cv_percent": 2.675020243873909,
+            "min": 0.3851734959971509,
+            "max": 0.42947855799866375
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.4067724579988862,
+                "median": 0.40286888899936457,
+                "sample_stdev": 0.016690516539183253,
+                "cv_percent": 4.103157972221648,
+                "min": 0.3851734959971509,
+                "max": 0.42947855799866375
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 20:50:07.829248",
+                "duration": 2.6845994080031232,
+                "load_avg_1min": 0.96,
+                "uptime": 17960.832030534744
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.4024145077994035,
+                "median": 0.40512851899984526,
+                "sample_stdev": 0.008366986975298097,
+                "cv_percent": 2.079196155489725,
+                "min": 0.39002814600098645,
+                "max": 0.41119401499963715
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 20:50:10.697547",
+                "duration": 2.663770991999627,
+                "load_avg_1min": 0.96,
+                "uptime": 17963.6999874115
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.4048807379993377,
+                "median": 0.4044618129992159,
+                "sample_stdev": 0.007046495894331711,
+                "cv_percent": 1.7403880286207238,
+                "min": 0.3986268539993034,
+                "max": 0.41655275000084657
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:50:19.628370",
+                "duration": 2.656550490999507,
+                "load_avg_1min": 0.97,
+                "uptime": 17972.630693912506
+              }
+            }
+          ]
+        },
+        {
+          "cell": "tuple-mixed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe tuple match mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.6649870207331939,
+            "median": 0.6553143070013903,
+            "sample_stdev": 0.037306710823858814,
+            "cv_percent": 5.610141199857645,
+            "min": 0.6348754999999073,
+            "max": 0.7852191120000498
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.655897492999793,
+                "median": 0.646050399998785,
+                "sample_stdev": 0.025876291134415592,
+                "cv_percent": 3.9451730507565395,
+                "min": 0.6348754999999073,
+                "max": 0.7002983349993883
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:50:25.478879",
+                "duration": 4.169578094002645,
+                "load_avg_1min": 0.97,
+                "runnable_threads": 1,
+                "uptime": 17978.48143863678
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6553724657998827,
+                "median": 0.6589067300010356,
+                "sample_stdev": 0.00582894438395366,
+                "cv_percent": 0.8894094103937411,
+                "min": 0.6464922589984781,
+                "max": 0.6596098879999772
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:50:38.868920",
+                "duration": 4.1519043289990805,
+                "load_avg_1min": 0.98,
+                "runnable_threads": 2,
+                "uptime": 17991.87147474289
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6836911033999058,
+                "median": 0.6590857949995552,
+                "sample_stdev": 0.0592585939463377,
+                "cv_percent": 8.66745137557773,
+                "min": 0.6375508359997184,
+                "max": 0.7852191120000498
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 20:50:43.450528",
+                "duration": 4.370041941001546,
+                "load_avg_1min": 1.06,
+                "runnable_threads": 2,
+                "uptime": 17996.453256845474
+              }
+            }
+          ]
+        },
+        {
+          "cell": "tuple-skewed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe tuple match skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.4540366220668754,
+            "median": 0.44996914800140075,
+            "sample_stdev": 0.013865704967655084,
+            "cv_percent": 3.053873695151576,
+            "min": 0.4398361739986285,
+            "max": 0.49537137399966014
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.46128390160010896,
+                "median": 0.4519459969997115,
+                "sample_stdev": 0.021338384576374263,
+                "cv_percent": 4.625868039694282,
+                "min": 0.4426018570011365,
+                "max": 0.49537137399966014
+              },
+              "metadata": {
+                "date": "2026-11-11 20:50:59.599340",
+                "duration": 3.0600429589976557,
+                "load_avg_1min": 1.26,
+                "uptime": 18012.602307081223
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.4532160898015718,
+                "median": 0.4538439310017566,
+                "sample_stdev": 0.004492227780041375,
+                "cv_percent": 0.991188945213347,
+                "min": 0.44833751500118524,
+                "max": 0.4599545400014904
+              },
+              "metadata": {
+                "date": "2026-11-11 20:51:02.775534",
+                "duration": 2.9590135910002573,
+                "load_avg_1min": 1.24,
+                "uptime": 18015.77809715271
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.4476098747989454,
+                "median": 0.44565915999919525,
+                "sample_stdev": 0.008903436149702236,
+                "cv_percent": 1.9891062845075582,
+                "min": 0.4398361739986285,
+                "max": 0.46186234500055434
+              },
+              "metadata": {
+                "date": "2026-11-11 20:51:13.879521",
+                "duration": 2.992090586001723,
+                "load_avg_1min": 1.2,
+                "uptime": 18026.883058786392
+              }
+            }
+          ]
+        },
+        {
+          "cell": "dataclass-mixed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe dataclass match mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.6754287545993672,
+            "median": 0.6682102579979983,
+            "sample_stdev": 0.023568433517228548,
+            "cv_percent": 3.489403339247563,
+            "min": 0.6523639799997909,
+            "max": 0.750685965998855
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6859113399994385,
+                "median": 0.6712453209984233,
+                "sample_stdev": 0.03772512970084057,
+                "cv_percent": 5.500000874875672,
+                "min": 0.653949764000572,
+                "max": 0.750685965998855
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:51:19.940700",
+                "duration": 4.364197216000321,
+                "load_avg_1min": 1.19,
+                "uptime": 18032.94446182251
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6674026067994419,
+                "median": 0.6679838439995365,
+                "sample_stdev": 0.010509837129211294,
+                "cv_percent": 1.5747372009245926,
+                "min": 0.6523639799997909,
+                "max": 0.6820223009999609
+              },
+              "metadata": {
+                "command_max_rss": 13279232,
+                "date": "2026-11-11 20:51:35.239433",
+                "duration": 4.280261689000326,
+                "load_avg_1min": 1.14,
+                "uptime": 18048.24278473854
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6729723169992212,
+                "median": 0.6667810399994778,
+                "sample_stdev": 0.013604574730361061,
+                "cv_percent": 2.0215652838475977,
+                "min": 0.6623399569980393,
+                "max": 0.695281921998685
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:51:39.736107",
+                "duration": 4.266261349002889,
+                "load_avg_1min": 1.13,
+                "uptime": 18052.73856306076
+              }
+            }
+          ]
+        },
+        {
+          "cell": "dataclass-skewed",
+          "variant": "match",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe dataclass match skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.6054135904666812,
+            "median": 0.6014769990033528,
+            "sample_stdev": 0.02764014204080099,
+            "cv_percent": 4.565497451006125,
+            "min": 0.5621792709971487,
+            "max": 0.674867270001414
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.595403060598619,
+                "median": 0.5898049930001434,
+                "sample_stdev": 0.025791199491585405,
+                "cv_percent": 4.3317210136029365,
+                "min": 0.5621792709971487,
+                "max": 0.6285476489974826
+              },
+              "metadata": {
+                "date": "2026-11-11 20:51:53.761585",
+                "duration": 3.77527139599988,
+                "load_avg_1min": 1.1,
+                "uptime": 18066.764660835266
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5989265246003924,
+                "median": 0.6014769990033528,
+                "sample_stdev": 0.006368973609280319,
+                "cv_percent": 1.063398154478087,
+                "min": 0.5882194909972895,
+                "max": 0.6043793889984954
+              },
+              "metadata": {
+                "date": "2026-11-11 20:51:57.839792",
+                "duration": 3.841490230999625,
+                "load_avg_1min": 1.09,
+                "uptime": 18070.84250831604
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6219111862010323,
+                "median": 0.6093552800011821,
+                "sample_stdev": 0.03808007405541068,
+                "cv_percent": 6.123072699178196,
+                "min": 0.5788139680007589,
+                "max": 0.674867270001414
+              },
+              "metadata": {
+                "date": "2026-11-11 20:52:09.486883",
+                "duration": 4.0018324490010855,
+                "load_avg_1min": 1.08,
+                "uptime": 18082.490201711655
+              }
+            }
+          ]
+        },
+        {
+          "cell": "literal-mixed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe literal if mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.7048367928667479,
+            "median": 0.7003938420020859,
+            "sample_stdev": 0.017838834056513105,
+            "cv_percent": 2.5309169778095852,
+            "min": 0.6837882999971043,
+            "max": 0.7580064479989232
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7094386566008325,
+                "median": 0.6996141820018238,
+                "sample_stdev": 0.02730533620030163,
+                "cv_percent": 3.848865007036831,
+                "min": 0.6931461989988748,
+                "max": 0.7580064479989232
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 20:49:42.902308",
+                "duration": 4.541338921000715,
+                "load_avg_1min": 0.94,
+                "uptime": 17935.9055724144
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7028443113995309,
+                "median": 0.7084856239998771,
+                "sample_stdev": 0.014277108241851867,
+                "cv_percent": 2.031332972365208,
+                "min": 0.6837882999971043,
+                "max": 0.7198697130006622
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:49:47.598230",
+                "duration": 4.45929855400027,
+                "load_avg_1min": 0.94,
+                "uptime": 17940.60106921196
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.7022274105998804,
+                "median": 0.7040073610005493,
+                "sample_stdev": 0.01115445143992402,
+                "cv_percent": 1.588438627081687,
+                "min": 0.6868701849998615,
+                "max": 0.716993016001652
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:50:01.148559",
+                "duration": 4.438482628000202,
+                "load_avg_1min": 0.95,
+                "uptime": 17954.151461601257
+              }
+            }
+          ]
+        },
+        {
+          "cell": "literal-skewed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe literal if skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.42102582853306864,
+            "median": 0.41566872999828774,
+            "sample_stdev": 0.013859278837105598,
+            "cv_percent": 3.2917882699486327,
+            "min": 0.40584476299773087,
+            "max": 0.4515581679988827
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.4156691261996457,
+                "median": 0.4143243100006657,
+                "sample_stdev": 0.007360595262527236,
+                "cv_percent": 1.7707822877833717,
+                "min": 0.40584476299773087,
+                "max": 0.4255129399971338
+              },
+              "metadata": {
+                "date": "2026-11-11 20:50:04.906859",
+                "duration": 2.717300032996718,
+                "runnable_threads": 1,
+                "uptime": 17957.90975999832
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.4239955131990428,
+                "median": 0.4178153819993895,
+                "sample_stdev": 0.016065637418758594,
+                "cv_percent": 3.7891055255616948,
+                "min": 0.4111445359994832,
+                "max": 0.4515581679988827
+              },
+              "metadata": {
+                "date": "2026-11-11 20:50:13.752352",
+                "duration": 2.82766775699929,
+                "runnable_threads": 2,
+                "uptime": 17966.7553524971
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.4234128462005174,
+                "median": 0.4126820660021622,
+                "sample_stdev": 0.0174923309194438,
+                "cv_percent": 4.131270715192208,
+                "min": 0.4105295190020115,
+                "max": 0.45100143200033926
+              },
+              "metadata": {
+                "date": "2026-11-11 20:50:16.729506",
+                "duration": 2.7541490490002616,
+                "runnable_threads": 1,
+                "uptime": 17969.731884479523
+              }
+            }
+          ]
+        },
+        {
+          "cell": "tuple-mixed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe tuple if mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.8116712419335576,
+            "median": 0.6947974290014827,
+            "sample_stdev": 0.21774931996024452,
+            "cv_percent": 26.82728039514171,
+            "min": 0.6463647950004088,
+            "max": 1.3222489949985174
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6942781774007016,
+                "median": 0.6947974290014827,
+                "sample_stdev": 0.027942576723912222,
+                "cv_percent": 4.024694658922746,
+                "min": 0.654626248000568,
+                "max": 0.7336277360009262
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:50:30.059310",
+                "duration": 4.362196557998686,
+                "load_avg_1min": 0.97,
+                "runnable_threads": 1,
+                "uptime": 17983.06180882454
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.6657466688004205,
+                "median": 0.6631188690007548,
+                "sample_stdev": 0.01367142154660057,
+                "cv_percent": 2.0535471204436515,
+                "min": 0.6463647950004088,
+                "max": 0.6796759540011408
+              },
+              "metadata": {
+                "command_max_rss": 13344768,
+                "date": "2026-11-11 20:50:34.501374",
+                "duration": 4.22728164399814,
+                "load_avg_1min": 0.97,
+                "runnable_threads": 1,
+                "uptime": 17987.503962039948
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 1.0749888795995504,
+                "median": 0.9903695210014121,
+                "sample_stdev": 0.1856606397484845,
+                "cv_percent": 17.270935846112742,
+                "min": 0.8769682349993673,
+                "max": 1.3222489949985174
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:50:50.420369",
+                "duration": 6.631393086001481,
+                "load_avg_1min": 1.14,
+                "runnable_threads": 2,
+                "uptime": 18003.424024105072
+              }
+            }
+          ]
+        },
+        {
+          "cell": "tuple-skewed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe tuple if skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.5794655645338935,
+            "median": 0.590391986999748,
+            "sample_stdev": 0.029038683359235113,
+            "cv_percent": 5.0112871474240315,
+            "min": 0.5236435730002995,
+            "max": 0.6324722820027091
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.584214327200607,
+                "median": 0.5815936969993345,
+                "sample_stdev": 0.03445305616001755,
+                "cv_percent": 5.8973316051845295,
+                "min": 0.535593462001998,
+                "max": 0.6324722820027091
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:50:56.305045",
+                "duration": 3.8201145970015205,
+                "load_avg_1min": 1.28,
+                "uptime": 18009.308196783066
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5794181940007548,
+                "median": 0.594482902000891,
+                "sample_stdev": 0.02575605120431828,
+                "cv_percent": 4.44515748228036,
+                "min": 0.551218319000327,
+                "max": 0.60128756800259
+              },
+              "metadata": {
+                "command_max_rss": 13213696,
+                "date": "2026-11-11 20:51:06.736901",
+                "duration": 3.7451961249971646,
+                "load_avg_1min": 1.24,
+                "uptime": 18019.739630937576
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5747641724003187,
+                "median": 0.5927284999997937,
+                "sample_stdev": 0.03232878915758602,
+                "cv_percent": 5.624705002501316,
+                "min": 0.5236435730002995,
+                "max": 0.5983603679997032
+              },
+              "metadata": {
+                "command_max_rss": 13279232,
+                "date": "2026-11-11 20:51:10.661211",
+                "duration": 3.7057247490010923,
+                "load_avg_1min": 1.22,
+                "uptime": 18023.664226055145
+              }
+            }
+          ]
+        },
+        {
+          "cell": "dataclass-mixed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe dataclass if mixed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.8045569672663987,
+            "median": 0.8015139229974011,
+            "sample_stdev": 0.025228945594619603,
+            "cv_percent": 3.1357562759463358,
+            "min": 0.7789980460001971,
+            "max": 0.8718858060019556
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8099608821990841,
+                "median": 0.8045788179988449,
+                "sample_stdev": 0.023919787388250284,
+                "cv_percent": 2.95320279212829,
+                "min": 0.7789980460001971,
+                "max": 0.8429976439983875
+              },
+              "metadata": {
+                "date": "2026-11-11 20:51:25.368174",
+                "duration": 5.12765901199964,
+                "load_avg_1min": 1.17,
+                "uptime": 18038.373329639435
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.8088568326005771,
+                "median": 0.7929569789994275,
+                "sample_stdev": 0.03658833286801926,
+                "cv_percent": 4.523462174434893,
+                "min": 0.7822350440001173,
+                "max": 0.8718858060019556
+              },
+              "metadata": {
+                "date": "2026-11-11 20:51:30.727163",
+                "duration": 5.115330650998658,
+                "load_avg_1min": 1.16,
+                "uptime": 18043.73028898239
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.794853186999535,
+                "median": 0.7899983770003018,
+                "sample_stdev": 0.01181391095902241,
+                "cv_percent": 1.4863010115891153,
+                "min": 0.781320992999099,
+                "max": 0.8103779019984358
+              },
+              "metadata": {
+                "date": "2026-11-11 20:51:44.940261",
+                "duration": 4.9986804020009,
+                "load_avg_1min": 1.12,
+                "uptime": 18057.943355560303
+              }
+            }
+          ]
+        },
+        {
+          "cell": "dataclass-skewed",
+          "variant": "if",
+          "command": "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-measured-artifacts/dispatch.exe dataclass if skewed 100000 4096",
+          "dispatches_per_command": 409600000,
+          "seconds_per_command": {
+            "n": 15,
+            "mean": 0.5438530790665633,
+            "median": 0.5385469310022017,
+            "sample_stdev": 0.022108035802974848,
+            "cv_percent": 4.065075045804604,
+            "min": 0.5225024499995925,
+            "max": 0.6075023669982329
+          },
+          "measured_worker_runs": 3,
+          "excluded_calibration_runs": 0,
+          "excluded_warmup_values": 3,
+          "run_summaries": [
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5350366564001888,
+                "median": 0.5359184949993505,
+                "sample_stdev": 0.007917486419224715,
+                "cv_percent": 1.4798026124966492,
+                "min": 0.5246702510012256,
+                "max": 0.5455184089987597
+              },
+              "metadata": {
+                "date": "2026-11-11 20:51:49.765212",
+                "duration": 3.4569128500006627,
+                "load_avg_1min": 1.11,
+                "uptime": 18062.768255233765
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5376956084008271,
+                "median": 0.5386170919991855,
+                "sample_stdev": 0.01493596439667383,
+                "cv_percent": 2.7777731793449507,
+                "min": 0.5225024499995925,
+                "max": 0.5603265710014966
+              },
+              "metadata": {
+                "date": "2026-11-11 20:52:01.521638",
+                "duration": 3.474659421997785,
+                "load_avg_1min": 1.09,
+                "uptime": 18074.524197101593
+              }
+            },
+            {
+              "seconds_per_command": {
+                "n": 5,
+                "mean": 0.5588269723986741,
+                "median": 0.5444255779984815,
+                "sample_stdev": 0.03162407622573503,
+                "cv_percent": 5.6590103534183065,
+                "min": 0.5305485459975898,
+                "max": 0.6075023669982329
+              },
+              "metadata": {
+                "date": "2026-11-11 20:52:05.282934",
+                "duration": 3.5459051610014285,
+                "load_avg_1min": 1.09,
+                "uptime": 18078.285202741623
+              }
+            }
+          ]
+        }
+      ],
+      "comparisons": [
+        {
+          "cell": "literal-mixed",
+          "ratio_of_means_if_over_match": 1.066367793584974,
+          "ratio_of_medians_if_over_match": 1.060736476694556
+        },
+        {
+          "cell": "literal-skewed",
+          "ratio_of_means_if_over_match": 1.0403682444136146,
+          "ratio_of_medians_if_over_match": 1.0277082202543892
+        },
+        {
+          "cell": "tuple-mixed",
+          "ratio_of_means_if_over_match": 1.220582081494815,
+          "ratio_of_medians_if_over_match": 1.0602506638085785
+        },
+        {
+          "cell": "tuple-skewed",
+          "ratio_of_means_if_over_match": 1.2762529196346273,
+          "ratio_of_medians_if_over_match": 1.3120721489952243
+        },
+        {
+          "cell": "dataclass-mixed",
+          "ratio_of_means_if_over_match": 1.1911796200379776,
+          "ratio_of_medians_if_over_match": 1.1994935926287473
+        },
+        {
+          "cell": "dataclass-skewed",
+          "ratio_of_means_if_over_match": 0.8983166014613843,
+          "ratio_of_medians_if_over_match": 0.8953741072303244
+        }
+      ],
+      "recorded_manifest": {
+        "status": "passed",
+        "started_utc": "2026-11-11T19:49:32Z",
+        "git_revision": "620c35f42d8c35d7a27341bbe4ba259b043b959d",
+        "controller_sha256": "3f7ea1669ecbc2c5639c3b3fe6131e24e75de31a89d31700c4da045545601042",
+        "executable_sha256": "d95ef2725651c0b377ee5315a97d8943d05dd2e8bb61aa7f304690ccf0e53573",
+        "pyperf_version": "2.11.0",
+        "workload_loops": 100000,
+        "input_size": 4096,
+        "worker_processes": 3,
+        "values_per_worker": 5,
+        "warmups_per_worker": 1,
+        "pyperf_loops": 1,
+        "cpu_affinity": [
+          0
+        ],
+        "load_average_start": [
+          0.92724609375,
+          1.79541015625,
+          2.00927734375
+        ],
+        "scope": "Full AOT process timings; each worker block alternates match/if order. The preflight checksum scales the independently validated CPython controller checksum by the exact linear outer-loop count.",
+        "finished_utc": "2026-11-11T19:52:09Z",
+        "load_average_end": [
+          1.0791015625,
+          1.52001953125,
+          1.86865234375
+        ],
+        "successful_preflight_cases": 12,
+        "recorded_worker_commands": 36
+      },
+      "recorded_suite_metadata": {
+        "match": {
+          "aslr": "Full randomization",
+          "boot_time": "2026-11-11 15:50:47",
+          "cpu_affinity": "0",
+          "cpu_count": 9,
+          "cpu_freq": "0=2300 MHz",
+          "cpu_model_name": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "hostname": "aa52a87b682e",
+          "loops": 1,
+          "perf_version": "2.11.0",
+          "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+          "unit": "second"
+        },
+        "if": {
+          "aslr": "Full randomization",
+          "boot_time": "2026-11-11 15:50:47",
+          "cpu_affinity": "0",
+          "cpu_count": 9,
+          "cpu_freq": "0=2300 MHz",
+          "cpu_model_name": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "hostname": "aa52a87b682e",
+          "loops": 1,
+          "perf_version": "2.11.0",
+          "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+          "unit": "second"
+        }
+      },
+      "evidence": [
+        {
+          "path": "/workspace/scratch/0bc6e8bc1edf/match-evidence-baseline-620c35f/match-pyperf-manifest.json",
+          "bytes": 28842,
+          "sha256": "74e442ed76025ce7aa01ee38645e7fbbd2d43bd40c020eb0d4a38a825cf18c7e"
+        },
+        {
+          "path": "/workspace/scratch/0bc6e8bc1edf/match-evidence-baseline-620c35f/match-pyperf-match.json",
+          "bytes": 6818,
+          "sha256": "71be71fbec0c6eedfb7448e510554d4e4bdbcd8cea0f417ef0a2870412b12721"
+        },
+        {
+          "path": "/workspace/scratch/0bc6e8bc1edf/match-evidence-baseline-620c35f/match-pyperf-if.json",
+          "bytes": 6734,
+          "sha256": "edd1863686487d9d57e92dca1356667723d8c27783998464ebac8ad9af27f43f"
+        }
+      ]
+    },
+    "warnings": [
+      "kernel literal-skewed/jit/match: median below 10 ms; short timing samples are sensitive to scheduling noise.",
+      "kernel literal-skewed/jit/if: CV 22.242% exceeds the analyzer's descriptive 10% flag.",
+      "kernel literal-skewed/jit/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel literal-skewed/aot/match: median below 10 ms; short timing samples are sensitive to scheduling noise.",
+      "kernel literal-skewed/aot/if: median below 10 ms; short timing samples are sensitive to scheduling noise.",
+      "kernel tuple-skewed/jit/match: CV 15.897% exceeds the analyzer's descriptive 10% flag.",
+      "kernel tuple-skewed/jit/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel tuple-skewed/jit/if: CV 15.813% exceeds the analyzer's descriptive 10% flag.",
+      "kernel tuple-skewed/jit/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel tuple-skewed/aot/match: median below 10 ms; short timing samples are sensitive to scheduling noise.",
+      "kernel dataclass-mixed/jit/match: CV 19.589% exceeds the analyzer's descriptive 10% flag.",
+      "kernel dataclass-mixed/jit/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel dataclass-mixed/jit/if: CV 16.356% exceeds the analyzer's descriptive 10% flag.",
+      "kernel dataclass-mixed/jit/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel dataclass-skewed/cpython/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel dataclass-skewed/jit/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel dataclass-skewed/aot/match: CV 19.656% exceeds the analyzer's descriptive 10% flag.",
+      "kernel dataclass-skewed/aot/match: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "kernel dataclass-skewed/aot/if: CV 18.500% exceeds the analyzer's descriptive 10% flag.",
+      "kernel dataclass-skewed/aot/if: maximum exceeds the median by more than 20%; inspect the retained observations.",
+      "pyperf tuple-mixed/if: CV 26.827% exceeds the analyzer's descriptive 10% flag.",
+      "pyperf tuple-mixed/if: maximum exceeds the median by more than 20%; inspect the retained observations."
+    ]
+  },
+  "comparison": {
+    "scope": "Descriptive comparison of separate sessions, normalized by dispatch count; not a paired before/after experiment or confidence interval.",
+    "native_kernel_rows": [
+      {
+        "cell": "literal-mixed",
+        "mode": "jit",
+        "baseline_paired_if_over_match_median": 1.225509054400283,
+        "final_paired_if_over_match_median": 1.119431164375559,
+        "baseline_over_final_match_ns_per_dispatch": 1.0604457937258849,
+        "baseline_over_final_if_ns_per_dispatch": 1.148076154773736
+      },
+      {
+        "cell": "literal-mixed",
+        "mode": "aot",
+        "baseline_paired_if_over_match_median": 1.1058871874394263,
+        "final_paired_if_over_match_median": 1.3397759751579301,
+        "baseline_over_final_match_ns_per_dispatch": 0.8831135884291601,
+        "baseline_over_final_if_ns_per_dispatch": 0.7195461626638315
+      },
+      {
+        "cell": "literal-skewed",
+        "mode": "jit",
+        "baseline_paired_if_over_match_median": 1.3499410509039143,
+        "final_paired_if_over_match_median": 1.1091579161451253,
+        "baseline_over_final_match_ns_per_dispatch": 1.14429508029232,
+        "baseline_over_final_if_ns_per_dispatch": 1.3570065973922563
+      },
+      {
+        "cell": "literal-skewed",
+        "mode": "aot",
+        "baseline_paired_if_over_match_median": 0.976665796153519,
+        "final_paired_if_over_match_median": 1.8994429848997536,
+        "baseline_over_final_match_ns_per_dispatch": 0.972463378514154,
+        "baseline_over_final_if_ns_per_dispatch": 0.5081371754985495
+      },
+      {
+        "cell": "tuple-mixed",
+        "mode": "jit",
+        "baseline_paired_if_over_match_median": 0.2543344527580078,
+        "final_paired_if_over_match_median": 0.4738578055238094,
+        "baseline_over_final_match_ns_per_dispatch": 1.7218115794713558,
+        "baseline_over_final_if_ns_per_dispatch": 0.9533140451325407
+      },
+      {
+        "cell": "tuple-mixed",
+        "mode": "aot",
+        "baseline_paired_if_over_match_median": 1.006823628566337,
+        "final_paired_if_over_match_median": 1.076917299803932,
+        "baseline_over_final_match_ns_per_dispatch": 0.8311915960443864,
+        "baseline_over_final_if_ns_per_dispatch": 0.8082212628894891
+      },
+      {
+        "cell": "tuple-skewed",
+        "mode": "jit",
+        "baseline_paired_if_over_match_median": 0.32110455713841224,
+        "final_paired_if_over_match_median": 0.6322837582369525,
+        "baseline_over_final_match_ns_per_dispatch": 1.879633985492233,
+        "baseline_over_final_if_ns_per_dispatch": 1.0025789295342924
+      },
+      {
+        "cell": "tuple-skewed",
+        "mode": "aot",
+        "baseline_paired_if_over_match_median": 1.3389136608068137,
+        "final_paired_if_over_match_median": 1.059624499103645,
+        "baseline_over_final_match_ns_per_dispatch": 0.8725171091162718,
+        "baseline_over_final_if_ns_per_dispatch": 1.1134767960227199
+      },
+      {
+        "cell": "dataclass-mixed",
+        "mode": "jit",
+        "baseline_paired_if_over_match_median": 0.2236348725579412,
+        "final_paired_if_over_match_median": 0.5358207777532391,
+        "baseline_over_final_match_ns_per_dispatch": 2.5973532801213235,
+        "baseline_over_final_if_ns_per_dispatch": 0.967367069798012
+      },
+      {
+        "cell": "dataclass-mixed",
+        "mode": "aot",
+        "baseline_paired_if_over_match_median": 1.307339305166947,
+        "final_paired_if_over_match_median": 0.8858502034838829,
+        "baseline_over_final_match_ns_per_dispatch": 0.8307264393740796,
+        "baseline_over_final_if_ns_per_dispatch": 1.2061336602686157
+      },
+      {
+        "cell": "dataclass-skewed",
+        "mode": "jit",
+        "baseline_paired_if_over_match_median": 0.44757926296537986,
+        "final_paired_if_over_match_median": 0.49556638021733823,
+        "baseline_over_final_match_ns_per_dispatch": 1.925444278510525,
+        "baseline_over_final_if_ns_per_dispatch": 1.684352902787533
+      },
+      {
+        "cell": "dataclass-skewed",
+        "mode": "aot",
+        "baseline_paired_if_over_match_median": 0.922642061013857,
+        "final_paired_if_over_match_median": 1.1058472667610708,
+        "baseline_over_final_match_ns_per_dispatch": 1.1534102046134793,
+        "baseline_over_final_if_ns_per_dispatch": 0.9152252960082358
+      }
+    ]
+  }
+}

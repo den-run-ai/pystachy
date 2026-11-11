@@ -1,0 +1,443 @@
+{
+  "as_of_utc": "2026-11-11 20:41:49 UTC",
+  "repository": "den-run-ai/pystachy",
+  "pull_request": 1272,
+  "pr_url": "https://github.com/den-run-ai/pystachy/pull/1272",
+  "head_sha": "601807e3686fa83a362cceb0d962d8e6332fbc34",
+  "base_sha": "a339ab3748a59d6e4da899f0f3f2d5965b95e5ba",
+  "main_sha": "a339ab3748a59d6e4da899f0f3f2d5965b95e5ba",
+  "tree_sha": "b28d80a94d0ac11e18cd6da7c6586e704a757bfd",
+  "merge_ref_sha": "d7572fad12cde21f0ff34d98e417e1a7d88826dd",
+  "draft": true,
+  "mergeable": true,
+  "qualification": {
+    "current_head_ci_passed": false,
+    "current_head_ci_complete": false,
+    "verification_aggregate": "not created/not run",
+    "merge_ready": false,
+    "reason": "Current integration-head workflows are queued with zero jobs. Previous-head CI is incomplete after artifact-upload failures and skipped/pending stages; passing previous-head checks do not satisfy current-head gates."
+  },
+  "current_workflows": [
+    {
+      "name": "CI",
+      "run_id": 43096685652,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43096685652",
+      "head_sha": "601807e3686fa83a362cceb0d962d8e6332fbc34",
+      "status": "queued",
+      "conclusion": null,
+      "total_jobs": 0,
+      "returned_jobs": 0
+    },
+    {
+      "name": "Lint",
+      "run_id": 43096685712,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43096685712",
+      "head_sha": "601807e3686fa83a362cceb0d962d8e6332fbc34",
+      "status": "queued",
+      "conclusion": null,
+      "total_jobs": 0,
+      "returned_jobs": 0
+    },
+    {
+      "name": "Performance smoke",
+      "run_id": 43096685661,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43096685661",
+      "head_sha": "601807e3686fa83a362cceb0d962d8e6332fbc34",
+      "status": "queued",
+      "conclusion": null,
+      "total_jobs": 0,
+      "returned_jobs": 0
+    }
+  ],
+  "review_state": {
+    "submitted_reviews": 0,
+    "review_threads": 0,
+    "discussion_entries": 0
+  },
+  "previous_dec4d9f1": {
+    "head_sha": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+    "run_id": 43092514310,
+    "url": "https://github.com/den-run-ai/pystachy/actions/runs/43092514310",
+    "status": "queued",
+    "conclusion": null,
+    "total_jobs": 15,
+    "returned_jobs": 15,
+    "job_status_counts": {
+      "success": 2,
+      "in_progress": 4,
+      "queued": 9
+    },
+    "affected_jobs": [
+      {
+        "id": 130778605709,
+        "name": "distribution (ubuntu-24.04)",
+        "status": "in_progress",
+        "conclusion": null,
+        "failed_steps": [
+          {
+            "name": "Retain Linux netio reports",
+            "number": 11,
+            "started_at": "2026-11-11T20:20:06Z",
+            "completed_at": "2026-11-11T20:22:06Z"
+          }
+        ],
+        "skipped_steps": [
+          {
+            "name": "Bootstrap on macOS ARM64",
+            "number": 7
+          },
+          {
+            "name": "Native kqueue and pipe parity",
+            "number": 12
+          },
+          {
+            "name": "Retain native kqueue reports",
+            "number": 13
+          },
+          {
+            "name": "Install the compiler with pip and uv",
+            "number": 14
+          },
+          {
+            "name": "Source packages and native release archive smoke",
+            "number": 15
+          },
+          {
+            "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "number": 29
+          }
+        ],
+        "passed_steps": [
+          {
+            "name": "Set up job",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "number": 3
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "number": 4
+          },
+          {
+            "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "number": 5
+          },
+          {
+            "name": "Reuse verified Linux compiler",
+            "number": 6
+          },
+          {
+            "name": "Installer and hosted/native JIT/AOT smoke",
+            "number": 8
+          },
+          {
+            "name": "Install sanitizer runtime for netio ownership",
+            "number": 9
+          },
+          {
+            "name": "Hosted and native epoll, pipes and ownership",
+            "number": 10
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "number": 30
+          },
+          {
+            "name": "Complete job",
+            "number": 31
+          }
+        ]
+      },
+      {
+        "id": 130778605765,
+        "name": "native JIT and variants (worker 1)",
+        "status": "in_progress",
+        "conclusion": null,
+        "failed_steps": [
+          {
+            "name": "Upload native JIT report",
+            "number": 7,
+            "started_at": "2026-11-11T20:18:18Z",
+            "completed_at": "2026-11-11T20:29:34Z"
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "number": 10,
+            "started_at": "2026-11-11T20:29:34Z",
+            "completed_at": "2026-11-11T20:29:34Z"
+          }
+        ],
+        "skipped_steps": [
+          {
+            "name": "Sampled configurations on representative and changed cases",
+            "number": 8
+          },
+          {
+            "name": "Native program cache invalidation and execution",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "number": 19
+          }
+        ],
+        "passed_steps": [
+          {
+            "name": "Set up job",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "number": 3
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "number": 4
+          },
+          {
+            "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "number": 5
+          },
+          {
+            "name": "Complete native JIT corpus half",
+            "number": 6
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "number": 20
+          },
+          {
+            "name": "Complete job",
+            "number": 21
+          }
+        ]
+      },
+      {
+        "id": 130778605808,
+        "name": "native JIT and variants (worker 0)",
+        "status": "in_progress",
+        "conclusion": null,
+        "failed_steps": [
+          {
+            "name": "Upload native JIT report",
+            "number": 7,
+            "started_at": "2026-11-11T20:19:55Z",
+            "completed_at": "2026-11-11T20:31:22Z"
+          },
+          {
+            "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "number": 10,
+            "started_at": "2026-11-11T20:31:22Z",
+            "completed_at": "2026-11-11T20:31:22Z"
+          }
+        ],
+        "skipped_steps": [
+          {
+            "name": "Sampled configurations on representative and changed cases",
+            "number": 8
+          },
+          {
+            "name": "Native program cache invalidation and execution",
+            "number": 9
+          },
+          {
+            "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "number": 19
+          }
+        ],
+        "passed_steps": [
+          {
+            "name": "Set up job",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "number": 3
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "number": 4
+          },
+          {
+            "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "number": 5
+          },
+          {
+            "name": "Complete native JIT corpus half",
+            "number": 6
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "number": 20
+          },
+          {
+            "name": "Complete job",
+            "number": 21
+          }
+        ]
+      },
+      {
+        "id": 130778605821,
+        "name": "distribution (macos-15)",
+        "status": "in_progress",
+        "conclusion": null,
+        "failed_steps": [
+          {
+            "name": "Retain native kqueue reports",
+            "number": 13,
+            "started_at": "2026-11-11T20:21:12Z",
+            "completed_at": "2026-11-11T20:23:12Z"
+          }
+        ],
+        "skipped_steps": [
+          {
+            "name": "Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "number": 5
+          },
+          {
+            "name": "Reuse verified Linux compiler",
+            "number": 6
+          },
+          {
+            "name": "Install sanitizer runtime for netio ownership",
+            "number": 9
+          },
+          {
+            "name": "Hosted and native epoll, pipes and ownership",
+            "number": 10
+          },
+          {
+            "name": "Retain Linux netio reports",
+            "number": 11
+          },
+          {
+            "name": "Install the compiler with pip and uv",
+            "number": 14
+          },
+          {
+            "name": "Source packages and native release archive smoke",
+            "number": 15
+          },
+          {
+            "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "number": 29
+          }
+        ],
+        "passed_steps": [
+          {
+            "name": "Set up job",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "number": 2
+          },
+          {
+            "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+            "number": 3
+          },
+          {
+            "name": "Run tools/setup.sh --minimal",
+            "number": 4
+          },
+          {
+            "name": "Bootstrap on macOS ARM64",
+            "number": 7
+          },
+          {
+            "name": "Installer and hosted/native JIT/AOT smoke",
+            "number": 8
+          },
+          {
+            "name": "Native kqueue and pipe parity",
+            "number": 12
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "number": 30
+          },
+          {
+            "name": "Complete job",
+            "number": 31
+          }
+        ]
+      }
+    ],
+    "queued_groups": [
+      {
+        "id": 130778605970,
+        "name": "verify (hosted, x86_64)"
+      },
+      {
+        "id": 130778605976,
+        "name": "verify (safety-0, x86_64)"
+      },
+      {
+        "id": 130778605999,
+        "name": "verify (opt-in, x86_64)"
+      },
+      {
+        "id": 130778606022,
+        "name": "verify (cache-gc, x86_64)"
+      },
+      {
+        "id": 130778606044,
+        "name": "verify (native-aot-0, x86_64)"
+      },
+      {
+        "id": 130778606047,
+        "name": "verify (safety-1, x86_64)"
+      },
+      {
+        "id": 130778606080,
+        "name": "verify (native-aot-1, x86_64)"
+      },
+      {
+        "id": 130778606119,
+        "name": "verify (contracts, x86_64)"
+      },
+      {
+        "id": 130778606345,
+        "name": "verify (benchmarks, x86_64)"
+      }
+    ],
+    "completed_prior_head_workflows": [
+      {
+        "name": "Lint",
+        "run_id": 43092514254,
+        "conclusion": "success",
+        "scope": "CPython3.13.16:2300 recordings,130 deviations,11 library files;0 failures"
+      },
+      {
+        "name": "Performance smoke",
+        "run_id": 43092514252,
+        "conclusion": "success",
+        "scope": "11 workloads,49 reported metrics all ok"
+      }
+    ],
+    "log_retrieval": "Two attempts to retrieve Linux distribution job logs returned ReadTimeout; exact failed/skipped/passed steps are retained from GitHub job JSON.",
+    "do_not_rerun": true
+  },
+  "evidence_integrity": {
+    "jobs_query": "per_page=100",
+    "all_returned_job_counts_match_total": true,
+    "source_reference_warning": "Workflow top-level head_sha identifies the run source. Nested pull_requests head/base can reflect the PR's later current state.",
+    "manual_reruns": 0,
+    "manual_cancellations": 0,
+    "source_or_workflow_changes_by_monitor": 0
+  }
+}

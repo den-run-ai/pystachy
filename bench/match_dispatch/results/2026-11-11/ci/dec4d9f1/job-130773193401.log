@@ -1,0 +1,562 @@
+﻿2026-11-11T20:01:35.2347522Z Current runner version: '2.338.2'
+2026-11-11T20:01:35.2378371Z ##[group]Runner Image Provisioner
+2026-11-11T20:01:35.2379672Z Hosted Compute Agent
+2026-11-11T20:01:35.2380316Z Version: 20261028.624
+2026-11-11T20:01:35.2380975Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-11T20:01:35.2381833Z Build Date: 2026-10-28T21:51:42Z
+2026-11-11T20:01:35.2382581Z Worker ID: {eb2e8c36-886c-4003-823f-20d7d412a458}
+2026-11-11T20:01:35.2383458Z Region: northcentralus
+2026-11-11T20:01:35.2384474Z Cloud: Azure
+2026-11-11T20:01:35.2385053Z ##[endgroup]
+2026-11-11T20:01:35.2387699Z ##[group]Operating System
+2026-11-11T20:01:35.2388485Z Ubuntu
+2026-11-11T20:01:35.2389164Z 24.04.5
+2026-11-11T20:01:35.2389727Z LTS
+2026-11-11T20:01:35.2390279Z ##[endgroup]
+2026-11-11T20:01:35.2390954Z ##[group]Runner Image
+2026-11-11T20:01:35.2391646Z Image: ubuntu-24.04-arm
+2026-11-11T20:01:35.2392253Z Version: 20261101.172.1
+2026-11-11T20:01:35.2393773Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24-arm64/20261101.172/images/ubuntu/Ubuntu2404-Arm64-Readme.md
+2026-11-11T20:01:35.2395911Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24-arm64%2F20261101.172
+2026-11-11T20:01:35.2396940Z ##[endgroup]
+2026-11-11T20:01:35.2398284Z ##[group]GITHUB_TOKEN Permissions
+2026-11-11T20:01:35.2401759Z Contents: read
+2026-11-11T20:01:35.2402368Z Metadata: read
+2026-11-11T20:01:35.2403187Z ##[endgroup]
+2026-11-11T20:01:35.2406781Z Secret source: Actions
+2026-11-11T20:01:35.2407958Z Cache mode: write
+2026-11-11T20:01:35.2408768Z Prepare workflow directory
+2026-11-11T20:01:35.3015998Z Prepare all required actions
+2026-11-11T20:01:35.3067472Z Getting action download info
+2026-11-11T20:01:35.5318248Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-11T20:01:35.6525410Z Download action repository 'actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0' (SHA:6d4fd22b20465ccc0f7354476588e8df7c9ca0e0)
+2026-11-11T20:01:35.9760159Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-11T20:01:36.1389005Z Complete job name: verify (bootstrap, aarch64)
+2026-11-11T20:01:36.2370338Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-11T20:01:36.2372042Z with:
+2026-11-11T20:01:36.2372721Z   persist-credentials: false
+2026-11-11T20:01:36.2373371Z   fetch-depth: 2
+2026-11-11T20:01:36.2374310Z   repository: den-run-ai/pystachy
+2026-11-11T20:01:36.2378217Z   token: ***
+2026-11-11T20:01:36.2378929Z   ssh-strict: true
+2026-11-11T20:01:36.2379566Z   ssh-user: git
+2026-11-11T20:01:36.2380118Z   clean: true
+2026-11-11T20:01:36.2380778Z   sparse-checkout-cone-mode: true
+2026-11-11T20:01:36.2381562Z   fetch-tags: false
+2026-11-11T20:01:36.2382132Z   show-progress: true
+2026-11-11T20:01:36.2382831Z   lfs: false
+2026-11-11T20:01:36.2383385Z   submodules: false
+2026-11-11T20:01:36.2384168Z   set-safe-directory: true
+2026-11-11T20:01:36.2384909Z   allow-unsafe-pr-checkout: false
+2026-11-11T20:01:36.2386105Z env:
+2026-11-11T20:01:36.2386896Z   PYSTACHY_JOBS: 4
+2026-11-11T20:01:36.2387688Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:01:36.2388653Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:01:36.2389454Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:36.2390184Z ##[endgroup]
+2026-11-11T20:01:36.3326919Z Syncing repository: den-run-ai/pystachy
+2026-11-11T20:01:36.3329384Z ##[group]Getting Git version info
+2026-11-11T20:01:36.3330578Z Working directory is '/home/runner/work/pystachy/pystachy'
+2026-11-11T20:01:36.3331885Z [command]/usr/bin/git version
+2026-11-11T20:01:36.3361308Z git version 2.56.0
+2026-11-11T20:01:36.3381535Z ##[endgroup]
+2026-11-11T20:01:36.3394464Z Temporarily overriding HOME='/home/runner/work/_temp/bdc9d573-a3dc-4a19-b3cd-c8f731ee981e' before making global git config changes
+2026-11-11T20:01:36.3400279Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-11T20:01:36.3404587Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-11T20:01:36.3440236Z Deleting the contents of '/home/runner/work/pystachy/pystachy'
+2026-11-11T20:01:36.3444532Z ##[group]Determining repository object format
+2026-11-11T20:01:36.3446144Z ##[endgroup]
+2026-11-11T20:01:36.3447343Z ##[group]Initializing the repository
+2026-11-11T20:01:36.3451625Z [command]/usr/bin/git init /home/runner/work/pystachy/pystachy
+2026-11-11T20:01:36.3549821Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-11T20:01:36.3551188Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-11T20:01:36.3552534Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-11T20:01:36.3553418Z hint: call:
+2026-11-11T20:01:36.3553973Z hint:
+2026-11-11T20:01:36.3555037Z hint: 	git config --global init.defaultBranch <name>
+2026-11-11T20:01:36.3555809Z hint:
+2026-11-11T20:01:36.3557214Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-11T20:01:36.3558369Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-11T20:01:36.3559282Z hint:
+2026-11-11T20:01:36.3559918Z hint: 	git branch -m <name>
+2026-11-11T20:01:36.3560534Z hint:
+2026-11-11T20:01:36.3561335Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-11T20:01:36.3566983Z Initialized empty Git repository in /home/runner/work/pystachy/pystachy/.git/
+2026-11-11T20:01:36.3588043Z [command]/usr/bin/git remote add origin https://github.com/den-run-ai/pystachy
+2026-11-11T20:01:36.3622411Z ##[endgroup]
+2026-11-11T20:01:36.3623453Z ##[group]Disabling automatic garbage collection
+2026-11-11T20:01:36.3625521Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-11T20:01:36.3663894Z ##[endgroup]
+2026-11-11T20:01:36.3665226Z ##[group]Setting up auth
+2026-11-11T20:01:36.3666038Z Removing SSH command configuration
+2026-11-11T20:01:36.3667817Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-11T20:01:36.3708186Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-11T20:01:36.4043075Z Removing HTTP extra header
+2026-11-11T20:01:36.4048908Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-11T20:01:36.4082820Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-11T20:01:36.4312464Z Removing includeIf entries pointing to credentials config files
+2026-11-11T20:01:36.4317968Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-11T20:01:36.4353872Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-11T20:01:36.4597843Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-11T20:01:36.4641061Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git.path /home/runner/work/_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config
+2026-11-11T20:01:36.4674792Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config
+2026-11-11T20:01:36.4707965Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config
+2026-11-11T20:01:36.4746014Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config
+2026-11-11T20:01:36.4779392Z ##[endgroup]
+2026-11-11T20:01:36.4780162Z ##[group]Fetching the repository
+2026-11-11T20:01:36.4784935Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=2 origin +eec775a41eed1bf730a07bc41e4a5c278ed8398e:refs/remotes/pull/1272/merge
+2026-11-11T20:01:37.6875556Z From https://github.com/den-run-ai/pystachy
+2026-11-11T20:01:37.6877191Z  * [new ref]         eec775a41eed1bf730a07bc41e4a5c278ed8398e -> pull/1272/merge
+2026-11-11T20:01:37.6881426Z ##[endgroup]
+2026-11-11T20:01:37.6883724Z ##[group]Determining the checkout info
+2026-11-11T20:01:37.6885555Z ##[endgroup]
+2026-11-11T20:01:37.6886405Z [command]/usr/bin/git sparse-checkout disable
+2026-11-11T20:01:37.6930433Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-11T20:01:37.6964319Z ##[group]Checking out the ref
+2026-11-11T20:01:37.6967657Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/1272/merge
+2026-11-11T20:01:37.9892974Z Note: switching to 'refs/remotes/pull/1272/merge'.
+2026-11-11T20:01:37.9893549Z 
+2026-11-11T20:01:37.9893935Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-11T20:01:37.9894943Z changes and commit them, and you can discard any commits you make in this
+2026-11-11T20:01:37.9895644Z state without impacting any branches by switching back to a branch.
+2026-11-11T20:01:37.9896042Z 
+2026-11-11T20:01:37.9896346Z If you want to create a new branch to retain commits you create, you may
+2026-11-11T20:01:37.9896986Z do so (now or later) by using -c with the switch command. Example:
+2026-11-11T20:01:37.9897331Z 
+2026-11-11T20:01:37.9897516Z   git switch -c <new-branch-name>
+2026-11-11T20:01:37.9897773Z 
+2026-11-11T20:01:37.9897988Z Or undo this operation with:
+2026-11-11T20:01:37.9898225Z 
+2026-11-11T20:01:37.9898387Z   git switch -
+2026-11-11T20:01:37.9898681Z 
+2026-11-11T20:01:37.9899052Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-11T20:01:37.9899442Z 
+2026-11-11T20:01:37.9900331Z HEAD is now at eec775a Merge dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6 into b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:01:37.9906614Z ##[endgroup]
+2026-11-11T20:01:37.9952396Z [command]/usr/bin/git log -1 --format=%H
+2026-11-11T20:01:37.9981762Z eec775a41eed1bf730a07bc41e4a5c278ed8398e
+2026-11-11T20:01:37.9990255Z ##[group]Removing auth
+2026-11-11T20:01:37.9991001Z Removing SSH command configuration
+2026-11-11T20:01:37.9994535Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-11T20:01:38.0028866Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-11T20:01:38.0275729Z Removing HTTP extra header
+2026-11-11T20:01:38.0278611Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-11T20:01:38.0312582Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-11T20:01:38.0540984Z Removing includeIf entries pointing to credentials config files
+2026-11-11T20:01:38.0543145Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-11T20:01:38.0569649Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-11T20:01:38.0570463Z includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-11T20:01:38.0571115Z includeif.gitdir:/github/workspace/.git.path
+2026-11-11T20:01:38.0571699Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-11T20:01:38.0578350Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path
+2026-11-11T20:01:38.0607996Z /home/runner/work/_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config
+2026-11-11T20:01:38.0618241Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-861612a2\-b279\-4411\-8858\-5f07bb7b4704\.config
+2026-11-11T20:01:38.0658420Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path
+2026-11-11T20:01:38.0684561Z /home/runner/work/_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config
+2026-11-11T20:01:38.0693463Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/pystachy/pystachy/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-861612a2\-b279\-4411\-8858\-5f07bb7b4704\.config
+2026-11-11T20:01:38.0733430Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-11T20:01:38.0758691Z /github/runner_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config
+2026-11-11T20:01:38.0766068Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-861612a2\-b279\-4411\-8858\-5f07bb7b4704\.config
+2026-11-11T20:01:38.0799630Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-11T20:01:38.0825521Z /github/runner_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config
+2026-11-11T20:01:38.0833342Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-861612a2\-b279\-4411\-8858\-5f07bb7b4704\.config
+2026-11-11T20:01:38.0869326Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-11T20:01:38.1101111Z Removing credentials config '/home/runner/work/_temp/git-credentials-861612a2-b279-4411-8858-5f07bb7b4704.config'
+2026-11-11T20:01:38.1110423Z ##[endgroup]
+2026-11-11T20:01:38.1327709Z ##[group]Run plan=$(python3 tools/ci_gate.py plan "$GITHUB_EVENT_NAME" "$CI_EVENT_BASE_SHA" "$GITHUB_SHA" "$CI_HEAD_SHA")
+2026-11-11T20:01:38.1328807Z [36;1mplan=$(python3 tools/ci_gate.py plan "$GITHUB_EVENT_NAME" "$CI_EVENT_BASE_SHA" "$GITHUB_SHA" "$CI_HEAD_SHA")[0m
+2026-11-11T20:01:38.1329432Z [36;1mbase=[0m
+2026-11-11T20:01:38.1329925Z [36;1mif [ "$GITHUB_EVENT_NAME" = pull_request ]; then base=$(git rev-parse HEAD^1); fi[0m
+2026-11-11T20:01:38.1330608Z [36;1mprintf 'kind=%s\nplan_%s=%s\n' "$plan" "$CI_MACHINE" "$plan" >> "$GITHUB_OUTPUT"[0m
+2026-11-11T20:01:38.1331186Z [36;1mprintf 'base=%s\n' "$base" >> "$GITHUB_OUTPUT"[0m
+2026-11-11T20:01:38.1331653Z [36;1mprintf 'Verification plan: %s\n' "$plan"[0m
+2026-11-11T20:01:38.1490780Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:01:38.1491242Z env:
+2026-11-11T20:01:38.1491559Z   PYSTACHY_JOBS: 4
+2026-11-11T20:01:38.1491958Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:01:38.1492571Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:01:38.1493024Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:38.1493401Z   CI_MACHINE: aarch64
+2026-11-11T20:01:38.1493723Z ##[endgroup]
+2026-11-11T20:01:38.1960750Z Verification plan: code
+2026-11-11T20:01:38.2121931Z ##[group]Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+2026-11-11T20:01:38.2122533Z with:
+2026-11-11T20:01:38.2122881Z   python-version-file: .python-version
+2026-11-11T20:01:38.2123279Z   check-latest: false
+2026-11-11T20:01:38.2126193Z   token: ***
+2026-11-11T20:01:38.2126656Z   mirror: https://raw.githubusercontent.com/actions/python-versions/main
+2026-11-11T20:01:38.2127180Z   update-environment: true
+2026-11-11T20:01:38.2127542Z   allow-prereleases: false
+2026-11-11T20:01:38.2127891Z   freethreaded: false
+2026-11-11T20:01:38.2128220Z env:
+2026-11-11T20:01:38.2128513Z   PYSTACHY_JOBS: 4
+2026-11-11T20:01:38.2128897Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:01:38.2129834Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:01:38.2130284Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:38.2130659Z ##[endgroup]
+2026-11-11T20:01:38.3112588Z Resolved .python-version as 3.13.16
+2026-11-11T20:01:38.3113687Z ##[group]Installed versions
+2026-11-11T20:01:38.3125916Z Version 3.13.16 was not found in the local cache
+2026-11-11T20:01:39.1606953Z Version 3.13.16 is available for downloading
+2026-11-11T20:01:39.1607915Z Download from "https://github.com/actions/python-versions/releases/download/3.13.16-36805956071/python-3.13.16-linux-24.04-arm64.tar.gz"
+2026-11-11T20:01:39.7123019Z Extract downloaded archive
+2026-11-11T20:01:39.7231047Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/4ddea170-43a8-44ef-a22a-459adba1b41e -f /home/runner/work/_temp/d1f19194-b4c3-4670-ad54-bbc3ae134020
+2026-11-11T20:01:41.3082819Z Execute installation script
+2026-11-11T20:01:41.3176182Z Check if Python hostedtoolcache folder exist...
+2026-11-11T20:01:41.3176962Z Create Python 3.13.16 folder
+2026-11-11T20:01:41.3197552Z Copy Python binaries to hostedtoolcache folder
+2026-11-11T20:01:41.5729096Z Create additional symlinks (Required for the UsePythonVersion Azure Pipelines task and the setup-python GitHub Action)
+2026-11-11T20:01:41.5769033Z Upgrading pip...
+2026-11-11T20:01:42.9964654Z Collecting pip
+2026-11-11T20:01:43.0513174Z Downloading pip-26.3-py3-none-any.whl.metadata (4.6 kB)
+2026-11-11T20:01:43.0613562Z Downloading pip-26.3-py3-none-any.whl (2.0 MB)
+2026-11-11T20:01:43.1058287Z ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.0/2.0 MB 82.6 MB/s  0:00:00
+2026-11-11T20:01:43.1058841Z 
+2026-11-11T20:01:43.1827481Z Installing collected packages: pip
+2026-11-11T20:01:43.1828554Z Attempting uninstall: pip
+2026-11-11T20:01:43.1851697Z Found existing installation: pip 26.2.1
+2026-11-11T20:01:43.2069870Z Uninstalling pip-26.2.1:
+2026-11-11T20:01:43.2113653Z Successfully uninstalled pip-26.2.1
+2026-11-11T20:01:44.0312936Z Successfully installed pip-26.3
+2026-11-11T20:01:44.0928853Z Create complete file
+2026-11-11T20:01:44.0963960Z Successfully set up CPython (3.13.16)
+2026-11-11T20:01:44.0965226Z ##[endgroup]
+2026-11-11T20:01:44.1106572Z ##[group]Run if [ "$ARM_PR" = true ]; then tools/setup.sh --verify; else tools/setup.sh --minimal; fi
+2026-11-11T20:01:44.1107224Z [36;1mif [ "$ARM_PR" = true ]; then tools/setup.sh --verify; else tools/setup.sh --minimal; fi[0m
+2026-11-11T20:01:44.1159427Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:01:44.1159697Z env:
+2026-11-11T20:01:44.1159865Z   PYSTACHY_JOBS: 4
+2026-11-11T20:01:44.1160140Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:01:44.1160488Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:01:44.1160817Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:01:44.1161120Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:01:44.1161541Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-11T20:01:44.1161966Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:01:44.1162326Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:01:44.1162736Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:01:44.1163107Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib
+2026-11-11T20:01:44.1163406Z   ARM_PR: true
+2026-11-11T20:01:44.1163586Z ##[endgroup]
+2026-11-11T20:01:45.5362799Z Get:1 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+2026-11-11T20:01:45.5688562Z Hit:2 http://ports.ubuntu.com/ubuntu-ports noble InRelease
+2026-11-11T20:01:45.5905736Z Get:3 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [694 kB]
+2026-11-11T20:01:45.5949368Z Get:4 http://ports.ubuntu.com/ubuntu-ports noble-updates InRelease [126 kB]
+2026-11-11T20:01:45.6032491Z Get:5 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [764 kB]
+2026-11-11T20:01:45.6111518Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble/main armhf Packages [12.6 kB]
+2026-11-11T20:01:45.7041910Z Get:7 http://ports.ubuntu.com/ubuntu-ports noble-backports InRelease [126 kB]
+2026-11-11T20:01:45.7468458Z Get:8 http://ports.ubuntu.com/ubuntu-ports noble-security InRelease [126 kB]
+2026-11-11T20:01:45.7873088Z Get:9 http://ports.ubuntu.com/ubuntu-ports noble-updates/main arm64 Packages [1503 kB]
+2026-11-11T20:01:45.8981308Z Get:10 http://ports.ubuntu.com/ubuntu-ports noble-updates/main Translation-en [315 kB]
+2026-11-11T20:01:45.9262812Z Get:11 http://ports.ubuntu.com/ubuntu-ports noble-updates/universe arm64 Packages [1762 kB]
+2026-11-11T20:01:45.9716110Z Get:12 http://ports.ubuntu.com/ubuntu-ports noble-updates/universe Translation-en [344 kB]
+2026-11-11T20:01:45.9995416Z Get:13 http://ports.ubuntu.com/ubuntu-ports noble-updates/restricted arm64 Packages [2790 kB]
+2026-11-11T20:01:46.0493116Z Get:14 http://ports.ubuntu.com/ubuntu-ports noble-updates/restricted Translation-en [429 kB]
+2026-11-11T20:01:46.0768660Z Get:15 http://ports.ubuntu.com/ubuntu-ports noble-updates/multiverse Translation-en [14.3 kB]
+2026-11-11T20:01:46.1026816Z Get:16 http://ports.ubuntu.com/ubuntu-ports noble-security/main arm64 Packages [1220 kB]
+2026-11-11T20:01:46.1348838Z Get:17 http://ports.ubuntu.com/ubuntu-ports noble-security/main Translation-en [234 kB]
+2026-11-11T20:01:46.1613863Z Get:18 http://ports.ubuntu.com/ubuntu-ports noble-security/universe arm64 Packages [1312 kB]
+2026-11-11T20:01:46.2603375Z Get:19 http://ports.ubuntu.com/ubuntu-ports noble-security/universe Translation-en [248 kB]
+2026-11-11T20:01:46.2869281Z Get:20 http://ports.ubuntu.com/ubuntu-ports noble-security/restricted arm64 Packages [2596 kB]
+2026-11-11T20:01:46.3281849Z Get:21 http://ports.ubuntu.com/ubuntu-ports noble-security/restricted Translation-en [396 kB]
+2026-11-11T20:01:46.3554611Z Get:22 http://ports.ubuntu.com/ubuntu-ports noble-security/multiverse arm64 Packages [84.5 kB]
+2026-11-11T20:01:46.3812363Z Get:23 http://ports.ubuntu.com/ubuntu-ports noble-security/multiverse Translation-en [12.4 kB]
+2026-11-11T20:01:49.9911415Z Fetched 15.1 MB in 1s (11.3 MB/s)
+2026-11-11T20:01:51.4672213Z Reading package lists...
+2026-11-11T20:01:51.5031695Z Reading package lists...
+2026-11-11T20:01:51.8289121Z Building dependency tree...
+2026-11-11T20:01:51.8295750Z Reading state information...
+2026-11-11T20:01:52.1012235Z The following NEW packages will be installed:
+2026-11-11T20:01:52.1018191Z   libblas3 libopenblas0-pthread
+2026-11-11T20:01:52.3577252Z 0 upgraded, 2 newly installed, 0 to remove and 39 not upgraded.
+2026-11-11T20:01:52.3577642Z Need to get 5605 kB of archives.
+2026-11-11T20:01:52.3577958Z After this operation, 24.4 MB of additional disk space will be used.
+2026-11-11T20:01:52.3578529Z Get:1 http://ports.ubuntu.com/ubuntu-ports noble-updates/main arm64 libblas3 arm64 3.12.0-3build1.1 [144 kB]
+2026-11-11T20:01:52.9000934Z Get:2 http://ports.ubuntu.com/ubuntu-ports noble-updates/universe arm64 libopenblas0-pthread arm64 0.3.26+ds-1ubuntu0.1 [5462 kB]
+2026-11-11T20:01:53.8254206Z Fetched 5605 kB in 1s (3873 kB/s)
+2026-11-11T20:01:53.8530153Z Selecting previously unselected package libblas3:arm64.
+2026-11-11T20:01:53.8673218Z (Reading database ... 
+2026-11-11T20:01:53.8673486Z (Reading database ... 5%
+2026-11-11T20:01:53.8673703Z (Reading database ... 10%
+2026-11-11T20:01:53.8673911Z (Reading database ... 15%
+2026-11-11T20:01:53.8674312Z (Reading database ... 20%
+2026-11-11T20:01:53.8674541Z (Reading database ... 25%
+2026-11-11T20:01:53.8674745Z (Reading database ... 30%
+2026-11-11T20:01:53.8675815Z (Reading database ... 35%
+2026-11-11T20:01:53.8676070Z (Reading database ... 40%
+2026-11-11T20:01:53.8676283Z (Reading database ... 45%
+2026-11-11T20:01:53.8676493Z (Reading database ... 50%
+2026-11-11T20:01:53.8807667Z (Reading database ... 55%
+2026-11-11T20:01:54.0805013Z (Reading database ... 60%
+2026-11-11T20:01:54.2380619Z (Reading database ... 65%
+2026-11-11T20:01:54.3468901Z (Reading database ... 70%
+2026-11-11T20:01:54.4559143Z (Reading database ... 75%
+2026-11-11T20:01:54.6195788Z (Reading database ... 80%
+2026-11-11T20:01:54.8243691Z (Reading database ... 85%
+2026-11-11T20:01:55.0665944Z (Reading database ... 90%
+2026-11-11T20:01:55.2866276Z (Reading database ... 95%
+2026-11-11T20:01:55.2866598Z (Reading database ... 100%
+2026-11-11T20:01:55.2866916Z (Reading database ... 218735 files and directories currently installed.)
+2026-11-11T20:01:55.2915678Z Preparing to unpack .../libblas3_3.12.0-3build1.1_arm64.deb ...
+2026-11-11T20:01:55.3966909Z Unpacking libblas3:arm64 (3.12.0-3build1.1) ...
+2026-11-11T20:01:55.7281897Z Selecting previously unselected package libopenblas0-pthread:arm64.
+2026-11-11T20:01:55.7391763Z Preparing to unpack .../libopenblas0-pthread_0.3.26+ds-1ubuntu0.1_arm64.deb ...
+2026-11-11T20:01:55.7558184Z Unpacking libopenblas0-pthread:arm64 (0.3.26+ds-1ubuntu0.1) ...
+2026-11-11T20:01:56.1219894Z Setting up libopenblas0-pthread:arm64 (0.3.26+ds-1ubuntu0.1) ...
+2026-11-11T20:01:56.1721192Z update-alternatives: using /usr/lib/aarch64-linux-gnu/openblas-pthread/libblas.so.3 to provide /usr/lib/aarch64-linux-gnu/libblas.so.3 (libblas.so.3-aarch64-linux-gnu) in auto mode
+2026-11-11T20:01:56.1933498Z update-alternatives: using /usr/lib/aarch64-linux-gnu/openblas-pthread/liblapack.so.3 to provide /usr/lib/aarch64-linux-gnu/liblapack.so.3 (liblapack.so.3-aarch64-linux-gnu) in auto mode
+2026-11-11T20:01:56.2776410Z update-alternatives: using /usr/lib/aarch64-linux-gnu/openblas-pthread/libopenblas.so.0 to provide /usr/lib/aarch64-linux-gnu/libopenblas.so.0 (libopenblas.so.0-aarch64-linux-gnu) in auto mode
+2026-11-11T20:01:56.3887540Z Setting up libblas3:arm64 (3.12.0-3build1.1) ...
+2026-11-11T20:01:56.4555408Z Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+2026-11-11T20:01:59.0909353Z 
+2026-11-11T20:01:59.0910271Z Running kernel seems to be up-to-date.
+2026-11-11T20:01:59.0910523Z 
+2026-11-11T20:01:59.0910622Z No services need to be restarted.
+2026-11-11T20:01:59.0910781Z 
+2026-11-11T20:01:59.0910904Z No containers need to be restarted.
+2026-11-11T20:01:59.0911066Z 
+2026-11-11T20:01:59.0911176Z No user sessions are running outdated binaries.
+2026-11-11T20:01:59.0911371Z 
+2026-11-11T20:01:59.0912087Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-11-11T20:02:00.5248357Z Ubuntu clang version 18.1.3 (1ubuntu1)
+2026-11-11T20:02:00.5369575Z Ubuntu LLVM version 18.1.3
+2026-11-11T20:02:00.5480612Z Ubuntu LLVM version 18.1.3
+2026-11-11T20:02:00.5585248Z Ubuntu LLVM version 18.1.3
+2026-11-11T20:02:00.5691322Z Ubuntu LLVM version 18.1.3
+2026-11-11T20:02:00.5701556Z Python 3.13.16
+2026-11-11T20:02:00.5703218Z ready: make PY=/opt/hostedtoolcache/Python/3.13.16/arm64/bin/python3.13
+2026-11-11T20:02:00.5748291Z ##[group]Run test "$(uname -m)" = "$VERIFY_MACHINE"
+2026-11-11T20:02:00.5748699Z [36;1mtest "$(uname -m)" = "$VERIFY_MACHINE"[0m
+2026-11-11T20:02:00.5748968Z [36;1mgetconf PAGESIZE[0m
+2026-11-11T20:02:00.5749184Z [36;1mgetconf GNU_LIBC_VERSION[0m
+2026-11-11T20:02:00.5782439Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:02:00.5782662Z env:
+2026-11-11T20:02:00.5782826Z   PYSTACHY_JOBS: 4
+2026-11-11T20:02:00.5783080Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:02:00.5783424Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:02:00.5783718Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:02:00.5784393Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:02:00.5784813Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-11T20:02:00.5785216Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:02:00.5785661Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:02:00.5786363Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:02:00.5786768Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib
+2026-11-11T20:02:00.5787075Z   VERIFY_MACHINE: aarch64
+2026-11-11T20:02:00.5787270Z ##[endgroup]
+2026-11-11T20:02:00.5873082Z 4096
+2026-11-11T20:02:00.5883771Z glibc 2.39
+2026-11-11T20:02:00.5921148Z ##[group]Run tests/verify.sh bootstrap
+2026-11-11T20:02:00.5921486Z [36;1mtests/verify.sh bootstrap[0m
+2026-11-11T20:02:00.5951795Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:02:00.5952026Z env:
+2026-11-11T20:02:00.5952187Z   PYSTACHY_JOBS: 4
+2026-11-11T20:02:00.5952428Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:02:00.5952763Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:02:00.5953052Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:02:00.5953352Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:02:00.5953748Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-11T20:02:00.5954391Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:02:00.5954753Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:02:00.5955114Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:02:00.5955554Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib
+2026-11-11T20:02:00.5955855Z ##[endgroup]
+2026-11-11T20:06:57.6757886Z bootstrap      pass   293.537s  build/verify/bootstrap.log
+2026-11-11T20:07:01.5108230Z verification: 1/1 steps passed -> build/verification.json
+2026-11-11T20:07:01.5152705Z ##[group]Run python3 tools/verification_bootstrap.py export build/ci-bootstrap
+2026-11-11T20:07:01.5153260Z [36;1mpython3 tools/verification_bootstrap.py export build/ci-bootstrap[0m
+2026-11-11T20:07:01.5185852Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:07:01.5186095Z env:
+2026-11-11T20:07:01.5186262Z   PYSTACHY_JOBS: 4
+2026-11-11T20:07:01.5186508Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:07:01.5186849Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:07:01.5187150Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:07:01.5187453Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:01.5187877Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-11T20:07:01.5188280Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:01.5188641Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:01.5189056Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:01.5189425Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib
+2026-11-11T20:07:01.5189729Z ##[endgroup]
+2026-11-11T20:07:02.0283253Z "22874201156e0b156b7da3576f8ec5fafcea70d2ffee949f2c7a8915c2947c2f"
+2026-11-11T20:07:02.0524654Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-11T20:07:02.0525169Z with:
+2026-11-11T20:07:02.0525541Z   name: verified-bootstrap-aarch64
+2026-11-11T20:07:02.0525851Z   path: build/ci-bootstrap/
+2026-11-11T20:07:02.0526167Z   if-no-files-found: error
+2026-11-11T20:07:02.0526489Z   retention-days: 7
+2026-11-11T20:07:02.0526742Z   overwrite: true
+2026-11-11T20:07:02.0527207Z   compression-level: 6
+2026-11-11T20:07:02.0527491Z   include-hidden-files: false
+2026-11-11T20:07:02.0527803Z   archive: true
+2026-11-11T20:07:02.0528081Z env:
+2026-11-11T20:07:02.0528300Z   PYSTACHY_JOBS: 4
+2026-11-11T20:07:02.0528647Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:07:02.0529041Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:07:02.0529386Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:07:02.0529842Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:02.0530415Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-11T20:07:02.0530957Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:02.0531376Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:02.0531862Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:02.0532288Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib
+2026-11-11T20:07:02.0533042Z ##[endgroup]
+2026-11-11T20:07:02.1956094Z With the provided path, there will be 7 files uploaded
+2026-11-11T20:07:02.3450074Z Artifact name is valid!
+2026-11-11T20:07:02.3450994Z Root directory input is valid!
+2026-11-11T20:07:02.5694547Z Uploading artifact: verified-bootstrap-aarch64.zip
+2026-11-11T20:07:02.5729649Z Beginning upload of artifact content to blob storage
+2026-11-11T20:07:03.7713204Z Uploaded bytes 8388608
+2026-11-11T20:07:03.8032496Z Uploaded bytes 8515827
+2026-11-11T20:07:03.8364202Z Finished uploading artifact content to blob storage!
+2026-11-11T20:07:03.8365404Z SHA256 digest of uploaded artifact is ee6f905a79badaa913ea79b2ae92c0568bf96cc64b81b6b71deaff6dcb906c61
+2026-11-11T20:07:03.8366569Z Finalizing artifact upload
+2026-11-11T20:07:04.2783226Z Artifact verified-bootstrap-aarch64 successfully finalized. Artifact ID 13890006232
+2026-11-11T20:07:04.2784652Z Artifact verified-bootstrap-aarch64 has been successfully uploaded! Final size is 8515827 bytes. Artifact ID is 13890006232
+2026-11-11T20:07:04.2788608Z Artifact download URL: https://github.com/den-run-ai/pystachy/actions/runs/43092514310/artifacts/13890006232
+2026-11-11T20:07:04.2958492Z ##[group]Run cp build/verify/pystachy2 pystachy
+2026-11-11T20:07:04.2959014Z [36;1mcp build/verify/pystachy2 pystachy[0m
+2026-11-11T20:07:04.2959457Z [36;1mmake test-install[0m
+2026-11-11T20:07:04.2959759Z [36;1mpython3 tools/install_smoke.py[0m
+2026-11-11T20:07:04.2960159Z [36;1mtests/ffi/run.sh ./pystachy > build/verify/arm-ffi.log 2>&1[0m
+2026-11-11T20:07:04.2960622Z [36;1mcat build/verify/arm-ffi.log[0m
+2026-11-11T20:07:04.2961061Z [36;1mif grep -Fq '; skipped:' build/verify/arm-ffi.log; then exit 1; fi[0m
+2026-11-11T20:07:04.2961588Z [36;1mpython3 -m unittest discover -s tools -p test_runtime_thread.py[0m
+2026-11-11T20:07:04.2962133Z [36;1mpython3 -m unittest discover -s tools -p test_stack_floor.py[0m
+2026-11-11T20:07:04.2962635Z [36;1mpython3 -m unittest discover -s tools -p test_runtime_signatures.py[0m
+2026-11-11T20:07:04.2963216Z [36;1mpython3 -m unittest discover -s tools -p test_runtime_ubsan.py[0m
+2026-11-11T20:07:04.2963806Z [36;1mpython3 -m unittest discover -s tools -p test_lljit.py[0m
+2026-11-11T20:07:04.2964778Z [36;1mpython3 tools/program_cache_probe.py --compiler ./pystachy --llvm "$PYSTACHY_LLVM" \[0m
+2026-11-11T20:07:04.2965461Z [36;1m  --checks reuse semantics concurrency --output build/verify/arm-program-cache.json[0m
+2026-11-11T20:07:04.2999085Z shell: /usr/bin/bash -e {0}
+2026-11-11T20:07:04.2999584Z env:
+2026-11-11T20:07:04.2999856Z   PYSTACHY_JOBS: 4
+2026-11-11T20:07:04.3000205Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:07:04.3000635Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:07:04.3001031Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:07:04.3001484Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:04.3002088Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-11T20:07:04.3002632Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:04.3003149Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:04.3003572Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:07:04.3004193Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib
+2026-11-11T20:07:04.3004730Z ##[endgroup]
+2026-11-11T20:07:04.3129434Z /opt/hostedtoolcache/Python/3.13.16/arm64/bin/python3.13 -m unittest discover -s tools -p test_install.py
+2026-11-11T20:07:04.7070291Z ................
+2026-11-11T20:07:04.7070994Z installed /tmp/pystachy-install-test-d7icxa3c/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7071816Z ----------------------------------------------------------------------
+2026-11-11T20:07:04.7072231Z Ran 16 tests in 0.308s
+2026-11-11T20:07:04.7072366Z 
+2026-11-11T20:07:04.7072536Z OK
+2026-11-11T20:07:04.7073141Z installed /tmp/pystachy-install-test-6r90wcxm/package staging/tmp/pystachy-install-test-6r90wcxm/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7074843Z installed /tmp/pystachy-install-test-150_j4k3/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7075529Z installed /tmp/pystachy-install-test-kdc03zuw/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7076194Z installed /tmp/pystachy-install-test-4ryb2l5f/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7076898Z installed /tmp/pystachy-install-test-d9jocvm7/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7077608Z installed /tmp/pystachy-install-test-o6t5ug32/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7078285Z installed /tmp/pystachy-install-test-o6t5ug32/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7078943Z installed /tmp/pystachy-install-test-n6sb1zog/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7079773Z installed /tmp/pystachy-install-test-n6sb1zog/staging/tmp/pystachy-install-test-n6sb1zog/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7081607Z removed /tmp/pystachy-install-test-n6sb1zog/staging/tmp/pystachy-install-test-n6sb1zog/install 'quoted' $cash `literal`/bin/pystachy and /tmp/pystachy-install-test-n6sb1zog/staging/tmp/pystachy-install-test-n6sb1zog/install 'quoted' $cash `literal`/libexec/pystachy
+2026-11-11T20:07:04.7082925Z installed /tmp/pystachy-install-test-rg3a19k1/install 'quoted' $cash `literal`/bin/pystachy
+2026-11-11T20:07:04.7083966Z removed /tmp/pystachy-install-test-rg3a19k1/install 'quoted' $cash `literal`/bin/pystachy and /tmp/pystachy-install-test-rg3a19k1/install 'quoted' $cash `literal`/libexec/pystachy
+2026-11-11T20:07:04.7085443Z removed /tmp/pystachy-install-test-rg3a19k1/install 'quoted' $cash `literal`/bin/pystachy and /tmp/pystachy-install-test-rg3a19k1/install 'quoted' $cash `literal`/libexec/pystachy
+2026-11-11T20:07:51.7072295Z hosted JIT: CPython output matches
+2026-11-11T20:07:51.7072701Z hosted AOT: CPython output matches
+2026-11-11T20:07:51.7073596Z pystachy v0.4.0-alpha.4 (commit eec775a41eed1bf730a07bc41e4a5c278ed8398e): installed and native --version, without LLVM or Python
+2026-11-11T20:07:51.7074702Z installed JIT/AOT: CPython output matches
+2026-11-11T20:07:51.7075173Z installed JIT/AOT with GC stress: CPython output matches
+2026-11-11T20:07:51.7075630Z installed runtime cache: outside installation
+2026-11-11T20:09:33.6494787Z Checking /tmp/pystachy-ffi.3933/repair/pystachy_json_repair/_native.abi3.so
+2026-11-11T20:09:33.6495331Z 943/943 match; 0 problems
+2026-11-11T20:09:33.6495768Z 196 passed, 0 failed
+2026-11-11T20:09:47.9943076Z ......
+2026-11-11T20:09:47.9943739Z ----------------------------------------------------------------------
+2026-11-11T20:09:47.9944338Z Ran 6 tests in 14.294s
+2026-11-11T20:09:47.9944525Z 
+2026-11-11T20:09:47.9944641Z OK
+2026-11-11T20:10:38.1653475Z ...........
+2026-11-11T20:10:38.1660552Z ----------------------------------------------------------------------
+2026-11-11T20:10:38.1661039Z Ran 11 tests in 50.106s
+2026-11-11T20:10:38.1661362Z 
+2026-11-11T20:10:38.1661453Z OK
+2026-11-11T20:10:38.4298497Z ........
+2026-11-11T20:10:38.4299285Z ----------------------------------------------------------------------
+2026-11-11T20:10:38.4299686Z Ran 8 tests in 0.192s
+2026-11-11T20:10:38.4299853Z 
+2026-11-11T20:10:38.4300005Z OK
+2026-11-11T20:10:45.2359621Z ..
+2026-11-11T20:10:45.2360256Z ----------------------------------------------------------------------
+2026-11-11T20:10:45.2360655Z Ran 2 tests in 6.711s
+2026-11-11T20:10:45.2360819Z 
+2026-11-11T20:10:45.2360964Z OK
+2026-11-11T20:10:51.6234212Z .....
+2026-11-11T20:10:51.6234948Z ----------------------------------------------------------------------
+2026-11-11T20:10:51.6235357Z Ran 5 tests in 6.257s
+2026-11-11T20:10:51.6235535Z 
+2026-11-11T20:10:51.6235617Z OK
+2026-11-11T20:11:13.2627093Z PASS reuse
+2026-11-11T20:11:29.5372605Z PASS semantics
+2026-11-11T20:11:30.5073511Z PASS concurrency
+2026-11-11T20:11:30.5109703Z PASS: 102 assertions; build/verify/arm-program-cache.json
+2026-11-11T20:11:30.5309870Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-11T20:11:30.5310430Z with:
+2026-11-11T20:11:30.5310778Z   name: aarch64-verification-bootstrap
+2026-11-11T20:11:30.5311616Z   path: build/verification.json
+build/verify/bootstrap.log
+build/verify/arm-ffi.log
+build/verify/arm-program-cache.json
+build/bootstrap-tier/report.json
+build/bootstrap-tier/make.log
+
+2026-11-11T20:11:30.5312412Z   if-no-files-found: error
+2026-11-11T20:11:30.5312779Z   retention-days: 7
+2026-11-11T20:11:30.5313058Z   overwrite: true
+2026-11-11T20:11:30.5313373Z   compression-level: 6
+2026-11-11T20:11:30.5313651Z   include-hidden-files: false
+2026-11-11T20:11:30.5313919Z   archive: true
+2026-11-11T20:11:30.5314535Z env:
+2026-11-11T20:11:30.5314794Z   PYSTACHY_JOBS: 4
+2026-11-11T20:11:30.5315157Z   CI_EVENT_BASE_SHA: b40ee875bf72b86804c4f5a300066f4f7c3eb20b
+2026-11-11T20:11:30.5315570Z   CI_HEAD_SHA: dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6
+2026-11-11T20:11:30.5316149Z   PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+2026-11-11T20:11:30.5316539Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:11:30.5317054Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib/pkgconfig
+2026-11-11T20:11:30.5317529Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:11:30.5317953Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:11:30.5318488Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.16/arm64
+2026-11-11T20:11:30.5318925Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.16/arm64/lib
+2026-11-11T20:11:30.5319312Z ##[endgroup]
+2026-11-11T20:11:30.6593534Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-11-11T20:11:30.6596479Z The least common ancestor is /home/runner/work/pystachy/pystachy/build. This will be the root directory of the artifact
+2026-11-11T20:11:30.6597291Z With the provided path, there will be 4 files uploaded
+2026-11-11T20:11:30.7961852Z Artifact name is valid!
+2026-11-11T20:11:30.7962589Z Root directory input is valid!
+2026-11-11T20:11:31.0429688Z Uploading artifact: aarch64-verification-bootstrap.zip
+2026-11-11T20:11:31.0461616Z Beginning upload of artifact content to blob storage
+2026-11-11T20:11:31.2196461Z Uploaded bytes 10920
+2026-11-11T20:11:31.2600318Z Finished uploading artifact content to blob storage!
+2026-11-11T20:11:31.2600962Z SHA256 digest of uploaded artifact is d436ec16be5858b6e8f45c31358e870c545ab06f523598beb648b951fede4850
+2026-11-11T20:11:31.2601739Z Finalizing artifact upload
+2026-11-11T20:11:31.6439088Z Artifact aarch64-verification-bootstrap successfully finalized. Artifact ID 13890061826
+2026-11-11T20:11:31.6439971Z Artifact aarch64-verification-bootstrap has been successfully uploaded! Final size is 10920 bytes. Artifact ID is 13890061826
+2026-11-11T20:11:31.6443496Z Artifact download URL: https://github.com/den-run-ai/pystachy/actions/runs/43092514310/artifacts/13890061826
+2026-11-11T20:11:31.6645663Z Post job cleanup.
+2026-11-11T20:11:31.7809284Z Post job cleanup.
+2026-11-11T20:11:31.8625441Z [command]/usr/bin/git version
+2026-11-11T20:11:31.8675096Z git version 2.56.0
+2026-11-11T20:11:31.8702496Z Temporarily overriding HOME='/home/runner/work/_temp/cf78aa48-ee4f-45bf-9c34-cde6e5177af0' before making global git config changes
+2026-11-11T20:11:31.8703438Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-11T20:11:31.8704350Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pystachy/pystachy
+2026-11-11T20:11:31.8736300Z Removing SSH command configuration
+2026-11-11T20:11:31.8765518Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-11T20:11:31.8815978Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-11T20:11:31.9025026Z Removing HTTP extra header
+2026-11-11T20:11:31.9030455Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-11T20:11:31.9072578Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-11T20:11:31.9312707Z Removing includeIf entries pointing to credentials config files
+2026-11-11T20:11:31.9319638Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-11T20:11:31.9359956Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-11T20:11:31.9781474Z Evaluate and set job outputs
+2026-11-11T20:11:31.9789482Z Set output 'plan_aarch64'
+2026-11-11T20:11:31.9792266Z Set output 'base'
+2026-11-11T20:11:31.9793459Z Cleaning up orphan processes
+
