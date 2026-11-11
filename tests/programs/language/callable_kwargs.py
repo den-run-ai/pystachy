@@ -1,4 +1,3 @@
-# error: callable_kwargs.py:10: error: a call of a Callable[[int], int] takes positional arguments only
 from typing import Callable
 
 

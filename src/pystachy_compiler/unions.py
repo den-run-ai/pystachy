@@ -548,10 +548,10 @@ def gen_joinable(self, t: str) -> bool:
 
 def gen_replay_state(self) -> list[int]:
     # what a function body that local_again discards must not leave behind: the functions,
-    # classes, closures, specializations, globals and roots compiled so far (an unused
-    # specialization still counts toward the compiler's bounded inference budgets)
+    # classes, closures, specializations, globals, roots and deferred keyword call shapes
+    # compiled so far (an unused specialization still counts toward inference budgets)
     return [len(self.fns), len(self.classes), len(self.closures), self.template_instances, self.template_retained,
-            len(self.globs), len(self.gcroots)]
+            len(self.globs), len(self.gcroots), len(self.kwfns)]
 
 
 def gen_local_again(self, f: FnInfo, before: list[int]) -> bool:

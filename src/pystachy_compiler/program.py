@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 from src.pystachy_compiler.callbacks import specialize_callbacks
+from src.pystachy_compiler.callable_keywords import keyword_dispatchers
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
@@ -1240,7 +1241,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         for i in later:
             hpush(self.wake, i)
         # (the dispatchers of dynamic values, compiled again while more classes are boxed: dynamic.py)
-        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) + len(cved) == before and not self.dyn_dispatchers():
+        if len(done) + len(helped) + len(cmped) + len(hashed) + len(xmade) + len(ned) + len(xed) + len(self.xctors) + len(cved) == before and not self.dyn_dispatchers() and not keyword_dispatchers(self):
             break
     self.exc_tables()
     for nm in self.flagged:

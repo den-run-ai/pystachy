@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
 from src.pystachy_compiler.bigints import converts
+from src.pystachy_compiler.callable_keywords import keyword_call
 from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
@@ -530,6 +531,7 @@ def gen_adapter(self, ft: str, t: str) -> str:
     ll = f"@cv.{self.ncv}"
     self.ncv += 1
     self.adapters[key] = ll
+    self.adcodes[ll] = key
     line = self.line
     f = FnInfo("<callable>", ll, mk("def", "<callable>", line, []), "")
     f.params = ["_f"] + [f"_a{j}" for j in range(len(ts) - 1)]
@@ -649,6 +651,7 @@ def gen_adapter_ret(self, ft: str, ps: list[str]) -> str:
         # (the adapter of that Callable, where it takes and returns what this one does: not where
         # it returns a promoting int for this one's 64-bit int, ctype, which adapter compiles)
         self.adapters[ft + " " + t] = ll
+        self.adcodes[ll] = ft + " " + t
     return f.ret
 
 def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
@@ -657,6 +660,8 @@ def gen_call_callable(self, o: Val, args: list[Node]) -> Val:
     # One that may be None raises once the arguments are evaluated, as CPython's call does
     ct = unopt(o.t)
     ts = targs(ct)
+    if self.xtry == "" and any(a.kind == "kw" for a in args):
+        return keyword_call(self, o, args)
     for a in args:
         if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar":
             self.err(f"a call of a {typestr(ct)} takes positional arguments only")
