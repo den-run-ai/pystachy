@@ -297,6 +297,24 @@ def condition_size(condition):
     return 1 if condition[0] in {"atom", "const", "opaque"} else sum(condition_size(c) for c in condition[1:])
 
 
+CONTAINER_KINDS = ("list[", "dict[", "set[", "frozenset[")
+
+
+def resolved_container(declared, used):
+    """A local whose type inference resolved after its slot was made, which keeps the
+    placeholder while its accesses name the resolved type: an empty container's (list[?],
+    dict[?,?]: a container of that kind) or a local first assigned None (specs.NONEVAR: an
+    optional object). Each lowers to a pointer, and neither is a dyn or union value."""
+    if not used.startswith("*") or "?" in used:
+        return False
+    resolved = used[1:]
+    if declared == "opt[None]":
+        return not (resolved in {"int", "float", "bool", "int+", "%byte", "%i32", "%slot", "dyn", "None"}
+                    or resolved.startswith(("union[", "opt[union[", "opt[dyn")))
+    return "?" in declared and any(declared.startswith(kind) and resolved.startswith(kind)
+                                   for kind in CONTAINER_KINDS)
+
+
 def check_header(snapshot):
     """Every check reads a completed typed-after snapshot of inspection schema 1."""
     require(isinstance(snapshot, dict), "snapshot must be an object")
@@ -498,7 +516,8 @@ def normalize_snapshot(snapshot, function):
     def check_operand(operand, label, offset, predecessor=None):
         value = operand["value"]
         if value in slots:
-            require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}, "slot address has wrong type")
+            require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}
+                    or resolved_container(slots[value], operand["type"]), "slot address has wrong type")
         elif value == "%idret":
             require(operand["type"] == "*dyn", "identity-return address has wrong type")
         elif value in identity_arguments:
