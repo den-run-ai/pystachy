@@ -1,11 +1,15 @@
 """Check the integrity and publication of managed LLVM installations."""
 
+import errno
 import hashlib
+import http.client
 import io
 from pathlib import Path
 import socket
+import socketserver
 import ssl
 import tempfile
+import threading
 import unittest
 from unittest.mock import call, patch
 from urllib.error import HTTPError, URLError
@@ -190,6 +194,126 @@ class ManagedToolchainTests(unittest.TestCase):
             self.assertEqual(archive.read_bytes(), payload)
             self.assertEqual(fetch.call_args_list, [call(url, timeout=60), call(mirror, timeout=60)])
             self.assertTrue(partial.closed)
+
+    def test_download_connection_failures_use_mirror(self):
+        url = "https://snapshot.invalid/package.deb"
+        mirror = "https://archive.invalid/package.deb"
+        payload = b"LLVM archive"
+        digest = hashlib.sha256(payload).hexdigest()
+        reset = (errno.ECONNRESET, "Connection reset by peer")
+        failures = (
+            URLError(ConnectionResetError(*reset)),
+            URLError(ConnectionRefusedError(errno.ECONNREFUSED, "Connection refused")),
+            URLError(ssl.SSLEOFError(ssl.SSL_ERROR_EOF, "EOF occurred in violation of protocol")),
+            ConnectionResetError(*reset),
+            http.client.RemoteDisconnected("Remote end closed connection without response"),
+            http.client.IncompleteRead(b"partial", 1000),
+            http.client.BadStatusLine(""),
+            ssl.SSLZeroReturnError(ssl.SSL_ERROR_ZERO_RETURN, "TLS/SSL connection has been closed"),
+        )
+        for failure in failures:
+            with (self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory,
+                  patch.object(toolchain, "urlopen", side_effect=[failure, io.BytesIO(payload)]) as fetch,
+                  patch("time.sleep") as sleep):
+                archive = Path(directory) / "archive"
+                toolchain.download(url, digest, archive, fallback_url=mirror)
+                self.assertEqual(archive.read_bytes(), payload)
+                self.assertEqual(fetch.call_args_list, [call(url, timeout=60), call(mirror, timeout=60)])
+                sleep.assert_called_once_with(1)
+
+    def test_download_connection_drop_mid_stream_uses_mirror(self):
+        def dropped_response(failure):
+            class DroppedResponse(io.BytesIO):
+                def read(self, size=-1):
+                    if self.tell():
+                        raise failure
+                    return super().read(size)
+
+            return DroppedResponse(b"partial content longer than final archive")
+
+        payload = b"LLVM archive"
+        url = "https://snapshot.invalid/package.deb"
+        mirror = "https://archive.invalid/package.deb"
+        for failure in (ConnectionResetError(errno.ECONNRESET, "Connection reset by peer"),
+                        http.client.IncompleteRead(b"partial", 1000)):
+            dropped = dropped_response(failure)
+            with (self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory,
+                  patch.object(toolchain, "urlopen", side_effect=[dropped, io.BytesIO(payload)]) as fetch,
+                  patch("time.sleep")):
+                archive = Path(directory) / "archive"
+                toolchain.download(url, hashlib.sha256(payload).hexdigest(), archive, fallback_url=mirror)
+                self.assertEqual(archive.read_bytes(), payload)
+                self.assertEqual(fetch.call_args_list, [call(url, timeout=60), call(mirror, timeout=60)])
+                self.assertTrue(dropped.closed)
+
+    def test_download_connection_failures_keep_three_attempt_budget_and_diagnostics(self):
+        url = "https://snapshot.invalid/package.deb"
+        mirror = "https://archive.invalid/package.deb"
+        errors = [http.client.RemoteDisconnected("Remote end closed connection without response"),
+                  URLError(ConnectionRefusedError(errno.ECONNREFUSED, "Connection refused")),
+                  ConnectionResetError(errno.ECONNRESET, "Connection reset by peer")]
+        with (tempfile.TemporaryDirectory() as directory,
+              patch.object(toolchain, "urlopen", side_effect=errors) as fetch,
+              patch("time.sleep") as sleep):
+            with self.assertRaises(URLError) as raised:
+                toolchain.download(url, "0" * 64, Path(directory) / "archive", fallback_url=mirror)
+            message = str(raised.exception)
+            self.assertIn(f"attempt 1 {url}: Remote end closed connection without response", message)
+            self.assertIn(f"attempt 2 {mirror}: <urlopen error [Errno {errno.ECONNREFUSED}] Connection refused>",
+                          message)
+            self.assertIn(f"attempt 3 {url}: [Errno {errno.ECONNRESET}] Connection reset by peer", message)
+            self.assertIs(raised.exception.__cause__, errors[-1])
+            self.assertEqual(fetch.call_args_list, [
+                call(url, timeout=60), call(mirror, timeout=60), call(url, timeout=60),
+            ])
+            self.assertEqual(sleep.call_args_list, [call(1), call(2)])
+
+    def test_download_proxy_policy_rejections_stay_terminal(self):
+        # A proxy refusing the tunnel is a policy decision, not an unavailable endpoint.
+        url = "https://snapshot.invalid/package.deb"
+        error = URLError(OSError("Tunnel connection failed: 403 Forbidden"))
+        with (tempfile.TemporaryDirectory() as directory,
+              patch.object(toolchain, "urlopen", side_effect=error) as fetch,
+              patch("time.sleep") as sleep):
+            with self.assertRaises(URLError) as raised:
+                toolchain.download(url, "0" * 64, Path(directory) / "archive",
+                                   fallback_url="https://archive.invalid/package.deb")
+            self.assertIs(raised.exception.__cause__, error)
+            fetch.assert_called_once()
+            sleep.assert_not_called()
+
+    def test_download_real_dropped_connection_uses_mirror(self):
+        # Mocks encode assumptions about urllib's exceptions; real sockets show which ones escape.
+        payload = b"LLVM archive"
+
+        class Drop(socketserver.BaseRequestHandler):
+            def handle(self):
+                self.request.recv(4096)  # read the request, answer nothing, close
+
+        class Serve(socketserver.BaseRequestHandler):
+            def handle(self):
+                self.request.recv(4096)
+                self.request.sendall(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%b"
+                    % (len(payload), payload))
+
+        with (socketserver.ThreadingTCPServer(("127.0.0.1", 0), Drop) as dropping,
+              socketserver.ThreadingTCPServer(("127.0.0.1", 0), Serve) as serving,
+              tempfile.TemporaryDirectory() as directory,
+              patch.dict(toolchain.os.environ, {"no_proxy": "127.0.0.1", "NO_PROXY": "127.0.0.1"}),
+              patch("time.sleep")):
+            for server in (dropping, serving):
+                threading.Thread(target=server.serve_forever, daemon=True).start()
+            archive = Path(directory) / "archive"
+            try:
+                toolchain.download(
+                    f"http://127.0.0.1:{dropping.server_address[1]}/package.deb",
+                    hashlib.sha256(payload).hexdigest(), archive,
+                    fallback_url=f"http://127.0.0.1:{serving.server_address[1]}/package.deb")
+            finally:
+                for server in (dropping, serving):
+                    server.shutdown()
+            self.assertEqual(archive.read_bytes(), payload)
 
     def test_download_does_not_retry_checksum_mismatches(self):
         with (tempfile.TemporaryDirectory() as directory,
