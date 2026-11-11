@@ -1,7 +1,8 @@
 # Null-check removals justified through memory: a field reloaded from the same
 # object, a field reloaded across a write of another field, a module global
-# reloaded across a list write, and a closure cell reloaded in a lambda. The
-# access model proves them (GUARDS.md).
+# reloaded across a list write, a closure cell reloaded in a lambda, and a
+# parameter reloaded from the cell its nested function shares. The access model
+# proves them (GUARDS.md).
 class Inner:
     def __init__(self, v: int) -> None:
         self.v = v
@@ -39,6 +40,15 @@ def global_reload() -> int:
     return t + current.v
 
 
+def through_own_cell(h: Holder) -> int:
+    def peek() -> int:
+        return h.count
+
+    if h.inner is None:
+        return peek()
+    return h.inner.v + h.inner.w + peek()
+
+
 def captured(inner: Inner):
     f = inner.v
     return lambda: f + inner.w + inner.w
@@ -46,4 +56,4 @@ def captured(inner: Inner):
 
 h = Holder(Inner(2))
 print(field_reload(h), field_reload(Holder(None)), field_reload_other_field(h), global_reload(), len(log))
-print(captured(Inner(4))())
+print(captured(Inner(4))(), through_own_cell(h), through_own_cell(Holder(None)))

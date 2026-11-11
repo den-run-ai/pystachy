@@ -18,8 +18,9 @@ from src.pystachy_compiler.specs import IROPS, RUNTIME  # noqa: E402
 from src.pystachy_compiler.utils import is_tuple, targs, tslots  # noqa: E402
 
 WRITES = frozenset({"wL", "wD", "wO", "wG"})
-# runtime.c's allocators (pys_alloc, pys_alloc_atomic, pys_new: malloc, returns_nonnull), sized in
-# bytes by their one operand.
+# runtime.c's allocators (pys_alloc, pys_alloc_atomic, pys_new: malloc, returns_nonnull), sized by
+# their one operand n: gc_alloc's size classes and big_new hold at least n + 1 bytes (a closure
+# cell requests 15 or 23 for its 16- or 24-byte slot, functions.py).
 FRESH_RUNTIME = frozenset({"alloc", "alloc_atomic", "new"})
 WORD = 8
 ELEMENT_BYTES = {"int": 8, "%ptr": 8, "%byte": 1}  # (mach.addr's element types, ircheck.py)
@@ -53,7 +54,7 @@ def fresh_addresses(operations):
               and len(op["operands"]) == 1):
             size = literal(op["operands"][0]["value"])
             if size is not None and size > 0:
-                sizes[f"%t{op['results'][0]}"] = size
+                sizes[f"%t{op['results'][0]}"] = size + 1
                 fresh.add(f"%t{op['results'][0]}")
     changed = True
     while changed:

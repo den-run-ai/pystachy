@@ -958,7 +958,7 @@ bounds and live, followed by `make check-lean-int` for promoting-integer
 also run `make check-lean-storage` for [storage guards](../tools/lean_boundary/STORAGE.md),
 including programs that import opted-in modules, and upload `lean-storage.json`.
 The x86 `contracts` group runs `make check-lean-guards` on the explicit
-`null_guards.py` and `union_guards.py` examples, uploading
+`null_guards.py`, `null_reloads.py` and `union_guards.py` examples, uploading
 `lean-guards.json`. The selection and its limits are recorded in
 [GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard
 coverage; the strict full-corpus guard command remains an investigation tool with

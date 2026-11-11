@@ -46,21 +46,24 @@ Effects come from runtime contracts and from the compiler's summaries joined wit
 independent scan of every function body (`check_lean_effects.py`), never from
 `Gen.canon`. The scan does not count stores to a function's own stack slots, to memory
 it allocated itself (an `alloc.fixed` object's fields, a fixed tuple's words and a
-literal-sized runtime allocation's words within its size) or through `%idret` where
-every direct call passes a slot of its caller there: none changes state that existed
-when the function was called. A write of one class's field keeps the fields of
+literal-sized runtime allocation's words within the n + 1 bytes it holds) or through
+`%idret` where every direct call passes a slot of its caller there: none changes state
+that existed when the function was called. Inside the function, such a store may
+change only that new memory's cells; a box payload read and a closure cell, the
+function's own or one its environment names, are cells as well. A write of one class's field keeps the fields of
 classes that the snapshot's `classes` table relates to it neither way (`Gen.disjoint`'s
 rule; `writeField`'s `unrelated` list). Lean refuses a write that lists its own class,
 and `accepted_write_progress` shows every accepted write can happen.
 
 [`examples/null_reloads.py`](examples/null_reloads.py) has removals justified through
 a field reloaded from the same object, a field reloaded across a write of another
-field, a global reloaded across a list write and a closure cell reloaded in a lambda.
+field, a global reloaded across a list write, a closure cell reloaded in a lambda and
+a parameter reloaded from the cell it shares with a nested function.
 [`test_lean_null_access.py`](../test_lean_null_access.py) corrupts the pass input of
 each: a null store to the tested field, to the same field of another object or
 through a related or unknown class view, object-writing and unknown calls, raw and
-unknown stores, global writes, cell writes and callbacks, a reversed test, an
-exception edge around it and an escaped parameter slot. Lean must reject every one,
+unknown stores, global writes, cell writes (directly or through an environment) and
+callbacks, a reversed test, an exception edge around it and an escaped parameter slot. Lean must reject every one,
 while writes of another field, global or unrelated class and a store to an escaped
 slot of the function keep the proof.
 
@@ -88,7 +91,7 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI selection exercises seven inventoried union reads and eighteen
+The bounded CI selection exercises seven inventoried union reads and twenty-two
 removed null checks in `examples/union_guards.py`, `examples/null_guards.py` and
 `examples/null_reloads.py`. This small gate does not claim complete-corpus
 acceptance. Existing programs with calls,

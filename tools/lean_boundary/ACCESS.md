@@ -98,7 +98,11 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   neither way; a class the table lacks is related to every class. A field address's operands, like a test's, are SSA
   values, unchanged wherever its result is used.
 - Values of one 64-bit word (not a promoting int or a narrower scalar) loaded repeatedly from a
-  recognized closure cell use the same heap model. A cell pointer must come from a constant pointer slot of an `env`-typed
+  recognized closure cell use the same heap model, as do typed loads and stores of the first
+  word of a runtime allocation the function makes itself: the cell of a variable its closures
+  take. A field write of a class of the program keeps closure-cell and box cells (its object is
+  neither), and a dynamic or union box's payload read (word 1 of the box) is a cell of the box;
+  `slot.unpack` of a word other than a bool is a copy. A cell pointer must come from a constant pointer slot of an `env`-typed
   environment. Writes through the cell or any potentially aliasing address, object writes,
   callbacks and generator suspension invalidate its content. Arbitrary pointers and different
   cells cannot borrow its equality facts. This relies on the closure environment's cell ABI.
@@ -131,7 +135,7 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   the new list it returns; a dict write every dict's entries; an object write every field. The
   body scan does not count a store to the function's own stack slots, to memory it allocated
   itself (an `alloc.fixed` object's fields, a fixed tuple's words, a literal-sized runtime
-  allocation's words within its size) or through `%idret` where every direct call in the
+  allocation's words within the n + 1 bytes `pys_alloc(n)` provides) or through `%idret` where every direct call in the
   snapshot passes a slot of its caller there: none changes state its callers observed before.
 - Edges are those of `check_lean_boundary.py`: terminator targets, an invoke's unwind edge, each
   `check`'s error block and, from every point of a block a `try` statement covers, its landing

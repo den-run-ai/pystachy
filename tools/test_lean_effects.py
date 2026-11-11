@@ -100,11 +100,16 @@ class EffectSummaryTests(unittest.TestCase):
         obj = [op("alloc.fixed", [], [4], typ="Thing"),
                op("field.addr", [("%t4", "Thing")], [5], typ="*int", immediate=1),
                op("mem.store", [("%t5", "*int"), ("1", "int")])]
+        # (a promoting program's closure cell: 23 bytes requested for a 24-byte slot, its identity
+        # box in the third word, functions.py)
+        identity_cell = [op("rt", [("23", "int")], [8], text="alloc", typ="%ptr"),
+                         op("mach.addr", [("%t8", "%ptr"), ("2", "int")], [9], text="%ptr", typ="%ptr"),
+                         op("mem.store", [("%t9", "*dyn"), ("null", "dyn")])]
         # (a fixed tuple's last word: lru_cache's _call copies its key into a new tuple)
         pair = [op("alloc.fixed", [], [6], typ="tuple[str,int,int]"),
                 op("mach.addr", [("%t6", "%ptr"), ("2", "int")], [7], text="int", typ="%ptr"),
                 op("mach.store", [("%t7", "%ptr"), ("1", "int")])]
-        for operations in (cell, environment, obj, pair, cell + environment + obj + pair):
+        for operations in (cell, environment, obj, pair, identity_cell, cell + environment + obj + pair):
             with self.subTest(operations=[o["op"] for o in operations]):
                 found = effects.summaries({"functions": [function("@fresh", copy.deepcopy(operations))]})
                 self.assertFalse(found["@fresh"] & effects.WRITES)
@@ -117,7 +122,8 @@ class EffectSummaryTests(unittest.TestCase):
                                op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
             "index past the end": [alloc, op("mach.addr", [("%t1", "%ptr"), ("1", "int")], [2], text="int", typ="%ptr"),
                                    op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
-            "word at a late byte": [alloc, op("mach.addr", [("%t1", "%ptr"), ("1", "int")], [2], text="%byte",
+            # (an allocation of n bytes holds n + 1: a word at byte 2 of 8 ends past them)
+            "word at a late byte": [alloc, op("mach.addr", [("%t1", "%ptr"), ("2", "int")], [2], text="%byte",
                                               typ="%ptr"), op("mach.store", [("%t2", "%ptr"), ("1", "int")])],
             "unknown size": [op("rt", [("%a0", "int")], [1], text="alloc", typ="%ptr"),
                              op("mach.store", [("%t1", "%ptr"), ("1", "int")])],

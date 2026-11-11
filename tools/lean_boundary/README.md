@@ -11,7 +11,7 @@ the model does not establish that the exporter or runtime implements that model.
 | Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
 | Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
 | Integer storage | Low-word, tuple-tail, narrowing and complete stack-copy obligations | Exported representations, fresh allocation and stack ABI |
-| Null-check removal | Removed checks are redundant in the captured before-pass graph | Whole-pass equivalence and broader heap correlations |
+| Null-check removal | Removed checks are redundant in the captured before-pass graph, including through fields, globals, closure cells and box payloads | Whole-pass equivalence, box immutability across calls, runtime effect contracts and the classes table |
 | Closed unions | Inventoried tag/payload reads have nonnull/member guards | Raw transport, dynamic reconstruction and unsupported forms |
 
 All accepted certificates are checked by Lean. Mutation controls exercise the
@@ -20,7 +20,9 @@ Parsing, inference, specialization, GC/lifetime, general optimization equivalenc
 exception semantics and LLVM lowering remain unproved.
 
 [GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
-full-corpus inventory command; full-corpus acceptance is not claimed.
+full-corpus inventory command; full-corpus acceptance is not claimed. Removed null
+checks are proved with the [access model](ACCESS.md)'s field, global and effect rules
+where the finite-tag model lacks them.
 Broader null/union correlations and unsupported forms are tracked in
 [#1270](https://github.com/den-run-ai/pystachy/issues/1270).
 

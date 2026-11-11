@@ -106,7 +106,7 @@ class NullAccessTests(unittest.TestCase):
 
     def test_actual_removals_prove_through_fields_and_globals(self):
         for name, count in (("field_reload", 4), ("field_reload_other_field", 5), ("global_reload", 2),
-                            ("@c.0.1", 1)):
+                            ("@c.0.1", 1), ("through_own_cell", 4)):
             with self.subTest(name=name):
                 record = self.record(name)
                 removed = guards.removed_checks(record)
@@ -281,6 +281,35 @@ class NullAccessTests(unittest.TestCase):
                             "call": op("call", text="@f.unknown_elsewhere", typ="None")}[write]
                 removed = self.insert(fn, removed, label, 0, [inserted])
                 self.assert_refuted(fn, removed)
+
+    def test_own_cell_writes_between_reads_refute(self):
+        # (through_own_cell reloads `h` from the cell it shares with `peek`: a store to the cell,
+        # through its environment or an unknown pointer, or a call that may run `peek`'s writer,
+        # makes the reload unknown; a write of a known class's field leaves the cell alone)
+        record = self.record("through_own_cell")
+        entry = record["before"]["blocks"][0]["operations"]
+        cell = entry[0]["results"][0]
+        self.assertEqual((entry[0]["op"], entry[0]["text"]), ("rt", "alloc"))
+        environment_slot = next(o for o in entry if o["op"] == "mach.addr")["results"][0]
+        for write in ("cell", "environment", "unknown", "icall", "call"):
+            with self.subTest(write=write):
+                fn = copy.deepcopy(record["before"])
+                removed = guards.removed_checks(record)
+                inserted = {
+                    "cell": [op("mem.store", [(f"%t{cell}", "*Holder"), ("null", "Holder")])],
+                    "environment": [op("mach.load", [(f"%t{environment_slot}", "%ptr")], [9020], typ="%ptr"),
+                                    op("mem.store", [("%t9020", "*Holder"), ("null", "Holder")])],
+                    "unknown": [op("rt", [("4", "int")], [9020], text="box", typ="%ptr"),
+                                op("mach.store", [("%t9020", "%ptr"), ("0", "int")])],
+                    "icall": [op("icall", typ="None")],
+                    "call": [op("call", text="@f.unknown_elsewhere", typ="None")]}[write]
+                removed = self.insert(fn, removed, "L15", 0, inserted)
+                self.assert_refuted(fn, removed)
+        fn = copy.deepcopy(record["before"])
+        removed = guards.removed_checks(record)
+        address = op("field.addr", [("%a0", "Inner")], [9030], typ="*int", immediate=0)
+        removed = self.insert(fn, removed, "L15", 0, [address, op("mem.store", [("%t9030", "*int"), ("7", "int")])])
+        self.assert_proved(fn, removed)
 
     def test_inventory_must_name_actual_checks(self):
         fn, removed, _ = self.field_case()

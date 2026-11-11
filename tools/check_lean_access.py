@@ -86,6 +86,7 @@ PARTIAL_WORDS = frozenset({"int+", "bool", "%byte", "%i32", "None"})
 # of that word: no class of the program names it.
 PAYLOAD_READS = frozenset({"union.payload", "union.raw", "dyn.payload", "dyn.raw"})
 BOX = "<box>"
+CELL = "<closure-cell>"  # (a closure cell's value word: no class of the program names it)
 # The model's obligation nodes (PystachyAccess.Safe): an unchecked list read, a reused dict
 # entry and a read through a pointer whose null check the nullcheck pass removed.
 OBLIGATIONS = ("load", "value", "deref")
@@ -1128,6 +1129,11 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
     # store there may change that new object's fields, but no list, dict or global, nor any
     # object that existed before it.
     fresh = fresh_addresses([op for block in live_blocks for op in block["operations"]])
+    # The cells of the variables this function's closures take (functions.py allocates one per
+    # variable as the function begins): a runtime allocation whose first word a typed load or
+    # store reads or writes, like a closure's own reads through its environment.
+    own_cells = {f"%t{op['results'][0]}" for op in definitions.values() if op["op"] == "rt"
+                 and op["text"] in ("alloc", "alloc_atomic", "new") and len(op["results"]) == 1}
     # Each field address: the object register and the field's label (its class and index). A
     # field.addr's operands are SSA values, unchanged wherever its result is used.
     field_of = {f"%t{op['results'][0]}": (op["operands"][0]["value"], op["operands"][0]["type"], op["immediate"])
@@ -1140,9 +1146,12 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
     reads_boxes = any(op["op"] in PAYLOAD_READS for op in definitions.values())
 
     def unrelated_to(cls):
-        # (an object of a class of the program is no box, which pys_ubox and the dyn boxers make)
+        # (an object of a class of the program is no box, which pys_ubox and the dyn boxers make,
+        # and no closure cell, which pys_alloc makes)
+        raw_cells = [label for label, used in ((BOX, reads_boxes), (CELL, bool(closure_cells or own_cells)))
+                     if used]
         return [other for other in field_classes if not related(cls, other)] + (
-            [BOX] if reads_boxes and known_class(cls) else [])
+            raw_cells if known_class(cls) else [])
     # An env is an array of pointers to closure cells. Recognize only constant
     # pointer-slot loads from a value whose definition/parameter has env type.
     # The captured cell itself is mutable: reuse read_field's heap invalidation,
@@ -1299,7 +1308,24 @@ def normalize_program(snapshot, function, effects_of=None, derefs=None, record=N
         if (kind == "mem.load" and len(values) == 1 and values[0] in closure_cells and op["results"]
                 and op["type"] not in PARTIAL_WORDS):
             return [], [{"op": "read_field", "dst": f"%t{op['results'][0]}", "object": values[0],
-                         "class": "<closure-cell>", "index": 0}]
+                         "class": CELL, "index": 0}]
+        if (kind == "mem.load" and len(values) == 1 and values[0] in own_cells and op["results"]
+                and op["type"] not in PARTIAL_WORDS):
+            return [], [{"op": "read_field", "dst": f"%t{op['results'][0]}", "object": values[0],
+                         "class": CELL, "index": 0}]
+        if (kind == "mem.store" and len(values) == 2 and values[0] in own_cells
+                and operands[1]["type"] not in PARTIAL_WORDS):
+            # (a variable's cell gets its new value: a register's, else a literal or unknown one,
+            # held by a name of the store's own, as for a field)
+            source = operand_of(values[1])
+            if isinstance(source, str) and source.startswith("%"):
+                return [], [{"op": "write_field", "object": values[0], "class": CELL, "index": 0, "value": source,
+                             "unrelated": []}]
+            stored = values[0] + "="
+            held = ({"op": "lit", "dst": stored, "value": source} if isinstance(source, int)
+                    else {"op": "havoc", "dst": stored})
+            return [], [held, {"op": "write_field", "object": values[0], "class": CELL, "index": 0,
+                               "value": stored, "unrelated": []}]
         if kind == "mem.store" and len(values) == 2 and values[0] in field_of:
             # (a field's new value: a register's, else a literal or an unknown value held by a
             # name of the store's own, its address and "=", which no register's name contains)
