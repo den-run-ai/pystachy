@@ -784,6 +784,8 @@ def main() -> None:
     if not os.path.exists(rtc) or not os.path.exists(rtpy):
         fail("cannot find runtime.c and runtime.py next to the compiler; set PYSTACHY_HOME to the directory that holds them", 0)
     # PYSTACHY_CFLAGS: extra clang flags (e.g. -fsanitize=undefined) for the runtime and the AOT link.
+    # AddressSanitizer also instruments an AOT/extension program's generated definitions,
+    # separately from the cached runtime so its already-instrumented code is not processed twice.
     # The runtime is compiled with them and then -fexceptions (so they cannot drop it): a raise unwinds
     # through runtime functions to compiled code's landing pads, which -O2 would turn back into calls
     # if clang marked them nounwind. runtime.py goes through the optimizations on the IR as programs
@@ -800,6 +802,11 @@ def main() -> None:
     if len(off) > 0:
         keyed = keyed + ["PYSTACHY_OPT=-" + ",-".join(off)]
     cflags = "".join([" " + q(a) for a in flags])
+    # Every module we instrument separately needs ungrouped ASan constructors:
+    # llvm-link renames duplicate local symbols but retains their COMDAT names.
+    # A separately sanitized native object could otherwise discard a constructor
+    # whose init-array entry survived under its renamed symbol.
+    ctorflags = " -mllvm -asan-with-comdat=0" if asan else ""
     # the AOT tier compiles bitcode whose runtime part is instrumented already, so the sanitizer flags
     # go to its link alone (which adds their runtime libraries): ASan's pass would instrument it again
     ccflags = "".join([" " + q(a) for a in flags if not a.startswith("-fsanitize") and not a.startswith("-fno-sanitize")])
@@ -931,6 +938,7 @@ def main() -> None:
             diagnostics.SRC = src
             tmp = tempfile.mkdtemp()
     ll = tmp + "/prog.ll"
+    abc = tmp + "/prog-asan.bc"
     bc = tmp + "/prog.bc"
     obj = tmp + "/prog.o"
     jobj = tmp + "/prog-O0.o"  # (PYSTACHY_JIT_CODEGEN=0: llc's object, and lli's main module beside it)
@@ -960,7 +968,7 @@ def main() -> None:
     parto = f"{rto}.{os.getpid()}.{own}"
     partso = f"{rts}.{os.getpid()}.{own}"
     f = open(ll, "w", encoding=RAW)
-    f.write(ir)
+    f.write(address_runtime_ir(ir) if asan and cmd != "run" else ir)
     if cmd == "build":
         # runtime.c's pys_plain, which -O2 reads with the runtime as one module: 1 removes the code
         # that only values of those opt-ins reach (opt_in()), before it is optimized; the JIT tier
@@ -1005,19 +1013,15 @@ def main() -> None:
         # Clang supplies the selected target/layout and sanitizer options (including
         # recovery), then instruments only the subset module: running ASan over
         # the combined module would instrument runtime.c a second time. Keep the
-        # subset's ASan constructors outside COMDAT groups: llvm-link renames a
-        # duplicate constructor but retains its group name, so a separately
-        # sanitized C object could discard that group while a renamed init-array
-        # entry still references it (a linker error).
+        # ASan constructors outside COMDAT groups in all modules (ctorflags),
+        # including C and the extension glue, as the user module is linked first.
         modules = f"{q(rpl)} {q(rcb)}"
         sanitize = ""
         if asan:
-            # C goes first so its grouped constructor keeps the group name;
-            # only the ungrouped subset constructor may be renamed by llvm-link.
             modules = f"{q(rcb)} {q(rpb)}"
             sanitize = f"{tc[0]} -O2 -emit-llvm -c -x ir {q(rpl)} -o {q(rpb)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions && "
         cstarted = timing_start()
-        cbuild = f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
+        cbuild = f"{tc[0]} -O2 -S -emit-llvm -x c {q(rcc)} -o {q(rll)} -Wno-unused-command-line-argument{cflags}{ctorflags} -fexceptions && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(rcb)}"
         ccached = ""
         cline = ""
         chit = False
@@ -1108,7 +1112,7 @@ def main() -> None:
             f = open(tmp + "/" + g[1], "w", encoding=RAW, newline="")
             f.write(f'#line 1 "{g[1]}"\n' + gs[0])
             f.close()
-            code = sh(f"{tc[0]} -O2 -fPIC -S -emit-llvm -x c - -o {q(rll)} -Wno-unused-command-line-argument{cflags} -fexceptions{g[2]} < {q(tmp + '/' + g[1])} && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(gp)}")
+            code = sh(f"{tc[0]} -O2 -fPIC -S -emit-llvm -x c - -o {q(rll)} -Wno-unused-command-line-argument{cflags}{ctorflags} -fexceptions{g[2]} < {q(tmp + '/' + g[1])} && {strip} {q(rll)} > {q(rsl)} && {tc[1]} {q(rsl)} -o {q(gp)}")
             if code != 0:
                 break
     # pystachy run of a program that embeds CPython: pyembed.c's machine code too, which lli loads
@@ -1166,13 +1170,25 @@ def main() -> None:
         if peo[1] == peo[2] and peo[2] != "" and not os.path.exists(peo[2]):
             peo[1] = peo[0]
     llvm = q(llvm) if llvm != "" else ""  # shell prefix: preserve spaces and literal metacharacters
-    link = f"{llvm}llvm-link --only-needed {q(ll)} {q(usebc)} -o {q(bc)}"
+    program = ll
+    if code == 0 and asan and cmd != "run":
+        # Clang needs both sanitize_address attributes and the sanitizer flag for
+        # LLVM input. Instrument only the generated module, before linking the
+        # already-instrumented runtime/glue. Ungrouped constructors avoid the
+        # COMDAT collision described for runtime.py above. The retained IR stays
+        # the frontend's original, target-independent output.
+        code = timed_sh("program.asan", f"{llvm}clang -O{aotopt} -emit-llvm -c -x ir {q(ll)} -o {q(abc)} -Wno-override-module -Wno-unused-command-line-argument{cflags} -mllvm -asan-with-comdat=0 -fexceptions")
+        program = abc
+        if code != 0:
+            msg = "cannot instrument generated program with AddressSanitizer (see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
+    link = f"{llvm}llvm-link --only-needed {q(program)} {q(usebc)} -o {q(bc)}"
     if embed and cmd == "build":
-        link = f"{llvm}llvm-link {q(ll)} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
+        link = f"{llvm}llvm-link {q(program)} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
     libs = "".join([" " + (q(x) + " " + q("-Wl,-rpath," + x[: x.rfind("/")]) if "/" in x else q("-l:" + x)) for x in LIBS if x != "-"])  # (libpython)
     libs += " -ldl" if len(LINKDL) > 0 or embed or cmd == "ext" else ""  # (dlopen, dlsym: @ffi.extern, pyembed.c)
     if code != 0:
-        msg = "cannot build the runtime (install LLVM 18 on Linux or LLVM 20 on macOS; see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
+        if msg == "":
+            msg = "cannot build the runtime (install LLVM 18 on Linux or LLVM 20 on macOS; see PYSTACHY_LLVM, PYSTACHY_CFLAGS)"
     elif cmd == "ext":
         # a CPython extension module: program, pyext.c, pyembed.c and runtime as one module, of which
         # only PyInit_<name> stays visible (the C files' bitcode is cached as the runtime's is: glue)
@@ -1184,7 +1200,7 @@ def main() -> None:
         public = f"{entry}{ext}" + (",pys_new" if newalloc else "")
         inline = (f" && {llvm}opt -passes='{LATE_PASSES},internalize,globaldce' {LATE_INLINE}"
                   f" -internalize-public-api-list={entry}{ext} {q(bc)} -o {q(bc)}") if newalloc else ""
-        code = timed_sh("extension.backend", f"{llvm}llvm-link {q(ll)} {q(glue[1][2])} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
+        code = timed_sh("extension.backend", f"{llvm}llvm-link {q(program)} {q(glue[1][2])} {q(glue[0][2])} -o {q(lnk)} && {llvm}llvm-link --only-needed {q(lnk)} {q(usebc)} -o {q(bc)}"
                   + f" && {llvm}opt -passes='internalize,default<O2>' -internalize-public-api-list={public} {q(bc)} -o {q(bc)}" + inline
                   + f" && {llvm}clang -O2 -fPIC -c {q(bc)} -o {q(obj)} -Wno-unused-command-line-argument{ccflags} && {llvm}clang -shared {q(obj)} -o {q(out)}{libs} -lm{cflags}")
     elif cmd == "build":
@@ -1411,7 +1427,7 @@ def main() -> None:
             finally:
                 for stream in reserved + inputs + pinned:
                     stream.close()
-    for p in [ll, bc, obj, jobj, jmain, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
+    for p in [ll, abc, bc, obj, jobj, jmain, obc, lbc, pcout, pclink, pclink2, pcerror, rcc, rll, rsl, rcb, rpl, rpb, lnk, part, parto, partso, hp, rso, tmp + "/runtime.i", tmp + "/runtime-preprocess.err", tmp + "/pyembed.c", tmp + "/pyext.c", peo[2]] + [g[3] for g in glue]:
         if os.path.exists(p):
             os.remove(p)
     os.rmdir(tmp)
