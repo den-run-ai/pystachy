@@ -186,6 +186,7 @@ class StateProbeTests(unittest.TestCase):
                 self.newhints = {}
                 self.newx = {}
                 self.idevent = ""
+                self.idvalevent = False
                 self.idhint = {}
                 generations.append(self)
 
@@ -231,6 +232,7 @@ class StateProbeTests(unittest.TestCase):
                 self.newhints = {}
                 self.newx = {}
                 self.idevent = ""
+                self.idvalevent = False
                 self.idhint = {}
                 generations.append(self)
 
@@ -253,6 +255,82 @@ class StateProbeTests(unittest.TestCase):
         with patch.dict(driver.compile_program.__globals__, Gen=FakeGen, Loader=FakeLoader):
             self.assertEqual(driver.compile_program("probe.py", "", [], ""), "full tracking")
         self.assertEqual(len(generations), 3)
+
+    def value_restart(self, passes):
+        # compile_program with a fake Gen whose pass k (from 1) runs passes[k - 1](gen, test),
+        # which raises Rejoin to restart or returns the program's IR
+        generations = []
+        test = self
+
+        class FakeLoader:
+            def __init__(self, dirs):
+                pass
+
+            def program(self, path, source):
+                return source
+
+        class FakeGen:
+            def __init__(self):
+                self.newhints = {}
+                self.newx = {}
+                self.idevent = ""
+                self.idvalevent = False
+                self.idhint = {}
+                generations.append(self)
+
+            def program(self, source):
+                test.assertEqual(self.hints, {})
+                test.assertEqual(self.xnot, {})
+                test.assertFalse(self.final)
+                return passes[len(generations) - 1](self, test)
+
+        with patch.dict(driver.compile_program.__globals__, Gen=FakeGen, Loader=FakeLoader):
+            result = driver.compile_program("probe.py", "", [], "")
+        self.assertEqual(len(generations), len(passes))
+        return result
+
+    def test_numeric_value_restart_keeps_the_identity_policy(self):
+        # A numeric-value module's crossing (Gen.identity_value_event) starts over with those
+        # modules tracking identity, keeping the hint and full-tracking settings; an ordinary
+        # crossing after it then restarts as before them.
+        def value_crossing(gen, test):
+            test.assertEqual((gen.idvals, gen.idtry, gen.idfull), (True, True, False))
+            gen.newhints["dirty"] = "int"
+            gen.idevent = "call of f() across numeric values"
+            gen.idvalevent = True
+            raise Rejoin()
+
+        def ordinary_crossing(gen, test):
+            test.assertEqual((gen.idvals, gen.idtry, gen.idfull), (False, True, False))
+            gen.newx["dirty"] = True
+            gen.idevent = "number as an Any value"
+            raise Rejoin()
+
+        def full(gen, test):
+            test.assertEqual((gen.idvals, gen.idfull), (False, True))
+            return "full tracking"
+
+        self.assertEqual(self.value_restart([value_crossing, ordinary_crossing, full]), "full tracking")
+
+    def test_full_tracking_restarts_once_more_without_numeric_values(self):
+        # Under full tracking only numeric-value modules' crossings remain: any event there
+        # compiles the program again with them tracking identity too.
+        def ordinary_crossing(gen, test):
+            test.assertEqual((gen.idvals, gen.idfull), (True, False))
+            gen.idevent = "number as an Any value"
+            raise Rejoin()
+
+        def value_crossing(gen, test):
+            test.assertEqual((gen.idvals, gen.idfull), (True, True))
+            gen.newhints["dirty"] = "int"
+            gen.idevent = "inheritance of Zone across numeric values"
+            raise Rejoin()
+
+        def everything(gen, test):
+            test.assertEqual((gen.idvals, gen.idfull), (False, True))
+            return "everything tracks"
+
+        self.assertEqual(self.value_restart([ordinary_crossing, value_crossing, everything]), "everything tracks")
 
     def test_each_missing_rewind_is_detected(self):
         source = inspect.getsource(driver.compile_program)
