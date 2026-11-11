@@ -1,0 +1,32 @@
+dot 165.0 285.0
+stencil [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 0.0]
+matmul [[0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 30.0, 32.0, 41.0, 29.0], [0.0, 32.0, 57.0, 47.0, 44.0], [0.0, 41.0, 47.0, 74.0, 38.0], [0.0, 29.0, 44.0, 38.0, 46.0]]
+matmul short list index out of range
+isum 140 0 0
+isum long list index out of range
+scale [10, 2, 30, 4, 50]
+wrap [6, 4, 6, 4]
+partial 0 1.0
+partial 1 3.0
+partial short list index out of range
+assign short list assignment index out of range [2.0, 4.0]
+aliased [1.0, 2.0, 3.0]
+rebind 51
+grow 12
+maybe 3.0
+maybe unbound cannot access local variable 'zs' where it is not associated with a value
+objs 6
+objs long list index out of range
+early 1043 1
+early short list index out of range
+moved 9
+gen [4, 5, 6]
+guarded 4
+calls 6
+sum 165.0
+empty 0.0 0
+down [2, 4, 6]
+stepped 9
+zero step range() arg 3 must not be zero
+callback shrinks list index out of range
+[exit 0]

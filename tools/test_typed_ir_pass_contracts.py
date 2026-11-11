@@ -44,6 +44,12 @@ def summed(xs: list[float]) -> float:
         total += x
     return total
 
+def dotted(a: list[float], b: list[float]) -> float:
+    total = 0.0
+    for i in range(len(a)):
+        total += a[i] * b[i]
+    return total
+
 def is_colon(text: str, pos: int) -> bool:
     c = text[pos]
     return c == ":"
@@ -65,7 +71,7 @@ def repeated(box: Box | None) -> int:
     except AttributeError:
         return -1
 
-print(summed([0.5, 1.5]), looked_up({"x": 2}, "x"), is_colon(":", 0))
+print(summed([0.5, 1.5]), dotted([0.5, 1.5], [2.0, 4.0]), looked_up({"x": 2}, "x"), is_colon(":", 0))
 print(accumulated([0.5, 1.5]), repeated(Box(3)), repeated(None))
 """
 
@@ -318,11 +324,65 @@ class PassContractTests(unittest.TestCase):
             if event[0] not in ("verify", "verify-eh") and event[2] > 0:
                 rewritten.add(event[0])
                 self.assertEqual(events[j + 1], ("verify", event[1]))
-        self.assertEqual(rewritten, {"charslots", "listget", "dictfuse", "unionslots", "nullcheck"})
+        self.assertEqual(rewritten, {"charslots", "listget", "listguard", "dictfuse", "unionslots", "nullcheck"})
         with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "0", "PYSTACHY_OPT": "",
                                     "PYSTACHY_IRFX": "0"}):
             normal_ir = Gen().program(Loader([]).program("pass_contracts.py", SOURCE))
         self.assertEqual(checked_ir, normal_ir)
+
+    def test_listguard_folded_reads_trigger_post_pass_verification(self):
+        source = """
+def conditional(xs: list[int], n: int, take: bool) -> int:
+    total = 0
+    for i in range(n):
+        if take:
+            total += xs[i]
+    return total
+print(conditional([2, 3], 2, True))
+"""
+        changes, checked = [], []
+        original_guard, original_check = Gen.listguard, optimizations.gen_pass_check
+
+        def guard(gen, fn):
+            before = len(fn.blocks)
+            count = original_guard(gen, fn)
+            if fn.f.name == "conditional":
+                changes.append((count, len(fn.blocks) > before))
+            return count
+
+        def check(gen, fn, contract, after):
+            if fn.f.name == "conditional" and contract.name == "listguard" and after:
+                checked.append(True)
+            return original_check(gen, fn, contract, after)
+
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}), \
+                patch.object(Gen, "listguard", guard), \
+                patch.object(optimizations, "gen_pass_check", check):
+            Gen().program(Loader([]).program("folded_reads.py", source))
+        self.assertEqual(len(changes), 1)
+        self.assertTrue(changes[0][1])
+        self.assertGreater(changes[0][0], 0)
+        self.assertEqual(checked, [True])
+
+    def test_listguard_preserves_copied_field_write_effects(self):
+        source = """
+class Box:
+    def __init__(self) -> None:
+        self.value = 0
+def copy(xs: list[int], ys: list[int], box: Box, n: int) -> None:
+    for i in range(n):
+        box.value = xs[i]
+        ys[i] = box.value
+box = Box()
+ys = [0, 0]
+copy([3, 4], ys, box, 2)
+print(ys, box.value)
+"""
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "1", "PYSTACHY_OPT": ""}):
+            checked = Gen().program(Loader([]).program("guarded_fields.py", source))
+        with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "0", "PYSTACHY_OPT": ""}):
+            normal = Gen().program(Loader([]).program("guarded_fields.py", source))
+        self.assertEqual(checked, normal)
 
 
 if __name__ == "__main__":

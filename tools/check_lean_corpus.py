@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Check every dyn.payload read of the dynamic-Any test programs with Lean.
+"""Check every dyn.payload read and unchecked access of the dynamic-Any test programs with Lean.
 
 The corpus is each differential program and deviation (tests/corpus.sh) that opts in to dynamic
 Any, or that reaches through its imports a module that does, on the search path the compiler
 gives it: its directory, its NAME.path directories, then lib/. Each is compiled by the hosted
-compiler under tools/inspect_compiler.py --typed-after-only, and tools/check_lean_boundary.py
-checks every function of its snapshot that reads a dynamic payload. Exit 0 when Lean accepts
-them all, 1 when it rejects one, 2 when one is outside the supported abstraction, 3 when a
-program does not compile or a snapshot is malformed.
+compiler under tools/inspect_compiler.py --typed-after-only. tools/check_lean_boundary.py
+checks every function of its snapshot that reads a dynamic payload, and tools/check_lean_access.py
+every function with an unchecked list read or dict entry. Exit 0 when Lean accepts them all, 1
+when it rejects one, 2 when one is outside the supported abstraction, 3 when a program does not
+compile or a snapshot is malformed.
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ import sys
 import tempfile
 import time
 
+import check_lean_access as access
 import check_lean_boundary as bridge
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -57,8 +59,9 @@ class Reach:
     in any branch or function counts, as does a name imported from a package that is also its
     submodule: over-approximate, so that no program that compiles dynamic code is left out."""
 
-    def __init__(self):
+    def __init__(self, pragma=dynamic_pragma):
         self.parsed = {}
+        self.pragma = pragma
 
     def facts(self, path):
         # (opts in, its imports: (level, dotted module parts, imported names))
@@ -80,7 +83,7 @@ class Reach:
                 elif isinstance(node, ast.ImportFrom):
                     imports.append((node.level, node.module.split(".") if node.module else [],
                                     [alias.name for alias in node.names if alias.name != "*"]))
-            self.parsed[path] = (dynamic_pragma(text), imports)
+            self.parsed[path] = (self.pragma(text), imports)
         return self.parsed[path]
 
     @staticmethod
@@ -132,8 +135,11 @@ def select(programs=None):
             if reach.dynamic(located(program), search_path(located(program)))]
 
 
-def check_program(program, checker, timeout):
-    """Inspect one program and check its snapshot. A record: its status, counts and failures."""
+def check_program(program, checker, timeout, access_checker=access.DEFAULT_CHECKER, verdicts=None):
+    """Inspect one program and check its snapshot. A record: its status, counts and failures.
+    verdicts: the access checker's results by function, which programs that share a library
+    function reuse (check_lean_access.check_all). Unprefixed status counters count payload
+    functions; access_<status> counters count access functions. A function can count in both."""
     env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
     env["PYSTACHY_HOME"] = str(ROOT)
     path = located(program)
@@ -160,18 +166,26 @@ def check_program(program, checker, timeout):
     compiled = time.monotonic()
     try:
         fields, _ = bridge.check_all(snapshot, checker)
+        accessed = time.monotonic()
+        accesses, _ = access.check_all(snapshot, access_checker, verdicts)
     except (OSError, ValueError, subprocess.SubprocessError, RecursionError) as error:
         return dict(record, status="error", message=str(error))
-    failures = [function for function in fields["functions"] if function["status"] != "accepted"]
-    return dict(record, status=fields["status"], snapshot_sha256=digest, totals=fields["totals"],
-                failures=failures, seconds={"inspection": round(compiled - started, 2),
-                                            "lean": round(time.monotonic() - compiled, 2)})
+    failures = [function for function in fields["functions"] + accesses["functions"]
+                if function["status"] != "accepted"]
+    status = max(fields["status"], accesses["status"], key=bridge.SEVERITY.index)
+    totals = dict(fields["totals"], **{key: accesses["totals"][key] for key in
+                                      ("access_functions", "accesses", "proved_accesses")})
+    totals.update({"access_" + status: accesses["totals"][status] for status in bridge.SEVERITY})
+    return dict(record, status=status, snapshot_sha256=digest, totals=totals, failures=failures,
+                seconds={"inspection": round(compiled - started, 2), "lean": round(accessed - compiled, 2),
+                         "access": round(time.monotonic() - accessed, 2)})
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("programs", nargs="*", help="programs to check, all of them, instead of the selected corpus")
     parser.add_argument("--checker", type=Path, default=bridge.DEFAULT_CHECKER)
+    parser.add_argument("--access-checker", type=Path, default=access.DEFAULT_CHECKER)
     parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1))
     parser.add_argument("--timeout", type=float, default=600.0, help="seconds per inspection")
     parser.add_argument("--report", type=Path, help="write the full JSON report to this new file")
@@ -183,22 +197,28 @@ def main(argv=None):
     if args.list:
         print("\n".join(programs))
         return 0
-    if not args.checker.is_file():
-        print(f"check_lean_corpus: no Lean checker at {args.checker}; run make check-lean-boundary",
-              file=sys.stderr)
-        return 3
+    for checker in (args.checker, args.access_checker):
+        if not checker.is_file():
+            print(f"check_lean_corpus: no Lean checker at {checker}; run make check-lean-boundary",
+                  file=sys.stderr)
+            return 3
     started = time.monotonic()
+    verdicts = {}
     with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
-        records = list(pool.map(lambda program: check_program(program, args.checker, args.timeout), programs))
+        records = list(pool.map(lambda program: check_program(program, args.checker, args.timeout,
+                                                              args.access_checker, verdicts), programs))
     worst = max((record["status"] for record in records), key=bridge.SEVERITY.index, default="accepted")
     totals = {key: sum(record.get("totals", {}).get(key, 0) for record in records)
               for key in ("functions", "payload_functions", "reads", "proved_reads",
-                          "accepted", "unsupported", "rejected", "error")}
+                          "access_functions", "accesses", "proved_accesses",
+                          "accepted", "unsupported", "rejected", "error",
+                          "access_accepted", "access_unsupported", "access_rejected", "access_error")}
     totals["programs"] = len(records)
     totals["failed_programs"] = sum(record["status"] != "accepted" for record in records)
     summary = {"status": worst, "totals": totals, "seconds": round(time.monotonic() - started, 1),
-               "programs": records, "scope": "dyn.payload guards of the dynamic-Any test programs",
-               "limitations": bridge.LIMITATIONS}
+               "programs": records,
+               "scope": "dyn.payload guards and unchecked accesses of the dynamic-Any test programs",
+               "limitations": bridge.LIMITATIONS + access.LIMITATIONS}
     if args.report:
         with args.report.open("x", encoding="utf-8") as output:
             json.dump(summary, output, indent=1, sort_keys=True)
@@ -209,7 +229,8 @@ def main(argv=None):
             for function in record.get("failures", []):
                 print(f"  {function['status']}: {function['function']}: {function.get('message', '')}")
     print(f"check_lean_corpus: {worst}: {totals['programs']} programs, {totals['payload_functions']} "
-          f"functions reading payloads, {totals['proved_reads']} of {totals['reads']} reads proved "
+          f"functions reading payloads, {totals['proved_reads']} of {totals['reads']} reads proved; "
+          f"{totals['proved_accesses']} of {totals['accesses']} unchecked accesses proved "
           f"({summary['seconds']} s)")
     return bridge.OUTCOMES[worst]
 
