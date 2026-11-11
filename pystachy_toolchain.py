@@ -49,13 +49,17 @@ MACOS_RELEASE = (
 MACOS_SHA256 = "a9a22f450d35f1f73cd61ab6a17c6f27d8f6051d56197395c1eb397f0c9bbec4"
 
 
-def download(url: str, sha256: str, destination: Path) -> None:
+def download(url: str, sha256: str, destination: Path, *, fallback_url: str | None = None) -> None:
+    # Share the retry budget across endpoints: snapshot, mirror, snapshot. The
+    # mirror may prune old packages, so its 404 can use the final snapshot attempt.
+    urls = (url, fallback_url or url, url)
     for attempt in range(3):
+        active_url = urls[attempt]
         digest = hashlib.sha256()
         error = None
         # Catch network operations separately so local file errors are not retried.
         try:
-            response = urlopen(url, timeout=60)
+            response = urlopen(active_url, timeout=60)
         except (URLError, TimeoutError) as failure:
             error = failure
         else:
@@ -72,16 +76,17 @@ def download(url: str, sha256: str, destination: Path) -> None:
                     archive.write(chunk)
         if error is None:
             if digest.hexdigest() != sha256:
-                raise ValueError(f"LLVM download checksum mismatch: {url}")
+                raise ValueError(f"LLVM download checksum mismatch: {active_url}")
             return
         if isinstance(error, HTTPError):
             retryable = error.code in (408, 429, 500, 502, 503, 504)
+            retryable = retryable or (attempt == 1 and fallback_url is not None and error.code == 404)
         else:
             retryable = isinstance(error, TimeoutError) or isinstance(error.reason, TimeoutError)
-        if not retryable or attempt == 2:
-            raise error
         if isinstance(error, HTTPError):
             error.close()
+        if not retryable or attempt == 2:
+            raise URLError(f"{active_url}: {error}") from error
         time.sleep(attempt + 1)
 
 
@@ -89,8 +94,11 @@ def unpack_ubuntu(staging: Path, payload: Path, arch: str) -> Path:
     archive = staging / "package.deb"
     for component, package, amd64_hash, arm64_hash in UBUNTU_PACKAGES:
         filename = f"{package}_{UBUNTU_REVISION}_{arch}.deb"
-        url = f"{UBUNTU_SNAPSHOT}/pool/{component}/l/llvm-toolchain-18/{filename}"
-        download(url, amd64_hash if arch == "amd64" else arm64_hash, archive)
+        path = f"pool/{component}/l/llvm-toolchain-18/{filename}"
+        mirror = ("https://archive.ubuntu.com/ubuntu" if arch == "amd64"
+                  else "https://ports.ubuntu.com/ubuntu-ports")
+        download(f"{UBUNTU_SNAPSHOT}/{path}", amd64_hash if arch == "amd64" else arm64_hash,
+                 archive, fallback_url=f"{mirror}/{path}")
         subprocess.run(["dpkg-deb", "--extract", str(archive), str(payload)], check=True)
     return payload / "usr/lib/llvm-18/bin"
 
