@@ -1,0 +1,24 @@
+inner a
+inner finally 5
+outer GeneratorExit
+closed
+send after close: cannot reuse already awaited coroutine
+inner a inner b
+inner finally 5
+outer got 10
+c2 finished
+send finished: cannot reuse already awaited coroutine
+throw finished: cannot reuse already awaited coroutine
+handled ZeroDivisionError
+handler returned
+thrown through: KeyError('k')
+close: coroutine ignored GeneratorExit
+await again: cannot reuse already awaited coroutine
+twice returned
+awaited already: coroutine is being awaited already
+inner finally 1
+stop: coroutine raised StopIteration
+boom
+caught KeyError('x')
+catcher returned
+[exit 0]

@@ -26,6 +26,7 @@ from src.pystachy_compiler.utils import (
     is_const,
     is_dict,
     is_fn,
+    is_coro,
     is_gen,
     is_fset,
     is_kw,
@@ -875,6 +876,8 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         return self.to_str(o) if m == "__str__" else self.repr(o)
     if is_gen(o.t):
         return self.gen_method(o, m, args)
+    if is_coro(o.t):
+        return self.coro_method(o, m, args)
     if o.t in self.classes and m == "__init__" and self.classes[o.t].exc != "":
         for c in self.classes.values():
             if c.name != o.t and self.derives(c.name, o.t) and "__init__" in c.methods and c.methods["__init__"].cls == c.name:

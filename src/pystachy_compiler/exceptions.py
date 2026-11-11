@@ -644,14 +644,14 @@ def gen_raise_stmt(self, n: Node) -> None:
         return
     e = n.kids[0]
     k = self.exc_class(e)
-    if self.curfn.gen and not self.eh and k != "" and (exc_derives(k, "StopIteration") if k not in self.classes else self.derives(k, "StopIteration")):
+    if (self.curfn.gen or self.curfn.direct) and not self.eh and k != "" and (exc_derives(k, "StopIteration") if k not in self.classes else self.derives(k, "StopIteration")):
         # (PEP 479: a StopIteration that leaves a generator is a RuntimeError; with exceptions
         # off, nothing in the generator can catch it first)
         if k in self.classes:
             self.exc_value_of(e, k)
         else:
             self.exc_vals(self.exc_args(e), k)
-        self.raise_("RuntimeError", self.sconst("generator raised StopIteration"))
+        self.raise_("RuntimeError", self.sconst(("coroutine" if self.curfn.aio or self.curfn.direct else "generator") + " raised StopIteration"))
         return
     if k == "" or k in self.classes:
         # e's value and then the cause's, and only then are their classes called and checked, as

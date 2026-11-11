@@ -717,12 +717,15 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
                 # programs valid, but fix their consumed ABI before emitting a call.
                 # The first-return path refuses any later non-None inference.
                 g.ret = "None"
+            elif f.aio:
+                self.err(f"cannot infer what {short(f.name)}() returns: it awaits or calls itself before a return statement decides that; annotate its return type (async def {short(f.name)}(...) -> R)")
             elif f.gen:
                 self.err(f"cannot infer what {short(f.name)}() yields: it calls itself before its first yield; annotate its return type (-> Iterator[T])")
             else:
                 self.err(f"cannot infer what {short(f.name)}() returns: it calls itself before a return statement does; annotate its return type")
         if g.ll in self.building:
             self.retseen[g.ll] = True  # (a return of None can no longer make it T | None)
+            g.ysure = True  # (a coroutine's Y is in the type this call gives: coroutines.py)
             if g.ll != self.curfn.ll:
                 self.dynseen[g.ll] = True  # (nor compiling it again change what it returns: dyn_again)
         f.lastikey = key
@@ -750,6 +753,9 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.orig = f.orig
     g.iters = f.iters
     g.gen = f.gen
+    g.aio = f.aio
+    g.awaitable = f.awaitable
+    g.direct = f.direct
     g.gret = f.gret
     g.gretinfer = f.gretinfer
     g.gsend = f.gsend
@@ -791,6 +797,8 @@ def gen_instance(self, f: FnInfo, ts: list[str], nnp: list[str], want: str = "",
     g.clo = f.clo
     for x in nnp:
         g.nnp[x] = True
+    if g.aio:
+        self.coro_hinted(g)  # (Y from an earlier pass: coroutines.py)
     f.insts[key] = g
     self.template_instances += 1
     self.template_retained += size

@@ -1,0 +1,30 @@
+assertRaisesRegex RuntimeError coroutine raised StopIteration
+assertEqual 1 1
+assertEqual 2 2
+assertRaises StopIteration
+assertRaisesRegex ValueError coroutine already executing
+assertRaisesRegex RuntimeError coroutine ignored GeneratorExit
+assertRaises StopIteration
+assertRaisesRegex RuntimeError cannot reuse already awaited coroutine
+assertRaisesRegex Exception ham
+assertRaisesRegex RuntimeError cannot reuse already awaited coroutine
+assertRaisesRegex RuntimeError cannot reuse already awaited coroutine
+assertRaises StopIteration
+assertRaisesRegex RuntimeError cannot reuse already awaited coroutine
+assertRaisesRegex RuntimeError cannot reuse already awaited coroutine
+assertEqual 0 0
+assertEqual 1 1
+assertEqual 1 1
+assertEqual 1 1
+assertEqual 1 1
+assertRaisesRegex TypeError object int can't be used in 'await' expression
+assertRaisesRegex TypeError object list can't be used in 'await' expression
+result 42
+yielded 42
+result 100
+assertRaisesRegex TypeError object Awaitable can't be used in 'await' expression
+result 42
+result ('spam', 'ham')
+result spam
+assertRaisesRegex RuntimeError coroutine is being awaited already
+[exit 0]

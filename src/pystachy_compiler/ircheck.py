@@ -5,7 +5,7 @@ from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
+from src.pystachy_compiler.utils import elem, is_dict, is_handle, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
 
 # Fixed SSA result counts printed by each lowering (gen_nums handles calls).
 RESULT_NUMBERS: dict[str, int] = {
@@ -464,7 +464,7 @@ def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
     # generator function (IFn.coro) and names it (a str); gen.yield (a %slot, k 0 or 1) and
     # gen.ret (none, or a %slot) suspend one, with the %ptr of a promoting int after the slot in a
     # program that opts in to them (specs.GENVALP); gen.promise without an operand is its own promise;
-    # gen.promise, gen.resume and gen.drop of a handle take a generator
+    # gen.promise, gen.resume and gen.drop of a handle take a generator or a coroutine (an async def's)
     own = i.op == "gen.start" or i.op == "gen.yield" or i.op == "gen.ret" or (i.op == "gen.promise" and len(i.a) == 0)
     if own and not fn.coro:
         self.bad_ir(fn, b, f"{i.op} outside a generator function")
@@ -477,10 +477,10 @@ def gen_verify_gen(self, fn: IFn, b: Blk, i: Ins, j: int) -> None:
         self.bad_ir(fn, b, "gen.yield needs the value's slot and the block where it resumes")
     if i.op == "gen.ret" and ((len(i.a) > 1 and not hi) or (len(i.a) > 0 and i.a[0].t != "%slot") or len(i.b) != 0 or i.t != ""):
         self.bad_ir(fn, b, "gen.ret needs the slot of its value, if any")
-    if i.op == "gen.promise" and (i.t != "%ptr" or len(i.a) > 1 or (len(i.a) == 1 and not is_gen(i.a[0].t)) or len(i.b) != 0):
-        self.bad_ir(fn, b, "gen.promise needs a generator or none (its own)")
-    if (i.op == "gen.resume" or i.op == "gen.drop") and (len(i.a) != 1 or not is_gen(i.a[0].t) or i.t != "" or (len(i.b) != 0 and (i.op == "gen.drop" or len(i.b) != 2))):
-        self.bad_ir(fn, b, f"{i.op} needs a generator")
+    if i.op == "gen.promise" and (i.t != "%ptr" or len(i.a) > 1 or (len(i.a) == 1 and not is_handle(i.a[0].t)) or len(i.b) != 0):
+        self.bad_ir(fn, b, "gen.promise needs a generator, a coroutine or none (its own)")
+    if (i.op == "gen.resume" or i.op == "gen.drop") and (len(i.a) != 1 or not is_handle(i.a[0].t) or i.t != "" or (len(i.b) != 0 and (i.op == "gen.drop" or len(i.b) != 2))):
+        self.bad_ir(fn, b, f"{i.op} needs a generator or a coroutine")
     if i.op == "gen.start" and j != len(b.code) - 1:
         self.bad_ir(fn, b, "gen.start before other ops")
 

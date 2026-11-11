@@ -978,6 +978,25 @@ from src.pystachy_compiler.generators import (
     gen_gen_send as generators_gen_send,
     gen_yield_from_iter as generators_yield_from_iter,
 )
+from src.pystachy_compiler.coroutines import (
+    gen_await_dead as coroutines_await_dead,
+    gen_await_handle as coroutines_await_handle,
+    gen_await_value as coroutines_await_value,
+    gen_await_words as coroutines_await_words,
+    gen_awaits_direct as coroutines_awaits_direct,
+    gen_coro_analyze as coroutines_coro_analyze,
+    gen_coro_twin as coroutines_coro_twin,
+    gen_direct_await as coroutines_direct_await,
+    gen_coro_declare as coroutines_coro_declare,
+    gen_coro_hinted as coroutines_coro_hinted,
+    gen_yield_change as coroutines_yield_change,
+    gen_coro_deco as coroutines_coro_deco,
+    gen_coro_method as coroutines_coro_method,
+    gen_coro_scan as coroutines_coro_scan,
+    gen_coro_settle as coroutines_coro_settle,
+    gen_coro_type as coroutines_coro_type,
+    gen_coro_yields as coroutines_coro_yields,
+)
 from src.pystachy_compiler.functions import (
     gen_enter as functions_enter,
     gen_extern_args as functions_extern_args,
@@ -3423,6 +3442,57 @@ class Gen:
     def gen_declare(self, f: FnInfo, d: Node) -> str:
         return generators_gen_declare(self, f, d)
 
+    def coro_declare(self, f: FnInfo, d: Node) -> str:
+        return coroutines_coro_declare(self, f, d)
+
+    def coro_deco(self, x: Node) -> bool:
+        return coroutines_coro_deco(self, x)
+
+    def coro_type(self, y: str, r: str) -> str:
+        return coroutines_coro_type(self, y, r)
+
+    def coro_scan(self, body: list[Node], kind: str) -> bool:
+        return coroutines_coro_scan(self, body, kind)
+
+    def coro_settle(self, f: FnInfo) -> None:
+        return coroutines_coro_settle(self, f)
+
+    def coro_yields(self, yi: str, callee: FnInfo | None, what: str) -> str:
+        return coroutines_coro_yields(self, yi, callee, what)
+
+    def await_value(self, n: Node, want: str) -> Val:
+        return coroutines_await_value(self, n, want)
+
+    def await_dead(self, want: str) -> Val:
+        return coroutines_await_dead(self, want)
+
+    def await_handle(self, v: Val, yi: str, r: str, callee: FnInfo | None, what: str) -> Val:
+        return coroutines_await_handle(self, v, yi, r, callee, what)
+
+    def await_words(self, p: str, yi: str, y: str, owned: Val | None) -> list[str]:
+        return coroutines_await_words(self, p, yi, y, owned)
+
+    def coro_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return coroutines_coro_method(self, o, m, args)
+
+    def coro_analyze(self) -> None:
+        return coroutines_coro_analyze(self)
+
+    def coro_hinted(self, g: FnInfo) -> None:
+        return coroutines_coro_hinted(self, g)
+
+    def yield_change(self, f: FnInfo, t: str, relayout: bool, why: str) -> None:
+        return coroutines_yield_change(self, f, t, relayout, why)
+
+    def awaits_direct(self, f: FnInfo, nos: dict[str, bool]) -> bool:
+        return coroutines_awaits_direct(self, f, nos)
+
+    def coro_twin(self, f: FnInfo) -> FnInfo:
+        return coroutines_coro_twin(self, f)
+
+    def direct_await(self, x: Node) -> FnInfo | None:
+        return coroutines_direct_await(self, x)
+
     def gen_drop(self, h: Val) -> None:
         return generators_gen_drop(self, h)
 
@@ -3514,8 +3584,8 @@ class Gen:
     def gen_stop(self) -> None:
         return generators_gen_stop(self)
 
-    def gen_raised(self, e: Val) -> None:
-        return generators_gen_raised(self, e)
+    def gen_raised(self, e: Val, noun: str = "generator") -> None:
+        return generators_gen_raised(self, e, noun)
 
     def gen_close(self, h: Val) -> None:
         return generators_gen_close(self, h)
@@ -3523,8 +3593,8 @@ class Gen:
     def exc_mark(self) -> str:
         return generators_exc_mark(self)
 
-    def pep479(self, e: Val) -> None:
-        return generators_pep479(self, e)
+    def pep479(self, e: Val, noun: str = "generator") -> None:
+        return generators_pep479(self, e, noun)
 
     def exc_back(self, old: str) -> None:
         return generators_exc_back(self, old)

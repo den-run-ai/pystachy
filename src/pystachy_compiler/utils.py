@@ -238,6 +238,8 @@ def tname(t: str) -> str:
         return "type"
     if is_gen(t):
         return "generator"
+    if is_coro(t):
+        return "coroutine"
     if is_kw(t):
         return "dict"
     if is_fn(t):
@@ -637,7 +639,7 @@ def typestr(t: str) -> str:
     w = ""
     for c in t + ",":
         if c == "[" or c == "]" or c == ",":
-            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else SPECSHOW[w] if w in SPECSHOW else short(w))
+            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else "Coroutine" if w == "coro" and c == "[" else SPECSHOW[w] if w in SPECSHOW else short(w))
             out.append(c)
             w = ""
         else:
@@ -958,6 +960,29 @@ def gsend(t: str) -> str:
     # S, the send type of a generator gen[Y,S]: None for a gen[Y]
     a = targs(t)
     return a[1] if len(a) > 1 else "None"
+
+
+def is_coro(t: str) -> bool:
+    # coro[Y,S,R]: a coroutine object (an async def's call made it), the handle of an LLVM
+    # coroutine as a generator's is; Y is what it yields to the code that runs it (send()), S
+    # what that sends (None), R what await gives once it returns (docs/internals.md#coroutines).
+    # Unlike a generator it is no iterator: no loop takes it
+    return t.startswith("coro[")
+
+
+def is_handle(t: str) -> bool:
+    # a generator or a coroutine: an LLVM coroutine's handle, whose promise gen.promise addresses
+    return t.startswith("gen[") or t.startswith("coro[")
+
+
+def cyield(t: str) -> str:
+    # Y, of a coroutine coro[Y,S,R]
+    return targs(t)[0]
+
+
+def cret(t: str) -> str:
+    # R, of a coroutine coro[Y,S,R]: what await gives
+    return targs(t)[2]
 
 
 def targs(t: str) -> list[str]:

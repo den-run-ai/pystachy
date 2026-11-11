@@ -7,6 +7,7 @@ from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
+from src.pystachy_compiler.coroutines import has_async
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS, one_nums_intact
 from src.pystachy_compiler.module import Mod
@@ -824,7 +825,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         self.scan_imports(m.body.kids)
         self.eh = self.eh or needs_eh(m.body.kids) or self.ext != ""  # (an extension's calls are tries)
         self.eh = self.eh or refl_needs_eh(m.body, props)  # (reflection.py: a getter's AttributeError caught)
-        self.gproto = self.gproto or uses_protocol(m.body)  # (generators: send(), throw(), a yield's value)
+        self.gproto = self.gproto or uses_protocol(m.body) or has_async(m.body)  # (generators: send(), throw(), a yield's value; coroutines)
         self.excread = self.excread or reads_handled(m.body)  # (sys.exception() in a generator)
         self.causeread = self.causeread or reads_cause(m.body)  # (e.__cause__: lib/contextlib.py's)
         for q in m.taliases:
@@ -1075,6 +1076,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     for nm in self.gflag:
         if nm in self.funcs or nm in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")
+    self.coro_analyze()  # (the async defs that never suspend, which await calls directly: coroutines.py)
     for m in mods:
         # a module global that module code only sets to None (an optional accelerator's
         # fallback, _json = None, or a cache a function fills, _varsub = None) and that is

@@ -870,6 +870,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.dict_merge(n, want)
     if k == "yield":
         return self.yield_value(n)  # (what send() sends the generator)
+    if k == "await":
+        return self.await_value(n, want)  # (what the awaitable returns: coroutines.py)
     if k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
     if k == "walrus":

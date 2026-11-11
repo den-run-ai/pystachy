@@ -558,7 +558,8 @@ UNSUPPORTED: dict[str, str] = {
 # of the program (over object.__new__, which makes an object of the class, only those marked "o")
 INERT_DECOS: dict[str, str] = {"typing.overload": "f", "typing.final": "fco", "typing.no_type_check": "fco", "typing.override": "fco",
                                "staticmethod": "f", "classmethod": "f", "property": "f", "dataclasses.dataclass": "c",
-                               "typing.runtime_checkable": "c", "object.__new__": "c", "ffi.extern": "f", "ffi.export": "f"}
+                               "typing.runtime_checkable": "c", "object.__new__": "c", "ffi.extern": "f", "ffi.export": "f",
+                               "_pystachy_typenames.coroutine": "f"}
 # node kinds that evaluate without effects
 INERT: dict[str, bool] = {}
 for _k in "int float str bytes complex None True False ellipsis noann omit".split():
