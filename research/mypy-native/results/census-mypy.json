@@ -1,0 +1,3540 @@
+{
+ "files": 143,
+ "lines": 115301,
+ "counts": [
+  [
+   "def",
+   5799
+  ],
+  [
+   "For",
+   1783
+  ],
+  [
+   "Assert",
+   1119
+  ],
+  [
+   "JoinedStr",
+   1106
+  ],
+  [
+   "ListComp",
+   635
+  ],
+  [
+   "posonly_def",
+   545
+  ],
+  [
+   "IfExp",
+   466
+  ],
+  [
+   "class",
+   464
+  ],
+  [
+   "Slice",
+   443
+  ],
+  [
+   "GeneratorExp",
+   433
+  ],
+  [
+   "Raise",
+   407
+  ],
+  [
+   "With",
+   285
+  ],
+  [
+   "Try",
+   251
+  ],
+  [
+   "kwonly_def",
+   188
+  ],
+  [
+   "nested_def_or_lambda",
+   157
+  ],
+  [
+   "Yield",
+   146
+  ],
+  [
+   "__slots__",
+   132
+  ],
+  [
+   "While",
+   102
+  ],
+  [
+   "Lambda",
+   94
+  ],
+  [
+   "SetComp",
+   85
+  ],
+  [
+   "NamedExpr",
+   83
+  ],
+  [
+   "DictComp",
+   79
+  ],
+  [
+   "Starred",
+   72
+  ],
+  [
+   "Delete",
+   59
+  ],
+  [
+   "call_star",
+   40
+  ],
+  [
+   "YieldFrom",
+   30
+  ],
+  [
+   "**kwargs_def",
+   12
+  ],
+  [
+   "*args_def",
+   11
+  ],
+  [
+   "call_starstar",
+   8
+  ],
+  [
+   "Global",
+   5
+  ],
+  [
+   "Nonlocal",
+   3
+  ]
+ ],
+ "imports": [
+  [
+   "__future__",
+   134
+  ],
+  [
+   "typing",
+   102
+  ],
+  [
+   "mypy.nodes",
+   88
+  ],
+  [
+   "mypy.types",
+   84
+  ],
+  [
+   "collections.abc",
+   83
+  ],
+  [
+   "mypy.options",
+   44
+  ],
+  [
+   "mypy.util",
+   36
+  ],
+  [
+   "mypy.typeops",
+   32
+  ],
+  [
+   "mypy",
+   32
+  ],
+  [
+   "os",
+   31
+  ],
+  [
+   "sys",
+   27
+  ],
+  [
+   "mypy.errors",
+   23
+  ],
+  [
+   "mypy.subtypes",
+   23
+  ],
+  [
+   "contextlib",
+   23
+  ],
+  [
+   "mypy.plugin",
+   21
+  ],
+  [
+   "mypy.traverser",
+   21
+  ],
+  [
+   "mypy.messages",
+   20
+  ],
+  [
+   "collections",
+   19
+  ],
+  [
+   "mypy.errorcodes",
+   19
+  ],
+  [
+   "mypy.expandtype",
+   17
+  ],
+  [
+   "re",
+   17
+  ],
+  [
+   "mypy.state",
+   16
+  ],
+  [
+   "mypy_extensions",
+   15
+  ],
+  [
+   "mypy.typevars",
+   14
+  ],
+  [
+   "mypy.maptype",
+   13
+  ],
+  [
+   "mypy.patterns",
+   13
+  ],
+  [
+   "mypy.semanal_shared",
+   13
+  ],
+  [
+   "mypy.visitor",
+   13
+  ],
+  [
+   "mypy.erasetype",
+   12
+  ],
+  [
+   "mypy.modulefinder",
+   12
+  ],
+  [
+   "abc",
+   12
+  ],
+  [
+   "json",
+   11
+  ],
+  [
+   "time",
+   11
+  ],
+  [
+   "librt.internal",
+   11
+  ],
+  [
+   "mypy.typestate",
+   11
+  ],
+  [
+   "mypy.meet",
+   11
+  ],
+  [
+   "mypy.fscache",
+   9
+  ],
+  [
+   "mypy.cache",
+   9
+  ],
+  [
+   "mypy.version",
+   9
+  ],
+  [
+   "itertools",
+   9
+  ],
+  [
+   "typing_extensions",
+   9
+  ],
+  [
+   "argparse",
+   9
+  ],
+  [
+   "mypy.build",
+   9
+  ],
+  [
+   "types",
+   8
+  ],
+  [
+   "mypy.message_registry",
+   8
+  ],
+  [
+   "mypy.types_utils",
+   8
+  ],
+  [
+   "traceback",
+   7
+  ],
+  [
+   "io",
+   7
+  ],
+  [
+   "subprocess",
+   7
+  ],
+  [
+   "mypy.checker",
+   7
+  ],
+  [
+   "mypy.checker_shared",
+   7
+  ],
+  [
+   "functools",
+   7
+  ],
+  [
+   "mypy.type_visitor",
+   6
+  ],
+  [
+   "mypy.typeanal",
+   6
+  ],
+  [
+   "enum",
+   6
+  ],
+  [
+   "mypy.argmap",
+   6
+  ],
+  [
+   "mypy.exprtotype",
+   6
+  ],
+  [
+   "mypy.literals",
+   5
+  ],
+  [
+   "mypy.defaults",
+   5
+  ],
+  [
+   "mypy.ipc",
+   5
+  ],
+  [
+   "mypy.modules_state",
+   5
+  ],
+  [
+   "importlib",
+   5
+  ],
+  [
+   "mypy.server.deps",
+   5
+  ],
+  [
+   "mypy.scope",
+   5
+  ],
+  [
+   "mypy.lookup",
+   5
+  ],
+  [
+   "mypy.tvar_scope",
+   5
+  ],
+  [
+   "mypy.join",
+   5
+  ],
+  [
+   "mypy.reachability",
+   5
+  ],
+  [
+   "keyword",
+   5
+  ],
+  [
+   "mypy.server.trigger",
+   5
+  ],
+  [
+   "mypy.plugins.common",
+   5
+  ],
+  [
+   "mypy.infer",
+   4
+  ],
+  [
+   "gc",
+   4
+  ],
+  [
+   "platform",
+   4
+  ],
+  [
+   "mypy.error_formatter",
+   4
+  ],
+  [
+   "mypy.semanal",
+   4
+  ],
+  [
+   "mypy.parse",
+   4
+  ],
+  [
+   "mypy.checkmember",
+   4
+  ],
+  [
+   "mypy.constraints",
+   4
+  ],
+  [
+   "mypy.semanal_enum",
+   4
+  ],
+  [
+   "mypy.sharedparse",
+   4
+  ],
+  [
+   "mypy.typetraverser",
+   4
+  ],
+  [
+   "mypy.find_sources",
+   4
+  ],
+  [
+   "mypy.typevartuples",
+   4
+  ],
+  [
+   "os.path",
+   4
+  ],
+  [
+   "ast",
+   4
+  ],
+  [
+   "inspect",
+   4
+  ],
+  [
+   "mypy.main",
+   3
+  ],
+  [
+   "textwrap",
+   3
+  ],
+  [
+   "mypy.config_parser",
+   3
+  ],
+  [
+   "mypy.checkexpr",
+   3
+  ],
+  [
+   "mypy.checker_state",
+   3
+  ],
+  [
+   "mypy.operators",
+   3
+  ],
+  [
+   "mypy.plugins",
+   3
+  ],
+  [
+   "ctypes",
+   3
+  ],
+  [
+   "librt.base64",
+   3
+  ],
+  [
+   "mypy.server.update",
+   3
+  ],
+  [
+   "shutil",
+   3
+  ],
+  [
+   "mypy.fastparse",
+   3
+  ],
+  [
+   "mypy.nativeparse",
+   3
+  ],
+  [
+   "mypy.moduleinspect",
+   3
+  ],
+  [
+   "mypy.stubdoc",
+   3
+  ],
+  [
+   "mypy.dmypy.client",
+   2
+  ],
+  [
+   "stat",
+   2
+  ],
+  [
+   "mypy.semanal_main",
+   2
+  ],
+  [
+   "mypy.graph_utils",
+   2
+  ],
+  [
+   "mypy.fixup",
+   2
+  ],
+  [
+   "mypy.stubinfo",
+   2
+  ],
+  [
+   "mypy.report",
+   2
+  ],
+  [
+   "mypy.server.target",
+   2
+  ],
+  [
+   "mypy.mro",
+   2
+  ],
+  [
+   "mypy.constant_fold",
+   2
+  ],
+  [
+   "glob",
+   2
+  ],
+  [
+   "pickle",
+   2
+  ],
+  [
+   "mypy.dmypy_util",
+   2
+  ],
+  [
+   "psutil",
+   2
+  ],
+  [
+   "mypy.memprofile",
+   2
+  ],
+  [
+   "resource",
+   2
+  ],
+  [
+   "warnings",
+   2
+  ],
+  [
+   "mypy.solve",
+   2
+  ],
+  [
+   "struct",
+   2
+  ],
+  [
+   "sqlite3",
+   2
+  ],
+  [
+   "pkgutil",
+   2
+  ],
+  [
+   "sysconfig",
+   2
+  ],
+  [
+   "tokenize",
+   2
+  ],
+  [
+   "mypy.mixedtraverser",
+   2
+  ],
+  [
+   "mypy.plugins.dataclasses",
+   2
+  ],
+  [
+   "mypy.stubutil",
+   2
+  ],
+  [
+   "mypy.applytype",
+   2
+  ],
+  [
+   "mypy.dmypy_server",
+   2
+  ],
+  [
+   "mypy.plugins.constants",
+   2
+  ],
+  [
+   "concurrent.futures",
+   1
+  ],
+  [
+   "heapq",
+   1
+  ],
+  [
+   "threading",
+   1
+  ],
+  [
+   "mypy.indirection",
+   1
+  ],
+  [
+   "mypy.partially_defined",
+   1
+  ],
+  [
+   "mypy.semanal_pass1",
+   1
+  ],
+  [
+   "mypy.freetree",
+   1
+  ],
+  [
+   "mypy.known_modules",
+   1
+  ],
+  [
+   "mypy.metastore",
+   1
+  ],
+  [
+   "mypy.plugins.default",
+   1
+  ],
+  [
+   "mypy.renaming",
+   1
+  ],
+  [
+   "mypy.stats",
+   1
+  ],
+  [
+   "mypy.refinfo",
+   1
+  ],
+  [
+   "mypy.binder",
+   1
+  ],
+  [
+   "mypy.checkpattern",
+   1
+  ],
+  [
+   "mypy.treetransform",
+   1
+  ],
+  [
+   "mypy.checkstrformat",
+   1
+  ],
+  [
+   "configparser",
+   1
+  ],
+  [
+   "tomllib",
+   1
+  ],
+  [
+   "tomli",
+   1
+  ],
+  [
+   "ctypes.wintypes",
+   1
+  ],
+  [
+   "signal",
+   1
+  ],
+  [
+   "mypy.fswatcher",
+   1
+  ],
+  [
+   "mypy.inspections",
+   1
+  ],
+  [
+   "mypy.suggestions",
+   1
+  ],
+  [
+   "pdb",
+   1
+  ],
+  [
+   "tempfile",
+   1
+  ],
+  [
+   "select",
+   1
+  ],
+  [
+   "_winapi",
+   1
+  ],
+  [
+   "socket",
+   1
+  ],
+  [
+   "gettext",
+   1
+  ],
+  [
+   "mypy.split_namespace",
+   1
+  ],
+  [
+   "_typeshed",
+   1
+  ],
+  [
+   "difflib",
+   1
+  ],
+  [
+   "binascii",
+   1
+  ],
+  [
+   "sqlite3.dbapi2",
+   1
+  ],
+  [
+   "pathspec",
+   1
+  ],
+  [
+   "pathspec.patterns.gitignore",
+   1
+  ],
+  [
+   "queue",
+   1
+  ],
+  [
+   "multiprocessing",
+   1
+  ],
+  [
+   "ast_serialize",
+   1
+  ],
+  [
+   "mypy.strconv",
+   1
+  ],
+  [
+   "pprint",
+   1
+  ],
+  [
+   "site",
+   1
+  ],
+  [
+   "operator",
+   1
+  ],
+  [
+   "urllib.request",
+   1
+  ],
+  [
+   "lxml",
+   1
+  ],
+  [
+   "mypy.semanal_namedtuple",
+   1
+  ],
+  [
+   "mypy.semanal_newtype",
+   1
+  ],
+  [
+   "mypy.semanal_typeddict",
+   1
+  ],
+  [
+   "mypy.semanal_classprop",
+   1
+  ],
+  [
+   "mypy.semanal_infer",
+   1
+  ],
+  [
+   "mypy.semanal_typeargs",
+   1
+  ],
+  [
+   "mypy.stubgenc",
+   1
+  ],
+  [
+   "copy",
+   1
+  ],
+  [
+   "symtable",
+   1
+  ],
+  [
+   "pathlib",
+   1
+  ],
+  [
+   "mypy.evalexpr",
+   1
+  ],
+  [
+   "mypy.copytype",
+   1
+  ],
+  [
+   "mypy.bogus_type",
+   1
+  ],
+  [
+   "hashlib",
+   1
+  ],
+  [
+   "orjson",
+   1
+  ],
+  [
+   "_curses",
+   1
+  ],
+  [
+   "curses",
+   1
+  ],
+  [
+   "xml.sax.saxutils",
+   1
+  ],
+  [
+   "mypy.build_worker.worker",
+   1
+  ],
+  [
+   "mypy.dmypy_os",
+   1
+  ],
+  [
+   "mypy.plugins.attrs",
+   1
+  ],
+  [
+   "mypy.plugins.ctypes",
+   1
+  ],
+  [
+   "mypy.plugins.enums",
+   1
+  ],
+  [
+   "mypy.plugins.functools",
+   1
+  ],
+  [
+   "mypy.plugins.singledispatch",
+   1
+  ],
+  [
+   "mypy.server.objgraph",
+   1
+  ],
+  [
+   "weakref",
+   1
+  ],
+  [
+   "mypy.server.astdiff",
+   1
+  ],
+  [
+   "mypy.server.astmerge",
+   1
+  ],
+  [
+   "mypy.server.aststrip",
+   1
+  ]
+ ],
+ "import_sites": {
+  "__future__": [
+   "mypy/__main__.py",
+   "mypy/api.py",
+   "mypy/applytype.py",
+   "mypy/argmap.py",
+   "mypy/binder.py",
+   "mypy/bogus_type.py",
+   "mypy/build.py",
+   "mypy/build_worker/__main__.py"
+  ],
+  "os": [
+   "mypy/__main__.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/config_parser.py",
+   "mypy/defaults.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_os.py",
+   "mypy/dmypy_server.py"
+  ],
+  "sys": [
+   "mypy/__main__.py",
+   "mypy/api.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/config_parser.py",
+   "mypy/defaults.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_os.py"
+  ],
+  "traceback": [
+   "mypy/__main__.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py",
+   "mypy/errors.py",
+   "mypy/stubgen.py",
+   "mypy/stubtest.py",
+   "mypy/stubutil.py"
+  ],
+  "mypy.fscache": [
+   "mypy/__main__.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/dmypy_server.py",
+   "mypy/find_sources.py",
+   "mypy/fswatcher.py",
+   "mypy/main.py",
+   "mypy/modulefinder.py"
+  ],
+  "mypy.main": [
+   "mypy/__main__.py",
+   "mypy/api.py",
+   "mypy/dmypy_server.py"
+  ],
+  "mypy.util": [
+   "mypy/__main__.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/checker.py",
+   "mypy/config_parser.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py",
+   "mypy/errors.py"
+  ],
+  "mypy.errors": [
+   "mypy/__main__.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/checker.py",
+   "mypy/checker_shared.py",
+   "mypy/checkexpr.py",
+   "mypy/checkstrformat.py",
+   "mypy/dmypy_server.py"
+  ],
+  "collections.abc": [
+   "mypy/api.py",
+   "mypy/applytype.py",
+   "mypy/argmap.py",
+   "mypy/binder.py",
+   "mypy/build.py",
+   "mypy/cache.py",
+   "mypy/checker.py",
+   "mypy/checker_shared.py"
+  ],
+  "io": [
+   "mypy/api.py",
+   "mypy/config_parser.py",
+   "mypy/dmypy_server.py",
+   "mypy/dmypy_util.py",
+   "mypy/main.py",
+   "mypy/stubdoc.py",
+   "mypy/util.py"
+  ],
+  "typing": [
+   "mypy/api.py",
+   "mypy/argmap.py",
+   "mypy/binder.py",
+   "mypy/bogus_type.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/cache.py",
+   "mypy/checker.py"
+  ],
+  "mypy.dmypy.client": [
+   "mypy/api.py",
+   "mypy/dmypy/__main__.py"
+  ],
+  "mypy.subtypes": [
+   "mypy/applytype.py",
+   "mypy/argmap.py",
+   "mypy/binder.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/checkstrformat.py"
+  ],
+  "mypy.erasetype": [
+   "mypy/applytype.py",
+   "mypy/binder.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/constraints.py",
+   "mypy/meet.py",
+   "mypy/messages.py"
+  ],
+  "mypy.expandtype": [
+   "mypy/applytype.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/constraints.py",
+   "mypy/join.py",
+   "mypy/maptype.py"
+  ],
+  "mypy.nodes": [
+   "mypy/applytype.py",
+   "mypy/binder.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/checker.py",
+   "mypy/checker_shared.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py"
+  ],
+  "mypy.type_visitor": [
+   "mypy/applytype.py",
+   "mypy/copytype.py",
+   "mypy/expandtype.py",
+   "mypy/semanal_shared.py",
+   "mypy/stats.py",
+   "mypy/types.py"
+  ],
+  "mypy.typeops": [
+   "mypy/applytype.py",
+   "mypy/binder.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/checkstrformat.py",
+   "mypy/constraints.py"
+  ],
+  "mypy.types": [
+   "mypy/applytype.py",
+   "mypy/argmap.py",
+   "mypy/binder.py",
+   "mypy/build.py",
+   "mypy/cache.py",
+   "mypy/checker.py",
+   "mypy/checker_shared.py",
+   "mypy/checkexpr.py"
+  ],
+  "mypy": [
+   "mypy/argmap.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/checkstrformat.py"
+  ],
+  "mypy.maptype": [
+   "mypy/argmap.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/checkstrformat.py",
+   "mypy/constraints.py",
+   "mypy/join.py"
+  ],
+  "mypy.infer": [
+   "mypy/argmap.py",
+   "mypy/checkexpr.py",
+   "mypy/constraints.py",
+   "mypy/typeops.py"
+  ],
+  "collections": [
+   "mypy/binder.py",
+   "mypy/build.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkpattern.py",
+   "mypy/errorcodes.py",
+   "mypy/errors.py",
+   "mypy/inspections.py"
+  ],
+  "contextlib": [
+   "mypy/binder.py",
+   "mypy/build.py",
+   "mypy/checker.py",
+   "mypy/checker_shared.py",
+   "mypy/checker_state.py",
+   "mypy/checkexpr.py",
+   "mypy/dmypy_server.py",
+   "mypy/messages.py"
+  ],
+  "mypy.literals": [
+   "mypy/binder.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkpattern.py",
+   "mypy/reachability.py"
+  ],
+  "mypy.options": [
+   "mypy/binder.py",
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkpattern.py",
+   "mypy/config_parser.py",
+   "mypy/dmypy/client.py"
+  ],
+  "mypy.typevars": [
+   "mypy/binder.py",
+   "mypy/checker.py",
+   "mypy/checker_shared.py",
+   "mypy/checkexpr.py",
+   "mypy/checkpattern.py",
+   "mypy/inspections.py",
+   "mypy/plugins/attrs.py",
+   "mypy/plugins/common.py"
+  ],
+  "mypy_extensions": [
+   "mypy/bogus_type.py",
+   "mypy/cache.py",
+   "mypy/checker_shared.py",
+   "mypy/errorcodes.py",
+   "mypy/fscache.py",
+   "mypy/nodes.py",
+   "mypy/patterns.py",
+   "mypy/plugin.py"
+  ],
+  "gc": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/gclogger.py",
+   "mypy/memprofile.py"
+  ],
+  "json": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py",
+   "mypy/dmypy_util.py",
+   "mypy/error_formatter.py",
+   "mypy/exportjson.py",
+   "mypy/ipc.py"
+  ],
+  "platform": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/defaults.py",
+   "mypy/main.py"
+  ],
+  "re": [
+   "mypy/build.py",
+   "mypy/checkstrformat.py",
+   "mypy/config_parser.py",
+   "mypy/fastparse.py",
+   "mypy/messages.py",
+   "mypy/modulefinder.py",
+   "mypy/options.py",
+   "mypy/parse.py"
+  ],
+  "stat": [
+   "mypy/build.py",
+   "mypy/fscache.py"
+  ],
+  "subprocess": [
+   "mypy/build.py",
+   "mypy/dmypy_os.py",
+   "mypy/dmypy_server.py",
+   "mypy/git.py",
+   "mypy/main.py",
+   "mypy/modulefinder.py"
+  ],
+  "time": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/checkexpr.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py",
+   "mypy/gclogger.py",
+   "mypy/main.py",
+   "mypy/metastore.py"
+  ],
+  "types": [
+   "mypy/build.py",
+   "mypy/dmypy_util.py",
+   "mypy/ipc.py",
+   "mypy/moduleinspect.py",
+   "mypy/pyinfo.py",
+   "mypy/server/objgraph.py",
+   "mypy/stubgenc.py",
+   "mypy/stubtest.py"
+  ],
+  "concurrent.futures": [
+   "mypy/build.py"
+  ],
+  "heapq": [
+   "mypy/build.py"
+  ],
+  "textwrap": [
+   "mypy/build.py",
+   "mypy/main.py",
+   "mypy/messages.py"
+  ],
+  "threading": [
+   "mypy/build.py"
+  ],
+  "librt.internal": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/cache.py",
+   "mypy/errors.py",
+   "mypy/exportjson.py",
+   "mypy/ipc.py",
+   "mypy/nativeparse.py",
+   "mypy/nodes.py"
+  ],
+  "mypy.semanal_main": [
+   "mypy/build.py",
+   "mypy/server/update.py"
+  ],
+  "mypy.cache": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/errors.py",
+   "mypy/exportjson.py",
+   "mypy/nativeparse.py",
+   "mypy/nodes.py",
+   "mypy/options.py",
+   "mypy/parse.py"
+  ],
+  "mypy.checker": [
+   "mypy/build.py",
+   "mypy/checkexpr.py",
+   "mypy/plugins/dataclasses.py",
+   "mypy/plugins/functools.py",
+   "mypy/plugins/proper_plugin.py",
+   "mypy/semanal_main.py",
+   "mypy/server/update.py"
+  ],
+  "mypy.defaults": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/dmypy/client.py",
+   "mypy/main.py",
+   "mypy/report.py"
+  ],
+  "mypy.error_formatter": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/errors.py",
+   "mypy/main.py"
+  ],
+  "mypy.errorcodes": [
+   "mypy/build.py",
+   "mypy/checker.py",
+   "mypy/checker_shared.py",
+   "mypy/checkexpr.py",
+   "mypy/checkstrformat.py",
+   "mypy/errors.py",
+   "mypy/message_registry.py",
+   "mypy/messages.py"
+  ],
+  "mypy.graph_utils": [
+   "mypy/build.py",
+   "mypy/solve.py"
+  ],
+  "mypy.indirection": [
+   "mypy/build.py"
+  ],
+  "mypy.ipc": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py",
+   "mypy/dmypy_util.py"
+  ],
+  "mypy.messages": [
+   "mypy/build.py",
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/checkstrformat.py",
+   "mypy/inspections.py",
+   "mypy/partially_defined.py"
+  ],
+  "mypy.partially_defined": [
+   "mypy/build.py"
+  ],
+  "mypy.semanal": [
+   "mypy/build.py",
+   "mypy/checker.py",
+   "mypy/plugins/functools.py",
+   "mypy/semanal_main.py"
+  ],
+  "mypy.semanal_pass1": [
+   "mypy/build.py"
+  ],
+  "mypy.config_parser": [
+   "mypy/build.py",
+   "mypy/main.py",
+   "mypy/stubtest.py"
+  ],
+  "mypy.fixup": [
+   "mypy/build.py",
+   "mypy/modules_state.py"
+  ],
+  "mypy.freetree": [
+   "mypy/build.py"
+  ],
+  "mypy.known_modules": [
+   "mypy/build.py"
+  ],
+  "mypy.metastore": [
+   "mypy/build.py"
+  ],
+  "mypy.modulefinder": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/dmypy_server.py",
+   "mypy/find_sources.py",
+   "mypy/inspections.py",
+   "mypy/known_modules.py",
+   "mypy/main.py",
+   "mypy/server/update.py"
+  ],
+  "mypy.modules_state": [
+   "mypy/build.py",
+   "mypy/checkmember.py",
+   "mypy/nodes.py",
+   "mypy/plugins/common.py",
+   "mypy/typeops.py"
+  ],
+  "mypy.parse": [
+   "mypy/build.py",
+   "mypy/checkstrformat.py",
+   "mypy/exprtotype.py",
+   "mypy/stubgen.py"
+  ],
+  "mypy.plugin": [
+   "mypy/build.py",
+   "mypy/checker.py",
+   "mypy/checker_shared.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/plugins/attrs.py",
+   "mypy/plugins/common.py"
+  ],
+  "mypy.plugins.default": [
+   "mypy/build.py"
+  ],
+  "mypy.renaming": [
+   "mypy/build.py"
+  ],
+  "mypy.stats": [
+   "mypy/build.py"
+  ],
+  "mypy.stubinfo": [
+   "mypy/build.py",
+   "mypy/modulefinder.py"
+  ],
+  "mypy.typestate": [
+   "mypy/build.py",
+   "mypy/checkexpr.py",
+   "mypy/constraints.py",
+   "mypy/dmypy_server.py",
+   "mypy/mro.py",
+   "mypy/server/astmerge.py",
+   "mypy/server/aststrip.py",
+   "mypy/server/deps.py"
+  ],
+  "mypy.version": [
+   "mypy/build.py",
+   "mypy/build_worker/worker.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py",
+   "mypy/errors.py",
+   "mypy/main.py",
+   "mypy/report.py",
+   "mypy/stubgen.py"
+  ],
+  "mypy.report": [
+   "mypy/build.py"
+  ],
+  "importlib": [
+   "mypy/build.py",
+   "mypy/moduleinspect.py",
+   "mypy/stubgenc.py",
+   "mypy/stubtest.py",
+   "mypy/util.py"
+  ],
+  "mypy.server.target": [
+   "mypy/build.py",
+   "mypy/server/update.py"
+  ],
+  "mypy.server.deps": [
+   "mypy/build.py",
+   "mypy/server/update.py"
+  ],
+  "mypy.refinfo": [
+   "mypy/build.py"
+  ],
+  "itertools": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/errors.py",
+   "mypy/messages.py",
+   "mypy/report.py",
+   "mypy/semanal_main.py",
+   "mypy/suggestions.py",
+   "mypy/typeanal.py"
+  ],
+  "mypy.checkexpr": [
+   "mypy/checker.py",
+   "mypy/stubtest.py",
+   "mypy/suggestions.py"
+  ],
+  "mypy.binder": [
+   "mypy/checker.py"
+  ],
+  "mypy.checker_shared": [
+   "mypy/checker.py",
+   "mypy/checker_state.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/checkstrformat.py",
+   "mypy/plugins/enums.py"
+  ],
+  "mypy.checker_state": [
+   "mypy/checker.py",
+   "mypy/subtypes.py",
+   "mypy/typeops.py"
+  ],
+  "mypy.checkmember": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkpattern.py",
+   "mypy/subtypes.py"
+  ],
+  "mypy.checkpattern": [
+   "mypy/checker.py"
+  ],
+  "mypy.constraints": [
+   "mypy/checker.py",
+   "mypy/infer.py",
+   "mypy/solve.py",
+   "mypy/subtypes.py"
+  ],
+  "mypy.meet": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/checkpattern.py",
+   "mypy/join.py",
+   "mypy/plugins/attrs.py",
+   "mypy/plugins/dataclasses.py",
+   "mypy/solve.py"
+  ],
+  "mypy.message_registry": [
+   "mypy/checker.py",
+   "mypy/checker_shared.py",
+   "mypy/checkexpr.py",
+   "mypy/fastparse.py",
+   "mypy/plugin.py",
+   "mypy/semanal.py",
+   "mypy/semanal_typeargs.py",
+   "mypy/typeanal.py"
+  ],
+  "mypy.mro": [
+   "mypy/checker.py",
+   "mypy/semanal.py"
+  ],
+  "mypy.operators": [
+   "mypy/checker.py",
+   "mypy/messages.py",
+   "mypy/server/deps.py"
+  ],
+  "mypy.patterns": [
+   "mypy/checker.py",
+   "mypy/checkpattern.py",
+   "mypy/fastparse.py",
+   "mypy/nativeparse.py",
+   "mypy/nodes.py",
+   "mypy/partially_defined.py",
+   "mypy/reachability.py",
+   "mypy/renaming.py"
+  ],
+  "mypy.plugins": [
+   "mypy/checker.py",
+   "mypy/semanal.py",
+   "mypy/semanal_main.py"
+  ],
+  "mypy.scope": [
+   "mypy/checker.py",
+   "mypy/errors.py",
+   "mypy/semanal.py",
+   "mypy/semanal_typeargs.py",
+   "mypy/server/deps.py"
+  ],
+  "mypy.semanal_enum": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/plugins/constants.py",
+   "mypy/semanal.py"
+  ],
+  "mypy.semanal_shared": [
+   "mypy/checker.py",
+   "mypy/plugins/common.py",
+   "mypy/plugins/dataclasses.py",
+   "mypy/semanal.py",
+   "mypy/semanal_enum.py",
+   "mypy/semanal_infer.py",
+   "mypy/semanal_main.py",
+   "mypy/semanal_namedtuple.py"
+  ],
+  "mypy.sharedparse": [
+   "mypy/checker.py",
+   "mypy/fastparse.py",
+   "mypy/nativeparse.py",
+   "mypy/stubgen.py"
+  ],
+  "mypy.state": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/expandtype.py",
+   "mypy/join.py",
+   "mypy/meet.py",
+   "mypy/plugins/attrs.py",
+   "mypy/plugins/dataclasses.py",
+   "mypy/semanal_main.py"
+  ],
+  "mypy.traverser": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/fastparse.py",
+   "mypy/freetree.py",
+   "mypy/inspections.py",
+   "mypy/mixedtraverser.py",
+   "mypy/partially_defined.py",
+   "mypy/reachability.py"
+  ],
+  "mypy.treetransform": [
+   "mypy/checker.py"
+  ],
+  "mypy.typeanal": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/semanal.py",
+   "mypy/semanal_newtype.py",
+   "mypy/semanal_typeddict.py",
+   "mypy/stats.py"
+  ],
+  "mypy.types_utils": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/constraints.py",
+   "mypy/plugins/common.py",
+   "mypy/semanal.py",
+   "mypy/subtypes.py",
+   "mypy/suggestions.py",
+   "mypy/typeanal.py"
+  ],
+  "mypy.typetraverser": [
+   "mypy/checker.py",
+   "mypy/messages.py",
+   "mypy/mixedtraverser.py",
+   "mypy/typeops.py"
+  ],
+  "mypy.visitor": [
+   "mypy/checker.py",
+   "mypy/checkexpr.py",
+   "mypy/checkpattern.py",
+   "mypy/evalexpr.py",
+   "mypy/fixup.py",
+   "mypy/literals.py",
+   "mypy/nodes.py",
+   "mypy/patterns.py"
+  ],
+  "abc": [
+   "mypy/checker_shared.py",
+   "mypy/error_formatter.py",
+   "mypy/ipc.py",
+   "mypy/metastore.py",
+   "mypy/nodes.py",
+   "mypy/plugin.py",
+   "mypy/report.py",
+   "mypy/semanal_shared.py"
+  ],
+  "enum": [
+   "mypy/checkexpr.py",
+   "mypy/modulefinder.py",
+   "mypy/nodes.py",
+   "mypy/partially_defined.py",
+   "mypy/stubgenc.py",
+   "mypy/stubtest.py"
+  ],
+  "typing_extensions": [
+   "mypy/checkexpr.py",
+   "mypy/config_parser.py",
+   "mypy/errors.py",
+   "mypy/ipc.py",
+   "mypy/nodes.py",
+   "mypy/semanal.py",
+   "mypy/stubtest.py",
+   "mypy/types.py"
+  ],
+  "mypy.argmap": [
+   "mypy/checkexpr.py",
+   "mypy/constraints.py",
+   "mypy/plugins/common.py",
+   "mypy/plugins/functools.py",
+   "mypy/stats.py",
+   "mypy/suggestions.py"
+  ],
+  "mypy.checkstrformat": [
+   "mypy/checkexpr.py"
+  ],
+  "mypy.constant_fold": [
+   "mypy/checkexpr.py",
+   "mypy/semanal.py"
+  ],
+  "mypy.exprtotype": [
+   "mypy/checkexpr.py",
+   "mypy/plugins/attrs.py",
+   "mypy/semanal.py",
+   "mypy/semanal_namedtuple.py",
+   "mypy/semanal_newtype.py",
+   "mypy/semanal_typeddict.py"
+  ],
+  "mypy.lookup": [
+   "mypy/checkexpr.py",
+   "mypy/checkmember.py",
+   "mypy/fixup.py",
+   "mypy/plugin.py",
+   "mypy/typeops.py"
+  ],
+  "mypy.tvar_scope": [
+   "mypy/checkexpr.py",
+   "mypy/plugin.py",
+   "mypy/semanal.py",
+   "mypy/semanal_shared.py",
+   "mypy/typeanal.py"
+  ],
+  "mypy.join": [
+   "mypy/checkpattern.py",
+   "mypy/meet.py",
+   "mypy/solve.py",
+   "mypy/suggestions.py"
+  ],
+  "argparse": [
+   "mypy/build_worker/worker.py",
+   "mypy/config_parser.py",
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py",
+   "mypy/exportjson.py",
+   "mypy/main.py",
+   "mypy/split_namespace.py",
+   "mypy/stubgen.py"
+  ],
+  "configparser": [
+   "mypy/config_parser.py"
+  ],
+  "glob": [
+   "mypy/config_parser.py",
+   "mypy/stubgenc.py"
+  ],
+  "tomllib": [
+   "mypy/config_parser.py"
+  ],
+  "tomli": [
+   "mypy/config_parser.py"
+  ],
+  "ctypes": [
+   "mypy/dmypy_os.py",
+   "mypy/ipc.py",
+   "mypy/util.py"
+  ],
+  "ctypes.wintypes": [
+   "mypy/dmypy_os.py"
+  ],
+  "signal": [
+   "mypy/dmypy_os.py"
+  ],
+  "pickle": [
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py"
+  ],
+  "librt.base64": [
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py",
+   "mypy/ipc.py"
+  ],
+  "mypy.build": [
+   "mypy/build_worker/worker.py",
+   "mypy/dmypy_server.py",
+   "mypy/inspections.py",
+   "mypy/semanal_main.py",
+   "mypy/server/update.py",
+   "mypy/stubgen.py",
+   "mypy/stubtest.py",
+   "mypy/suggestions.py"
+  ],
+  "mypy.dmypy_util": [
+   "mypy/dmypy/client.py",
+   "mypy/dmypy_server.py"
+  ],
+  "mypy.find_sources": [
+   "mypy/dmypy_server.py",
+   "mypy/main.py",
+   "mypy/stubgen.py",
+   "mypy/suggestions.py"
+  ],
+  "mypy.fswatcher": [
+   "mypy/dmypy_server.py"
+  ],
+  "mypy.inspections": [
+   "mypy/dmypy_server.py"
+  ],
+  "mypy.server.update": [
+   "mypy/dmypy_server.py",
+   "mypy/inspections.py",
+   "mypy/suggestions.py"
+  ],
+  "mypy.suggestions": [
+   "mypy/dmypy_server.py"
+  ],
+  "psutil": [
+   "mypy/dmypy_server.py",
+   "mypy/util.py"
+  ],
+  "mypy.memprofile": [
+   "mypy/dmypy_server.py",
+   "mypy/main.py"
+  ],
+  "resource": [
+   "mypy/dmypy_server.py",
+   "mypy/memprofile.py"
+  ],
+  "mypy.typevartuples": [
+   "mypy/erasetype.py",
+   "mypy/expandtype.py",
+   "mypy/semanal_typeargs.py",
+   "mypy/typevars.py"
+  ],
+  "os.path": [
+   "mypy/errors.py",
+   "mypy/stubgen.py",
+   "mypy/stubgenc.py",
+   "mypy/stubutil.py"
+  ],
+  "pdb": [
+   "mypy/errors.py"
+  ],
+  "ast": [
+   "mypy/evalexpr.py",
+   "mypy/fastparse.py",
+   "mypy/modulefinder.py"
+  ],
+  "warnings": [
+   "mypy/fastparse.py",
+   "mypy/stubtest.py"
+  ],
+  "mypy.reachability": [
+   "mypy/fastparse.py",
+   "mypy/nativeparse.py",
+   "mypy/partially_defined.py",
+   "mypy/semanal.py",
+   "mypy/semanal_pass1.py"
+  ],
+  "functools": [
+   "mypy/find_sources.py",
+   "mypy/inspections.py",
+   "mypy/modulefinder.py",
+   "mypy/plugins/attrs.py",
+   "mypy/plugins/default.py",
+   "mypy/stubtest.py"
+  ],
+  "mypy.solve": [
+   "mypy/infer.py",
+   "mypy/subtypes.py"
+  ],
+  "shutil": [
+   "mypy/ipc.py",
+   "mypy/report.py",
+   "mypy/util.py"
+  ],
+  "struct": [
+   "mypy/ipc.py",
+   "mypy/stubtest.py"
+  ],
+  "tempfile": [
+   "mypy/ipc.py"
+  ],
+  "select": [
+   "mypy/ipc.py"
+  ],
+  "_winapi": [
+   "mypy/ipc.py"
+  ],
+  "socket": [
+   "mypy/ipc.py"
+  ],
+  "gettext": [
+   "mypy/main.py"
+  ],
+  "mypy.split_namespace": [
+   "mypy/main.py"
+  ],
+  "_typeshed": [
+   "mypy/main.py"
+  ],
+  "difflib": [
+   "mypy/messages.py"
+  ],
+  "binascii": [
+   "mypy/metastore.py"
+  ],
+  "sqlite3": [
+   "mypy/metastore.py"
+  ],
+  "sqlite3.dbapi2": [
+   "mypy/metastore.py"
+  ],
+  "pathspec": [
+   "mypy/modulefinder.py"
+  ],
+  "pathspec.patterns.gitignore": [
+   "mypy/modulefinder.py"
+  ],
+  "inspect": [
+   "mypy/moduleinspect.py",
+   "mypy/stubgenc.py",
+   "mypy/stubtest.py",
+   "mypy/util.py"
+  ],
+  "pkgutil": [
+   "mypy/moduleinspect.py",
+   "mypy/stubtest.py"
+  ],
+  "queue": [
+   "mypy/moduleinspect.py"
+  ],
+  "multiprocessing": [
+   "mypy/moduleinspect.py"
+  ],
+  "ast_serialize": [
+   "mypy/nativeparse.py"
+  ],
+  "mypy.strconv": [
+   "mypy/nodes.py"
+  ],
+  "pprint": [
+   "mypy/options.py"
+  ],
+  "mypy.fastparse": [
+   "mypy/parse.py",
+   "mypy/stubgenc.py"
+  ],
+  "mypy.nativeparse": [
+   "mypy/parse.py"
+  ],
+  "site": [
+   "mypy/pyinfo.py"
+  ],
+  "sysconfig": [
+   "mypy/pyinfo.py",
+   "mypy/report.py"
+  ],
+  "tokenize": [
+   "mypy/report.py",
+   "mypy/stubdoc.py"
+  ],
+  "operator": [
+   "mypy/report.py"
+  ],
+  "urllib.request": [
+   "mypy/report.py"
+  ],
+  "lxml": [
+   "mypy/report.py"
+  ],
+  "mypy.semanal_namedtuple": [
+   "mypy/semanal.py"
+  ],
+  "mypy.semanal_newtype": [
+   "mypy/semanal.py"
+  ],
+  "mypy.semanal_typeddict": [
+   "mypy/semanal.py"
+  ],
+  "mypy.semanal_classprop": [
+   "mypy/semanal_main.py"
+  ],
+  "mypy.semanal_infer": [
+   "mypy/semanal_main.py"
+  ],
+  "mypy.semanal_typeargs": [
+   "mypy/semanal_main.py"
+  ],
+  "keyword": [
+   "mypy/semanal_namedtuple.py",
+   "mypy/stubdoc.py",
+   "mypy/stubgen.py",
+   "mypy/stubgenc.py",
+   "mypy/stubtest.py"
+  ],
+  "mypy.mixedtraverser": [
+   "mypy/semanal_typeargs.py",
+   "mypy/stubgen.py"
+  ],
+  "mypy.moduleinspect": [
+   "mypy/stubgen.py",
+   "mypy/stubgenc.py",
+   "mypy/stubutil.py"
+  ],
+  "mypy.plugins.dataclasses": [
+   "mypy/plugins/default.py",
+   "mypy/stubgen.py"
+  ],
+  "mypy.stubdoc": [
+   "mypy/stubgen.py",
+   "mypy/stubgenc.py",
+   "mypy/stubutil.py"
+  ],
+  "mypy.stubgenc": [
+   "mypy/stubgen.py"
+  ],
+  "mypy.stubutil": [
+   "mypy/stubgen.py",
+   "mypy/stubgenc.py"
+  ],
+  "copy": [
+   "mypy/stubtest.py"
+  ],
+  "symtable": [
+   "mypy/stubtest.py"
+  ],
+  "pathlib": [
+   "mypy/stubtest.py"
+  ],
+  "mypy.evalexpr": [
+   "mypy/stubtest.py"
+  ],
+  "mypy.applytype": [
+   "mypy/plugins/attrs.py",
+   "mypy/subtypes.py"
+  ],
+  "mypy.copytype": [
+   "mypy/typeops.py"
+  ],
+  "mypy.bogus_type": [
+   "mypy/types.py"
+  ],
+  "mypy.server.trigger": [
+   "mypy/plugins/attrs.py",
+   "mypy/plugins/dataclasses.py",
+   "mypy/server/deps.py",
+   "mypy/server/update.py",
+   "mypy/typestate.py"
+  ],
+  "hashlib": [
+   "mypy/util.py"
+  ],
+  "orjson": [
+   "mypy/util.py"
+  ],
+  "_curses": [
+   "mypy/util.py"
+  ],
+  "curses": [
+   "mypy/util.py"
+  ],
+  "xml.sax.saxutils": [
+   "mypy/util.py"
+  ],
+  "mypy.build_worker.worker": [
+   "mypy/build_worker/__main__.py"
+  ],
+  "mypy.dmypy_os": [
+   "mypy/dmypy/client.py"
+  ],
+  "mypy.dmypy_server": [
+   "mypy/dmypy/client.py"
+  ],
+  "mypy.plugins.common": [
+   "mypy/plugins/attrs.py",
+   "mypy/plugins/dataclasses.py",
+   "mypy/plugins/default.py",
+   "mypy/plugins/functools.py",
+   "mypy/plugins/singledispatch.py"
+  ],
+  "mypy.plugins.attrs": [
+   "mypy/plugins/default.py"
+  ],
+  "mypy.plugins.constants": [
+   "mypy/plugins/default.py",
+   "mypy/plugins/singledispatch.py"
+  ],
+  "mypy.plugins.ctypes": [
+   "mypy/plugins/default.py"
+  ],
+  "mypy.plugins.enums": [
+   "mypy/plugins/default.py"
+  ],
+  "mypy.plugins.functools": [
+   "mypy/plugins/default.py"
+  ],
+  "mypy.plugins.singledispatch": [
+   "mypy/plugins/default.py"
+  ],
+  "mypy.server.objgraph": [
+   "mypy/server/mergecheck.py"
+  ],
+  "weakref": [
+   "mypy/server/objgraph.py"
+  ],
+  "mypy.server.astdiff": [
+   "mypy/server/update.py"
+  ],
+  "mypy.server.astmerge": [
+   "mypy/server/update.py"
+  ],
+  "mypy.server.aststrip": [
+   "mypy/server/update.py"
+  ]
+ },
+ "multi": [
+  [
+   "mypy/checker.py",
+   "TypeChecker",
+   [
+    "NodeVisitor",
+    "TypeCheckerSharedApi",
+    "SplittingVisitor"
+   ],
+   []
+  ],
+  [
+   "mypy/checkexpr.py",
+   "ExpressionChecker",
+   [
+    "ExpressionVisitor",
+    "ExpressionCheckerSharedApi"
+   ],
+   []
+  ],
+  [
+   "mypy/mixedtraverser.py",
+   "MixedTraverserVisitor",
+   [
+    "TraverserVisitor",
+    "TypeTraverserVisitor"
+   ],
+   []
+  ],
+  [
+   "mypy/nodes.py",
+   "OverloadedFuncDef",
+   [
+    "FuncBase",
+    "SymbolNode",
+    "Statement"
+   ],
+   []
+  ],
+  [
+   "mypy/nodes.py",
+   "FuncDef",
+   [
+    "FuncItem",
+    "SymbolNode",
+    "Statement"
+   ],
+   []
+  ],
+  [
+   "mypy/nodes.py",
+   "Decorator",
+   [
+    "SymbolNode",
+    "Statement"
+   ],
+   []
+  ],
+  [
+   "mypy/nodes.py",
+   "LambdaExpr",
+   [
+    "FuncItem",
+    "Expression"
+   ],
+   []
+  ],
+  [
+   "mypy/nodes.py",
+   "TypeVarLikeExpr",
+   [
+    "SymbolNode",
+    "Expression"
+   ],
+   []
+  ],
+  [
+   "mypy/semanal.py",
+   "SemanticAnalyzer",
+   [
+    "NodeVisitor",
+    "SemanticAnalyzerInterface",
+    "SemanticAnalyzerPluginInterface",
+    "SplittingVisitor"
+   ],
+   []
+  ],
+  [
+   "mypy/stubgen.py",
+   "ASTStubGenerator",
+   [
+    "BaseStubGenerator",
+    "TraverserVisitor"
+   ],
+   []
+  ],
+  [
+   "mypy/typeanal.py",
+   "TypeAnalyser",
+   [
+    "SyntheticTypeVisitor",
+    "TypeAnalyzerPluginInterface"
+   ],
+   []
+  ],
+  [
+   "mypy/types.py",
+   "TrivialSyntheticTypeTranslator",
+   [
+    "TypeTranslator",
+    "SyntheticTypeVisitor"
+   ],
+   []
+  ],
+  [
+   "mypy/visitor.py",
+   "NodeVisitor",
+   [
+    "Generic",
+    "ExpressionVisitor",
+    "StatementVisitor",
+    "PatternVisitor"
+   ],
+   [
+    "trait",
+    "mypyc_attr"
+   ]
+  ],
+  [
+   "mypy/server/aststrip.py",
+   "NodeStripVisitor",
+   [
+    "TraverserVisitor",
+    "SplittingVisitor"
+   ],
+   []
+  ]
+ ],
+ "metas": [
+  [
+   "mypy/report.py",
+   "AbstractReporter",
+   "ABCMeta"
+  ]
+ ],
+ "decos": [
+  [
+   "dunder:__init__",
+   344
+  ],
+  [
+   "def:abstractmethod",
+   224
+  ],
+  [
+   "def:classmethod",
+   99
+  ],
+  [
+   "def:property",
+   69
+  ],
+  [
+   "def:contextmanager",
+   42
+  ],
+  [
+   "def:overload",
+   34
+  ],
+  [
+   "dunder:__eq__",
+   28
+  ],
+  [
+   "dunder:__hash__",
+   27
+  ],
+  [
+   "class:trait",
+   20
+  ],
+  [
+   "dunder:__repr__",
+   18
+  ],
+  [
+   "def:staticmethod",
+   17
+  ],
+  [
+   "class:mypyc_attr",
+   15
+  ],
+  [
+   "def:action",
+   13
+  ],
+  [
+   "def:register",
+   10
+  ],
+  [
+   "dunder:__enter__",
+   8
+  ],
+  [
+   "dunder:__exit__",
+   8
+  ],
+  [
+   "dunder:__str__",
+   7
+  ],
+  [
+   "class:unique",
+   4
+  ],
+  [
+   "def:setter",
+   4
+  ],
+  [
+   "def:lru_cache",
+   3
+  ],
+  [
+   "dunder:__call__",
+   3
+  ],
+  [
+   "dunder:__iter__",
+   2
+  ],
+  [
+   "dunder:__next__",
+   2
+  ],
+  [
+   "class:final",
+   1
+  ],
+  [
+   "dunder:__del__",
+   1
+  ],
+  [
+   "def:cache",
+   1
+  ],
+  [
+   "dunder:__getitem__",
+   1
+  ],
+  [
+   "dunder:__bool__",
+   1
+  ],
+  [
+   "dunder:__getattribute__",
+   1
+  ],
+  [
+   "dunder:__setattr__",
+   1
+  ],
+  [
+   "dunder:__getattr__",
+   1
+  ],
+  [
+   "dunder:__get__",
+   1
+  ],
+  [
+   "def:singledispatch",
+   1
+  ],
+  [
+   "dunder:__ne__",
+   1
+  ]
+ ],
+ "calls": [
+  [
+   "isinstance",
+   4180
+  ],
+  [
+   "super",
+   457
+  ],
+  [
+   "zip",
+   167
+  ],
+  [
+   "enumerate",
+   140
+  ],
+  [
+   "print",
+   140
+  ],
+  [
+   "sorted",
+   133
+  ],
+  [
+   "type",
+   97
+  ],
+  [
+   "cast",
+   77
+  ],
+  [
+   "getattr",
+   59
+  ],
+  [
+   "open",
+   48
+  ],
+  [
+   "hasattr",
+   39
+  ],
+  [
+   "reversed",
+   39
+  ],
+  [
+   "repr",
+   34
+  ],
+  [
+   "TypeVar",
+   30
+  ],
+  [
+   "frozenset",
+   27
+  ],
+  [
+   "hash",
+   27
+  ],
+  [
+   "id",
+   22
+  ],
+  [
+   "next",
+   20
+  ],
+  [
+   "setattr",
+   7
+  ],
+  [
+   "callable",
+   6
+  ],
+  [
+   "issubclass",
+   5
+  ],
+  [
+   "object",
+   3
+  ],
+  [
+   "vars",
+   2
+  ],
+  [
+   "globals",
+   2
+  ],
+  [
+   "dir",
+   2
+  ],
+  [
+   "iter",
+   2
+  ],
+  [
+   "bytearray",
+   1
+  ],
+  [
+   "memoryview",
+   1
+  ],
+  [
+   "__import__",
+   1
+  ],
+  [
+   "NewType",
+   1
+  ],
+  [
+   "delattr",
+   1
+  ]
+ ],
+ "typing": [
+  [
+   "typing.Final",
+   68
+  ],
+  [
+   "collections.abc.Callable",
+   40
+  ],
+  [
+   "collections.abc.Sequence",
+   33
+  ],
+  [
+   "typing.Any",
+   31
+  ],
+  [
+   "collections.abc.Iterable",
+   29
+  ],
+  [
+   "collections.abc.Iterator",
+   28
+  ],
+  [
+   "typing.TypeAlias",
+   26
+  ],
+  [
+   "typing.cast",
+   26
+  ],
+  [
+   "typing.TypeVar",
+   24
+  ],
+  [
+   "contextlib.contextmanager",
+   18
+  ],
+  [
+   "typing.TYPE_CHECKING",
+   14
+  ],
+  [
+   "abc.abstractmethod",
+   12
+  ],
+  [
+   "collections.abc.Mapping",
+   11
+  ],
+  [
+   "typing.NamedTuple",
+   11
+  ],
+  [
+   "typing.overload",
+   9
+  ],
+  [
+   "mypy_extensions.trait",
+   9
+  ],
+  [
+   "typing.Literal",
+   8
+  ],
+  [
+   "mypy_extensions.mypyc_attr",
+   7
+  ],
+  [
+   "typing.TextIO",
+   6
+  ],
+  [
+   "collections.abc.Set",
+   6
+  ],
+  [
+   "typing.TypeGuard",
+   5
+  ],
+  [
+   "typing.NoReturn",
+   4
+  ],
+  [
+   "typing.Generic",
+   4
+  ],
+  [
+   "contextlib.nullcontext",
+   4
+  ],
+  [
+   "typing.ClassVar",
+   3
+  ],
+  [
+   "typing.TypedDict",
+   3
+  ],
+  [
+   "collections.abc.Container",
+   3
+  ],
+  [
+   "typing_extensions.Self",
+   3
+  ],
+  [
+   "collections.abc.Collection",
+   3
+  ],
+  [
+   "enum.Enum",
+   3
+  ],
+  [
+   "typing.Union",
+   3
+  ],
+  [
+   "typing_extensions.assert_never",
+   2
+  ],
+  [
+   "collections.abc.MutableMapping",
+   2
+  ],
+  [
+   "contextlib.redirect_stderr",
+   2
+  ],
+  [
+   "contextlib.redirect_stdout",
+   2
+  ],
+  [
+   "typing.IO",
+   2
+  ],
+  [
+   "enum.unique",
+   2
+  ],
+  [
+   "typing.Protocol",
+   2
+  ],
+  [
+   "mypy_extensions.FlexibleAlias",
+   1
+  ],
+  [
+   "typing.final",
+   1
+  ],
+  [
+   "mypy_extensions.u8",
+   1
+  ],
+  [
+   "contextlib.ExitStack",
+   1
+  ],
+  [
+   "typing_extensions.Never",
+   1
+  ],
+  [
+   "abc.ABC",
+   1
+  ],
+  [
+   "functools.cmp_to_key",
+   1
+  ],
+  [
+   "typing.Optional",
+   1
+  ],
+  [
+   "typing_extensions.NotRequired",
+   1
+  ],
+  [
+   "abc.ABCMeta",
+   1
+  ],
+  [
+   "collections.abc.MutableSequence",
+   1
+  ],
+  [
+   "functools.singledispatch",
+   1
+  ],
+  [
+   "typing.get_origin",
+   1
+  ],
+  [
+   "typing_extensions.is_typeddict",
+   1
+  ],
+  [
+   "typing.NewType",
+   1
+  ],
+  [
+   "collections.abc.Sized",
+   1
+  ],
+  [
+   "mypy_extensions.i64",
+   1
+  ],
+  [
+   "functools.reduce",
+   1
+  ],
+  [
+   "functools.partial",
+   1
+  ]
+ ],
+ "per_file": {
+  "mypy/__init__.py": {
+   "lines": 1
+  },
+  "mypy/__main__.py": {
+   "lines": 52,
+   "def": 1
+  },
+  "mypy/api.py": {
+   "lines": 95,
+   "def": 4,
+   "nested_def_or_lambda": 2,
+   "Lambda": 1
+  },
+  "mypy/applytype.py": {
+   "lines": 317,
+   "def": 11,
+   "class": 2
+  },
+  "mypy/argmap.py": {
+   "lines": 269,
+   "def": 4,
+   "class": 1
+  },
+  "mypy/binder.py": {
+   "lines": 710,
+   "class": 4,
+   "def": 33,
+   "nested_def_or_lambda": 1,
+   "Yield": 2,
+   "Lambda": 1
+  },
+  "mypy/bogus_type.py": {
+   "lines": 27
+  },
+  "mypy/build.py": {
+   "lines": 5533,
+   "class": 16,
+   "def": 181,
+   "nested_def_or_lambda": 8,
+   "Lambda": 5,
+   "Yield": 2
+  },
+  "mypy/cache.py": {
+   "lines": 626,
+   "class": 2,
+   "def": 38
+  },
+  "mypy/checker.py": {
+   "lines": 10110,
+   "class": 14,
+   "def": 353,
+   "nested_def_or_lambda": 13,
+   "Yield": 5,
+   "Lambda": 5
+  },
+  "mypy/checker_shared.py": {
+   "lines": 377,
+   "class": 4,
+   "def": 44,
+   "Yield": 2
+  },
+  "mypy/checker_state.py": {
+   "lines": 30,
+   "class": 1,
+   "def": 2,
+   "Yield": 1
+  },
+  "mypy/checkexpr.py": {
+   "lines": 7018,
+   "class": 9,
+   "def": 212,
+   "nested_def_or_lambda": 14,
+   "Lambda": 11,
+   "Yield": 1
+  },
+  "mypy/checkmember.py": {
+   "lines": 1593,
+   "class": 1,
+   "def": 36
+  },
+  "mypy/checkpattern.py": {
+   "lines": 883,
+   "class": 2,
+   "def": 25
+  },
+  "mypy/checkstrformat.py": {
+   "lines": 1103,
+   "def": 40,
+   "class": 2,
+   "nested_def_or_lambda": 6
+  },
+  "mypy/config_parser.py": {
+   "lines": 749,
+   "class": 2,
+   "def": 26,
+   "nested_def_or_lambda": 2,
+   "Lambda": 17
+  },
+  "mypy/constant_fold.py": {
+   "lines": 187,
+   "def": 5
+  },
+  "mypy/constraints.py": {
+   "lines": 1748,
+   "class": 2,
+   "def": 54
+  },
+  "mypy/copytype.py": {
+   "lines": 137,
+   "def": 23,
+   "class": 1
+  },
+  "mypy/defaults.py": {
+   "lines": 67
+  },
+  "mypy/dmypy_os.py": {
+   "lines": 43,
+   "def": 2
+  },
+  "mypy/dmypy_server.py": {
+   "lines": 1132,
+   "def": 40,
+   "class": 1,
+   "nested_def_or_lambda": 2,
+   "Lambda": 1
+  },
+  "mypy/dmypy_util.py": {
+   "lines": 117,
+   "def": 22,
+   "class": 1
+  },
+  "mypy/erasetype.py": {
+   "lines": 301,
+   "def": 39,
+   "class": 3,
+   "nested_def_or_lambda": 1
+  },
+  "mypy/error_formatter.py": {
+   "lines": 39,
+   "class": 2,
+   "def": 2
+  },
+  "mypy/errorcodes.py": {
+   "lines": 340,
+   "class": 1,
+   "def": 5
+  },
+  "mypy/errors.py": {
+   "lines": 1468,
+   "class": 8,
+   "def": 66,
+   "nested_def_or_lambda": 4,
+   "Yield": 4,
+   "Lambda": 4
+  },
+  "mypy/evalexpr.py": {
+   "lines": 211,
+   "class": 1,
+   "def": 47
+  },
+  "mypy/expandtype.py": {
+   "lines": 662,
+   "def": 47,
+   "class": 3
+  },
+  "mypy/exportjson.py": {
+   "lines": 616,
+   "class": 1,
+   "def": 40
+  },
+  "mypy/exprtotype.py": {
+   "lines": 285,
+   "class": 1,
+   "def": 2
+  },
+  "mypy/fastparse.py": {
+   "lines": 2267,
+   "def": 141,
+   "nested_def_or_lambda": 1,
+   "class": 4,
+   "Lambda": 1
+  },
+  "mypy/find_sources.py": {
+   "lines": 257,
+   "class": 2,
+   "def": 13
+  },
+  "mypy/fixup.py": {
+   "lines": 438,
+   "class": 2,
+   "def": 39
+  },
+  "mypy/freetree.py": {
+   "lines": 23,
+   "class": 1,
+   "def": 2
+  },
+  "mypy/fscache.py": {
+   "lines": 312,
+   "class": 1,
+   "def": 16
+  },
+  "mypy/fswatcher.py": {
+   "lines": 106,
+   "class": 2,
+   "def": 9
+  },
+  "mypy/gclogger.py": {
+   "lines": 48,
+   "class": 1,
+   "def": 4
+  },
+  "mypy/git.py": {
+   "lines": 69,
+   "def": 5
+  },
+  "mypy/graph_utils.py": {
+   "lines": 161,
+   "def": 6,
+   "nested_def_or_lambda": 1,
+   "class": 1,
+   "Yield": 1
+  },
+  "mypy/indirection.py": {
+   "lines": 176,
+   "class": 1,
+   "def": 26
+  },
+  "mypy/infer.py": {
+   "lines": 80,
+   "class": 1,
+   "def": 3
+  },
+  "mypy/inspections.py": {
+   "lines": 626,
+   "def": 36,
+   "class": 3,
+   "nested_def_or_lambda": 2
+  },
+  "mypy/ipc.py": {
+   "lines": 508,
+   "class": 6,
+   "def": 21
+  },
+  "mypy/join.py": {
+   "lines": 962,
+   "class": 2,
+   "def": 47
+  },
+  "mypy/known_modules.py": {
+   "lines": 174,
+   "def": 3
+  },
+  "mypy/literals.py": {
+   "lines": 327,
+   "def": 51,
+   "class": 1
+  },
+  "mypy/lookup.py": {
+   "lines": 80,
+   "def": 2
+  },
+  "mypy/main.py": {
+   "lines": 1793,
+   "def": 30,
+   "class": 5,
+   "nested_def_or_lambda": 3
+  },
+  "mypy/maptype.py": {
+   "lines": 109,
+   "def": 4
+  },
+  "mypy/meet.py": {
+   "lines": 1371,
+   "def": 48,
+   "nested_def_or_lambda": 2,
+   "class": 1
+  },
+  "mypy/memprofile.py": {
+   "lines": 122,
+   "def": 4,
+   "nested_def_or_lambda": 2,
+   "Lambda": 1
+  },
+  "mypy/message_registry.py": {
+   "lines": 378,
+   "class": 1,
+   "def": 3
+  },
+  "mypy/messages.py": {
+   "lines": 3535,
+   "class": 2,
+   "def": 191,
+   "nested_def_or_lambda": 8,
+   "Yield": 1,
+   "Lambda": 2
+  },
+  "mypy/metastore.py": {
+   "lines": 278,
+   "class": 3,
+   "def": 31,
+   "Yield": 2
+  },
+  "mypy/mixedtraverser.py": {
+   "lines": 147,
+   "class": 1,
+   "def": 21
+  },
+  "mypy/modulefinder.py": {
+   "lines": 1008,
+   "class": 5,
+   "def": 32
+  },
+  "mypy/moduleinspect.py": {
+   "lines": 184,
+   "class": 3,
+   "def": 12,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypy/modules_state.py": {
+   "lines": 20,
+   "class": 1,
+   "def": 1
+  },
+  "mypy/mro.py": {
+   "lines": 62,
+   "def": 3,
+   "class": 1
+  },
+  "mypy/nativeparse.py": {
+   "lines": 2199,
+   "class": 1,
+   "def": 45,
+   "nested_def_or_lambda": 1
+  },
+  "mypy/nodes.py": {
+   "lines": 5608,
+   "class": 102,
+   "def": 336,
+   "nested_def_or_lambda": 1,
+   "Yield": 3
+  },
+  "mypy/operators.py": {
+   "lines": 126
+  },
+  "mypy/options.py": {
+   "lines": 678,
+   "class": 2,
+   "def": 16
+  },
+  "mypy/parse.py": {
+   "lines": 135,
+   "def": 4,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypy/partially_defined.py": {
+   "lines": 703,
+   "class": 7,
+   "def": 69
+  },
+  "mypy/patterns.py": {
+   "lines": 162,
+   "class": 9,
+   "def": 17
+  },
+  "mypy/plugin.py": {
+   "lines": 945,
+   "class": 15,
+   "def": 66,
+   "nested_def_or_lambda": 8,
+   "Lambda": 8
+  },
+  "mypy/pyinfo.py": {
+   "lines": 79,
+   "def": 3
+  },
+  "mypy/reachability.py": {
+   "lines": 388,
+   "def": 21,
+   "class": 2
+  },
+  "mypy/refinfo.py": {
+   "lines": 92,
+   "class": 1,
+   "def": 7
+  },
+  "mypy/renaming.py": {
+   "lines": 583,
+   "class": 2,
+   "def": 48,
+   "Yield": 5
+  },
+  "mypy/report.py": {
+   "lines": 930,
+   "class": 16,
+   "def": 54,
+   "nested_def_or_lambda": 4,
+   "Lambda": 4
+  },
+  "mypy/scope.py": {
+   "lines": 125,
+   "class": 1,
+   "def": 14,
+   "Yield": 4
+  },
+  "mypy/semanal.py": {
+   "lines": 8674,
+   "class": 3,
+   "def": 353,
+   "nested_def_or_lambda": 5,
+   "Lambda": 4,
+   "Yield": 7
+  },
+  "mypy/semanal_classprop.py": {
+   "lines": 188,
+   "def": 5,
+   "nested_def_or_lambda": 1
+  },
+  "mypy/semanal_enum.py": {
+   "lines": 259,
+   "class": 1,
+   "def": 7
+  },
+  "mypy/semanal_infer.py": {
+   "lines": 135,
+   "def": 4
+  },
+  "mypy/semanal_main.py": {
+   "lines": 542,
+   "def": 15,
+   "nested_def_or_lambda": 2,
+   "Lambda": 2
+  },
+  "mypy/semanal_namedtuple.py": {
+   "lines": 679,
+   "class": 1,
+   "def": 14,
+   "nested_def_or_lambda": 4,
+   "Yield": 1,
+   "Lambda": 1
+  },
+  "mypy/semanal_newtype.py": {
+   "lines": 272,
+   "class": 1,
+   "def": 7
+  },
+  "mypy/semanal_pass1.py": {
+   "lines": 159,
+   "class": 1,
+   "def": 13
+  },
+  "mypy/semanal_shared.py": {
+   "lines": 499,
+   "class": 4,
+   "def": 45
+  },
+  "mypy/semanal_typeargs.py": {
+   "lines": 309,
+   "class": 1,
+   "def": 15
+  },
+  "mypy/semanal_typeddict.py": {
+   "lines": 826,
+   "class": 2,
+   "def": 21
+  },
+  "mypy/sharedparse.py": {
+   "lines": 114,
+   "def": 2
+  },
+  "mypy/solve.py": {
+   "lines": 602,
+   "def": 16,
+   "nested_def_or_lambda": 2,
+   "Lambda": 2
+  },
+  "mypy/split_namespace.py": {
+   "lines": 35,
+   "class": 1,
+   "def": 4
+  },
+  "mypy/state.py": {
+   "lines": 29,
+   "class": 1,
+   "def": 2,
+   "Yield": 1
+  },
+  "mypy/stats.py": {
+   "lines": 494,
+   "class": 3,
+   "def": 49,
+   "nested_def_or_lambda": 1,
+   "Yield": 1,
+   "Lambda": 1
+  },
+  "mypy/strconv.py": {
+   "lines": 707,
+   "class": 1,
+   "def": 96,
+   "nested_def_or_lambda": 2,
+   "Lambda": 2
+  },
+  "mypy/stubdoc.py": {
+   "lines": 545,
+   "def": 26,
+   "class": 3,
+   "nested_def_or_lambda": 4,
+   "Lambda": 1
+  },
+  "mypy/stubgen.py": {
+   "lines": 2064,
+   "class": 7,
+   "def": 116,
+   "Yield": 1
+  },
+  "mypy/stubgenc.py": {
+   "lines": 1046,
+   "class": 4,
+   "def": 46,
+   "nested_def_or_lambda": 6,
+   "Lambda": 2
+  },
+  "mypy/stubinfo.py": {
+   "lines": 321,
+   "def": 1
+  },
+  "mypy/stubtest.py": {
+   "lines": 2676,
+   "class": 8,
+   "def": 87,
+   "nested_def_or_lambda": 17,
+   "Yield": 82,
+   "Lambda": 1
+  },
+  "mypy/stubutil.py": {
+   "lines": 895,
+   "class": 7,
+   "def": 57,
+   "nested_def_or_lambda": 1,
+   "Yield": 2,
+   "Lambda": 1
+  },
+  "mypy/subtypes.py": {
+   "lines": 2572,
+   "class": 2,
+   "def": 69,
+   "nested_def_or_lambda": 4,
+   "Yield": 1
+  },
+  "mypy/suggestions.py": {
+   "lines": 1068,
+   "class": 9,
+   "def": 64,
+   "nested_def_or_lambda": 2,
+   "Lambda": 2,
+   "Yield": 2
+  },
+  "mypy/traverser.py": {
+   "lines": 1106,
+   "class": 12,
+   "def": 198
+  },
+  "mypy/treetransform.py": {
+   "lines": 820,
+   "class": 2,
+   "def": 108
+  },
+  "mypy/tvar_scope.py": {
+   "lines": 154,
+   "class": 1,
+   "def": 10
+  },
+  "mypy/type_visitor.py": {
+   "lines": 630,
+   "class": 5,
+   "def": 111
+  },
+  "mypy/typeanal.py": {
+   "lines": 2961,
+   "def": 128,
+   "class": 9,
+   "nested_def_or_lambda": 1,
+   "Yield": 1,
+   "Lambda": 1
+  },
+  "mypy/typeops.py": {
+   "lines": 1355,
+   "def": 50,
+   "class": 2
+  },
+  "mypy/types.py": {
+   "lines": 4639,
+   "class": 47,
+   "def": 391,
+   "nested_def_or_lambda": 1,
+   "Yield": 3
+  },
+  "mypy/types_utils.py": {
+   "lines": 183,
+   "def": 10,
+   "Yield": 1
+  },
+  "mypy/typestate.py": {
+   "lines": 334,
+   "class": 1,
+   "def": 17
+  },
+  "mypy/typetraverser.py": {
+   "lines": 166,
+   "class": 1,
+   "def": 29
+  },
+  "mypy/typevars.py": {
+   "lines": 84,
+   "def": 3
+  },
+  "mypy/typevartuples.py": {
+   "lines": 36,
+   "def": 2
+  },
+  "mypy/util.py": {
+   "lines": 1055,
+   "def": 59,
+   "class": 3,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypy/version.py": {
+   "lines": 21
+  },
+  "mypy/visitor.py": {
+   "lines": 639,
+   "class": 4,
+   "def": 166
+  },
+  "mypy/build_worker/__init__.py": {
+   "lines": 0
+  },
+  "mypy/build_worker/__main__.py": {
+   "lines": 6
+  },
+  "mypy/build_worker/worker.py": {
+   "lines": 379,
+   "class": 1,
+   "def": 9,
+   "nested_def_or_lambda": 3,
+   "Lambda": 2
+  },
+  "mypy/dmypy/__init__.py": {
+   "lines": 0
+  },
+  "mypy/dmypy/__main__.py": {
+   "lines": 6
+  },
+  "mypy/dmypy/client.py": {
+   "lines": 732,
+   "class": 1,
+   "def": 28,
+   "nested_def_or_lambda": 1
+  },
+  "mypy/plugins/__init__.py": {
+   "lines": 0
+  },
+  "mypy/plugins/attrs.py": {
+   "lines": 1179,
+   "class": 3,
+   "def": 37,
+   "Yield": 2
+  },
+  "mypy/plugins/common.py": {
+   "lines": 441,
+   "def": 12,
+   "nested_def_or_lambda": 1,
+   "class": 1,
+   "Lambda": 1
+  },
+  "mypy/plugins/constants.py": {
+   "lines": 20
+  },
+  "mypy/plugins/ctypes.py": {
+   "lines": 245,
+   "def": 10
+  },
+  "mypy/plugins/dataclasses.py": {
+   "lines": 1135,
+   "class": 2,
+   "def": 36,
+   "nested_def_or_lambda": 1,
+   "Yield": 1,
+   "Lambda": 1
+  },
+  "mypy/plugins/default.py": {
+   "lines": 612,
+   "class": 1,
+   "def": 20,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypy/plugins/enums.py": {
+   "lines": 299,
+   "def": 8
+  },
+  "mypy/plugins/functools.py": {
+   "lines": 399,
+   "class": 1,
+   "def": 7,
+   "nested_def_or_lambda": 2,
+   "Lambda": 2
+  },
+  "mypy/plugins/proper_plugin.py": {
+   "lines": 178,
+   "class": 1,
+   "def": 9
+  },
+  "mypy/plugins/singledispatch.py": {
+   "lines": 212,
+   "class": 2,
+   "def": 10
+  },
+  "mypy/server/__init__.py": {
+   "lines": 0
+  },
+  "mypy/server/astdiff.py": {
+   "lines": 552,
+   "def": 31,
+   "class": 1
+  },
+  "mypy/server/astmerge.py": {
+   "lines": 583,
+   "def": 65,
+   "class": 2
+  },
+  "mypy/server/aststrip.py": {
+   "lines": 255,
+   "def": 22,
+   "class": 1,
+   "Yield": 2
+  },
+  "mypy/server/deps.py": {
+   "lines": 1153,
+   "def": 81,
+   "class": 2,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypy/server/mergecheck.py": {
+   "lines": 84,
+   "def": 2
+  },
+  "mypy/server/objgraph.py": {
+   "lines": 101,
+   "def": 5,
+   "Yield": 5
+  },
+  "mypy/server/subexpr.py": {
+   "lines": 208,
+   "def": 46,
+   "class": 1
+  },
+  "mypy/server/target.py": {
+   "lines": 11,
+   "def": 1
+  },
+  "mypy/server/trigger.py": {
+   "lines": 26,
+   "def": 2
+  },
+  "mypy/server/update.py": {
+   "lines": 1372,
+   "class": 3,
+   "def": 34,
+   "nested_def_or_lambda": 5,
+   "Lambda": 2
+  }
+ }
+}

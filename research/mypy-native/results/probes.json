@@ -1,0 +1,202 @@
+{
+ "p01_class_decorator_identity": {
+  "status": "REJECT",
+  "detail": "L9: unsupported decorator @trait"
+ },
+ "p02_typing_final_decorator": {
+  "status": "REJECT",
+  "detail": "L7: a class with inheritance and a decorator is not supported"
+ },
+ "p03_trait_diamond": {
+  "status": "REJECT",
+  "detail": "L18: multiple inheritance requires an ordinary primary base and an independent method-only secondary base"
+ },
+ "p04_two_method_only_bases": {
+  "status": "REJECT",
+  "detail": "L11: multiple inheritance requires an ordinary primary base and an independent method-only secondary base"
+ },
+ "p05_generic_visitor_hierarchy": {
+  "status": "REJECT",
+  "detail": "L21: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
+ },
+ "p06_generic_base_subclass": {
+  "status": "REJECT",
+  "detail": "L9: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
+ },
+ "p07_isinstance_tuple_narrow": {
+  "status": "REJECT",
+  "detail": "L14: 'Type' object has no attribute 'name'"
+ },
+ "p08_isinstance_chain": {
+  "status": "PASS",
+  "detail": "int | str | ?"
+ },
+ "p09_isinstance_field_narrow": {
+  "status": "REJECT",
+  "detail": "L14: 'SymbolNode' object has no attribute 'fullname'"
+ },
+ "p10_isinstance_negative_narrow": {
+  "status": "PASS",
+  "detail": "a b"
+ },
+ "p11_union_of_five_classes": {
+  "status": "REJECT",
+  "detail": "L12: reference unions support at most four members"
+ },
+ "p12_union_class_and_scalar": {
+  "status": "REJECT",
+  "detail": "L5: reference unions cannot mix native references with scalar or container members"
+ },
+ "p13a_list_to_sequence_base": {
+  "status": "REJECT",
+  "detail": "L11: expected list[Type], got list[Instance]"
+ },
+ "p13b_list_same_type_sequence": {
+  "status": "PASS",
+  "detail": "['type'] 1 ['a']"
+ },
+ "p13c_tuple_of_objects_varlen": {
+  "status": "REJECT",
+  "detail": "L4: runtime-length tuple elements must be int, float, bool, str or their optional types"
+ },
+ "p13d_sequence_accepts_list_and_tuple": {
+  "status": "REJECT",
+  "detail": "L4: expected list[int], got tuple[int,int]"
+ },
+ "p14_dict_subclass": {
+  "status": "REJECT",
+  "detail": "L5: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
+ },
+ "p15_slots_hierarchy": {
+  "status": "PASS",
+  "detail": "x 4 -1"
+ },
+ "p16a_final_only": {
+  "status": "PASS",
+  "detail": "Gdef"
+ },
+ "p16b_classvar_only": {
+  "status": "REJECT",
+  "detail": "L3: typing.ClassVar (a class attribute) is not supported"
+ },
+ "p17_overload": {
+  "status": "PASS",
+  "detail": "True True"
+ },
+ "p18_typeguard": {
+  "status": "REJECT",
+  "detail": "L8: unsupported type annotation"
+ },
+ "p19_bound_typevar_method": {
+  "status": "REJECT",
+  "detail": "L8: a TypeVar's constraints, and a bound other than a string, are not supported"
+ },
+ "p20_object_param_narrow": {
+  "status": "REJECT",
+  "detail": "L9: the builtin 'NotImplemented' cannot be used as a value (not supported) (compiling Instance.__eq__(Instance) for the call at probes/p20_object_param_narrow.py:2, where other may be None:"
+ },
+ "p21_contextmanager_method": {
+  "status": "PASS",
+  "detail": "['a', 'b']\n[]"
+ },
+ "p22_abstract_trait_attrs": {
+  "status": "REJECT",
+  "detail": "L13: multiple inheritance requires an ordinary primary base and an independent method-only secondary base"
+ },
+ "p23_enum_unique": {
+  "status": "PASS",
+  "detail": "False True STAR 0"
+ },
+ "p24_callable_registry": {
+  "status": "PASS",
+  "detail": "['ba', 'AB']"
+ },
+ "p25a_namedtuple": {
+  "status": "PASS",
+  "detail": "x 3"
+ },
+ "p25b_typeddict": {
+  "status": "REJECT",
+  "detail": "L2: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
+ },
+ "p26a_assert_narrow": {
+  "status": "PASS",
+  "detail": "a"
+ },
+ "p26b_cast_downcast": {
+  "status": "REJECT",
+  "detail": "L8: class 'Instance' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
+ },
+ "p27_type_alias_forward": {
+  "status": "PASS",
+  "detail": "none z"
+ },
+ "p28_lambda_sort_key_objects": {
+  "status": "PASS",
+  "detail": "[('a', 1), ('a', 9), ('b', 2)]"
+ },
+ "p29_type_object_dispatch": {
+  "status": "PASS",
+  "detail": "True False B"
+ },
+ "p30_del_and_bytes_buffer": {
+  "status": "PASS",
+  "detail": "2 1 2 b'\\x01\\x02'"
+ },
+ "p31a_kwargs_forward_typed": {
+  "status": "PASS",
+  "detail": "x[syntax]"
+ },
+ "p32_protocol_param": {
+  "status": "REJECT",
+  "detail": "L3: unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
+ },
+ "p33_getattr_visitor_dispatch": {
+  "status": "REJECT",
+  "detail": "L8: getattr() of a name only the run time knows is supported where its text is used (print(), str(), repr(), an f-string field without a format spec): elsewhere its value would need a type of its own (#487, #489); use a str litera"
+ },
+ "p34_exception_hierarchy_fields": {
+  "status": "PASS",
+  "detail": "['a', 'b'] True True"
+ },
+ "p35_generic_class_no_hierarchy": {
+  "status": "PASS",
+  "detail": "1 s"
+ },
+ "p36_abstract_base_virtual": {
+  "status": "PASS",
+  "detail": "v1:3"
+ },
+ "p37_virtual_method_returning_base": {
+  "status": "PASS",
+  "detail": "['?', \"a'\"]"
+ },
+ "p38_set_of_objects_and_frozenset_str": {
+  "status": "PASS",
+  "detail": "1 True True"
+ },
+ "p39_optional_object_field_flow": {
+  "status": "PASS",
+  "detail": "a ? b"
+ },
+ "p40_class_attr_defaults_override": {
+  "status": "PASS",
+  "detail": "[True, False]"
+ },
+ "p41_str_enum_like_int_consts_dict": {
+  "status": "PASS",
+  "detail": "[0, 2] 2"
+ },
+ "p42_typevar_bound_string": {
+  "status": "PASS",
+  "detail": "Instance 7"
+ },
+ "p43_isinstance_tuple_same_method": {
+  "status": "PASS",
+  "detail": "True True False"
+ },
+ "p44_notimplemented_eq": {
+  "status": "PASS",
+  "detail": "True False 1 True"
+ }
+}

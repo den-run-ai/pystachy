@@ -1,0 +1,2199 @@
+{
+ "files": 103,
+ "lines": 43645,
+ "counts": [
+  [
+   "def",
+   2299
+  ],
+  [
+   "JoinedStr",
+   777
+  ],
+  [
+   "For",
+   546
+  ],
+  [
+   "Assert",
+   345
+  ],
+  [
+   "class",
+   181
+  ],
+  [
+   "ListComp",
+   167
+  ],
+  [
+   "IfExp",
+   144
+  ],
+  [
+   "GeneratorExp",
+   131
+  ],
+  [
+   "nested_def_or_lambda",
+   96
+  ],
+  [
+   "Slice",
+   88
+  ],
+  [
+   "kwonly_def",
+   79
+  ],
+  [
+   "Raise",
+   70
+  ],
+  [
+   "With",
+   47
+  ],
+  [
+   "Lambda",
+   38
+  ],
+  [
+   "DictComp",
+   30
+  ],
+  [
+   "Try",
+   27
+  ],
+  [
+   "While",
+   24
+  ],
+  [
+   "posonly_def",
+   20
+  ],
+  [
+   "NamedExpr",
+   18
+  ],
+  [
+   "Starred",
+   15
+  ],
+  [
+   "SetComp",
+   8
+  ],
+  [
+   "call_star",
+   8
+  ],
+  [
+   "Yield",
+   7
+  ],
+  [
+   "Delete",
+   5
+  ],
+  [
+   "*args_def",
+   4
+  ],
+  [
+   "Global",
+   1
+  ],
+  [
+   "**kwargs_def",
+   1
+  ],
+  [
+   "call_starstar",
+   1
+  ],
+  [
+   "__slots__",
+   1
+  ]
+ ],
+ "imports": [
+  [
+   "__future__",
+   87
+  ],
+  [
+   "mypyc.ir.ops",
+   70
+  ],
+  [
+   "mypyc.ir.rtypes",
+   65
+  ],
+  [
+   "typing",
+   39
+  ],
+  [
+   "mypyc.ir.func_ir",
+   34
+  ],
+  [
+   "mypyc.common",
+   30
+  ],
+  [
+   "mypy.nodes",
+   28
+  ],
+  [
+   "collections.abc",
+   27
+  ],
+  [
+   "mypyc.ir.class_ir",
+   26
+  ],
+  [
+   "mypyc.primitives.registry",
+   24
+  ],
+  [
+   "mypyc.ir.deps",
+   16
+  ],
+  [
+   "mypyc.irbuild.builder",
+   16
+  ],
+  [
+   "mypy.types",
+   15
+  ],
+  [
+   "mypyc.irbuild.ll_builder",
+   12
+  ],
+  [
+   "mypyc.primitives.misc_ops",
+   12
+  ],
+  [
+   "mypyc.namegen",
+   11
+  ],
+  [
+   "sys",
+   10
+  ],
+  [
+   "mypyc.options",
+   10
+  ],
+  [
+   "mypyc.primitives.dict_ops",
+   9
+  ],
+  [
+   "mypyc.primitives.generic_ops",
+   9
+  ],
+  [
+   "mypyc.errors",
+   8
+  ],
+  [
+   "mypyc.analysis.dataflow",
+   7
+  ],
+  [
+   "mypyc.sametype",
+   7
+  ],
+  [
+   "mypyc.irbuild.targets",
+   7
+  ],
+  [
+   "mypyc.irbuild.util",
+   7
+  ],
+  [
+   "mypyc.primitives.list_ops",
+   7
+  ],
+  [
+   "mypy.build",
+   6
+  ],
+  [
+   "mypy.traverser",
+   6
+  ],
+  [
+   "mypyc.irbuild.constant_fold",
+   6
+  ],
+  [
+   "mypyc.irbuild.context",
+   6
+  ],
+  [
+   "mypyc.irbuild.vec",
+   6
+  ],
+  [
+   "mypyc.primitives.tuple_ops",
+   6
+  ],
+  [
+   "mypyc.primitives.str_ops",
+   6
+  ],
+  [
+   "mypyc.primitives.exc_ops",
+   6
+  ],
+  [
+   "mypy.util",
+   5
+  ],
+  [
+   "mypyc.irbuild.mapper",
+   5
+  ],
+  [
+   "abc",
+   5
+  ],
+  [
+   "mypyc.primitives.bytes_ops",
+   5
+  ],
+  [
+   "mypyc.primitives.int_ops",
+   5
+  ],
+  [
+   "mypyc.lower.registry",
+   5
+  ],
+  [
+   "mypyc.ir.module_ir",
+   4
+  ],
+  [
+   "mypy.errors",
+   4
+  ],
+  [
+   "mypy.options",
+   4
+  ],
+  [
+   "setuptools",
+   4
+  ],
+  [
+   "distutils",
+   4
+  ],
+  [
+   "contextlib",
+   4
+  ],
+  [
+   "mypyc.codegen.emit",
+   4
+  ],
+  [
+   "mypyc.primitives.set_ops",
+   4
+  ],
+  [
+   "mypyc.transform.ir_transform",
+   4
+  ],
+  [
+   "os",
+   3
+  ],
+  [
+   "os.path",
+   3
+  ],
+  [
+   "mypyc.ir.pprint",
+   3
+  ],
+  [
+   "mypyc.subtype",
+   3
+  ],
+  [
+   "mypyc.codegen.cstring",
+   3
+  ],
+  [
+   "mypyc.codegen.literals",
+   3
+  ],
+  [
+   "mypyc.crash",
+   3
+  ],
+  [
+   "mypyc.irbuild.prepare",
+   3
+  ],
+  [
+   "collections",
+   3
+  ],
+  [
+   "mypyc.irbuild.nonlocalcontrol",
+   3
+  ],
+  [
+   "mypyc.irbuild.for_helpers",
+   3
+  ],
+  [
+   "mypyc.irbuild.env_class",
+   3
+  ],
+  [
+   "mypyc.primitives.float_ops",
+   3
+  ],
+  [
+   "mypyc.primitives.librt_vecs_ops",
+   3
+  ],
+  [
+   "mypy.fscache",
+   2
+  ],
+  [
+   "distutils.core",
+   2
+  ],
+  [
+   "mypyc.codegen.emitfunc",
+   2
+  ],
+  [
+   "mypyc.codegen.emitwrapper",
+   2
+  ],
+  [
+   "mypy.operators",
+   2
+  ],
+  [
+   "mypyc.irbuild.prebuildvisitor",
+   2
+  ],
+  [
+   "mypyc.irbuild.function",
+   2
+  ],
+  [
+   "mypyc.irbuild.ast_helpers",
+   2
+  ],
+  [
+   "mypyc.irbuild.format_str_tokenizer",
+   2
+  ],
+  [
+   "mypyc.irbuild.specialize",
+   2
+  ],
+  [
+   "mypyc.irbuild.expression",
+   2
+  ],
+  [
+   "mypyc.irbuild.statement",
+   2
+  ],
+  [
+   "mypyc.irbuild.generator",
+   2
+  ],
+  [
+   "mypy.semanal",
+   2
+  ],
+  [
+   "mypyc.primitives.bytearray_ops",
+   2
+  ],
+  [
+   "mypyc.primitives.librt_strings_ops",
+   2
+  ],
+  [
+   "mypyc.primitives.librt_threading_ops",
+   2
+  ],
+  [
+   "subprocess",
+   1
+  ],
+  [
+   "html",
+   1
+  ],
+  [
+   "hashlib",
+   1
+  ],
+  [
+   "re",
+   1
+  ],
+  [
+   "time",
+   1
+  ],
+  [
+   "mypyc.build_setup",
+   1
+  ],
+  [
+   "mypy.main",
+   1
+  ],
+  [
+   "mypyc.annotate",
+   1
+  ],
+  [
+   "mypyc.codegen",
+   1
+  ],
+  [
+   "setuptools.command.build_ext",
+   1
+  ],
+  [
+   "platform",
+   1
+  ],
+  [
+   "importlib.machinery",
+   1
+  ],
+  [
+   "sysconfig",
+   1
+  ],
+  [
+   "traceback",
+   1
+  ],
+  [
+   "mypyc.analysis.selfleaks",
+   1
+  ],
+  [
+   "string",
+   1
+  ],
+  [
+   "mypyc.analysis.blockfreq",
+   1
+  ],
+  [
+   "json",
+   1
+  ],
+  [
+   "mypy.plugin",
+   1
+  ],
+  [
+   "mypyc.analysis.capsule_deps",
+   1
+  ],
+  [
+   "mypyc.codegen.emitclass",
+   1
+  ],
+  [
+   "mypyc.irbuild.main",
+   1
+  ],
+  [
+   "mypyc.transform.borrow_generator_attrs",
+   1
+  ],
+  [
+   "mypyc.transform.copy_propagation",
+   1
+  ],
+  [
+   "mypyc.transform.exceptions",
+   1
+  ],
+  [
+   "mypyc.transform.flag_elimination",
+   1
+  ],
+  [
+   "mypyc.transform.log_trace",
+   1
+  ],
+  [
+   "mypyc.transform.lower",
+   1
+  ],
+  [
+   "mypyc.transform.refcount",
+   1
+  ],
+  [
+   "mypyc.transform.spill",
+   1
+  ],
+  [
+   "mypyc.transform.uninit",
+   1
+  ],
+  [
+   "inspect",
+   1
+  ],
+  [
+   "mypy_extensions",
+   1
+  ],
+  [
+   "mypy.maptype",
+   1
+  ],
+  [
+   "mypy.visitor",
+   1
+  ],
+  [
+   "mypy.join",
+   1
+  ],
+  [
+   "mypy.constant_fold",
+   1
+  ],
+  [
+   "math",
+   1
+  ],
+  [
+   "enum",
+   1
+  ],
+  [
+   "mypy.checkstrformat",
+   1
+  ],
+  [
+   "mypy.messages",
+   1
+  ],
+  [
+   "mypyc.irbuild.callable_class",
+   1
+  ],
+  [
+   "mypy.argmap",
+   1
+  ],
+  [
+   "mypyc.rt_expandtype",
+   1
+  ],
+  [
+   "mypyc.rt_subtype",
+   1
+  ],
+  [
+   "mypy.state",
+   1
+  ],
+  [
+   "mypyc.analysis.attrdefined",
+   1
+  ],
+  [
+   "mypyc.irbuild.visitor",
+   1
+  ],
+  [
+   "mypyc.irbuild.vtable",
+   1
+  ],
+  [
+   "mypyc.transform.generator_spills",
+   1
+  ],
+  [
+   "mypy.patterns",
+   1
+  ],
+  [
+   "mypyc.irbuild.missingtypevisitor",
+   1
+  ],
+  [
+   "importlib.util",
+   1
+  ],
+  [
+   ".match",
+   1
+  ],
+  [
+   "typing_extensions",
+   1
+  ],
+  [
+   "mypyc.irbuild.classdef",
+   1
+  ],
+  [
+   "itertools",
+   1
+  ],
+  [
+   "mypyc.lower",
+   1
+  ],
+  [
+   "mypyc.primitives.librt_random_ops",
+   1
+  ],
+  [
+   "mypyc.primitives.librt_time_ops",
+   1
+  ],
+  [
+   "mypyc.primitives.weakref_ops",
+   1
+  ]
+ ],
+ "import_sites": {
+  "__future__": [
+   "mypyc/__main__.py",
+   "mypyc/analysis/attrdefined.py",
+   "mypyc/analysis/blockfreq.py",
+   "mypyc/analysis/capsule_deps.py",
+   "mypyc/analysis/dataflow.py",
+   "mypyc/analysis/ircheck.py",
+   "mypyc/analysis/selfleaks.py",
+   "mypyc/annotate.py"
+  ],
+  "os": [
+   "mypyc/__main__.py",
+   "mypyc/build_setup.py",
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "os.path": [
+   "mypyc/__main__.py",
+   "mypyc/annotate.py",
+   "mypyc/build.py"
+  ],
+  "subprocess": [
+   "mypyc/__main__.py"
+  ],
+  "sys": [
+   "mypyc/__main__.py",
+   "mypyc/annotate.py",
+   "mypyc/build.py",
+   "mypyc/build_setup.py",
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/common.py",
+   "mypyc/crash.py"
+  ],
+  "html": [
+   "mypyc/annotate.py"
+  ],
+  "typing": [
+   "mypyc/analysis/attrdefined.py",
+   "mypyc/analysis/dataflow.py",
+   "mypyc/annotate.py",
+   "mypyc/build.py",
+   "mypyc/codegen/cstring.py",
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitfunc.py",
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypy.build": [
+   "mypyc/annotate.py",
+   "mypyc/build.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/main.py",
+   "mypyc/irbuild/prepare.py"
+  ],
+  "mypy.nodes": [
+   "mypyc/annotate.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/codegen/emitwrapper.py",
+   "mypyc/ir/func_ir.py",
+   "mypyc/irbuild/ast_helpers.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/classdef.py"
+  ],
+  "mypy.traverser": [
+   "mypyc/annotate.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/match.py",
+   "mypyc/irbuild/missingtypevisitor.py",
+   "mypyc/irbuild/prebuildvisitor.py",
+   "mypyc/irbuild/prepare.py"
+  ],
+  "mypy.types": [
+   "mypyc/annotate.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/main.py"
+  ],
+  "mypy.util": [
+   "mypyc/annotate.py",
+   "mypyc/build.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/common.py",
+   "mypyc/irbuild/builder.py"
+  ],
+  "mypyc.ir.func_ir": [
+   "mypyc/analysis/capsule_deps.py",
+   "mypyc/analysis/ircheck.py",
+   "mypyc/annotate.py",
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitfunc.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/codegen/emitwrapper.py"
+  ],
+  "mypyc.ir.module_ir": [
+   "mypyc/annotate.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/ir/pprint.py",
+   "mypyc/irbuild/main.py"
+  ],
+  "mypyc.ir.ops": [
+   "mypyc/analysis/attrdefined.py",
+   "mypyc/analysis/blockfreq.py",
+   "mypyc/analysis/capsule_deps.py",
+   "mypyc/analysis/dataflow.py",
+   "mypyc/analysis/ircheck.py",
+   "mypyc/analysis/selfleaks.py",
+   "mypyc/annotate.py",
+   "mypyc/codegen/emit.py"
+  ],
+  "mypyc.irbuild.mapper": [
+   "mypyc/annotate.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/main.py",
+   "mypyc/irbuild/prepare.py"
+  ],
+  "hashlib": [
+   "mypyc/build.py"
+  ],
+  "re": [
+   "mypyc/build.py"
+  ],
+  "time": [
+   "mypyc/build.py"
+  ],
+  "collections.abc": [
+   "mypyc/analysis/dataflow.py",
+   "mypyc/build.py",
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/codegen/emitwrapper.py",
+   "mypyc/crash.py",
+   "mypyc/ir/func_ir.py"
+  ],
+  "mypyc.build_setup": [
+   "mypyc/build.py"
+  ],
+  "mypy.errors": [
+   "mypyc/build.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/errors.py",
+   "mypyc/irbuild/format_str_tokenizer.py"
+  ],
+  "mypy.fscache": [
+   "mypyc/build.py",
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypy.main": [
+   "mypyc/build.py"
+  ],
+  "mypy.options": [
+   "mypyc/build.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/errors.py",
+   "mypyc/irbuild/format_str_tokenizer.py"
+  ],
+  "mypyc.annotate": [
+   "mypyc/build.py"
+  ],
+  "mypyc.codegen": [
+   "mypyc/build.py"
+  ],
+  "mypyc.common": [
+   "mypyc/build.py",
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitfunc.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/codegen/emitwrapper.py",
+   "mypyc/ir/class_ir.py",
+   "mypyc/ir/func_ir.py"
+  ],
+  "mypyc.errors": [
+   "mypyc/build.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/main.py",
+   "mypyc/irbuild/prebuildvisitor.py",
+   "mypyc/irbuild/prepare.py",
+   "mypyc/irbuild/util.py"
+  ],
+  "mypyc.ir.deps": [
+   "mypyc/analysis/capsule_deps.py",
+   "mypyc/build.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/ir/module_ir.py",
+   "mypyc/ir/ops.py",
+   "mypyc/ir/rtypes.py",
+   "mypyc/primitives/bytearray_ops.py",
+   "mypyc/primitives/bytes_ops.py"
+  ],
+  "mypyc.ir.pprint": [
+   "mypyc/analysis/ircheck.py",
+   "mypyc/build.py",
+   "mypyc/codegen/emitfunc.py"
+  ],
+  "mypyc.namegen": [
+   "mypyc/build.py",
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/codegen/emitwrapper.py",
+   "mypyc/common.py",
+   "mypyc/ir/class_ir.py",
+   "mypyc/ir/func_ir.py"
+  ],
+  "mypyc.options": [
+   "mypyc/build.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/main.py",
+   "mypyc/irbuild/prepare.py",
+   "mypyc/transform/copy_propagation.py",
+   "mypyc/transform/flag_elimination.py"
+  ],
+  "setuptools": [
+   "mypyc/build.py",
+   "mypyc/build_setup.py"
+  ],
+  "distutils": [
+   "mypyc/build.py",
+   "mypyc/build_setup.py"
+  ],
+  "setuptools.command.build_ext": [
+   "mypyc/build.py"
+  ],
+  "distutils.core": [
+   "mypyc/build.py"
+  ],
+  "platform": [
+   "mypyc/build_setup.py"
+  ],
+  "importlib.machinery": [
+   "mypyc/common.py"
+  ],
+  "sysconfig": [
+   "mypyc/common.py"
+  ],
+  "traceback": [
+   "mypyc/crash.py"
+  ],
+  "contextlib": [
+   "mypyc/crash.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/match.py"
+  ],
+  "mypyc.ir.rtypes": [
+   "mypyc/analysis/attrdefined.py",
+   "mypyc/analysis/capsule_deps.py",
+   "mypyc/analysis/ircheck.py",
+   "mypyc/analysis/selfleaks.py",
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitfunc.py",
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.subtype": [
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/rt_subtype.py"
+  ],
+  "mypyc.analysis.dataflow": [
+   "mypyc/analysis/attrdefined.py",
+   "mypyc/analysis/selfleaks.py",
+   "mypyc/transform/borrow_generator_attrs.py",
+   "mypyc/transform/generator_spills.py",
+   "mypyc/transform/refcount.py",
+   "mypyc/transform/spill.py",
+   "mypyc/transform/uninit.py"
+  ],
+  "mypyc.analysis.selfleaks": [
+   "mypyc/analysis/attrdefined.py"
+  ],
+  "mypyc.ir.class_ir": [
+   "mypyc/analysis/attrdefined.py",
+   "mypyc/analysis/capsule_deps.py",
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitfunc.py",
+   "mypyc/codegen/emitwrapper.py",
+   "mypyc/ir/module_ir.py",
+   "mypyc/ir/ops.py"
+  ],
+  "abc": [
+   "mypyc/analysis/dataflow.py",
+   "mypyc/ir/ops.py",
+   "mypyc/ir/rtypes.py",
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/nonlocalcontrol.py"
+  ],
+  "string": [
+   "mypyc/codegen/cstring.py"
+  ],
+  "mypyc.codegen.cstring": [
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.codegen.literals": [
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/ir/ops.py"
+  ],
+  "mypyc.primitives.registry": [
+   "mypyc/codegen/emit.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/lower/int_ops.py",
+   "mypyc/primitives/bytearray_ops.py",
+   "mypyc/primitives/bytes_ops.py",
+   "mypyc/primitives/dict_ops.py"
+  ],
+  "mypyc.sametype": [
+   "mypyc/codegen/emit.py",
+   "mypyc/codegen/emitclass.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/prepare.py",
+   "mypyc/irbuild/vtable.py",
+   "mypyc/transform/copy_propagation.py"
+  ],
+  "mypyc.codegen.emit": [
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitfunc.py",
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/codegen/emitwrapper.py"
+  ],
+  "mypyc.codegen.emitfunc": [
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.codegen.emitwrapper": [
+   "mypyc/codegen/emitclass.py",
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.analysis.blockfreq": [
+   "mypyc/codegen/emitfunc.py"
+  ],
+  "json": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypy.plugin": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.analysis.capsule_deps": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.codegen.emitclass": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.crash": [
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/prepare.py"
+  ],
+  "mypyc.irbuild.main": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.irbuild.prepare": [
+   "mypyc/codegen/emitmodule.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/main.py"
+  ],
+  "mypyc.transform.borrow_generator_attrs": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.transform.copy_propagation": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.transform.exceptions": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.transform.flag_elimination": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.transform.log_trace": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.transform.lower": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.transform.refcount": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.transform.spill": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypyc.transform.uninit": [
+   "mypyc/codegen/emitmodule.py"
+  ],
+  "mypy.operators": [
+   "mypyc/codegen/emitwrapper.py",
+   "mypyc/irbuild/ll_builder.py"
+  ],
+  "inspect": [
+   "mypyc/ir/func_ir.py"
+  ],
+  "mypy_extensions": [
+   "mypyc/ir/ops.py"
+  ],
+  "collections": [
+   "mypyc/ir/pprint.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/prepare.py"
+  ],
+  "mypyc.irbuild.builder": [
+   "mypyc/irbuild/ast_helpers.py",
+   "mypyc/irbuild/callable_class.py",
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/constant_fold.py",
+   "mypyc/irbuild/env_class.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/format_str_tokenizer.py"
+  ],
+  "mypyc.irbuild.constant_fold": [
+   "mypyc/irbuild/ast_helpers.py",
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/format_str_tokenizer.py",
+   "mypyc/irbuild/specialize.py"
+  ],
+  "mypy.maptype": [
+   "mypyc/irbuild/builder.py"
+  ],
+  "mypy.visitor": [
+   "mypyc/irbuild/builder.py"
+  ],
+  "mypyc.irbuild.context": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/callable_class.py",
+   "mypyc/irbuild/env_class.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/generator.py"
+  ],
+  "mypyc.irbuild.ll_builder": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/vec.py",
+   "mypyc/lower/int_ops.py",
+   "mypyc/lower/list_ops.py",
+   "mypyc/lower/misc_ops.py",
+   "mypyc/lower/registry.py",
+   "mypyc/lower/vec_ops.py",
+   "mypyc/transform/copy_propagation.py"
+  ],
+  "mypyc.irbuild.nonlocalcontrol": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/generator.py",
+   "mypyc/irbuild/statement.py"
+  ],
+  "mypyc.irbuild.prebuildvisitor": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/main.py"
+  ],
+  "mypyc.irbuild.targets": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/context.py",
+   "mypyc/irbuild/env_class.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/generator.py",
+   "mypyc/irbuild/statement.py"
+  ],
+  "mypyc.irbuild.util": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/constant_fold.py",
+   "mypyc/irbuild/env_class.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/prepare.py"
+  ],
+  "mypyc.irbuild.vec": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/specialize.py",
+   "mypyc/lower/vec_ops.py"
+  ],
+  "mypyc.primitives.dict_ops": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/match.py",
+   "mypyc/irbuild/specialize.py"
+  ],
+  "mypyc.primitives.generic_ops": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/match.py",
+   "mypyc/irbuild/specialize.py"
+  ],
+  "mypyc.primitives.list_ops": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/match.py",
+   "mypyc/irbuild/specialize.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.primitives.misc_ops": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/callable_class.py",
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/match.py"
+  ],
+  "mypyc.primitives.tuple_ops": [
+   "mypyc/irbuild/builder.py",
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/specialize.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "mypy.join": [
+   "mypyc/irbuild/builder.py"
+  ],
+  "mypyc.irbuild.function": [
+   "mypyc/irbuild/classdef.py",
+   "mypyc/irbuild/visitor.py"
+  ],
+  "mypy.constant_fold": [
+   "mypyc/irbuild/constant_fold.py"
+  ],
+  "math": [
+   "mypyc/irbuild/expression.py"
+  ],
+  "mypyc.irbuild.ast_helpers": [
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/statement.py"
+  ],
+  "mypyc.irbuild.for_helpers": [
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/specialize.py",
+   "mypyc/irbuild/statement.py"
+  ],
+  "mypyc.irbuild.format_str_tokenizer": [
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/specialize.py"
+  ],
+  "mypyc.irbuild.specialize": [
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/statement.py"
+  ],
+  "mypyc.primitives.bytes_ops": [
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/format_str_tokenizer.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/specialize.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.primitives.set_ops": [
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/specialize.py"
+  ],
+  "mypyc.primitives.str_ops": [
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/format_str_tokenizer.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/specialize.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.irbuild.env_class": [
+   "mypyc/irbuild/expression.py",
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/generator.py"
+  ],
+  "mypyc.primitives.exc_ops": [
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/generator.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/nonlocalcontrol.py",
+   "mypyc/irbuild/statement.py",
+   "mypyc/transform/exceptions.py"
+  ],
+  "mypyc.irbuild.expression": [
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/visitor.py"
+  ],
+  "mypyc.irbuild.statement": [
+   "mypyc/irbuild/for_helpers.py",
+   "mypyc/irbuild/visitor.py"
+  ],
+  "enum": [
+   "mypyc/irbuild/format_str_tokenizer.py"
+  ],
+  "mypy.checkstrformat": [
+   "mypyc/irbuild/format_str_tokenizer.py"
+  ],
+  "mypy.messages": [
+   "mypyc/irbuild/format_str_tokenizer.py"
+  ],
+  "mypyc.primitives.int_ops": [
+   "mypyc/irbuild/format_str_tokenizer.py",
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/specialize.py",
+   "mypyc/lower/int_ops.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.irbuild.callable_class": [
+   "mypyc/irbuild/function.py"
+  ],
+  "mypyc.irbuild.generator": [
+   "mypyc/irbuild/function.py",
+   "mypyc/irbuild/statement.py"
+  ],
+  "mypy.argmap": [
+   "mypyc/irbuild/ll_builder.py"
+  ],
+  "mypyc.primitives.float_ops": [
+   "mypyc/irbuild/ll_builder.py",
+   "mypyc/irbuild/specialize.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.rt_expandtype": [
+   "mypyc/irbuild/ll_builder.py"
+  ],
+  "mypyc.rt_subtype": [
+   "mypyc/irbuild/ll_builder.py"
+  ],
+  "mypy.state": [
+   "mypyc/irbuild/main.py"
+  ],
+  "mypyc.analysis.attrdefined": [
+   "mypyc/irbuild/main.py"
+  ],
+  "mypyc.irbuild.visitor": [
+   "mypyc/irbuild/main.py"
+  ],
+  "mypyc.irbuild.vtable": [
+   "mypyc/irbuild/main.py"
+  ],
+  "mypyc.transform.generator_spills": [
+   "mypyc/irbuild/main.py"
+  ],
+  "mypy.patterns": [
+   "mypyc/irbuild/match.py"
+  ],
+  "mypyc.irbuild.missingtypevisitor": [
+   "mypyc/irbuild/prebuildvisitor.py"
+  ],
+  "mypy.semanal": [
+   "mypyc/irbuild/prepare.py",
+   "mypyc/irbuild/util.py"
+  ],
+  "mypyc.primitives.bytearray_ops": [
+   "mypyc/irbuild/specialize.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.primitives.librt_strings_ops": [
+   "mypyc/irbuild/specialize.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.primitives.librt_vecs_ops": [
+   "mypyc/irbuild/specialize.py",
+   "mypyc/irbuild/vec.py",
+   "mypyc/primitives/registry.py"
+  ],
+  "importlib.util": [
+   "mypyc/irbuild/statement.py"
+  ],
+  "mypyc.primitives.librt_threading_ops": [
+   "mypyc/irbuild/statement.py",
+   "mypyc/primitives/registry.py"
+  ],
+  ".match": [
+   "mypyc/irbuild/statement.py"
+  ],
+  "typing_extensions": [
+   "mypyc/irbuild/util.py"
+  ],
+  "mypyc.irbuild.classdef": [
+   "mypyc/irbuild/visitor.py"
+  ],
+  "itertools": [
+   "mypyc/irbuild/vtable.py"
+  ],
+  "mypyc.lower.registry": [
+   "mypyc/lower/int_ops.py",
+   "mypyc/lower/list_ops.py",
+   "mypyc/lower/misc_ops.py",
+   "mypyc/lower/vec_ops.py",
+   "mypyc/transform/lower.py"
+  ],
+  "mypyc.lower": [
+   "mypyc/lower/registry.py"
+  ],
+  "mypyc.primitives.librt_random_ops": [
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.primitives.librt_time_ops": [
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.primitives.weakref_ops": [
+   "mypyc/primitives/registry.py"
+  ],
+  "mypyc.transform.ir_transform": [
+   "mypyc/transform/copy_propagation.py",
+   "mypyc/transform/flag_elimination.py",
+   "mypyc/transform/log_trace.py",
+   "mypyc/transform/lower.py"
+  ]
+ },
+ "multi": [
+  [
+   "mypyc/irbuild/builder.py",
+   "IRVisitor",
+   [
+    "ExpressionVisitor",
+    "StatementVisitor"
+   ],
+   []
+  ]
+ ],
+ "metas": [],
+ "decos": [
+  [
+   "dunder:__init__",
+   135
+  ],
+  [
+   "def:abstractmethod",
+   62
+  ],
+  [
+   "def:specialize_function",
+   59
+  ],
+  [
+   "class:final",
+   56
+  ],
+  [
+   "def:property",
+   44
+  ],
+  [
+   "dunder:__repr__",
+   25
+  ],
+  [
+   "dunder:__eq__",
+   13
+  ],
+  [
+   "def:lower_primitive_op",
+   13
+  ],
+  [
+   "def:classmethod",
+   12
+  ],
+  [
+   "dunder:__hash__",
+   12
+  ],
+  [
+   "dunder:__str__",
+   9
+  ],
+  [
+   "def:setter",
+   9
+  ],
+  [
+   "def:contextmanager",
+   6
+  ],
+  [
+   "def:specialize_dunder",
+   4
+  ],
+  [
+   "def:staticmethod",
+   3
+  ],
+  [
+   "def:overload",
+   2
+  ],
+  [
+   "class:trait",
+   1
+  ],
+  [
+   "class:unique",
+   1
+  ],
+  [
+   "def:strict_optional_dec",
+   1
+  ]
+ ],
+ "calls": [
+  [
+   "isinstance",
+   932
+  ],
+  [
+   "super",
+   85
+  ],
+  [
+   "enumerate",
+   52
+  ],
+  [
+   "zip",
+   51
+  ],
+  [
+   "sorted",
+   35
+  ],
+  [
+   "reversed",
+   21
+  ],
+  [
+   "repr",
+   21
+  ],
+  [
+   "frozenset",
+   14
+  ],
+  [
+   "open",
+   12
+  ],
+  [
+   "print",
+   11
+  ],
+  [
+   "type",
+   11
+  ],
+  [
+   "hash",
+   11
+  ],
+  [
+   "next",
+   8
+  ],
+  [
+   "cast",
+   7
+  ],
+  [
+   "TypeVar",
+   6
+  ],
+  [
+   "iter",
+   2
+  ],
+  [
+   "setattr",
+   1
+  ],
+  [
+   "getattr",
+   1
+  ],
+  [
+   "object",
+   1
+  ],
+  [
+   "id",
+   1
+  ],
+  [
+   "hasattr",
+   1
+  ]
+ ],
+ "typing": [
+  [
+   "typing.Final",
+   26
+  ],
+  [
+   "collections.abc.Callable",
+   12
+  ],
+  [
+   "collections.abc.Sequence",
+   9
+  ],
+  [
+   "typing.Any",
+   7
+  ],
+  [
+   "typing.NamedTuple",
+   7
+  ],
+  [
+   "collections.abc.Iterable",
+   6
+  ],
+  [
+   "typing.TYPE_CHECKING",
+   6
+  ],
+  [
+   "typing.TypeVar",
+   6
+  ],
+  [
+   "typing.cast",
+   5
+  ],
+  [
+   "abc.abstractmethod",
+   5
+  ],
+  [
+   "collections.abc.Iterator",
+   4
+  ],
+  [
+   "contextlib.contextmanager",
+   4
+  ],
+  [
+   "typing.NoReturn",
+   3
+  ],
+  [
+   "typing.Generic",
+   3
+  ],
+  [
+   "typing.TypeGuard",
+   3
+  ],
+  [
+   "collections.abc.Set",
+   2
+  ],
+  [
+   "typing.final",
+   2
+  ],
+  [
+   "typing.ClassVar",
+   2
+  ],
+  [
+   "typing.TypeAlias",
+   1
+  ],
+  [
+   "collections.abc.Mapping",
+   1
+  ],
+  [
+   "mypy_extensions.trait",
+   1
+  ],
+  [
+   "typing.Union",
+   1
+  ],
+  [
+   "typing.overload",
+   1
+  ],
+  [
+   "enum.Enum",
+   1
+  ],
+  [
+   "enum.unique",
+   1
+  ],
+  [
+   "collections.abc.Generator",
+   1
+  ],
+  [
+   "typing.Literal",
+   1
+  ],
+  [
+   "typing.TypedDict",
+   1
+  ],
+  [
+   "typing_extensions.NotRequired",
+   1
+  ],
+  [
+   "collections.abc.Collection",
+   1
+  ]
+ ],
+ "per_file": {
+  "mypyc/__init__.py": {
+   "lines": 0
+  },
+  "mypyc/__main__.py": {
+   "lines": 72,
+   "def": 1
+  },
+  "mypyc/annotate.py": {
+   "lines": 472,
+   "class": 3,
+   "def": 25
+  },
+  "mypyc/build.py": {
+   "lines": 1078,
+   "class": 1,
+   "def": 24,
+   "nested_def_or_lambda": 6,
+   "Lambda": 3
+  },
+  "mypyc/build_setup.py": {
+   "lines": 69,
+   "def": 1
+  },
+  "mypyc/common.py": {
+   "lines": 205,
+   "def": 12
+  },
+  "mypyc/crash.py": {
+   "lines": 36,
+   "def": 2,
+   "Yield": 1
+  },
+  "mypyc/errors.py": {
+   "lines": 32,
+   "class": 1,
+   "def": 6
+  },
+  "mypyc/namegen.py": {
+   "lines": 124,
+   "class": 1,
+   "def": 5
+  },
+  "mypyc/options.py": {
+   "lines": 75,
+   "class": 1,
+   "def": 1
+  },
+  "mypyc/rt_expandtype.py": {
+   "lines": 32,
+   "def": 1
+  },
+  "mypyc/rt_subtype.py": {
+   "lines": 84,
+   "def": 10,
+   "class": 1
+  },
+  "mypyc/sametype.py": {
+   "lines": 87,
+   "def": 12,
+   "class": 1
+  },
+  "mypyc/subtype.py": {
+   "lines": 103,
+   "def": 10,
+   "class": 1
+  },
+  "mypyc/analysis/__init__.py": {
+   "lines": 0
+  },
+  "mypyc/analysis/attrdefined.py": {
+   "lines": 443,
+   "def": 27,
+   "class": 2
+  },
+  "mypyc/analysis/blockfreq.py": {
+   "lines": 32,
+   "def": 1
+  },
+  "mypyc/analysis/capsule_deps.py": {
+   "lines": 79,
+   "def": 4
+  },
+  "mypyc/analysis/dataflow.py": {
+   "lines": 695,
+   "class": 7,
+   "def": 84,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypyc/analysis/ircheck.py": {
+   "lines": 498,
+   "class": 3,
+   "def": 59
+  },
+  "mypyc/analysis/selfleaks.py": {
+   "lines": 231,
+   "class": 1,
+   "def": 43
+  },
+  "mypyc/codegen/__init__.py": {
+   "lines": 0
+  },
+  "mypyc/codegen/cstring.py": {
+   "lines": 54,
+   "def": 2
+  },
+  "mypyc/codegen/emit.py": {
+   "lines": 1535,
+   "class": 8,
+   "def": 69
+  },
+  "mypyc/codegen/emitclass.py": {
+   "lines": 1535,
+   "def": 48,
+   "nested_def_or_lambda": 8,
+   "Lambda": 3
+  },
+  "mypyc/codegen/emitfunc.py": {
+   "lines": 1141,
+   "def": 71,
+   "class": 1
+  },
+  "mypyc/codegen/emitmodule.py": {
+   "lines": 1720,
+   "class": 3,
+   "def": 55,
+   "nested_def_or_lambda": 4,
+   "Lambda": 1
+  },
+  "mypyc/codegen/emitwrapper.py": {
+   "lines": 1023,
+   "def": 39,
+   "class": 1
+  },
+  "mypyc/codegen/literals.py": {
+   "lines": 317,
+   "def": 22,
+   "class": 1
+  },
+  "mypyc/ir/__init__.py": {
+   "lines": 0
+  },
+  "mypyc/ir/class_ir.py": {
+   "lines": 653,
+   "class": 3,
+   "def": 35,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypyc/ir/deps.py": {
+   "lines": 120,
+   "class": 3,
+   "def": 16
+  },
+  "mypyc/ir/func_ir.py": {
+   "lines": 484,
+   "class": 4,
+   "def": 42
+  },
+  "mypyc/ir/module_ir.py": {
+   "lines": 143,
+   "class": 1,
+   "def": 4,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypyc/ir/ops.py": {
+   "lines": 2128,
+   "class": 54,
+   "def": 251
+  },
+  "mypyc/ir/pprint.py": {
+   "lines": 535,
+   "class": 1,
+   "def": 48
+  },
+  "mypyc/ir/rtypes.py": {
+   "lines": 1522,
+   "class": 12,
+   "def": 148
+  },
+  "mypyc/irbuild/__init__.py": {
+   "lines": 0
+  },
+  "mypyc/irbuild/ast_helpers.py": {
+   "lines": 123,
+   "def": 3
+  },
+  "mypyc/irbuild/builder.py": {
+   "lines": 2078,
+   "class": 5,
+   "def": 144,
+   "nested_def_or_lambda": 3,
+   "Lambda": 1,
+   "Yield": 3
+  },
+  "mypyc/irbuild/callable_class.py": {
+   "lines": 281,
+   "def": 6,
+   "nested_def_or_lambda": 1
+  },
+  "mypyc/irbuild/classdef.py": {
+   "lines": 967,
+   "def": 39,
+   "class": 5
+  },
+  "mypyc/irbuild/constant_fold.py": {
+   "lines": 97,
+   "def": 2
+  },
+  "mypyc/irbuild/context.py": {
+   "lines": 206,
+   "class": 3,
+   "def": 24
+  },
+  "mypyc/irbuild/env_class.py": {
+   "lines": 376,
+   "def": 12,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypyc/irbuild/expression.py": {
+   "lines": 1518,
+   "def": 56,
+   "nested_def_or_lambda": 9,
+   "Lambda": 6
+  },
+  "mypyc/irbuild/for_helpers.py": {
+   "lines": 1361,
+   "def": 79,
+   "nested_def_or_lambda": 13,
+   "class": 13,
+   "Lambda": 2
+  },
+  "mypyc/irbuild/format_str_tokenizer.py": {
+   "lines": 260,
+   "class": 1,
+   "def": 7
+  },
+  "mypyc/irbuild/function.py": {
+   "lines": 1242,
+   "def": 37,
+   "nested_def_or_lambda": 2,
+   "class": 1,
+   "Lambda": 1
+  },
+  "mypyc/irbuild/generator.py": {
+   "lines": 456,
+   "def": 16,
+   "nested_def_or_lambda": 1,
+   "Lambda": 2
+  },
+  "mypyc/irbuild/ll_builder.py": {
+   "lines": 3173,
+   "class": 3,
+   "def": 136,
+   "nested_def_or_lambda": 6,
+   "Yield": 1,
+   "Lambda": 3
+  },
+  "mypyc/irbuild/main.py": {
+   "lines": 181,
+   "def": 2
+  },
+  "mypyc/irbuild/mapper.py": {
+   "lines": 244,
+   "class": 1,
+   "def": 7
+  },
+  "mypyc/irbuild/match.py": {
+   "lines": 367,
+   "class": 1,
+   "def": 14,
+   "Yield": 1
+  },
+  "mypyc/irbuild/missingtypevisitor.py": {
+   "lines": 20,
+   "class": 1,
+   "def": 2
+  },
+  "mypyc/irbuild/nonlocalcontrol.py": {
+   "lines": 234,
+   "class": 8,
+   "def": 26
+  },
+  "mypyc/irbuild/prebuildvisitor.py": {
+   "lines": 336,
+   "class": 2,
+   "def": 22
+  },
+  "mypyc/irbuild/prepare.py": {
+   "lines": 1066,
+   "def": 32,
+   "class": 3,
+   "Yield": 1
+  },
+  "mypyc/irbuild/specialize.py": {
+   "lines": 1625,
+   "def": 61,
+   "nested_def_or_lambda": 10,
+   "Lambda": 2
+  },
+  "mypyc/irbuild/statement.py": {
+   "lines": 1537,
+   "def": 69,
+   "nested_def_or_lambda": 24,
+   "class": 2,
+   "Lambda": 7
+  },
+  "mypyc/irbuild/targets.py": {
+   "lines": 70,
+   "class": 5,
+   "def": 8
+  },
+  "mypyc/irbuild/util.py": {
+   "lines": 398,
+   "class": 1,
+   "def": 22,
+   "nested_def_or_lambda": 1
+  },
+  "mypyc/irbuild/vec.py": {
+   "lines": 651,
+   "def": 31
+  },
+  "mypyc/irbuild/visitor.py": {
+   "lines": 419,
+   "class": 1,
+   "def": 76
+  },
+  "mypyc/irbuild/vtable.py": {
+   "lines": 82,
+   "def": 2
+  },
+  "mypyc/lower/__init__.py": {
+   "lines": 0
+  },
+  "mypyc/lower/int_ops.py": {
+   "lines": 113,
+   "class": 1,
+   "def": 7
+  },
+  "mypyc/lower/list_ops.py": {
+   "lines": 71,
+   "def": 4
+  },
+  "mypyc/lower/misc_ops.py": {
+   "lines": 20,
+   "def": 2
+  },
+  "mypyc/lower/registry.py": {
+   "lines": 29,
+   "def": 2,
+   "nested_def_or_lambda": 1
+  },
+  "mypyc/lower/vec_ops.py": {
+   "lines": 18,
+   "def": 2
+  },
+  "mypyc/primitives/__init__.py": {
+   "lines": 0
+  },
+  "mypyc/primitives/bytearray_ops.py": {
+   "lines": 61
+  },
+  "mypyc/primitives/bytes_ops.py": {
+   "lines": 193
+  },
+  "mypyc/primitives/dict_ops.py": {
+   "lines": 343
+  },
+  "mypyc/primitives/exc_ops.py": {
+   "lines": 111
+  },
+  "mypyc/primitives/float_ops.py": {
+   "lines": 178
+  },
+  "mypyc/primitives/generic_ops.py": {
+   "lines": 426
+  },
+  "mypyc/primitives/int_ops.py": {
+   "lines": 359,
+   "def": 3
+  },
+  "mypyc/primitives/librt_random_ops.py": {
+   "lines": 104
+  },
+  "mypyc/primitives/librt_strings_ops.py": {
+   "lines": 463
+  },
+  "mypyc/primitives/librt_threading_ops.py": {
+   "lines": 54
+  },
+  "mypyc/primitives/librt_time_ops.py": {
+   "lines": 13
+  },
+  "mypyc/primitives/librt_vecs_ops.py": {
+   "lines": 51
+  },
+  "mypyc/primitives/list_ops.py": {
+   "lines": 376
+  },
+  "mypyc/primitives/misc_ops.py": {
+   "lines": 641
+  },
+  "mypyc/primitives/registry.py": {
+   "lines": 421,
+   "class": 2,
+   "def": 8
+  },
+  "mypyc/primitives/set_ops.py": {
+   "lines": 161
+  },
+  "mypyc/primitives/str_ops.py": {
+   "lines": 587
+  },
+  "mypyc/primitives/tuple_ops.py": {
+   "lines": 136
+  },
+  "mypyc/primitives/weakref_ops.py": {
+   "lines": 40
+  },
+  "mypyc/transform/__init__.py": {
+   "lines": 0
+  },
+  "mypyc/transform/borrow_generator_attrs.py": {
+   "lines": 156,
+   "class": 1,
+   "def": 13
+  },
+  "mypyc/transform/copy_propagation.py": {
+   "lines": 94,
+   "def": 3,
+   "class": 1
+  },
+  "mypyc/transform/exceptions.py": {
+   "lines": 192,
+   "def": 6
+  },
+  "mypyc/transform/flag_elimination.py": {
+   "lines": 107,
+   "def": 5,
+   "class": 1
+  },
+  "mypyc/transform/generator_spills.py": {
+   "lines": 188,
+   "def": 9
+  },
+  "mypyc/transform/ir_transform.py": {
+   "lines": 385,
+   "class": 2,
+   "def": 87
+  },
+  "mypyc/transform/log_trace.py": {
+   "lines": 158,
+   "def": 16,
+   "class": 1
+  },
+  "mypyc/transform/lower.py": {
+   "lines": 35,
+   "def": 2,
+   "class": 1
+  },
+  "mypyc/transform/refcount.py": {
+   "lines": 298,
+   "def": 10,
+   "nested_def_or_lambda": 2,
+   "Lambda": 2
+  },
+  "mypyc/transform/spill.py": {
+   "lines": 139,
+   "def": 3,
+   "nested_def_or_lambda": 1,
+   "Lambda": 1
+  },
+  "mypyc/transform/uninit.py": {
+   "lines": 199,
+   "def": 4
+  }
+ }
+}
