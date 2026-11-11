@@ -22,6 +22,36 @@ STATE_EXAMPLE = PROJECT / "examples" / "guarded_state.py"
 if os.environ.get("LEAN_BOUNDARY_REQUIRED") == "1" and not CHECKER.is_file():
     raise RuntimeError("Lean boundary checker is required; build tools/lean_boundary first")
 
+# Locals that share their slot's number with an "is assigned" flag (word) or with numeric
+# identity companions (total), as emission.py declares them.
+SHARED_SLOTS = '''# pystachy: dynamic-any
+from typing import Any
+
+
+def flagged_total(value: Any) -> float:
+    total = 0.0
+    if isinstance(value, float):
+        total = value + 1.0
+    return total
+
+
+def flagged_word(value: Any, flag: bool) -> str:
+    if flag:
+        word: Any = value
+    if flag and isinstance(word, str):
+        return word
+    return ""
+
+
+print(flagged_total(2.0), flagged_total("s"), flagged_word("a", True), flagged_word("a", False))
+'''
+
+
+def store(address, value, typ):
+    return {"op": "mem.store", "type": "", "text": "", "immediate": 0, "descriptor": "",
+            "results": [], "targets": [],
+            "operands": [{"value": address, "type": "*" + typ}, {"value": value, "type": typ}]}
+
 
 class SnapshotFixture(unittest.TestCase):
     example = EXAMPLE
@@ -59,6 +89,19 @@ class SnapshotFixture(unittest.TestCase):
 
     def normalized(self, snapshot=None, function="narrowed_float"):
         return normalize_snapshot(self.snapshot if snapshot is None else snapshot, function)[0]
+
+    def with_shared_slots(self):
+        # The flag and identity companions of `value`, under its number, each written before
+        # its guard. Lowering names them by text and kind: %value.def.N, %value.box.N, ...
+        snapshot, function = self.selected()
+        local = next(slot for slot in function["slots"] if slot["text"] == "value")
+        number = local["results"][0]
+        for text, typ, kind in (("value", "bool", 1), ("value.box", "dyn", 0), ("value.boxgen", "int", 0)):
+            function["slots"].append({**copy.deepcopy(local), "text": text, "type": typ, "immediate": kind})
+        function["blocks"][0]["operations"][0:0] = [
+            store(f"%value.def.{number}", "true", "bool"), store(f"%value.box.{number}", "%a1", "dyn"),
+            store(f"%value.boxgen.{number}", "1", "int")]
+        return snapshot, function, number
 
 
 class AdapterTests(SnapshotFixture):
@@ -113,6 +156,26 @@ class AdapterTests(SnapshotFixture):
         tag["results"] = list(load["results"])
         with self.assertRaises(ValueError):
             self.normalized(snapshot)
+
+    def test_slots_sharing_a_local_number_are_named_by_text_and_kind(self):
+        snapshot, _, number = self.with_shared_slots()
+        copies = {(node["dst"], node["src"]) for node in self.normalized(snapshot)["program"]["nodes"]
+                  if node["op"] == "copy"}
+        self.assertIn((f"%value.box.{number}", "%a1"), copies)
+        self.assertIn((f"%value.{number}", "%a0"), copies)
+
+    def test_slot_kinds_outside_the_prototype_or_malformed(self):
+        # A stack tuple is outside the prototype. An unknown kind, a flag that is not a bool
+        # and a second declaration of one slot name are malformed.
+        for kind, typ, text, unsupported in ((2, "tuple[int,int]", "", True), (3, "bool", "value", False),
+                                             (1, "int", "value", False), (0, "dyn", "value", False)):
+            with self.subTest(kind=kind, typ=typ):
+                snapshot, function = self.selected()
+                local = next(slot for slot in function["slots"] if slot["text"] == "value")
+                function["slots"].append({**copy.deepcopy(local), "text": text, "type": typ, "immediate": kind})
+                with self.assertRaises(ValueError) as raised:
+                    self.normalized(snapshot)
+                self.assertEqual(isinstance(raised.exception, Unsupported), unsupported, raised.exception)
 
     def test_malformed_parameter_reports_structured_error(self):
         snapshot, function = self.selected()
@@ -200,6 +263,17 @@ class ProvedCheckerTests(SnapshotFixture):
         block["operations"][index] = {"op": "br", "type": "", "text": "", "immediate": 0,
                                       "descriptor": "", "results": [], "operands": [],
                                       "targets": ["split_guard"]}
+        self.assertFalse(self.check(self.normalized(snapshot)))
+
+    def test_guard_survives_shared_slot_numbers_but_never_proves_the_companion_box(self):
+        snapshot, function, number = self.with_shared_slots()
+        self.assertTrue(self.check(self.normalized(snapshot)))
+        block, index, payload = self.operation(function, "dyn.payload")
+        block["operations"].insert(index, {
+            "op": "mem.load", "type": "dyn", "text": "", "immediate": 0, "descriptor": "",
+            "results": [9999], "targets": [],
+            "operands": [{"value": f"%value.box.{number}", "type": "*dyn"}]})
+        payload["operands"][0]["value"] = "%t9999"
         self.assertFalse(self.check(self.normalized(snapshot)))
 
     def test_wrong_value_and_wrong_tag_reject(self):
@@ -343,6 +417,35 @@ class StateGuardTests(SnapshotFixture):
                 _, _, payload = self.operation(function, "dyn.payload")
                 payload["text"] = wrong_tag
                 self.assertFalse(self.check(self.normalized(snapshot, name)))
+
+
+class SharedSlotNumberTests(SnapshotFixture):
+    function_filter = "flagged_"
+
+    @classmethod
+    def setUpClass(cls):
+        source = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(source.cleanup)
+        cls.example = Path(source.name) / "shared_slots.py"
+        cls.example.write_text(SHARED_SLOTS)
+        super().setUpClass()
+
+    def test_real_flags_and_companions_are_unsupported_not_malformed(self):
+        for name, shared in (("flagged_total", {("total", 0), ("total.box", 0), ("total.boxgen", 0)}),
+                             ("flagged_word", {("word", 0), ("word", 1)})):
+            with self.subTest(function=name):
+                function = next(fn for fn in self.snapshot["functions"] if fn["name"] == name)
+                by_number = {}
+                for slot in function["slots"]:
+                    by_number.setdefault(slot["results"][0], set()).add((slot["text"], slot["immediate"]))
+                # (if the compiler stops sharing these numbers, this case no longer tests them)
+                self.assertIn(shared, by_number.values())
+                completed = subprocess.run(
+                    [sys.executable, str(TOOL), "--snapshot", str(self.snapshot_path), "--function", name],
+                    capture_output=True, text=True, timeout=10,
+                )
+                self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
+                self.assertEqual(json.loads(completed.stdout)["status"], "unsupported")
 
 
 if __name__ == "__main__":

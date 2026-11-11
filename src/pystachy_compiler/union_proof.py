@@ -5,7 +5,7 @@ The worklist joins tag possibilities and loses equalities/conditional implicatio
 stable. It keeps one state per block, not a product of whole-function execution paths.
 """
 from __future__ import annotations
-from src.pystachy_compiler.ir import Data, IFn, Ins, Val
+from src.pystachy_compiler.ir import Data, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.specs import BIG
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join
 from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
@@ -296,7 +296,14 @@ class UnionProof:
                 self.memtypes[v] = t[1:]
             self.typebase(("MU:" if t.startswith("*") else "U:") + v, t[1:] if t.startswith("*") else t)
         for i in fn.slots:
-            v = "%" + (i.s if i.s != "" else "h") + "." + str(i.r[0])
+            if i.k == 2:
+                # (a stack tuple's register is a tuple value, not storage that is loaded; its
+                # type still joins the fallback universe, as an unreferenced declaration's does)
+                self.type_domain(i.t)
+                continue
+            # (a local's "is assigned" flag shares its number: named by number alone, its bool
+            # would replace the local's storage type)
+            v = slot_register(i)
             self.private[v] = True
             self.roots[v] = v
             self.memtypes[v] = i.t

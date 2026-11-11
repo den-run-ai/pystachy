@@ -303,8 +303,8 @@ class Ins:
         # symbol a call calls; the module an init runs; a check's message "Kind: text"; the
         # exception a raise raises; ovf's operator + - *
         self.s = s
-        # int immediate: a slot's kind (1: an "is assigned" flag), a hole (Gen.holes, from 1), the
-        # layout index or a finite machine-address flag
+        # int immediate: a slot's kind (1: an "is assigned" flag, 2: a stack tuple; slot_register),
+        # a hole (Gen.holes, from 1), the layout index or a finite machine-address flag
         self.k = 0
         # an rt op's descriptor of the static type it works on (for its # parameter): RUNTIME's U?
         # is U when it holds a class (O<id>), or an exception (E) in a program that makes objects of
@@ -313,6 +313,17 @@ class Ins:
         self.r: list[int] = NONUMS  # the numbers of the values it defines, given when it was built
         self.a: list[Val] = NOVALS  # operands, in evaluation order (an rt op's typed as RUNTIME spells its parameters)
         self.b: list[str] = NOLABELS  # labels: the successors of br, cbr and check; a phi's predecessors
+
+
+def slot_register(i: Ins) -> str:
+    # the register that lowering allocates for a slot op, which every analysis of slots must
+    # name the same way: a local's "is assigned" flag and its numeric identity companions share
+    # its number, so a slot's number alone is no name (a stack tuple's register is its value)
+    if i.k == 1:
+        return f"%{i.s}.def.{i.r[0]}"
+    if i.k == 2:
+        return f"%stk.{i.r[0]}"
+    return f"%{i.s or 'h'}.{i.r[0]}"
 
 
 class Blk:
