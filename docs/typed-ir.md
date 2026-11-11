@@ -159,7 +159,9 @@ include forged guards, overwritten bindings, unguarded joins, saved loop
 conditions that refer to a previous phi value, a class test that admits None, a
 base's test before a subclass's read and a switch on another box's class number.
 A bounded model compares its verdicts on class tests and dispatch with a concrete
-interpreter.
+interpreter. [A test](../tools/test_typed_dynamic_tables.py) checks the runtime facts
+it copies (DynType kinds and flags, builtin DynTypes, the class number word and
+constant boxes) against runtime.c, as it does the Lean bridge's.
 
 In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
 `{i64, ptr}`: the 64-bit value and a null pointer where it fits, else 0 and the value's immutable

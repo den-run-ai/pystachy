@@ -239,10 +239,12 @@ not proved by this version:
 - Fidelity of the inspection snapshot and Python normalization to actual IR
   execution, including the operation roles, edges, join threading and slot
   pairing described above.
-- The descriptor table: that it lists every DynType the program emits, and that
-  runtime.c's builtins have the kinds the bridge assumes. (runtime.c's iterator
-  descriptors have no base, class number or kind that an interpreted test admits.)
-  The class numbers that dispatchers switch on must identify the program's classes.
+- The descriptor table: that it lists every DynType the program emits. (runtime.c's
+  iterator descriptors have no base, class number or kind that an interpreted test
+  admits.) The class numbers that dispatchers switch on must identify the program's
+  classes. The bridge's copies of runtime.c's builtin kinds, role flag, class number
+  word and builtin payload tags are tested against runtime.c
+  ([test_typed_dynamic_tables.py](../test_typed_dynamic_tables.py)), not proved.
 - Payload layout: that a subclass's, a secondary role's, a bool's and a native
   int list's payloads have the layouts their accepted reads assume.
 - Object initialization, null/unbound behavior (a null dynamic value has no tag,
