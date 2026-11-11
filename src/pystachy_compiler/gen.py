@@ -3711,8 +3711,8 @@ class Gen:
     def derives(self, c: str, base: str) -> bool:
         return program_derives(self, c, base)
 
-    def init_template(self, st: Node) -> bool:
-        return program_init_template(self, st)
+    def init_template(self, st: Node, hier: bool = False) -> bool:
+        return program_init_template(self, st, hier)
 
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)
