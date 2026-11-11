@@ -168,6 +168,10 @@ def normalize_snapshot(snapshot, function):
         if typ not in NATIVE_TYPES:
             raise Unsupported(f"unsupported parameter representation: {typ}")
         definitions[f"%a{index}"] = (typ, None, -1)
+    # Lowering also passes %aidN, the caller's possibly null box, for each numeric
+    # parameter N of a function that tracks numeric identity.
+    identity_arguments = {f"%aid{index}" for index, parameter in enumerate(parameters)
+                          if parameter["representation"] in {"int", "float"}}
     blocks = fn.get("blocks")
     require(isinstance(blocks, list) and 0 < len(blocks) <= 256, "invalid blocks")
     slots = {}
@@ -252,6 +256,9 @@ def normalize_snapshot(snapshot, function):
             require(typ == "*" + slots[value], "slot address has wrong type")
         elif value == "%idret":
             require(typ == "*dyn", "identity-return address has wrong type")
+        elif value in identity_arguments:
+            require(typ == "dyn", "identity argument has wrong type")
+            raise Unsupported("numeric identity arguments are outside the prototype")
         elif value.startswith("%"):
             require(value in definitions, f"undefined operand: {value}")
             actual, defined_block, defined_offset = definitions[value]

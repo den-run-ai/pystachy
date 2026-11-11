@@ -23,7 +23,8 @@ if os.environ.get("LEAN_BOUNDARY_REQUIRED") == "1" and not CHECKER.is_file():
     raise RuntimeError("Lean boundary checker is required; build tools/lean_boundary first")
 
 # Locals that share their slot's number with an "is assigned" flag (word) or with numeric
-# identity companions (total), as emission.py declares them.
+# identity companions (total, limit), as emission.py declares them. A numeric parameter
+# (limit) also receives its caller's box as an identity argument, %aidN.
 SHARED_SLOTS = '''# pystachy: dynamic-any
 from typing import Any
 
@@ -43,7 +44,14 @@ def flagged_word(value: Any, flag: bool) -> str:
     return ""
 
 
+def flagged_limit(value: Any, limit: int) -> float:
+    if isinstance(value, float):
+        return value
+    return 0.0
+
+
 print(flagged_total(2.0), flagged_total("s"), flagged_word("a", True), flagged_word("a", False))
+print(flagged_limit(2.0, 3), flagged_limit("s", 3))
 '''
 
 
@@ -432,7 +440,8 @@ class SharedSlotNumberTests(SnapshotFixture):
 
     def test_real_flags_and_companions_are_unsupported_not_malformed(self):
         for name, shared in (("flagged_total", {("total", 0), ("total.box", 0), ("total.boxgen", 0)}),
-                             ("flagged_word", {("word", 0), ("word", 1)})):
+                             ("flagged_word", {("word", 0), ("word", 1)}),
+                             ("flagged_limit", {("limit", 0), ("limit.box", 0), ("limit.boxgen", 0)})):
             with self.subTest(function=name):
                 function = next(fn for fn in self.snapshot["functions"] if fn["name"] == name)
                 by_number = {}
@@ -446,6 +455,22 @@ class SharedSlotNumberTests(SnapshotFixture):
                 )
                 self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
                 self.assertEqual(json.loads(completed.stdout)["status"], "unsupported")
+
+    def test_identity_arguments_are_unsupported_only_for_numeric_parameters(self):
+        # %aidN may be null, like an unbound dynamic slot. Another parameter's number or a
+        # non-box type is malformed.
+        with self.assertRaisesRegex(Unsupported, "numeric identity arguments"):
+            self.normalized(function="flagged_limit")
+        for field, value, message in (("value", "%aid0", "undefined operand"),
+                                      ("type", "int", "identity argument has wrong type")):
+            with self.subTest(field=field, value=value):
+                snapshot, function = self.selected("flagged_limit")
+                argument = next(operand for block in function["blocks"] for op in block["operations"]
+                                for operand in op["operands"] if operand["value"].startswith("%aid"))
+                argument[field] = value
+                with self.assertRaisesRegex(ValueError, message) as raised:
+                    self.normalized(snapshot, "flagged_limit")
+                self.assertNotIsInstance(raised.exception, Unsupported)
 
 
 if __name__ == "__main__":

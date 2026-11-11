@@ -121,6 +121,8 @@ remain explicit copies or unknown assignments.
 Slots are named as lowering names them, by text and kind. A local's "is assigned"
 flag (`%x.def.N`) and numeric identity companions (`%x.box.N`, `%x.boxgen.N`) share
 the local's number `N`; each remains a separate location. Stack tuples are refused.
+A numeric parameter's identity argument (`%aidN`), its caller's possibly null box,
+is refused as unsupported, like an unbound dynamic slot.
 
 Pystachy commonly loads a private slot for its guard, then reloads that slot for
 the payload. The normalizer may put the guard fact on the slot only when the
