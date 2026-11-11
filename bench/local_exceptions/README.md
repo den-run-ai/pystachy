@@ -36,3 +36,8 @@ They include per-function container construction, dictionary resets and garbage
 collection. The word-count case includes its final sum/length validation. These
 are bounded workloads, not whole-application or JIT startup claims. Peak memory
 is not measured, and timing differences whose sample ranges overlap are inconclusive.
+
+## Recorded results
+
+[2026-11-11 results](results/2026-11-11/README.md) include baseline/candidate
+source identities, raw samples, validation and the dictionary hit-path tradeoff.
