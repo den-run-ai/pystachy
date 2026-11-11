@@ -13,6 +13,9 @@ Lean's existing finite-tag certificate checker:
   manifest. Lean proves that the check's pointer is nonnull at that point in the
   **before-pass** control-flow graph. This proves redundancy in that graph; it
   does not prove that other changes to the after-pass graph preserve semantics.
+  When identical check keys occur more than once and only some disappear, the
+  removed locations are ambiguous: their validated count remains inventoried,
+  but the pass record is explicitly unsupported and receives no proof credit.
 
 The adapter does not call the compiler's `UnionProof`, `Values`, dominator
 solver or nullcheck proof. It reuses the boundary adapter's structural validation,
@@ -45,15 +48,28 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI examples exercise all 69 inventoried union reads in
-`tests/programs/optional/union_identity_none.py` and all six null removals in
-`examples/null_guards.py` (branches, loops, rebinding and exception paths). This
-small gate does not claim complete-corpus acceptance.
+The bounded CI selection exercises 30 inventoried union reads and 16 removed
+null checks: `examples/null_guards.py` and five existing inference programs,
+`dynany_cmp_union_fields.py`, `mixed_union_repr_cycle.py`,
+`reference_union_calls.py`, `scalar_union_chained_optional.py` and
+`scalar_union_operand_pair.py`. This small gate does not claim complete-corpus
+acceptance. `union_identity_none.py` remains a useful investigation target; its
+call and container-result domains are currently unproved.
 
-Union domains come from parameter declarations, producer representations and
-literal-tag `ubox`/`ubox_opt` construction, never narrowed use-site annotations.
-Optional domains include null. Reference union domains conservatively include
-null. Runtime constructors' tag and null behavior remain ABI assumptions.
+Union domain facts come only from parameter declarations, modeled private-slot
+copies and literal-tag `ubox`/`ubox_opt` construction. Optional domains include
+null, as do reference union domains. Runtime constructors' tag and null behavior
+remain ABI assumptions. Other producers, including calls, phis, selects, casts
+and slot unpacking, have unknown tags: their destination annotations cannot
+discard null or an incoming union member. An unknown result may cause rejection
+even when the actual operation is safe.
+
+Inventory follows union-derived operands through every result-producing
+operation, including opaque operations, and conservatively tracks raw memory,
+tuple storage and address transports. Unrecognized derived machine reads stay
+in the denominator and fail unsupported; they cannot disappear when their
+address loses its union annotation. This overapproximation can also inventory
+reads that would need additional analysis to distinguish from union reads.
 
 Nullness has only two states, null and nonnull; no parameter is assumed nonnull.
 Private storage is copied and overwritten explicitly. Must-pairing follows a
@@ -63,7 +79,8 @@ single entry store, no early load, no entry backedge and no live entry exception
 handler. An exception before initialization cannot borrow the parameter's facts.
 Calls cannot mutate nonescaping local slots; escaped or external storage has no
 retained facts. A union loaded from such storage additionally permits null: its
-load annotation is not accepted as initialization proof. Closure-cell correlation is currently outside this abstraction.
+load annotation is not accepted as initialization proof. Closure-cell correlation
+and hidden interprocedural storage aliases are outside this abstraction.
 
 The graph includes branch, switch, check-failure, invoke/unwind and handler edges.
 A handler conservatively receives an edge before every covered operation. Pure
@@ -79,6 +96,7 @@ operation semantics remain trusted. Export manifest consistency detects accident
 omissions; an exporter that forges both evidence and manifest remains trusted.
 
 Mutation tests cover wrong members/tags, branch reversal, missing guards,
-nullable-source annotation spoofing, direct machine tags, indirect address/cast/slot-transport
-inventory, exception-before-store aliasing, machine slot writes, downstream phi
-uses, missing pass records and count mismatches. No malformed IR is executed.
+nullable-source and transport-result annotation spoofing, direct machine tags,
+indirect address/cast/slot/big-word/tuple transport inventory, exception-before-store
+aliasing, machine slot writes, downstream phi uses, ambiguous duplicate check
+removals, missing pass records and count mismatches. No malformed IR is executed.

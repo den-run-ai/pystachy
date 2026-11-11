@@ -63,13 +63,18 @@ def inventory(fn):
         prior = (len(roots), len(storage))
         for op in operations:
             args = op["operands"]
-            if (op["op"] in {"mach.addr", "field.addr", "phi", "select", "scalar.cast",
-                             "slot.pack", "slot.unpack", "scalar.bin"}
-                    and any(a["value"] in roots for a in args)):
+            # Opaque results may transport union bits; inventory must not depend
+            # on an allowlist of casts, big words or packing operations.
+            if any(a["value"] in roots for a in args):
                 roots.update(f"%t{n}" for n in op["results"])
-            if op["op"] in {"mem.store", "mach.store"} and len(args) == 2 and args[1]["value"] in roots:
+            if any(a["value"] in storage for a in args):
+                storage.update(f"%t{n}" for n in op["results"])
+            if (op["op"] in {"mem.store", "mach.store", "tuple.store"} and len(args) == 2
+                    and args[1]["value"] in roots | storage):
                 storage.add(args[0]["value"])
-            if op["op"] in {"mem.load", "mach.load"} and args and args[0]["value"] in storage:
+            if any(f"%t{n}" in storage for n in op["results"]):
+                storage.update(a["value"] for a in args)
+            if op["op"] in {"mem.load", "mach.load", "tuple.load"} and args and args[0]["value"] in storage:
                 roots.update(f"%t{n}" for n in op["results"])
         if (len(roots), len(storage)) == prior:
             break
@@ -92,6 +97,14 @@ def removed_checks(record):
     def key(op):
         return (op["operands"][0]["value"], op["descriptor"], op["text"])
     kept = Counter(key(op) for block in after["blocks"] for op in block["operations"] if op["op"] == "check")
+    original = Counter(key(op) for block in before["blocks"] for op in block["operations"] if op["op"] == "check")
+    boundary.require(all(count <= original[check] for check, count in kept.items()),
+                     "nullcheck introduced or changed a check")
+    boundary.require(type(record["reported_rewrites"]) is int
+                     and sum(original.values()) - sum(kept.values()) == record["reported_rewrites"],
+                     "removed-check inventory disagrees with pass count")
+    if any(0 < kept[check] < count for check, count in original.items() if count > 1):
+        raise boundary.Unsupported("ambiguous partial removal of duplicate checks")
     removed = []
     for block in before["blocks"]:
         for offset, op in enumerate(block["operations"]):
@@ -414,7 +427,10 @@ def normalize(snapshot, fn, null_obligations=None):
                         follow({"op": "copy", "dst": result, "src": args[0]["value"]})
                     else:
                         follow({"op": "havoc", "dst": result})
-                        assume(result, tags)
+                        # Result annotations do not prove construction: a phi,
+                        # select or cast may carry null or a wider member set.
+                        if null_mode or (kind == "rt" and op["text"] in {"ubox", "ubox_opt"}):
+                            assume(result, tags)
                 if op["targets"] and kind != "phi":
                     for target in op["targets"][:-1]:
                         emit({"op": "choice", "yes": target, "no": len(nodes) + 1})
@@ -472,7 +488,13 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
     records, codes = [], [0]
     work = [(fn, None) for fn in snapshot["functions"] if inventory(fn)]
     for record in snapshot["nullcheck_evidence"]:
-        removed = removed_checks(record)
+        try:
+            removed = removed_checks(record)
+        except boundary.Unsupported as error:
+            records.append({"function": record["before"]["symbol"], "status": "unsupported",
+                            "scope": "removed null checks (before-pass redundancy)", "error": str(error)})
+            codes.append(2)
+            continue
         if removed:
             work.append((record["before"], removed))
     for fn, removed in work:
@@ -491,7 +513,7 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
     return {"status": {0: "accepted", 1: "rejected", 2: "unsupported", 3: "error"}[code],
             "checked": code == 0, "records": records,
             "union_reads": sum(len(inventory(fn)) for fn in snapshot["functions"]),
-            "removed_checks": sum(len(removed_checks(r)) for r in snapshot["nullcheck_evidence"]),
+            "removed_checks": sum(r["reported_rewrites"] for r in snapshot["nullcheck_evidence"]),
             "proved_union_reads": sum(r.get("obligations", 0) for r in records if r["status"] == "accepted"
                                       and r.get("scope") == "closed-union guards"),
             "proved_removed_checks": sum(r.get("obligations", 0) for r in records if r["status"] == "accepted"

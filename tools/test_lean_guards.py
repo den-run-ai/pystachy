@@ -252,9 +252,173 @@ class GuardTests(unittest.TestCase):
         fn["blocks"].append({"label": "", "handler": "", "operations": [instruction("ret", operands=[("0", "int")])]})
         self.assertTrue(self.lean(*guards.normalize(snap, fn)))
 
+    def test_transports_cannot_make_null_union_nonnull(self):
+        from test_lean_boundary import instruction
+        for transport in ("select", "phi", "scalar.cast", "slot.unpack", "scalar.bin", "rt"):
+            with self.subTest(transport=transport):
+                snap = self.sample()
+                fn = self.union(snap)
+                entry = fn["blocks"][0]
+                index = next(n for n, op in enumerate(entry["operations"]) if op["op"] == "union.tag")
+                read = entry["operations"][index]
+                loaded = read["operands"][0]["value"]
+                slot = next(slot for slot in fn["slots"] if slot["text"] == "value")
+                address = f"%value.{slot['results'][0]}"
+                entry["operations"] = entry["operations"][:index]
+                entry["operations"].insert(1, instruction("mach.store", operands=[(address, "%ptr"), ("null", "%ptr")]))
+                args = [(loaded, "union[int,str]")]
+                text, targets, prefix = "", [], []
+                if transport == "select":
+                    args = [("true", "bool")] + args * 2
+                elif transport == "phi":
+                    targets = [entry["label"]]
+                elif transport == "scalar.cast":
+                    text = "bitcast"
+                elif transport == "slot.unpack":
+                    prefix = [instruction("slot.pack", "%slot", results=[101], operands=args)]
+                    args = [("%t101", "%slot")]
+                elif transport == "scalar.bin":
+                    text, args = "or", [(loaded, "%ptr"), ("0", "int")]
+                elif transport == "rt":
+                    text = "unmodeled_union_result"
+                operation = instruction(transport, "union[int,str]", text, results=[100], operands=args, targets=targets)
+                read["operands"][0]["value"] = "%t100"
+                tail = prefix + [operation, read, instruction("ret", operands=[("0", "int")])]
+                if transport == "phi":
+                    entry["operations"].append(instruction("br", targets=["join"]))
+                    fn["blocks"] = [entry, {"label": "join", "handler": "", "operations": tail}]
+                else:
+                    entry["operations"].extend(tail)
+                    fn["blocks"] = [entry]
+                self.assertEqual(len(guards.inventory(fn)), 1)
+                candidate, meta = guards.normalize(snap, fn)
+                self.assertEqual(meta["payloads"], 1)
+                self.assertFalse(self.lean(candidate, meta))
+
+    def test_actual_literal_union_constructor_domain(self):
+        from test_lean_boundary import instruction
+        snap = self.sample()
+        fn = next(fn for fn in snap["functions"] if fn["name"] == "<module>")
+        block, index, constructor = next((block, index, op) for block in fn["blocks"]
+                                         for index, op in enumerate(block["operations"])
+                                         if op["op"] == "rt" and op["text"] == "ubox")
+        value = f"%t{constructor['results'][0]}"
+        block["operations"].insert(index + 1, instruction("union.tag", "int", results=[900], operands=[(value, "%ptr")]))
+        self.assertEqual(len(guards.inventory(fn)), 1)
+        self.assertTrue(self.lean(*guards.normalize(snap, fn)))
+        constructor["text"] = "ubox_opt"
+        self.assertEqual(len(guards.inventory(fn)), 1)
+        self.assertFalse(self.lean(*guards.normalize(snap, fn)))
+
+    def test_transport_annotation_cannot_erase_union_member(self):
+        from test_lean_boundary import instruction
+        snap = self.sample()
+        fn = self.union(snap)
+        fn["parameters"][0]["representation"] = "union[int,float,str]"
+        entry = fn["blocks"][0]
+        index = next(n for n, op in enumerate(entry["operations"]) if op["op"] == "union.tag")
+        loaded = entry["operations"][index]["operands"][0]["value"]
+        tail = entry["operations"][index:]
+        entry["operations"] = entry["operations"][:index] + [
+            instruction("select", "union[int,str]", results=[100],
+                        operands=[("true", "bool"), (loaded, "union[int,str]"), (loaded, "union[int,str]")]),
+            instruction("ptr.cmp", "bool", "!=", results=[101],
+                        operands=[("%t100", "union[int,str]"), ("null", "union[int,str]")]),
+            instruction("cbr", operands=[("%t101", "bool")], targets=["nonnull", "nullret"])]
+        fn["blocks"].insert(1, {"label": "nonnull", "handler": "", "operations": tail})
+        fn["blocks"].append({"label": "nullret", "handler": "", "operations": [instruction("ret", operands=[("0", "int")])]})
+        for block in fn["blocks"]:
+            for op in block["operations"]:
+                if op["op"] in {"union.tag", "union.payload"}:
+                    op["operands"][0]["value"] = "%t100"
+        self.assertEqual(len(guards.inventory(fn)), 3)
+        candidate, meta = guards.normalize(snap, fn)
+        self.assertEqual(meta["payloads"], 3)
+        # Even an explicit null guard cannot turn the incoming float into a str.
+        self.assertFalse(self.lean(candidate, meta))
+
+    def test_duplicate_check_removal_cannot_borrow_later_guard(self):
+        from test_lean_boundary import instruction
+        snap = self.sample()
+        record = self.nullrecord(snap)
+        before = record["before"]
+        checks = [(block, offset, op) for block in before["blocks"]
+                  for offset, op in enumerate(block["operations"])
+                  if op["op"] == "check" and "AttributeError" in op["text"]]
+        self.assertEqual(len(checks), 2)
+        first, second = checks
+        second[2]["operands"] = copy.deepcopy(first[2]["operands"])
+        record["after"] = copy.deepcopy(before)
+        after_block = next(b for b in record["after"]["blocks"] if b["label"] == first[0]["label"])
+        after_block["operations"][first[1]] = instruction("br", targets=first[2]["targets"])
+        # The earlier check is necessary, but the later identical check is
+        # redundant. A multiset cannot identify which occurrence disappeared.
+        self.assertFalse(self.lean(*guards.normalize(snap, before, [(first[0]["label"], first[1])])))
+        self.assertTrue(self.lean(*guards.normalize(snap, before, [(second[0]["label"], second[1])])))
+        with self.assertRaisesRegex(boundary.Unsupported, "ambiguous partial removal"):
+            guards.removed_checks(record)
+        report, code = guards.check_all(snap, CHECKER)
+        self.assertEqual(code, 2)
+        self.assertEqual(report["removed_checks"], 1)
+        self.assertEqual(report["proved_removed_checks"], 0)
+        # Removing every occurrence has an unambiguous inventory, and still
+        # exposes the unsafe first removal to Lean.
+        other = next(b for b in record["after"]["blocks"] if b["label"] == second[0]["label"])
+        other["operations"][second[1]] = instruction("br", targets=second[2]["targets"])
+        record["reported_rewrites"] = 2
+        removed = guards.removed_checks(record)
+        self.assertEqual(len(removed), 2)
+        self.assertFalse(self.lean(*guards.normalize(snap, before, removed)))
+
     def test_declared_domains_parse_nested_members(self):
         self.assertEqual(guards.union_members("opt[union[int,tuple[int,str]]]"),
                          ["member:int", "member:tuple[int,str]", "null"])
+
+    def test_raw_transports_remain_in_inventory(self):
+        from test_lean_boundary import instruction as op
+        for transport in ("big", "tuple", "address", "reverse_address", "opaque"):
+            with self.subTest(transport=transport):
+                snap = self.sample()
+                fn = self.union(snap)
+                union = "union[int,str]"
+                slot = next(slot for slot in fn["slots"] if slot["text"] == "value")
+                address = f"%value.{slot['results'][0]}"
+                if transport == "big":
+                    operations = [
+                        op("scalar.cast", "%ptr", "bitcast", [100], [("%a0", union)]),
+                        op("big.make", "int+", results=[101], operands=[("-9223372036854775808", "int"), ("%t100", "%ptr")]),
+                        op("big.hi", "%ptr", results=[102], operands=[("%t101", "int+")])]
+                elif transport == "tuple":
+                    operations = [
+                        op("slot.pack", "%slot", results=[100], operands=[("%a0", union)]),
+                        op("alloc.fixed", "tuple[union[int,str]]", results=[101]),
+                        op("tuple.store", operands=[("%t101", "tuple[union[int,str]]"), ("%t100", "%slot")]),
+                        op("tuple.load", "%slot", results=[103], operands=[("%t101", "tuple[union[int,str]]")]),
+                        op("slot.unpack", "int", results=[104], operands=[("%t103", "%slot")]),
+                        op("scalar.cast", "%ptr", "inttoptr", [102], [("%t104", "int")])]
+                elif transport in {"address", "reverse_address"}:
+                    cast = op("scalar.cast", "%ptr", "bitcast", [100], [(address, "*" + union)])
+                    if transport == "address":
+                        operations = [op("mem.store", operands=[(address, "*" + union), ("%a0", union)]), cast]
+                        source = "%t100"
+                    else:
+                        operations = [cast, op("mem.store", operands=[("%t100", "%ptr"), ("%a0", union)])]
+                        source = address
+                    operations.append(op("mach.load", "%ptr", results=[102], operands=[(source, "%ptr")]))
+                else:
+                    operations = [op("rt", "%ptr", "unmodeled_transport", [102], [("%a0", union)])]
+                operations.extend([op("mach.load", "int", results=[105], operands=[("%t102", "%ptr")]),
+                                   op("ret", operands=[("0", "int")])])
+                fn["blocks"] = [{"label": "entry", "handler": "", "operations": operations}]
+                self.assertEqual(len(guards.inventory(fn)), 1)
+                with self.assertRaisesRegex(boundary.Unsupported, "declared source domain"):
+                    guards.normalize(snap, fn)
+                snap["functions"], snap["nullcheck_evidence"] = [fn], []
+                snap["guard_inventory"] = {"nullcheck_passes": 0, "removed_checks": 0}
+                report, code = guards.check_all(snap, CHECKER)
+                self.assertEqual(code, 2)
+                self.assertEqual(report["union_reads"], 1)
+                self.assertEqual(report["proved_union_reads"], 0)
 
 
 class GuardCorpusAccountingTests(unittest.TestCase):

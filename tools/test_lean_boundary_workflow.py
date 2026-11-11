@@ -3,6 +3,7 @@
 import ast
 import os
 import re
+import shlex
 from pathlib import Path
 import subprocess
 import tempfile
@@ -155,7 +156,8 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         bin_dir = self.directory / "bin"
         bin_dir.mkdir()
         make = bin_dir / "make"
-        make.write_text('#!/bin/sh\nprintf "%s\\n" "$1"\n')
+        make.write_text('#!/bin/sh\nprintf "%s\\n" "$1"\n'
+                        'if [ "$1" = "check-lean-guards" ]; then printf "%s\\n" "$2"; fi\n')
         make.chmod(0o755)
         for group, expected in (("opt-in", ["check-lean-corpus", "check-lean-int", "check-lean-storage"]),
                                 ("runtime-cache", ["check-lean-corpus", "check-lean-int"]),
@@ -166,7 +168,17 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
                 completed = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", selector],
                                            env=env, capture_output=True, text=True, timeout=10)
                 self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
-                self.assertEqual(completed.stdout.splitlines(), expected)
+                lines = completed.stdout.splitlines()
+                if group == "contracts":
+                    flags = lines.pop()
+                    self.assertTrue(flags.startswith("LEAN_GUARD_FLAGS="))
+                    args = shlex.split(flags.removeprefix("LEAN_GUARD_FLAGS="))
+                    self.assertEqual(args[:4], ["--jobs", "2", "--report", "build/verify/lean-guards.json"])
+                    programs = args[4:]
+                    self.assertGreaterEqual(len(programs), 2)
+                    self.assertEqual(len(programs), len(set(programs)))
+                    self.assertTrue(all((ROOT / path).is_file() for path in programs))
+                self.assertEqual(lines, expected)
 
     def test_corpus_and_opt_in_dependencies_are_pinned_and_installed_before_checks(self):
         ci = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
