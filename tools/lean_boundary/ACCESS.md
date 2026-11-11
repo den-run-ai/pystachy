@@ -106,6 +106,28 @@ The adapter suggests facts by a forward analysis with the same rules, then lists
 only the facts that an access needs, directly or through the facts that justify them. A node
 with several predecessors is reached through a jump of its own from each.
 
+## Coverage of compiled code
+
+On 2026-11-11, the hosted compiler compiled every differential test program and deviation of
+this checkout, 2,407 programs; 1,174 of them have unchecked accesses, 84,731 in 16,062
+functions. Lean accepted every function but one, proving 84,730 accesses. The exception is
+`fib_memo`'s `fib` in [`closures.py`](../../tests/programs/language/closures.py): it loads its
+captured dict from the closure's cell for `k in memo` and again for `memo[k]`, and the adapter
+does not track cells, so it cannot tell that the second load gives the dict whose entry the
+first lookup found.
+
+The checker's first sweep found a `dictfuse` miscompile: a lookup whose dynamic key may run
+user code did not end the lookups before it, so `if k in d2: [d1[k], d2[k]]` reused `d2`'s
+entry after `d1[k]`'s `__eq__` could empty `d2`, a segmentation fault where CPython raises
+`KeyError` (json_repair's `ObjectComparer.is_same_object` has this shape). It is fixed by
+[#1236](https://github.com/den-run-ai/pystachy/pull/1236), merged here, with a regression
+test. The other functions that sweeps left unproved were gaps of the adapter or the model, which
+the rules above close: a dict comparison's lookups, constant field stores, phis of lookups, a
+starred tail's offsets and class variables.
+
+`make check-lean-corpus` runs the same check on each dynamic-`Any` corpus program's snapshot;
+CI runs it on every code change.
+
 ## Trust and coverage limits
 
 Not proved by this version:
