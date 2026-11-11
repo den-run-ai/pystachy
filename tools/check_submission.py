@@ -1,7 +1,7 @@
 """Check issue/PR metadata using trusted base code; never execute PR files.
 
 Run in submissions.yml with GITHUB_EVENT_PATH, GITHUB_REPOSITORY and GITHUB_TOKEN.
-PRs receive a head-commit status and opening reminder; issues receive a label.
+PRs receive a head-commit status and one best-effort reminder; issues receive a label.
 """
 
 import json
@@ -18,6 +18,7 @@ CHAR_LIMIT = 6000
 LABEL = "needs-description"
 STATUS = "Submission format"
 GUIDE = "https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md#issues-and-pull-requests"
+PR_ACTIONS = ("opened", "edited", "synchronize", "reopened", "ready_for_review")
 ACK_MARKER = "<!-- pystachy-ack-v1 -->"
 ACK_BODY = (ACK_MARKER + "\nThanks for contributing! Please reply once to acknowledge "
             "the [contributor guidelines](https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md), "
@@ -80,10 +81,23 @@ def api(method, path, payload=None, missing_ok=False):
 
 
 def remind_contributor(number):
-    """Leave one nonblocking reminder, including on a rerun of the opening event."""
-    comments = api("GET", f"/issues/{number}/comments?per_page=100")
-    if not any(ACK_MARKER in comment.get("body", "") for comment in comments):
+    """Deduplicate our bot's reminder across all pages; never fail metadata checks."""
+    try:
+        page = 1
+        while True:
+            comments = api("GET", f"/issues/{number}/comments?per_page=100&page={page}")
+            if any(comment.get("user", {}).get("login") == "github-actions[bot]"
+                   and comment.get("user", {}).get("type") == "Bot"
+                   and ACK_MARKER in (comment.get("body") or "") for comment in comments):
+                return
+            if len(comments) < 100:
+                break
+            page += 1
         api("POST", f"/issues/{number}/comments", {"body": ACK_BODY})
+    except (OSError, ValueError):
+        # HTTP/connection/time-out/JSON failures must not turn this into a gate.
+        # A later PR metadata event retries, including after a cancelled opening run.
+        print("Contributor reminder unavailable; metadata validation is unchanged.", file=sys.stderr)
 
 
 def check(event):
@@ -100,7 +114,7 @@ def check(event):
             "description": "Shorten or complete title/body; see CONTRIBUTING.md." if errors
                            else "Title and three-section body meet the reading budget.",
             "target_url": GUIDE})
-        if event.get("action") == "opened":
+        if event.get("action") in PR_ACTIONS:
             remind_contributor(number)
     elif errors:
         if api("GET", "/labels/" + LABEL, missing_ok=True) is None:
