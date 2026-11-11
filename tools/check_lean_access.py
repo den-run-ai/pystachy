@@ -29,6 +29,7 @@ import sys
 from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OP_KEYS, OUTCOMES, SEVERITY,
                                  TERMINATORS, Unsupported, check_header, name, read_snapshot,
                                  require, unique_object)
+from check_lean_effects import summaries
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -67,10 +68,12 @@ FRESH_LIST_WRITES = {"list.slice"}
 ITEM_WRITES = {"list.set"}
 LIMITATIONS = [
     "Only list.load bounds and the inventoried dict/set entry accesses in each normalized function are checked.",
-    "Python normalization, snapshot fidelity, runtime effects (RUNTIME, the U? descriptor rule and "
-    "function summaries), the runtime's lookup, length, slicing and unpacking contracts, the List "
+    "Python normalization, snapshot fidelity, runtime effects (RUNTIME and the U? descriptor rule), "
+    "the independent body-effect scan, the runtime's lookup, length, slicing and unpacking contracts, the List "
     "header layout and LLVM lowering are not proved.",
     "Fields of one class at different indices are assumed to be distinct memory.",
+    "Closure environments hold pointers to cells; recognized native-container cell loads use the "
+    "same heap model and are invalidated by writes or callbacks, not assumed immutable.",
     "A suspended generator's caller may change any list, dict, field or global; phi and select "
     "results and other memory loads get unknown values.",
     "The native Lean executable adds the Lean compiler and runtime to the trusted base.",
@@ -255,7 +258,16 @@ def nonneg_fact(facts, x):
     return None
 
 
+def encodable_fact(fact):
+    """Fact constants fit the Lean checker's bounded JSON representation."""
+    return all(type(part) is not int or MIN_I64 <= part <= MAX_I64 for part in fact)
+
+
 def generated(facts, node, edge):
+    return [fact for fact in generated_unbounded(facts, node, edge) if encodable_fact(fact)]
+
+
+def generated_unbounded(facts, node, edge):
     op = node["op"]
     dst = node.get("dst")
     if op == "copy":
@@ -288,7 +300,7 @@ def immediates(node, edge, facts):
     return kept + [fact for fact in generated(facts, node, edge) if fact not in kept]
 
 
-def conclusions(fact, by_name, index, relevant):
+def conclusions(fact, by_name, index, relevant, lower_bounds=()):
     """What one rule derives from fact and a known fact that shares a value with it, each
     with its premises (a semi-naive step: the rules need at least one new premise)."""
     out = []
@@ -323,6 +335,9 @@ def conclusions(fact, by_name, index, relevant):
         a, k = fact[1], fact[2]
         if k > 0:
             out.append((("ge", a, 0), [fact]))
+        for bound in lower_bounds:
+            if bound < k:
+                out.append((("ge", a, bound), [fact]))
         if k >= 0 and ("found", a) in {other[:2] for other in partners(a, ("found",))}:
             # (a lookup's result of at least 0 is not -1)
             out.append((("ne", a, -1), [fact]))
@@ -443,7 +458,7 @@ def conclusions(fact, by_name, index, relevant):
     return out
 
 
-def closure(start, new, relevant):
+def closure(start, new, relevant, lower_bounds=()):
     """start and what the rules derive from it, in an order Lean can check (each fact from
     start or from facts before it), with each derived fact's premises. Facts in start other
     than new were closed where they were derived; only facts about relevant values are
@@ -460,7 +475,12 @@ def closure(start, new, relevant):
     pending = deque(fact for fact in new if fact in index)
     while pending:
         fact = pending.popleft()
-        for derived, needs in conclusions(fact, by_name, index, relevant):
+        for derived, needs in conclusions(fact, by_name, index, relevant, lower_bounds):
+            # Rules use mathematical integers, but the checked wire format
+            # accepts i64 constants. An impossible overflow-free path can
+            # suggest >= INT64_MAX+1; keep representable weaker facts instead.
+            if not encodable_fact(derived):
+                continue
             if derived in index or (derived[0] == "eq" and derived[1] == derived[2]) or any(
                     part not in relevant for part in mentions(derived)):
                 continue
@@ -690,6 +710,13 @@ def infer_certificate(nodes, entry=0):
     that an access needs, directly or through the facts that justify them. A node with several
     predecessors is reached through a jump of its own from each (normalize adds them), whose
     facts it intersects."""
+    # A loop starting at 1 and advancing by 2 must retain i >= 1 at its
+    # join: exact-set intersection of >=1 and >=3 otherwise keeps only >=0.
+    # Derive a finite set of relevant weaker bounds before joins. These are
+    # certificate suggestions; Lean's existing ge rule checks every weakening.
+    lower_bounds = sorted({node["value"] for node in nodes if node["op"] == "lit" and node["value"] > 0}
+                          | {-node["k"] for node in nodes
+                             if node["op"] in ("add", "add_checked") and node["k"] < 0})
     predecessors = [[] for _ in nodes]
     for index, node in enumerate(nodes):
         for edge, target in enumerate(successors(node)):
@@ -737,7 +764,7 @@ def infer_certificate(nodes, entry=0):
                 justification = ([], {})
             else:
                 relevant = (live[target] | set().union(*(set(mentions(fact)) for fact in start))) if new else live[target]
-                facts, premises = closure(start, new, relevant)
+                facts, premises = closure(start, new, relevant, lower_bounds)
                 merged = prune(facts, live[target])
                 justification = (facts, premises)
             if merged != known[target] or derived[target] is None:
@@ -828,15 +855,6 @@ def function_record(snapshot, function):
     selected = [fn for fn in functions if fn.get("symbol") == function or fn.get("name") == function]
     require(len(selected) == 1, "--function must select exactly one function by exact name or symbol")
     return selected[0]
-
-
-def summaries(snapshot):
-    """Each function's effect summary, by symbol: what a direct call of it may do."""
-    found = {}
-    for fn in snapshot.get("functions", []):
-        if isinstance(fn, dict) and isinstance(fn.get("symbol"), str) and isinstance(fn.get("effects"), str):
-            found[fn["symbol"]] = set(fn["effects"].split())
-    return found
 
 
 def check_dominance(blocks, block_edges, sites):
@@ -1022,6 +1040,24 @@ def normalize_program(snapshot, function, effects_of=None):
     field_of = {f"%t{op['results'][0]}": (op["operands"][0]["value"], op["operands"][0]["type"], op["immediate"])
                 for op in definitions.values() if op["op"] == "field.addr" and op["results"]
                 and len(op["operands"]) == 1 and op["operands"][0]["value"].startswith("%")}
+    # An env is an array of pointers to closure cells. Recognize only constant
+    # pointer-slot loads from a value whose definition/parameter has env type.
+    # The captured cell itself is mutable: reuse read_field's heap invalidation,
+    # never private-slot persistence. Do not infer a cell from an arbitrary ptr.
+    environments = {f"%t{number}" for op in definitions.values() if op["type"] == "env"
+                    for number in op["results"]}
+    environments.update(f"%a{index}" for index, parameter in enumerate(fn.get("parameters", []))
+                        if parameter.get("representation") == "env")
+    environment_slots = {f"%t{op['results'][0]}" for op in definitions.values()
+                         if op["op"] == "mach.addr" and op["text"] == "%ptr"
+                         and len(op["results"]) == 1 and len(op["operands"]) == 2
+                         and op["operands"][0]["value"] in environments
+                         and isinstance(operand_of(op["operands"][1]["value"]), int)
+                         and operand_of(op["operands"][1]["value"]) >= 0}
+    closure_cells = {f"%t{op['results'][0]}" for op in definitions.values()
+                     if op["op"] == "mach.load" and op["type"] == "%ptr" and op["text"] == ""
+                     and len(op["results"]) == 1 and len(op["operands"]) == 1
+                     and op["operands"][0]["value"] in environment_slots}
     # A module global that the function only loads and stores directly holds the value last
     # stored there, until an operation that may write globals runs.
     # (A class variable is such a global, which machine loads and stores of the whole word at
@@ -1129,6 +1165,10 @@ def normalize_program(snapshot, function, effects_of=None):
             obj, cls, index = field_of[values[0]]
             return [], [{"op": "read_field", "dst": f"%t{op['results'][0]}", "object": obj, "class": cls,
                          "index": index}]
+        if (kind == "mem.load" and len(values) == 1 and values[0] in closure_cells and op["results"]
+                and op["type"].startswith(("list[", "dict[", "set["))):
+            return [], [{"op": "read_field", "dst": f"%t{op['results'][0]}", "object": values[0],
+                         "class": "<closure-cell>", "index": 0}]
         if kind == "mem.store" and len(values) == 2 and values[0] in field_of:
             # (a field's new value: a register's, else a literal or an unknown value held by a
             # name of the store's own, its address and "=", which no register's name contains)
@@ -1141,9 +1181,10 @@ def normalize_program(snapshot, function, effects_of=None):
                     else {"op": "havoc", "dst": stored})
             return [], [held, {"op": "write_field", "object": obj, "class": cls, "index": index, "value": stored}]
         if kind == "mem.store":
-            # (a global is no list, dict or field; any other address may be)
+            # A named global is distinct from the other named globals; an
+            # unknown address may alias a tracked global as well as the heap.
             heap = not values[0].startswith("@")
-            return kill_nodes(heap, heap, False, heap), []
+            return kill_nodes(heap, heap, heap, heap), []
         if kind == "mach.store":
             return kill_nodes(True, True, True, True), []
         if (kind == "mach.load" and op["type"] == "int" and op["text"] in ("", "length") and values
@@ -1440,8 +1481,9 @@ def normalize_program(snapshot, function, effects_of=None):
     candidate_nodes = relocate(nodes, entry)
     metadata = {"function": symbol, "nodes": len(candidate_nodes),
                 "accesses": sum(node["op"] in ("load", "value") for node in candidate_nodes),
-                "list_loads": accesses["list.load"],
-                "dict_entries": sum(count for key, count in accesses.items() if key != "list.load")}
+                "list_loads": accesses["list.load"], "list_stores": accesses.get("list.store", 0),
+                "dict_entries": sum(count for key, count in accesses.items()
+                                    if key not in ("list.load", "list.store"))}
     return candidate_nodes, metadata
 
 

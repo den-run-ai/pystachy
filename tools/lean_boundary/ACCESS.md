@@ -64,6 +64,11 @@ stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is 
 loop's test, `stop <= len(xs) + 1`, adds to a length, which with at most 2^62 items cannot wrap.
 Where the stop is a constant, the loop's test bounds `i` above, the test before it bounds the
 length below, and the first must lie under the second.
+Certificate inference retains the finite positive lower bounds requested by initial
+constants and negative offsets. Thus a loop starting at 1 and advancing by 2 keeps
+`i >= 1` at the join of its initial and later iterations. Each proposed weakening
+is checked by the existing Lean rule; an invalid start or descending induction
+still fails the access proof.
 
 The build checks 40 examples by kernel reduction: 13 shapes the compiler emits and 27
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
@@ -85,6 +90,11 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   named by the object's register and the field's class and index; a store of a constant or an
   unknown value writes that field alone too. A field address's operands, like a test's, are SSA
   values, unchanged wherever its result is used.
+- Native list, dict and set references loaded repeatedly from a recognized closure cell use
+  the same heap model. A cell pointer must come from a constant pointer slot of an `env`-typed
+  environment. Writes through the cell or any potentially aliasing address, object writes,
+  callbacks and generator suspension invalidate its content. Arbitrary pointers and different
+  cells cannot borrow its equality facts. This relies on the closure environment's cell ABI.
 - `list.len`, and a word load at the address of a register the IR types as a native list (a
   `List` is `{len, cap, a}`), read a length. `num.cmp` and `int.ucmp` of ints, and `ptr.cmp`,
   become tests of their branch or `check`. `scalar.bin` adds a constant; an `ovf` whose flag
@@ -108,7 +118,8 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
 - Every other operation defines its results with unknown values, and so does any other phi. What
   it may change comes from its effects: a runtime operation's `RUNTIME` entry, with a possible
   user-code effect (`U?`) resolved from its descriptor as the compiler does; a direct call's
-  summary from the snapshot; anything for an indirect call, an `init` or a generator resumption.
+  summary from the snapshot, strengthened by an independent scan of every visible function
+  body and transitive direct callees; anything for an indirect call, an `init` or a generator resumption.
   A list write or user code may change every list's length, except that `list.slice` writes only
   the new list it returns; a dict write every dict's entries; an object write every field.
 - Edges are those of `check_lean_boundary.py`: terminator targets, an invoke's unwind edge, each
@@ -117,6 +128,14 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
 - Where a generator suspends (`gen.start`, `gen.yield`), its caller runs: any list, dict, field
   or global may change, though not the generator's own slots, and a `throw()` or `close()`
   raises there.
+
+`check_lean_effects.py` computes the body-write closure independently of the compiler's
+effect analysis, including mutually recursive calls and module initializers. It unions those
+writes with declared summaries, preserving conservative metadata. An understated summary
+cannot hide a visible mutation from an access proof; missing bodies or summaries remain
+unknown. Runtime effect contracts, address classification and the Python scan remain trusted.
+Negative controls erase summaries above list/dict mutation, callbacks and transitive calls;
+Lean must still reject the stale access.
 
 The adapter suggests facts by a forward analysis with the same rules, then lists at each point
 only the facts that an access needs, directly or through the facts that justify them. A node
@@ -137,7 +156,9 @@ qualification after the corrections is recorded in
 `fib_memo`'s `fib` in [`closures.py`](../../tests/programs/language/closures.py): it loads its
 captured dict from the closure's cell for `k in memo` and again for `memo[k]`, and the adapter
 does not track cells, so it cannot tell that the second load gives the dict whose entry the
-first lookup found.
+first lookup found. The current adapter recognizes those closure cells and proves the
+previously unproved access; a focused replay of `closures.py` proves all eight inventoried
+accesses. The whole-program numbers above remain historical until that sweep is rerun.
 
 The checker's first sweep found a `dictfuse` miscompile: a lookup whose dynamic key may run
 user code did not end the lookups before it, so `if k in d2: [d1[k], d2[k]]` reused `d2`'s
@@ -157,11 +178,13 @@ Not proved by this version:
 
 - Fidelity of the snapshot and of the Python normalization to the IR's execution: the
   operation roles, edges, path splitting, slot, global and field naming and the effects above.
-- The runtime contracts the adapter relies on: `RUNTIME`'s effects and the compiler's
-  descriptor rule for `U?`, the function summaries in the snapshot, the unpacking checks, the
+- The runtime contracts the adapter relies on: `RUNTIME`'s effects and the conservative
+  descriptor rule for `U?`, the independent body-effect scan, the unpacking checks, the
   lookups' and iteration steps' results, entry writes moving no entry, `list.slice` changing no
   other list, `list.set` changing no length, lists holding at most 2^62 items, and the `List`
-  header layout. Effect summaries are the compiler's own analysis.
+  header layout. Declared summaries come from the compiler's own analysis and are
+  strengthened by the independent body scan.
+- Closure environments containing pointers to mutable cells in their constant pointer slots.
 - Fields of one class at different indices being distinct memory, for any objects; fields of
   different classes are treated as possibly the same memory.
 - Null checks the `nullcheck` pass removes are not yet normalized: the model's `deref` node
