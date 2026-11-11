@@ -20,14 +20,14 @@ registries or test data from
 That project's [Apache-2.0-licensed work](https://github.com/Broyojo/python-formalization/blob/17bf78a9856c06fea409349246be4a06482518d1/LICENSE)
 was a reference for the discussion motivating this separate prototype.
 
-The provenance review compared the three Lean source files with that project's pinned
-`17bf78a9856c06fea409349246be4a06482518d1` tree, including its axiom audit;
-it found no copied implementation. The shared logical axiom names and
+The original payload-checker provenance review compared its three Lean source files with
+that project's pinned `17bf78a9856c06fea409349246be4a06482518d1` tree, including its axiom
+audit; that historical comparison found no copied implementation. The shared logical axiom names and
 `Lean.collectAxioms` calls are standard Lean interfaces. This records a source
 and dependency review, not a formal proof of authorship.
 
-Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`
-module; `lake-manifest.json` contains no external packages. The pinned Lean
+Current Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary` and
+`PystachyAccess` modules; `lake-manifest.json` contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
 [Apache-2.0 license](https://github.com/leanprover/lean4/blob/v4.35.0/LICENSE).
 It is downloaded for CI and is not vendored in this repository. Its license is

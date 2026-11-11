@@ -35,6 +35,159 @@ def op(kind, operands=(), results=(), text="", typ="", targets=(), immediate=0, 
             "targets": list(targets)}
 
 
+class NegatedComparisonTests(unittest.TestCase):
+    @staticmethod
+    def snapshot(kind, negations, safe_branch=True):
+        if kind == "list":
+            prefix = [op("list.len", [("%a0", "list[int]")], [1], typ="int"),
+                      op("int.ucmp", [("%a1", "int"), ("%t1", "int")], [2], text="<", typ="bool")]
+            read = op("list.load", [("%a0", "list[int]"), ("%a1", "int")], [50, 51, 52, 53], typ="int")
+        else:
+            prefix = [op("rt", [("%a0", "dict[str,int]"), ("%a1", "str")], [1],
+                         text="dict.find", typ="int", descriptor="S"),
+                      op("num.cmp", [("%t1", "int"), ("-1", "int")], [2], text="!=", typ="bool")]
+            read = op("rt", [("%a0", "dict[str,int]"), ("%t1", "int")], [50], text="dict.val", typ="int")
+        flag = "%t2"
+        for index in range(negations):
+            number = 3 + index
+            prefix.append(op("scalar.bin", [(flag, "bool"), ("true", "bool")], [number], text="xor", typ="bool"))
+            flag = f"%t{number}"
+        # Both original comparisons hold exactly on the safe path. Each Boolean
+        # negation swaps that branch; the corruption selects its unsafe complement.
+        targets = ["read", "done"] if (negations % 2 == 0) == safe_branch else ["done", "read"]
+        prefix.append(op("cbr", [(flag, "bool")], targets=targets))
+        function = {"name": "guarded", "symbol": "@f.guarded", "recursion": {}, "slots": [],
+                    "blocks": [{"label": "entry", "handler": "", "operations": prefix},
+                               {"label": "read", "handler": "", "operations": [read, op("ret")]},
+                               {"label": "done", "handler": "", "operations": [op("ret")]}]}
+        return {"schema_version": 1, "stage": "typed-after", "status": "completed", "functions": [function]}
+
+    def test_negated_list_guard_preserves_safe_branch(self):
+        for negations in (0, 1, 2, 3):
+            with self.subTest(negations=negations):
+                candidate, metadata = normalize_snapshot(self.snapshot("list", negations), "@f.guarded")
+                self.assertEqual(metadata["unproved"], 0)
+                self.assertIsNone(explain(candidate))
+
+    def test_negated_missing_entry_guard_preserves_comparison_polarity(self):
+        for negations in (0, 1, 2, 3):
+            with self.subTest(negations=negations):
+                candidate, metadata = normalize_snapshot(self.snapshot("dict", negations), "@f.guarded")
+                self.assertEqual(metadata["unproved"], 0)
+                self.assertIsNone(explain(candidate))
+
+    def test_selecting_the_complement_cannot_justify_an_unchecked_access(self):
+        for kind in ("list", "dict"):
+            for negations in (0, 1, 2, 3):
+                with self.subTest(kind=kind, negations=negations):
+                    candidate, metadata = normalize_snapshot(self.snapshot(kind, negations, False), "@f.guarded")
+                    self.assertEqual(metadata["unproved"], 1)
+                    self.assertIsNotNone(explain(candidate))
+
+
+class EntryAccessInventoryTests(unittest.TestCase):
+    HELPERS = ("set.slot_del", "dict.val_or_zero", "dict.eq_find", "dict.eq_pair_find")
+
+    @staticmethod
+    def snapshot(helper, *, lookup=True, guarded=True, stale=False, index=None, after=(), invoke=False):
+        table_type = "set[int]" if helper == "set.slot_del" else "dict[str,int]"
+        table = ("%a0", table_type)
+        prefix = []
+        if lookup:
+            find = "set.int_find_any" if helper == "set.slot_del" else "dict.find"
+            key_type = "%ptr" if helper == "set.slot_del" else "str"
+            prefix.append(op("rt", [table, ("%a1", key_type)], [1], text=find, typ="int", descriptor="S"))
+        entry = index if index is not None else ("%t1" if lookup else "%a1")
+        if guarded:
+            prefix += [op("num.cmp", [(entry, "int"), ("-1", "int")], [2], text="!=", typ="bool"),
+                       op("cbr", [("%t2", "bool")], targets=["read", "done"])]
+        else:
+            prefix.append(op("br", targets=["read"]))
+        operands = [table, (entry, "int")]
+        if helper.startswith("dict.eq_"):
+            operands = [("%a2", "dict[str,int]"), table, (entry, "int")]
+            if helper == "dict.eq_pair_find":
+                operands.append(("%a3", "%ptr"))
+        read = op("rt", operands, [] if helper == "set.slot_del" else [3], text=helper,
+                  typ="None" if helper == "set.slot_del" else "int", descriptor="H1",
+                  targets=["done", "handler"] if invoke else [])
+        code = ([op("rt", [table], text="set.clear" if helper == "set.slot_del" else "dict.clear")]
+                if stale else []) + [read]
+        if not invoke:
+            code += list(after) + [op("ret")]
+        blocks = [{"label": "entry", "handler": "", "operations": prefix},
+                  {"label": "read", "handler": "", "operations": code},
+                  {"label": "done", "handler": "", "operations": [op("ret")]}]
+        if invoke:
+            blocks.append({"label": "handler", "handler": "", "operations": list(after) + [op("ret")]})
+        function = {"name": "inventory", "symbol": "@f.inventory", "recursion": {}, "slots": [], "blocks": blocks}
+        return {"schema_version": 1, "stage": "typed-after", "status": "completed", "functions": [function]}
+
+    def assert_verdict(self, snapshot, expected):
+        candidate, metadata = normalize_snapshot(snapshot, "@f.inventory")
+        self.assertEqual(explain(candidate) is None, expected, explain(candidate))
+        if CHECKER.is_file():
+            self.assertEqual(access.run_checker(CHECKER, access.encode(candidate), metadata), expected)
+        return metadata
+
+    def test_every_direct_entry_helper_is_selected_and_counted(self):
+        for helper in self.HELPERS:
+            with self.subTest(helper=helper):
+                snapshot = self.snapshot(helper, lookup=False, guarded=False)
+                self.assertEqual(access.access_functions(snapshot), [("@f.inventory", 1)])
+                _, metadata = normalize_snapshot(snapshot, "@f.inventory")
+                self.assertEqual(metadata["dict_entries"], 1)
+                self.assertEqual(metadata["accesses"], 1)
+
+    def test_live_entries_pass_and_unguarded_or_stale_entries_reject(self):
+        for helper in self.HELPERS:
+            with self.subTest(helper=helper):
+                self.assert_verdict(self.snapshot(helper), True)
+                self.assert_verdict(self.snapshot(helper, lookup=False, guarded=False), False)
+                self.assert_verdict(self.snapshot(helper, stale=True), False)
+                alias = self.snapshot(helper, stale=True)
+                alias["functions"][0]["blocks"][1]["operations"][0]["operands"][0]["value"] = "%a4"
+                self.assert_verdict(alias, False)  # (a write through any alias invalidates the entry)
+
+    def test_optional_entry_read_preserves_its_negative_no_read_path(self):
+        self.assert_verdict(self.snapshot("dict.val_or_zero", guarded=False), True)
+        for index in ("-1", "-2", str(access.MIN_I64)):
+            with self.subTest(index=index):
+                snapshot = self.snapshot("dict.val_or_zero", lookup=False, guarded=False, index=index)
+                self.assertEqual(access.access_functions(snapshot), [("@f.inventory", 1)])
+                self.assertEqual(self.assert_verdict(snapshot, True)["dict_entries"], 1)
+                if CHECKER.is_file():
+                    report, code = check_all(snapshot, CHECKER)
+                    self.assertEqual((code, report["totals"]["accesses"], report["totals"]["proved_accesses"]),
+                                     (0, 1, 1))
+        self.assert_verdict(self.snapshot("dict.val_or_zero", lookup=False, guarded=False, index="0"), False)
+
+    def test_set_deletion_invalidates_entries_after_checking_its_own(self):
+        after = [op("rt", [("%a0", "set[int]"), ("%t1", "int")], [4], text="set.key", typ="int")]
+        self.assert_verdict(self.snapshot("set.slot_del", after=after), False)
+
+    def test_equality_lookup_checks_source_before_callback_invalidation(self):
+        after = [op("rt", [("%a0", "dict[str,int]"), ("%t1", "int")], [4], text="dict.val", typ="int")]
+        for helper in ("dict.eq_find", "dict.eq_pair_find"):
+            with self.subTest(helper=helper):
+                self.assert_verdict(self.snapshot(helper), True)
+                self.assert_verdict(self.snapshot(helper, after=after), False)
+                self.assert_verdict(self.snapshot(helper, after=after, invoke=True), False)
+
+    def test_equality_lookup_result_still_belongs_to_its_target(self):
+        for helper in ("dict.eq_find", "dict.eq_pair_find"):
+            with self.subTest(helper=helper):
+                snapshot = self.snapshot(helper)
+                blocks = snapshot["functions"][0]["blocks"]
+                blocks[1]["operations"][-1:] = [
+                    op("num.cmp", [("%t3", "int"), ("-1", "int")], [4], text="!=", typ="bool"),
+                    op("cbr", [("%t4", "bool")], targets=["target_read", "done"])]
+                blocks.append({"label": "target_read", "handler": "", "operations": [
+                    op("rt", [("%a2", "dict[str,int]"), ("%t3", "int")], [5], text="dict.val", typ="int"),
+                    op("ret")]})
+                self.assert_verdict(snapshot, True)
+
+
 class SnapshotFixture(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -142,6 +295,14 @@ class ProvedCheckerTests(SnapshotFixture):
         self.assertEqual((fields["status"], code), ("accepted", 0), fields)
         self.assertEqual(fields["totals"]["proved_accesses"], 30)
         self.assertEqual(fields["totals"]["accesses"], 30)
+
+    def test_negated_guards_prove_only_the_safe_branch(self):
+        for kind in ("list", "dict"):
+            for negations in (0, 1, 2, 3):
+                for safe_branch in (False, True):
+                    with self.subTest(kind=kind, negations=negations, safe_branch=safe_branch):
+                        snapshot = NegatedComparisonTests.snapshot(kind, negations, safe_branch)
+                        self.assertEqual(self.verdict(snapshot, "@f.guarded"), safe_branch)
 
     def test_identical_functions_reuse_their_verdicts(self):
         # (a corpus's programs share library functions: their normalized nodes and the checker,

@@ -47,7 +47,9 @@ MAX_LEN = 2 ** 62  # (PystachyAccess.maxLen: the most items a list holds)
 # it (runtime.c: d->vals[e] and the like): the entry must be live. A write of an entry's value
 # moves no entry; deleting one is a dict write after it.
 ACCESS_RT = {"dict.val", "dict.key", "dict.big_val", "dict.big_key", "dict.entry_set", "dict.entry_set_big",
-             "dict.entry_del", "set.key", "set.big_key"}
+             "dict.entry_del", "set.key", "set.big_key", "set.slot_del", "dict.val_or_zero",
+             "dict.eq_find", "dict.eq_pair_find"}
+SOURCE_ENTRY_RT = {"dict.eq_find", "dict.eq_pair_find"}
 # Lookups and iteration steps that return -1 or a live entry, and lookups that return a live
 # entry or raise (runtime.c). A dict comparison's lookup of one dict's key in the other
 # (dict.eq_find, dict.eq_pair_find) runs the keys' __eq__ and restarts when it changes the table.
@@ -64,7 +66,7 @@ FRESH_LIST_WRITES = {"list.slice"}
 # may hold numeric identities).
 ITEM_WRITES = {"list.set"}
 LIMITATIONS = [
-    "Only list.load bounds and dict.val/dict.entry_set entries in each normalized function are checked.",
+    "Only list.load bounds and the inventoried dict/set entry accesses in each normalized function are checked.",
     "Python normalization, snapshot fidelity, runtime effects (RUNTIME, the U? descriptor rule and "
     "function summaries), the runtime's lookup, length, slicing and unpacking contracts, the List "
     "header layout and LLVM lowering are not proved.",
@@ -1049,11 +1051,10 @@ def normalize_program(snapshot, function, effects_of=None):
     def comparison(value):
         op = definitions.get(value)
         if op is None or len(op["operands"]) != 2:
-            if op is not None and op["op"] == "scalar.bin" and op["text"] == "xor" and len(op["operands"]) == 2:
-                if op["operands"][1]["value"] == "true":
-                    inner = comparison(op["operands"][0]["value"])
-                    return None if inner is None else (inner[0], not inner[1])
             return None
+        if op["op"] == "scalar.bin" and op["text"] == "xor" and op["operands"][1]["value"] == "true":
+            inner = comparison(op["operands"][0]["value"])
+            return None if inner is None else (inner[0], not inner[1])
         a, b = (operand_of(operand["value"]) for operand in op["operands"])
         if a is None or b is None:
             return None
@@ -1176,17 +1177,33 @@ def normalize_program(snapshot, function, effects_of=None):
             return [], havocs(op)
         if kind == "rt":
             key = op["text"]
+            access_before = []
             if key in ACCESS_RT:
                 accesses[key] = accesses.get(key, 0) + 1
-                if not isinstance(operand_of(values[0]), str) or not isinstance(operand_of(values[1]), str):
-                    raise Unsupported("an entry access of an unknown table or entry")
-                after = kill_nodes(False, True) if key == "dict.entry_del" else []
-                return [], [{"op": "value", "dict": values[0], "entry": values[1]}] + after + havocs(op)
+                if key in SOURCE_ENTRY_RT:
+                    if (len(values) < 3 or not isinstance(operand_of(values[1]), str)
+                            or not isinstance(operand_of(values[2]), str)):
+                        raise Unsupported("an equality lookup of an unknown source table or entry")
+                    # The runtime snapshots the source key/hash before target lookup can run
+                    # user code. Check that access before invalidating facts for the callback.
+                    access_before = [{"op": "value", "dict": values[1], "entry": values[2]}]
+                elif key == "dict.val_or_zero":
+                    if (len(values) < 2 or not isinstance(operand_of(values[0]), str)
+                            or operand_of(values[1]) is None):
+                        raise Unsupported("an optional entry access of an unknown table or entry")
+                    return [], [{"op": "optional_value", "dict": values[0],
+                                 "entry": operand_of(values[1])}] + havocs(op)
+                else:
+                    if (len(values) < 2 or not isinstance(operand_of(values[0]), str)
+                            or not isinstance(operand_of(values[1]), str)):
+                        raise Unsupported("an entry access of an unknown table or entry")
+                    after = kill_nodes(False, True) if key in ("dict.entry_del", "set.slot_del") else []
+                    return [], [{"op": "value", "dict": values[0], "entry": values[1]}] + after + havocs(op)
             effects_now = runtime_effects(key, op["descriptor"])
             lists, dicts, globals_, fields_ = kills(effects_now)
             if (key in FRESH_LIST_WRITES or key in ITEM_WRITES) and effects_now is not None:
                 lists = "U" in effects_now
-            before = kill_nodes(lists, dicts, globals_, fields_)
+            before = access_before + kill_nodes(lists, dicts, globals_, fields_)
             if key in FINDS and op["results"] and isinstance(operand_of(values[0]), str):
                 return before, [{"op": "find", "dst": f"%t{op['results'][0]}", "dict": values[0]}]
             if key in ENTRIES and op["results"] and isinstance(operand_of(values[0]), str):
@@ -1270,7 +1287,25 @@ def normalize_program(snapshot, function, effects_of=None):
 
         def run(chain):
             for node in chain:
-                put(dict(node, next=None))
+                if node["op"] != "optional_value":
+                    put(dict(node, next=None))
+                    continue
+                # dict.val_or_zero does not touch storage for any negative entry. Its
+                # nonnegative path has the ordinary live-entry obligation. This marker is
+                # expanded here; it adds no node or contract to the Lean model.
+                entry = node["entry"]
+                if isinstance(entry, int):
+                    if entry >= 0:
+                        held = f"%access.{len(nodes)}="  # (IR register names contain no '=')
+                        put({"op": "lit", "dst": held, "value": entry, "next": None})
+                        put({"op": "value", "dict": node["dict"], "entry": held, "next": None})
+                    continue
+                branch = put({"op": "test", "cond": {"cmp": "slt", "a": entry, "b": 0},
+                              "yes": None, "no": None}, ())
+                read = put({"op": "value", "dict": node["dict"], "entry": entry, "next": None})
+                join = put({"op": "jump", "next": None})
+                nodes[branch]["yes"] = join
+                nodes[branch]["no"] = read
 
         def raising_point():
             # (from any point of a block a try statement covers, after an operation's effects,
@@ -1512,7 +1547,7 @@ def check_all(snapshot, checker=DEFAULT_CHECKER, verdicts=None):
               **counts}
     return {"status": worst, "checked": counts["unsupported"] + counts["error"] == 0,
             "functions": records, "totals": totals,
-            "scope": "list.load bounds and dict entry reuse in every normalized function of one snapshot",
+            "scope": "list.load bounds and inventoried dict/set entry accesses in every normalized function of one snapshot",
             "limitations": LIMITATIONS}, OUTCOMES[worst]
 
 

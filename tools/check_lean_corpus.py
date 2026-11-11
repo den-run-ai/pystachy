@@ -137,7 +137,8 @@ def select(programs=None):
 def check_program(program, checker, timeout, access_checker=access.DEFAULT_CHECKER, verdicts=None):
     """Inspect one program and check its snapshot. A record: its status, counts and failures.
     verdicts: the access checker's results by function, which programs that share a library
-    function reuse (check_lean_access.check_all)."""
+    function reuse (check_lean_access.check_all). Unprefixed status counters count payload
+    functions; access_<status> counters count access functions. A function can count in both."""
     env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
     env["PYSTACHY_HOME"] = str(ROOT)
     path = located(program)
@@ -173,6 +174,7 @@ def check_program(program, checker, timeout, access_checker=access.DEFAULT_CHECK
     status = max(fields["status"], accesses["status"], key=bridge.SEVERITY.index)
     totals = dict(fields["totals"], **{key: accesses["totals"][key] for key in
                                       ("access_functions", "accesses", "proved_accesses")})
+    totals.update({"access_" + status: accesses["totals"][status] for status in bridge.SEVERITY})
     return dict(record, status=status, snapshot_sha256=digest, totals=totals, failures=failures,
                 seconds={"inspection": round(compiled - started, 2), "lean": round(accessed - compiled, 2),
                          "access": round(time.monotonic() - accessed, 2)})
@@ -208,7 +210,8 @@ def main(argv=None):
     totals = {key: sum(record.get("totals", {}).get(key, 0) for record in records)
               for key in ("functions", "payload_functions", "reads", "proved_reads",
                           "access_functions", "accesses", "proved_accesses",
-                          "accepted", "unsupported", "rejected", "error")}
+                          "accepted", "unsupported", "rejected", "error",
+                          "access_accepted", "access_unsupported", "access_rejected", "access_error")}
     totals["programs"] = len(records)
     totals["failed_programs"] = sum(record["status"] != "accepted" for record in records)
     summary = {"status": worst, "totals": totals, "seconds": round(time.monotonic() - started, 1),
