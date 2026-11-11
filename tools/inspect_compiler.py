@@ -31,6 +31,7 @@ SCHEMA_VERSION = 1
 PASS_RULES = {
     "charslots": "Replace a singly defined private character with its code point when every read compares it to an ASCII literal.",
     "listget": "Replace a checked sequence-loop list read only when its index is in bounds and no intervening effect can shorten the list or run user code.",
+    "listguard": "Copy an innermost range loop whose ops change no list's length, with unchecked item reads and assignments of lists it does not rebind at the index plus a constant, and run the copy only where tests of the lists' lengths before the loop prove every such index in bounds.",
     "dictfuse": "Reuse a known dictionary entry only while control flow, key equality and intervening effects preserve the lookup; mutation or user callbacks can invalidate it.",
     "unionslots": "Split eligible local union slots into tag/payload storage and reconstruct boxes at uses that require them.",
     "nullcheck": "Remove redundant null checks only where the existing control-flow proof establishes a non-null value.",
@@ -146,6 +147,10 @@ class Observer:
         self.gen = None
         self.restores: list[tuple] = []
         self.source_reads: list[dict] = []
+        # Hosted-only observations, keyed by the actual instruction object. A dry
+        # run or a discarded/retried function can reuse its temporary names; those
+        # instructions must not annotate the replacement function's values.
+        self.representation_origins: dict[object, dict] = {}
 
     def selected(self, fn) -> bool:
         return not self.function or self.function in fn.f.ll or self.function in self.diagnostics.shown(fn.f.name)
@@ -170,6 +175,7 @@ class Observer:
             "parameters": [{"name": name, "type": self.typestr(t), "representation": t}
                            for name, t in zip(f.params, f.ptypes, strict=True)],
             "return_type": self.typestr(f.ret), "return_representation": f.ret,
+            "representation_metadata": self.representation_metadata(fn),
             "specialization": {"instantiated": f.inst, "generic": f.generic},
             "effects": self.fxs(fn.fx), "effects_scope": "last compiler analysis; may be conservative after rewrites",
             "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "landed": fn.landed, "gdepth": fn.gdepth,
@@ -184,6 +190,115 @@ class Observer:
                        "step": lp.step, "exit": lp.exit, "tests": list(lp.tests), "indices": list(lp.idx)}
                       for lp in fn.loops],
         }
+
+    @staticmethod
+    def representation_signature(ins) -> tuple:
+        """Invalidate an observed origin if a subsequent pass rewrites its producer."""
+        return (ins.op, ins.t, ins.s, ins.k, ins.x, tuple(ins.r),
+                tuple((a.v, a.t) for a in ins.a))
+
+    def record_representation(self, gen, value, representation: str, origin: str,
+                              producer_ops=("slot.unpack", "rt", "invoke")) -> None:
+        from src.pystachy_compiler.ir import tmpname
+        from src.pystachy_compiler.utils import is_tuple, unopt
+        if not is_tuple(unopt(representation)) or not value.v.startswith("%t"):
+            return
+        for block in reversed(gen.fn.blocks):
+            for ins in reversed(block.code):
+                if ins.r and value.v == tmpname(ins.r[-1]):
+                    # Default hooks describe values just read from container storage.
+                    # search_hold alone permits a newly created phi, whose read
+                    # contract still needs proof for each incoming value.
+                    if ins.op not in producer_ops:
+                        return
+                    entry = {"value": value.v, "representation": representation,
+                             "origin": origin, "definition_type": ins.t,
+                             "signature": self.representation_signature(ins)}
+                    previous = self.representation_origins.get(ins)
+                    if previous is not None and previous["representation"] != representation:
+                        raise ValueError("conflicting observed container representations")
+                    self.representation_origins[ins] = entry
+                    return
+
+    def held_representation_wrapper(self, name: str):
+        def decorate(original):
+            def wrapped(gen, value, *args, **kwargs):
+                from src.pystachy_compiler.bigints import held
+                from src.pystachy_compiler.utils import is_opt, targs, unopt
+                if name == "held_pair":
+                    representation = "tuple[" + ",".join(held(t) for t in targs(value.t)) + "]"
+                elif name == "held_read" and is_opt(value.t):
+                    representation = "opt[" + held(unopt(value.t)) + "]"
+                else:
+                    representation = held(value.t)
+                self.record_representation(gen, value, representation, name)
+                return original(gen, value, *args, **kwargs)
+            return wrapped
+        return decorate
+
+    def big_popitem_wrapper(self, original):
+        def wrapped(gen, *args, **kwargs):
+            value = original(gen, *args, **kwargs)
+            self.record_representation(gen, value, value.t, "big_popitem")
+            return value
+        return wrapped
+
+    def search_hold_wrapper(self, original):
+        def wrapped(gen, value, element_type, container_type):
+            from src.pystachy_compiler.bigints import search_type
+            function, before = gen.fn, gen.n
+            result = original(gen, value, element_type, container_type)
+            representation = search_type(container_type, element_type)
+            # search_hold's optional phi has a declared fixed-width type, but its
+            # nonnull arm has just built a held-layout view. This is a phi contract
+            # to prove on every incoming edge, not a fact about an arbitrary input
+            # that the helper happened to return unchanged.
+            if representation != element_type and gen.fn is function and result.v != value.v and \
+                    result.v.startswith("%t") and result.v[2:].isdigit() and int(result.v[2:]) > before:
+                self.record_representation(gen, result, representation, "search_hold", ("phi",))
+            return result
+        return wrapped
+
+    def representation_metadata(self, fn) -> dict:
+        """Export definition contracts separately from each operand's typed view.
+
+        A promoting tuple view may alias a shorter plain tuple whose items are not
+        the marker. These are read representations, not claims that all trailing
+        slots exist. A checker must prove every view conversion and marker guard.
+        """
+        from src.pystachy_compiler.diagnostics import int_lists
+        from src.pystachy_compiler.ir import tmpname
+        from src.pystachy_compiler.utils import is_tuple, unopt
+        sources = {}
+        # All emitted tuple constants matter, not only source tuple displays in
+        # tconstdata. Builtin constants are Data("tuple") records too; their
+        # native item values are precisely what lower_data emits as slots.
+        constants = {data.name: data for data in self.gen.consts if data.kind == "tuple"} if self.gen is not None else {}
+        for index, representation in enumerate(fn.f.ptypes):
+            if is_tuple(unopt(representation)):
+                value = f"%a{index}"
+                sources[value] = {"value": value, "representation": representation, "origin": "parameter"}
+        operations = fn.slots + [ins for block in fn.blocks for ins in block.code]
+        for ins in operations:
+            if ins.r and is_tuple(unopt(ins.t)):
+                value = f"%stk.{ins.r[0]}" if ins.op == "slot" and ins.k == 2 else tmpname(ins.r[-1])
+                # A normal slot is an address, not the tuple held in that address.
+                if ins.op != "slot" or ins.k == 2:
+                    sources[value] = {"value": value, "representation": ins.t,
+                                      "origin": "allocation" if ins.op == "alloc.fixed" or ins.op == "slot" else "definition",
+                                      "definition_type": ins.t}
+            observed = self.representation_origins.get(ins)
+            if observed is not None and observed["signature"] == self.representation_signature(ins):
+                sources[observed["value"]] = {key: value for key, value in observed.items() if key != "signature"}
+            for operand in ins.a:
+                constant = constants.get(operand.v)
+                if constant is not None:
+                    representation = constant.text or "tuple[" + ",".join(item.t for item in constant.items) + "]"
+                    sources[operand.v] = {"value": operand.v, "representation": representation, "origin": "constant",
+                                          "items": [{"value": item.v, "representation": item.t} for item in constant.items]}
+        return {"version": 1, "int_containers": int_lists(),
+                "scope": "definition and container-read representations; not physical allocation extents",
+                "sources": [sources[value] for value in sorted(sources)]}
 
     @staticmethod
     def counts(snapshot: dict) -> dict:
@@ -520,6 +635,10 @@ class Observer:
         self.wrap(Parser, "module", self.phase_wrapper("parse"))
         self.wrap(Gen, "program", self.program_wrapper)
         self.wrap(Gen, "identity_modules", self.identity_wrapper)
+        for name in ("held_value", "held_read", "held_pair"):
+            self.wrap(Gen, name, self.held_representation_wrapper(name))
+        self.wrap(Gen, "big_popitem", self.big_popitem_wrapper)
+        self.wrap(Gen, "search_hold", self.search_hold_wrapper)
         self.wrap(Gen, "effects", self.effects_wrapper)
         self.wrap(Gen, "verify", self.verify_wrapper)
         for contract in PASS_CONTRACTS:
