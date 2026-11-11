@@ -124,15 +124,16 @@ with several predecessors is reached through a jump of its own from each.
 
 ## Coverage of compiled code
 
-The historical sweep recorded on 2026-11-11 at
-[`12cca46d`](https://github.com/den-run-ai/pystachy/commit/12cca46dcffd8ee9290d9cf362ba3f4bafb34511)
-compiled every differential test program and deviation of that revision with the hosted
-compiler: 2,407 programs; 1,174 of them have unchecked accesses, 84,731 in 16,062
-functions. Lean accepted every function but one, proving 84,730 accesses. These historical
-adapter counts predate the merge of released alpha.4 main, the negated-guard fix and the
-direct-entry coverage corrections. Selected-corpus qualification after these corrections is
-recorded separately in [#1241](https://github.com/den-run-ai/pystachy/pull/1241); the broader
-sweep has not been rerun. The exception in the historical sweep is
+A sweep on 2026-11-11 at
+[`06f65d73`](https://github.com/den-run-ai/pystachy/commit/06f65d731f8c999c5a88490de6930550fa89f930),
+with the negated-guard fix, the direct-entry coverage corrections and `listguard`, compiled
+every differential test program and deviation of that revision with the hosted compiler: 2,415
+programs; 1,180 of them have unchecked accesses, 85,989 in 16,134 functions. Lean accepted every
+function but one, proving 85,988 accesses. The earlier sweep at
+[`12cca46d`](https://github.com/den-run-ai/pystachy/commit/12cca46dcffd8ee9290d9cf362ba3f4bafb34511),
+before those corrections, proved 84,730 of 84,731 accesses in 2,407 programs; selected-corpus
+qualification after the corrections is recorded in
+[#1241](https://github.com/den-run-ai/pystachy/pull/1241). The exception in both sweeps is
 `fib_memo`'s `fib` in [`closures.py`](../../tests/programs/language/closures.py): it loads its
 captured dict from the closure's cell for `k in memo` and again for `memo[k]`, and the adapter
 does not track cells, so it cannot tell that the second load gives the dict whose entry the
