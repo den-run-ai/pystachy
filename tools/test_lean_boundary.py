@@ -893,5 +893,37 @@ class WholeSnapshotTests(SnapshotFixture):
         self.assertFalse(target.exists())
 
 
+class SnapshotHeaderTests(unittest.TestCase):
+    """--all reads a snapshot's header before its functions: a snapshot with no payload read
+    passes only as a completed typed-after snapshot of this schema."""
+
+    @staticmethod
+    def run_all(snapshot):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "typed-after.json"
+            path.write_text(json.dumps(snapshot))
+            completed = subprocess.run([sys.executable, str(TOOL), "--snapshot", str(path), "--all"],
+                                       capture_output=True, text=True, timeout=30)
+        return completed.returncode, json.loads(completed.stdout)
+
+    def test_only_a_completed_typed_after_snapshot_passes_without_reads(self):
+        header = {"schema_version": 1, "stage": "typed-after", "status": "completed", "functions": []}
+        for change, status, code in (({}, "accepted", 0), ({"status": "partial"}, "unsupported", 2),
+                                     ({"status": "failed"}, "unsupported", 2),
+                                     ({"stage": "typed-before"}, "unsupported", 2),
+                                     ({"schema_version": 2}, "error", 3), ({"schema_version": True}, "error", 3)):
+            with self.subTest(change=change):
+                result, report = self.run_all({**header, **change})
+                self.assertEqual((result, report["status"], report["checked"]), (code, status, code == 0), report)
+                if code == 0:
+                    self.assertEqual(report["totals"]["payload_functions"], 0)
+
+    def test_check_all_reads_the_header_first(self):
+        header = {"schema_version": 1, "stage": "typed-after", "status": "completed", "functions": []}
+        for change, error in (({"status": "partial"}, Unsupported), ({"schema_version": 2}, ValueError)):
+            with self.subTest(change=change), self.assertRaises(error):
+                check_all({**header, **change})
+
+
 if __name__ == "__main__":
     unittest.main()

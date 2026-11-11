@@ -78,7 +78,8 @@ provides no evidence about a dynamic crossing.
 reports each one's result, read count and candidate hash. Its status and exit
 code are the worst function's: an error, then a rejection, then an unsupported
 form. A read in a block that nothing reaches cannot run; it counts as proved
-with its function.
+with its function. The snapshot must be a completed typed-after inspection even
+when no function reads a payload.
 
 `tools/check_lean_corpus.py`, which `make check-lean-corpus` runs after building
 the checker, does that for the dynamic-`Any` corpus: each differential test
