@@ -81,9 +81,9 @@ class AdapterTests(SnapshotFixture):
             self.assertEqual(candidate["certificate"][0], [])
         self.assertEqual(self.snapshot, original)
         self.assertEqual({symbol: count for symbol, count in counts.items() if not symbol.startswith("@m._")},
-                         {"@f.item": 1, "@f.last": 1, "@f.pair": 2, "@f.ends": 2, "@f.total": 1,
-                          "@f.odd_lengths": 1, "@f.ranked": 1, "@f.counted": 3, "@f.global_lookup": 1,
-                          "@m.Cache.lookup": 1})
+                         {"@f.item": 1, "@f.last": 1, "@f.pair": 2, "@f.ends": 2, "@f.tail3": 4,
+                          "@f.class_lookup": 2, "@f.total": 1, "@f.odd_lengths": 1, "@f.ranked": 1,
+                          "@f.counted": 3, "@f.global_lookup": 1, "@m.Cache.lookup": 1})
 
     def test_selection_and_snapshot_header_are_checked(self):
         with self.assertRaisesRegex(ValueError, "exactly one function"):
@@ -139,8 +139,8 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_every_access_of_the_example_is_proved(self):
         fields, code = check_all(self.snapshot, CHECKER)
         self.assertEqual((fields["status"], code), ("accepted", 0), fields)
-        self.assertEqual(fields["totals"]["proved_accesses"], 14)
-        self.assertEqual(fields["totals"]["accesses"], 14)
+        self.assertEqual(fields["totals"]["proved_accesses"], 20)
+        self.assertEqual(fields["totals"]["accesses"], 20)
 
     def test_identical_functions_reuse_their_verdicts(self):
         # (a corpus's programs share library functions: their normalized nodes and the checker,
@@ -236,7 +236,7 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_a_lookup_or_minus_one_through_a_phi_keeps_its_entry(self):
         # (e = -1 if not d else lookup(d, k), as dynamic Any's int-key lookups compile: the phi
         # holds -1 or the lookup's entry, still live where nothing runs between them)
-        def through_phi(between=(), other="-1"):
+        def through_phi(between=(), other="-1", typ="int"):
             snapshot, function = self.selected("@f.counted")
             entry = function["blocks"][0]
             at = next(index for index, operation in enumerate(entry["operations"])
@@ -248,7 +248,7 @@ class ProvedCheckerTests(SnapshotFixture):
                 op("mach.load", [(table, "%ptr")], [900], typ="int"),
                 op("num.cmp", [("%t900", "int"), ("0", "int")], [901], text="==", typ="bool"),
                 op("cbr", [("%t901", "bool")], targets=["Lphi", "Llook"])]
-            phi = op("phi", [(other, "int"), (found, "int")], [902], typ="int", targets=[entry["label"], "Llook"])
+            phi = op("phi", [(other, typ), (found, typ)], [902], typ=typ, targets=[entry["label"], "Llook"])
             for operation in rest + [operation for block in function["blocks"][1:]
                                      for operation in block["operations"]]:
                 for operand in operation["operands"]:
@@ -261,8 +261,30 @@ class ProvedCheckerTests(SnapshotFixture):
 
         accepted, table = through_phi()
         self.assertTrue(accepted)
+        self.assertTrue(through_phi(typ="%slot")[0])  # (as promoting-int lookups type it)
         self.assertFalse(through_phi(between=[op("rt", [(table, "dict[str,int]")], text="dict.clear")])[0])
         self.assertFalse(through_phi(other="0")[0])
+
+    def test_a_starred_tail_read_stays_below_the_length_but_one_further_does_not(self):
+        # (a, *m, c, d, e = xs reads len - 3 + 2: an exact offset of a length, which cannot wrap)
+        self.assertTrue(self.verdict(self.snapshot, "@f.tail3"))
+        snapshot, function = self.selected("@f.tail3")
+        add = next(operation for block in function["blocks"] for operation in block["operations"]
+                   if operation["op"] == "scalar.bin" and operation["text"] == "add"
+                   and operation["operands"][1]["value"] == "2")
+        add["operands"][1]["value"] = "3"  # (len - 3 + 3 is the length itself)
+        self.assertFalse(self.verdict(snapshot, "@f.tail3"))
+
+    def test_a_class_variable_reload_keeps_its_entry_unless_it_is_stored_between(self):
+        self.assertTrue(self.verdict(self.snapshot, "@f.class_lookup"))
+        snapshot, function = self.selected("@f.class_lookup")
+        block, _ = self.find(function, "rt", "dict.val")
+        reload = next(index for index, operation in enumerate(block["operations"])
+                      if operation["op"] == "mach.load" and operation["operands"][0]["value"].startswith("@"))
+        table = block["operations"][reload]["operands"][0]["value"]
+        # (Registry.names = <another value> before the reload: the entry belongs to the old dict)
+        block["operations"].insert(reload, op("mach.store", [(table, "%ptr"), ("%a0", "str")]))
+        self.assertFalse(self.verdict(snapshot, "@f.class_lookup"))
 
     def test_another_field_of_the_class_keeps_the_dict_but_an_aliasing_view_does_not(self):
         self.assertTrue(self.verdict(self.snapshot, "@m.Cache.lookup"))
@@ -318,7 +340,7 @@ class ProvedCheckerTests(SnapshotFixture):
         code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.total")
         self.assertEqual((code, report["status"], report["checked"]), (0, "accepted", True))
         code, report = run("--snapshot", str(self.snapshot_path), "--all")
-        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 14))
+        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 20))
         with tempfile.TemporaryDirectory() as temporary:
             emitted = Path(temporary) / "candidate.json"
             code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.item", "--emit", str(emitted))

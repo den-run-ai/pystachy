@@ -188,12 +188,16 @@ def survives : Node → Fact → Bool
 
 /-- Facts that show `src + k` fits in 64 bits. -/
 def noWrap (facts : Facts) (src : Name) (k : Int) : Bool :=
-  (decide (k ≤ 0) && facts.any fun f => match f with
+  ((decide (k ≤ 0) && facts.any fun f => match f with
     | .ge a g => a == src && decide (minI64 ≤ g + k)
     | _ => false) ||
   (decide (0 ≤ k) && decide (k ≤ 1) && facts.any fun f => match f with
     | .below a _ => a == src
     | .found a _ => a == src
+    | _ => false)) ||
+  -- (src = b + c exactly, so src + k ≤ b where c + k ≤ 0: `n - 3 + 2` of a length)
+  (decide (0 ≤ k) && facts.any fun f => match f with
+    | .off a _ c => a == src && decide (c + k ≤ 0)
     | _ => false)
 
 /-- What a branch learns from its outcome. -/
@@ -540,7 +544,7 @@ theorem noWrap_sound {m : Mem} {facts : Facts} {src : Name} {k : Int} (wf : WF m
   unfold noWrap at fits
   simp only [Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq, List.any_eq_true] at fits
   unfold I64 minI64 maxI64
-  rcases fits with ⟨k0, f, member, isBound⟩ | ⟨⟨k0, k1⟩, f, member, isBound⟩
+  rcases fits with (⟨k0, f, member, isBound⟩ | ⟨⟨k0, k1⟩, f, member, isBound⟩) | ⟨k0, f, member, isBound⟩
   · have holds := known f member
     cases f with
     | ge a g =>
@@ -568,6 +572,16 @@ theorem noWrap_sound {m : Mem} {facts : Facts} {src : Name} {k : Int} (wf : WF m
         · have := wf.2.2.1 _ _ h
           unfold entryBound at this
           omega
+    | _ => simp at isBound
+  · have holds := known f member
+    cases f with
+    | off a b c =>
+        simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at isBound
+        obtain ⟨rfl, small⟩ := isBound
+        simp only [Fact.Holds] at holds
+        have := wf.1 b
+        unfold I64 minI64 maxI64 at this
+        omega
     | _ => simp at isBound
 
 theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
@@ -1261,6 +1275,22 @@ def starredLast : Program := ⟨[
 
 example : check starredLast [[], [.len "n" "xs"], [.len "n" "xs", .ge "n" 2],
     [.len "n" "xs", .ge "n" 2, .off "end" "n" (-1), .below "end" "n"], [], []] = true := by decide
+
+/-- `a, *b, c, d, e = xs`'s last item: `t = n - 3`, then `t + 2`, an exact offset of the
+length that cannot wrap, as `2 + -3 ≤ 0`. -/
+def tailRead (k : Int) : Program :=
+  ⟨[.length "n" "xs" 1, .test (.sle (.lit 3) (.reg "n")) 2 6, .add "t" "n" (-3) 3,
+    .add "i" "t" k 4, .load "xs" (.reg "i") 5, .stop, .stop], 0⟩
+
+def tailCertificate (k : Int) : Certificate :=
+  [[], [.len "n" "xs"], [.len "n" "xs", .ge "n" 3], [.len "n" "xs", .ge "n" 3, .off "t" "n" (-3)],
+    [.len "n" "xs", .ge "n" 3, .off "t" "n" (-3), .off "i" "t" k, .off "i" "n" (k - 3), .ge "n" 1,
+     .below "i" "n"], [], []]
+
+example : check (tailRead 2) (tailCertificate 2) = true := by decide
+/- `t + 3` is the length itself, past the last item; `t + 4` might wrap, so no offset follows. -/
+example : check (tailRead 3) (tailCertificate 3) = false := by decide
+example : check (tailRead 4) (tailCertificate 4) = false := by decide
 
 /-- `xs[-1]`'s inline path tests `-1 <u len`, which no length passes: its read cannot run. -/
 def deadNegative : Program := ⟨[

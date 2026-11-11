@@ -45,6 +45,23 @@ def ends(xs: list[int]) -> int:
     return a + c + len(middle)
 
 
+def tail3(xs: list[int]) -> int:
+    # starred unpacking's last items: len - 3, then + 1 and + 2, none past the length
+    a, *middle, c, d, e = xs
+    return a + c + d + e + len(middle)
+
+
+class Registry:
+    names: dict[str, int] = {"r": 7}
+
+
+def class_lookup(key: str) -> int:
+    # dictfuse of a class variable, which machine loads read, reloaded where nothing writes it
+    if key in Registry.names:
+        Registry.names[key] += 1
+    return Registry.names.get(key, 0)
+
+
 def total(xs: list[int]) -> int:
     # listget: a sequence loop reads each item behind its test of the current length
     t = 0
@@ -92,6 +109,7 @@ def every_other(xs: list[str]) -> Iterator[str]:
 def main() -> None:
     cache = Cache()
     print(item([1, 2, 3], 1), last([4, 5]), pair([4, 5]), ends([1, 2, 3, 4]), total([1, 2, 3]))
+    print(tail3([1, 2, 3, 4, 5]), class_lookup("r"), class_lookup("q"))
     print(odd_lengths(["a", "bb", "c", "ddd"]), ranked(["ccc", "a", "bb"]))
     print(counted({"k": 1}, "k"), global_lookup("b"), cache.lookup("x"), cache.lookup("y"), cache.hits)
     print(list(every_other(["a", "b", "c"])))

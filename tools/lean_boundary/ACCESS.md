@@ -50,29 +50,31 @@ field's value, and a fact that marks a point no execution reaches. The certifica
 untrusted list of facts at each point. Each fact must survive the node before it or follow from
 the facts there, and from the facts listed before it, by one of fixed rules, each proved sound:
 for example, an unsigned `i < n` of a nonnegative `n` gives `0 ≤ i < n`, and `-1 <u n` cannot
-hold for one. A checked addition gives an offset only on the path where its sum fits; a
-wrapping one only where the facts show it fits. A write to a field of a class keeps the
+hold for one. A checked addition gives an offset only on the path where its sum fits; a wrapping
+one only where the facts show it fits, as for a constant added to an exact offset of a value
+that brings it no higher than that value (`n - 3 + 2`). A write to a field of a class keeps the
 values of the class's other fields, of any object, and no other field's: a base and a derived
 class may view one object differently.
 
-The build checks 33 examples by kernel reduction: 11 shapes the compiler emits and 22
-corruptions that must fail: a signed test of a possibly negative index, a list write between
-a test and its read or in a range loop's body, a missing or weaker unpacking check, a lookup's
-missing-key branch or an iteration's end, a dict write before an entry's reuse, an entry of one dict used with another, a reload across a write
-of another class's field or of the same field of any object, an unguarded join and facts
-assumed at entry or around a loop. `Audit.lean` checks the theorem's axioms as for the payload
-checker.
+The build checks 36 examples by kernel reduction: 12 shapes the compiler emits and 24
+corruptions that must fail: a signed test of a possibly negative index, a list write between a
+test and its read or in a range loop's body, a missing or weaker unpacking check, a starred
+tail's read at the length or past an offset that may wrap, a lookup's missing-key branch or an
+iteration's end, a dict write before an entry's reuse, an entry of one dict used with another, a
+reload across a write of another class's field or of the same field of any object, an unguarded
+join and facts assumed at entry or around a loop. `Audit.lean` checks the theorem's axioms as
+for the payload checker.
 
 ## How IR reaches the model
 
 The adapter reads the typed-after snapshot and emits a node for each operation:
 
-- Private slots and module globals that the function only loads and stores directly are values;
-  a load copies one and a store assigns it. A global may change wherever an operation may write
-  globals. An object field's load and store read and write its cell, named by the object's
-  register and the field's class and index; a store of a constant or an unknown value writes
-  that field alone too. A field address's operands, like a test's, are SSA values, unchanged
-  wherever its result is used.
+- Private slots, and module globals and class variables that the function only loads and stores
+  directly, are values; a load copies one and a store assigns it. A global may change wherever
+  an operation may write globals. An object field's load and store read and write its cell,
+  named by the object's register and the field's class and index; a store of a constant or an
+  unknown value writes that field alone too. A field address's operands, like a test's, are SSA
+  values, unchanged wherever its result is used.
 - `list.len`, and a word load at the address of a register the IR types as a native list (a
   `List` is `{len, cap, a}`), read a length. `num.cmp` and `int.ucmp` of ints, and `ptr.cmp`,
   become tests of their branch or `check`. `scalar.bin` adds a constant; an `ovf` whose flag

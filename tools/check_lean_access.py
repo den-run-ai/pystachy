@@ -174,9 +174,13 @@ def survives(node, fact):
 
 
 def no_wrap(facts, src, k):
+    """PystachyAccess.noWrap: src + k fits."""
     if k <= 0 and any(f[0] == "ge" and f[1] == src and MIN_I64 <= f[2] + k for f in facts):
         return True
-    return 0 <= k <= 1 and any(f[0] in ("below", "found") and f[1] == src for f in facts)
+    if 0 <= k <= 1 and any(f[0] in ("below", "found") and f[1] == src for f in facts):
+        return True
+    # (src = b + c exactly, so src + k <= b where c + k <= 0)
+    return 0 <= k and any(f[0] == "off" and f[1] == src and f[3] + k <= 0 for f in facts)
 
 
 def cond_facts(cond, outcome):
@@ -556,6 +560,8 @@ def generation_premises(facts, node, fact):
                 return [f]
             if 0 <= k <= 1 and f[0] in ("below", "found") and f[1] == src:
                 return [f]
+            if 0 <= k and f[0] == "off" and f[1] == src and f[3] + k <= 0:
+                return [f]
     return []
 
 
@@ -898,12 +904,19 @@ def normalize_program(snapshot, function, effects_of=None):
                 and len(op["operands"]) == 1 and op["operands"][0]["value"].startswith("%")}
     # A module global that the function only loads and stores directly holds the value last
     # stored there, until an operation that may write globals runs.
+    # (A class variable is such a global, which machine loads and stores of the whole word at
+    # its address read and write, as the compiler's effects (rG, wG) treat them.)
+    def direct(op):
+        return op["op"] in ("mem.load", "mem.store") or (
+            op["op"] in ("mach.load", "mach.store") and op["text"] == ""
+            and len(op["operands"]) == (1 if op["op"] == "mach.load" else 2))
+
     addressed, other_uses = set(), set()
     for block in live_blocks:
         for op in block["operations"]:
             for position, operand in enumerate(op["operands"]):
                 if operand["value"].startswith("@"):
-                    if position == 0 and op["op"] in ("mem.load", "mem.store"):
+                    if position == 0 and direct(op):
                         addressed.add(operand["value"])
                     else:
                         other_uses.add(operand["value"])
@@ -988,10 +1001,10 @@ def normalize_program(snapshot, function, effects_of=None):
         kind, operands = op["op"], op["operands"]
         values = [operand["value"] for operand in operands]
         if kind in ("mem.load", "mach.load") and values and (
-                values[0] in private or (kind == "mem.load" and values[0] in tracked_globals)) and op["results"]:
+                values[0] in private or (direct(op) and values[0] in tracked_globals)) and op["results"]:
             return [], [{"op": "copy", "dst": f"%t{op['results'][0]}", "src": values[0]}]
         if kind in ("mem.store", "mach.store") and len(values) == 2 and (
-                values[0] in private or (kind == "mem.store" and values[0] in tracked_globals)):
+                values[0] in private or (direct(op) and values[0] in tracked_globals)):
             return [], store(values[0], values[1])
         if kind == "mem.load" and values and values[0] in field_of and op["results"]:
             obj, cls, index = field_of[values[0]]
@@ -1081,7 +1094,7 @@ def normalize_program(snapshot, function, effects_of=None):
         # each lookup and the phi: the lookup is its block's last operation before a jump here,
         # or an invoke whose normal edge is a block, reached only from it, of only that jump.
         # The dict, or None.
-        if (len(op["results"]) != 1 or op["type"] != "int" or not op["operands"]
+        if (len(op["results"]) != 1 or op["type"] not in ("int", "%slot") or not op["operands"]
                 or len(op["operands"]) != len(op["targets"])):
             return None
         table = None
