@@ -9,7 +9,7 @@ closures and class fields are described in [typing](typing.md); imports and buil
 | Category | Supported statements |
 |---|---|
 | Assignment | Simple, chained, annotated and augmented assignment; tuple/list unpacking, with one starred target or none, and swaps |
-| Control flow | `if` / `elif` / `else`, `while`, `for`, loop `else`, `break`, `continue`, `return` |
+| Control flow | `if` / `elif` / `else`, bounded `match`, `while`, `for`, loop `else`, `break`, `continue`, `return` |
 | Scope and definitions | `global`, `nonlocal`, `def`, nested function definitions, lambdas, supported class definitions |
 | Runtime checks | `assert`, `raise`, `try` / `except` / `else` / `finally` |
 | Resources | `with` over files and [context managers](#context-managers) of the program's classes, several items, with or without parentheses |
@@ -35,6 +35,41 @@ item of each in turn and stops at the first exhausted one.
 
 Restrictions on iterator options, snapshots and mutation are listed in
 [compatibility](compatibility.md).
+
+### Structural patterns
+
+`match` supports literal values (`None`, booleans, integers, floats, strings and bytes),
+wildcards, captures, `as`, alternatives (`|`), guards, fixed tuple patterns and plain fields
+of statically known dataclasses. The subject is evaluated once. Cases and alternatives run
+in source order. Captured values are staged until the whole pattern succeeds, then bound
+before its guard runs. A failed later subpattern leaves existing user bindings unchanged;
+a successful pattern followed by a false guard keeps its captures. A capture that never
+executes retains ordinary unbound-local behavior. Closures capture these variables as
+they do assignments.
+
+```python
+def classify(point: tuple[int, int]) -> str:
+    match point:
+        case (0, y) if y > 0:
+            return "positive axis"
+        case (x, y):
+            return str(x + y)
+```
+
+Tuple lengths and known subject types select branches during compilation. Dataclass
+positional fields follow generated `__match_args__`, including `init=False`, `kw_only`
+and `match_args=False`; keywords can select initialized plain fields. Field values are
+obtained before their subpatterns run, so an equality callback cannot change a later
+field's already selected value. Captures retain their concrete storage; the lowering
+uses ordinary assignments and branches, without a runtime pattern matcher.
+
+Mapping patterns, starred sequence patterns, list or other general sequence subjects,
+complex literals, arbitrary class patterns, dataclass hierarchies, custom `__match_args__`
+and attribute hooks remain unsupported. Dataclass patterns require a concrete subject
+type; dynamic `Any` and union subjects are rejected rather than treated as mismatches.
+Literal and capture patterns can still consume dynamic `Any`. Boolean singleton patterns require concrete
+`bool` or dynamic `Any` when the subject could hold more than one scalar type. Existing
+equality and inference restrictions apply to value patterns and capture joins.
 
 ## Literals and formatting
 
