@@ -1,0 +1,57 @@
+== True True False False
+< True False True True
+<= True True False
+> True False True True False
+subset True True True True
+values True False True True
+in True False True True False False
+optional False True
+optional True False
+tuples True True True True
+field True True True
+display True
+  hash 1
+  hash 2
+  hash 2
+  hash 1
+  hash 1
+  hash 2
+  hash 7
+  eq 1 7
+objects in
+  hash 2
+  eq 2 2
+True
+objects items in
+  hash 2
+  eq 2 2
+True
+objects ==
+  hash 1
+  eq 1 1
+  hash 2
+  eq 2 2
+True
+objects items ==
+  hash 1
+  eq 1 1
+  hash 2
+  eq 2 2
+True
+objects <
+  hash 1
+  eq 1 1
+  hash 2
+  eq 2 2
+True
+size change
+  hash 7
+  hash 1
+  eq 7 1
+  hash 2
+  hash 1
+  eq 7 1
+  eq 1 1
+RuntimeError: dictionary changed size during iteration
+lookups 3000 3000
+[exit 0]
