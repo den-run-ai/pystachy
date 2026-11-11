@@ -448,6 +448,10 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_access.py
+	$(PY) -m unittest discover -s tools -p test_lean_int.py
+	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
@@ -458,14 +462,35 @@ check-fast: lint-python typecheck check-repository
 check-lean-boundary:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_access.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_int.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 
 # Every dyn.payload read of the dynamic-Any test programs, each compiled by the hosted
-# compiler, proved guarded by the Lean checker (tools/lean_boundary/README.md).
+# compiler, proved guarded by the Lean checker (tools/lean_boundary/README.md), and every
+# unchecked list read and dict entry proved in bounds and live (tools/lean_boundary/ACCESS.md).
 LEAN_CORPUS_FLAGS ?=
 check-lean-corpus:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_corpus.py
 	$(PY) tools/check_lean_corpus.py $(LEAN_CORPUS_FLAGS)
+
+# Every promoting-int fit claim (a null digit pointer selected after pys_big_op) of the test
+# programs that opt in to promoting ints, proved by the Lean checker (tools/lean_boundary/INT.md).
+LEAN_INT_FLAGS ?=
+check-lean-int:
+	cd tools/lean_boundary && lake build
+	$(PY) tools/check_lean_int.py --corpus $(LEAN_INT_FLAGS)
+
+# Low words, tuple digit slots and representation crossings, including imported int mode.
+LEAN_STORAGE_FLAGS ?=
+check-lean-storage:
+	cd tools/lean_boundary && lake build
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) tools/check_lean_storage_corpus.py $(LEAN_STORAGE_FLAGS)
+
+.PHONY: check-lean-storage
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
@@ -495,4 +520,4 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary check-lean-corpus lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary check-lean-corpus check-lean-int lint clean install uninstall test-install
