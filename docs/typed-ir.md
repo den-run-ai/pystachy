@@ -208,7 +208,7 @@ The exact operation table is `IROPS`; its current groups are:
 | Ordinary control flow | `br`, `cbr`, `switch`, `ret`, `ret.none`, `unreachable` |
 | Value joins and checked arithmetic | `phi`, `select`, `ovf` |
 | Guards and errors | `check`, `raise` |
-| Optimized list reads | `list.len`, `list.load` |
+| Optimized list reads and stores | `list.len`, `list.load`, `list.store` |
 | Exception handling | `landing`, `throw`, `exc.match` |
 | Generators (LLVM coroutines) | `gen.start`, `gen.yield`, `gen.ret`, `gen.promise`, `gen.resume`, `gen.drop` |
 
@@ -452,7 +452,10 @@ receiver, native integer index and encoded result `*element`. The identity adapt
 returns `dyn` and requires the receiver's numeric identity kind. Decoding the
 packed slot and reading a promoting integer's companion remain separate operations;
 the encoded result is not an address or an unpacked Python value. Union payload
-provenance continues to use the receiver definition's element type.
+provenance continues to use the receiver definition's element type. `list.store`, which only
+`listguard` emits, writes an encoded `*element` item of a concrete list receiver at a native
+integer index proved within the length; the verifier rejects it in a program whose lists may
+hold numeric identities, which an inline store would not update.
 
 `Gen.list_len` preserves the measured list as the operand of `list.len` for source
 `len`, sequence-loop bounds and unpacking. The value index records this operation
@@ -490,8 +493,8 @@ and focused alias, mutation and GC tests cover the exposed dynamic mutation path
 
 ## Optimizations
 
-`OPTS` lists the available switches. `charslots`, `listget`, `dictfuse`, `unionslots` and `nullcheck`
-are whole-function IR passes. `callbacks` versions eligible functions after
+`OPTS` lists the available switches. `charslots`, `listget`, `listguard`, `dictfuse`, `unionslots` and
+`nullcheck` are whole-function IR passes. `callbacks` versions eligible functions after
 ordinary compilation and before effect summaries and recursion accounting;
 the remaining options select frontend or lowering choices.
 
@@ -526,6 +529,7 @@ rerun `Gen.effects`; exact effect reporting already does so after a rewrite.
 |---|---|---|
 | `charslots` | Use counts, private slot accesses and predecessor reachability | Slot layout and instruction-derived proofs |
 | `listget` | Predecessors, loop bounds, values and invariant slots | Instruction-derived value, range and alias proofs |
+| `listguard` | Predecessors, loop bounds, values and invariant slots | CFG, loop shape and instruction-derived value, range and alias proofs |
 | `dictfuse` | Predecessors, values and lookup proofs | Instruction-derived value, range and alias proofs |
 | `unionslots` | Values, uses, aliases and reaching stores | Read-effect bounds, slot layout and instruction-derived proofs |
 | `nullcheck` | Predecessors, dominators, values and reaching stores | CFG, dominance and instruction-derived proofs |
@@ -538,6 +542,7 @@ before the next pass. Normal compilation does not add these verification scans.
 |---|---|
 | `charslots` | For a private local assigned once in the IR from a string index, keep the indexed code point if the store dominates every read and each read only compares it to a one-byte ASCII string literal. Indexing and its exceptions stay at the assignment. |
 | `listget` | Replace a list read in a sequence loop or an invariant forward range loop with an unchecked load when the loop test proves the index valid and effects preserve the list's length; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
+| `listguard` | Give an innermost forward range loop whose ops change no list's length a copy whose item reads and assignments, at the index plus a constant, of lists the loop does not rebind are unchecked (`list.load`, `list.store`), and run the copy where tests before the loop find every such list long enough; give inline list reads and stores TBAA tags |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
@@ -573,7 +578,25 @@ unchanged induction value on a forward path without joins; entry-only local stor
 can establish invariant list bindings. The whole function must exclude list writes
 (`wL`) and unknown user code (`U`), so a captured length remains valid across iterations.
 Coroutines are excluded because their callers can mutate a list while they are suspended.
-Other range reads retain their bounds checks.
+`listguard` handles the range loops `listget` leaves checked.
+
+`listguard` copies an innermost loop over `range(start, stop)` or `range(start, stop, step)`,
+with constants `start >= 0` and `step > 0`, such as `t += a[i] * b[i]`,
+`b[i] = (a[i - 1] + a[i] + a[i + 1]) / 3` or `zi[j] += xik * yk[j]`. No op of the loop may change
+a list's length (`wL`, except an item assignment) or run user code (`U`); a coroutine, a loop
+that a `try` statement covers, one holding another loop and one of more than 400 ops keep
+their checks. In the copy, each read or assignment of an item of a list that the loop does not
+rebind (a value it does not define, or a local slot it never stores), at the index plus a
+constant `c` with `start + c >= 0`, is unchecked: a `list.load`, or a `list.store`, which stores
+the item inline as `list.set` does where no module opts in to promoting ints or dynamic `Any`
+(elsewhere assignments keep their checks); and listfast's inline test always passes. Tests
+before the loop run the copy where every such list has `stop <= len(xs) - c` for its largest
+`c`, which keeps `0 <= i + c < len(xs)` for every `i` the loop takes; a list that a local not yet
+assigned would hold, and any shorter list, run the loop as compiled, which raises `IndexError`
+(or `UnboundLocalError`) after the same iterations as CPython. The copy doubles the loop's code.
+With `listguard`, inline list reads and stores carry TBAA tags under `fieldtbaa`'s root, of a
+list's items pointer and of an item, so that LLVM keeps a loop's items pointers in registers
+across its item stores and can vectorize the copy.
 
 For a statically known string variable `s`, the frontend can lower `ord(s[i])` and
 comparisons such as `s[i] == ":"` directly to `text.ord_at`. The comparison accepts

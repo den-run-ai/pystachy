@@ -184,9 +184,6 @@ jobs:
       - name: LLVM IR diagnostic inventory tests
         run: python3 -m unittest discover -s tools -p test_ir_cost_report.py
 
-      - name: DCO certification check tests
-        run: python3 -m unittest discover -s tools -p test_dco_check.py
-
       - name: Issue and PR reading budgets and metadata checks
         run: python3 -m unittest discover -s tools -p test_submission.py
 

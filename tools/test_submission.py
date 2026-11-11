@@ -1,5 +1,6 @@
 """Reading budgets, metadata updates and safe event handling."""
 
+import io
 import json
 from pathlib import Path
 import unittest
@@ -10,6 +11,8 @@ import check_submission as check
 
 ISSUE = "## Problem\nA supported input fails.\n## Scope\nA small repro.\n## Done when\nThe repro passes."
 PR = "## Problem\nA supported input fails.\n## Change\nPreserve the value.\n## Validation\nRegression passed."
+
+BOT_COMMENT = {"body": check.ACK_BODY, "user": {"login": "github-actions[bot]", "type": "Bot"}}
 
 
 class FormatTests(unittest.TestCase):
@@ -72,6 +75,57 @@ class EventTests(unittest.TestCase):
         self.assertEqual(api.call_args.args[2]["state"], "success")
         self.assertEqual(api.call_args.args[2]["context"], "Submission format")
 
+    def test_opened_pr_receives_nonblocking_reminder(self):
+        event = {"action": "opened", "pull_request": {"number": 12}}
+        with patch.object(check, "api", side_effect=[self.current(PR), None, [], None]) as api:
+            self.assertEqual(check.check(event), [])
+        self.assertEqual(api.call_args_list[2].args[1], "/issues/12/comments?per_page=100&page=1")
+        self.assertEqual(api.call_args_list[3].args[1], "/issues/12/comments")
+        self.assertIn("AI: none", api.call_args_list[3].args[2]["body"])
+
+    def test_opened_pr_rerun_does_not_duplicate_reminder(self):
+        event = {"action": "opened", "pull_request": {"number": 12}}
+        with patch.object(check, "api", side_effect=[self.current(PR), None,
+                                                    [BOT_COMMENT]]) as api:
+            self.assertEqual(check.check(event), [])
+        self.assertEqual(api.call_count, 3)
+
+    def test_later_pr_events_retry_a_missing_reminder(self):
+        for action in ("edited", "synchronize", "reopened", "ready_for_review"):
+            event = {"action": action, "pull_request": {"number": 12}}
+            with self.subTest(action=action), patch.object(
+                    check, "api", side_effect=[self.current(PR), None, [], None]) as api:
+                self.assertEqual(check.check(event), [])
+                self.assertEqual(api.call_args.args[:2], ("POST", "/issues/12/comments"))
+
+    def test_reminder_failures_do_not_change_valid_or_invalid_format_results(self):
+        failures = [urllib.error.HTTPError("url", 403, "Forbidden", {}, None),
+                    urllib.error.URLError("offline"), TimeoutError("timed out"),
+                    json.JSONDecodeError("bad response", "", 0)]
+        for body in (PR, ""):
+            for error in failures:
+                for replies in ([error], [[], error]):
+                    with self.subTest(body=body, error=error, post=len(replies) == 2), patch.object(
+                            check, "api", side_effect=[self.current(body), None, *replies]) as api, \
+                            patch("sys.stderr", new_callable=io.StringIO) as stderr:
+                        errors = check.check({"action": "opened", "pull_request": {"number": 12}})
+                        self.assertEqual(bool(errors), not bool(body))
+                        self.assertEqual(api.call_args_list[1].args[2]["state"],
+                                         "success" if body else "failure")
+                        self.assertIn("metadata validation is unchanged", stderr.getvalue())
+
+    def test_metadata_api_failures_are_not_swallowed(self):
+        error = urllib.error.HTTPError("url", 403, "Forbidden", {}, None)
+        for replies in ([error], [self.current(PR), error]):
+            with self.subTest(replies=len(replies)), patch.object(check, "api", side_effect=replies):
+                with self.assertRaises(urllib.error.HTTPError):
+                    check.check({"action": "opened", "pull_request": {"number": 12}})
+
+    def test_closed_pr_does_not_receive_a_reminder(self):
+        with patch.object(check, "api", return_value={"state": "closed"}) as api:
+            self.assertEqual(check.check({"action": "opened", "pull_request": {"number": 12}}), [])
+        self.assertEqual(api.call_count, 1)
+
     def test_invalid_pr_reports_failure(self):
         with patch.object(check, "api", side_effect=[self.current(""), None]) as api:
             self.assertTrue(check.check({"pull_request": {"number": 12}}))
@@ -118,6 +172,45 @@ class EventTests(unittest.TestCase):
                 self.assertIsNone(check.api("GET", "/labels/missing", missing_ok=True))
                 with self.assertRaises(urllib.error.HTTPError):
                     check.api("POST", "/statuses/head", {})
+
+
+class ReminderTests(unittest.TestCase):
+    def test_marker_on_a_later_page_is_not_duplicated(self):
+        with patch.object(check, "api", side_effect=[[{"body": "discussion"}] * 100,
+                                                    [BOT_COMMENT]]) as api:
+            check.remind_contributor(12)
+        self.assertEqual(api.call_count, 2)
+        self.assertEqual(api.call_args.args, ("GET", "/issues/12/comments?per_page=100&page=2"))
+
+    def test_all_full_pages_are_scanned_before_posting(self):
+        with patch.object(check, "api", side_effect=[[{"body": "discussion"}] * 100,
+                                                    [], None]) as api:
+            check.remind_contributor(12)
+        self.assertEqual(api.call_count, 3)
+        self.assertEqual(api.call_args.args, ("POST", "/issues/12/comments", {"body": check.ACK_BODY}))
+
+    def test_only_our_bot_can_supply_the_deduplication_marker(self):
+        for user in ({}, {"login": "contributor", "type": "User"},
+                     {"login": "other[bot]", "type": "Bot"},
+                     {"login": "github-actions[bot]", "type": "User"}):
+            with self.subTest(user=user), patch.object(
+                    check, "api", side_effect=[[{"body": check.ACK_BODY, "user": user}], None]) as api:
+                check.remind_contributor(12)
+                self.assertEqual(api.call_args.args[0], "POST")
+
+    def test_unrelated_bot_comments_and_null_bodies_are_not_reminders(self):
+        comments = [{**BOT_COMMENT, "body": "Another check"}, {**BOT_COMMENT, "body": None}]
+        with patch.object(check, "api", side_effect=[comments, None]) as api:
+            check.remind_contributor(12)
+        self.assertEqual(api.call_args.args[0], "POST")
+
+    def test_later_page_failure_does_not_post_a_duplicate(self):
+        with patch.object(check, "api", side_effect=[[{"body": "discussion"}] * 100,
+                                                    TimeoutError("offline")]) as api, \
+                patch("sys.stderr", new_callable=io.StringIO):
+            check.remind_contributor(12)
+        self.assertEqual(api.call_count, 2)
+        self.assertTrue(all(call.args[0] == "GET" for call in api.call_args_list))
 
 
 if __name__ == "__main__":

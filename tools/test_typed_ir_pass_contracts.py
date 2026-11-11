@@ -44,6 +44,12 @@ def summed(xs: list[float]) -> float:
         total += x
     return total
 
+def dotted(a: list[float], b: list[float]) -> float:
+    total = 0.0
+    for i in range(len(a)):
+        total += a[i] * b[i]
+    return total
+
 def is_colon(text: str, pos: int) -> bool:
     c = text[pos]
     return c == ":"
@@ -65,7 +71,7 @@ def repeated(box: Box | None) -> int:
     except AttributeError:
         return -1
 
-print(summed([0.5, 1.5]), looked_up({"x": 2}, "x"), is_colon(":", 0))
+print(summed([0.5, 1.5]), dotted([0.5, 1.5], [2.0, 4.0]), looked_up({"x": 2}, "x"), is_colon(":", 0))
 print(accumulated([0.5, 1.5]), repeated(Box(3)), repeated(None))
 """
 
@@ -318,7 +324,7 @@ class PassContractTests(unittest.TestCase):
             if event[0] not in ("verify", "verify-eh") and event[2] > 0:
                 rewritten.add(event[0])
                 self.assertEqual(events[j + 1], ("verify", event[1]))
-        self.assertEqual(rewritten, {"charslots", "listget", "dictfuse", "unionslots", "nullcheck"})
+        self.assertEqual(rewritten, {"charslots", "listget", "listguard", "dictfuse", "unionslots", "nullcheck"})
         with patch.dict(os.environ, {"PYSTACHY_IRCHECK": "0", "PYSTACHY_OPT": "",
                                     "PYSTACHY_IRFX": "0"}):
             normal_ir = Gen().program(Loader([]).program("pass_contracts.py", SOURCE))

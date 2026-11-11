@@ -269,6 +269,20 @@ def gen_field_tag(self, c: str, k: int) -> str:
         self.tbaa[key] = TBAA_FIELDS + len(self.tbaa)
     return f", !tbaa !{self.tbaa[key]}"
 
+def gen_list_tag(self, what: str) -> str:
+    # the TBAA of an inline access to a list's items pointer ("items": the header's third word) or
+    # to one of its items ("slot"), with listguard: ", !tbaa !N", numbered as fieldtbaa numbers a
+    # field's (Gen.tbaa). They share fieldtbaa's root, as members of structs of their own ("@list",
+    # runtime.c's List, and "@slot", one item), which no class lays out: LLVM tells an item from an
+    # items pointer and both from any object's field, so that a loop that stores items keeps its
+    # lists' items pointers in registers. runtime.py has no such tags (lower_module's runtime mode)
+    if "listguard" not in self.opts or self.rtmode:
+        return ""
+    key = "@list 2" if what == "items" else "@slot 0"
+    if key not in self.tbaa:
+        self.tbaa[key] = TBAA_FIELDS + len(self.tbaa)
+    return f", !tbaa !{self.tbaa[key]}"
+
 def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     op = i.op
     o = self.out
@@ -479,9 +493,17 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # lays a List out ({len, cap, a}), in the 8-byte slot pys_list_get would have returned
         r = i.r
         o.append(f"  {tmpname(r[1])} = getelementptr inbounds {{i64, i64, ptr}}, ptr {i.a[0].v}, i64 0, i32 2")
-        o.append(f"  {tmpname(r[2])} = load ptr, ptr {tmpname(r[1])}")
+        o.append(f"  {tmpname(r[2])} = load ptr, ptr {tmpname(r[1])}{self.list_tag('items')}")
         o.append(f"  {tmpname(r[3])} = getelementptr inbounds i64, ptr {tmpname(r[2])}, i64 {i.a[1].v}")
-        o.append(f"  {tmpname(r[0])} = load i64, ptr {tmpname(r[3])}")
+        o.append(f"  {tmpname(r[0])} = load i64, ptr {tmpname(r[3])}{self.list_tag('slot')}")
+    elif op == "list.store":
+        # l->a[index] = item, at an index within its length (listguard), as pys_list_set stores it
+        # where the list has no identity companion (ircheck: no list of the program has one)
+        r = i.r
+        o.append(f"  {tmpname(r[0])} = getelementptr inbounds {{i64, i64, ptr}}, ptr {i.a[0].v}, i64 0, i32 2")
+        o.append(f"  {tmpname(r[1])} = load ptr, ptr {tmpname(r[0])}{self.list_tag('items')}")
+        o.append(f"  {tmpname(r[2])} = getelementptr inbounds i64, ptr {tmpname(r[1])}, i64 {i.a[1].v}")
+        o.append(f"  store i64 {i.a[2].v}, ptr {tmpname(r[2])}{self.list_tag('slot')}")
     elif op == "landing":
         r = i.r
         o.append(f"  {tmpname(r[0])} = landingpad {{ ptr, i32 }} catch ptr null")
