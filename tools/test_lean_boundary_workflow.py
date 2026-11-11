@@ -1,6 +1,7 @@
 """Exercise the Lint workflow's actual Lean selector on temporary Git histories."""
 
 import os
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -76,6 +77,7 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
 
     def test_adapter_inspection_tests_and_pins_run_lean(self):
         for name in ("tools/check_lean_boundary.py", "tools/inspect_compiler.py",
+                     "tools/check_lean_corpus.py", "tools/test_lean_boundary_corpus.py",
                      "tools/test_lean_boundary_workflow.py", "pystachy.py",
                      "tools/lean_boundary/PystachyBoundary.lean", "Makefile",
                      ".github/workflows/lint.yml", "tools/requirements-dev.txt", ".python-version"):
@@ -89,6 +91,27 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         for event in ("push", "workflow_dispatch"):
             with self.subTest(event=event):
                 self.assertTrue(self.selected(event))
+
+    def test_corpus_proof_runs_in_an_opt_in_group_of_every_profile_with_the_same_lean(self):
+        def lean_step(steps, command):
+            return next(step for step in steps if command in step.get("run", ""))
+        lint = yaml.load((ROOT / ".github/workflows/lint.yml").read_text(), Loader=yaml.BaseLoader)
+        ci = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
+        verification = ci["jobs"]["verification"]
+        boundary = lean_step(lint["jobs"]["lint"]["steps"], "make check-lean-boundary")
+        corpus = lean_step(verification["steps"], "make check-lean-corpus")
+        # (the same pinned release archive, checked against the same digest, in both jobs)
+        def pins(run):
+            return (re.findall(r"https://github\.com/leanprover/lean4/releases/download/\S+?\.tar\.zst", run),
+                    re.findall(r"\b[0-9a-f]{64}\b", run), "sha256sum --check -" in run)
+        self.assertEqual(pins(corpus["run"]), pins(boundary["run"]))
+        self.assertEqual([len(found) for found in pins(boundary["run"])[:2]], [1, 1])
+        self.assertEqual(corpus["if"], "matrix.machine == 'x86_64' && "
+                                       "(matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0')")
+        groups = verification["strategy"]["matrix"]["group"]
+        self.assertIn('"opt-in"', groups.split("||")[0])
+        self.assertIn('"dynany-optin-0"', groups.split("||")[1])
+        self.assertIn("build/verify/lean-corpus.json", verification["steps"][-1]["with"]["path"])
 
     def test_missing_merge_parent_runs_lean(self):
         self.merge_pr("docs/typed-ir.md")

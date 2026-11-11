@@ -1,8 +1,10 @@
 # Lean payload-guard prototype
 
 This optional developer tool checks the guards of `dyn.payload` operations in
-one selected function from a completed Pystachy typed-IR snapshot. It does not
-change compilation, dynamic-`Any` opt-ins, library behavior or runtime checks.
+one selected function, or in every function, of a completed Pystachy typed-IR
+snapshot; `make check-lean-corpus` checks every such read of the dynamic-`Any`
+test programs. It does not change compilation, dynamic-`Any` opt-ins, library
+behavior or runtime checks.
 
 ## Provenance and license
 
@@ -53,6 +55,11 @@ python3.13 tools/inspect_compiler.py \
 python3.13 tools/check_lean_boundary.py \
   --snapshot /tmp/pystachy-lean-classes/typed-after.json \
   --function dyn.call.label.0
+
+python3.13 tools/check_lean_boundary.py \
+  --snapshot /tmp/pystachy-lean-classes/typed-after.json --all
+
+make check-lean-corpus PY=python3.13
 ```
 
 The inspection output directories must be new. `narrowed_float.py` and
@@ -66,6 +73,24 @@ snapshot/candidate SHA-256 hashes, its scope, and its remaining trust
 assumptions. Selection is by exact function name or symbol; ambiguous
 selections fail. A function with zero payload reads is reported as such and
 provides no evidence about a dynamic crossing.
+
+`--all` checks every function of the snapshot that reads a dynamic payload and
+reports each one's result, read count and candidate hash. Its status and exit
+code are the worst function's: an error, then a rejection, then an unsupported
+form. A read in a block that nothing reaches cannot run; it counts as proved
+with its function.
+
+`tools/check_lean_corpus.py`, which `make check-lean-corpus` runs after building
+the checker, does that for the dynamic-`Any` corpus: each differential test
+program and deviation that opts in to dynamic `Any` (the compiler's own pragma
+test), or whose imports reach a module that does. Imports are followed through
+the program's search path as the compiler gives it (its directory, its
+`NAME.path` directories, then `lib/`), each package's `__init__.py` on the way
+and every import of a file, wherever it is, so the selection over-approximates.
+Each program is compiled by the hosted compiler under
+`tools/inspect_compiler.py --typed-after-only`, which records only the final
+snapshot, and the run fails unless Lean accepts every function that reads a
+payload. `--list` prints the selection; named programs are checked instead of it.
 
 `--checker PATH` selects another built checker. `--emit NEW_FILE` writes only the
 candidate program and certificate: its report says `prepared`, `checked: false`.
@@ -159,7 +184,12 @@ explicit role:
 - Terminators give the edges: branch and `switch` targets, an invoke's unwind
   edge, each `check`'s error block (the snapshot's `check_targets`), a `raise` or
   `throw` that branches to its handler and, conservatively, an edge from every
-  point of a block that a `try` statement covers to its landing block.
+  point of a block that a `try` statement covers to its landing block. Exception
+  lowering has run: it turned each call there that may raise into an invoke and
+  dropped a landing block that no invoke reaches. A block whose landing block was
+  dropped keeps its name but has no exception edge; a call there that raises
+  anyway leaves the function (runtime.c's personality routine continues unwinding
+  past a call site without a landing pad).
 
 A short-circuit condition such as `flag and isinstance(x, str)` joins in a block
 that holds only a boolean `phi` and a branch on it. An edge into that join whose
@@ -179,33 +209,25 @@ shipped dynamic key writer is accepted only with both of its guards. These are
 checks of the trusted Python bridge in addition to the kernel-checked model
 examples; they do not prove its fidelity.
 
-Generator functions, stores into boxes or descriptors, landing blocks missing
-from the snapshot and unknown operations are explicitly refused. No selected
-function is silently skipped. The Python bridge allows at most 4,096
-instructions, 1,024 blocks, 16,384 normalized nodes, 65,536 certificate facts
-holding 262,144 tags, 4 MiB input/candidate JSON and 200,000 inference
-iterations; the native checker has a ten-second subprocess deadline.
+Generator functions, stores into boxes or descriptors and unknown operations
+are explicitly refused. No selected function is silently skipped. The Python
+bridge allows at most 4,096 instructions, 1,024 blocks, 16,384 normalized nodes,
+65,536 certificate facts holding 262,144 tags, 4 MiB candidate JSON, a 4 MiB
+snapshot (512 MiB with `--all`) and 200,000 inference iterations; the native
+checker has a ten-second subprocess deadline.
 
 ## Coverage of compiled code
 
-On 2026-11-11, every function that reads a dynamic payload in the compiled
-`typed-after` IR of 420 dynamic-`Any` test programs, inspected from this
-checkout with the hosted compiler, was checked once per distinct function body:
-1,039 functions holding 2,308 payload reads. Lean accepted 1,004 functions
-outright. Two functions whose landing blocks the snapshot lacks (23 reads) were
-refused. In the other 33, the uncovered reads were removed and Lean accepted the
-rest: 2,137 reads (92.6%) are proved. That is every float, str, bool, dict, list,
-tuple, function and generator read, 98.3% of class reads (the rest are in the two
-refused functions) and half of the int reads. The slowest check took 0.07 seconds.
-
-The other 148 int reads depend on invariants the model cannot express:
-
-- Slice bounds of an `Any` value (`index_bound`, `src/pystachy_compiler/dynamic.py`)
-  read the int payload of a box that may be None, then discard it. That is
-  memory-safe only because runtime.c's None box has a zero payload word; its
-  payload contract does not hold (106 reads).
-- `sum()` of `Any` values reads its accumulator's int payload where its phase
-  word says the accumulator holds an int, without testing its tag (42 reads).
+On 2026-11-11, `make check-lean-corpus` checked the 479 programs it selects
+from this checkout: 1,150 functions read a dynamic payload, 2,573 times. Lean
+accepted every function, so every one of those reads is proved to be guarded,
+in about 90 seconds with four workers. An earlier sweep found the two forms
+this needed: slice bounds of an `Any` value and `sum()` of `Any` values read int
+payloads that no tag test guarded (their compiler guards are
+[#1227](https://github.com/den-run-ai/pystachy/pull/1227)), and two length-hint
+and iterator helpers kept the names of landing blocks that lowering dropped.
+CI runs the same check on every code change, so a compiler change that leaves a
+payload read unproved fails.
 
 ## Trust and coverage limits
 
@@ -226,6 +248,9 @@ not proved by this version:
   implementation of runtime tag operations.
 - Source-language or LLVM equivalence, generic specialization, identity-slot
   elision, absence of dynamic operations, or necessity/removal of `Any`.
+- That the corpus covers every program shape: it is the test programs and
+  deviations whose imports reach an opted-in module. Examples, benchmarks and
+  ports are not checked.
 - Termination or a performance improvement.
 
 The CLI runs compiled Lean code, so its result also trusts the Lean compiler,
@@ -241,9 +266,11 @@ PR changes to the prototype, its tests, the compiler, the inspection exporter,
 build/workflow files or development tool pins; it also runs on every main push
 and manual dispatch. PR selection uses the cumulative merge diff and runs
 conservatively if its history is missing. Five workflow tests exercise the
-actual selector against temporary Git histories. It downloads the pinned,
-SHA-256-checked Linux Lean release and adds no
-PR job. Lean is not a compiler, runtime or installation dependency.
+actual selector against temporary Git histories. `make check-lean-corpus` runs in
+the x86_64 verification group `opt-in` of every PR that changes code, and in
+`dynany-optin-0` on main and manual runs; a sixth test keeps both jobs on one
+Lean archive. Both download the pinned, SHA-256-checked Linux Lean release; no
+PR job is added. Lean is not a compiler, runtime or installation dependency.
 
 This is a verification building block for
 [#1210](https://github.com/den-run-ai/pystachy/issues/1210). The compiler already

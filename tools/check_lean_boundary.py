@@ -21,6 +21,8 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CHECKER = ROOT / "tools/lean_boundary/.lake/build/bin/pystachy-boundary"
 MAX_BYTES = 4 * 1024 * 1024
+# (a whole program's snapshot, for --all; each normalized candidate keeps MAX_BYTES)
+MAX_PROGRAM_BYTES = 512 * 1024 * 1024
 MAX_INSTRUCTIONS = 4096
 MAX_NODES = 16384
 MAX_FACTS = 65536
@@ -69,7 +71,7 @@ INVOKES = {"rt", "call", "icall", "init", "gen.resume"}
 SLOT_ACCESS = {"mem.load", "mem.store", "mach.load", "mach.store", "landing"}
 SUPPORTED_OPS = ORDINARY | TAG_OPS | TERMINATORS
 LIMITATIONS = [
-    "Only dyn.payload guard safety in the selected normalized function is checked.",
+    "Only dyn.payload guard safety in each selected normalized function is checked.",
     "Python normalization, snapshot fidelity, the descriptor table, runtime tag and payload layout "
     "contracts and LLVM lowering are not proved.",
     "Generators, unlisted payload types and stores into boxes or descriptors are rejected; null "
@@ -101,12 +103,12 @@ def unique_object(pairs):
     return result
 
 
-def read_snapshot(path):
+def read_snapshot(path, limit=MAX_BYTES):
     descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NONBLOCK", 0))
     with os.fdopen(descriptor, "rb") as source:
         require(stat.S_ISREG(os.fstat(source.fileno()).st_mode), "snapshot must be a regular file")
-        raw = source.read(MAX_BYTES + 1)
-    require(len(raw) <= MAX_BYTES, f"snapshot exceeds {MAX_BYTES} bytes")
+        raw = source.read(limit + 1)
+    require(len(raw) <= limit, f"snapshot exceeds {limit} bytes")
     return json.loads(raw, object_pairs_hook=unique_object), hashlib.sha256(raw).hexdigest()
 
 
@@ -282,7 +284,7 @@ def normalize_snapshot(snapshot, function):
     if snapshot.get("stage") != "typed-after" or snapshot.get("status") != "completed":
         raise Unsupported("only completed typed-after snapshots are supported")
     functions = snapshot.get("functions")
-    require(isinstance(functions, list) and len(functions) <= 2048, "invalid functions list")
+    require(isinstance(functions, list) and len(functions) <= 65536, "invalid functions list")
     require(all(isinstance(fn, dict) for fn in functions), "invalid function record")
     selected = [fn for fn in functions if fn.get("symbol") == function or fn.get("name") == function]
     require(len(selected) == 1, "--function must select exactly one function by exact name or symbol")
@@ -377,8 +379,13 @@ def normalize_snapshot(snapshot, function):
         last = block["operations"][-1]
         for target in last["targets"] if last["op"] != "phi" else ():
             require(target in starts, "unknown branch target")
-        if block["handler"] != "" and block["handler"] not in starts:
-            raise Unsupported("a covered block's landing block is missing")
+    # A typed-after snapshot follows exception lowering (gen_eh_ir): each call that a landing
+    # block covers and that may raise became an invoke, whose unwind edge is a target, and a
+    # landing block that no invoke reaches was dropped. A block whose landing block was dropped
+    # keeps a stale handler name but has no exception edge: a call there that raises anyway
+    # leaves the function.
+    blocks = [dict(block, handler="") if block["handler"] != "" and block["handler"] not in starts
+              else block for block in blocks]
     # Every edge: terminator targets (an invoke's unwind edge among them), each check's separate
     # error block, and, conservatively, from anywhere in a covered block to its landing block.
     edges = {}
@@ -840,21 +847,102 @@ def normalize_snapshot(snapshot, function):
                        "scope": "dyn.payload guards in one normalized function", "limitations": LIMITATIONS}
 
 
+def encode(candidate):
+    encoded = json.dumps(candidate, sort_keys=True, separators=(",", ":")) + "\n"
+    require(len(encoded.encode()) <= MAX_BYTES, "normalized candidate exceeds the checker input bound")
+    return encoded
+
+
+def run_checker(checker, encoded, metadata):
+    """Whether the Lean checker accepts every proof obligation of one encoded candidate."""
+    completed = subprocess.run([str(Path(checker).resolve())], input=encoded, capture_output=True,
+                               text=True, timeout=10)
+    result = json.loads(completed.stdout, object_pairs_hook=unique_object)
+    require(isinstance(result, dict) and type(result.get("accepted")) is bool,
+            "checker did not return an acceptance result")
+    require(result.get("nodes") == metadata["nodes"] and result.get("payloads") == metadata["payloads"],
+            "checker counts disagree with normalized input")
+    accepted = result["accepted"]
+    require(completed.returncode == (0 if accepted else 1), "checker result/exit status mismatch")
+    return accepted
+
+
+def payload_functions(snapshot):
+    """(symbol, dyn.payload operations) for each function of the snapshot that has any."""
+    functions = snapshot.get("functions") if isinstance(snapshot, dict) else None
+    require(isinstance(functions, list) and len(functions) <= 65536, "invalid functions list")
+    found = []
+    for fn in functions:
+        require(isinstance(fn, dict) and isinstance(fn.get("blocks"), list)
+                and all(isinstance(block, dict) and isinstance(block.get("operations"), list)
+                        for block in fn["blocks"]), "invalid function record")
+        reads = sum(isinstance(op, dict) and op.get("op") == "dyn.payload"
+                    for block in fn["blocks"] for op in block["operations"])
+        if reads:
+            found.append((name(fn.get("symbol"), "function symbol"), reads))
+    require(len({symbol for symbol, _ in found}) == len(found), "duplicate function symbol")
+    return found
+
+
+# Severity order of --all's results: its status and exit code are its worst function's.
+OUTCOMES = {"accepted": 0, "unsupported": 2, "rejected": 1, "error": 3}
+SEVERITY = ("accepted", "unsupported", "rejected", "error")
+
+
+def check_all(snapshot, checker=DEFAULT_CHECKER):
+    """Check every function of the snapshot that reads a dynamic payload. A read in a block that
+    no edge reaches cannot run: it counts as proved with its function. Returns the report's
+    fields and the exit code of the worst result."""
+    records = []
+    for symbol, reads in payload_functions(snapshot):
+        record = {"function": symbol, "reads": reads}
+        try:
+            candidate, metadata = normalize_snapshot(snapshot, symbol)
+            encoded = encode(candidate)
+            record.update(payloads=metadata["payloads"], nodes=metadata["nodes"],
+                          candidate_sha256=hashlib.sha256(encoded.encode()).hexdigest())
+            record["status"] = "accepted" if run_checker(checker, encoded, metadata) else "rejected"
+        except Unsupported as error:
+            record.update(status="unsupported", message=str(error))
+        except (OSError, ValueError, subprocess.SubprocessError, RecursionError) as error:
+            record.update(status="error", message=str(error))
+        records.append(record)
+    worst = max((record["status"] for record in records), key=SEVERITY.index, default="accepted")
+    counts = {status: sum(record["status"] == status for record in records) for status in SEVERITY}
+    totals = {"functions": len(snapshot["functions"]), "payload_functions": len(records),
+              "reads": sum(record["reads"] for record in records),
+              "proved_reads": sum(record["reads"] for record in records if record["status"] == "accepted"),
+              **counts}
+    return {"status": worst, "checked": counts["unsupported"] + counts["error"] == 0,
+            "functions": records, "totals": totals,
+            "scope": "dyn.payload guards in every normalized function of one snapshot",
+            "limitations": LIMITATIONS}, OUTCOMES[worst]
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--snapshot", required=True, type=Path)
-    parser.add_argument("--function", required=True, help="exact function name or LLVM symbol")
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--function", help="exact function name or LLVM symbol")
+    selection.add_argument("--all", action="store_true",
+                           help="every function that reads a dynamic payload; exit with the worst result")
     parser.add_argument("--checker", type=Path, default=DEFAULT_CHECKER)
     parser.add_argument("--emit", type=Path, help="write a new candidate JSON file without checking it")
     args = parser.parse_args(argv)
+    if args.all and args.emit:
+        parser.error("--emit writes one function's candidate: select it with --function")
     report = {"checked": False}
     try:
-        snapshot, digest = read_snapshot(args.snapshot)
+        snapshot, digest = read_snapshot(args.snapshot, MAX_PROGRAM_BYTES if args.all else MAX_BYTES)
         report["snapshot_sha256"] = digest
+        if args.all:
+            fields, code = check_all(snapshot, args.checker)
+            report.update(fields)
+            print(json.dumps(report, sort_keys=True))
+            return code
         candidate, metadata = normalize_snapshot(snapshot, args.function)
         report.update(metadata)
-        encoded = json.dumps(candidate, sort_keys=True, separators=(",", ":")) + "\n"
-        require(len(encoded.encode()) <= MAX_BYTES, "normalized candidate exceeds the checker input bound")
+        encoded = encode(candidate)
         report["candidate_sha256"] = hashlib.sha256(encoded.encode()).hexdigest()
         if args.emit:
             with args.emit.open("x", encoding="utf-8") as output:
@@ -862,15 +950,7 @@ def main(argv=None):
             report.update(status="prepared", candidate=str(args.emit), message="Candidate only; Lean has not checked it.")
             code = 0
         else:
-            completed = subprocess.run([str(args.checker.resolve())], input=encoded, capture_output=True,
-                                       text=True, timeout=10)
-            result = json.loads(completed.stdout, object_pairs_hook=unique_object)
-            require(isinstance(result, dict) and type(result.get("accepted")) is bool,
-                    "checker did not return an acceptance result")
-            require(result.get("nodes") == metadata["nodes"] and result.get("payloads") == metadata["payloads"],
-                    "checker counts disagree with normalized input")
-            accepted = result["accepted"]
-            require(completed.returncode == (0 if accepted else 1), "checker result/exit status mismatch")
+            accepted = run_checker(args.checker, encoded, metadata)
             report.update(status="accepted" if accepted else "rejected", checked=True)
             code = 0 if accepted else 1
     except Unsupported as error:

@@ -1297,8 +1297,9 @@ the verifier permits only in direct integer equality comparisons. See the
 The optional
 [Lean checker](../tools/lean_boundary/README.md) checks the guards of payload
 reads of every builtin, class, function and generator type, including int/bool
-sharing and class inheritance, in selected normalized functions exported from
-actual typed IR. It rejects unsupported forms and does not establish adapter
+sharing and class inheritance, in normalized functions exported from actual
+typed IR; CI requires it to accept every such read of the dynamic-`Any` test
+programs. It rejects unsupported forms and does not establish adapter
 fidelity, the descriptor table, payload layouts, identity/GC preservation or
 LLVM correctness. It is separate from the built-in closed-union proof and does not
 justify removing `Any` or identity bookkeeping. These box reads are effect-free because boxes are

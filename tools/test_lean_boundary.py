@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 
-from check_lean_boundary import Unsupported, normalize_snapshot
+from check_lean_boundary import Unsupported, check_all, normalize_snapshot
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,6 +56,40 @@ from typing import Any
 
 data: Any = {1.5: "a", "k": 2, True: None}
 print(json.dumps(data))
+'''
+
+
+# A star call on an Any value sizes its arguments with __length_hint__, in a try statement that
+# ignores TypeError (dynamic.py: dyn_length_hint). This method cannot raise: exception lowering
+# leaves its call a call and drops the landing block, whose name the covered block keeps.
+LENGTH_HINT = '''# pystachy: dynamic-any
+from typing import Any
+
+
+class Items:
+    def __init__(self) -> None:
+        self.i = 0
+
+    def __iter__(self) -> "Items":
+        return self
+
+    def __next__(self) -> int:
+        self.i += 1
+        if self.i > 2:
+            raise StopIteration
+        return self.i
+
+    def __length_hint__(self) -> int:
+        return 2
+
+
+def total(a: int, b: int) -> int:
+    return a + b
+
+
+items: Any = Items()
+function: Any = total
+print(function(*items))
 '''
 
 
@@ -155,16 +189,25 @@ class AdapterTests(SnapshotFixture):
                 with self.assertRaises((Unsupported, ValueError)):
                     self.normalized(snapshot)
 
-    def test_unknown_instruction_or_missing_landing_block_is_unsupported(self):
+    def test_unknown_instruction_is_unsupported(self):
         snapshot, function = self.selected()
         _, _, operation = self.operation(function, "scalar.bin")
         operation["op"] = "new.unmodeled.operation"
         with self.assertRaises(Unsupported):
             self.normalized(snapshot)
+
+    def test_a_dropped_landing_block_leaves_no_edge_but_an_unwind_edge_needs_one(self):
+        # Exception lowering drops a landing block no invoke reaches; the blocks it covered
+        # keep its name, which then adds no edge. An unwind edge to a missing block is malformed.
         snapshot, function = self.selected()
         function["blocks"][0]["handler"] = "exception_target"
-        with self.assertRaises(Unsupported):
+        self.assertEqual(self.normalized(snapshot), self.normalized())
+        snapshot, function = self.selected()
+        self.block(function, "L8")["operations"] = [
+            instruction("call", "dyn", "@f.raises", [9020], targets=["L9", "exception_target"])]
+        with self.assertRaisesRegex(ValueError, "unknown branch target") as caught:
             self.normalized(snapshot)
+        self.assertNotIsInstance(caught.exception, Unsupported)
 
     def test_missing_target_or_duplicate_result_is_malformed(self):
         snapshot, function = self.selected()
@@ -753,6 +796,102 @@ class LibraryFunctionTests(SnapshotFixture):
                 guard["operands"] = [{"value": "true", "type": "bool"}]
                 self.assertFalse(ProvedCheckerTests.check(self, normalize_snapshot(snapshot, self.symbol)[0]))
                 guard["operands"] = original
+
+
+class DroppedLandingTests(SnapshotFixture):
+    function_filter = "dyn.lengthhint"
+
+    @classmethod
+    def setUpClass(cls):
+        source = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(source.cleanup)
+        cls.example = Path(source.name) / "length_hint.py"
+        cls.example.write_text(LENGTH_HINT)
+        super().setUpClass()
+
+    def test_real_length_hint_keeps_a_dropped_landing_blocks_name(self):
+        _, function = self.selected("dyn.lengthhint")
+        labels = {block["label"] for block in function["blocks"]} | {""}
+        # (if lowering stops dropping it, this case no longer tests it)
+        self.assertTrue(any(block["handler"] not in labels for block in function["blocks"]))
+        _, metadata = normalize_snapshot(self.snapshot, "dyn.lengthhint")
+        self.assertGreater(metadata["payloads"], 0)
+
+    @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+    def test_real_length_hint_is_accepted(self):
+        self.assertTrue(ProvedCheckerTests.check(self, self.normalized(function="dyn.lengthhint")))
+
+
+@unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
+class WholeSnapshotTests(SnapshotFixture):
+    example = CLASS_EXAMPLE
+    function_filter = ""
+
+    def reads(self):
+        found = {fn["symbol"]: sum(op["op"] == "dyn.payload" for block in fn["blocks"] for op in block["operations"])
+                 for fn in self.snapshot["functions"]}
+        return {symbol: count for symbol, count in found.items() if count}
+
+    def test_all_checks_every_function_that_reads_a_payload(self):
+        completed = subprocess.run(
+            [sys.executable, str(TOOL), "--snapshot", str(self.snapshot_path), "--all", "--checker", str(CHECKER)],
+            capture_output=True, text=True, timeout=60)
+        self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+        report = json.loads(completed.stdout)
+        reads = self.reads()
+        self.assertGreaterEqual(len(reads), 3)
+        self.assertEqual({fn["function"]: fn["reads"] for fn in report["functions"]}, reads)
+        self.assertEqual((report["status"], report["checked"]), ("accepted", True))
+        self.assertEqual(report["totals"]["functions"], len(self.snapshot["functions"]))
+        self.assertEqual(report["totals"]["proved_reads"], sum(reads.values()))
+        self.assertEqual(report["snapshot_sha256"], hashlib.sha256(self.snapshot_path.read_bytes()).hexdigest())
+
+    def test_the_worst_function_decides_the_status(self):
+        def unguarded(function):
+            # (its isinstance test now names float, so nothing guards its int read)
+            for block in function["blocks"]:
+                for op in block["operations"]:
+                    for operand in op["operands"]:
+                        if operand["value"] in ("@pys_dyntype_int", "@pys_dyntype_bool"):
+                            operand["value"] = "@pys_dyntype_float"
+
+        def unmodeled(function):
+            next(op for block in function["blocks"] for op in block["operations"]
+                 if op["op"] == "mem.load")["op"] = "new.unmodeled.operation"
+
+        def malformed(function):
+            operations = [op for block in function["blocks"] for op in block["operations"] if op["results"]]
+            operations[1]["results"] = list(operations[0]["results"])
+
+        for changes, status, code in (((), "accepted", 0),
+                                      ((("boundary_int", unguarded),), "rejected", 1),
+                                      ((("boundary_class", unmodeled),), "unsupported", 2),
+                                      ((("boundary_int", unguarded), ("boundary_class", unmodeled)), "rejected", 1),
+                                      ((("boundary_int", unguarded), ("dyn.call.label.0", malformed)), "error", 3)):
+            with self.subTest(changes=[name for name, _ in changes]):
+                snapshot = copy.deepcopy(self.snapshot)
+                symbols = {}
+                for name, change in changes:
+                    function = next(fn for fn in snapshot["functions"] if fn["name"] == name)
+                    change(function)
+                    symbols[function["symbol"]] = change
+                fields, result = check_all(snapshot, CHECKER)
+                self.assertEqual((fields["status"], result), (status, code))
+                # (checked: Lean ran on every function that reads a payload)
+                self.assertEqual(fields["checked"], all(change is unguarded for _, change in changes))
+                for record in fields["functions"]:
+                    expected = {unguarded: "rejected", unmodeled: "unsupported", malformed: "error"}.get(
+                        symbols.get(record["function"]), "accepted")
+                    self.assertEqual(record["status"], expected, record)
+
+    def test_all_writes_no_candidate(self):
+        target = self.directory / "never-written.json"
+        completed = subprocess.run(
+            [sys.executable, str(TOOL), "--snapshot", str(self.snapshot_path), "--all", "--emit", str(target)],
+            capture_output=True, text=True, timeout=10)
+        self.assertEqual(completed.returncode, 2, completed.stdout + completed.stderr)
+        self.assertFalse(target.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -904,11 +904,16 @@ Ruff checks the repository's Python files separately.
 The same Lint job builds and audits the optional
 [Lean payload-guard prototype](../tools/lean_boundary/README.md) on every main push
 and manual dispatch. For PRs, it checks the cumulative merge diff for changes to
-the prototype, compiler, inspection exporter, boundary tests, Makefile, Lint workflow or
-Python/development dependency pins. Missing merge history runs the check;
-documentation-only PRs skip it. The selector has temporary-Git-history controls.
-It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
-`make check-lean-boundary`; no extra PR job is added. The bridge's Python tests
+the prototype, compiler, inspection exporter, boundary and corpus tools, Makefile,
+Lint workflow or Python/development dependency pins. Missing merge history runs the
+check; documentation-only PRs skip it. The selector has temporary-Git-history
+controls. It uses the pinned Lean 4.35.0 release with a verified archive SHA-256
+and runs `make check-lean-boundary`; no extra PR job is added. The x86_64
+verification group `opt-in` on PRs, and `dynany-optin-0` on main and manual runs,
+then run `make check-lean-corpus` with the same archive: it compiles each
+dynamic-`Any` test program with the hosted compiler and fails unless Lean proves
+every dynamic payload read guarded (about two minutes; its report is uploaded as
+`lean-corpus.json`). Lint has no room for it under the 15-minute bound. The bridge's Python tests
 also run in `make check-fast`. Those tests skip executable checks when Lean has
 not been built; the dedicated target requires them and fails if the executable
 is missing. Lean is a development-only dependency for this bounded prototype.
