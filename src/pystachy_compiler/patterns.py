@@ -5,12 +5,23 @@ from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import clone, is_tuple, is_union, targs, typestr, unopt
 
 
+def pattern_then(test: Node, tail: Node, line: int) -> Node:
+    # Only test's compiler-generated conjunction is flattened. Its operands
+    # already produce condition booleans, so reassociation preserves callback
+    # order and short circuiting. OR alternatives and tail (possibly the user's
+    # guard) stay intact. Keeping later reads inside each successful operand's
+    # RHS lets ordinary flow analysis see the preceding staged assignments.
+    if test.kind == "boolop" and test.s == "and":
+        return mk("boolop", "and", line, [test.kids[0], pattern_then(test.kids[1], tail, line)])
+    return mk("boolop", "and", line, [test, tail])
+
+
 def conjunction(parts: list[Node], line: int) -> Node:
     if len(parts) == 0:
         return mk("True", "", line, [])
-    out = parts[0]
-    for part in parts[1:]:
-        out = mk("boolop", "and", line, [out, part])
+    out = parts[-1]
+    for i in range(len(parts) - 2, -1, -1):
+        out = pattern_then(parts[i], out, line)
     return out
 
 
