@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 
 import check_lean_boundary as bridge
+import check_lean_inline as inline
 
 ROOT = bridge.ROOT
 DEFAULT_CHECKER = ROOT / "tools/lean_boundary/.lake/build/bin/pystachy-int"
@@ -29,7 +30,8 @@ SEVERITY = bridge.SEVERITY
 Unsupported = bridge.Unsupported
 require = bridge.require
 LIMITATIONS = [
-    "Only null digit pointers selected after pys_big_op (gen_big_known's claims) are checked.",
+    "Checks null digit replacements after pys_big_op and actual checked +, -, * overflow paths; "
+    "inline shift/floor-division predicates and arbitrary arithmetic provenance remain outside scope.",
     "The representation (a digit pointer is null exactly where the value fits, and the word is "
     "then the value), the runtime's operators and LLVM lowering are trusted.",
 ]
@@ -246,12 +248,15 @@ def check_all(snapshot, checker=DEFAULT_CHECKER):
             if not verdict:
                 record["status"] = "rejected"
                 record.setdefault("unproved", []).append(dict(claim, block=block))
-    worst = max((record["status"] for record in records), key=SEVERITY.index, default="accepted")
+    inline_result, _ = inline.check_all(snapshot)
+    worst = max([record["status"] for record in records] + [inline_result["status"]], key=SEVERITY.index)
     totals = {"functions": len(functions), "claim_functions": sum("claims" in record for record in records),
               "claims": len(pending),
               "proved_claims": sum(record.get("claims", 0) for record in records if record["status"] == "accepted"),
               **{status: sum(record["status"] == status for record in records) for status in SEVERITY}}
-    return {"status": worst, "functions": records, "totals": totals, "limitations": LIMITATIONS}, OUTCOMES[worst]
+    totals.update({"inline_" + key: value for key, value in inline_result["totals"].items()})
+    return {"status": worst, "functions": records, "totals": totals, "inline": inline_result,
+            "limitations": LIMITATIONS}, OUTCOMES[worst]
 
 
 def evaluate(checker, items):
@@ -297,7 +302,8 @@ def check_program(path, checker):
         except (OSError, ValueError, subprocess.SubprocessError) as error:
             return dict(record, status="error", message=str(error))
     return dict(record, status=fields["status"], snapshot_sha256=digest, totals=fields["totals"],
-                failures=[item for item in fields["functions"] if item["status"] != "accepted"])
+                failures=[item for item in fields["functions"] + fields["inline"]["functions"]
+                          if item["status"] != "accepted"])
 
 
 def check_corpus(checker, jobs):
@@ -307,12 +313,13 @@ def check_corpus(checker, jobs):
         records = list(pool.map(lambda path: check_program(path, checker), programs))
     worst = max((record["status"] for record in records), key=SEVERITY.index)
     totals = {key: sum(record.get("totals", {}).get(key, 0) for record in records)
-              for key in ("claim_functions", "claims", "proved_claims")}
+              for key in ("claim_functions", "claims", "proved_claims", "inline_operations", "inline_uses", "inline_proved_uses",
+                          "inline_observed_operations", "inline_outside_scope_operations")}
     totals.update(programs=len(records), claim_programs=sum(bool(record.get("totals", {}).get("claims"))
                                                              for record in records),
                   failed_programs=sum(record["status"] != "accepted" for record in records))
-    if worst == "accepted" and totals["claims"] == 0:
-        worst = "unsupported"  # (no claim found: the adapter no longer recognizes the compiler's)
+    if worst == "accepted" and (totals["claims"] == 0 or totals["inline_uses"] == 0):
+        worst = "unsupported"  # A whole obligation family must not vanish from the corpus.
     return {"status": worst, "totals": totals, "programs": records, "limitations": LIMITATIONS,
             "seconds": round(time.monotonic() - started, 1)}, OUTCOMES[worst]
 
@@ -335,6 +342,7 @@ def main(argv=None):
         totals = report["totals"]
         print(f"check_lean_int: {report['status']}: {totals['programs']} programs, {totals['claim_programs']} "
               f"with fit claims, {totals['proved_claims']} of {totals['claims']} claims proved "
+              f"and {totals['inline_proved_uses']} of {totals['inline_uses']} checked arithmetic uses proved "
               f"({report['seconds']} s)")
         for record in report["programs"]:
             if record["status"] != "accepted":

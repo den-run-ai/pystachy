@@ -3,6 +3,7 @@
 import ast
 import os
 import re
+import shlex
 from pathlib import Path
 import subprocess
 import tempfile
@@ -99,6 +100,10 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
                      "tools/test_lean_layout_metadata.py", "tools/check_lean_corpus.py",
                      "tools/lean_boundary/PystachyBoundary.lean", "tools/lean_boundary/PystachyInt.lean",
                      "tools/check_lean_int.py", "tools/test_lean_int.py", "Makefile",
+                     "tools/check_lean_effects.py", "tools/check_lean_inline.py", "tools/test_lean_inline.py",
+                     "tools/check_lean_guards.py", "tools/check_lean_guard_corpus.py",
+                     "tools/test_lean_guards.py", "tools/test_lean_effects.py",
+                     "tools/test_lean_range_bounds.py", "tools/test_lean_closure_cells.py",
                      ".github/workflows/lint.yml", "tools/requirements-dev.txt", ".python-version"):
             with self.subTest(path=name):
                 self.merge_pr(name)
@@ -126,13 +131,13 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertEqual(pins(corpus["run"]), pins(boundary["run"]))
         self.assertEqual([len(found) for found in pins(boundary["run"])[:2]], [1, 1])
         self.assertEqual(corpus["if"], "matrix.machine == 'x86_64' && "
-                                       "(matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling')")
+                                       "(matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling' || matrix.group == 'contracts')")
         for event in ("pull_request", "push", "workflow_dispatch"):
             with self.subTest(event=event):
                 selected = [(row["machine"], row["group"]) for row in matrix_rows(verification, event)
                             if self.selects_matrix_row(corpus["if"], row)]
                 group = "opt-in" if event == "pull_request" else "runtime-cache"
-                self.assertEqual(selected, [("x86_64", group)] if event == "pull_request" else [("x86_64", "runtime-cache"), ("x86_64", "scaling")])
+                self.assertEqual(set(selected), {("x86_64", group), ("x86_64", "contracts")} if event == "pull_request" else {("x86_64", "runtime-cache"), ("x86_64", "scaling"), ("x86_64", "contracts")})
         # (two workers, explicitly: the runner would otherwise start up to four)
         self.assertIn("LEAN_CORPUS_FLAGS='--jobs 2 ", corpus["run"])
         self.assertEqual(verification["timeout-minutes"], "15")
@@ -151,18 +156,29 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         bin_dir = self.directory / "bin"
         bin_dir.mkdir()
         make = bin_dir / "make"
-        make.write_text('#!/bin/sh\nprintf "%s\\n" "$1"\n')
+        make.write_text('#!/bin/sh\nprintf "%s\\n" "$1"\n'
+                        'if [ "$1" = "check-lean-guards" ]; then printf "%s\\n" "$2"; fi\n')
         make.chmod(0o755)
         for group, expected in (("opt-in", ["check-lean-corpus", "check-lean-int", "check-lean-storage"]),
                                 ("runtime-cache", ["check-lean-corpus", "check-lean-int"]),
-                                ("scaling", ["check-lean-storage"]), ("hosted", [])):
+                                ("scaling", ["check-lean-storage"]), ("contracts", ["check-lean-guards"]), ("hosted", [])):
             with self.subTest(group=group):
                 env = dict(os.environ, VERIFY_GROUP=group, lean_boundary_dir=str(self.directory),
                            PATH=str(bin_dir) + os.pathsep + os.environ["PATH"])
                 completed = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", selector],
                                            env=env, capture_output=True, text=True, timeout=10)
                 self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
-                self.assertEqual(completed.stdout.splitlines(), expected)
+                lines = completed.stdout.splitlines()
+                if group == "contracts":
+                    flags = lines.pop()
+                    self.assertTrue(flags.startswith("LEAN_GUARD_FLAGS="))
+                    args = shlex.split(flags.removeprefix("LEAN_GUARD_FLAGS="))
+                    self.assertEqual(args[:4], ["--jobs", "2", "--report", "build/verify/lean-guards.json"])
+                    programs = args[4:]
+                    self.assertGreaterEqual(len(programs), 2)
+                    self.assertEqual(len(programs), len(set(programs)))
+                    self.assertTrue(all((ROOT / path).is_file() for path in programs))
+                self.assertEqual(lines, expected)
 
     def test_corpus_and_opt_in_dependencies_are_pinned_and_installed_before_checks(self):
         ci = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)

@@ -957,6 +957,13 @@ bounds and live, followed by `make check-lean-int` for promoting-integer
 `lean-corpus.json` and `lean-int.json`. PR `opt-in` and full-run x86 `scaling`
 also run `make check-lean-storage` for [storage guards](../tools/lean_boundary/STORAGE.md),
 including programs that import opted-in modules, and upload `lean-storage.json`.
+The x86 `contracts` group runs `make check-lean-guards` on the explicit
+`null_guards.py` and `union_guards.py` examples, uploading
+`lean-guards.json`. The selection and its limits are recorded in
+[GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard
+coverage; the strict full-corpus guard command remains an investigation tool with
+unsupported forms, not a passing whole-corpus gate. Arithmetic reports separately
+count actual checked overflow reconstructions and other observed arithmetic.
 All sweeps use two workers within existing jobs and their 15-minute limits.
 Lint runs none of these corpora. The bridge's Python tests also run in
 `make check-fast`; they skip executable checks when Lean has not been built.

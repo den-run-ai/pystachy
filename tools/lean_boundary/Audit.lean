@@ -3,6 +3,7 @@ import Lean
 import PystachyBoundary
 import PystachyAccess
 import PystachyInt
+import PystachyInline
 import PystachyStorage
 
 /- Fail the build if the public guarantees depend on an admitted proof, a
@@ -17,6 +18,8 @@ run_cmd do
       ``PystachyInt.known_fits, ``PystachyInt.mod_fits, ``PystachyInt.floordiv_fits,
       ``PystachyInt.shr_fits, ``PystachyInt.shl_exact, ``PystachyInt.bitwise_fits,
       ``PystachyInt.and_mask,
+      ``PystachyInline.no_overflow_exact, ``PystachyInline.no_overflow_fits,
+      ``PystachyInline.accepted_arithmetic_exact,
       ``PystachyStorage.low_of_fit, ``PystachyStorage.promoting_decode,
       ``PystachyStorage.plain_view_safe, ``PystachyStorage.plain_marker_has_no_tail,
       ``PystachyStorage.null_digits_narrow, ``PystachyStorage.slot_fits_iff,

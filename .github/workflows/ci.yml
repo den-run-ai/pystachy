@@ -189,9 +189,10 @@ jobs:
 
       # Keep the complete Lean corpora at two workers. Full dynamic-Any already approaches
       # the job's time bound; put storage proofs in the shorter full scaling group instead.
-      # PR opt-in retains all three checks. The pinned release archive is for x86_64 Linux.
+      # PR opt-in retains all three checks; contracts checks bounded union/null examples.
+      # The pinned release archive is for x86_64 Linux.
       - name: Lean proofs of compiler guard obligations
-        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling')
+        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling' || matrix.group == 'contracts')
         env:
           VERIFY_GROUP: ${{ matrix.group }}
         run: |
@@ -210,6 +211,11 @@ jobs:
                 make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
               PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
                 make check-lean-int LEAN_INT_FLAGS='--jobs 2 --report build/verify/lean-int.json' ;;
+          esac
+          case "$VERIFY_GROUP" in
+            contracts)
+              PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+                make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/union_guards.py' ;;
           esac
           case "$VERIFY_GROUP" in
             opt-in|scaling)
@@ -320,6 +326,7 @@ jobs:
             build/verify/lean-corpus.json
             build/verify/lean-int.json
             build/verify/lean-storage.json
+            build/verify/lean-guards.json
             build/verify/dynany-optin-*/tests/programs/*/*
             build/verify/python-int-optin-*.json
             build/verify/python-int-optin-*/tests/programs/*/*
