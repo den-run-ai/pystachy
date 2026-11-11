@@ -6,9 +6,9 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from src.pystachy_compiler.dynamic_proof import DynamicProof
+from src.pystachy_compiler.dynamic_proof import DK_OBJ, DF_ROLE, DynamicProof, DynTypes
 from src.pystachy_compiler.gen import Gen
-from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Ins, Val, slot_register
+from src.pystachy_compiler.ir import Blk, Data, FnInfo, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.syntax import Node
 
 
@@ -81,8 +81,44 @@ class Case:
         self.block("miss")
         self.ret()
 
+    def dyntype(self, name, kind=DK_OBJ, number=-1, base="", role="", held=""):
+        # one of the program's DynTypes, as dynamic.py's dyn_class_type emits a class's: held
+        # names the static type of its boxes' payload (the class)
+        d = Data("dyntype", name)
+        flags = DF_ROLE if role else 0
+        d.items = [Val(str(kind), "int"), Val(str(number), "int"), Val(str(flags), "int")]
+        d.refs = ["@s.desc", "@s.name", base or "null", "null", "null", "null"] + ([role] if role else [])
+        self.g.consts.append(d)
+        if held:
+            self.g.dyntypes[held] = name
+        return name
+
+    def isa_call(self, value="%a0", descriptor="@dt.Base", role=False):
+        # pys_dyn_isa (or pys_dyn_role_isa) of value and a DynType: its integer result
+        key = self.g.runtime("pys_dyn_role_isa" if role else "pys_dyn_isa")
+        return self.op("rt", "bool", key, [(value, "%ptr"), (descriptor, "%ptr")])
+
+    def isa(self, value="%a0", descriptor="@dt.Base", role=False, none=False):
+        # dyn_test's test of a class: pys_dyn_isa (or pys_dyn_role_isa), and, unless none,
+        # not None, which pys_dyn_isa admits as a class's optional object
+        isa = self.isa_call(value, descriptor, role)
+        hit = self.op("num.cmp", "bool", "!=", [(isa, "int"), ("0", "int")])
+        if none:
+            return hit
+        notnone = self.compare(value, "none", "!=")
+        return self.op("scalar.bin", "bool", "and", [(hit, "bool"), (notnone, "bool")])
+
+    def dispatch(self, cases, value="%a0", word="3", operand=None):
+        # a class dispatcher's switch on the class number word of value's DynType: cases maps
+        # each class number to its block; the rest go to "miss"
+        tag = self.op("dyn.type", "dyntype", a=[(value, "dyn")])
+        address = self.op("mach.addr", "%ptr", "int", [(tag, "%ptr"), (word, "int")])
+        number = self.op("mach.load", "int", a=[(address, "%ptr")])
+        self.op("switch", a=[(operand or number, "int")] + [(n, "int") for n in cases],
+                b=["miss"] + list(cases.values()))
+
     def proof(self):
-        proof = DynamicProof(self.fn)
+        proof = DynamicProof(self.fn, DynTypes(self.g.consts, self.g.dyntypes, self.g.dynfnt))
         proof.run()
         return proof
 
@@ -419,14 +455,6 @@ class DynamicGuardTests(unittest.TestCase):
         c.ret()
         self.assert_safe(c, False)
 
-    def test_unsupported_payloads_do_not_claim_exact_builtin_proofs(self):
-        for member in ("Box", "list[int]"):
-            c = Case()
-            c.payload(member=member)
-            c.ret()
-            proof = c.proof()
-            self.assertFalse(proof.bad)
-            self.assertEqual(proof.payloads, 0)
 
     def test_stock_verifier_rejects_a_missing_dynamic_guard(self):
         c = Case()
@@ -435,7 +463,193 @@ class DynamicGuardTests(unittest.TestCase):
         errors = StringIO()
         with redirect_stderr(errors), self.assertRaises(SystemExit):
             c.g.verify(c.fn, False)
-        self.assertIn("dyn.payload needs tag float", errors.getvalue())
+        self.assertIn("dyn.payload of float needs tag @pys_dyntype_float for %a0", errors.getvalue())
+
+
+
+class ClassAndContainerGuardTests(unittest.TestCase):
+    """Payload reads of classes, containers and functions against the program's DynTypes."""
+
+    def assert_safe(self, case, safe=True):
+        bad = case.proof().bad
+        self.assertEqual(not bad, safe, bad)
+
+    @staticmethod
+    def classes():
+        # Base (class number 0), its subclass Child (1) and an unrelated Other (2)
+        c = Case()
+        base = c.dyntype("@dt.Base", number=0, held="Base")
+        c.dyntype("@dt.Child", number=1, base=base, held="Child")
+        c.dyntype("@dt.Other", number=2, held="Other")
+        return c
+
+    def exact(self, c, descriptor, value="%a0", pred="=="):
+        tag = c.op("dyn.type", "dyntype", a=[(value, "dyn")])
+        return c.op("ptr.cmp", "bool", pred, [(tag, "dyntype"), (descriptor, "dyntype")])
+
+    def test_isa_admits_none_until_a_test_excludes_it(self):
+        # pys_dyn_isa takes None as a class's optional object: dyn_test excludes it.
+        for none in (False, True):
+            with self.subTest(none=none):
+                c = self.classes()
+                c.branch(c.isa(none=none))
+                c.block("hit")
+                c.payload(member="Base")
+                c.finish_pair()
+                self.assert_safe(c, not none)
+                if not none:
+                    c.g.verify(c.fn, False)
+
+    def test_isa_proves_its_class_and_bases_but_not_subclasses(self):
+        for descriptor, member, safe in (("@dt.Base", "Base", True), ("@dt.Child", "Base", True),
+                                         ("@dt.Child", "Child", True), ("@dt.Base", "Child", False),
+                                         ("@dt.Base", "Other", False)):
+            with self.subTest(descriptor=descriptor, member=member):
+                c = self.classes()
+                c.branch(c.isa(descriptor=descriptor))
+                c.block("hit")
+                c.payload(member=member)
+                c.finish_pair()
+                self.assert_safe(c, safe)
+
+    def test_a_zero_isa_result_proves_the_other_branch(self):
+        for exclude_none in (False, True):
+            with self.subTest(exclude_none=exclude_none):
+                c = self.classes()
+                isa = c.isa_call()
+                c.branch(c.op("num.cmp", "bool", "==", [(isa, "int"), ("0", "int")]), "miss", "passed")
+                c.block("passed")
+                if exclude_none:
+                    c.branch(c.compare(member="none", pred="!="))
+                else:
+                    c.op("br", b=["hit"])
+                c.block("hit")
+                c.payload(member="Base")
+                c.finish_pair()
+                self.assert_safe(c, exclude_none)
+
+    def test_exact_class_and_container_tags(self):
+        for descriptor, member, safe in (
+                ("@dt.Child", "Base", True), ("@dt.Child", "Child", True), ("@dt.Base", "Child", False),
+                ("@dt.Other", "Base", False), ("@pys_dyntype_list", "list[dyn]", True),
+                ("@pys_dyntype_dict", "dict[dyn,dyn]", True), ("@pys_dyntype_tuple", "vtuple[dyn]", True),
+                ("@pys_dyntype_intlist", "list[int]", True), ("@pys_dyntype_biglist", "list[int]", True),
+                ("@pys_dyntype_list", "list[int]", False), ("@pys_dyntype_tuple", "list[dyn]", False),
+                ("@pys_dyntype_dict", "Base", False), ("@dt.Base", "dict[dyn,dyn]", False)):
+            with self.subTest(descriptor=descriptor, member=member):
+                c = self.classes()
+                c.branch(self.exact(c, descriptor))
+                c.block("hit")
+                c.payload(member=member)
+                c.finish_pair()
+                self.assert_safe(c, safe)
+
+    def test_excluding_one_class_keeps_every_other_dyntype(self):
+        c = self.classes()
+        c.branch(self.exact(c, "@dt.Child", pred="!="))
+        c.block("hit")
+        c.payload(member="Base")
+        c.finish_pair()
+        self.assert_safe(c, False)
+
+    def test_class_dispatch_arms_and_default(self):
+        # each arm reads its own class (a subclass's arm may read its base's payload)
+        for arms, default, safe in ((("Base", "Child"), "", True), (("Base", "Base"), "", True),
+                                    (("Child", "Child"), "", False), (("Base", "Other"), "", False),
+                                    (("Base", "Child"), "Base", False)):
+            with self.subTest(arms=arms, default=default):
+                c = self.classes()
+                c.dispatch({"0": "base", "1": "child"})
+                for label, member in zip(("base", "child"), arms):
+                    c.block(label)
+                    c.payload(member=member)
+                    c.ret()
+                c.block("miss")
+                if default:
+                    c.payload(member=default)
+                c.ret()
+                self.assert_safe(c, safe)
+                if safe:
+                    c.g.verify(c.fn, False)
+
+    def test_a_switch_proves_only_its_own_tags_class_number(self):
+        for mode in ("other box", "other word", "parameter", "unknown number"):
+            with self.subTest(mode=mode):
+                c = self.classes()
+                if mode == "unknown number":
+                    c.dispatch({"7": "base"})
+                else:
+                    c.dispatch({"0": "base"}, value="%a1" if mode == "other box" else "%a0",
+                               word="2" if mode == "other word" else "3",
+                               operand="%a4" if mode == "parameter" else None)
+                c.block("base")
+                c.payload(member="Base")
+                c.finish_pair()
+                self.assert_safe(c, False)
+
+    def test_a_dispatch_listed_before_its_tags_block(self):
+        # Block order is not dominance order: list the switch's block before the block that
+        # reads the tag it dispatches on, which runs first.
+        c = self.classes()
+        c.op("br", b=["tag"])
+        c.block("tag")
+        tag = c.op("dyn.type", "dyntype", a=[("%a0", "dyn")])
+        c.op("br", b=["dispatch"])
+        c.block("dispatch")
+        address = c.op("mach.addr", "%ptr", "int", [(tag, "%ptr"), ("3", "int")])
+        number = c.op("mach.load", "int", a=[(address, "%ptr")])
+        c.op("switch", a=[(number, "int"), ("0", "int")], b=["miss", "base"])
+        c.block("base")
+        c.payload(member="Base")
+        c.finish_pair()
+        blocks = c.fn.blocks
+        c.fn.blocks = [blocks[0], blocks[2], blocks[1]] + blocks[3:]
+        self.assert_safe(c)
+
+    def test_role_tests_admit_the_classes_that_take_the_role(self):
+        for role_test, member, safe in ((True, "Role", True), (False, "Role", True),
+                                        (True, "Impl", False)):
+            with self.subTest(role_test=role_test, member=member):
+                c = Case()
+                role = c.dyntype("@dt.Role", number=0, held="Role")
+                c.dyntype("@dt.Impl", number=1, role=role, held="Impl")
+                c.branch(c.isa(descriptor=role, role=role_test))
+                c.block("hit")
+                c.payload(member=member)
+                c.finish_pair()
+                self.assert_safe(c, safe)
+
+    def test_function_payloads_need_their_own_dyntype(self):
+        for descriptor, safe in (("@dtf.0", True), ("@dtf.1", False)):
+            with self.subTest(descriptor=descriptor):
+                c = Case()
+                c.dyntype("@dtf.0", kind=9)
+                c.dyntype("@dtf.1", kind=9)
+                c.g.dynfnt["fn[f:a]"] = "@dtf.0"
+                c.g.dynfnt["fn[f:b]"] = "@dtf.1"
+                c.branch(self.exact(c, descriptor))
+                c.block("hit")
+                c.payload(member="fn[f:a]")
+                c.finish_pair()
+                self.assert_safe(c, safe)
+
+    def test_a_payload_type_no_dyntype_holds_is_rejected(self):
+        c = self.classes()
+        c.branch(self.exact(c, "@dt.Base"))
+        c.block("hit")
+        c.payload(member="Box")
+        c.finish_pair()
+        bad = c.proof().bad
+        self.assertEqual(bad, ["dyn.payload of Box needs tag none (no DynType holds it) for %a0"])
+
+    def test_stock_verifier_names_a_class_reads_tags(self):
+        c = self.classes()
+        c.payload(member="Base")
+        c.ret()
+        errors = StringIO()
+        with redirect_stderr(errors), self.assertRaises(SystemExit):
+            c.g.verify(c.fn, False)
+        self.assertIn("dyn.payload of Base needs tag @dt.Base/@dt.Child for %a0", errors.getvalue())
 
 
 if __name__ == "__main__":

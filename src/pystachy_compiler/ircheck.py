@@ -1,7 +1,7 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
-from src.pystachy_compiler.dynamic_proof import DynamicProof, exact_dynamic_payload
+from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
@@ -374,7 +374,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if (i.op == "union.tag" and (i.t != "int" or i.s != "")) or (i.op == "union.payload" and (i.t != "%slot" or i.s not in ms)) or (i.op == "union.raw" and (i.t != "%slot" or i.s != "")):
                     self.bad_ir(fn, b, f"{i.op} has an invalid result type or member")
             if i.op == "dyn.type" or i.op == "dyn.payload" or i.op == "dyn.raw":
-                if i.op == "dyn.payload" and exact_dynamic_payload(i.s):
+                if i.op == "dyn.payload":
                     dynamic_proofs = True
                 if len(i.a) != 1 or i.a[0].t != "dyn" or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} needs one dyn operand and no extra metadata")
@@ -429,7 +429,7 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
     if dynamic_raw:
         verify_dynamic_raw(self, fn)
     if dynamic_proofs:
-        dynamic = DynamicProof(fn)
+        dynamic = DynamicProof(fn, DynTypes(self.consts, self.dyntypes, self.dynfnt))
         dynamic.run()
         for j in range(len(dynamic.bad)):
             self.bad_ir(fn, fn.blocks[at[dynamic.badblocks[j]]], dynamic.bad[j])
