@@ -753,10 +753,10 @@ annotations; it does not infer a new class-template specialization from runtime 
 A class specializes when its `__init__` has an unannotated parameter, a parameter annotated
 `object` or mentioning `Any` (also `list[Any]`, quoted or imported annotations), variadic parameters,
 a parameter or constructed field using another class template, an `Iterator[T]` or
-`Iterable[T]` parameter, or an `iter()` call. A constructed field whose annotation, in the
-class body or at the store, is a type of its own (`deps: defaultdict[str, set[str]]`, then
-`self.deps = defaultdict(set)`) takes the object as that type and does not make the class a
-template, so such a class can take part in inheritance. Calls whose fields have
+`Iterable[T]` parameter, or an `iter()` call. In a class that takes part in inheritance, a
+constructed field whose annotation, in the class body or at the store, is a type of its own
+(`deps: defaultdict[str, set[str]]`, then `self.deps = defaultdict(set)`) takes the object as
+that type rather than making the class a template. Calls whose fields have
 the same types share a specialization: `Box(1)` and `Box(2)` share one, while `Box("s")`
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.
