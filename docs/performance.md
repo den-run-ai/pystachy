@@ -228,6 +228,7 @@ This inventory does not implement source-line annotations or explain missed pass
 | Optimization | Effect | Comparison control |
 |---|---|---|
 | `dictfuse` | Reuses a proven lookup of the same key | `PYSTACHY_OPT=-dictfuse` |
+| `listguard` | Runs a range loop's item reads and assignments without per-item checks where its bounds and one test of the lists' lengths before it prove them in range, so that LLVM can vectorize it | `PYSTACHY_OPT=-listguard` |
 | `listget` | Removes bounds checks from proven sequence-loop reads, of lists and `bytes` | `PYSTACHY_OPT=-listget` |
 | `listfast` | Inlines checked `list[int]` and `bytes` reads; negative/invalid indices use the runtime | `PYSTACHY_OPT=-listfast` |
 | `allocelide` | Lets LLVM delete the allocation of an object or fixed tuple that holds only `int`, `float` and `bool` values and that nothing keeps; AOT builds then inline the allocator's fast path into the allocations left ([#1017](https://github.com/den-run-ai/pystachy/issues/1017)) | `PYSTACHY_OPT=-allocelide` |

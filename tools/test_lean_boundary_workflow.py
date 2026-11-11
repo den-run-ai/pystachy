@@ -1,5 +1,6 @@
-"""Exercise the Lint workflow's actual Lean selector on temporary Git histories."""
+"""Exercise Lean workflow selection, corpus placement and dependency coverage."""
 
+import ast
 import os
 import re
 from pathlib import Path
@@ -8,6 +9,8 @@ import tempfile
 import unittest
 
 import yaml
+
+from test_workflow_limits import matrix_rows
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,6 +70,18 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertIn(result, ("run=true\n", "run=false\n"))
         return result == "run=true\n"
 
+    def selects_matrix_row(self, condition, row):
+        # Evaluate only the literal comparisons, startsWith and Boolean operators in these guards.
+        condition = re.sub(r"startsWith\(matrix.group, '([^']*)'\)",
+                           lambda match: str(row["group"].startswith(match[1])), condition)
+        for key in ("group", "machine"):
+            condition = condition.replace("matrix." + key, repr(row[key]))
+        condition = condition.replace("&&", " and ").replace("||", " or ")
+        expression = ast.parse(condition, mode="eval")
+        allowed = (ast.Expression, ast.BoolOp, ast.Compare, ast.Constant, ast.And, ast.Or, ast.Eq)
+        self.assertTrue(all(isinstance(node, allowed) for node in ast.walk(expression)), condition)
+        return eval(compile(expression, "<Lean workflow condition>", "eval"), {"__builtins__": {}}, {})
+
     def test_documentation_only_pr_skips_lean(self):
         self.merge_pr("docs/typed-ir.md", "README.md")
         self.assertFalse(self.selected())
@@ -76,9 +91,14 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertTrue(self.selected())
 
     def test_adapter_inspection_tests_and_pins_run_lean(self):
-        for name in ("tools/check_lean_boundary.py", "tools/inspect_compiler.py",
+        for name in ("tools/check_lean_boundary.py", "tools/check_lean_access.py", "tools/test_lean_access.py",
+                     "tools/inspect_compiler.py",
                      "tools/test_lean_boundary_workflow.py", "pystachy.py",
-                     "tools/lean_boundary/PystachyBoundary.lean", "Makefile",
+                     "tools/check_lean_storage.py", "tools/check_lean_storage_corpus.py",
+                     "tools/test_lean_storage.py", "tools/test_lean_storage_corpus.py",
+                     "tools/test_lean_layout_metadata.py", "tools/check_lean_corpus.py",
+                     "tools/lean_boundary/PystachyBoundary.lean", "tools/lean_boundary/PystachyInt.lean",
+                     "tools/check_lean_int.py", "tools/test_lean_int.py", "Makefile",
                      ".github/workflows/lint.yml", "tools/requirements-dev.txt", ".python-version"):
             with self.subTest(path=name):
                 self.merge_pr(name)
@@ -91,7 +111,7 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
             with self.subTest(event=event):
                 self.assertTrue(self.selected(event))
 
-    def test_corpus_proof_runs_in_an_opt_in_group_of_every_profile_with_the_same_lean(self):
+    def test_corpus_proof_uses_pr_opt_in_and_full_runtime_cache_with_the_same_lean(self):
         def lean_step(steps, command):
             return next(step for step in steps if command in step.get("run", ""))
         lint = yaml.load((ROOT / ".github/workflows/lint.yml").read_text(), Loader=yaml.BaseLoader)
@@ -106,13 +126,63 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertEqual(pins(corpus["run"]), pins(boundary["run"]))
         self.assertEqual([len(found) for found in pins(boundary["run"])[:2]], [1, 1])
         self.assertEqual(corpus["if"], "matrix.machine == 'x86_64' && "
-                                       "(matrix.group == 'opt-in' || matrix.group == 'dynany-optin-0')")
+                                       "(matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling')")
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            with self.subTest(event=event):
+                selected = [(row["machine"], row["group"]) for row in matrix_rows(verification, event)
+                            if self.selects_matrix_row(corpus["if"], row)]
+                group = "opt-in" if event == "pull_request" else "runtime-cache"
+                self.assertEqual(selected, [("x86_64", group)] if event == "pull_request" else [("x86_64", "runtime-cache"), ("x86_64", "scaling")])
         # (two workers, explicitly: the runner would otherwise start up to four)
         self.assertIn("LEAN_CORPUS_FLAGS='--jobs 2 ", corpus["run"])
-        groups = verification["strategy"]["matrix"]["group"]
-        self.assertIn('"opt-in"', groups.split("||")[0])
-        self.assertIn('"dynany-optin-0"', groups.split("||")[1])
+        self.assertEqual(verification["timeout-minutes"], "15")
+        self.assertNotIn("continue-on-error", corpus)
+        self.assertNotIn("continue-on-error", verification)
         self.assertIn("build/verify/lean-corpus.json", verification["steps"][-1]["with"]["path"])
+        self.assertIn("build/verify/lean-storage.json", verification["steps"][-1]["with"]["path"])
+
+    def test_full_storage_proof_uses_the_short_scaling_group(self):
+        ci = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
+        step = next(step for step in ci["jobs"]["verification"]["steps"]
+                    if "make check-lean-storage" in step.get("run", ""))
+        self.assertEqual(step["env"]["VERIFY_GROUP"], "${{ matrix.group }}")
+        # Execute the real command selector with an inert make, without downloading Lean.
+        selector = 'case "$VERIFY_GROUP" in' + step["run"].split('case "$VERIFY_GROUP" in', 1)[1]
+        bin_dir = self.directory / "bin"
+        bin_dir.mkdir()
+        make = bin_dir / "make"
+        make.write_text('#!/bin/sh\nprintf "%s\\n" "$1"\n')
+        make.chmod(0o755)
+        for group, expected in (("opt-in", ["check-lean-corpus", "check-lean-int", "check-lean-storage"]),
+                                ("runtime-cache", ["check-lean-corpus", "check-lean-int"]),
+                                ("scaling", ["check-lean-storage"]), ("hosted", [])):
+            with self.subTest(group=group):
+                env = dict(os.environ, VERIFY_GROUP=group, lean_boundary_dir=str(self.directory),
+                           PATH=str(bin_dir) + os.pathsep + os.environ["PATH"])
+                completed = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", selector],
+                                           env=env, capture_output=True, text=True, timeout=10)
+                self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
+                self.assertEqual(completed.stdout.splitlines(), expected)
+
+    def test_corpus_and_opt_in_dependencies_are_pinned_and_installed_before_checks(self):
+        ci = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
+        verification = ci["jobs"]["verification"]
+        steps = verification["steps"]
+        dependencies = [step for step in steps if "/^typing_extensions==/p" in step.get("run", "")]
+        self.assertEqual(len(dependencies), 1)
+        dependency = dependencies[0]
+        self.assertIn("tools/requirements-dev.txt", dependency["run"])
+        self.assertNotIn("continue-on-error", dependency)
+        for command in ("tests/verify.sh", "make check-lean-corpus"):
+            probe = next(step for step in steps if command in step.get("run", ""))
+            self.assertLess(steps.index(dependency), steps.index(probe))
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            for row in matrix_rows(verification, event):
+                with self.subTest(event=event, **row):
+                    opted = row["group"] == "opt-in" or row["group"].startswith(
+                        ("dynany-optin-", "python-int-optin-"))
+                    lean_full = row["machine"] == "x86_64" and row["group"] == "runtime-cache"
+                    self.assertEqual(self.selects_matrix_row(dependency["if"], row), opted or lean_full)
 
     def test_missing_merge_parent_runs_lean(self):
         self.merge_pr("docs/typed-ir.md")

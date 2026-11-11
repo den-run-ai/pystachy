@@ -2,6 +2,8 @@
 
 make check-lean-corpus runs these before the corpus itself, in CI's opt-in verification group:
 they are not among Lint's test_lean_boundary*.py tests, whose job is at its time bound."""
+from contextlib import redirect_stdout
+import io
 import json
 import os
 from pathlib import Path
@@ -9,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import check_lean_corpus as corpus
 
@@ -111,6 +114,68 @@ class SelectionTests(unittest.TestCase):
         self.assertGreater(len(self.selected), 400)
 
 
+class AccountingTests(unittest.TestCase):
+    def run_report(self, status, payloads=0):
+        """Exercise program and corpus accounting without compiling or running Lean."""
+        payload = {"status": "accepted", "functions": [{"function": "@payload", "status": "accepted"}] * payloads,
+                   "totals": {"functions": 1 + payloads, "payload_functions": payloads,
+                              "reads": payloads, "proved_reads": payloads,
+                              "accepted": payloads, "unsupported": 0, "rejected": 0, "error": 0}}
+        accesses = {"status": status, "functions": [{"function": "@access", "status": status}],
+                    "totals": {"access_functions": 1, "accesses": 1,
+                               "proved_accesses": int(status == "accepted"),
+                               **{name: int(name == status) for name in corpus.bridge.SEVERITY}}}
+
+        def inspect(command, **kwargs):
+            output = Path(command[command.index("--output") + 1])
+            output.mkdir()
+            (output / "report.json").write_text(json.dumps({"status": "ok"}))
+            (output / "typed-after.json").write_text(json.dumps(
+                {"schema_version": 1, "stage": "typed-after", "status": "completed", "functions": []}))
+            return subprocess.CompletedProcess(command, 0)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            checker = base / "checker"
+            checker.touch()
+            report = base / "report.json"
+            with (mock.patch.object(corpus.subprocess, "run", side_effect=inspect),
+                  mock.patch.object(corpus.bridge, "check_all", return_value=(payload, 0)),
+                  mock.patch.object(corpus.access, "check_all", return_value=(accesses, corpus.bridge.OUTCOMES[status])),
+                  redirect_stdout(io.StringIO())):
+                code = corpus.main(["--checker", str(checker), "--access-checker", str(checker),
+                                    "--report", str(report), "--jobs", "1",
+                                    str(base / "first.py"), str(base / "second.py")])
+            return code, json.loads(report.read_text())
+
+    def test_access_only_statuses_reach_program_and_corpus_totals(self):
+        for status, expected_code in (("accepted", 0), ("rejected", 1), ("unsupported", 2), ("error", 3)):
+            with self.subTest(status=status):
+                code, report = self.run_report(status)
+                self.assertEqual((code, report["status"]), (expected_code, status))
+                self.assertEqual(report["totals"]["failed_programs"], 0 if status == "accepted" else 2)
+                records = [(report["totals"], 2)] + [(record["totals"], 1) for record in report["programs"]]
+                for totals, count in records:
+                    self.assertEqual(totals["payload_functions"], 0)
+                    self.assertEqual(totals["access_functions"], count)
+                    self.assertEqual(totals["proved_accesses"], count if status == "accepted" else 0)
+                    for name in corpus.bridge.SEVERITY:
+                        self.assertEqual(totals[name], 0)  # existing counters describe payload functions
+                        self.assertEqual(totals["access_" + name], count if name == status else 0)
+                for record in report["programs"]:
+                    self.assertEqual([failure["status"] for failure in record["failures"]],
+                                     [] if status == "accepted" else [status])
+
+    def test_payload_acceptances_remain_separate_from_access_rejections(self):
+        code, report = self.run_report("rejected", payloads=1)
+        self.assertEqual(code, 1)
+        for totals, count in [(report["totals"], 2)] + [(record["totals"], 1) for record in report["programs"]]:
+            self.assertEqual(totals["accepted"], count)
+            self.assertEqual(totals["rejected"], 0)
+            self.assertEqual(totals["access_accepted"], 0)
+            self.assertEqual(totals["access_rejected"], count)
+
+
 @unittest.skipUnless(CHECKER.is_file(), "build tools/lean_boundary to run the proved checker")
 class CorpusRunTests(unittest.TestCase):
     def run_tool(self, *programs):
@@ -123,16 +188,22 @@ class CorpusRunTests(unittest.TestCase):
 
     def test_named_programs_are_inspected_and_every_read_is_proved(self):
         completed, report = self.run_tool("tests/programs/inference/dynany_slices.py",
-                                          "tests/programs/strings/bom.py")
+                                          "tests/programs/strings/bom.py",
+                                          "tools/lean_boundary/examples/unchecked_accesses.py")
         self.assertEqual(completed.returncode, 0, completed.stdout + completed.stderr)
         self.assertEqual(report["status"], "accepted")
         records = {record["program"]: record for record in report["programs"]}
         dynamic = records["tests/programs/inference/dynany_slices.py"]["totals"]
         self.assertGreater(dynamic["reads"], 0)
         self.assertEqual(dynamic["proved_reads"], dynamic["reads"])
+        # (the same snapshots' unchecked list reads and dict entries are proved too)
+        accesses = records["tools/lean_boundary/examples/unchecked_accesses.py"]["totals"]
+        self.assertGreater(accesses["accesses"], 0)
+        self.assertEqual(report["totals"]["proved_accesses"], report["totals"]["accesses"])
         self.assertEqual(records["tests/programs/strings/bom.py"]["totals"]["reads"], 0)
-        self.assertEqual(report["totals"]["programs"], 2)
-        self.assertIn("2 programs", completed.stdout)
+        self.assertEqual(report["totals"]["programs"], 3)
+        self.assertIn("3 programs", completed.stdout)
+        self.assertIn("unchecked accesses proved", completed.stdout)
 
     def test_a_namespace_packages_dynamic_module_is_selected_and_proved(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -156,10 +156,13 @@ def successors(node):
 
 
 def live_locations(nodes):
-    """The locations each node may still read (as a guard, read or copy source) before they
-    are written: facts about others need not be kept."""
-    reads = [{node["value"]} if node["op"] in {"guard", "payload"} else {node["src"]} if node["op"] == "copy"
-             else set() for node in nodes]
+    """Locations whose facts a later payload may need before they are written.
+
+    Guards inspect runtime tags without requiring prior facts. A prior fact at a
+    guard matters only when a successor's obligations need it; the normal backward
+    propagation already retains those. Dead copies similarly need no source facts.
+    """
+    reads = [{node["value"]} if node["op"] == "payload" else set() for node in nodes]
     predecessors = [[] for _ in nodes]
     for index, node in enumerate(nodes):
         for target in successors(node):
@@ -172,9 +175,17 @@ def live_locations(nodes):
         queued[index] = False
         node = nodes[index]
         later = set().union(*(live[target] for target in successors(node)))
-        if node["op"] in {"copy", "havoc"}:
+        if node["op"] == "copy":
+            # A copy's source matters only when its assigned value will be read.
+            # Keeping dead copy sources live can grow a certificate quadratically.
+            needed = node["dst"] in later
             later.discard(node["dst"])
-        later |= reads[index]
+            if needed:
+                later.add(node["src"])
+        elif node["op"] == "havoc":
+            later.discard(node["dst"])
+        else:
+            later |= reads[index]
         if later != live[index]:
             live[index] = later
             for predecessor in predecessors[index]:
@@ -192,9 +203,13 @@ def infer_certificate(nodes, entry=0):
     facts = [None] * len(nodes)
     facts[entry] = {}
     pending = deque([entry])
+    queued = [False] * len(nodes)
+    queued[entry] = True
+    fact_count = 0
     iterations = 0
     while pending:
         index = pending.popleft()
+        queued[index] = False
         known = facts[index]
         node = nodes[index]
         outgoing = known
@@ -216,10 +231,13 @@ def infer_certificate(nodes, entry=0):
             merged = (dict(transferred) if previous is None else
                       {value: previous[value] | transferred[value] for value in previous.keys() & transferred.keys()})
             if merged != previous:
+                fact_count += len(merged) - len(previous or ())
                 facts[target] = merged
-                pending.append(target)
+                if not queued[target]:
+                    queued[target] = True
+                    pending.append(target)
         iterations += 1
-        if iterations > 200000 or sum(len(f or ()) for f in facts) > MAX_FACTS:
+        if iterations > 200000 or fact_count > MAX_FACTS:
             raise Unsupported("candidate inference exceeds the prototype's resource bound")
     certificate = [[[value, sorted(tags)] for value, tags in sorted((known or {}).items())] for known in facts]
     if sum(len(tags) for known in certificate for _, tags in known) > MAX_TAGS:
