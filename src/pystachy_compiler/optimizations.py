@@ -865,6 +865,9 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         reads[i.r[0]] = True
     stores: list[Ins] = plan.stores
     folds: list[Ins] = plan.folds
+    slow: dict[str, bool] = {}  # (listfast's fallback reads, which the copy never reaches: kept as they are)
+    for i in folds:
+        slow[i.b[1]] = True
     copies: list[Blk] = []
     last = 0
     n = 0
@@ -887,7 +890,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
                 w.lit = v.lit
                 w.infer_from = v.infer_from
                 d.a.append(w)
-            if i.op == "rt" and i.s == "list.get" and len(i.r) == 1 and i.r[0] in reads:
+            if i.op == "rt" and i.s == "list.get" and len(i.r) == 1 and i.r[0] in reads and b.label not in slow:
                 d.op = "list.load"  # (as listget makes it: the slot pys_list_get would have returned)
                 d.s = ""
                 d.r = [d.r[0], fn.n + 1, fn.n + 2, fn.n + 3]
