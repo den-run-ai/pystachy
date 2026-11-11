@@ -52,7 +52,11 @@ This hosted tool currently targets Linux and macOS.
 - `@pytest.mark.parametrize` with bounded static tables, optional literal string
   IDs and stacked parametrization. Values are evaluated once at module import;
   shared mutable values retain aliases across their cases.
+- Inline `pytest.param(..., id="case", marks=...)` entries with static
+  skip/skipif/xfail marks. Named tables containing `pytest.param` and computed
+  parameter metadata remain unsupported.
 - Function-scoped return/yield fixtures, dependencies and literal `autouse`.
+  `@pytest.fixture(name="alias")` exposes an explicit public fixture name.
   Repeated requests share one fixture value within a test. Teardown resumes yield
   fixtures in reverse setup order, including after a test fails or later fixture
   setup fails; one cleanup failure does not discard the remaining cleanup.
@@ -104,6 +108,36 @@ original tests, not claims of complete upstream suite support. Keep the existing
 [943-case JSON-repair replay](../tests/upstream/json_repair/README.md) and extension
 checks: this runner adds fixture/collection qualification rather than replacing
 those broader API checks.
+
+## Shared application and benchmark suites
+
+```sh
+python3 tools/pytest_native_suites.py --list
+python3 tools/pytest_native_suites.py --suite byte_bpe --mode python
+make test-pytest-workloads
+```
+
+The registry runs 19 example suites and the 25 delivered pyperformance workloads
+as independent suites, each using the same source under original CPython pytest
+and generated native execution. Each suite keeps its sibling imports; shared
+fixtures across directories are not implied. Every registered case must execute
+and pass: a skip, xfail, empty collection or missing report fails qualification.
+The default runs JIT and AOT; `--mode python` checks generation separately.
+`--json` retains every per-suite collection and phase comparison.
+The pyperformance tests use five separate categories to bound native build
+memory and keep the JSON dynamic-`Any` consumer separate from typed workloads.
+
+These are API correctness checks. Existing recorded stdout/stderr, real CLIs,
+network/FFI/BLAS ownership, package installation and upstream-reference checks
+retain their separate contracts. Pyperf-style timing boundaries, checksums,
+source hashes and benchmark sampling remain in the benchmark controllers.
+Native pytest run/build times are not benchmark speed measurements.
+
+Fixture aliases and parameter IDs/marks are resolved during collection. For
+equivalent unmarked declarations the generated program is unchanged; no compiler
+or runtime feature is added. Explicit parameter annotations also provide the
+types for fresh hoisted container literals containing empties, retaining their
+original mutable identity. The tests and benchmarks remain valid CPython.
 
 ## Reusing tests and measuring speed
 

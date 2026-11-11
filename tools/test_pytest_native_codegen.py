@@ -175,6 +175,146 @@ def test_after():
     assert VALUES == [1, 2, 2]
 """)
 
+    def test_parameter_sets_emit_the_same_direct_calls(self):
+        plain = """import pytest
+@pytest.mark.parametrize('value', [1, 2], ids=['first', 'second'])
+def test_value(value):
+    assert value > 0
+"""
+        sets = plain.replace("[1, 2], ids=['first', 'second']",
+                             "[pytest.param(1, id='first'), pytest.param(2, id='second')]")
+        self.assertEqual(generate(plain, "test_input.py"), generate(sets, "test_input.py"))
+
+    def test_empty_literal_hoists_keep_only_their_contextual_annotations(self):
+        source = """import pytest
+shared: list[int] = []
+@pytest.mark.parametrize('value', [[], shared, [1]], ids=['empty', 'shared', 'full'])
+def test_value(value: list[int]):
+    value.append(2)
+"""
+        generated, _ = self.execute(source)
+        self.assertIn("_pyn_param_0: 'list[int]' = []", generated.source)
+        self.assertIn("_pyn_param_1 = shared", generated.source)
+        self.assertIn("_pyn_param_2 = [1]", generated.source)
+        self.rejected("def test_metadata():\n    assert __annotations__ == {}\n", "module metadata")
+
+    def test_hoisted_annotations_do_not_repeat_python_annotation_evaluation(self):
+        self.execute("""import pytest
+events: list[str] = []
+def annotation():
+    events.append('annotation')
+    return list[int]
+@pytest.mark.parametrize('value', [[]])
+def test_value(value: annotation()):
+    assert value == []
+    assert events == ['annotation']
+""")
+
+    def test_explicit_fixture_name_has_no_generated_cost(self):
+        source = """import pytest
+@pytest.fixture
+def value():
+    return 3
+def test_value(value):
+    assert value == 3
+"""
+        named = source.replace("@pytest.fixture\n", "@pytest.fixture(name='value')\n")
+        self.assertEqual(generate(source, "test_input.py"), generate(named, "test_input.py"))
+
+    def test_fixture_alias_calls_implementation_and_rejects_direct_use(self):
+        source = """import pytest
+@pytest.fixture(name='value')
+def make_value():
+    return [1]
+@pytest.fixture
+def same(value):
+    return value
+def test_value(value, same):
+    assert value is same
+"""
+        generated, _ = self.execute(source)
+        self.assertIn("= make_value()", generated.source)
+        self.rejected(source + "\ndef test_direct():\n    make_value()\n", "only be requested")
+
+    def test_nested_bindings_cannot_hide_direct_fixture_calls(self):
+        prefix = "import pytest\n@pytest.fixture(name='value')\ndef make_value(): return 1\n"
+        for shadow in ("def unused():\n        make_value = 0",
+                       "class Holder:\n        make_value = 0",
+                       "[0 for make_value in [1]]"):
+            with self.subTest(shadow=shadow):
+                self.rejected(prefix + "def test_direct():\n    " + shadow
+                              + "\n    assert make_value() == 1\n", "only be requested")
+        self.rejected(prefix + "def test_iterable():\n    [0 for make_value in make_value()]\n",
+                      "only be requested")
+
+    def test_genuine_local_fixture_shadows_remain_valid(self):
+        self.execute("""import pytest
+@pytest.fixture(name='value')
+def make_value(): return 0
+def test_local():
+    def make_value(): return 1
+    assert make_value() == 1
+def test_import():
+    from json import loads as make_value
+    assert make_value('1') == 1
+def test_comprehension():
+    assert [make_value for make_value in [1]] == [1]
+def test_walrus():
+    assert [(make_value := value) for value in [1]] == [1]
+    assert make_value == 1
+""")
+
+    def test_evaluated_annotations_cannot_mutate_named_parameter_tables(self):
+        prefix = """import pytest
+VALUES = [1]
+def mutate():
+    VALUES[0] = 2
+    return int
+"""
+        for signature in ("def test_value(value: mutate()):", "def test_value(value) -> mutate():"):
+            with self.subTest(signature=signature):
+                source = prefix + "@pytest.mark.parametrize('value', VALUES)\n" + signature
+                source += "\n    assert value == 1\n"
+                self.rejected(source, "evaluated annotations")
+        # Postponed annotations are strings under the pinned CPython and cannot
+        # run mutate() during collection. Keep that supported source unchanged.
+        self.execute("from __future__ import annotations\n" + prefix
+                     + "@pytest.mark.parametrize('value', VALUES)\n"
+                     "def test_value(value: mutate()):\n    assert value == 1\n")
+
+    def test_invalid_or_duplicate_fixture_aliases_are_rejected(self):
+        for alias in ("'request'", "'pytest'", "'_pyn_value'", "'class'", "'not an identifier'", "1", "None"):
+            with self.subTest(alias=alias):
+                self.rejected(f"import pytest\n@pytest.fixture(name={alias})\ndef value(): return 1\n",
+                              "non-reserved literal identifier")
+        self.rejected("""import pytest
+@pytest.fixture(name='same')
+def first(): return 1
+@pytest.fixture(name='same')
+def second(): return 2
+def test_value(same): pass
+""", "duplicate fixture name")
+
+    def test_parameter_sets_reject_dynamic_or_unknown_metadata(self):
+        for row, message in (
+            ("pytest.param(1, id=object())", "literal"),
+            ("pytest.param(1, id=1)", "literal string"),
+            ("pytest.param(1, marks=pytest.mark.slow)", "unsupported marker"),
+            ("pytest.param(1, marks=[])" + ", pytest.param(2, other=True)", "static marks"),
+            ("pytest.param(1, marks=None)", "unsupported marker"),
+            ("pytest.param(1, 2)", "row width"),
+            ("pytest.param(*[1])", "literal"),
+        ):
+            with self.subTest(row=row):
+                self.rejected("import pytest\n@pytest.mark.parametrize('value', [" + row
+                              + "])\ndef test_value(value): pass\n", message)
+        self.rejected("""import pytest
+VALUES = [pytest.param(1)]
+@pytest.mark.parametrize('value', VALUES)
+def test_value(value): pass
+""", "literal")
+        self.rejected("import pytest\ndef test_value():\n    pytest.param(1)\n", "unsupported pytest use")
+
 
 if __name__ == "__main__":
     unittest.main()

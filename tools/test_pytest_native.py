@@ -363,6 +363,75 @@ def test_runtime_xfail():
 '''
 
 
+PYTEST_PARAMETERS = '''
+import pytest
+from pytest import param as case
+
+@pytest.mark.parametrize("value", [
+    case(1, id="é"),
+    case(2, id="same"),
+    case(3, id="same", marks=pytest.mark.skip(reason="unavailable")),
+    case(4, id=None, marks=[pytest.mark.xfail(reason="known failure", strict=True)]),
+], ids=["ignored", "ignored", "ignored", "fallback"])
+def test_value(value):
+    assert value < 4
+
+@pytest.mark.parametrize("value", [case(1, marks=pytest.mark.xfail(reason="strict", strict=True))])
+def test_unexpected_pass(value):
+    assert value == 1
+'''
+
+FIXTURE_ALIASES = '''
+import pytest
+events: list[str] = []
+
+@pytest.fixture(name="z", autouse=True)
+def alpha():
+    events.append("alpha")
+    return 1
+
+@pytest.fixture(name="a", autouse=True)
+def zulu():
+    events.append("zulu")
+    return 2
+
+@pytest.fixture(name="value")
+def make_value():
+    values: list[int] = [1]
+    yield values
+    events.append("teardown")
+
+@pytest.fixture
+def same(value):
+    return value
+
+def test_alias(value, same, a, z):
+    assert events == ["alpha", "zulu"]
+    assert value is same
+    same.append(a + z)
+    assert value == [1, 3]
+'''
+
+EMPTY_PARAMETERS = '''
+import pytest
+shared: list[int] = []
+
+@pytest.mark.parametrize("value", [[], shared], ids=["fresh", "shared"])
+def test_list(value: list[int]):
+    assert value == []
+    value.append(1)
+
+@pytest.mark.parametrize("value,nested", [pytest.param({}, ([[]],), id="empty")])
+def test_nested(value: dict[str, int], nested: tuple[list[list[int]]]):
+    value["key"] = 2
+    nested[0][0].append(value["key"])
+    assert nested == ([[2]],)
+
+def test_shared_identity():
+    assert shared == [1]
+'''
+
+
 @unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
 class OriginalPytestParity(TemporarySuite):
     def check_parity(self, source, state="passed", mode="python"):
@@ -377,6 +446,73 @@ class OriginalPytestParity(TemporarySuite):
 
     def test_cached_fixtures_alias_and_lifo_cleanup(self):
         self.check_parity(LIFECYCLE)
+
+    def test_named_fixtures_preserve_aliases_and_autouse_order(self):
+        self.check_parity(FIXTURE_ALIASES)
+
+    def test_annotation_mutation_is_rejected_instead_of_false_pass(self):
+        path = self.source('''
+            import pytest
+            VALUES = [1]
+            def mutate():
+                VALUES[0] = 2
+                return int
+            @pytest.mark.parametrize("value", VALUES)
+            def test_value(value: mutate()):
+                assert value == 1
+        ''')
+        actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
+        self.assertEqual(actual.state, "collection-error")
+        self.assertIn("evaluated annotations", actual.error)
+        expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+        self.assertEqual(expected.get("exit_code"), 1)
+        self.assertEqual(expected["cases"], ["test_suite.py::test_value[2]"])
+        self.assertTrue(runner.compare([actual], expected))
+
+    def test_nested_shadow_cannot_make_direct_fixture_call_pass(self):
+        path = self.source('''
+            import pytest
+            @pytest.fixture(name="value")
+            def make_value(): return 1
+            def test_direct():
+                def unused():
+                    make_value = 0
+                    return make_value
+                assert make_value() == 1
+        ''')
+        actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
+        self.assertEqual(actual.state, "collection-error")
+        self.assertIn("only be requested", actual.error)
+        expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+        self.assertEqual(expected.get("exit_code"), 1)
+        self.assertTrue(runner.compare([actual], expected))
+
+    def test_parameter_set_ids_marks_and_strict_xpass(self):
+        self.check_parity(PYTEST_PARAMETERS, "test-failed")
+
+    def test_parameter_set_mutable_values_remain_shared(self):
+        self.check_parity('''
+            import pytest
+            values: list[int] = [1]
+            @pytest.mark.parametrize("value,expected", [
+                pytest.param(values, 2, id="first"),
+                pytest.param(values, 3, id="second"),
+            ])
+            def test_alias(value, expected):
+                assert value is values
+                value.append(2)
+                assert len(value) == expected
+        ''')
+
+    def test_typed_empty_parameter_literals_preserve_shared_aliases(self):
+        self.check_parity(EMPTY_PARAMETERS)
+
+    @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
+    def test_native_static_pytest_metadata(self):
+        for source, state in ((FIXTURE_ALIASES, "passed"), (PYTEST_PARAMETERS, "test-failed"),
+                              (EMPTY_PARAMETERS, "passed")):
+            with self.subTest(source=source):
+                self.check_parity(source, state, mode="jit")
 
     def test_partial_setup_still_cleans_successful_fixtures(self):
         self.check_parity(PARTIAL_SETUP, "test-failed")

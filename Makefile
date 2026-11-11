@@ -30,13 +30,20 @@ test-py:
 	$(PY) -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
 	tests/run.sh "$(PY) -m pystachy" "jit aot" $(FILES)
 
-.PHONY: test-pytest-native
+.PHONY: test-pytest-native test-pytest-workloads
 
 # Hosted collection/oracle and real native execution; no compiler bootstrap needed.
 test-pytest-native:
 	PYSTACHY_PYTEST_NATIVE_COMPILER="$(PY) $(CURDIR)/pystachy.py" $(PY) -m unittest discover -s tools -p 'test_pytest_native*.py'
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode jit --compare --json build/pytest-native/examples.json
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode aot --compare --work-dir build/pytest-native-aot --json build/pytest-native-aot/examples.json
+
+# Independent application/benchmark suites share original pytest assertions.
+# CI supplies its already verified compiler; local users can use hosted compilation.
+PYTEST_WORKLOAD_COMPILER ?= $(PY) $(CURDIR)/pystachy.py
+PYTEST_WORKLOAD_ARGS ?=
+test-pytest-workloads:
+	$(PY) tools/pytest_native_suites.py --compiler "$(PYTEST_WORKLOAD_COMPILER)" --json build/pytest-workloads.json $(PYTEST_WORKLOAD_ARGS)
 
 # the statements and branches of the compiler's own source (src/pystachy_compiler/) that the corpus, the
 # FFI and runtime-cache suites, the IR checks and the compiler's unit tests run (or FILES of the corpus
@@ -140,6 +147,7 @@ blas-check: $(BENCH_COMPILER)
 bench-pyperformance-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_pyperformance.py
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" --smoke --json build/pyperformance-smoke.json
+	$(PY) tools/pytest_native_suites.py --group pyperformance --compiler "$(BENCH_COMPILER)" --json build/pytest-pyperformance.json
 
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
@@ -407,6 +415,7 @@ typecheck:
 lint-python:
 	@command -v ruff >/dev/null || { echo "ruff is required: install tools/requirements-dev.txt and activate its environment" >&2; exit 1; }
 	ruff check
+	ruff check --no-force-exclude bench/pyperformance/pytest/*.py
 
 # Fast feedback for compiler edits; full native/runtime validation remains in verify.
 check-fast: lint-python typecheck check-repository
