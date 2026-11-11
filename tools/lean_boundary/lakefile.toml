@@ -1,9 +1,12 @@
 name = "pystachy-boundary"
 version = "0.1.0"
-defaultTargets = ["PystachyBoundary", "Audit", "pystachy-boundary"]
+defaultTargets = ["PystachyBoundary", "PystachyAccess", "Audit", "pystachy-boundary", "pystachy-access"]
 
 [[lean_lib]]
 name = "PystachyBoundary"
+
+[[lean_lib]]
+name = "PystachyAccess"
 
 [[lean_lib]]
 name = "Audit"
@@ -11,3 +14,7 @@ name = "Audit"
 [[lean_exe]]
 name = "pystachy-boundary"
 root = "Main"
+
+[[lean_exe]]
+name = "pystachy-access"
+root = "AccessMain"

@@ -586,6 +586,9 @@ layout or public ABI.
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
 `PYSTACHY_OPT=-all`. Differential runs check that the choices preserve behavior.
+The optional [Lean access checker](../tools/lean_boundary/ACCESS.md) independently proves the
+unchecked reads these choices leave: each `list.load` index within its list's current length and
+each dict or set entry read or written by index live, on every path of a function's typed-after IR.
 
 For `range(k, len(xs), step)`, `listget` reads the owner from the captured `list.len`
 and requires a nonnegative constant start and a positive constant step. It proves the first matching read uses the same list and the

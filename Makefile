@@ -448,6 +448,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_access.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
@@ -458,9 +459,11 @@ check-fast: lint-python typecheck check-repository
 check-lean-boundary:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_access.py
 
 # Every dyn.payload read of the dynamic-Any test programs, each compiled by the hosted
-# compiler, proved guarded by the Lean checker (tools/lean_boundary/README.md).
+# compiler, proved guarded by the Lean checker (tools/lean_boundary/README.md), and every
+# unchecked list read and dict entry proved in bounds and live (tools/lean_boundary/ACCESS.md).
 LEAN_CORPUS_FLAGS ?=
 check-lean-corpus:
 	cd tools/lean_boundary && lake build
