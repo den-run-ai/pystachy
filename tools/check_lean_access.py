@@ -58,6 +58,10 @@ ENTRIES = {"dict.entry", "dict.big_entry", "dict.big_put"}
 # existing list's length changes. A slice records missing item identities of its source too,
 # which leaves its length alone.
 FRESH_LIST_WRITES = {"list.slice"}
+# Runtime list writes that store one item of an existing list and change no list's length
+# (runtime.c's pys_list_set raises IndexError or stores; listguard's copies keep them where a list
+# may hold numeric identities).
+ITEM_WRITES = {"list.set"}
 LIMITATIONS = [
     "Only list.load bounds and dict.val/dict.entry_set entries in each normalized function are checked.",
     "Python normalization, snapshot fidelity, runtime effects (RUNTIME, the U? descriptor rule and "
@@ -189,11 +193,21 @@ def cond_facts(cond, outcome):
     if kind == "slt":
         if outcome and reg_a and reg_b:
             return [("lt", a, b)]
+        if outcome and reg_a and not reg_b:
+            return [("atMost", a, b - 1)]
+        if not outcome and not reg_a and reg_b:
+            return [("atMost", b, a)]
         if outcome and not reg_a and reg_b:
             return [("ge", b, a + 1)]
         if not outcome and reg_a and not reg_b:
             return [("ge", a, b)]
     elif kind == "sle":
+        if outcome and reg_a and reg_b:
+            return [("le", a, b, 0)]
+        if outcome and reg_a and not reg_b:
+            return [("atMost", a, b)]
+        if not outcome and not reg_a and reg_b:
+            return [("atMost", b, a - 1)]
         if outcome and not reg_a and reg_b:
             return [("ge", b, a)]
         if not outcome and reg_a and not reg_b:
@@ -225,6 +239,14 @@ def bound_facts(facts, cond, outcome):
 
 def nonneg(facts, x):
     return any((f[0] == "ge" and f[1] == x and f[2] >= 0) or (f[0] == "len" and f[1] == x) for f in facts)
+
+
+def nonneg_fact(facts, x):
+    """A fact of facts that shows x >= 0 (a premise nonneg needs), or None."""
+    for f in facts:
+        if (f[0] == "ge" and f[1] == x and f[2] >= 0) or (f[0] == "len" and f[1] == x):
+            return f
+    return None
 
 
 def generated(facts, node, edge):
@@ -309,11 +331,57 @@ def conclusions(fact, by_name, index, relevant):
                     out.append((("below", a, other[2]), [other, fact]))
                 if other[0] == "ult" and other[2] == a:
                     out.append((("below", other[1], a), [other, fact]))
+        if k >= 0:
+            for other in partners(a, ("le",)):
+                if other[1] == a and other[3] >= 1:
+                    out.append((("below", a, other[2]), [other, fact]))
+        # (b = a + j going back: b's bound through it)
+        for other in partners(a, ("off",)):
+            if other[1] == a:
+                out.append((("ge", other[2], k - other[3]), [other, fact]))
+        # (a length known to be at least k above a constant bound of an index; or, a nonnegative
+        # index of such a bound)
+        for other in index:
+            if other[0] == "atMost" and other[2] < k:
+                lower = nonneg_fact(index, other[1])
+                if lower is not None:
+                    out.append((("below", other[1], a), [other, fact, lower]))
+        if k >= 0:
+            for other in partners(a, ("atMost",)):
+                for g in index:
+                    if g[0] == "ge" and g[2] > other[2]:
+                        out.append((("below", a, g[1]), [other, g, fact]))
+    elif kind == "atMost":
+        a, c = fact[1], fact[2]
+        for other in partners(a, ("off",)):
+            if other[2] == a:  # (x = a + j)
+                out.append((("atMost", other[1], c + other[3]), [other, fact]))
+        lower = nonneg_fact(index, a)
+        if lower is not None:
+            for g in index:
+                if g[0] == "ge" and g[2] > c:
+                    out.append((("below", a, g[1]), [fact, g, lower]))
+    elif kind == "le":
+        # a + k <= b (PystachyAccess: a difference bound)
+        a, b, k = fact[1], fact[2], fact[3]
+        for other in partners(b, ("off",)):
+            if other[1] == b:  # (b = n + k2)
+                out.append((("le", a, other[2], k - other[3]), [fact, other]))
+        for other in partners(a, ("lt", "off", "ge", "len")):
+            if other[0] == "lt" and other[2] == a:  # (x < a)
+                out.append((("le", other[1], b, k + 1), [other, fact]))
+            elif other[0] == "off" and other[2] == a:  # (x = a + k1)
+                out.append((("le", other[1], b, k - other[3]), [other, fact]))
+            elif k >= 1 and other[1] == a and ((other[0] == "ge" and other[2] >= 0) or other[0] == "len"):
+                out.append((("below", a, b), [fact, other]))
     elif kind in ("below", "entry"):
         out.append((("ge", fact[1], 0), [fact]))
     elif kind == "len":
         n = fact[1]
         out.append((("ge", n, 0), [fact]))
+        for other in partners(n, ("le",)):
+            if other[1] == n and other[3] >= 1:
+                out.append((("below", n, other[2]), [other, fact]))
         for other in partners(n, ("lt", "ult")):
             if other[0] == "lt" and other[1] == n:
                 out.append((("below", n, other[2]), [other, fact]))
@@ -321,6 +389,18 @@ def conclusions(fact, by_name, index, relevant):
                 out.append((("below", other[1], n), [other, fact]))
     elif kind == "off":
         a, b, j = fact[1], fact[2], fact[3]
+        for other in partners(a, ("le",)):
+            if other[2] == a:  # (x + k <= a = b + j)
+                out.append((("le", other[1], b, other[3] - j), [other, fact]))
+        for other in partners(b, ("atMost",)):
+            if other[1] == b:  # (b <= c, a = b + j)
+                out.append((("atMost", a, other[2] + j), [fact, other]))
+        for other in partners(a, ("ge",)):
+            if other[1] == a:  # (a >= g, b = a - j)
+                out.append((("ge", b, other[2] - j), [fact, other]))
+        for other in partners(b, ("le",)):
+            if other[1] == b:  # (b + k <= c, a = b + j)
+                out.append((("le", a, other[2], other[3] - j), [fact, other]))
         for other in partners(b, ("ge", "off")):
             if other[0] == "ge":
                 out.append((("ge", a, other[2] + j), [fact, other]))
@@ -344,6 +424,10 @@ def conclusions(fact, by_name, index, relevant):
                     out.append((("entry", a, other[2]), [other, fact]))
     elif kind in ("lt", "ult"):
         i, n = fact[1], fact[2]
+        if kind == "lt":
+            for other in partners(n, ("le",)):
+                if other[1] == n:  # (i < n, n + k <= b)
+                    out.append((("le", i, other[2], other[3] + 1), [fact, other]))
         bounded = i if kind == "lt" else n
         for other in partners(bounded, ("ge", "len")):
             if (other[0] == "ge" and other[2] >= 0) or (other[0] == "len" and other[1] == bounded):
@@ -438,10 +522,38 @@ def rule(known, goal):
                 return True
             if f[0] == "off" and f[1] == a and any(g[0] == "ge" and g[1] == f[2] and k <= g[2] + f[3] for g in known):
                 return True
+            if f[0] == "off" and f[2] == a and any(g[0] == "ge" and g[1] == f[1] and k <= g[2] - f[3] for g in known):
+                return True
+        return substituted(known, goal)
+    if kind == "atMost":
+        a, k = goal[1], goal[2]
+        if any(f[0] == "atMost" and f[1] == a and f[2] <= k for f in known):
+            return True
+        if any(f[0] == "off" and f[1] == a and any(g[0] == "atMost" and g[1] == f[2] and g[2] + f[3] <= k
+                                                    for g in known) for f in known):
+            return True
+        return substituted(known, goal)
+    if kind == "le":
+        a, b, k = goal[1], goal[2], goal[3]
+        for f in known:
+            if f[0] == "le" and f[1] == a and ((f[2] == b and k <= f[3]) or any(
+                    g[0] == "off" and g[1] == f[2] and g[2] == b and k <= f[3] - g[3] for g in known)):
+                return True
+            if f[0] == "lt" and f[1] == a and any(g[0] == "le" and g[1] == f[2] and g[2] == b and k <= g[3] + 1
+                                                   for g in known):
+                return True
+            if f[0] == "off" and f[1] == a and any(g[0] == "le" and g[1] == f[2] and g[2] == b and k <= g[3] - f[3]
+                                                    for g in known):
+                return True
         return substituted(known, goal)
     if kind == "below":
         i, n = goal[1], goal[2]
         if ("lt", i, n) in known and nonneg(known, i):
+            return True
+        if any(f[0] == "le" and f[1] == i and f[2] == n and f[3] >= 1 for f in known) and nonneg(known, i):
+            return True
+        if any(f[0] == "atMost" and f[1] == i and any(g[0] == "ge" and g[1] == n and f[2] < g[2] for g in known)
+               for f in known) and nonneg(known, i):
             return True
         if ("ult", i, n) in known and nonneg(known, n):
             return True
@@ -1039,6 +1151,14 @@ def normalize_program(snapshot, function, effects_of=None):
             if not isinstance(operand_of(values[0]), str) or index is None:
                 raise Unsupported("a list read of an unknown list or index")
             return [], [{"op": "load", "list": values[0], "index": index}] + havocs(op)
+        if kind == "list.store":
+            # (listguard's unchecked item assignment: the read's obligation, the index within the
+            # length; the model tracks lengths, not items, and a store changes none)
+            accesses["list.store"] = accesses.get("list.store", 0) + 1
+            index = operand_of(values[1])
+            if not isinstance(operand_of(values[0]), str) or index is None:
+                raise Unsupported("a list store to an unknown list or index")
+            return [], [{"op": "load", "list": values[0], "index": index}]
         if kind == "scalar.bin" and op["text"] in ("add", "sub") and len(values) == 2 and op["type"] == "int":
             a, b = operand_of(values[0]), operand_of(values[1])
             if isinstance(a, str) and isinstance(b, int):
@@ -1058,7 +1178,7 @@ def normalize_program(snapshot, function, effects_of=None):
                 return [], [{"op": "value", "dict": values[0], "entry": values[1]}] + after + havocs(op)
             effects_now = runtime_effects(key, op["descriptor"])
             lists, dicts, globals_, fields_ = kills(effects_now)
-            if key in FRESH_LIST_WRITES and effects_now is not None:
+            if (key in FRESH_LIST_WRITES or key in ITEM_WRITES) and effects_now is not None:
                 lists = "U" in effects_now
             before = kill_nodes(lists, dicts, globals_, fields_)
             if key in FINDS and op["results"] and isinstance(operand_of(values[0]), str):
@@ -1334,7 +1454,7 @@ def access_functions(snapshot):
         require(isinstance(fn, dict) and isinstance(fn.get("blocks"), list)
                 and all(isinstance(block, dict) and isinstance(block.get("operations"), list)
                         for block in fn["blocks"]), "invalid function record")
-        count = sum(isinstance(op, dict) and (op.get("op") == "list.load" or (
+        count = sum(isinstance(op, dict) and (op.get("op") in ("list.load", "list.store") or (
             op.get("op") == "rt" and op.get("text") in ACCESS_RT))
                     for block in fn["blocks"] for op in block["operations"])
         if count:

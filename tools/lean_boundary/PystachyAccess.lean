@@ -70,6 +70,10 @@ inductive Fact where
   | below (index bound : Name)
   /-- `a = b + k`, without wrapping. -/
   | off (a b : Name) (k : Int)
+  /-- `a + k ≤ b`, signed: a difference bound, such as a range loop's stop against a length. -/
+  | le (a b : Name) (k : Int)
+  /-- `a ≤ k`: an upper bound, such as a range loop's constant stop. -/
+  | atMost (a : Name) (k : Int)
   /-- `a ≠ k`. -/
   | ne (a : Name) (k : Int)
   /-- `n` is the current length of the list `list` points to. -/
@@ -138,8 +142,8 @@ def factsAt (certificate : Certificate) (pc : Nat) : Facts :=
 def Fact.mentions (name : Name) : Fact → Bool
   | .eq a b | .lt a b | .ult a b | .below a b | .len a b | .found a b | .entry a b =>
       a == name || b == name
-  | .off a b _ => a == name || b == name
-  | .ge a _ | .ne a _ => a == name
+  | .off a b _ | .le a b _ => a == name || b == name
+  | .ge a _ | .ne a _ | .atMost a _ => a == name
   | .cell a _ _ b => a == name || b == name
   | .absurd => false
 
@@ -165,6 +169,8 @@ def Fact.rename (x y : Name) : Fact → Fact
   | .ult a b => .ult (renamed x y a) (renamed x y b)
   | .below a b => .below (renamed x y a) (renamed x y b)
   | .off a b k => .off (renamed x y a) (renamed x y b) k
+  | .le a b k => .le (renamed x y a) (renamed x y b) k
+  | .atMost a k => .atMost (renamed x y a) k
   | .ne a k => .ne (renamed x y a) k
   | .len a b => .len (renamed x y a) (renamed x y b)
   | .found a b => .found (renamed x y a) (renamed x y b)
@@ -206,6 +212,11 @@ def condFacts : Cond → Bool → Facts
   | .slt (.lit k) (.reg b), true => [.ge b (k + 1)]
   | .slt (.reg a) (.lit k), false => [.ge a k]
   | .sle (.lit k) (.reg b), true => [.ge b k]
+  | .sle (.reg a) (.reg b), true => [.le a b 0]
+  | .slt (.reg a) (.lit k), true => [.atMost a (k - 1)]
+  | .sle (.reg a) (.lit k), true => [.atMost a k]
+  | .slt (.lit k) (.reg b), false => [.atMost b k]
+  | .sle (.lit k) (.reg b), false => [.atMost b (k - 1)]
   | .sle (.reg a) (.lit k), false => [.ge a (k + 1)]
   | .ult (.reg a) (.reg b), true => [.ult a b]
   | .eq (.reg a) (.lit k), true => [.ge a k]
@@ -267,9 +278,13 @@ def ruleStep (facts : Facts) : Fact → Bool
         | .below b _ => b == a && decide (k ≤ 0)
         | .len b _ => b == a && decide (k ≤ 0)
         | .entry b _ => b == a && decide (k ≤ 0)
-        | .off b c j => b == a && facts.any fun g => match g with
+        | .off b c j => (b == a && facts.any fun g => match g with
             | .ge c' i => c' == c && decide (k ≤ i + j)
-            | _ => false
+            | _ => false) ||
+          -- (b = c + j, so c = b - j ≥ i - j: a length a test bounded through its difference)
+          (c == a && facts.any fun g => match g with
+            | .ge b' i => b' == b && decide (k ≤ i - j)
+            | _ => false)
         | _ => false) || substituted facts (.ge a k)
   | .below i n =>
       (facts.contains (.lt i n) && facts.any (nonneg i)) ||
@@ -278,13 +293,46 @@ def ruleStep (facts : Facts) : Fact → Bool
         | .off a b c => a == i && b == n && decide (c < 0) && facts.any fun g => match g with
             | .ge b' k => b' == n && decide (-c ≤ k)
             | _ => false
-        | _ => false) || substituted facts (.below i n)
+        | _ => false) ||
+      -- (i + j ≤ n with j ≥ 1: a range loop's index against a length a test before it bounds)
+      ((facts.any fun f => match f with
+        | .le a b j => a == i && b == n && decide (1 ≤ j)
+        | _ => false) && facts.any (nonneg i)) ||
+      -- (i ≤ c < g ≤ n: a constant stop under a length a test before the loop bounds below)
+      ((facts.any fun f => match f with
+        | .atMost a c => a == i && facts.any fun g => match g with
+            | .ge n' k => n' == n && decide (c < k)
+            | _ => false
+        | _ => false) && facts.any (nonneg i)) || substituted facts (.below i n)
   | .off a b k =>
       (facts.any fun f => match f with
         | .off a' c k₁ => a' == a && facts.any fun g => match g with
             | .off c' b' k₂ => c' == c && b' == b && decide (k₁ + k₂ = k)
             | _ => false
         | _ => false) || substituted facts (.off a b k)
+  | .atMost a k =>
+      (facts.any fun f => match f with
+        | .atMost a' j => a' == a && decide (j ≤ k)
+        -- (a = b + c, and b ≤ j)
+        | .off a' b c => a' == a && facts.any fun g => match g with
+            | .atMost b' j => b' == b && decide (j + c ≤ k)
+            | _ => false
+        | _ => false) || substituted facts (.atMost a k)
+  | .le a b k =>
+      (facts.any fun f => match f with
+        -- (a + j ≤ b; or a + j ≤ c where c = b + k₂)
+        | .le a' c j => a' == a && ((c == b && decide (k ≤ j)) || facts.any fun g => match g with
+            | .off c' b' k₂ => c' == c && b' == b && decide (k ≤ j - k₂)
+            | _ => false)
+        -- (a < c, and c + j ≤ b)
+        | .lt a' c => a' == a && facts.any fun g => match g with
+            | .le c' b' j => c' == c && b' == b && decide (k ≤ j + 1)
+            | _ => false
+        -- (a = c + k₁, and c + j ≤ b)
+        | .off a' c k₁ => a' == a && facts.any fun g => match g with
+            | .le c' b' j => c' == c && b' == b && decide (k ≤ j - k₁)
+            | _ => false
+        | _ => false) || substituted facts (.le a b k)
   | .ne b k =>
       (facts.any fun f => match f with
         | .off a b' c => b' == b && facts.contains (.ne a (k + c))
@@ -382,6 +430,8 @@ def Fact.Holds (m : Mem) : Fact → Prop
   | .ult a b => unsigned (m.val a) < unsigned (m.val b)
   | .below i n => 0 ≤ m.val i ∧ m.val i < m.val n
   | .off a b k => m.val a = m.val b + k
+  | .le a b k => m.val a + k ≤ m.val b
+  | .atMost a k => m.val a ≤ k
   | .ne a k => m.val a ≠ k
   | .len n l => m.val n = m.len (m.val l)
   | .found e d => m.val e = -1 ∨ m.live (m.val d) (m.val e)
@@ -633,21 +683,29 @@ theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
             have := (wf.2.2.1 _ _ holds).1
             omega
         | off b c j =>
-            simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
-            obtain ⟨rfl, g, gMember, gStep⟩ := step
-            have gHolds := known g gMember
-            cases g with
-            | ge c' i =>
-                simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
-                obtain ⟨rfl, ki⟩ := gStep
-                simp only [Fact.Holds] at holds gHolds ⊢
-                omega
-            | _ => simp at gStep
+            simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
+            rcases step with ⟨rfl, g, gMember, gStep⟩ | ⟨rfl, g, gMember, gStep⟩
+            · have gHolds := known g gMember
+              cases g with
+              | ge c' i =>
+                  simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                  obtain ⟨rfl, ki⟩ := gStep
+                  simp only [Fact.Holds] at holds gHolds ⊢
+                  omega
+              | _ => simp at gStep
+            · have gHolds := known g gMember
+              cases g with
+              | ge b' i =>
+                  simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                  obtain ⟨rfl, ki⟩ := gStep
+                  simp only [Fact.Holds] at holds gHolds ⊢
+                  omega
+              | _ => simp at gStep
         | _ => simp at step
       · exact substituted_sound known h
   | below i n =>
       simp only [ruleStep, Bool.or_eq_true, Bool.and_eq_true, List.contains_iff_mem] at derived
-      rcases derived with ((⟨lt, nonnegI⟩ | ⟨ult, nonnegN⟩) | h) | h
+      rcases derived with ((((⟨lt, nonnegI⟩ | ⟨ult, nonnegN⟩) | h) | ⟨h, nonnegI⟩) | ⟨h, nonnegI⟩) | h
       · have lower := nonneg_sound wf known nonnegI
         have holds := known _ lt
         simp only [Fact.Holds] at holds ⊢
@@ -672,6 +730,104 @@ theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
             | ge b' k =>
                 simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
                 obtain ⟨rfl, ck⟩ := gStep
+                simp only [Fact.Holds] at holds gHolds ⊢
+                omega
+            | _ => simp at gStep
+        | _ => simp at step
+      · have lower := nonneg_sound wf known nonnegI
+        simp only [List.any_eq_true] at h
+        obtain ⟨f, member, step⟩ := h
+        have holds := known f member
+        cases f with
+        | le a b j =>
+            simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at step
+            obtain ⟨⟨rfl, rfl⟩, j1⟩ := step
+            simp only [Fact.Holds] at holds ⊢
+            exact ⟨lower, by omega⟩
+        | _ => simp at step
+      · have lower := nonneg_sound wf known nonnegI
+        simp only [List.any_eq_true] at h
+        obtain ⟨f, member, step⟩ := h
+        have holds := known f member
+        cases f with
+        | atMost a c =>
+            simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
+            obtain ⟨rfl, g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | ge n' k =>
+                simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                obtain ⟨rfl, ck⟩ := gStep
+                simp only [Fact.Holds] at holds gHolds ⊢
+                exact ⟨lower, by omega⟩
+            | _ => simp at gStep
+        | _ => simp at step
+      · exact substituted_sound known h
+  | atMost a k =>
+      simp only [ruleStep, Bool.or_eq_true] at derived
+      rcases derived with h | h
+      · simp only [List.any_eq_true] at h
+        obtain ⟨f, member, step⟩ := h
+        have holds := known f member
+        cases f with
+        | atMost a' j =>
+            simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at step
+            obtain ⟨rfl, jk⟩ := step
+            simp only [Fact.Holds] at holds ⊢
+            omega
+        | off a' b c =>
+            simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
+            obtain ⟨rfl, g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | atMost b' j =>
+                simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                obtain ⟨rfl, jk⟩ := gStep
+                simp only [Fact.Holds] at holds gHolds ⊢
+                omega
+            | _ => simp at gStep
+        | _ => simp at step
+      · exact substituted_sound known h
+  | le a b k =>
+      simp only [ruleStep, Bool.or_eq_true] at derived
+      rcases derived with h | h
+      · simp only [List.any_eq_true] at h
+        obtain ⟨f, member, step⟩ := h
+        have holds := known f member
+        cases f with
+        | le a' c j =>
+            simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq, decide_eq_true_eq,
+              List.any_eq_true] at step
+            obtain ⟨rfl, ⟨rfl, kj⟩ | ⟨g, gMember, gStep⟩⟩ := step
+            · simp only [Fact.Holds] at holds ⊢
+              omega
+            · have gHolds := known g gMember
+              cases g with
+              | off c' b' k₂ =>
+                  simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                  obtain ⟨⟨rfl, rfl⟩, kk⟩ := gStep
+                  simp only [Fact.Holds] at holds gHolds ⊢
+                  omega
+              | _ => simp at gStep
+        | lt a' c =>
+            simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
+            obtain ⟨rfl, g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | le c' b' j =>
+                simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                obtain ⟨⟨rfl, rfl⟩, kk⟩ := gStep
+                simp only [Fact.Holds] at holds gHolds ⊢
+                omega
+            | _ => simp at gStep
+        | off a' c k₁ =>
+            simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at step
+            obtain ⟨rfl, g, gMember, gStep⟩ := step
+            have gHolds := known g gMember
+            cases g with
+            | le c' b' j =>
+                simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at gStep
+                obtain ⟨⟨rfl, rfl⟩, kk⟩ := gStep
                 simp only [Fact.Holds] at holds gHolds ⊢
                 omega
             | _ => simp at gStep
@@ -1250,6 +1406,48 @@ example : check ⟨[.length "n" "xs" 1, .lit "h" 1 2, .copy "i" "h" 3,
     .test (.slt (.reg "i") (.reg "n")) 4 7, .load "xs" (.reg "i") 5, .addChecked "j" "i" 2 8 7,
     .copy "h" "j" 2, .stop, .lists 6], 0⟩ (rangeLoopCertificate ++ [[.len "n" "xs", .ge "j" 0]])
     = false := by decide
+
+/-- listguard's copy of `for i in range(s): ... xs[i + 1] ...`: a test before the loop that
+`s <= len(xs) - 1`, then the loop's own test `i < s`, bound `i + 1` below the length on every
+iteration, with no check at the read. -/
+def guardedLoop : Program := ⟨[
+  .length "n" "xs" 1,
+  .add "m" "n" (-1) 2,
+  .test (.sle (.reg "s") (.reg "m")) 3 10,
+  .lit "h" 0 4,
+  .copy "i" "h" 5,
+  .test (.slt (.reg "i") (.reg "s")) 6 10,
+  .addChecked "j" "i" 1 7 10,
+  .load "xs" (.reg "j") 8,
+  .addChecked "t" "i" 1 9 10,
+  .copy "h" "t" 4,
+  .stop], 0⟩
+
+def guardedLoopCertificate : Certificate := [
+  [],
+  [.len "n" "xs", .ge "n" 0],
+  [.len "n" "xs", .off "m" "n" (-1)],
+  [.len "n" "xs", .off "m" "n" (-1), .le "s" "m" 0, .le "s" "n" 1],
+  [.len "n" "xs", .le "s" "n" 1, .ge "h" 0],
+  [.len "n" "xs", .le "s" "n" 1, .ge "i" 0],
+  [.len "n" "xs", .le "s" "n" 1, .ge "i" 0, .lt "i" "s", .le "i" "n" 2],
+  [.len "n" "xs", .le "s" "n" 1, .ge "i" 0, .le "i" "n" 2, .off "j" "i" 1, .le "j" "n" 1,
+    .ge "j" 1, .below "j" "n"],
+  [.len "n" "xs", .le "s" "n" 1, .ge "i" 0],
+  [.len "n" "xs", .le "s" "n" 1, .off "t" "i" 1, .ge "t" 0],
+  []]
+
+example : check guardedLoop guardedLoopCertificate = true := by decide
+/- An index past the test's offset: `i + 2` is only known to be at most the length. -/
+example : check ⟨guardedLoop.nodes.set 6 (.addChecked "j" "i" 2 7 10), 0⟩
+    (guardedLoopCertificate.set 7 [.len "n" "xs", .le "s" "n" 1, .ge "i" 0, .le "i" "n" 2,
+      .off "j" "i" 2, .le "j" "n" 1, .ge "j" 2, .below "j" "n"]) = false := by decide
+/- A list write in the loop: the length the test read before it no longer bounds the index. -/
+example : check ⟨guardedLoop.nodes.set 8 (.lists 11) ++ [.addChecked "t" "i" 1 9 10], 0⟩
+    (guardedLoopCertificate ++ [[.len "n" "xs", .le "s" "n" 1, .ge "i" 0]]) = false := by decide
+/- The copy reached where the test failed: nothing bounds the stop. -/
+example : check ⟨guardedLoop.nodes.set 2 (.test (.sle (.reg "s") (.reg "m")) 10 3), 0⟩
+    guardedLoopCertificate = false := by decide
 
 /-- `a, b = xs` after the runtime check that the length is 2, and `a, *b, c = xs`'s last
 item, at the length minus one, after the check that the length is at least 2. -/

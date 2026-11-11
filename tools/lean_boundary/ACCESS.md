@@ -44,9 +44,10 @@ well-formed initial states, all nondeterministic choices and every finite execut
 64-bit integers; lists have lengths and dicts live entries, by address, and objects have fields
 by address, class and index. Each can change arbitrarily where the program may write them.
 
-Facts relate values: equality, signed and unsigned order, a lower bound, `0 ≤ i < n`, an exact
-offset, inequality to a constant, a list's length, a dict lookup's result or live entry, a
-field's value, and a fact that marks a point no execution reaches. The certificate is an
+Facts relate values: equality, signed and unsigned order, a lower and an upper bound by a
+constant, a difference bound `a + k ≤ b`, `0 ≤ i < n`, an exact offset, inequality to a
+constant, a list's length, a dict lookup's result or live entry, a field's value, and a fact
+that marks a point no execution reaches. The certificate is an
 untrusted list of facts at each point. Each fact must survive the node before it or follow from
 the facts there, and from the facts listed before it, by one of fixed rules, each proved sound:
 for example, an unsigned `i < n` of a nonnegative `n` gives `0 ≤ i < n`, and `-1 <u n` cannot
@@ -56,13 +57,20 @@ that brings it no higher than that value (`n - 3 + 2`). A write to a field of a 
 values of the class's other fields, of any object, and no other field's: a base and a derived
 class may view one object differently.
 
-The build checks 36 examples by kernel reduction: 12 shapes the compiler emits and 24
+Difference bounds and upper bounds prove `listguard`'s copies of range loops. A test before the
+loop, `stop <= len(xs) - c`, gives `stop + c ≤ n` for the length `n`; the loop's own test `i <
+stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is `0 ≤ j < n`. Where
+the stop is a constant, the loop's test bounds `i` above, the test before it bounds the length
+below, and the first must lie under the second.
+
+The build checks 40 examples by kernel reduction: 13 shapes the compiler emits and 27
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
 test and its read or in a range loop's body, a missing or weaker unpacking check, a starred
 tail's read at the length or past an offset that may wrap, a lookup's missing-key branch or an
 iteration's end, a dict write before an entry's reuse, an entry of one dict used with another, a
 reload across a write of another class's field or of the same field of any object, an unguarded
-join and facts assumed at entry or around a loop. `Audit.lean` checks the theorem's axioms as
+join, facts assumed at entry or around a loop, and a guarded range loop's read past the test's
+offset, after a list write, or where the test failed. `Audit.lean` checks the theorem's axioms as
 for the payload checker.
 
 ## How IR reaches the model
@@ -86,7 +94,10 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   `dict.eq_find` and `dict.eq_pair_find`, which restart where a key's `__eq__` changes the
   table) return -1 or a live entry; `dict.entry` and `dict.big_entry` a live entry or raise, as
   `dict.big_put` returns the entry it finds or adds. A write of an entry's value
-  (`dict.entry_set`) moves no entry; deleting one (`dict.entry_del`) is a dict write after it. A
+  (`dict.entry_set`) moves no entry; deleting one (`dict.entry_del`) is a dict write after it.
+  `listguard`'s unchecked item store (`list.store`) is a `load`: it has the read's obligation,
+  and the model tracks lengths, not items. Its checked item assignment (`list.set`) changes no
+  list's length either: it raises `IndexError` or stores one item. A
   phi of -1 and of lookups of one dict, each of which only a jump separates from the phi, is
   that dict's lookup there.
 - Every other operation defines its results with unknown values, and so does any other phi. What
@@ -137,7 +148,8 @@ Not proved by this version:
 - The runtime contracts the adapter relies on: `RUNTIME`'s effects and the compiler's
   descriptor rule for `U?`, the function summaries in the snapshot, the unpacking checks, the
   lookups' and iteration steps' results, entry writes moving no entry, `list.slice` changing no
-  other list, and the `List` header layout. Effect summaries are the compiler's own analysis.
+  other list, `list.set` changing no length, and the `List` header layout. Effect summaries are
+  the compiler's own analysis.
 - Fields of one class at different indices being distinct memory, for any objects; fields of
   different classes are treated as possibly the same memory.
 - Null checks the `nullcheck` pass removes are not yet normalized: the model's `deref` node

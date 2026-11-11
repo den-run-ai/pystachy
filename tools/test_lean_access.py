@@ -83,7 +83,8 @@ class AdapterTests(SnapshotFixture):
         self.assertEqual({symbol: count for symbol, count in counts.items() if not symbol.startswith("@m._")},
                          {"@f.item": 1, "@f.last": 1, "@f.pair": 2, "@f.ends": 2, "@f.tail3": 4,
                           "@f.class_lookup": 2, "@f.total": 1, "@f.odd_lengths": 1, "@f.ranked": 1,
-                          "@f.counted": 3, "@f.global_lookup": 1, "@m.Cache.lookup": 1})
+                          "@f.counted": 3, "@f.global_lookup": 1, "@f.smoothed": 4, "@f.pairs": 4,
+                          "@m.Cache.lookup": 1})
 
     def test_selection_and_snapshot_header_are_checked(self):
         with self.assertRaisesRegex(ValueError, "exactly one function"):
@@ -139,8 +140,8 @@ class ProvedCheckerTests(SnapshotFixture):
     def test_every_access_of_the_example_is_proved(self):
         fields, code = check_all(self.snapshot, CHECKER)
         self.assertEqual((fields["status"], code), ("accepted", 0), fields)
-        self.assertEqual(fields["totals"]["proved_accesses"], 20)
-        self.assertEqual(fields["totals"]["accesses"], 20)
+        self.assertEqual(fields["totals"]["proved_accesses"], 28)
+        self.assertEqual(fields["totals"]["accesses"], 28)
 
     def test_identical_functions_reuse_their_verdicts(self):
         # (a corpus's programs share library functions: their normalized nodes and the checker,
@@ -305,6 +306,46 @@ class ProvedCheckerTests(SnapshotFixture):
                     field["operands"][0]["type"] = "object"
                 self.assertEqual(self.verdict(snapshot, "@m.Cache.lookup"), aliasing is None, (aliasing, constant))
 
+    def test_a_guarded_copy_is_proved_and_each_corruption_of_its_tests_rejects(self):
+        # (listguard: the copy's unchecked reads and stores of xs[i + c] hold where the tests
+        # before the loop found the stop at most len(xs) - c)
+        for symbol in ("@f.smoothed", "@f.pairs"):
+            self.assertTrue(self.verdict(copy.deepcopy(self.snapshot), symbol), symbol)
+
+        def further(symbol):
+            # (the copy's read of xs[i + 1] reads xs[i + 2]: one past what the test allows)
+            snapshot, function = self.selected(symbol)
+            sums = {f"%t{operation['results'][1]}": operation for block in function["blocks"]
+                    for operation in block["operations"]
+                    if operation["op"] == "ovf" and operation["text"] == "+" and len(operation["results"]) == 3}
+            # (the copy's blocks follow the loop's: its last read of one, unchecked; the loop's own
+            # inline reads test the index they read, also a further one)
+            read = [operation for block in function["blocks"] for operation in block["operations"]
+                    if operation["op"] == "list.load" and operation["operands"][1]["value"] in sums][-1]
+            sums[read["operands"][1]["value"]]["operands"][1]["value"] = "2"
+            return snapshot
+
+        def lowered(symbol):
+            # (the test before the loop checks the stop against len(xs), not len(xs) - 1)
+            snapshot, function = self.selected(symbol)
+            block, index = self.find(function, "scalar.bin", "sub")
+            block["operations"][index]["operands"][1]["value"] = "0"
+            return snapshot
+
+        def shortened(symbol):
+            # (the copy shortens a list before a read: the length the test read is stale)
+            snapshot, function = self.selected(symbol)
+            block, index = [(block, index) for block in function["blocks"]
+                            for index, operation in enumerate(block["operations"])
+                            if operation["op"] == "list.load"][-1]
+            listed = block["operations"][index]["operands"][0]
+            block["operations"].insert(index, op("rt", [(listed["value"], listed["type"])], text="list.clear"))
+            return snapshot
+
+        for symbol in ("@f.smoothed", "@f.pairs"):
+            for corrupt in (further, lowered, shortened):
+                self.assertFalse(self.verdict(corrupt(symbol), symbol), (symbol, corrupt.__name__))
+
     def test_a_global_write_between_reloads_rejects(self):
         # (TABLE = {} after the lookup and before its reload: the entry belongs to another dict)
         snapshot, function = self.selected("@f.global_lookup")
@@ -340,7 +381,7 @@ class ProvedCheckerTests(SnapshotFixture):
         code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.total")
         self.assertEqual((code, report["status"], report["checked"]), (0, "accepted", True))
         code, report = run("--snapshot", str(self.snapshot_path), "--all")
-        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 20))
+        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 28))
         with tempfile.TemporaryDirectory() as temporary:
             emitted = Path(temporary) / "candidate.json"
             code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.item", "--emit", str(emitted))

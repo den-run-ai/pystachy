@@ -106,6 +106,21 @@ def every_other(xs: list[str]) -> Iterator[str]:
         yield xs[i]
 
 
+def smoothed(a: list[float], b: list[float]) -> None:
+    # listguard: a copy of the loop reads a[i - 1], a[i] and a[i + 1] and assigns b[i] unchecked,
+    # where tests before it find len(a) - 1 and len(b) at least the loop's stop
+    for i in range(1, len(a) - 1):
+        b[i] = (a[i - 1] + a[i] + a[i + 1]) / 3.0
+
+
+def pairs(xs: list[int]) -> int:
+    # listguard with a constant stop: xs[i] and xs[i + 1] for i < 4, where len(xs) - 1 >= 4
+    s = 0
+    for i in range(4):
+        s += xs[i] * xs[i + 1]
+    return s
+
+
 def main() -> None:
     cache = Cache()
     print(item([1, 2, 3], 1), last([4, 5]), pair([4, 5]), ends([1, 2, 3, 4]), total([1, 2, 3]))
@@ -113,6 +128,9 @@ def main() -> None:
     print(odd_lengths(["a", "bb", "c", "ddd"]), ranked(["ccc", "a", "bb"]))
     print(counted({"k": 1}, "k"), global_lookup("b"), cache.lookup("x"), cache.lookup("y"), cache.hits)
     print(list(every_other(["a", "b", "c"])))
+    smooth = [0.0] * 5
+    smoothed([1.0, 2.0, 3.0, 4.0, 5.0], smooth)
+    print(smooth, pairs([1, 2, 3, 4, 5]))
 
 
 main()
