@@ -3,6 +3,7 @@
 import hashlib
 import io
 from pathlib import Path
+import socket
 import ssl
 import tempfile
 import unittest
@@ -31,7 +32,8 @@ class ManagedToolchainTests(unittest.TestCase):
         digest = hashlib.sha256(payload).hexdigest()
         errors = [HTTPError(url, code, "temporary failure", {}, None)
                   for code in (408, 429, 500, 502, 503, 504)]
-        errors.extend((TimeoutError("timed out"), URLError(TimeoutError("timed out"))))
+        errors.extend((TimeoutError("timed out"), URLError(TimeoutError("timed out")),
+                       URLError(socket.gaierror(socket.EAI_AGAIN, "Temporary failure in name resolution"))))
         for error in errors:
             with (self.subTest(error=error), tempfile.TemporaryDirectory() as directory,
                   patch.object(toolchain, "urlopen", side_effect=[error, io.BytesIO(payload)]) as fetch,
@@ -103,7 +105,8 @@ class ManagedToolchainTests(unittest.TestCase):
     def test_download_mirror_failures_report_final_endpoint(self):
         url = "https://snapshot.invalid/package.deb"
         mirror = "https://archive.invalid/package.deb"
-        for final in (HTTPError(url, 504, "timeout", {}, None), TimeoutError("timed out")):
+        for final in (HTTPError(url, 504, "timeout", {}, None), TimeoutError("timed out"),
+                      URLError(socket.gaierror(socket.EAI_AGAIN, "Temporary failure in name resolution"))):
             with (self.subTest(final=final), tempfile.TemporaryDirectory() as directory,
                   patch.object(toolchain, "urlopen", side_effect=[
                       HTTPError(url, 503, "unavailable", {}, None), TimeoutError("timed out"), final,
@@ -115,6 +118,37 @@ class ManagedToolchainTests(unittest.TestCase):
                 self.assertEqual(fetch.call_args_list, [
                     call(url, timeout=60), call(mirror, timeout=60), call(url, timeout=60),
                 ])
+
+    def test_download_temporary_dns_failure_uses_mirror(self):
+        url = "https://snapshot.invalid/package.deb"
+        mirror = "https://archive.invalid/package.deb"
+        payload = b"LLVM archive"
+        error = URLError(socket.gaierror(socket.EAI_AGAIN, "Temporary failure in name resolution"))
+        with (tempfile.TemporaryDirectory() as directory,
+              patch.object(toolchain, "urlopen", side_effect=[error, io.BytesIO(payload)]) as fetch,
+              patch("time.sleep") as sleep):
+            archive = Path(directory) / "archive"
+            toolchain.download(url, hashlib.sha256(payload).hexdigest(), archive, fallback_url=mirror)
+            self.assertEqual(archive.read_bytes(), payload)
+            self.assertEqual(fetch.call_args_list, [call(url, timeout=60), call(mirror, timeout=60)])
+            sleep.assert_called_once_with(1)
+
+    def test_download_temporary_dns_failures_keep_three_attempt_budget(self):
+        url = "https://snapshot.invalid/package.deb"
+        mirror = "https://archive.invalid/package.deb"
+        errors = [URLError(socket.gaierror(socket.EAI_AGAIN, "Temporary failure in name resolution"))
+                  for _ in range(3)]
+        with (tempfile.TemporaryDirectory() as directory,
+              patch.object(toolchain, "urlopen", side_effect=errors) as fetch,
+              patch("time.sleep") as sleep):
+            with self.assertRaises(URLError) as raised:
+                toolchain.download(url, "0" * 64, Path(directory) / "archive", fallback_url=mirror)
+            self.assertIs(raised.exception.__cause__, errors[-1])
+            self.assertIn(url, str(raised.exception))
+            self.assertEqual(fetch.call_args_list, [
+                call(url, timeout=60), call(mirror, timeout=60), call(url, timeout=60),
+            ])
+            self.assertEqual(sleep.call_args_list, [call(1), call(2)])
 
     def test_download_mirror_replaces_partial_snapshot_bytes(self):
         class InterruptedResponse(io.BytesIO):
@@ -149,6 +183,9 @@ class ManagedToolchainTests(unittest.TestCase):
     def test_download_does_not_retry_permanent_network_errors(self):
         url = "https://example.invalid/llvm.tar"
         errors = (HTTPError(url, 404, "Not Found", {}, None),
+                  URLError(socket.gaierror(socket.EAI_NONAME, "Name or service not known")),
+                  URLError(socket.gaierror(socket.EAI_FAIL, "Non-recoverable failure in name resolution")),
+                  URLError("Temporary failure in name resolution"),
                   URLError(ssl.SSLCertVerificationError("certificate verify failed")))
         for error in errors:
             with (self.subTest(error=error), tempfile.TemporaryDirectory() as directory,

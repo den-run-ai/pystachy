@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import platform
 import shutil
+import socket
 import subprocess
 import sys
 import tarfile
@@ -82,7 +83,9 @@ def download(url: str, sha256: str, destination: Path, *, fallback_url: str | No
             retryable = error.code in (408, 429, 500, 502, 503, 504)
             retryable = retryable or (attempt == 1 and fallback_url is not None and error.code == 404)
         else:
-            retryable = isinstance(error, TimeoutError) or isinstance(error.reason, TimeoutError)
+            reason = error.reason if isinstance(error, URLError) else error
+            retryable = (isinstance(reason, TimeoutError)
+                         or isinstance(reason, socket.gaierror) and reason.errno == socket.EAI_AGAIN)
         if isinstance(error, HTTPError):
             error.close()
         if not retryable or attempt == 2:
