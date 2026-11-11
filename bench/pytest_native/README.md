@@ -20,6 +20,104 @@ that the complete upstream pytest, JSON repair or CPython suite compiles. Both
 CPython and native runs use Pystachy's maintained JSON repair port, preserving the
 same application source while comparing runner/runtime costs.
 
+## Recorded Linux run: 11 November 2026 (UTC)
+
+The [measurement report](results/2026-11-11.md) and
+[raw JSON](results/2026-11-11.json) contain seven interleaved samples of every
+execution, plus the complete first-command, unchanged-rerun and edit/rebuild
+measurements. All 84 comparative samples and 36 full lifecycle commands passed
+their exact inventories and checksums. The measured source was the clean tree at
+[`7e33fb336a6429caf089aff3bd5c684528202c26`](https://github.com/den-run-ai/pystachy/commit/7e33fb336a6429caf089aff3bd5c684528202c26).
+
+Preparation alone reduced the median CPython time by 5.76× for fixtures, 1.37×
+for JSON repair and 2.00× for the numeric workload. Reusing a prebuilt AOT
+executable gave a further 10.05×, 4.65× and 28.29× respectively over prepared
+CPython. Against ordinary pytest, the corresponding AOT ratios were 57.85×,
+6.39× and 56.52×. These ratios describe different workloads; they have no useful
+combined average. The fixture result mainly measures startup and dispatch,
+JSON repair performs 8,000 actual repairs, and the numeric result measures a
+typed integer-loop kernel with runtime bounds and seeds.
+
+The full default CLI runs an independent CPython oracle on every invocation.
+Its unchanged commands remained slower than ordinary pytest in every measured
+mode, including confirmed JIT cache hits. Native first commands took 10.7–20.4
+seconds across these suites and modes. These measurements therefore support
+prebuilt execution and prepared-dispatch gains, not a claim that every complete
+development command becomes faster.
+
+Memory is workload-dependent too. Prebuilt AOT peaked at 1.5 MiB for fixtures
+and 1.3 MiB for numeric work, but 34.2 MiB for JSON repair, versus 29.9 MiB for
+ordinary pytest and 15.3 MiB for prepared CPython on that JSON workload. Standalone
+cold AOT builds peaked at 123.0–157.6 MiB. The report includes preparation and every full
+command's memory, as well as execution peaks.
+
+### What the break-even estimates mean
+
+| Repeated unchanged workload | Fixtures | JSON repair | Numeric |
+|---|---:|---:|---:|
+| Manual preparation/build, then direct AOT reuse; excludes qualification | 62 runs | 45 runs | 27 runs |
+| First qualified AOT CLI command, then direct executable reuse; estimate | 66 runs | 47 runs | 31 runs |
+| Invoke the full qualified CLI on every run | No observed saving | No observed saving | No observed saving |
+
+The second row is an inference from the recorded full first AOT command and the
+prebuilt execution distribution, assuming equivalent unchanged generated code
+and per-run performance. The full CLI and standalone preparation produce
+byte-identical test modules with different entry drivers; this row estimates
+comparable direct execution. Its calculation is
+`ceil((first_aot - median_aot) / (median_pytest - median_aot))`: the first command
+includes preparation, compilation, execution and its CPython oracle; later runs
+reuse the executable directly. The first command and build costs are single
+observations, while execution medians use seven samples. These estimates need
+confirmation on the intended development machine, especially when edits are
+frequent. The actual full AOT CLI rebuilds on every invocation.
+
+### Recorded compiler and replay
+
+This run used CPython 3.13.16, pytest 9.2.0, LLVM/Clang 18.1.3 and the Linux
+x86_64 native compiler from
+[`v0.4.0-alpha.3`](https://github.com/den-run-ai/pystachy/releases/tag/v0.4.0-alpha.3).
+Its release manifest identifies source commit
+`c5cebb8bdeb71e7e099b48e4400119dd1e5b29e2`; its executable SHA-256 is
+`65657dda88dfb5e8faa92a88db2982f81e7fd6fd68abb7bb7f7260e4d3bb9e5b`.
+The compiler, runtime and library sources are unchanged between that release
+commit and the measured revision, verified with:
+
+```sh
+git diff --exit-code c5cebb8bdeb71e7e099b48e4400119dd1e5b29e2 \
+  7e33fb336a6429caf089aff3bd5c684528202c26 \
+  -- src pystachy.py lib runtime.py runtime.c ryu mpz
+```
+
+To replay this revision, check it out in a separate clean worktree and use the
+pinned interpreter, compiler and LLVM installation. For example, after setting
+these three paths:
+
+```sh
+BENCH_PYTHON=/absolute/path/to/python3.13.16
+BENCH_COMPILER=/absolute/path/to/alpha.3/libexec/pystachy/pystachy
+BENCH_LLVM=/absolute/path/to/llvm-18/bin
+git checkout 7e33fb336a6429caf089aff3bd5c684528202c26
+env -u LD_LIBRARY_PATH PYSTACHY_LLVM="$BENCH_LLVM" \
+  "$BENCH_PYTHON" bench/pytest_native/bench.py \
+  --python "$BENCH_PYTHON" --compiler "$BENCH_COMPILER" \
+  --samples 7 --order-seed 20261110 --cpu 0 \
+  --work-dir build/pytest-benchmark-replay \
+  --json bench/pytest_native/results/replay.json \
+  --markdown bench/pytest_native/results/replay.md
+```
+
+CPU 0 was the recorded affinity; select an allowed CPU on other hosts. This
+toolchain ran without `LD_LIBRARY_PATH`. A nonempty custom loader environment
+can bypass the native program cache: the report records observed cache events,
+not just the requested setting. Each measured suite showed first-run
+`miss → stored`, unchanged `hit`, and edited `miss → stored`.
+
+The host was shared, so distributions and outliers are retained. All timings
+include the same measurement launcher; no overhead was subtracted. These are
+28 original benchmark cases, separate from the 69 selected upstream cases
+qualified by the upstream tools. Complete upstream compatibility is outside
+the scope of either result.
+
 ## Reproduce
 
 Use the pinned development Python and pytest from `tools/requirements-dev.txt`,
