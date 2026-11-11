@@ -72,6 +72,21 @@ class EventTests(unittest.TestCase):
         self.assertEqual(api.call_args.args[2]["state"], "success")
         self.assertEqual(api.call_args.args[2]["context"], "Submission format")
 
+    def test_opened_pr_receives_nonblocking_reminder(self):
+        event = {"action": "opened", "pull_request": {"number": 12}}
+        with patch.object(check, "api", side_effect=[self.current(PR), None, [], None]) as api:
+            self.assertEqual(check.check(event), [])
+        self.assertEqual(api.call_args_list[2].args[1], "/issues/12/comments?per_page=100")
+        self.assertEqual(api.call_args_list[3].args[1], "/issues/12/comments")
+        self.assertIn("AI: none", api.call_args_list[3].args[2]["body"])
+
+    def test_opened_pr_rerun_does_not_duplicate_reminder(self):
+        event = {"action": "opened", "pull_request": {"number": 12}}
+        with patch.object(check, "api", side_effect=[self.current(PR), None,
+                                                     [{"body": check.ACK_BODY}]]) as api:
+            self.assertEqual(check.check(event), [])
+        self.assertEqual(api.call_count, 3)
+
     def test_invalid_pr_reports_failure(self):
         with patch.object(check, "api", side_effect=[self.current(""), None]) as api:
             self.assertTrue(check.check({"pull_request": {"number": 12}}))
