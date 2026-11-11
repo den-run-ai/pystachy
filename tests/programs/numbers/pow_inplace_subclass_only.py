@@ -1,4 +1,3 @@
-# error: **= through Base may call Child.__ipow__; use the concrete receiver type
 class Base:
     def __pow__(self, exponent: int) -> "Base":
         print("base pow")

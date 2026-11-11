@@ -1,0 +1,47 @@
+eq a
+eq b
+eq a
+eq b
+lt a
+gt b
+gt b
+True False True True
+eq a
+eq c
+eq a
+eq c
+eq a
+eq a
+eq a
+eq a
+False True True False
+lt a
+gt c
+'<' not supported between instances of 'Equal' and 'Equal'
+eq a
+eq a
+eq a
+eq a
+False False True True
+eq a
+eq b
+eq a
+eq b
+True True True
+child eq child
+eq base
+child eq child
+eq base
+child gt child
+lt base
+True False False
+Neither.eq
+Neither.eq
+Neither.ne
+Neither.ne
+Neither.eq
+Neither.eq
+Neither.ne
+Neither.ne
+True False False True
+[exit 0]

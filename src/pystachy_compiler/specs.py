@@ -96,7 +96,7 @@ FCMP: dict[str, str] = {"==": "oeq", "!=": "une", "<": "olt", "<=": "ole", ">": 
 SPECIAL: dict[str, str] = {"__str__": "1:str", "__repr__": "1:str", "__len__": "1:int", "__bool__": "1:bool", "__format__": "2:str",
                            "__eq__": "2:bool", "__ne__": "2:bool", "__lt__": "2:bool", "__le__": "2:bool", "__gt__": "2:bool", "__ge__": "2:bool",
                            "__hash__": "1:int"}
-for _k in "add sub mul truediv floordiv mod matmul and or xor lshift rshift iadd isub imul itruediv ifloordiv imod imatmul iand ior ixor ilshift irshift".split():
+for _k in "add sub mul truediv floordiv mod matmul and or xor lshift rshift radd rsub rmul rtruediv rfloordiv rmod rmatmul rand ror rxor rlshift rrshift iadd isub imul itruediv ifloordiv imod imatmul iand ior ixor ilshift irshift".split():
     SPECIAL[f"__{_k}__"] = "2:"
 for _k in "neg pos invert".split():
     SPECIAL[f"__{_k}__"] = "1:"

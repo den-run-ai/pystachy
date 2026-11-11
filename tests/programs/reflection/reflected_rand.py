@@ -1,4 +1,3 @@
-# error: reflected_rand.py:10: error: reflected operator methods are not supported (int & Bits calls Bits.__rand__)
 class Bits:
     def __init__(self, n: int) -> None:
         self.n = n

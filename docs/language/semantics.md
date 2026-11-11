@@ -308,12 +308,12 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 
 | Operation | Methods |
 |---|---|
-| Binary operators `+ - * / // % @ & \| ^ << >>` | `__add__` and the corresponding methods |
-| `o ** n`, `pow(o, n)` with builtin `int`, `float` or `bool` exponent | `__pow__` |
-| `o **= n` with a builtin numeric exponent | `__ipow__`, otherwise `__pow__` |
-| In-place operators | `__iadd__` and counterparts, otherwise the binary method |
+| Binary operators `+ - * / // % @ & \| ^ << >>` | `__add__` / `__radd__` and the corresponding methods |
+| `o ** n`, `pow(o, n)` | `__pow__`, `__rpow__` |
+| `pow(o, n, modulus)` with an `int` or `bool` modulus | `__pow__` with the third argument |
+| In-place operators, including `**=` | `__iadd__` / `__ipow__` and counterparts, otherwise binary dispatch |
 | Unary `-`, `+`, `~` | `__neg__`, `__pos__`, `__invert__` |
-| `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` |
+| `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` / `__rdivmod__` |
 | Equality and ordering | `__eq__`, `__ne__` and rich comparisons |
 | Truth and length | `__bool__`, `__len__` |
 | Representation | `__str__`, `__repr__`, `__format__` |
@@ -321,16 +321,36 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | Membership and iteration | `__contains__`, or supported `__iter__` |
 | `reversed()` | Supported `__reversed__` |
 
-Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
-Reflected arithmetic methods such as `__radd__`, `__rdivmod__` and `__rpow__` remain
-unsupported. Power dispatch with an object exponent, optional numeric exponent, or the
-three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
-modulus parameter; two-argument power leaves it at its default. Returning `NotImplemented`
-from an operator remains unsupported.
-Power methods require a positional `self`; following arguments may use `*args`.
-For `**=`, a base-typed receiver whose subclass introduces an `__ipow__` that the base
-lacks must be narrowed to the concrete receiver type; otherwise compilation rejects the
-operation rather than skipping the subclass method.
+Arithmetic and rich comparisons follow the concrete operand classes, including when a
+base annotation holds a subclass. A strict right subclass's distinct reflected arithmetic
+method runs before the left method. Otherwise the left method runs first, followed by the
+right reflected method for a different class if the left method is missing or returns
+`NotImplemented`. Rich comparisons also try the reversed method for operands of the same
+class. Equality falls back to identity after both sides decline; ordering and arithmetic
+raise `TypeError`. Operands are evaluated once, left to right, before callbacks. In-place
+dispatch tries the concrete receiver's in-place method before the binary sequence, including
+a method introduced only by a subclass. Callback mutations and exceptions retain their order.
+Mixed native and dynamic `Any` operands keep the existing dynamic dispatch rules; a native
+operand does not fix the erased operand's runtime class or reflected-method priority.
+
+`NotImplemented` has an immutable native singleton representation. A method may return it
+alone, or alongside one concrete native result type, with `None` also allowed. The return
+can be inferred or annotated with `types.NotImplementedType`. Only the latter conditional
+result needs a checked union box; an ordinary concrete result keeps its existing storage.
+Comparison methods return `bool` or `NotImplemented`. All successful branches of one
+operation must have a common concrete result type, optionally nullable. Identity tests
+against `NotImplemented` and its `str` / `repr` are supported; boxing it as dynamic `Any`,
+container descriptor operations on it, and arbitrary mixed result unions remain unsupported.
+
+Power accepts object and optional numeric exponents when the selected method accepts them.
+Power methods require a positional `self`; following arguments may use `*args`. Two-argument
+power leaves an optional modulus parameter at its default, as does literal `None` as the
+third argument. Ternary power follows the pinned CPython 3.13 rule: only `__pow__` receives
+the modulus; it does not try `__rpow__`. Its base and exponent need concrete native types;
+dynamic `Any` and union operands must be narrowed first. A modulus that may be `None` must
+also be narrowed first,
+and arbitrary object moduli remain unsupported. NamedTuple-specific reflected arithmetic
+and operators on general unions of unrelated classes retain their existing boundaries.
 Objects in containers compare, sort and print through their methods.
 Lists and tuples test items with equality before ordering them, then compare length if all
 common items are equal. Sorting and `min()` use `<`; `max()` uses `>`.

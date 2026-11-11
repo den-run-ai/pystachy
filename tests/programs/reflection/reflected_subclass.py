@@ -1,6 +1,5 @@
-# error: reflected_subclass.py:15: error: reflected operator methods are not supported (Plain | Sub calls Sub.__ror__)
 # Sub derives from Plain and has a __ror__ that Plain has not, so CPython calls Sub.__ror__(sub,
-# plain) before Plain.__or__ (inheritance is allowed for exception classes)
+# plain) before Plain.__or__, including for exception classes.
 class Plain(Exception):
     def __or__(self, o: "Plain") -> str:
         return "Plain.__or__"

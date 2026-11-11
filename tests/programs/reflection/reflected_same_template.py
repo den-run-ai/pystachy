@@ -1,4 +1,3 @@
-# error: reflected_same_template.py:12: error: unsupported operand type(s) for &: 'Box' and 'Box'
 # Box[int] and Box[str] are one class to CPython, which calls __rand__ only for a right operand of
 # another class, so it raises this TypeError
 class Box:

@@ -1,0 +1,21 @@
+key
+rhs
+iadd 10 3
+add 11 3 0
+14 11 1
+left
+right
+child radd 20 10
+base add 12 21
+1221
+entry eq 1
+entry eq 3
+False
+0
+optional power 2
+unsupported operand type(s) for ** or pow(): 'OptionalPower' and 'int'
+optional power None
+unsupported operand type(s) for ** or pow(): 'OptionalPower' and 'NoneType'
+reflected None True
+8
+[exit 0]

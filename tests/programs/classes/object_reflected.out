@@ -1,0 +1,15 @@
+17 11 42 4.666666666666667 4 2 1403
+2 15 13 112 1 2744 2744 (4, 2)
+Base.add
+forward
+Override.radd
+subclass
+Base.add
+forward
+Base.add
+forward
+unsupported operand type(s) for &: 'OnlyReflected' and 'OnlyReflected'
+unsupported operand type(s) for +: 'Box' and 'Box'
+17 17
+value=formatted
+[exit 0]

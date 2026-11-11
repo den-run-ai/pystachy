@@ -1,0 +1,7 @@
+True False
+False True
+True False
+['left eq', 'right eq', 'left eq', 'right eq', 'left lt', 'right gt']
+Target ['source', 'reflected add']
+True ['source', 'inplace add']
+[exit 0]
