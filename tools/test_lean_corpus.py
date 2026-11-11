@@ -54,6 +54,7 @@ class ReachTests(unittest.TestCase):
     def test_opt_ins_and_the_modules_a_program_reaches(self):
         cases = {
             PRAGMA + "print(1)\n": True,
+            "\ufeff" + PRAGMA + "print(1)\n": True,
             "import plain\n": False,
             # (through the package's __init__.py, which imports its opted-in module)
             "import dynlib\n": True,

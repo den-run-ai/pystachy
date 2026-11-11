@@ -64,7 +64,9 @@ class Reach:
         # (opts in, its imports: (level, dotted module parts, imported names))
         if path not in self.parsed:
             raw = path.read_bytes()
-            text = raw.decode("utf-8", errors="replace")
+            # The compiler's pragma recognizer sees Latin-1-decoded source bytes,
+            # including a UTF-8 BOM as three characters. Keep that same input.
+            text = raw.decode("latin-1")
             try:
                 tree = ast.parse(raw)  # (bytes: a byte-order mark or coding line is the source's)
             except SyntaxError:
