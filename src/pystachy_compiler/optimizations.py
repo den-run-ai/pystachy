@@ -1,8 +1,8 @@
 """Optimizations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 import os
-from src.pystachy_compiler.diagnostics import fail
-from src.pystachy_compiler.ir import IFn, Ins, Lookup, Val, Values, tmpname, one_num
+from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists
+from src.pystachy_compiler.ir import Blk, IFn, Ins, Lookup, Loop, Val, Values, tmpname, one_num
 from src.pystachy_compiler.ircheck import EffectSummaries
 from src.pystachy_compiler.specs import CANON_DEPTH, FXALL, FXBIT, LOOKUPS, NONEVAR, RAWW, REACH
 from src.pystachy_compiler.utils import is_list, is_opt, is_tuple, is_union, umembers
@@ -40,6 +40,9 @@ PASS_CONTRACTS: list[PassContract] = [
     PassContract("listget", ["predecessors", "loop-ranges", "values", "invariant-slots"],
                  ["cfg", "loop-shape", "slot-layout"],
                  ["values", "range-proofs", "alias-proofs", "exact-effects"]),
+    PassContract("listguard", ["predecessors", "loop-ranges", "values", "invariant-slots"],
+                 ["slot-layout"],
+                 ["values", "range-proofs", "alias-proofs", "cfg", "loop-shape", "exact-effects"]),
     PassContract("dictfuse", ["predecessors", "values", "lookup-proofs"],
                  ["cfg", "loop-shape", "slot-layout"],
                  ["values", "range-proofs", "alias-proofs", "exact-effects"]),
@@ -351,6 +354,8 @@ def gen_optimize(self, fn: IFn, on: dict[str, bool]) -> int:
             changed = self.charslots(fn)
         elif contract.name == "listget":
             changed = self.listget(fn)
+        elif contract.name == "listguard":
+            changed = self.listguard(fn)
         elif contract.name == "dictfuse":
             changed = self.dictfuse(fn)
         elif contract.name == "unionslots":
@@ -613,6 +618,384 @@ def gen_listget(self, fn: IFn) -> int:
                 if j == len(code) - 1 and (i.op == "br" or i.op == "cbr" or i.op == "check") and len(pl[i.b[0]]) == 1 and at[i.b[0]] > b:
                     l = i.b[0]
     return n
+
+# the most ops that listguard copies for one loop, and the largest constant it adds to an index
+GUARD_OPS = 400
+GUARD_OFFSET = 1 << 20
+NO_OFFSET = -(1 << 62)  # (guard_offset: no offset)
+
+
+def guard_literal(v: str) -> bool:
+    # is v a small int literal
+    d = v[1:] if v.startswith("-") else v
+    return 0 < len(d) <= 7 and d.isdigit()
+
+
+def guard_index(self, vs: Values, v: str, idx: str, index: dict[str, bool]) -> bool:
+    # is value v a range loop's index: idx, its canonical value, or a load in the loop of the
+    # loop variable's slot, which only the loop's first op stores (index: those loads)
+    return v in index or self.canon(vs, v) == idx
+
+
+def guard_offset(self, vs: Values, v: str, idx: str, sums: dict[str, Ins], index: dict[str, bool]) -> int:
+    # c where value v is a range loop's index (guard_index) plus the constant c: the index, or a
+    # checked or nsw sum or difference of it and an int literal (sums: each such op of the function,
+    # by the value it computes); NO_OFFSET where it is none of these
+    if guard_index(self, vs, v, idx, index):
+        return 0
+    c = self.canon(vs, v)
+    if c not in sums:
+        return NO_OFFSET
+    i = sums[c]
+    add = i.s == "+" or i.s == "add"
+    x = i.a[0].v
+    y = i.a[1].v
+    if guard_literal(y) and guard_index(self, vs, x, idx, index) and -GUARD_OFFSET <= int(y) <= GUARD_OFFSET:
+        return int(y) if add else -int(y)
+    if add and guard_literal(x) and guard_index(self, vs, y, idx, index) and -GUARD_OFFSET <= int(x) <= GUARD_OFFSET:
+        return int(x)
+    return NO_OFFSET
+
+
+class GuardPlan:
+    # what listguard does to one loop: its blocks (by label), the block before it, the lists the
+    # test before it reads (the value, or "slot S" for a slot it loads in the loop and never stores)
+    # with the largest constant added to an index of each, and the ops the copy leaves unchecked
+    def __init__(self, lp: Loop, pre: Blk):
+        self.lp = lp
+        self.pre = pre
+        self.region: dict[str, bool] = {}
+        self.lists: list[str] = []
+        self.most: dict[str, int] = {}
+        self.slot_load: dict[str, Ins] = {}  # (a load of each such slot, whose operand the test reuses)
+        self.list_type: dict[str, str] = {}
+        self.reads: list[Ins] = []
+        self.stores: list[Ins] = []
+        self.folds: list[Ins] = []
+
+
+def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at: dict[str, int], sums: dict[str, Ins]) -> GuardPlan | None:
+    # the plan for range loop lp (gen_listguard), or None where it gets no copy
+    if lp.kind != "range" or not lp.nonnegative or len(lp.idx) != 1 or lp.head not in at or lp.body not in at:
+        return None
+    region: dict[str, bool] = {lp.head: True}
+    pending = [lp.body]
+    ops = len(fn.blocks[at[lp.head]].code)
+    while len(pending) > 0:
+        l = pending.pop()
+        if l in region or l == lp.exit:
+            continue
+        if l not in at:
+            return None
+        region[l] = True
+        b = fn.blocks[at[l]]
+        ops += len(b.code)
+        if ops > GUARD_OPS or b.handler != "":
+            return None
+        for s in b.code[len(b.code) - 1].b:
+            pending.append(s)
+    if fn.blocks[at[lp.head]].handler != "" or len([i for i in fn.blocks[at[lp.head]].code if i.op == "phi"]) > 0:
+        return None
+    for other in fn.loops:
+        if other is not lp and other.head in region:
+            return None  # (a loop in this one: only innermost loops get copies)
+    outside = [j for j in pl[lp.head] if fn.blocks[j].label not in region]
+    if len(outside) != 1:
+        return None
+    pre = fn.blocks[outside[0]]
+    if pre.code[len(pre.code) - 1].op != "br":
+        return None
+    start = ""
+    for i in pre.code:
+        if (i.op == "mem.store" or i.op == "mach.store") and i.a[0].v == lp.ctr:
+            start = i.a[1].v  # (the counter's first value, a nonnegative constant: Loop.nonnegative)
+    if not guard_literal(start):
+        return None
+    plan = GuardPlan(lp, pre)
+    plan.region = region
+    idx = self.canon(vs, lp.idx[0])
+    bad = FXBIT["wL"] | FXBIT["U"]
+    defined: dict[str, bool] = {}
+    stored: dict[str, bool] = {}
+    for l in region:
+        for i in fn.blocks[at[l]].code:
+            for r in i.r:
+                defined[tmpname(r)] = True
+            if i.op == "mem.store" or i.op == "mach.store":
+                stored[i.a[0].v] = True
+    # the loop variable's slot, where the loop's first op stores the index and no other op of it
+    # stores: every load of it in the loop reads that iteration's index
+    first = fn.blocks[at[lp.body]].code[0]
+    var = ""
+    if first.op == "mem.store" and first.a[1].v == lp.idx[0] and first.a[0].v.startswith("%") and "." in first.a[0].v:
+        var = first.a[0].v
+        for l in region:
+            for i in fn.blocks[at[l]].code:
+                if (i.op == "mem.store" or i.op == "mach.store") and i.a[0].v == var and i is not first:
+                    var = ""
+    index: dict[str, bool] = {}
+    loads: dict[str, Ins] = {}  # (a value the loop loads from a local slot that it never stores)
+    for l in region:
+        for i in fn.blocks[at[l]].code:
+            a = i.a[0].v if len(i.a) > 0 else ""
+            if i.op == "mem.load" and a.startswith("%") and "." in a and a not in stored and a not in fn.fa:
+                loads[tmpname(i.r[0])] = i
+            if i.op == "mem.load" and var != "" and a == var:
+                index[tmpname(i.r[0])] = True
+    keys: dict[str, bool] = {}  # (each guarded access's list and offset, for listfast's checks)
+    for l in region:
+        for i in fn.blocks[at[l]].code:
+            if i.op == "rt" and (i.s == "list.get" or i.s == "list.set"):
+                o = i.a[0]
+                if not is_list(o.t) or i.x != "" or len(i.r) > 1:
+                    continue  # (an access the copy keeps checked; it changes no list's length)
+                if i.s == "list.set" and (int_lists() or dynamic_program()):
+                    continue  # (an item assignment stays checked where a list may hold numeric identities)
+                c = guard_offset(self, vs, i.a[1].v, idx, sums, index)
+                key = o.v if o.v not in defined else "slot " + loads[o.v].a[0].v if o.v in loads else ""
+                if c == NO_OFFSET or key == "" or int(start) + c < 0:
+                    continue
+                if key not in plan.most:
+                    plan.lists.append(key)
+                    plan.most[key] = c
+                    plan.list_type[key] = o.t
+                    if key.startswith("slot "):
+                        plan.slot_load[key] = loads[o.v]
+                elif c > plan.most[key]:
+                    plan.most[key] = c
+                keys[f"{key} {c}"] = True
+                if i.s == "list.get":
+                    plan.reads.append(i)
+                else:
+                    plan.stores.append(i)
+            elif self.opfx(i, fn.fa) & bad != 0:
+                return None  # (an op that may change a list's length, or run user code)
+    if len(plan.lists) == 0:
+        return None
+    # listfast's check of an index before its inline read: the copy goes to the read
+    for l in region:
+        code = fn.blocks[at[l]].code
+        last = code[len(code) - 1]
+        if last.op != "cbr":
+            continue
+        w = vs.at[int(last.a[0].v[2:])] if last.a[0].v.startswith("%t") and last.a[0].v[2:].isdigit() else -1
+        if w < 0:
+            continue
+        test = vs.fn.blocks[w // vs.stride].code[w % vs.stride]
+        if test.op != "int.ucmp" or test.s != "<":
+            continue
+        u = vs.at[int(test.a[1].v[2:])] if test.a[1].v.startswith("%t") and test.a[1].v[2:].isdigit() else -1
+        if u < 0:
+            continue
+        length = vs.fn.blocks[u // vs.stride].code[u % vs.stride]
+        if length.op != "list.len":
+            continue
+        owner = length.a[0].v
+        key = owner if owner not in defined else "slot " + loads[owner].a[0].v if owner in loads else ""
+        c = guard_offset(self, vs, test.a[0].v, idx, sums, index)
+        if key != "" and c != NO_OFFSET and f"{key} {c}" in keys:
+            plan.folds.append(last)
+    return plan
+
+
+def gen_listguard(self, fn: IFn) -> int:
+    # Unchecked list accesses in range loops, behind tests before each loop. An innermost loop over
+    # range(start, stop) or range(start, stop, step), with constants start >= 0 and step > 0, whose
+    # ops change no list's length (no op with wL but its item assignments, which change none, and no
+    # user code, U), gets a copy. Each read or assignment of an item of a list the loop does not
+    # rebind (a value it does not define, or a local slot it does not store), at the loop's index i
+    # plus a constant c (xs[i], ys[i + 1], zs[i - 1] = v) with start + c >= 0, is unchecked in the
+    # copy: a list.load, or a list.store, which stores the item as list.set does where no list holds
+    # numeric identities (a program none of whose modules opts in to promoting ints or dynamic Any;
+    # elsewhere assignments keep their checks); and listfast's inline read is. The tests run the
+    # copy where each such list, as the loop starts, has stop <= len(xs) - c for its largest c: then
+    # 0 <= i + c < len(xs) for every i the loop takes, as no length changes while it runs. Otherwise
+    # the loop runs as compiled, raising IndexError where CPython raises it, after the same
+    # iterations. The copy keeps every other check. A coroutine is left as it is (a caller may
+    # change a list while it is suspended), as is a loop that a try statement covers or that holds
+    # another loop or more than GUARD_OPS ops. How many accesses the copies leave unchecked
+    if fn.coro or len(fn.loops) == 0:
+        return 0
+    some = False
+    for lp in fn.loops:
+        some = some or (lp.kind == "range" and lp.nonnegative)
+    if not some:
+        return 0
+    at: dict[str, int] = {}
+    for j in range(len(fn.blocks)):
+        at[fn.blocks[j].label] = j
+    pl = self.preds(fn)
+    vs = Values(fn, pl)
+    sums: dict[str, Ins] = {}  # (the int sums and differences, by their values: guard_offset)
+    for b in fn.blocks:
+        for i in b.code:
+            if i.op == "ovf" and len(i.r) == 3 and (i.s == "+" or i.s == "-"):
+                sums[tmpname(i.r[1])] = i
+            elif i.op == "scalar.bin" and i.t == "int" and (i.s == "add" or i.s == "sub") and len(i.r) == 1:
+                sums[tmpname(i.r[0])] = i
+    plans: list[GuardPlan] = []
+    for lp in fn.loops:
+        plan = guard_plan(self, fn, lp, vs, pl, at, sums)
+        if plan is not None:
+            plans.append(plan)
+    n = 0
+    for p in plans:
+        n += guard_loop(self, fn, p)
+    return n
+
+
+def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
+    # the copy of plan's loop and the test before it (gen_listguard); how many accesses it unchecks
+    lp = plan.lp
+    region = plan.region
+    labels: dict[str, str] = {}
+    numbers: dict[int, int] = {}
+    for b in fn.blocks:
+        if b.label in region:
+            fn.n += 1
+            labels[b.label] = f"L{fn.n}"
+            for i in b.code:
+                for r in i.r:
+                    fn.n += 1
+                    numbers[r] = fn.n
+    fn.n += 1
+    test = Blk(f"L{fn.n}")
+    reads: dict[int, bool] = {}
+    for i in plan.reads:
+        reads[i.r[0]] = True
+    stores: list[Ins] = plan.stores
+    folds: list[Ins] = plan.folds
+    copies: list[Blk] = []
+    last = 0
+    n = 0
+    for j in range(len(fn.blocks)):
+        b = fn.blocks[j]
+        if b.label not in region:
+            continue
+        last = j
+        c = Blk(labels[b.label])
+        for i in b.code:
+            d = Ins(i.op, i.t, i.s)
+            d.line = i.line
+            d.k = i.k
+            d.x = i.x
+            d.r = [numbers[r] for r in i.r]
+            d.b = [labels[l] if l in labels else l for l in i.b]
+            d.a = []
+            for v in i.a:
+                w = Val(tmpname(numbers[int(v.v[2:])]) if v.v.startswith("%t") and v.v[2:].isdigit() and int(v.v[2:]) in numbers else v.v, v.t).identity(v)
+                w.lit = v.lit
+                w.infer_from = v.infer_from
+                d.a.append(w)
+            if i.op == "rt" and i.s == "list.get" and len(i.r) == 1 and i.r[0] in reads:
+                d.op = "list.load"  # (as listget makes it: the slot pys_list_get would have returned)
+                d.s = ""
+                d.r = [d.r[0], fn.n + 1, fn.n + 2, fn.n + 3]
+                fn.n += 3
+                n += 1
+            elif i.op == "rt" and i.s == "list.set" and len([x for x in stores if x is i]) > 0:
+                d.op = "list.store"  # (as pys_list_set stores an item where the list has no identity companion)
+                d.t = ""
+                d.s = ""
+                d.r = [fn.n + 1, fn.n + 2, fn.n + 3]
+                fn.n += 3
+                n += 1
+            elif i.op == "cbr" and len([x for x in folds if x is i]) > 0:
+                d.a = [Val("true", "bool")]  # (listfast's check, which the test before the loop makes)
+            c.code.append(d)
+        copies.append(c)
+    # the tests, each list's in turn: stop <= len(xs) - c, for its largest c. A list the loop loads
+    # from a local slot is loaded here too, and where that is null (a local not yet assigned, whose
+    # read in the loop raises), the loop runs as compiled
+    tests: list[Blk] = [test]
+    cur = test
+    lists: dict[str, str] = {}
+    for key in plan.lists:
+        if not key.startswith("slot "):
+            lists[key] = key
+            continue
+        src = plan.slot_load[key]
+        load = Ins("mem.load", src.t, "")
+        load.a = [src.a[0]]
+        fn.n += 1
+        load.r = [fn.n]
+        cur.code.append(load)
+        lists[key] = tmpname(fn.n)
+        null = Ins("ptr.cmp", "bool", "==")
+        null.a = [Val(lists[key], plan.list_type[key]), Val("null", plan.list_type[key])]
+        fn.n += 1
+        null.r = [fn.n]
+        cur.code.append(null)
+        fn.n += 1
+        nxt = Blk(f"L{fn.n}")
+        skip = Ins("cbr", "", "")
+        skip.a = [Val(tmpname(null.r[0]), "bool")]
+        skip.b = [lp.head, nxt.label]
+        cur.code.append(skip)
+        tests.append(nxt)
+        cur = nxt
+    for k in range(len(plan.lists)):
+        key = plan.lists[k]
+        length = Ins("list.len", "int", "")
+        length.a = [Val(lists[key], plan.list_type[key])]
+        fn.n += 1
+        length.r = [fn.n]
+        cur.code.append(length)
+        limit = tmpname(fn.n)
+        if plan.most[key] != 0:
+            less = Ins("scalar.bin", "int", "sub")
+            less.a = [Val(limit, "int"), Val(str(plan.most[key]), "int")]
+            fn.n += 1
+            less.r = [fn.n]
+            cur.code.append(less)
+            limit = tmpname(fn.n)
+        fits = Ins("scalar.cmp", "bool", "sle")
+        fits.a = [Val(lp.stop.v, "int"), Val(limit, "int")]
+        fn.n += 1
+        fits.r = [fn.n]
+        cur.code.append(fits)
+        target = labels[lp.head]  # (each list's test in turn, then the copy)
+        nxt = cur
+        if k < len(plan.lists) - 1:
+            fn.n += 1
+            nxt = Blk(f"L{fn.n}")
+            tests.append(nxt)
+            target = nxt.label
+        branch = Ins("cbr", "", "")
+        branch.a = [Val(tmpname(fits.r[0]), "bool")]
+        branch.b = [target, lp.head]
+        cur.code.append(branch)
+        cur = nxt
+    # the block before the loop goes to the test, and the loop's test (and its copy's) comes from it
+    end = plan.pre.code[len(plan.pre.code) - 1]
+    end.b = [test.label if l == lp.head else l for l in end.b]
+    # a block after the loop that a block of it goes to takes the copy's value from the copy
+    for b in fn.blocks:
+        if b.label in region:
+            continue
+        for i in b.code:
+            if i.op != "phi":
+                continue
+            for k in range(len(i.b)):
+                if i.b[k] in region:
+                    v = i.a[k]
+                    w = Val(tmpname(numbers[int(v.v[2:])]) if v.v.startswith("%t") and v.v[2:].isdigit() and int(v.v[2:]) in numbers else v.v, v.t).identity(v)
+                    i.a.append(w)
+                    i.b.append(labels[i.b[k]])
+    head = 0
+    for j in range(len(fn.blocks)):
+        if fn.blocks[j].label == lp.head:
+            head = j
+    fn.blocks = fn.blocks[:head] + tests + fn.blocks[head:last + 1] + copies + fn.blocks[last + 1:]
+    copy = Loop(lp.kind, labels[lp.head], labels[lp.body], labels[lp.step] if lp.step in labels else lp.step, lp.exit)
+    copy.mode = lp.mode
+    copy.ctr = lp.ctr
+    copy.nonnegative = lp.nonnegative
+    copy.stop = Val(lp.stop.v, lp.stop.t)
+    copy.idx = [tmpname(numbers[int(lp.idx[0][2:])])]
+    fn.loops.append(copy)
+    return n
+
 
 def gen_dictfuse(self, fn: IFn) -> int:
     # Dict lookup fusion. A dict.has or a dict.getitem of key k in dict d finds k's entry; a

@@ -1021,6 +1021,7 @@ from src.pystachy_compiler.ircheck import (
 from src.pystachy_compiler.lowering import (
     gen_eh_ir as lowering_eh_ir,
     gen_field_tag as lowering_field_tag,
+    gen_list_tag as lowering_list_tag,
     gen_invoke as lowering_invoke,
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
@@ -1043,6 +1044,7 @@ from src.pystachy_compiler.optimizations import (
     gen_dictfuse as optimizations_dictfuse,
     gen_disjoint as optimizations_disjoint,
     gen_listget as optimizations_listget,
+    gen_listguard as optimizations_listguard,
     gen_nullcheck as optimizations_nullcheck,
     gen_nullslot as optimizations_nullslot,
     gen_charslots as optimizations_charslots,
@@ -3587,6 +3589,9 @@ class Gen:
     def field_tag(self, c: str, k: int) -> str:
         return lowering_field_tag(self, c, k)
 
+    def list_tag(self, what: str) -> str:
+        return lowering_list_tag(self, what)
+
     def tbaa_nodes(self) -> list[str]:
         return lower_module_tbaa_nodes(self)
 
@@ -3628,6 +3633,9 @@ class Gen:
 
     def listget(self, fn: IFn) -> int:
         return optimizations_listget(self, fn)
+
+    def listguard(self, fn: IFn) -> int:
+        return optimizations_listguard(self, fn)
 
     def dictfuse(self, fn: IFn) -> int:
         return optimizations_dictfuse(self, fn)
