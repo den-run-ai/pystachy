@@ -35,25 +35,66 @@ SUITES = ("fixtures", "json_repair", "numeric")
 VARIANTS = ("pytest", "generated_python", "native_jit", "native_aot")
 PINNED_PYTHON = (ROOT / ".python-version").read_text().strip()
 PINNED_PYTEST = "9.2.0"
+MEMORY_HELPER = None
+MEMORY_HELPER_BUILD = None
 
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def measured(command, env, timeout, cwd=ROOT):
-    """wait4 avoids polling quantization and measures each fresh child separately.
+def build_memory_helper(directory, compiler=None):
+    """Build measurement infrastructure once, outside every timed command."""
+    global MEMORY_HELPER, MEMORY_HELPER_BUILD
+    if compiler is None:
+        prefix = os.environ.get("PYSTACHY_LLVM", "")
+        compiler = str(Path(prefix) / "clang") if prefix else shutil.which("clang") or shutil.which("cc")
+    if not compiler:
+        raise RuntimeError("a C compiler is required for accurate process-memory measurement")
+    source = HERE / "measure_rss.c"
+    binary = directory / "measure-rss"
+    command = [compiler, "-O2", "-std=c11", "-Wall", "-Wextra", "-Werror", str(source), "-o", str(binary)]
+    built = subprocess.run(command, check=True, capture_output=True, text=True, timeout=30)
+    compiler_path = Path(shutil.which(compiler) or compiler).resolve()
+    version = subprocess.check_output([compiler, "--version"], text=True).splitlines()[0]
+    MEMORY_HELPER = binary
+    MEMORY_HELPER_BUILD = {"command": command, "compiler": str(compiler_path),
+                           "compiler_sha256": digest(compiler_path), "compiler_version": version,
+                           "source": source.relative_to(ROOT).as_posix(),
+                           "stdout": built.stdout, "stderr": built.stderr}
 
-    ru_maxrss is the largest individual-process high-water mark accounted by
-    wait4, including waited-for children, not simultaneous process-tree RSS.
-    File-backed capture avoids deadlocks and preserves normal pipe buffering.
+
+def read_memory_report(path, returncode):
+    report = json.loads(path.read_text())
+    if (type(report) is not dict or set(report) != {
+            "returncode", "peak_rss_bytes", "user_seconds", "system_seconds", "target_wall_seconds"}
+            or type(report["returncode"]) is not int or report["returncode"] != returncode
+            or type(report["peak_rss_bytes"]) is not int or report["peak_rss_bytes"] < 0
+            or any(type(report[key]) not in (int, float) or not math.isfinite(report[key]) or report[key] < 0
+                   for key in ("user_seconds", "system_seconds", "target_wall_seconds"))):
+        raise ValueError("invalid memory report or exit-status mismatch")
+    return report
+
+
+def measured(command, env, timeout, cwd=ROOT):
+    """Measure elapsed launch time and target RSS through a tiny native launcher.
+
+    Forking after the launcher's exec removes the Python parent's pre-exec RSS
+    floor. Timings include this same launcher path for every variant. wait4's
+    target maximum includes waited descendants, not simultaneous process-tree
+    RSS. File-backed capture avoids deadlocks and polling quantization.
     """
     if not hasattr(os, "wait4") or not hasattr(signal, "setitimer"):
         raise RuntimeError("benchmark requires POSIX wait4 and interval timers")
+    if MEMORY_HELPER is None:
+        raise RuntimeError("memory launcher has not been built")
     before = list(os.getloadavg())
-    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr, \
+            tempfile.TemporaryDirectory(prefix="pytest-bench-rss-") as metrics_directory:
+        metrics = Path(metrics_directory) / "memory.json"
+        wrapped = [str(MEMORY_HELPER), str(metrics), *command]
         start = time.perf_counter()
-        process = subprocess.Popen(command, env=env, cwd=cwd, stdin=subprocess.DEVNULL,
+        process = subprocess.Popen(wrapped, env=env, cwd=cwd, stdin=subprocess.DEVNULL,
                                    stdout=stdout, stderr=stderr, start_new_session=True)
         def timed_out(signum, frame):
             raise TimeoutError(f"process exceeded {timeout:g}s")
@@ -79,16 +120,19 @@ def measured(command, env, timeout, cwd=ROOT):
         stdout.seek(0)
         stderr.seek(0)
         record = {
-            "command": command, "cwd": str(cwd), "seconds": elapsed,
+            "command": command, "measurement_command": wrapped, "cwd": str(cwd), "seconds": elapsed,
             "returncode": process.returncode,
-            "peak_rss_bytes": usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024),
-            "user_seconds": usage.ru_utime, "system_seconds": usage.ru_stime,
+            "launcher_peak_rss_bytes": usage.ru_maxrss * (1 if sys.platform == "darwin" else 1024),
             "stdout": stdout.read().decode("utf-8", errors="replace"),
             "stderr": stderr.read().decode("utf-8", errors="replace"),
             "load_before": before, "load_after": list(os.getloadavg()),
         }
         if error:
             record["error"] = error
+        try:
+            record.update(read_memory_report(metrics, process.returncode))
+        except (OSError, ValueError, KeyError, TypeError) as failure:
+            record["error"] = (error + "; " if error else "") + "memory measurement failed: " + str(failure)
         return record
 
 
@@ -171,6 +215,7 @@ def complete_command(source, mode, work, args, env, checksums):
                "--mode", mode, "--compiler", args.compiler, "--python", args.python,
                "--work-dir", str(work), "--json", str(evidence_path), "--compare",
                "--timeout", str(args.timeout)]
+    env = dict(env, PYSTACHY_PROGRAM_CACHE_TRACE="1")
     record = measured(command, env, 3 * args.timeout + 30)
     checked(record)
     evidence = json.loads(evidence_path.read_text())
@@ -184,8 +229,24 @@ def complete_command(source, mode, work, args, env, checksums):
         raise ValueError("full runner command failed original-pytest qualification")
     validate_checksums("".join(result.stdout for result in results), checksums)
     record["evidence"] = evidence
-    record["cache_policy"] = "program cache enabled; private runtime/program cache for this mode"
+    record["cache_policy"] = "program cache requested; private runtime/program cache; trace enabled"
+    record["cache_events"] = re.findall(r"^pystachy program cache: (.*)$",
+                                        "\n".join(result.stderr for result in results), re.MULTILINE)
+    record["cache_observed"] = cache_observation(mode, record["cache_events"])
     return record
+
+
+def cache_observation(mode, events):
+    if mode != "jit":
+        return "not applicable"
+    bypasses = [event for event in events if event.startswith("bypass ")]
+    if bypasses:
+        return "; ".join(bypasses)
+    if "hit" in events:
+        return "hit"
+    if "stored" in events:
+        return "miss; stored"
+    return "miss" if "miss" in events else "unobserved"
 
 
 def percentile(values, fraction):
@@ -208,6 +269,12 @@ def distribution(records):
 def break_even(upfront, baseline, native):
     saving = baseline - native
     return max(1, math.ceil(upfront / saving)) if saving > 0 else None
+
+
+def full_command_break_even(first, unchanged, baseline):
+    # First + (n - 1) * unchanged <= n * baseline. A CLI that rebuilds or
+    # reruns its oracle on every invocation may never repay its first-run cost.
+    return break_even(max(0.0, first - unchanged), baseline, unchanged)
 
 
 def benchmark_suite(name, args, result, checkpoint):
@@ -313,18 +380,25 @@ def benchmark_suite(name, args, result, checkpoint):
         mutable_source.parent.mkdir(exist_ok=True)
         shutil.copyfile(source, mutable_source)
         live_work = directory / ("edit-" + mode)
-        complete_command(mutable_source, mode, live_work, args, env, checksums)
+        result["complete_commands"][mode]["edit_baseline"] = complete_command(
+            mutable_source, mode, live_work, args, env, checksums)
         mutable_source.write_text(edited.read_text())
         row = complete_command(mutable_source, mode, live_work, args, env, edited_checksums)
         result["complete_commands"][mode]["edited"] = row
         checkpoint()
+    result["full_command_break_even_runs"] = {
+        mode: full_command_break_even(values["first"]["seconds"], values["unchanged"]["seconds"],
+                                     medians["pytest"])
+        for mode, values in result["complete_commands"].items()
+    }
     return result
 
 
 def provenance(args):
     def output(command):
         return subprocess.check_output(command, cwd=ROOT, text=True).strip()
-    paths = set(ROOT.glob("*.py")) | set(HERE.glob("*.py")) | set((HERE / "inputs").iterdir())
+    paths = (set(ROOT.glob("*.py")) | set(HERE.glob("*.py")) | set(HERE.glob("*.c"))
+             | set((HERE / "inputs").iterdir()))
     for directory in ("src", "lib", "ports"):
         paths.update((ROOT / directory).rglob("*.py"))
     paths.update((ROOT / "tools").glob("pytest_native*.py"))
@@ -350,6 +424,11 @@ def provenance(args):
     cpuinfo = Path("/proc/cpuinfo")
     cpu = next((line.split(":", 1)[1].strip() for line in cpuinfo.read_text().splitlines()
                 if line.startswith("model name")), "unknown") if cpuinfo.exists() else platform.processor()
+    if MEMORY_HELPER is None or MEMORY_HELPER_BUILD is None:
+        raise RuntimeError("memory sampler must be built before recording provenance")
+    memory = dict(MEMORY_HELPER_BUILD, executable=str(MEMORY_HELPER),
+                  executable_sha256=digest(MEMORY_HELPER), source_sha256=digest(HERE / "measure_rss.c"),
+                  compiler_sha256=digest(Path(MEMORY_HELPER_BUILD["compiler"])))
     return {"git_commit": output(["git", "rev-parse", "HEAD"]),
             "git_status": output(["git", "status", "--short", "--untracked-files=all"]),
             "source_sha256": {path.relative_to(ROOT).as_posix(): digest(path) for path in sorted(paths)},
@@ -360,9 +439,11 @@ def provenance(args):
             "llvm_tools": llvm,
             "ld_library_path": os.environ.get("LD_LIBRARY_PATH", ""),
             "samples": args.samples, "order_seed": args.order_seed,
-            "process_memory": "wait4 maximum individual-process RSS, not concurrent process-tree sum",
+            "memory_sampler": memory,
+            "process_memory": "native launcher forks after exec; target wait4 maximum individual-process RSS, including waited descendants; not concurrent process-tree sum",
+            "timing_boundary": "includes native launcher exec/fork/reporting overhead for every command; sampler compilation is excluded",
             "sample_policy": "fresh processes; fixed shuffled order; program cache disabled; runtime cache warm",
-            "complete_command_policy": "default original-pytest oracle included; private caches; program cache enabled",
+            "complete_command_policy": "default original-pytest oracle included; private caches; program cache requested and observed via trace",
             "cold_definition": "empty Pystachy cache; OS page cache and installed Python pycs are not cleared",
             "environment": {key: value for key, value in environment(Path("INPUT"), Path("CACHE")).items()
                             if key.startswith(("PYSTACHY_", "PYTHON", "PYTEST_")) or key in {"LC_ALL", "COLUMNS"}}}
@@ -375,14 +456,16 @@ def markdown(data):
             "Ordinary pytest uses no diagnostic reporting plugin. Native JIT samples include fresh program "
             "compilation with a warm runtime cache; AOT samples use a prebuilt executable. "
             "Complete runner commands below include the independent CPython pytest oracle "
-            "and explicitly enable the program cache.", "",
-            "| Suite | Cases | Ordinary pytest | Generated CPython | Native JIT | Prebuilt AOT | AOT speedup |",
-            "|---|---:|---:|---:|---:|---:|---:|"]
+            "and request the program cache; observed hits/bypasses are reported. Every timing includes "
+            "the same small native measurement launcher's exec/fork/reporting overhead.", "",
+            "| Suite | Cases | Ordinary pytest | Generated CPython | Native JIT | Prebuilt AOT | AOT vs pytest | AOT vs prepared Python |",
+            "|---|---:|---:|---:|---:|---:|---:|---:|"]
     for suite in data["suites"]:
         stats = suite["distributions"]
         med = {name: value["median_seconds"] for name, value in stats.items()}
         times = " | ".join(f"{1000 * med[name]:.2f} ms" for name in VARIANTS)
-        rows.append(f"| {suite['suite']} | {suite['cases']} | {times} | {med['pytest'] / med['native_aot']:.2f}× |")
+        rows.append(f"| {suite['suite']} | {suite['cases']} | {times} | {med['pytest'] / med['native_aot']:.2f}× | "
+                    f"{med['generated_python'] / med['native_aot']:.2f}× |")
     for suite in data["suites"]:
         rows += ["", "## " + suite["suite"], "", "All timings include process startup. "
                  "Each sampled execution passed the exact case/checksum inventory; generated runs also "
@@ -395,7 +478,9 @@ def markdown(data):
                         f"{stats['min_seconds'] * 1000:.2f}–{stats['max_seconds'] * 1000:.2f} ms | "
                         f"{stats['max_peak_rss_bytes'] / 1048576:.1f} MiB |")
         prep, build = suite["preparation"]["seconds"], suite["build"]["seconds"]
-        rows += ["", f"Preparation: **{prep:.3f} s**; standalone AOT build: **{build:.3f} s** "
+        rows += ["", f"Preparation: **{prep:.3f} s** "
+                 f"({suite['preparation']['peak_rss_bytes'] / 1048576:.1f} MiB peak individual-process RSS); "
+                 f"standalone AOT build: **{build:.3f} s** "
                  f"({suite['build']['peak_rss_bytes'] / 1048576:.1f} MiB peak individual-process RSS).",
                  "", f"Initial JIT execution to populate JIT-specific runtime artifacts: "
                  f"**{suite['jit_runtime_warmup']['seconds']:.3f} s** (recorded separately; "
@@ -406,25 +491,53 @@ def markdown(data):
         for mode, values in suite["complete_commands"].items():
             rows.append(f"| {mode} | " + " | ".join(f"{values[key]['seconds']:.3f} s"
                                                     for key in ("first", "unchanged", "edited")) + " |")
+        rows += ["", "| Full command peak individual-process RSS | First | Unchanged | Edited |",
+                 "|---|---:|---:|---:|"]
+        for mode, values in suite["complete_commands"].items():
+            rows.append(f"| {mode} | " + " | ".join(f"{values[key]['peak_rss_bytes'] / 1048576:.1f} MiB"
+                                                    for key in ("first", "unchanged", "edited")) + " |")
+        jit = suite["complete_commands"]["jit"]
+        rows += ["", "Observed full-command JIT program cache: " + "; ".join(
+            f"{key}: **{jit[key]['cache_observed']}**" for key in ("first", "unchanged", "edited")) + ". "
+            "Cache tracing is enabled only for these lifecycle commands and its small cost is included."]
         breakeven = suite["aot_break_even_runs"]
         rows += ["", "AOT break-even (preparation/build amortized, using measured medians): "
                  f"**{breakeven['versus_pytest']} runs** versus ordinary pytest; "
                  f"**{breakeven['versus_prepared_python']} runs** versus prepared CPython. "
                  "`None` means no measured per-run saving. This excludes the separately reported "
-                 "qualification oracle and assumes unchanged tests."]
+                 "qualification oracle and assumes unchanged tests using the retained executable."]
+        full = suite["full_command_break_even_runs"]
+        if all(value is None for value in full.values()):
+            rows += ["", "**No observed full-command break-even:** every measured unchanged runner CLI "
+                     "command, including its oracle, was slower than ordinary pytest. The artifact "
+                     "break-even above applies only to separately rerunning the prepared executable."]
+        else:
+            rows += ["", "Full-command break-even estimates versus ordinary pytest "
+                     "(first + unchanged reruns, including the oracle): "
+                     + "; ".join(f"{mode}: {value if value is not None else 'no observed saving'}"
+                                 for mode, value in full.items())
+                     + ". These estimates use single lifecycle observations and need repeated confirmation."]
     meta = data["metadata"]
     rows += ["", "## Reproduction and limits", "", f"Commit: `{meta['git_commit']}`. "
              f"Python {meta['versions']['python']}; pytest {meta['versions']['pytest']}. "
              f"{meta['cpu']}; {meta['platform']}; CPU affinity {meta['cpu_affinity']}. "
              f"{meta['samples']} interleaved samples per execution; shuffle seed {meta['order_seed']}.", "",
-             "The adjacent JSON records exact commands, source/input/compiler hashes, raw samples, "
+             "LLVM: " + "; ".join(tool["version"] for name, tool in meta["llvm_tools"].items()
+                                    if name == "clang") + ". "
+             f"Compiler executable SHA-256: `{meta['compiler_executable_sha256']}`.", "",
+             "The adjacent JSON records exact commands, source/input/compiler/sampler hashes, raw samples, "
              "phase outcomes, checksums, load averages, environment and first-command build/run times. "
-             "Peak RSS is the largest individual-process high-water mark from wait4, not a sum of "
-             "concurrent processes. Cold means an empty private Pystachy cache; filesystem page caches "
+             "The native sampler forks after its own exec, avoiding the Python controller's inherited "
+             "pre-exec RSS floor. Peak RSS is the target's largest individual-process high-water mark "
+             "from wait4, including waited descendants, not a sum of concurrent processes. Launcher "
+             "RSS is retained separately in JSON. Sampler compilation is outside the timings; its "
+             "exec/fork/reporting overhead is included equally in every measured command. "
+             "Cold means an empty private Pystachy cache; filesystem page caches "
              "and installed Python bytecode caches remain uncontrolled. Shared-host load can affect results.", "",
              "The fixture suite is intentionally small, JSON repair uses the maintained adapted port "
              "under both interpreters, and the numeric suite is a typed integer-loop workload. "
-             "No combined average is meaningful across these different workloads. See README.md for "
+             "No combined average is meaningful across these different workloads. See the "
+             "[benchmark instructions](../README.md) for "
              "the replay command and input definitions.", ""]
     return "\n".join(rows)
 
@@ -457,7 +570,8 @@ def main(argv=None):
         parser.error("CPU pinning is unavailable on this platform")
     args.work_dir = args.work_dir.resolve()
     args.work_dir.mkdir(parents=True, exist_ok=False)
-    data = {"schema": 1, "complete": False, "metadata": provenance(args), "suites": []}
+    build_memory_helper(args.work_dir)
+    data = {"schema": 2, "complete": False, "metadata": provenance(args), "suites": []}
     def save():
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
@@ -469,7 +583,7 @@ def main(argv=None):
             benchmark_suite(name, args, result, save)
             save()
         after = provenance(args)
-        for key in ("source_sha256", "compiler_executable_sha256", "llvm_tools"):
+        for key in ("source_sha256", "compiler_executable_sha256", "llvm_tools", "memory_sampler"):
             if data["metadata"][key] != after[key]:
                 raise ValueError(f"benchmark inputs changed during measurement: {key}")
         data["metadata"]["measured_sources_unchanged"] = True

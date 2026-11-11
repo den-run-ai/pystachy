@@ -29,7 +29,7 @@ and a native compiler built from the current sources. See
 ```sh
 python3 bench/pytest_native/bench.py \
   --python "$(command -v python3)" --compiler "$PWD/pystachy" \
-  --samples 5 --work-dir build/pytest-benchmark-run \
+  --samples 7 --order-seed 20261110 --work-dir build/pytest-benchmark-run \
   --json bench/pytest_native/results/local.json \
   --markdown bench/pytest_native/results/local.md
 ```
@@ -40,7 +40,7 @@ pins itself and its children to the first allowed CPU on Linux, or an explicit
 concurrently. `--timeout` bounds each subprocess (default 180 seconds). Three
 samples is the minimum; five or more is preferable. This is not a CI timing gate.
 
-The JSON retains every raw sample, command, input/source/compiler hash, case ID,
+The JSON retains every raw sample, command, input/source/compiler/sampler hash, case ID,
 phase outcome, output checksum, environment, load average and first-command
 build/run measurement. The Markdown is generated from that data. An interrupted,
 failed or incomplete run is marked incomplete and does not produce a complete
@@ -64,10 +64,22 @@ report. Replay on an otherwise idle host before presenting small differences.
   and the cold-cache AOT build are reported separately and included in break-even
   calculations. This is the repeated-run comparison, not first-command speed.
 - **Full command:** the actual generated-runner CLI, with original pytest
-  comparison enabled and program caching enabled. First use has an empty private
+  comparison enabled and program caching requested. Cache traces establish whether
+  it misses, hits or bypasses; enabled settings alone do not prove a cache hit.
+  Trace output is enabled only for lifecycle commands and its small cost is included.
+  First use has an empty private
   Pystachy cache. The unchanged rerun uses that cache. An edit changes both the
   executed checksum and its assertion by one at the same source/work paths, so a
-  stale executable fails validation. AOT mode rebuilds on each CLI invocation.
+  stale executable fails validation. The JSON's `edit_baseline` records the
+  command that warms the temporary copy at that path before the edit. AOT mode
+  rebuilds on each CLI invocation.
+
+All measured commands use the same tiny native measurement launcher. It forks
+the target after its own exec, removing the Python controller's inherited RSS
+floor from target memory accounting. Elapsed times include launcher startup,
+fork and reporting overhead; its one-time compilation is outside the timings.
+The JSON pins its C source, executable, compilation command and compiler. This
+overhead matters proportionally most for the tiny AOT suite and is not subtracted.
 
 Each sample must exit successfully, execute the exact checksum inventory, and
 report the exact passed count. Generated execution also validates all three
@@ -78,10 +90,19 @@ ordinary-pytest timing headline; their total elapsed times are retained.
 
 The sampled variants are shuffled within each round using a recorded seed.
 Report medians, p10–p90, min/max and sample counts; no combined average is useful
-across these workloads. `wait4` supplies peak individual-process RSS, including
-waited-for children. This is not peak simultaneous process-tree memory. A cold
+across these workloads. The native launcher's `wait4` supplies the target's peak
+individual-process RSS, including waited-for descendants. This is not peak
+simultaneous process-tree memory. The outer launcher's RSS is retained separately.
+Preparation/build and all full-command lifecycle peaks are reported too. A cold
 cache means an empty private Pystachy cache; OS page caches and installed Python
 bytecode caches are not flushed.
+
+Retained-executable break-even amortizes preparation/build over direct AOT
+executions. It does not describe repeatedly invoking the full runner CLI, which
+also runs its original-pytest oracle and rebuilds in AOT mode. The report computes
+a separate full-command estimate using first + unchanged reruns; no estimate is
+reported when the measured unchanged CLI is slower than ordinary pytest. The
+single first/unchanged/edit observations are not distributions.
 
 ## Inputs and expectations
 
