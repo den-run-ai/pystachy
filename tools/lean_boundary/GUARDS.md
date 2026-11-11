@@ -68,6 +68,21 @@ callbacks, a reversed test, an exception edge around it and an escaped parameter
 while writes of another field, global or unrelated class and a store to an escaped
 slot of the function keep the proof.
 
+## Coverage of compiled code
+
+A sweep on 2026-11-11 at `e25327d` inspected every differential test program and
+deviation (2,416) with `--guard-evidence`; 861 have removed null checks. Lean proved
+135,958 of their 135,977 removals, counting each program's copy of shared library code
+(17,372 of 17,391 distinct obligations), all in the access model; the finite-tag
+model alone proves 78,855. The 19 unproved removals, in four records, rest on facts
+neither model states: a dynamic box's payload reread after a call that may write
+objects (`dynany_graph.py`'s `render` and `checksum`, `lib_tomllib.py`'s `typed`),
+which needs box immutability across calls, and a `repr` of exceptions that runs no
+user code because the program defines no exception class and exception arguments are
+formatted at construction (`exc_values.py`). Each was traced to the compiler's
+justification and found sound; no removal was found to be wrong. Union reads are
+unchanged by this route: 393 of 9,108 proved.
+
 ## Run
 
 Build `tools/lean_boundary` with the pinned Lean toolchain, then:
