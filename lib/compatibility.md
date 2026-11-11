@@ -41,15 +41,13 @@ byte tables, and `statistics`' import of `random` and table of kernels.
 ### Pure-Python accelerators
 
 `bisect`, `heapq`, `operator` and `stat` execute their Python implementations
-when the C accelerators cannot import. Consequently, edge behavior can differ
+when the C accelerators cannot import; `heapq`'s heap functions follow `_heapq`'s
+C code instead ([below](#heapq)). Consequently, edge behavior can differ
 from CPython's accelerated modules:
 
-- `heappop([])` reports `pop from empty list`, rather than `index out of range`.
 - Some keyword arguments rejected by C functions are accepted by Python functions.
 - `bisect` treats `hi=-1` as a bound; `_bisect` treats it as `len(a)`.
 - `stat` tests use the module's constants rather than `_stat`'s separate constants.
-- For more than 2,500 items, `heapify` compares in a different order from `_heapq`'s
-  cache-friendly loop, with the same result.
 - `operator.__doc__` is the Python module's docstring, which CPython replaces with
   `_operator`'s.
 
@@ -780,8 +778,16 @@ Ties preserve input order.
 Lists are read in place. Other inputs are first materialized by a comprehension;
 therefore a key/comparison that changes a dict or set being read does not raise
 CPython's iterator-mutation `RuntimeError`. A `__len__` that raises `TypeError`
-is handled as in CPython. Apart from the large-heap comparison order above,
-the algorithm preserves comparison and key-call order for list inputs.
+is handled as in CPython. The algorithm preserves comparison and key-call order
+for list inputs.
+
+The heap functions and their `_max` variants follow `Modules/_heapqmodule.c` of
+CPython 3.13.16, which CPython imports over `heapq.py`'s: a sifted item trades
+places with each item it passes, so a comparison that changes the heap finds all
+of its items there, and one that changes its size raises `RuntimeError: list
+changed size during iteration`. An empty heap raises `IndexError: index out of
+range`, and `heapify()` of more than 2,500 items compares in the C module's
+cache-friendly order.
 
 `merge` does not compile: its heap entries are lists that mix an item, an int and the
 iterator's `__next__` method, and a list's items share one type. Pass `file.readlines()`
