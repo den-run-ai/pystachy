@@ -85,6 +85,109 @@ class NegatedComparisonTests(unittest.TestCase):
                     self.assertIsNotNone(explain(candidate))
 
 
+class EntryAccessInventoryTests(unittest.TestCase):
+    HELPERS = ("set.slot_del", "dict.val_or_zero", "dict.eq_find", "dict.eq_pair_find")
+
+    @staticmethod
+    def snapshot(helper, *, lookup=True, guarded=True, stale=False, index=None, after=(), invoke=False):
+        table_type = "set[int]" if helper == "set.slot_del" else "dict[str,int]"
+        table = ("%a0", table_type)
+        prefix = []
+        if lookup:
+            find = "set.int_find_any" if helper == "set.slot_del" else "dict.find"
+            key_type = "%ptr" if helper == "set.slot_del" else "str"
+            prefix.append(op("rt", [table, ("%a1", key_type)], [1], text=find, typ="int", descriptor="S"))
+        entry = index if index is not None else ("%t1" if lookup else "%a1")
+        if guarded:
+            prefix += [op("num.cmp", [(entry, "int"), ("-1", "int")], [2], text="!=", typ="bool"),
+                       op("cbr", [("%t2", "bool")], targets=["read", "done"])]
+        else:
+            prefix.append(op("br", targets=["read"]))
+        operands = [table, (entry, "int")]
+        if helper.startswith("dict.eq_"):
+            operands = [("%a2", "dict[str,int]"), table, (entry, "int")]
+            if helper == "dict.eq_pair_find":
+                operands.append(("%a3", "%ptr"))
+        read = op("rt", operands, [] if helper == "set.slot_del" else [3], text=helper,
+                  typ="None" if helper == "set.slot_del" else "int", descriptor="H1",
+                  targets=["done", "handler"] if invoke else [])
+        code = ([op("rt", [table], text="set.clear" if helper == "set.slot_del" else "dict.clear")]
+                if stale else []) + [read]
+        if not invoke:
+            code += list(after) + [op("ret")]
+        blocks = [{"label": "entry", "handler": "", "operations": prefix},
+                  {"label": "read", "handler": "", "operations": code},
+                  {"label": "done", "handler": "", "operations": [op("ret")]}]
+        if invoke:
+            blocks.append({"label": "handler", "handler": "", "operations": list(after) + [op("ret")]})
+        function = {"name": "inventory", "symbol": "@f.inventory", "recursion": {}, "slots": [], "blocks": blocks}
+        return {"schema_version": 1, "stage": "typed-after", "status": "completed", "functions": [function]}
+
+    def assert_verdict(self, snapshot, expected):
+        candidate, metadata = normalize_snapshot(snapshot, "@f.inventory")
+        self.assertEqual(explain(candidate) is None, expected, explain(candidate))
+        if CHECKER.is_file():
+            self.assertEqual(access.run_checker(CHECKER, access.encode(candidate), metadata), expected)
+        return metadata
+
+    def test_every_direct_entry_helper_is_selected_and_counted(self):
+        for helper in self.HELPERS:
+            with self.subTest(helper=helper):
+                snapshot = self.snapshot(helper, lookup=False, guarded=False)
+                self.assertEqual(access.access_functions(snapshot), [("@f.inventory", 1)])
+                _, metadata = normalize_snapshot(snapshot, "@f.inventory")
+                self.assertEqual(metadata["dict_entries"], 1)
+                self.assertEqual(metadata["accesses"], 1)
+
+    def test_live_entries_pass_and_unguarded_or_stale_entries_reject(self):
+        for helper in self.HELPERS:
+            with self.subTest(helper=helper):
+                self.assert_verdict(self.snapshot(helper), True)
+                self.assert_verdict(self.snapshot(helper, lookup=False, guarded=False), False)
+                self.assert_verdict(self.snapshot(helper, stale=True), False)
+                alias = self.snapshot(helper, stale=True)
+                alias["functions"][0]["blocks"][1]["operations"][0]["operands"][0]["value"] = "%a4"
+                self.assert_verdict(alias, False)  # (a write through any alias invalidates the entry)
+
+    def test_optional_entry_read_preserves_its_negative_no_read_path(self):
+        self.assert_verdict(self.snapshot("dict.val_or_zero", guarded=False), True)
+        for index in ("-1", "-2", str(access.MIN_I64)):
+            with self.subTest(index=index):
+                snapshot = self.snapshot("dict.val_or_zero", lookup=False, guarded=False, index=index)
+                self.assertEqual(access.access_functions(snapshot), [("@f.inventory", 1)])
+                self.assertEqual(self.assert_verdict(snapshot, True)["dict_entries"], 1)
+                if CHECKER.is_file():
+                    report, code = check_all(snapshot, CHECKER)
+                    self.assertEqual((code, report["totals"]["accesses"], report["totals"]["proved_accesses"]),
+                                     (0, 1, 1))
+        self.assert_verdict(self.snapshot("dict.val_or_zero", lookup=False, guarded=False, index="0"), False)
+
+    def test_set_deletion_invalidates_entries_after_checking_its_own(self):
+        after = [op("rt", [("%a0", "set[int]"), ("%t1", "int")], [4], text="set.key", typ="int")]
+        self.assert_verdict(self.snapshot("set.slot_del", after=after), False)
+
+    def test_equality_lookup_checks_source_before_callback_invalidation(self):
+        after = [op("rt", [("%a0", "dict[str,int]"), ("%t1", "int")], [4], text="dict.val", typ="int")]
+        for helper in ("dict.eq_find", "dict.eq_pair_find"):
+            with self.subTest(helper=helper):
+                self.assert_verdict(self.snapshot(helper), True)
+                self.assert_verdict(self.snapshot(helper, after=after), False)
+                self.assert_verdict(self.snapshot(helper, after=after, invoke=True), False)
+
+    def test_equality_lookup_result_still_belongs_to_its_target(self):
+        for helper in ("dict.eq_find", "dict.eq_pair_find"):
+            with self.subTest(helper=helper):
+                snapshot = self.snapshot(helper)
+                blocks = snapshot["functions"][0]["blocks"]
+                blocks[1]["operations"][-1:] = [
+                    op("num.cmp", [("%t3", "int"), ("-1", "int")], [4], text="!=", typ="bool"),
+                    op("cbr", [("%t4", "bool")], targets=["target_read", "done"])]
+                blocks.append({"label": "target_read", "handler": "", "operations": [
+                    op("rt", [("%a2", "dict[str,int]"), ("%t3", "int")], [5], text="dict.val", typ="int"),
+                    op("ret")]})
+                self.assert_verdict(snapshot, True)
+
+
 class SnapshotFixture(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
