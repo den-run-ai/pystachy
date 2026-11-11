@@ -498,8 +498,11 @@ ordinary typed `len()` rules unchanged.
 
 Legacy iteration through `__getitem__` and the `__len__`/`__getitem__` reverse
 fallback remain unsupported, as in typed code. This prototype does not add
-`__length_hint__`, generator `send`/`throw`/`close` through `Any`, or generator
-`StopIteration.value`.
+`__length_hint__` or generator `send`/`throw`/`close` through `Any`.
+Typed and boxed `next` expose a completed generator's return through
+`StopIteration.value` and `args` when payloads are read; later calls expose `None` and
+empty arguments. Typed `close()` can return its cleanup result as an `Any` value.
+Return values must fit the exception payload representation below.
 
 A generator cannot box an aliased mutable container whose native layout is
 unsupported, such as `list[float]` or a typed dict. Choose a boxable yield channel,

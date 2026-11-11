@@ -3243,7 +3243,7 @@ def dyn_generator_arms(self, key: str, o: Val) -> None:
     # Iteration of boxed coroutine handles. The internal next dispatcher uses
     # null only for exhaustion; a yielded None is its ordinary non-null box.
     # All generator state, errors and cleanup stay in the existing resume path.
-    if key != "iter" and key != "next":
+    if key != "iter" and key != "next" and not (self.excargs and key == "nextvalue"):
         return
     typ = Val(self.dyn_typeof(o), "dyntype")
     for t in [x for x in self.dyntypes if is_gen(x)]:
@@ -3259,7 +3259,10 @@ def dyn_generator_arms(self, key: str, o: Val) -> None:
             promise = self.gen_next(handle, done)
             self.ret_(self.dyn_box(self.gen_value(promise, gelem(t))))
             self.place(done)
-            self.ret_(Val("null", DYN))
+            if key == "nextvalue":
+                self.gen_stop_from(handle)
+            else:
+                self.ret_(Val("null", DYN))
         self.place(miss)
 
 

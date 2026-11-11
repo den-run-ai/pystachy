@@ -1,0 +1,29 @@
+1
+(1000,) 1000
+True
+() None
+True
+None
+1
+boxed (1000,) True
+boxed again () True
+1 -1
+() None
+True
+1
+(1001,) 1001
+1001
+2
+send (1000,) True
+send again () True
+3
+throw (1000,) True
+() None
+True
+1
+(1000,) 1000
+True
+4
+() None
+True
+[exit 0]
