@@ -55,7 +55,8 @@ def summarize(programs, records, seconds):
     counts.update({key: sum(r["status"] == key for r in records) for key in boundary.SEVERITY})
     counts["programs"] = len(records)
     counts["uninventoried_programs"] = sum(not r["inventory_complete"] for r in records)
-    counts["vacuous_programs"] = sum(r["inventory_complete"] and r["union_reads"] == 0 and r["removed_checks"] == 0
+    counts["vacuous_programs"] = sum(r["status"] == "accepted" and r["inventory_complete"]
+                                     and r["union_reads"] == 0 and r["removed_checks"] == 0
                                      for r in records)
     return {"status": status, "totals": counts, "programs": records,
             "inventory_complete": counts["uninventoried_programs"] == 0,

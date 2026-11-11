@@ -50,8 +50,8 @@ def union_members(typ):
     return sorted(["member:" + part for part in parts] + ([NULL] if nullable else []))
 
 
-def inventory(fn):
-    """Inventory opcodes and union-derived addresses before guard recognition."""
+def union_provenance(fn):
+    """Conservative union value/address provenance, independent of guard facts."""
     roots = {f"%a{n}" for n, p in enumerate(fn["parameters"])
              if union_members(p["representation"]) is not None}
     operations = [op for block in fn["blocks"] for op in block["operations"]]
@@ -78,6 +78,53 @@ def inventory(fn):
                 roots.update(f"%t{n}" for n in op["results"])
         if (len(roots), len(storage)) == prior:
             break
+    return roots
+
+
+def union_writes(fn):
+    roots = union_provenance(fn)
+    if not roots:
+        return []
+    private = {f"%{op['text']}.def.{op['results'][0]}" if op["immediate"] == 1
+               else f"%{op['text'] or 'h'}.{op['results'][0]}" for op in fn["slots"] if op["immediate"] != 2}
+    return [(block["label"], offset, op["op"]) for block in fn["blocks"]
+            for offset, op in enumerate(block["operations"])
+            if op["op"] in {"mem.store", "mach.store", "tuple.store", "landing"}
+            and op["operands"] and (op["operands"][0]["value"] in roots
+                                    or op["operands"][0]["value"] not in private)]
+
+
+def check_call_order(fn, reads):
+    """Unknown effects must not precede a read or revive a stale tag predicate."""
+    labels = {block["label"] for block in fn["blocks"]}
+    successors = {}
+    for block in fn["blocks"]:
+        targets = {target for op in block["operations"] if op["op"] != "phi" for target in op["targets"]}
+        for op in block["operations"]:
+            if op["op"] == "check":
+                targets.add(fn["check_targets"][op["descriptor"] or op["text"]])
+        if block["handler"]:
+            targets.add(block["handler"])
+        successors[block["label"]] = targets & labels
+    reaches = {label for label, _, _ in reads}
+    while True:
+        earlier = reaches | {label for label, targets in successors.items() if targets & reaches}
+        if earlier == reaches:
+            break
+        reaches = earlier
+    for block in fn["blocks"]:
+        later = bool(successors[block["label"]] & reaches)
+        for offset in range(len(block["operations"]) - 1, -1, -1):
+            op = block["operations"][offset]
+            if later and op["op"] in {"rt", "call", "icall", "init", "gen.promise", "gen.resume", "gen.drop"} and not (
+                    op["op"] == "rt" and op["text"] in {"ubox", "ubox_opt"}):
+                raise boundary.Unsupported("opaque call may mutate a union box before a later read")
+            later |= (block["label"], offset, op["op"]) in reads
+
+
+def inventory(fn):
+    """Inventory opcodes and union-derived addresses before guard recognition."""
+    roots = union_provenance(fn)
     found = []
     for block in fn["blocks"]:
         for offset, op in enumerate(block["operations"]):
@@ -129,6 +176,10 @@ def normalize(snapshot, fn, null_obligations=None):
     # with their original check and handler edges retained below.
     validation = dict(snapshot, functions=[fn])
     boundary.normalize_snapshot(validation, fn["symbol"])
+    if not null_mode and union_writes(fn):
+        raise boundary.Unsupported("nonprivate writes may alias immutable union boxes")
+    if not null_mode:
+        check_call_order(fn, read_inventory)
     union_tags = snapshot.get("union_tags")
     if not null_mode:
         boundary.require(isinstance(union_tags, dict), "missing union_tags: inspect with --guard-evidence")
@@ -486,7 +537,7 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
                      and manifest.get("removed_checks") == sum(r["reported_rewrites"] for r in evidence),
                      "guard inventory manifest mismatch")
     records, codes = [], [0]
-    work = [(fn, None) for fn in snapshot["functions"] if inventory(fn)]
+    work = [(fn, None) for fn in snapshot["functions"] if inventory(fn) or union_writes(fn)]
     for record in snapshot["nullcheck_evidence"]:
         try:
             removed = removed_checks(record)
@@ -507,12 +558,14 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
             codes.append(code)
         except (boundary.Unsupported, ValueError, KeyError, OSError, subprocess.SubprocessError, RecursionError) as error:
             code = 2 if isinstance(error, boundary.Unsupported) else 3
-            records.append({"function": fn.get("symbol"), "status": "unsupported" if code == 2 else "error", "error": str(error)})
+            records.append({"function": fn.get("symbol"), "status": "unsupported" if code == 2 else "error", "error": str(error),
+                            "union_box_writes": len(union_writes(fn))})
             codes.append(code)
     code = 3 if 3 in codes else 1 if 1 in codes else 2 if 2 in codes else 0
     return {"status": {0: "accepted", 1: "rejected", 2: "unsupported", 3: "error"}[code],
             "checked": code == 0, "records": records,
             "union_reads": sum(len(inventory(fn)) for fn in snapshot["functions"]),
+            "union_box_writes": sum(len(union_writes(fn)) for fn in snapshot["functions"]),
             "removed_checks": sum(r["reported_rewrites"] for r in snapshot["nullcheck_evidence"]),
             "proved_union_reads": sum(r.get("obligations", 0) for r in records if r["status"] == "accepted"
                                       and r.get("scope") == "closed-union guards"),

@@ -177,7 +177,8 @@ class GuardTests(unittest.TestCase):
             instruction("mem.load", "union[int,str]", results=[101], operands=[(address, "*union[int,str]")]),
             instruction("union.tag", "int", results=[102], operands=[("%t101", "union[int,str]")]),
             instruction("ret", operands=[("0", "int")])]})
-        self.assertFalse(self.lean(*guards.normalize(snap, fn)))
+        with self.assertRaisesRegex(boundary.Unsupported, "opaque call"):
+            guards.normalize(snap, fn)
 
     def test_threading_keeps_phi_used_by_other_operations(self):
         from test_lean_boundary import instruction
@@ -291,6 +292,10 @@ class GuardTests(unittest.TestCase):
                     entry["operations"].extend(tail)
                     fn["blocks"] = [entry]
                 self.assertEqual(len(guards.inventory(fn)), 1)
+                if transport == "rt":
+                    with self.assertRaisesRegex(boundary.Unsupported, "opaque call"):
+                        guards.normalize(snap, fn)
+                    continue
                 candidate, meta = guards.normalize(snap, fn)
                 self.assertEqual(meta["payloads"], 1)
                 self.assertFalse(self.lean(candidate, meta))
@@ -303,7 +308,10 @@ class GuardTests(unittest.TestCase):
                                          for index, op in enumerate(block["operations"])
                                          if op["op"] == "rt" and op["text"] == "ubox")
         value = f"%t{constructor['results'][0]}"
-        block["operations"].insert(index + 1, instruction("union.tag", "int", results=[900], operands=[(value, "%ptr")]))
+        # Isolate the compiler-emitted constructor from earlier unrelated calls.
+        block["operations"] = [constructor, instruction("union.tag", "int", results=[900], operands=[(value, "%ptr")]),
+                               instruction("ret")]
+        fn["blocks"] = [block]
         self.assertEqual(len(guards.inventory(fn)), 1)
         self.assertTrue(self.lean(*guards.normalize(snap, fn)))
         constructor["text"] = "ubox_opt"
@@ -411,7 +419,7 @@ class GuardTests(unittest.TestCase):
                                    op("ret", operands=[("0", "int")])])
                 fn["blocks"] = [{"label": "entry", "handler": "", "operations": operations}]
                 self.assertEqual(len(guards.inventory(fn)), 1)
-                with self.assertRaisesRegex(boundary.Unsupported, "declared source domain"):
+                with self.assertRaisesRegex(boundary.Unsupported, "declared source domain|nonprivate writes|opaque call"):
                     guards.normalize(snap, fn)
                 snap["functions"], snap["nullcheck_evidence"] = [fn], []
                 snap["guard_inventory"] = {"nullcheck_passes": 0, "removed_checks": 0}
@@ -453,6 +461,13 @@ class GuardCorpusAccountingTests(unittest.TestCase):
         record = self.record(union_reads=0, proved_union_reads=0, removed_checks=0, proved_removed_checks=0)
         report = summarize(["p.py"], [record], 0)
         self.assertEqual(report["totals"]["vacuous_programs"], 1)
+
+    def test_unsupported_write_only_program_is_not_vacuous(self):
+        from check_lean_guard_corpus import summarize
+        record = self.record(status="unsupported", union_reads=0, proved_union_reads=0,
+                             removed_checks=0, proved_removed_checks=0, union_box_writes=1)
+        report = summarize(["p.py"], [record], 0)
+        self.assertEqual(report["totals"]["vacuous_programs"], 0)
 
 
 if __name__ == "__main__":

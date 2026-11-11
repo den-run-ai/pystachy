@@ -215,7 +215,7 @@ jobs:
           case "$VERIFY_GROUP" in
             contracts)
               PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
-                make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tests/programs/inference/dynany_cmp_union_fields.py tests/programs/inference/mixed_union_repr_cycle.py tests/programs/inference/reference_union_calls.py tests/programs/inference/scalar_union_chained_optional.py tests/programs/inference/scalar_union_operand_pair.py' ;;
+                make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/union_guards.py' ;;
           esac
           case "$VERIFY_GROUP" in
             opt-in|scaling)

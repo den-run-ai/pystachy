@@ -48,13 +48,11 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI selection exercises 30 inventoried union reads and 16 removed
-null checks: `examples/null_guards.py` and five existing inference programs,
-`dynany_cmp_union_fields.py`, `mixed_union_repr_cycle.py`,
-`reference_union_calls.py`, `scalar_union_chained_optional.py` and
-`scalar_union_operand_pair.py`. This small gate does not claim complete-corpus
-acceptance. `union_identity_none.py` remains a useful investigation target; its
-call and container-result domains are currently unproved.
+The bounded CI selection exercises seven inventoried union reads and six removed
+null checks in `examples/union_guards.py` and `examples/null_guards.py`. This small
+gate does not claim complete-corpus acceptance. Existing programs with calls,
+storage writes and container-result domains remain investigation targets rather
+than qualifying examples until those effects and representations are proved.
 
 Union domain facts come only from parameter declarations, modeled private-slot
 copies and literal-tag `ubox`/`ubox_opt` construction. Optional domains include
@@ -70,6 +68,24 @@ tuple storage and address transports. Unrecognized derived machine reads stay
 in the denominator and fail unsupported; they cannot disappear when their
 address loses its union annotation. This overapproximation can also inventory
 reads that would need additional analysis to distinguish from union reads.
+
+Union member proofs require stable box contents. Any write through a derived
+box address, or through an address that is not a declared local storage slot,
+fails unsupported: an unrelated raw pointer may alias a box. This conservative
+rule also rejects writes to globals and fresh heap objects whose disjointness
+has not been established. Write-only functions are inspected too, receive an
+explicit unsupported record, and cannot make a program pass vacuously. The
+`union_box_writes` diagnostic counts these potential mutations; it does not
+assert that each destination really aliases a box.
+
+Opaque calls and generator operations that can precede a later union read also
+fail unsupported, including paths through handlers, unwind edges and loop
+backedges. Merely clearing a box's tag facts would be insufficient: a comparison
+computed before a mutation could otherwise reintroduce a stale fact at a later
+branch. Calls strictly after all covered reads remain admitted. Exact `ubox`
+and `ubox_opt` construction retains its trusted fresh-allocation, fixed-tag and
+no-user-callback ABI contract. Runtime effect summaries are not used to exempt
+byte copies or other calls from this rule.
 
 Nullness has only two states, null and nonnull; no parameter is assumed nonnull.
 Private storage is copied and overwritten explicitly. Must-pairing follows a
@@ -98,5 +114,7 @@ omissions; an exporter that forges both evidence and manifest remains trusted.
 Mutation tests cover wrong members/tags, branch reversal, missing guards,
 nullable-source and transport-result annotation spoofing, direct machine tags,
 indirect address/cast/slot/big-word/tuple transport inventory, exception-before-store
-aliasing, machine slot writes, downstream phi uses, ambiguous duplicate check
-removals, missing pass records and count mismatches. No malformed IR is executed.
+aliasing, machine slot writes, direct and transported box writes, unknown aliases,
+calls between tag comparisons and branches, mutation/exception paths, downstream
+phi uses, ambiguous duplicate check removals, missing pass records and count
+mismatches. No malformed IR is executed.
