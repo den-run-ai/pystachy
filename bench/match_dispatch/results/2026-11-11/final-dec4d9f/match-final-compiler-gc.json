@@ -1,0 +1,41 @@
+{
+  "commit": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+  "source": "tests/programs/language/match_condition_order.py",
+  "compiler_sha256": "39177cf908ec1b681ea133db3d830e5c9c12dff6ddbb7de46189166a913e74dc",
+  "runs": [
+    {
+      "interval": "0",
+      "command": [
+        "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+        "ir",
+        "tests/programs/language/match_condition_order.py",
+        "-o",
+        "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-compiler-gc-0.ll"
+      ],
+      "wall_s": 0.013620166002510814,
+      "exit_status": 0,
+      "stdout": "",
+      "stderr": "gc: 0 collections, 0.0 ms; heap peak 5.0 MiB; live 0.0 MiB at the last\n",
+      "ir_sha256": "2e85fc553858b788828d16659fb4852273765042cdbe9a8a091fe0f4be27ec43",
+      "collections": 0
+    },
+    {
+      "interval": "1",
+      "command": [
+        "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+        "ir",
+        "tests/programs/language/match_condition_order.py",
+        "-o",
+        "/workspace/scratch/0bc6e8bc1edf/match-main/build/match-final-compiler-gc-1.ll"
+      ],
+      "wall_s": 1.259403658001247,
+      "exit_status": 0,
+      "stdout": "",
+      "stderr": "gc: 22395 collections, 1238.8 ms; heap peak 3.7 MiB; live 0.3 MiB at the last\n",
+      "ir_sha256": "2e85fc553858b788828d16659fb4852273765042cdbe9a8a091fe0f4be27ec43",
+      "collections": 22395
+    }
+  ],
+  "status": "passed",
+  "ir_identical": true
+}

@@ -1,0 +1,3400 @@
+{
+  "execution": "independent suites; each compared with original CPython pytest",
+  "suites": [
+    {
+      "suite": "pyperformance-algorithms",
+      "mode": "jit",
+      "state": "passed",
+      "cases": 22,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_algorithms.py: passed (22 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "jit",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_algorithms.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+              "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+              "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+              "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+              "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+              "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+              "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+              "bench/pyperformance/pytest/test_algorithms.py::test_go",
+              "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 0.0,
+            "run_seconds": 21.48187177300133,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+            "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+            "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+            "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+            "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+            "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+            "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+            "bench/pyperformance/pytest/test_algorithms.py::test_go",
+            "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.8613894119989709,
+          "stdout": "......................                                                   [100%]\n22 passed in 0.57s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-algorithms",
+      "mode": "aot",
+      "state": "passed",
+      "cases": 22,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_algorithms.py: passed (22 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "aot",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_algorithms.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+              "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+              "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+              "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+              "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+              "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+              "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+              "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+              "bench/pyperformance/pytest/test_algorithms.py::test_go",
+              "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 97.04084765600055,
+            "run_seconds": 0.1452731550016324,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+            "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+            "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+            "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+            "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+            "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+            "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+            "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+            "bench/pyperformance/pytest/test_algorithms.py::test_go",
+            "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[2-1]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[3-2]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[4-4]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[5-7]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[6-10]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_fannkuch[7-16]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[1]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[3]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[17]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_generators[100]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_comprehensions",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[4-2]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[5-10]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_nqueens[6-4]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_pidigits",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_bpe_tokeniser",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_richards_super",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_hexiom",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_meteor_contest",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_go",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_algorithms.py::test_unpack_sequence",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.7519215230022382,
+          "stdout": "......................                                                   [100%]\n22 passed in 0.48s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-json",
+      "mode": "jit",
+      "state": "passed",
+      "cases": 2,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_json.py: passed (2 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "jit",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_json.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+              "bench/pyperformance/pytest/test_json.py::test_json_loads"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 0.0,
+            "run_seconds": 0.963492196999141,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+            "bench/pyperformance/pytest/test_json.py::test_json_loads"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.23658745200009434,
+          "stdout": "..                                                                       [100%]\n2 passed in 0.01s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-json",
+      "mode": "aot",
+      "state": "passed",
+      "cases": 2,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_json.py: passed (2 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "aot",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_json.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+              "bench/pyperformance/pytest/test_json.py::test_json_loads"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 5.848387443998945,
+            "run_seconds": 0.03777862599963555,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+            "bench/pyperformance/pytest/test_json.py::test_json_loads"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_dumps",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_json.py::test_json_loads",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.26080469400039874,
+          "stdout": "..                                                                       [100%]\n2 passed in 0.01s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-logging",
+      "mode": "jit",
+      "state": "passed",
+      "cases": 1,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_logging.py: passed (1 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "jit",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_logging.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_logging.py::test_logging"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 0.0,
+            "run_seconds": 5.226907263000612,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_logging.py::test_logging"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.21585725499971886,
+          "stdout": ".                                                                        [100%]\n1 passed in 0.01s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-logging",
+      "mode": "aot",
+      "state": "passed",
+      "cases": 1,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_logging.py: passed (1 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "aot",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_logging.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_logging.py::test_logging"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 19.768987923001987,
+            "run_seconds": 0.01265039799909573,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_logging.py::test_logging"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_logging.py::test_logging",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.32206242499887594,
+          "stdout": ".                                                                        [100%]\n1 passed in 0.01s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-numeric",
+      "mode": "jit",
+      "state": "passed",
+      "cases": 11,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_numeric.py: passed (11 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "jit",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_numeric.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+              "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+              "bench/pyperformance/pytest/test_numeric.py::test_float",
+              "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+              "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+              "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 0.0,
+            "run_seconds": 1.0247251569999207,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+            "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+            "bench/pyperformance/pytest/test_numeric.py::test_float",
+            "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+            "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+            "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.4727607700006047,
+          "stdout": "...........                                                              [100%]\n11 passed in 0.12s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-numeric",
+      "mode": "aot",
+      "state": "passed",
+      "cases": 11,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_numeric.py: passed (11 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "aot",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_numeric.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+              "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+              "bench/pyperformance/pytest/test_numeric.py::test_float",
+              "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+              "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+              "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+              "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 5.287349162997998,
+            "run_seconds": 0.00792913899931591,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+            "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+            "bench/pyperformance/pytest/test_numeric.py::test_float",
+            "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+            "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+            "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+            "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_barnes_hut",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_chaos",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_float",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_nbody",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_raytrace",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_spectral_norm",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[0]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[1]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sparse[3]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_sor",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_numeric.py::test_scimark_fft_lu_monte_carlo",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.412547818999883,
+          "stdout": "...........                                                              [100%]\n11 passed in 0.14s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-regex",
+      "mode": "jit",
+      "state": "passed",
+      "cases": 3,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_regex.py: passed (3 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "jit",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_regex.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+              "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+              "bench/pyperformance/pytest/test_regex.py::test_regex_v8"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 0.0,
+            "run_seconds": 5.252478661001078,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+            "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+            "bench/pyperformance/pytest/test_regex.py::test_regex_v8"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 1.2237492820022453,
+          "stdout": "...                                                                      [100%]\n3 passed in 0.92s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "pyperformance-regex",
+      "mode": "aot",
+      "state": "passed",
+      "cases": 3,
+      "exit_code": 0,
+      "stdout": "bench/pyperformance/pytest/test_regex.py: passed (3 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "aot",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "bench/pyperformance/pytest/test_regex.py",
+            "cases": [
+              "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+              "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+              "bench/pyperformance/pytest/test_regex.py::test_regex_v8"
+            ],
+            "events": [
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 14.393020526000328,
+            "run_seconds": 1.3496467270015273,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+            "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+            "bench/pyperformance/pytest/test_regex.py::test_regex_v8"
+          ],
+          "events": [
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_dna",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_effbot",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "bench/pyperformance/pytest/test_regex.py::test_regex_v8",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 1.0834213689995522,
+          "stdout": "...                                                                      [100%]\n3 passed in 0.86s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    }
+  ],
+  "exit_code": 0
+}

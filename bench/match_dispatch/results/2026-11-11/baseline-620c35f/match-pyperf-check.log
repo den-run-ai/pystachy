@@ -1,0 +1,138 @@
+match-pyperf-if
+===============
+
+literal-mixed
+-------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+literal-skewed
+--------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+tuple-mixed
+-----------
+
+WARNING: the benchmark result may be unstable
+* the standard deviation (218 ms) is 27% of the mean (812 ms)
+* the maximum (1.32 sec) is 63% greater than the mean (812 ms)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+tuple-skewed
+------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+dataclass-mixed
+---------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+dataclass-skewed
+----------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+match-pyperf-match
+==================
+
+literal-mixed
+-------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+literal-skewed
+--------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+tuple-mixed
+-----------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+tuple-skewed
+------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+dataclass-mixed
+---------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+dataclass-skewed
+----------------
+
+WARNING: the benchmark result may be unstable
+* Not enough samples to get a stable result (95% certainty of less than 1% variation)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.

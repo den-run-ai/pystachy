@@ -1,0 +1,8 @@
+python-int-gc PASS selected 14 cases
+28 passed, 0 failed
+dynamic-any-gc PASS selected 14 cases
+28 passed, 0 failed
+combined PASS selected 14 cases
+28 passed, 0 failed
+combined-gc PASS selected 14 cases
+28 passed, 0 failed

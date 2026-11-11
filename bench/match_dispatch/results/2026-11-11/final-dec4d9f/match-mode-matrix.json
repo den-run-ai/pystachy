@@ -1,0 +1,137 @@
+{
+  "commit": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+  "runner_sha256": "ea3f9c5c0252ffba6bc35e84ab91f6fa76b9ee9a6bb29b7a1cb52cdd918b0044",
+  "compiler_sha256": "39177cf908ec1b681ea133db3d830e5c9c12dff6ddbb7de46189166a913e74dc",
+  "cases": [
+    "tests/programs/language/match_binding.py",
+    "tests/programs/language/match_capture_staging.py",
+    "tests/programs/language/match_condition_order.py",
+    "tests/programs/language/match_dataclasses.py",
+    "tests/programs/language/match_exceptions.py",
+    "tests/programs/language/match_large_hex.py",
+    "tests/programs/language/match_literals.py",
+    "tests/programs/language/match_nested_dataclasses.py",
+    "tests/programs/language/match_python_int.py",
+    "tests/programs/language/match_tuples.py",
+    "tests/programs/inference/dynany_match_literals.py",
+    "tests/programs/inference/dynany_match_python_int.py",
+    "tests/programs/apps/match_dispatch_workloads.py",
+    "tests/programs/generators/gen_match_dispatch.py"
+  ],
+  "configurations": [
+    {
+      "name": "python-int-gc",
+      "stress": "1",
+      "pragmas": [
+        "# pystachy: python-int"
+      ],
+      "input_sha256": {
+        "tests/programs/language/match_binding.py": "a430d6714c806881893011775ffeec85f764fde3f0364bbcfe18d9d671234745",
+        "tests/programs/language/match_capture_staging.py": "e95d79a0d0144741f968989744e2eba5edbe0c5f50d42add08583b30e1c7982e",
+        "tests/programs/language/match_condition_order.py": "c54252f8064372b3bc9083a6551935b1125f849469f7d632ccb34c348778315d",
+        "tests/programs/language/match_dataclasses.py": "e81c93e1b3d551888d7d5f4a2e1e501e466785f1286e67b842373843abf617ea",
+        "tests/programs/language/match_exceptions.py": "d1b70564ed604fb81c72f416da0a391aa33bc6e32de4e7c22a9d81c75e1c9392",
+        "tests/programs/language/match_large_hex.py": "e89bb6d67e67247519a315b1d8d7820edd1a41d4f50c475136c56f8fdcc8530f",
+        "tests/programs/language/match_literals.py": "2248654ce03be7a329bba917318220b457ea5b1e4b9a3ed6bcfdcae1f6216131",
+        "tests/programs/language/match_nested_dataclasses.py": "548ffbc8ca88f7c6f1b5e5e9e1d2f0afc662512434d34cbd285bf8647f79040d",
+        "tests/programs/language/match_python_int.py": "f066f4df3fba078d03898350b7a032109d8a652f6cacd53641ec79dcfd3545d3",
+        "tests/programs/language/match_tuples.py": "81293750342409fd74826940a598d520f9dfe1190c69a7003ff7f120127177e4",
+        "tests/programs/inference/dynany_match_literals.py": "43bcccdac8f9cfacadbc3fba51c0fbba0c98c9feb9b66d9c51aa7bb054764f9d",
+        "tests/programs/inference/dynany_match_python_int.py": "9c0c39970eb288a820161cf3330333ad854ecfc290cbd7a03aee188335329430",
+        "tests/programs/apps/match_dispatch_workloads.py": "38d6ff3e1b40360dd49c6308af4541646533a13896cee9ac6026931c81b2f5a5",
+        "tests/programs/generators/gen_match_dispatch.py": "461180bc5521dd1cfe88ae624bf587f1907866066182457eb75057db96b17a57"
+      },
+      "oracle_status": 0,
+      "oracle": "match_binding: [exit 0] \nmatch_capture_staging: [exit 0] \nmatch_condition_order: [exit 0] \nmatch_dataclasses: [exit 0] \nmatch_exceptions: [exit 0] \nmatch_large_hex: [exit 0] \nmatch_literals: [exit 0] \nmatch_nested_dataclasses: [exit 0] \nmatch_python_int: [exit 0] \nmatch_tuples: [exit 0] \ndynany_match_literals: [exit 0] \ndynany_match_python_int: [exit 0] \nmatch_dispatch_workloads: [exit 0] \ngen_match_dispatch: [exit 0] \n",
+      "status": 0,
+      "output": "selected 14 cases\n28 passed, 0 failed\n",
+      "passed": true
+    },
+    {
+      "name": "dynamic-any-gc",
+      "stress": "1",
+      "pragmas": [
+        "# pystachy: dynamic-any"
+      ],
+      "input_sha256": {
+        "tests/programs/language/match_binding.py": "870b4d7970ccca813c9f0d97033889f4e8b3ff49a7c46b2033b94fcc795e55d6",
+        "tests/programs/language/match_capture_staging.py": "4f83e2abc80c9c6f381838c2eee9ddc71a02c91c35bf9de92ec5286f0869e6fd",
+        "tests/programs/language/match_condition_order.py": "8504d3a80072394e37e70ebe5df39f027515e2939673ad6996938643f6258447",
+        "tests/programs/language/match_dataclasses.py": "1633222c0f54d4b406dc6475387f31d6787f2ae265f3342c9c5b5147302fe744",
+        "tests/programs/language/match_exceptions.py": "7d9fea9a81e552c0575ff262fb434a0fdc4f31c1a1cf548e71968ef19d69e8b4",
+        "tests/programs/language/match_large_hex.py": "b4b7a1077456f7d1a050a3fdfb22487a8c3339c1b5effc3dfe8332d5014815f5",
+        "tests/programs/language/match_literals.py": "a8fc1bc92767e3cc7d1ca3725ad3f0829249d42dc1703f46aba6fdcb14e457bb",
+        "tests/programs/language/match_nested_dataclasses.py": "dae8f7a89afedae0c0bb710b8ed52b1a966985ceddfa84de25dbcd92aedf0bbf",
+        "tests/programs/language/match_python_int.py": "20c8c326f78c0ec09c82c9dd67195468ec4898c7ffbdf7e9d89f9e33c5fbb0ee",
+        "tests/programs/language/match_tuples.py": "370bd0af51a7bb37dad942dc4c5d50b543a2ff7081623d47be54c760ec47413a",
+        "tests/programs/inference/dynany_match_literals.py": "c5443738f1c63a5ee67795fb14a0d5cb7abc942d3cad7286586b779ee45a4e22",
+        "tests/programs/inference/dynany_match_python_int.py": "9c0c39970eb288a820161cf3330333ad854ecfc290cbd7a03aee188335329430",
+        "tests/programs/apps/match_dispatch_workloads.py": "5812345f44259d25ffc909abae5db62db8d909eab4e057fa60cb0fb6fc944c1c",
+        "tests/programs/generators/gen_match_dispatch.py": "f486f25fb597ab2b4ae8192246336d9f4442f2df183cb5817b400503b3d76f04"
+      },
+      "oracle_status": 0,
+      "oracle": "match_binding: [exit 0] \nmatch_capture_staging: [exit 0] \nmatch_condition_order: [exit 0] \nmatch_dataclasses: [exit 0] \nmatch_exceptions: [exit 0] \nmatch_large_hex: [exit 0] \nmatch_literals: [exit 0] \nmatch_nested_dataclasses: [exit 0] \nmatch_python_int: [exit 0] \nmatch_tuples: [exit 0] \ndynany_match_literals: [exit 0] \ndynany_match_python_int: [exit 0] \nmatch_dispatch_workloads: [exit 0] \ngen_match_dispatch: [exit 0] \n",
+      "status": 0,
+      "output": "selected 14 cases\n28 passed, 0 failed\n",
+      "passed": true
+    },
+    {
+      "name": "combined",
+      "stress": "0",
+      "pragmas": [
+        "# pystachy: python-int",
+        "# pystachy: dynamic-any"
+      ],
+      "input_sha256": {
+        "tests/programs/language/match_binding.py": "792e214b869765159fc29e800357608551e36b5872bb21858433a7d491fb55d4",
+        "tests/programs/language/match_capture_staging.py": "b541ff7b0187ea4482efdc0a0e4236ad72e73d24343bad2cbe1e4b1ef4e5a655",
+        "tests/programs/language/match_condition_order.py": "88968f00b27b382b5cf1f9ccca1db471773e37f059986a40c32c8fba2fa00b10",
+        "tests/programs/language/match_dataclasses.py": "538ab606ccec677ced5360596369d272323c8479ea7d10c7434b1b1b80ef404b",
+        "tests/programs/language/match_exceptions.py": "56abf9e30f5ce41de263ee54932e5eede8c253b0b5f1d93584f988796ab91abf",
+        "tests/programs/language/match_large_hex.py": "b4b7a1077456f7d1a050a3fdfb22487a8c3339c1b5effc3dfe8332d5014815f5",
+        "tests/programs/language/match_literals.py": "3a69c6c44b20073e898cb3a67231295dca4eb3ed4bfc9d93fd785b716943d08a",
+        "tests/programs/language/match_nested_dataclasses.py": "f2fd453b02e09047fa8d3bcad0abe7cd1ddca94dfbd5bd750ff22e181e5ef677",
+        "tests/programs/language/match_python_int.py": "20c8c326f78c0ec09c82c9dd67195468ec4898c7ffbdf7e9d89f9e33c5fbb0ee",
+        "tests/programs/language/match_tuples.py": "f1540c51d67e7d370874bc695fab566621fe393746fb76e73fa7a5103286ddc8",
+        "tests/programs/inference/dynany_match_literals.py": "43bcccdac8f9cfacadbc3fba51c0fbba0c98c9feb9b66d9c51aa7bb054764f9d",
+        "tests/programs/inference/dynany_match_python_int.py": "9c0c39970eb288a820161cf3330333ad854ecfc290cbd7a03aee188335329430",
+        "tests/programs/apps/match_dispatch_workloads.py": "a450c18cffdbed80eece5c31fb28b6e61b4d0273780a38b556e85349874c5b32",
+        "tests/programs/generators/gen_match_dispatch.py": "5b6566c9088526cc1778f1154872e626b3b7c5b6088c2f0c6d4917e064042186"
+      },
+      "oracle_status": 0,
+      "oracle": "match_binding: [exit 0] \nmatch_capture_staging: [exit 0] \nmatch_condition_order: [exit 0] \nmatch_dataclasses: [exit 0] \nmatch_exceptions: [exit 0] \nmatch_large_hex: [exit 0] \nmatch_literals: [exit 0] \nmatch_nested_dataclasses: [exit 0] \nmatch_python_int: [exit 0] \nmatch_tuples: [exit 0] \ndynany_match_literals: [exit 0] \ndynany_match_python_int: [exit 0] \nmatch_dispatch_workloads: [exit 0] \ngen_match_dispatch: [exit 0] \n",
+      "status": 0,
+      "output": "selected 14 cases\n28 passed, 0 failed\n",
+      "passed": true
+    },
+    {
+      "name": "combined-gc",
+      "stress": "1",
+      "pragmas": [
+        "# pystachy: python-int",
+        "# pystachy: dynamic-any"
+      ],
+      "input_sha256": {
+        "tests/programs/language/match_binding.py": "792e214b869765159fc29e800357608551e36b5872bb21858433a7d491fb55d4",
+        "tests/programs/language/match_capture_staging.py": "b541ff7b0187ea4482efdc0a0e4236ad72e73d24343bad2cbe1e4b1ef4e5a655",
+        "tests/programs/language/match_condition_order.py": "88968f00b27b382b5cf1f9ccca1db471773e37f059986a40c32c8fba2fa00b10",
+        "tests/programs/language/match_dataclasses.py": "538ab606ccec677ced5360596369d272323c8479ea7d10c7434b1b1b80ef404b",
+        "tests/programs/language/match_exceptions.py": "56abf9e30f5ce41de263ee54932e5eede8c253b0b5f1d93584f988796ab91abf",
+        "tests/programs/language/match_large_hex.py": "b4b7a1077456f7d1a050a3fdfb22487a8c3339c1b5effc3dfe8332d5014815f5",
+        "tests/programs/language/match_literals.py": "3a69c6c44b20073e898cb3a67231295dca4eb3ed4bfc9d93fd785b716943d08a",
+        "tests/programs/language/match_nested_dataclasses.py": "f2fd453b02e09047fa8d3bcad0abe7cd1ddca94dfbd5bd750ff22e181e5ef677",
+        "tests/programs/language/match_python_int.py": "20c8c326f78c0ec09c82c9dd67195468ec4898c7ffbdf7e9d89f9e33c5fbb0ee",
+        "tests/programs/language/match_tuples.py": "f1540c51d67e7d370874bc695fab566621fe393746fb76e73fa7a5103286ddc8",
+        "tests/programs/inference/dynany_match_literals.py": "43bcccdac8f9cfacadbc3fba51c0fbba0c98c9feb9b66d9c51aa7bb054764f9d",
+        "tests/programs/inference/dynany_match_python_int.py": "9c0c39970eb288a820161cf3330333ad854ecfc290cbd7a03aee188335329430",
+        "tests/programs/apps/match_dispatch_workloads.py": "a450c18cffdbed80eece5c31fb28b6e61b4d0273780a38b556e85349874c5b32",
+        "tests/programs/generators/gen_match_dispatch.py": "5b6566c9088526cc1778f1154872e626b3b7c5b6088c2f0c6d4917e064042186"
+      },
+      "oracle_status": 0,
+      "oracle": "match_binding: [exit 0] \nmatch_capture_staging: [exit 0] \nmatch_condition_order: [exit 0] \nmatch_dataclasses: [exit 0] \nmatch_exceptions: [exit 0] \nmatch_large_hex: [exit 0] \nmatch_literals: [exit 0] \nmatch_nested_dataclasses: [exit 0] \nmatch_python_int: [exit 0] \nmatch_tuples: [exit 0] \ndynany_match_literals: [exit 0] \ndynany_match_python_int: [exit 0] \nmatch_dispatch_workloads: [exit 0] \ngen_match_dispatch: [exit 0] \n",
+      "status": 0,
+      "output": "selected 14 cases\n28 passed, 0 failed\n",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "schema": 1,
+  "corpus_cases": 2299,
+  "corpus_sha256": "d6b54326ff62c71355b228b4de303d6af67a62d51c1806722766dc14e8a3271e",
+  "exceptions_sha256": "6ca2710f358cf975d8b6d6259ef49accfba188288dac11c54d437a6f87e4f23c",
+  "shard_index": 0,
+  "shard_count": 1,
+  "modes": [
+    "jit",
+    "aot"
+  ],
+  "native_suite": false,
+  "cases": [
+    "tests/programs/apps/match_dispatch_workloads.py",
+    "tests/programs/generators/gen_match_dispatch.py",
+    "tests/programs/inference/dynany_match_literals.py",
+    "tests/programs/inference/dynany_match_python_int.py",
+    "tests/programs/language/match_binding.py",
+    "tests/programs/language/match_capture_staging.py",
+    "tests/programs/language/match_dataclasses.py",
+    "tests/programs/language/match_exceptions.py",
+    "tests/programs/language/match_large_hex.py",
+    "tests/programs/language/match_literals.py",
+    "tests/programs/language/match_nested_dataclasses.py",
+    "tests/programs/language/match_python_int.py",
+    "tests/programs/language/match_tuples.py"
+  ],
+  "subset": true,
+  "oracle_cases": 13,
+  "expected_checks": 26,
+  "completed_checks": 26,
+  "passed_checks": 26,
+  "expected_failures": 0,
+  "native_ir_checks": 0,
+  "failures": [],
+  "results": [
+    {
+      "case": "tests/programs/apps/match_dispatch_workloads.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/apps/match_dispatch_workloads.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/generators/gen_match_dispatch.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/generators/gen_match_dispatch.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_match_literals.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_match_literals.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_match_python_int.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/inference/dynany_match_python_int.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_binding.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_binding.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_capture_staging.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_capture_staging.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_dataclasses.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_dataclasses.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_exceptions.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_exceptions.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_large_hex.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_large_hex.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_literals.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_literals.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_nested_dataclasses.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_nested_dataclasses.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_python_int.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_python_int.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_tuples.py",
+      "mode": "jit",
+      "result": "pass",
+      "diagnostic": ""
+    },
+    {
+      "case": "tests/programs/language/match_tuples.py",
+      "mode": "aot",
+      "result": "pass",
+      "diagnostic": ""
+    }
+  ]
+}

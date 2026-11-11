@@ -1,0 +1,125 @@
+literal/mixed worker 1/3 match
+.
+literal-mixed: Mean +- std dev: 655 ms +- 15 ms
+literal/mixed worker 1/3 if
+.
+literal-mixed: Mean +- std dev: 709 ms +- 27 ms
+literal/mixed worker 2/3 if
+.
+literal-mixed: Mean +- std dev: 703 ms +- 14 ms
+literal/mixed worker 2/3 match
+.
+literal-mixed: Mean +- std dev: 666 ms +- 15 ms
+literal/mixed worker 3/3 match
+.
+literal-mixed: Mean +- std dev: 662 ms +- 23 ms
+literal/mixed worker 3/3 if
+.
+literal-mixed: Mean +- std dev: 702 ms +- 11 ms
+literal/skewed worker 1/3 if
+.
+literal-skewed: Mean +- std dev: 416 ms +- 7 ms
+literal/skewed worker 1/3 match
+.
+literal-skewed: Mean +- std dev: 407 ms +- 17 ms
+literal/skewed worker 2/3 match
+.
+literal-skewed: Mean +- std dev: 402 ms +- 8 ms
+literal/skewed worker 2/3 if
+.
+literal-skewed: Mean +- std dev: 424 ms +- 16 ms
+literal/skewed worker 3/3 if
+.
+literal-skewed: Mean +- std dev: 423 ms +- 17 ms
+literal/skewed worker 3/3 match
+.
+literal-skewed: Mean +- std dev: 405 ms +- 7 ms
+tuple/mixed worker 1/3 match
+.
+tuple-mixed: Mean +- std dev: 656 ms +- 26 ms
+tuple/mixed worker 1/3 if
+.
+tuple-mixed: Mean +- std dev: 694 ms +- 28 ms
+tuple/mixed worker 2/3 if
+.
+tuple-mixed: Mean +- std dev: 666 ms +- 14 ms
+tuple/mixed worker 2/3 match
+.
+tuple-mixed: Mean +- std dev: 655 ms +- 6 ms
+tuple/mixed worker 3/3 match
+.
+tuple-mixed: Mean +- std dev: 684 ms +- 59 ms
+tuple/mixed worker 3/3 if
+.
+WARNING: the benchmark result may be unstable
+* the standard deviation (186 ms) is 17% of the mean (1.07 sec)
+
+Try to rerun the benchmark with more runs, values and/or loops.
+Run 'python -m pyperf system tune' command to reduce the system jitter.
+Use pyperf stats, pyperf dump and pyperf hist to analyze results.
+Use --quiet option to hide these warnings.
+
+tuple-mixed: Mean +- std dev: 1.07 sec +- 0.19 sec
+tuple/skewed worker 1/3 if
+.
+tuple-skewed: Mean +- std dev: 584 ms +- 34 ms
+tuple/skewed worker 1/3 match
+.
+tuple-skewed: Mean +- std dev: 461 ms +- 21 ms
+tuple/skewed worker 2/3 match
+.
+tuple-skewed: Mean +- std dev: 453 ms +- 4 ms
+tuple/skewed worker 2/3 if
+.
+tuple-skewed: Mean +- std dev: 579 ms +- 26 ms
+tuple/skewed worker 3/3 if
+.
+tuple-skewed: Mean +- std dev: 575 ms +- 32 ms
+tuple/skewed worker 3/3 match
+.
+tuple-skewed: Mean +- std dev: 448 ms +- 9 ms
+dataclass/mixed worker 1/3 match
+.
+dataclass-mixed: Mean +- std dev: 686 ms +- 38 ms
+dataclass/mixed worker 1/3 if
+.
+dataclass-mixed: Mean +- std dev: 810 ms +- 24 ms
+dataclass/mixed worker 2/3 if
+.
+dataclass-mixed: Mean +- std dev: 809 ms +- 37 ms
+dataclass/mixed worker 2/3 match
+.
+dataclass-mixed: Mean +- std dev: 667 ms +- 11 ms
+dataclass/mixed worker 3/3 match
+.
+dataclass-mixed: Mean +- std dev: 673 ms +- 14 ms
+dataclass/mixed worker 3/3 if
+.
+dataclass-mixed: Mean +- std dev: 795 ms +- 12 ms
+dataclass/skewed worker 1/3 if
+.
+dataclass-skewed: Mean +- std dev: 535 ms +- 8 ms
+dataclass/skewed worker 1/3 match
+.
+dataclass-skewed: Mean +- std dev: 595 ms +- 26 ms
+dataclass/skewed worker 2/3 match
+.
+dataclass-skewed: Mean +- std dev: 599 ms +- 6 ms
+dataclass/skewed worker 2/3 if
+.
+dataclass-skewed: Mean +- std dev: 538 ms +- 15 ms
+dataclass/skewed worker 3/3 if
+.
+dataclass-skewed: Mean +- std dev: 559 ms +- 32 ms
+dataclass/skewed worker 3/3 match
+.
+dataclass-skewed: Mean +- std dev: 622 ms +- 38 ms
+| Benchmark        | match-pyperf-if | match-pyperf-match   |
+|------------------|:---------------:|:--------------------:|
+| literal-mixed    | 705 ms          | 661 ms: 1.07x faster |
+| literal-skewed   | 421 ms          | 405 ms: 1.04x faster |
+| tuple-mixed      | 812 ms          | 665 ms: 1.22x faster |
+| tuple-skewed     | 579 ms          | 454 ms: 1.28x faster |
+| dataclass-mixed  | 805 ms          | 675 ms: 1.19x faster |
+| dataclass-skewed | 544 ms          | 605 ms: 1.11x slower |
+| Geometric mean   | (ref)           | 1.11x faster         |

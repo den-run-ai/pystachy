@@ -1,0 +1,27 @@
+{
+  "commit": "dec4d9f1c0d91046a9ddfbb55e63ab5a897a40f6",
+  "tree": "0e4c2682f25b0555cac052fa36830ed567c3fa1e",
+  "compiler_sha256": "39177cf908ec1b681ea133db3d830e5c9c12dff6ddbb7de46189166a913e74dc",
+  "fixed_points": {
+    "compiler": {
+      "sha256": "5d78192b2d279055693b851ff0920f260cfb132a6d91b5834c8418071b5936f1",
+      "lines": 910731,
+      "stages": [
+        "build/stage1.ll",
+        "build/stage2.ll",
+        "build/stage3.ll"
+      ],
+      "equal": true
+    },
+    "runtime": {
+      "sha256": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+      "lines": 21214,
+      "stages": [
+        "build/rt1.ll",
+        "build/rt2.ll",
+        "build/rt3.ll"
+      ],
+      "equal": true
+    }
+  }
+}

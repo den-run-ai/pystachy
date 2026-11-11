@@ -1,0 +1,47 @@
+[
+  {
+    "name": "match-dispatch-measured.json",
+    "bytes": 245842,
+    "sha256": "3f7ea1669ecbc2c5639c3b3fe6131e24e75de31a89d31700c4da045545601042"
+  },
+  {
+    "name": "match-dispatch-smoke.json",
+    "bytes": 74337,
+    "sha256": "e54199761fc3e84f284a86a1d1c4bacc8e5e11f0ecd744f61d7822bc75e08725"
+  },
+  {
+    "name": "match-pyperf-if.json",
+    "bytes": 6734,
+    "sha256": "edd1863686487d9d57e92dca1356667723d8c27783998464ebac8ad9af27f43f"
+  },
+  {
+    "name": "match-pyperf-match.json",
+    "bytes": 6818,
+    "sha256": "71be71fbec0c6eedfb7448e510554d4e4bdbcd8cea0f417ef0a2870412b12721"
+  },
+  {
+    "name": "match-pyperf-manifest.json",
+    "bytes": 28842,
+    "sha256": "74e442ed76025ce7aa01ee38645e7fbbd2d43bd40c020eb0d4a38a825cf18c7e"
+  },
+  {
+    "name": "match-measured.log",
+    "bytes": 381,
+    "sha256": "ed52288e4e3cdf7ecbc01cce3d8daa1a488a4a2bdaa1b9c17299696e0debe203"
+  },
+  {
+    "name": "match-pyperf.log",
+    "bytes": 3810,
+    "sha256": "89963e0ff937ac3fd0a2a93832241b8335eeadde8420d45b1485b03dd68827ca"
+  },
+  {
+    "name": "match-pyperf-check.log",
+    "bytes": 5018,
+    "sha256": "46ac1c80177f58fdb337dc1afdb8c531a142c99396a070718426ebd7a9c5ad60"
+  },
+  {
+    "name": "run_match_pyperf.py",
+    "bytes": 4358,
+    "sha256": "4cf96a9fe9fa42ef72f62a4eeb7708777c308be5f247c030c6c096ca2bed989f"
+  }
+]

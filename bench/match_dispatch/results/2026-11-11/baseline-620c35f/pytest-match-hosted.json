@@ -1,0 +1,928 @@
+{
+  "execution": "independent suites; each compared with original CPython pytest",
+  "suites": [
+    {
+      "suite": "match_dispatch",
+      "mode": "jit",
+      "state": "passed",
+      "cases": 11,
+      "exit_code": 0,
+      "stdout": "examples/match_dispatch/test_dispatch.py: passed (11 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "jit",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "examples/match_dispatch/test_dispatch.py",
+            "cases": [
+              "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+              "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+              "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+              "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+              "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+              "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved"
+            ],
+            "events": [
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 0.0,
+            "run_seconds": 4.13318030800292,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+            "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+            "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+            "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+            "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+            "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved"
+          ],
+          "events": [
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.3232680809996964,
+          "stdout": "...........                                                              [100%]\n11 passed in 0.04s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    },
+    {
+      "suite": "match_dispatch",
+      "mode": "aot",
+      "state": "passed",
+      "cases": 11,
+      "exit_code": 0,
+      "stdout": "examples/match_dispatch/test_dispatch.py: passed (11 cases)\npytest collection and phase outcomes match\n",
+      "stderr": "",
+      "evidence": {
+        "mode": "aot",
+        "qualification": "pytest-matched",
+        "execution": "one process; suite timings/output on first module",
+        "root": "/workspace/scratch/0bc6e8bc1edf/match-main",
+        "results": [
+          {
+            "path": "examples/match_dispatch/test_dispatch.py",
+            "cases": [
+              "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+              "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+              "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+              "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+              "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+              "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+              "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved"
+            ],
+            "events": [
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+                "phase": "setup",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+                "phase": "call",
+                "outcome": "passed",
+                "detail": ""
+              },
+              {
+                "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+                "phase": "teardown",
+                "outcome": "passed",
+                "detail": ""
+              }
+            ],
+            "state": "passed",
+            "exit_code": 0,
+            "build_seconds": 13.289494455999375,
+            "run_seconds": 0.003455357000348158,
+            "stdout": "",
+            "stderr": "",
+            "error": ""
+          }
+        ],
+        "oracle": {
+          "cases": [
+            "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+            "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+            "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+            "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+            "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+            "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+            "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved"
+          ],
+          "events": [
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:7-0-7]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[sub:2-7-5]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[scale:3-5-15]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[reset:0-15-0]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_commands[add:-4-0--4]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:0]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[scale:-2]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[reset:1]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[unknown:3]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_invalid_commands[add]",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+              "phase": "setup",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+              "phase": "call",
+              "outcome": "passed",
+              "detail": ""
+            },
+            {
+              "nodeid": "examples/match_dispatch/test_dispatch.py::test_command_order_is_preserved",
+              "phase": "teardown",
+              "outcome": "passed",
+              "detail": ""
+            }
+          ],
+          "exit_code": 0,
+          "seconds": 0.27268864999859943,
+          "stdout": "...........                                                              [100%]\n11 passed in 0.02s\n",
+          "stderr": ""
+        },
+        "differences": [],
+        "exit_code": 0
+      }
+    }
+  ],
+  "exit_code": 0
+}

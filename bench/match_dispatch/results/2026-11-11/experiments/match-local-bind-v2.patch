@@ -1,0 +1,55 @@
+diff --git a/src/pystachy_compiler/expressions.py b/src/pystachy_compiler/expressions.py
+index 40fa3d0a..178ec439 100644
+--- a/src/pystachy_compiler/expressions.py
++++ b/src/pystachy_compiler/expressions.py
+@@ -3435,6 +3435,19 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False,
+     # operation has of those unions; others are made the unions, the left one at its edge
+     c0 = n.kids[0]
+     c1 = n.kids[1]
++    if n.s == "and" and c0.kind == "matchbind":
++        # A staged pattern assignment is always true, but must run before the
++        # RHS is analyzed: assigning a capture can invalidate its old narrowing.
++        # Keep static() unaware of this value so an enclosing test cannot fold
++        # a later guard using facts that the assignment is about to invalidate.
++        self.expr(c0, "")
++        if self.term:
++            self.place(self.label())
++        if ascond:
++            return Val(self.cond(c1), "bool")
++        if kept is not None:
++            return left_operand(self, c1, want, resultsoft, kept)
++        return self.expr(c1, want, resultsoft=resultsoft)
+     if n.s == "or" and c0.kind == "cmp" and c0.s == "is" and c1.kind == "cmp" and c1.s == "==" and c0.kids[0].kind == "name" and c0.kids[1].kind == "name" and c1.kids[0].kind == "name" and c1.kids[1].kind == "name" and c0.kids[0].s == c1.kids[0].s and c0.kids[1].s == c1.kids[1].s and self.isnum(self.static_type(c0.kids[0])) and self.isnum(self.static_type(c0.kids[1])):
+         # x is y or x == y, the identity-or-equality test, on numbers: x == y (numbers have no
+         # identity here; see the deviation about NaN)
+diff --git a/src/pystachy_compiler/patterns.py b/src/pystachy_compiler/patterns.py
+index f21c70fd..ae51adc6 100644
+--- a/src/pystachy_compiler/patterns.py
++++ b/src/pystachy_compiler/patterns.py
+@@ -5,12 +5,23 @@ from src.pystachy_compiler.syntax import Node, made_var, mk
+ from src.pystachy_compiler.utils import clone, is_tuple, is_union, targs, typestr, unopt
+ 
+ 
++def pattern_then(test: Node, tail: Node, line: int) -> Node:
++    # Only test's compiler-generated conjunction is flattened. Its operands
++    # already produce condition booleans, so reassociation preserves callback
++    # order and short circuiting. OR alternatives and tail (possibly the user's
++    # guard) stay intact. Keeping later reads inside each successful operand's
++    # RHS lets ordinary flow analysis see the preceding staged assignments.
++    if test.kind == "boolop" and test.s == "and":
++        return mk("boolop", "and", line, [test.kids[0], pattern_then(test.kids[1], tail, line)])
++    return mk("boolop", "and", line, [test, tail])
++
++
+ def conjunction(parts: list[Node], line: int) -> Node:
+     if len(parts) == 0:
+         return mk("True", "", line, [])
+-    out = parts[0]
+-    for part in parts[1:]:
+-        out = mk("boolop", "and", line, [out, part])
++    out = parts[-1]
++    for i in range(len(parts) - 2, -1, -1):
++        out = pattern_then(parts[i], out, line)
+     return out
+ 
+ 

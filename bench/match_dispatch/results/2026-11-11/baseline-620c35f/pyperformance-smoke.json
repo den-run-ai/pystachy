@@ -1,0 +1,2108 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "settings": {
+    "compiler": "./pystachy",
+    "benchmarks": [
+      "barnes_hut",
+      "bpe_tokeniser",
+      "chaos",
+      "comprehensions",
+      "fannkuch",
+      "float",
+      "generators",
+      "go",
+      "hexiom",
+      "json_dumps",
+      "json_loads",
+      "logging",
+      "meteor_contest",
+      "nbody",
+      "nqueens",
+      "pidigits",
+      "raytrace",
+      "regex_dna",
+      "regex_effbot",
+      "regex_v8",
+      "richards",
+      "richards_super",
+      "scimark",
+      "spectral_norm",
+      "unpack_sequence"
+    ],
+    "runs": 1,
+    "smoke": true,
+    "census": null,
+    "timeout": 300.0,
+    "json": "build/pyperformance-smoke.json"
+  },
+  "metadata": {
+    "created_utc": "2026-11-11T19:39:45Z",
+    "git_revision": "620c35f42d8c35d7a27341bbe4ba259b043b959d",
+    "git_status": "",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "machine": "x86_64",
+    "cpu_count": 9,
+    "load_average": [
+      3.14794921875,
+      2.80126953125,
+      2.10986328125
+    ],
+    "host_python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "compiler_command": [
+      "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy"
+    ],
+    "compiler_binary_sha256": "4b8df6bceb078a25130d98006ed0831d03f9381b9c7ec74f61ec2ad95fd6ce02",
+    "environment": {
+      "PYSTACHY_JOBS": "2",
+      "PYSTACHY_PROGRAM_CACHE": "0",
+      "PYSTACHY_LLVM": "/workspace/scratch/0bc6e8bc1edf/llvm18/usr/lib/llvm-18/bin",
+      "PYTHONHASHSEED": "0"
+    },
+    "sources_sha256": {
+      "bench/pyperformance/barnes_hut.py": "e68bffb93b84c4fb44d50dd0de057af886533efc969a5ea9424c1feff381ac3d",
+      "bench/pyperformance/bm_logging.py": "7483fcc7fcb36dd943f3790a324c997c50616ae0334e478c6aaec87a59d0ad00",
+      "bench/pyperformance/bpe_tokeniser.py": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+      "bench/pyperformance/chaos.py": "228afbb7b936034eb83a616fb8ef88a267653d55906af6bd2f0e117faa4fb702",
+      "bench/pyperformance/comprehensions.py": "77f56acb32f987707f6d75e4867d9aca0ccab8854b1d88f674318f1d53383862",
+      "bench/pyperformance/fannkuch.py": "42d906410ede9419d8f3eceda729b2027d78085f455a0fbb0445e081b53df2cf",
+      "bench/pyperformance/float.py": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+      "bench/pyperformance/generators.py": "4c5b29669136d4cf7d51f039253b0fd5a21f35d0dd068e2f35a06a889f8d997f",
+      "bench/pyperformance/go.py": "521cffbc4d15cdd93e0693230143aa274e4e190dd3e5f49cb45c9745565c5a13",
+      "bench/pyperformance/hexiom.py": "988d2adb90f8ab6a67180200436e93290fdb077e218b7339bb4ac7caf1cd2502",
+      "bench/pyperformance/json_dumps.py": "00d75868e820e56f2281e061583d418574b6dda96de180d3cf3adc76cff532c2",
+      "bench/pyperformance/json_loads.py": "51d23d4d8dcc3dea512988ae424988be6bf17d70e9e6d2a09d908799b3319c77",
+      "bench/pyperformance/meteor_contest.py": "876ffc333e293ab11d19298002da139b6ccf88dd50e3e92b9384d4485c3a7340",
+      "bench/pyperformance/nbody.py": "2ec9c9e9c36cf2e819dc1026debbb7f9f901410ae36032795d60057c9f447e30",
+      "bench/pyperformance/nqueens.py": "5ccc5d1f8724daf6550b870d8031120653eef6df0fa93bddeb7afaa5e28f4b53",
+      "bench/pyperformance/pidigits.py": "34bb25524dd905c804a8ad5179f649277eed24b59765bc68df5c8f4c93248c39",
+      "bench/pyperformance/raytrace.py": "e5f71075698d02ac3e91fe99bf43799905c03651be4a41ff574c99790f5d2213",
+      "bench/pyperformance/regex_dna.py": "8f02c6b44688f6c1e3a96bbd0155367f3bf9327e65f42be2967008891e1aa2aa",
+      "bench/pyperformance/regex_effbot.py": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+      "bench/pyperformance/regex_v8.py": "a2bf22b48133192c4931bef3a65f2385337b3f1b1e4359ff67ebebe96821b490",
+      "bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+      "bench/pyperformance/richards_super.py": "376e2407aaaf91f880d2e53b0853455272183130e157afc56d1539a5f259496f",
+      "bench/pyperformance/scimark.py": "dd34b452b124fb104750aed8c82082fca734695561e221de47147ec13bec7629",
+      "bench/pyperformance/spectral_norm.py": "1f55b1a0cb7931bbdec446be916b762c7fd60cc0e34a3b76cfd02ec4b10bba79",
+      "bench/pyperformance/unpack_sequence.py": "a4c67ad1e0fc2c7dcc102c98042c0b9e08bf1b46ac980b7e1916294e34997a67",
+      "tools/bench_pyperformance.py": "5043d5e4e8fb6bd9e9b34d5fbf17e403398f980373890a22545d48bdc230d25e"
+    },
+    "load_average_end": [
+      3.41650390625,
+      3.15185546875,
+      2.3544921875
+    ]
+  },
+  "benchmarks": [
+    {
+      "name": "barnes_hut",
+      "arguments": [
+        "1",
+        "5",
+        "50"
+      ],
+      "output": "barnes_hut 1 5 50 819.514409984741\n",
+      "aot_build_s": 1.9904073709985823,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.03423071499855723,
+          "cpu_s": 0.03229100000000007,
+          "loop_s": 0.009281597998779034,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9433340788049879
+        },
+        "jit": {
+          "wall_s": 0.18356947100255638,
+          "cpu_s": 0.17978399999999997,
+          "loop_s": 0.0003781119994528126,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9793785372813778
+        },
+        "aot": {
+          "wall_s": 0.00539926000055857,
+          "cpu_s": 0.002431000000000072,
+          "loop_s": 0.00017219800065504387,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.45024688563776843
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/barnes_hut.py",
+              "1",
+              "5",
+              "50"
+            ],
+            "wall_s": 0.03423071499855723,
+            "stdout": "barnes_hut 1 5 50 819.514409984741\n",
+            "stderr": "seconds 0.009281597998779034\n",
+            "returncode": 0,
+            "cpu_s": 0.03229100000000007,
+            "loop_s": 0.009281597998779034
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/barnes_hut.py",
+              "1",
+              "5",
+              "50"
+            ],
+            "wall_s": 0.18356947100255638,
+            "stdout": "barnes_hut 1 5 50 819.514409984741\n",
+            "stderr": "seconds 0.0003781119994528126\n",
+            "returncode": 0,
+            "cpu_s": 0.17978399999999997,
+            "loop_s": 0.0003781119994528126
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/barnes_hut",
+              "1",
+              "5",
+              "50"
+            ],
+            "wall_s": 0.00539926000055857,
+            "stdout": "barnes_hut 1 5 50 819.514409984741\n",
+            "stderr": "seconds 0.00017219800065504387\n",
+            "returncode": 0,
+            "cpu_s": 0.002431000000000072,
+            "loop_s": 0.00017219800065504387
+          }
+        ]
+      }
+    },
+    {
+      "name": "bpe_tokeniser",
+      "arguments": [
+        "1",
+        "260",
+        "smoke"
+      ],
+      "output": "bpe_tokeniser 1 260\nranks [(b'\\x00', 0), (b'\\x01', 1), (b'\\x02', 2), (b'\\x03', 3), (b'\\x04', 4), (b'\\x05', 5), (b'\\x06', 6), (b'\\x07', 7), (b'\\x08', 8), (b'\\t', 9), (b'\\n', 10), (b'\\x0b', 11), (b'\\x0c', 12), (b'\\r', 13), (b'\\x0e', 14), (b'\\x0f', 15), (b'\\x10', 16), (b'\\x11', 17), (b'\\x12', 18), (b'\\x13', 19), (b'\\x14', 20), (b'\\x15', 21), (b'\\x16', 22), (b'\\x17', 23), (b'\\x18', 24), (b'\\x19', 25), (b'\\x1a', 26), (b'\\x1b', 27), (b'\\x1c', 28), (b'\\x1d', 29), (b'\\x1e', 30), (b'\\x1f', 31), (b' ', 32), (b'!', 33), (b'\"', 34), (b'#', 35), (b'$', 36), (b'%', 37), (b'&', 38), (b\"'\", 39), (b'(', 40), (b')', 41), (b'*', 42), (b'+', 43), (b',', 44), (b'-', 45), (b'.', 46), (b'/', 47), (b'0', 48), (b'1', 49), (b'2', 50), (b'3', 51), (b'4', 52), (b'5', 53), (b'6', 54), (b'7', 55), (b'8', 56), (b'9', 57), (b':', 58), (b';', 59), (b'<', 60), (b'=', 61), (b'>', 62), (b'?', 63), (b'@', 64), (b'A', 65), (b'B', 66), (b'C', 67), (b'D', 68), (b'E', 69), (b'F', 70), (b'G', 71), (b'H', 72), (b'I', 73), (b'J', 74), (b'K', 75), (b'L', 76), (b'M', 77), (b'N', 78), (b'O', 79), (b'P', 80), (b'Q', 81), (b'R', 82), (b'S', 83), (b'T', 84), (b'U', 85), (b'V', 86), (b'W', 87), (b'X', 88), (b'Y', 89), (b'Z', 90), (b'[', 91), (b'\\\\', 92), (b']', 93), (b'^', 94), (b'_', 95), (b'`', 96), (b'a', 97), (b'b', 98), (b'c', 99), (b'd', 100), (b'e', 101), (b'f', 102), (b'g', 103), (b'h', 104), (b'i', 105), (b'j', 106), (b'k', 107), (b'l', 108), (b'm', 109), (b'n', 110), (b'o', 111), (b'p', 112), (b'q', 113), (b'r', 114), (b's', 115), (b't', 116), (b'u', 117), (b'v', 118), (b'w', 119), (b'x', 120), (b'y', 121), (b'z', 122), (b'{', 123), (b'|', 124), (b'}', 125), (b'~', 126), (b'\\x7f', 127), (b'\\x80', 128), (b'\\x81', 129), (b'\\x82', 130), (b'\\x83', 131), (b'\\x84', 132), (b'\\x85', 133), (b'\\x86', 134), (b'\\x87', 135), (b'\\x88', 136), (b'\\x89', 137), (b'\\x8a', 138), (b'\\x8b', 139), (b'\\x8c', 140), (b'\\x8d', 141), (b'\\x8e', 142), (b'\\x8f', 143), (b'\\x90', 144), (b'\\x91', 145), (b'\\x92', 146), (b'\\x93', 147), (b'\\x94', 148), (b'\\x95', 149), (b'\\x96', 150), (b'\\x97', 151), (b'\\x98', 152), (b'\\x99', 153), (b'\\x9a', 154), (b'\\x9b', 155), (b'\\x9c', 156), (b'\\x9d', 157), (b'\\x9e', 158), (b'\\x9f', 159), (b'\\xa0', 160), (b'\\xa1', 161), (b'\\xa2', 162), (b'\\xa3', 163), (b'\\xa4', 164), (b'\\xa5', 165), (b'\\xa6', 166), (b'\\xa7', 167), (b'\\xa8', 168), (b'\\xa9', 169), (b'\\xaa', 170), (b'\\xab', 171), (b'\\xac', 172), (b'\\xad', 173), (b'\\xae', 174), (b'\\xaf', 175), (b'\\xb0', 176), (b'\\xb1', 177), (b'\\xb2', 178), (b'\\xb3', 179), (b'\\xb4', 180), (b'\\xb5', 181), (b'\\xb6', 182), (b'\\xb7', 183), (b'\\xb8', 184), (b'\\xb9', 185), (b'\\xba', 186), (b'\\xbb', 187), (b'\\xbc', 188), (b'\\xbd', 189), (b'\\xbe', 190), (b'\\xbf', 191), (b'\\xc0', 192), (b'\\xc1', 193), (b'\\xc2', 194), (b'\\xc3', 195), (b'\\xc4', 196), (b'\\xc5', 197), (b'\\xc6', 198), (b'\\xc7', 199), (b'\\xc8', 200), (b'\\xc9', 201), (b'\\xca', 202), (b'\\xcb', 203), (b'\\xcc', 204), (b'\\xcd', 205), (b'\\xce', 206), (b'\\xcf', 207), (b'\\xd0', 208), (b'\\xd1', 209), (b'\\xd2', 210), (b'\\xd3', 211), (b'\\xd4', 212), (b'\\xd5', 213), (b'\\xd6', 214), (b'\\xd7', 215), (b'\\xd8', 216), (b'\\xd9', 217), (b'\\xda', 218), (b'\\xdb', 219), (b'\\xdc', 220), (b'\\xdd', 221), (b'\\xde', 222), (b'\\xdf', 223), (b'\\xe0', 224), (b'\\xe1', 225), (b'\\xe2', 226), (b'\\xe3', 227), (b'\\xe4', 228), (b'\\xe5', 229), (b'\\xe6', 230), (b'\\xe7', 231), (b'\\xe8', 232), (b'\\xe9', 233), (b'\\xea', 234), (b'\\xeb', 235), (b'\\xec', 236), (b'\\xed', 237), (b'\\xee', 238), (b'\\xef', 239), (b'\\xf0', 240), (b'\\xf1', 241), (b'\\xf2', 242), (b'\\xf3', 243), (b'\\xf4', 244), (b'\\xf5', 245), (b'\\xf6', 246), (b'\\xf7', 247), (b'\\xf8', 248), (b'\\xf9', 249), (b'\\xfa', 250), (b'\\xfb', 251), (b'\\xfc', 252), (b'\\xfd', 253), (b'\\xfe', 254), (b'\\xff', 255), (b'aa', 256), (b'he', 257), (b'hel', 258), (b'hell', 259)]\ntokens [259, 111, 32, 259, 111, 32, 119, 111, 114, 108, 100, 32, 119, 111, 114, 108, 100, 33, 32, 97, 98, 99, 97, 98, 99, 32, 256, 256, 10]\ndecoded_bytes b'hello hello world world! abcabc aaaa\\n'\n",
+      "aot_build_s": 9.393273199002579,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.03503310699670692,
+          "cpu_s": 0.034404999999999686,
+          "loop_s": 0.0007459580010618083,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9820710450612823
+        },
+        "jit": {
+          "wall_s": 2.0860604039989994,
+          "cpu_s": 2.0762390000000006,
+          "loop_s": 0.0005180799998925067,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9952918889691923
+        },
+        "aot": {
+          "wall_s": 0.0027809380007965956,
+          "cpu_s": 0.002454999999999985,
+          "loop_s": 0.0002361900005780626,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.8827956607794758
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/bpe_tokeniser.py",
+              "1",
+              "260",
+              "smoke"
+            ],
+            "wall_s": 0.03503310699670692,
+            "stdout": "bpe_tokeniser 1 260\nranks [(b'\\x00', 0), (b'\\x01', 1), (b'\\x02', 2), (b'\\x03', 3), (b'\\x04', 4), (b'\\x05', 5), (b'\\x06', 6), (b'\\x07', 7), (b'\\x08', 8), (b'\\t', 9), (b'\\n', 10), (b'\\x0b', 11), (b'\\x0c', 12), (b'\\r', 13), (b'\\x0e', 14), (b'\\x0f', 15), (b'\\x10', 16), (b'\\x11', 17), (b'\\x12', 18), (b'\\x13', 19), (b'\\x14', 20), (b'\\x15', 21), (b'\\x16', 22), (b'\\x17', 23), (b'\\x18', 24), (b'\\x19', 25), (b'\\x1a', 26), (b'\\x1b', 27), (b'\\x1c', 28), (b'\\x1d', 29), (b'\\x1e', 30), (b'\\x1f', 31), (b' ', 32), (b'!', 33), (b'\"', 34), (b'#', 35), (b'$', 36), (b'%', 37), (b'&', 38), (b\"'\", 39), (b'(', 40), (b')', 41), (b'*', 42), (b'+', 43), (b',', 44), (b'-', 45), (b'.', 46), (b'/', 47), (b'0', 48), (b'1', 49), (b'2', 50), (b'3', 51), (b'4', 52), (b'5', 53), (b'6', 54), (b'7', 55), (b'8', 56), (b'9', 57), (b':', 58), (b';', 59), (b'<', 60), (b'=', 61), (b'>', 62), (b'?', 63), (b'@', 64), (b'A', 65), (b'B', 66), (b'C', 67), (b'D', 68), (b'E', 69), (b'F', 70), (b'G', 71), (b'H', 72), (b'I', 73), (b'J', 74), (b'K', 75), (b'L', 76), (b'M', 77), (b'N', 78), (b'O', 79), (b'P', 80), (b'Q', 81), (b'R', 82), (b'S', 83), (b'T', 84), (b'U', 85), (b'V', 86), (b'W', 87), (b'X', 88), (b'Y', 89), (b'Z', 90), (b'[', 91), (b'\\\\', 92), (b']', 93), (b'^', 94), (b'_', 95), (b'`', 96), (b'a', 97), (b'b', 98), (b'c', 99), (b'd', 100), (b'e', 101), (b'f', 102), (b'g', 103), (b'h', 104), (b'i', 105), (b'j', 106), (b'k', 107), (b'l', 108), (b'm', 109), (b'n', 110), (b'o', 111), (b'p', 112), (b'q', 113), (b'r', 114), (b's', 115), (b't', 116), (b'u', 117), (b'v', 118), (b'w', 119), (b'x', 120), (b'y', 121), (b'z', 122), (b'{', 123), (b'|', 124), (b'}', 125), (b'~', 126), (b'\\x7f', 127), (b'\\x80', 128), (b'\\x81', 129), (b'\\x82', 130), (b'\\x83', 131), (b'\\x84', 132), (b'\\x85', 133), (b'\\x86', 134), (b'\\x87', 135), (b'\\x88', 136), (b'\\x89', 137), (b'\\x8a', 138), (b'\\x8b', 139), (b'\\x8c', 140), (b'\\x8d', 141), (b'\\x8e', 142), (b'\\x8f', 143), (b'\\x90', 144), (b'\\x91', 145), (b'\\x92', 146), (b'\\x93', 147), (b'\\x94', 148), (b'\\x95', 149), (b'\\x96', 150), (b'\\x97', 151), (b'\\x98', 152), (b'\\x99', 153), (b'\\x9a', 154), (b'\\x9b', 155), (b'\\x9c', 156), (b'\\x9d', 157), (b'\\x9e', 158), (b'\\x9f', 159), (b'\\xa0', 160), (b'\\xa1', 161), (b'\\xa2', 162), (b'\\xa3', 163), (b'\\xa4', 164), (b'\\xa5', 165), (b'\\xa6', 166), (b'\\xa7', 167), (b'\\xa8', 168), (b'\\xa9', 169), (b'\\xaa', 170), (b'\\xab', 171), (b'\\xac', 172), (b'\\xad', 173), (b'\\xae', 174), (b'\\xaf', 175), (b'\\xb0', 176), (b'\\xb1', 177), (b'\\xb2', 178), (b'\\xb3', 179), (b'\\xb4', 180), (b'\\xb5', 181), (b'\\xb6', 182), (b'\\xb7', 183), (b'\\xb8', 184), (b'\\xb9', 185), (b'\\xba', 186), (b'\\xbb', 187), (b'\\xbc', 188), (b'\\xbd', 189), (b'\\xbe', 190), (b'\\xbf', 191), (b'\\xc0', 192), (b'\\xc1', 193), (b'\\xc2', 194), (b'\\xc3', 195), (b'\\xc4', 196), (b'\\xc5', 197), (b'\\xc6', 198), (b'\\xc7', 199), (b'\\xc8', 200), (b'\\xc9', 201), (b'\\xca', 202), (b'\\xcb', 203), (b'\\xcc', 204), (b'\\xcd', 205), (b'\\xce', 206), (b'\\xcf', 207), (b'\\xd0', 208), (b'\\xd1', 209), (b'\\xd2', 210), (b'\\xd3', 211), (b'\\xd4', 212), (b'\\xd5', 213), (b'\\xd6', 214), (b'\\xd7', 215), (b'\\xd8', 216), (b'\\xd9', 217), (b'\\xda', 218), (b'\\xdb', 219), (b'\\xdc', 220), (b'\\xdd', 221), (b'\\xde', 222), (b'\\xdf', 223), (b'\\xe0', 224), (b'\\xe1', 225), (b'\\xe2', 226), (b'\\xe3', 227), (b'\\xe4', 228), (b'\\xe5', 229), (b'\\xe6', 230), (b'\\xe7', 231), (b'\\xe8', 232), (b'\\xe9', 233), (b'\\xea', 234), (b'\\xeb', 235), (b'\\xec', 236), (b'\\xed', 237), (b'\\xee', 238), (b'\\xef', 239), (b'\\xf0', 240), (b'\\xf1', 241), (b'\\xf2', 242), (b'\\xf3', 243), (b'\\xf4', 244), (b'\\xf5', 245), (b'\\xf6', 246), (b'\\xf7', 247), (b'\\xf8', 248), (b'\\xf9', 249), (b'\\xfa', 250), (b'\\xfb', 251), (b'\\xfc', 252), (b'\\xfd', 253), (b'\\xfe', 254), (b'\\xff', 255), (b'aa', 256), (b'he', 257), (b'hel', 258), (b'hell', 259)]\ntokens [259, 111, 32, 259, 111, 32, 119, 111, 114, 108, 100, 32, 119, 111, 114, 108, 100, 33, 32, 97, 98, 99, 97, 98, 99, 32, 256, 256, 10]\ndecoded_bytes b'hello hello world world! abcabc aaaa\\n'\n",
+            "stderr": "seconds 0.0007459580010618083\n",
+            "returncode": 0,
+            "cpu_s": 0.034404999999999686,
+            "loop_s": 0.0007459580010618083
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/bpe_tokeniser.py",
+              "1",
+              "260",
+              "smoke"
+            ],
+            "wall_s": 2.0860604039989994,
+            "stdout": "bpe_tokeniser 1 260\nranks [(b'\\x00', 0), (b'\\x01', 1), (b'\\x02', 2), (b'\\x03', 3), (b'\\x04', 4), (b'\\x05', 5), (b'\\x06', 6), (b'\\x07', 7), (b'\\x08', 8), (b'\\t', 9), (b'\\n', 10), (b'\\x0b', 11), (b'\\x0c', 12), (b'\\r', 13), (b'\\x0e', 14), (b'\\x0f', 15), (b'\\x10', 16), (b'\\x11', 17), (b'\\x12', 18), (b'\\x13', 19), (b'\\x14', 20), (b'\\x15', 21), (b'\\x16', 22), (b'\\x17', 23), (b'\\x18', 24), (b'\\x19', 25), (b'\\x1a', 26), (b'\\x1b', 27), (b'\\x1c', 28), (b'\\x1d', 29), (b'\\x1e', 30), (b'\\x1f', 31), (b' ', 32), (b'!', 33), (b'\"', 34), (b'#', 35), (b'$', 36), (b'%', 37), (b'&', 38), (b\"'\", 39), (b'(', 40), (b')', 41), (b'*', 42), (b'+', 43), (b',', 44), (b'-', 45), (b'.', 46), (b'/', 47), (b'0', 48), (b'1', 49), (b'2', 50), (b'3', 51), (b'4', 52), (b'5', 53), (b'6', 54), (b'7', 55), (b'8', 56), (b'9', 57), (b':', 58), (b';', 59), (b'<', 60), (b'=', 61), (b'>', 62), (b'?', 63), (b'@', 64), (b'A', 65), (b'B', 66), (b'C', 67), (b'D', 68), (b'E', 69), (b'F', 70), (b'G', 71), (b'H', 72), (b'I', 73), (b'J', 74), (b'K', 75), (b'L', 76), (b'M', 77), (b'N', 78), (b'O', 79), (b'P', 80), (b'Q', 81), (b'R', 82), (b'S', 83), (b'T', 84), (b'U', 85), (b'V', 86), (b'W', 87), (b'X', 88), (b'Y', 89), (b'Z', 90), (b'[', 91), (b'\\\\', 92), (b']', 93), (b'^', 94), (b'_', 95), (b'`', 96), (b'a', 97), (b'b', 98), (b'c', 99), (b'd', 100), (b'e', 101), (b'f', 102), (b'g', 103), (b'h', 104), (b'i', 105), (b'j', 106), (b'k', 107), (b'l', 108), (b'm', 109), (b'n', 110), (b'o', 111), (b'p', 112), (b'q', 113), (b'r', 114), (b's', 115), (b't', 116), (b'u', 117), (b'v', 118), (b'w', 119), (b'x', 120), (b'y', 121), (b'z', 122), (b'{', 123), (b'|', 124), (b'}', 125), (b'~', 126), (b'\\x7f', 127), (b'\\x80', 128), (b'\\x81', 129), (b'\\x82', 130), (b'\\x83', 131), (b'\\x84', 132), (b'\\x85', 133), (b'\\x86', 134), (b'\\x87', 135), (b'\\x88', 136), (b'\\x89', 137), (b'\\x8a', 138), (b'\\x8b', 139), (b'\\x8c', 140), (b'\\x8d', 141), (b'\\x8e', 142), (b'\\x8f', 143), (b'\\x90', 144), (b'\\x91', 145), (b'\\x92', 146), (b'\\x93', 147), (b'\\x94', 148), (b'\\x95', 149), (b'\\x96', 150), (b'\\x97', 151), (b'\\x98', 152), (b'\\x99', 153), (b'\\x9a', 154), (b'\\x9b', 155), (b'\\x9c', 156), (b'\\x9d', 157), (b'\\x9e', 158), (b'\\x9f', 159), (b'\\xa0', 160), (b'\\xa1', 161), (b'\\xa2', 162), (b'\\xa3', 163), (b'\\xa4', 164), (b'\\xa5', 165), (b'\\xa6', 166), (b'\\xa7', 167), (b'\\xa8', 168), (b'\\xa9', 169), (b'\\xaa', 170), (b'\\xab', 171), (b'\\xac', 172), (b'\\xad', 173), (b'\\xae', 174), (b'\\xaf', 175), (b'\\xb0', 176), (b'\\xb1', 177), (b'\\xb2', 178), (b'\\xb3', 179), (b'\\xb4', 180), (b'\\xb5', 181), (b'\\xb6', 182), (b'\\xb7', 183), (b'\\xb8', 184), (b'\\xb9', 185), (b'\\xba', 186), (b'\\xbb', 187), (b'\\xbc', 188), (b'\\xbd', 189), (b'\\xbe', 190), (b'\\xbf', 191), (b'\\xc0', 192), (b'\\xc1', 193), (b'\\xc2', 194), (b'\\xc3', 195), (b'\\xc4', 196), (b'\\xc5', 197), (b'\\xc6', 198), (b'\\xc7', 199), (b'\\xc8', 200), (b'\\xc9', 201), (b'\\xca', 202), (b'\\xcb', 203), (b'\\xcc', 204), (b'\\xcd', 205), (b'\\xce', 206), (b'\\xcf', 207), (b'\\xd0', 208), (b'\\xd1', 209), (b'\\xd2', 210), (b'\\xd3', 211), (b'\\xd4', 212), (b'\\xd5', 213), (b'\\xd6', 214), (b'\\xd7', 215), (b'\\xd8', 216), (b'\\xd9', 217), (b'\\xda', 218), (b'\\xdb', 219), (b'\\xdc', 220), (b'\\xdd', 221), (b'\\xde', 222), (b'\\xdf', 223), (b'\\xe0', 224), (b'\\xe1', 225), (b'\\xe2', 226), (b'\\xe3', 227), (b'\\xe4', 228), (b'\\xe5', 229), (b'\\xe6', 230), (b'\\xe7', 231), (b'\\xe8', 232), (b'\\xe9', 233), (b'\\xea', 234), (b'\\xeb', 235), (b'\\xec', 236), (b'\\xed', 237), (b'\\xee', 238), (b'\\xef', 239), (b'\\xf0', 240), (b'\\xf1', 241), (b'\\xf2', 242), (b'\\xf3', 243), (b'\\xf4', 244), (b'\\xf5', 245), (b'\\xf6', 246), (b'\\xf7', 247), (b'\\xf8', 248), (b'\\xf9', 249), (b'\\xfa', 250), (b'\\xfb', 251), (b'\\xfc', 252), (b'\\xfd', 253), (b'\\xfe', 254), (b'\\xff', 255), (b'aa', 256), (b'he', 257), (b'hel', 258), (b'hell', 259)]\ntokens [259, 111, 32, 259, 111, 32, 119, 111, 114, 108, 100, 32, 119, 111, 114, 108, 100, 33, 32, 97, 98, 99, 97, 98, 99, 32, 256, 256, 10]\ndecoded_bytes b'hello hello world world! abcabc aaaa\\n'\n",
+            "stderr": "seconds 0.0005180799998925067\n",
+            "returncode": 0,
+            "cpu_s": 2.0762390000000006,
+            "loop_s": 0.0005180799998925067
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/bpe_tokeniser",
+              "1",
+              "260",
+              "smoke"
+            ],
+            "wall_s": 0.0027809380007965956,
+            "stdout": "bpe_tokeniser 1 260\nranks [(b'\\x00', 0), (b'\\x01', 1), (b'\\x02', 2), (b'\\x03', 3), (b'\\x04', 4), (b'\\x05', 5), (b'\\x06', 6), (b'\\x07', 7), (b'\\x08', 8), (b'\\t', 9), (b'\\n', 10), (b'\\x0b', 11), (b'\\x0c', 12), (b'\\r', 13), (b'\\x0e', 14), (b'\\x0f', 15), (b'\\x10', 16), (b'\\x11', 17), (b'\\x12', 18), (b'\\x13', 19), (b'\\x14', 20), (b'\\x15', 21), (b'\\x16', 22), (b'\\x17', 23), (b'\\x18', 24), (b'\\x19', 25), (b'\\x1a', 26), (b'\\x1b', 27), (b'\\x1c', 28), (b'\\x1d', 29), (b'\\x1e', 30), (b'\\x1f', 31), (b' ', 32), (b'!', 33), (b'\"', 34), (b'#', 35), (b'$', 36), (b'%', 37), (b'&', 38), (b\"'\", 39), (b'(', 40), (b')', 41), (b'*', 42), (b'+', 43), (b',', 44), (b'-', 45), (b'.', 46), (b'/', 47), (b'0', 48), (b'1', 49), (b'2', 50), (b'3', 51), (b'4', 52), (b'5', 53), (b'6', 54), (b'7', 55), (b'8', 56), (b'9', 57), (b':', 58), (b';', 59), (b'<', 60), (b'=', 61), (b'>', 62), (b'?', 63), (b'@', 64), (b'A', 65), (b'B', 66), (b'C', 67), (b'D', 68), (b'E', 69), (b'F', 70), (b'G', 71), (b'H', 72), (b'I', 73), (b'J', 74), (b'K', 75), (b'L', 76), (b'M', 77), (b'N', 78), (b'O', 79), (b'P', 80), (b'Q', 81), (b'R', 82), (b'S', 83), (b'T', 84), (b'U', 85), (b'V', 86), (b'W', 87), (b'X', 88), (b'Y', 89), (b'Z', 90), (b'[', 91), (b'\\\\', 92), (b']', 93), (b'^', 94), (b'_', 95), (b'`', 96), (b'a', 97), (b'b', 98), (b'c', 99), (b'd', 100), (b'e', 101), (b'f', 102), (b'g', 103), (b'h', 104), (b'i', 105), (b'j', 106), (b'k', 107), (b'l', 108), (b'm', 109), (b'n', 110), (b'o', 111), (b'p', 112), (b'q', 113), (b'r', 114), (b's', 115), (b't', 116), (b'u', 117), (b'v', 118), (b'w', 119), (b'x', 120), (b'y', 121), (b'z', 122), (b'{', 123), (b'|', 124), (b'}', 125), (b'~', 126), (b'\\x7f', 127), (b'\\x80', 128), (b'\\x81', 129), (b'\\x82', 130), (b'\\x83', 131), (b'\\x84', 132), (b'\\x85', 133), (b'\\x86', 134), (b'\\x87', 135), (b'\\x88', 136), (b'\\x89', 137), (b'\\x8a', 138), (b'\\x8b', 139), (b'\\x8c', 140), (b'\\x8d', 141), (b'\\x8e', 142), (b'\\x8f', 143), (b'\\x90', 144), (b'\\x91', 145), (b'\\x92', 146), (b'\\x93', 147), (b'\\x94', 148), (b'\\x95', 149), (b'\\x96', 150), (b'\\x97', 151), (b'\\x98', 152), (b'\\x99', 153), (b'\\x9a', 154), (b'\\x9b', 155), (b'\\x9c', 156), (b'\\x9d', 157), (b'\\x9e', 158), (b'\\x9f', 159), (b'\\xa0', 160), (b'\\xa1', 161), (b'\\xa2', 162), (b'\\xa3', 163), (b'\\xa4', 164), (b'\\xa5', 165), (b'\\xa6', 166), (b'\\xa7', 167), (b'\\xa8', 168), (b'\\xa9', 169), (b'\\xaa', 170), (b'\\xab', 171), (b'\\xac', 172), (b'\\xad', 173), (b'\\xae', 174), (b'\\xaf', 175), (b'\\xb0', 176), (b'\\xb1', 177), (b'\\xb2', 178), (b'\\xb3', 179), (b'\\xb4', 180), (b'\\xb5', 181), (b'\\xb6', 182), (b'\\xb7', 183), (b'\\xb8', 184), (b'\\xb9', 185), (b'\\xba', 186), (b'\\xbb', 187), (b'\\xbc', 188), (b'\\xbd', 189), (b'\\xbe', 190), (b'\\xbf', 191), (b'\\xc0', 192), (b'\\xc1', 193), (b'\\xc2', 194), (b'\\xc3', 195), (b'\\xc4', 196), (b'\\xc5', 197), (b'\\xc6', 198), (b'\\xc7', 199), (b'\\xc8', 200), (b'\\xc9', 201), (b'\\xca', 202), (b'\\xcb', 203), (b'\\xcc', 204), (b'\\xcd', 205), (b'\\xce', 206), (b'\\xcf', 207), (b'\\xd0', 208), (b'\\xd1', 209), (b'\\xd2', 210), (b'\\xd3', 211), (b'\\xd4', 212), (b'\\xd5', 213), (b'\\xd6', 214), (b'\\xd7', 215), (b'\\xd8', 216), (b'\\xd9', 217), (b'\\xda', 218), (b'\\xdb', 219), (b'\\xdc', 220), (b'\\xdd', 221), (b'\\xde', 222), (b'\\xdf', 223), (b'\\xe0', 224), (b'\\xe1', 225), (b'\\xe2', 226), (b'\\xe3', 227), (b'\\xe4', 228), (b'\\xe5', 229), (b'\\xe6', 230), (b'\\xe7', 231), (b'\\xe8', 232), (b'\\xe9', 233), (b'\\xea', 234), (b'\\xeb', 235), (b'\\xec', 236), (b'\\xed', 237), (b'\\xee', 238), (b'\\xef', 239), (b'\\xf0', 240), (b'\\xf1', 241), (b'\\xf2', 242), (b'\\xf3', 243), (b'\\xf4', 244), (b'\\xf5', 245), (b'\\xf6', 246), (b'\\xf7', 247), (b'\\xf8', 248), (b'\\xf9', 249), (b'\\xfa', 250), (b'\\xfb', 251), (b'\\xfc', 252), (b'\\xfd', 253), (b'\\xfe', 254), (b'\\xff', 255), (b'aa', 256), (b'he', 257), (b'hel', 258), (b'hell', 259)]\ntokens [259, 111, 32, 259, 111, 32, 119, 111, 114, 108, 100, 32, 119, 111, 114, 108, 100, 33, 32, 97, 98, 99, 97, 98, 99, 32, 256, 256, 10]\ndecoded_bytes b'hello hello world world! abcabc aaaa\\n'\n",
+            "stderr": "seconds 0.0002361900005780626\n",
+            "returncode": 0,
+            "cpu_s": 0.002454999999999985,
+            "loop_s": 0.0002361900005780626
+          }
+        ]
+      }
+    },
+    {
+      "name": "chaos",
+      "arguments": [
+        "1",
+        "200"
+      ],
+      "output": "chaos 1 200 65341\n",
+      "aot_build_s": 2.626059370999428,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.056628770998941036,
+          "cpu_s": 0.055918999999999386,
+          "loop_s": 0.0036380900019139517,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9874662475201003
+        },
+        "jit": {
+          "wall_s": 0.20856575400102884,
+          "cpu_s": 0.20724400000000187,
+          "loop_s": 0.0004527489982137922,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9936626508634757
+        },
+        "aot": {
+          "wall_s": 0.003589399999327725,
+          "cpu_s": 0.00323400000000007,
+          "loop_s": 0.00046829599887132645,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9009862374229066
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/chaos.py",
+              "1",
+              "200"
+            ],
+            "wall_s": 0.056628770998941036,
+            "stdout": "chaos 1 200 65341\n",
+            "stderr": "seconds 0.0036380900019139517\n",
+            "returncode": 0,
+            "cpu_s": 0.055918999999999386,
+            "loop_s": 0.0036380900019139517
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/chaos.py",
+              "1",
+              "200"
+            ],
+            "wall_s": 0.20856575400102884,
+            "stdout": "chaos 1 200 65341\n",
+            "stderr": "seconds 0.0004527489982137922\n",
+            "returncode": 0,
+            "cpu_s": 0.20724400000000187,
+            "loop_s": 0.0004527489982137922
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/chaos",
+              "1",
+              "200"
+            ],
+            "wall_s": 0.003589399999327725,
+            "stdout": "chaos 1 200 65341\n",
+            "stderr": "seconds 0.00046829599887132645\n",
+            "returncode": 0,
+            "cpu_s": 0.00323400000000007,
+            "loop_s": 0.00046829599887132645
+          }
+        ]
+      }
+    },
+    {
+      "name": "comprehensions",
+      "arguments": [
+        "1"
+      ],
+      "output": "comprehensions 1 [1, 3, 4, 5, 6, 17, 7, 19, 20, 21, 22, 23, 9, 11, 12, 13, 14, 15]\n",
+      "aot_build_s": 2.6882678259971726,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.07619227299801423,
+          "cpu_s": 0.07435300000000145,
+          "loop_s": 4.8515998059883714e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9758601111944682
+        },
+        "jit": {
+          "wall_s": 0.1628177290003805,
+          "cpu_s": 0.14886400000000022,
+          "loop_s": 6.40520011074841e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9142984668435729
+        },
+        "aot": {
+          "wall_s": 0.002513141000235919,
+          "cpu_s": 0.001995000000000857,
+          "loop_s": 4.344400076661259e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.7938273259692068
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/comprehensions.py",
+              "1"
+            ],
+            "wall_s": 0.07619227299801423,
+            "stdout": "comprehensions 1 [1, 3, 4, 5, 6, 17, 7, 19, 20, 21, 22, 23, 9, 11, 12, 13, 14, 15]\n",
+            "stderr": "seconds 4.8515998059883714e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.07435300000000145,
+            "loop_s": 4.8515998059883714e-05
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/comprehensions.py",
+              "1"
+            ],
+            "wall_s": 0.1628177290003805,
+            "stdout": "comprehensions 1 [1, 3, 4, 5, 6, 17, 7, 19, 20, 21, 22, 23, 9, 11, 12, 13, 14, 15]\n",
+            "stderr": "seconds 6.40520011074841e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.14886400000000022,
+            "loop_s": 6.40520011074841e-05
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/comprehensions",
+              "1"
+            ],
+            "wall_s": 0.002513141000235919,
+            "stdout": "comprehensions 1 [1, 3, 4, 5, 6, 17, 7, 19, 20, 21, 22, 23, 9, 11, 12, 13, 14, 15]\n",
+            "stderr": "seconds 4.344400076661259e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.001995000000000857,
+            "loop_s": 4.344400076661259e-05
+          }
+        ]
+      }
+    },
+    {
+      "name": "fannkuch",
+      "arguments": [
+        "1",
+        "7"
+      ],
+      "output": "fannkuch 1 7 16\n",
+      "aot_build_s": 1.6069561399999657,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.03195508900171262,
+          "cpu_s": 0.029729000000000005,
+          "loop_s": 0.004947752000589389,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9303369487847989
+        },
+        "jit": {
+          "wall_s": 0.07802205899861292,
+          "cpu_s": 0.07416099999999948,
+          "loop_s": 0.0021232010003586765,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9505132388433625
+        },
+        "aot": {
+          "wall_s": 0.003586645998439053,
+          "cpu_s": 0.00328800000000129,
+          "loop_s": 0.0014682959990750533,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9167339072303937
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/fannkuch.py",
+              "1",
+              "7"
+            ],
+            "wall_s": 0.03195508900171262,
+            "stdout": "fannkuch 1 7 16\n",
+            "stderr": "seconds 0.004947752000589389\n",
+            "returncode": 0,
+            "cpu_s": 0.029729000000000005,
+            "loop_s": 0.004947752000589389
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/fannkuch.py",
+              "1",
+              "7"
+            ],
+            "wall_s": 0.07802205899861292,
+            "stdout": "fannkuch 1 7 16\n",
+            "stderr": "seconds 0.0021232010003586765\n",
+            "returncode": 0,
+            "cpu_s": 0.07416099999999948,
+            "loop_s": 0.0021232010003586765
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/fannkuch",
+              "1",
+              "7"
+            ],
+            "wall_s": 0.003586645998439053,
+            "stdout": "fannkuch 1 7 16\n",
+            "stderr": "seconds 0.0014682959990750533\n",
+            "returncode": 0,
+            "cpu_s": 0.00328800000000129,
+            "loop_s": 0.0014682959990750533
+          }
+        ]
+      }
+    },
+    {
+      "name": "float",
+      "arguments": [
+        "1",
+        "1000"
+      ],
+      "output": "float 1 1000 <Point: x=0.8943675385681149, y=1.0, z=0.44717950831719694>\n",
+      "aot_build_s": 1.8672697250003694,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.020908697999402648,
+          "cpu_s": 0.020260999999997864,
+          "loop_s": 0.0011612140006036498,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9690225570514582
+        },
+        "jit": {
+          "wall_s": 0.15571314200133202,
+          "cpu_s": 0.14872200000000024,
+          "loop_s": 0.00013250199845060706,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9551024280193898
+        },
+        "aot": {
+          "wall_s": 0.0023731340006634127,
+          "cpu_s": 0.0016470000000019525,
+          "loop_s": 8.810600047581829e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.6940189637591183
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/float.py",
+              "1",
+              "1000"
+            ],
+            "wall_s": 0.020908697999402648,
+            "stdout": "float 1 1000 <Point: x=0.8943675385681149, y=1.0, z=0.44717950831719694>\n",
+            "stderr": "seconds 0.0011612140006036498\n",
+            "returncode": 0,
+            "cpu_s": 0.020260999999997864,
+            "loop_s": 0.0011612140006036498
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/float.py",
+              "1",
+              "1000"
+            ],
+            "wall_s": 0.15571314200133202,
+            "stdout": "float 1 1000 <Point: x=0.8943675385681149, y=1.0, z=0.44717950831719694>\n",
+            "stderr": "seconds 0.00013250199845060706\n",
+            "returncode": 0,
+            "cpu_s": 0.14872200000000024,
+            "loop_s": 0.00013250199845060706
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/float",
+              "1",
+              "1000"
+            ],
+            "wall_s": 0.0023731340006634127,
+            "stdout": "float 1 1000 <Point: x=0.8943675385681149, y=1.0, z=0.44717950831719694>\n",
+            "stderr": "seconds 8.810600047581829e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.0016470000000019525,
+            "loop_s": 8.810600047581829e-05
+          }
+        ]
+      }
+    },
+    {
+      "name": "generators",
+      "arguments": [
+        "1",
+        "100"
+      ],
+      "output": "generators 1 100 4950\n",
+      "aot_build_s": 1.5922389890001796,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.021343504999094876,
+          "cpu_s": 0.02072299999999938,
+          "loop_s": 1.9104001694358885e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.97092768975284
+        },
+        "jit": {
+          "wall_s": 0.2802783070001169,
+          "cpu_s": 0.2744250000000008,
+          "loop_s": 2.7739999495679513e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9791160897796002
+        },
+        "aot": {
+          "wall_s": 0.005392791001213482,
+          "cpu_s": 0.0026039999999980523,
+          "loop_s": 3.129200194962323e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.48286684935724417
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/generators.py",
+              "1",
+              "100"
+            ],
+            "wall_s": 0.021343504999094876,
+            "stdout": "generators 1 100 4950\n",
+            "stderr": "seconds 1.9104001694358885e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.02072299999999938,
+            "loop_s": 1.9104001694358885e-05
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/generators.py",
+              "1",
+              "100"
+            ],
+            "wall_s": 0.2802783070001169,
+            "stdout": "generators 1 100 4950\n",
+            "stderr": "seconds 2.7739999495679513e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.2744250000000008,
+            "loop_s": 2.7739999495679513e-05
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/generators",
+              "1",
+              "100"
+            ],
+            "wall_s": 0.005392791001213482,
+            "stdout": "generators 1 100 4950\n",
+            "stderr": "seconds 3.129200194962323e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.0026039999999980523,
+            "loop_s": 3.129200194962323e-05
+          }
+        ]
+      }
+    },
+    {
+      "name": "go",
+      "arguments": [
+        "1"
+      ],
+      "output": "go 1 0 21121\n",
+      "aot_build_s": 2.664085170999897,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.20191070700093405,
+          "cpu_s": 0.20137300000000047,
+          "loop_s": 0.17860715899951174,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9973369069480248
+        },
+        "jit": {
+          "wall_s": 0.22134377300244523,
+          "cpu_s": 0.21718999999999844,
+          "loop_s": 0.014752115999726811,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9812338384491128
+        },
+        "aot": {
+          "wall_s": 0.01989876799780177,
+          "cpu_s": 0.0167960000000007,
+          "loop_s": 0.01522355699853506,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.8440723567336513
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/go.py",
+              "1"
+            ],
+            "wall_s": 0.20191070700093405,
+            "stdout": "go 1 0 21121\n",
+            "stderr": "seconds 0.17860715899951174\n",
+            "returncode": 0,
+            "cpu_s": 0.20137300000000047,
+            "loop_s": 0.17860715899951174
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/go.py",
+              "1"
+            ],
+            "wall_s": 0.22134377300244523,
+            "stdout": "go 1 0 21121\n",
+            "stderr": "seconds 0.014752115999726811\n",
+            "returncode": 0,
+            "cpu_s": 0.21718999999999844,
+            "loop_s": 0.014752115999726811
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/go",
+              "1"
+            ],
+            "wall_s": 0.01989876799780177,
+            "stdout": "go 1 0 21121\n",
+            "stderr": "seconds 0.01522355699853506\n",
+            "returncode": 0,
+            "cpu_s": 0.0167960000000007,
+            "loop_s": 0.01522355699853506
+          }
+        ]
+      }
+    },
+    {
+      "name": "hexiom",
+      "arguments": [
+        "1"
+      ],
+      "output": "hexiom 1 25\n  3 4 2\n 2 4 4 .\n. . . 4 2\n . 2 4 3\n  . 2 .\n",
+      "aot_build_s": 3.859088212997449,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.030549486000381876,
+          "cpu_s": 0.029932000000001624,
+          "loop_s": 0.006785135999962222,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9797873522201803
+        },
+        "jit": {
+          "wall_s": 0.4316432050000003,
+          "cpu_s": 0.4191399999999994,
+          "loop_s": 0.0007564080005977303,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9710334719621014
+        },
+        "aot": {
+          "wall_s": 0.0033292070002062246,
+          "cpu_s": 0.0029760000000000897,
+          "loop_s": 0.0009018370001285803,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.8939065668838688
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/hexiom.py",
+              "1"
+            ],
+            "wall_s": 0.030549486000381876,
+            "stdout": "hexiom 1 25\n  3 4 2\n 2 4 4 .\n. . . 4 2\n . 2 4 3\n  . 2 .\n",
+            "stderr": "seconds 0.006785135999962222\n",
+            "returncode": 0,
+            "cpu_s": 0.029932000000001624,
+            "loop_s": 0.006785135999962222
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/hexiom.py",
+              "1"
+            ],
+            "wall_s": 0.4316432050000003,
+            "stdout": "hexiom 1 25\n  3 4 2\n 2 4 4 .\n. . . 4 2\n . 2 4 3\n  . 2 .\n",
+            "stderr": "seconds 0.0007564080005977303\n",
+            "returncode": 0,
+            "cpu_s": 0.4191399999999994,
+            "loop_s": 0.0007564080005977303
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/hexiom",
+              "1"
+            ],
+            "wall_s": 0.0033292070002062246,
+            "stdout": "hexiom 1 25\n  3 4 2\n 2 4 4 .\n. . . 4 2\n . 2 4 3\n  . 2 .\n",
+            "stderr": "seconds 0.0009018370001285803\n",
+            "returncode": 0,
+            "cpu_s": 0.0029760000000000897,
+            "loop_s": 0.0009018370001285803
+          }
+        ]
+      }
+    },
+    {
+      "name": "json_dumps",
+      "arguments": [
+        "1",
+        "smoke"
+      ],
+      "output": "json_dumps 1\n{}\n{\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}\n{\"key1\": 0, \"key2\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key3\": \"value\", \"key4\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key5\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key\": \"\\u0105\\u0107\\u017c\"}\nhuge 3 942\n",
+      "aot_build_s": 3.908523796002555,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.03674721100105671,
+          "cpu_s": 0.0362800000000012,
+          "loop_s": 4.303400055505335e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9872858105873102
+        },
+        "jit": {
+          "wall_s": 0.20601456399890594,
+          "cpu_s": 0.20052199999999876,
+          "loop_s": 5.452000186778605e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9733389528764755
+        },
+        "aot": {
+          "wall_s": 0.002553595000790665,
+          "cpu_s": 0.0020820000000014716,
+          "loop_s": 4.8640999011695385e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.81532114503546
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/json_dumps.py",
+              "1",
+              "smoke"
+            ],
+            "wall_s": 0.03674721100105671,
+            "stdout": "json_dumps 1\n{}\n{\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}\n{\"key1\": 0, \"key2\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key3\": \"value\", \"key4\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key5\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key\": \"\\u0105\\u0107\\u017c\"}\nhuge 3 942\n",
+            "stderr": "seconds 4.303400055505335e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.0362800000000012,
+            "loop_s": 4.303400055505335e-05
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/json_dumps.py",
+              "1",
+              "smoke"
+            ],
+            "wall_s": 0.20601456399890594,
+            "stdout": "json_dumps 1\n{}\n{\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}\n{\"key1\": 0, \"key2\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key3\": \"value\", \"key4\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key5\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key\": \"\\u0105\\u0107\\u017c\"}\nhuge 3 942\n",
+            "stderr": "seconds 5.452000186778605e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.20052199999999876,
+            "loop_s": 5.452000186778605e-05
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/json_dumps",
+              "1",
+              "smoke"
+            ],
+            "wall_s": 0.002553595000790665,
+            "stdout": "json_dumps 1\n{}\n{\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}\n{\"key1\": 0, \"key2\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key3\": \"value\", \"key4\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key5\": {\"key1\": 0, \"key2\": true, \"key3\": \"value\", \"key4\": \"foo\", \"key5\": \"string\"}, \"key\": \"\\u0105\\u0107\\u017c\"}\nhuge 3 942\n",
+            "stderr": "seconds 4.8640999011695385e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.0020820000000014716,
+            "loop_s": 4.8640999011695385e-05
+          }
+        ]
+      }
+    },
+    {
+      "name": "json_loads",
+      "arguments": [
+        "1"
+      ],
+      "output": "json_loads 1\n{'ads_flags': 0, 'age': 18, 'bulletin_count': 0, 'comment_count': 0, 'country': 'BR', 'encrypted_id': 'G9urXXAJwjE', 'favorite_count': 9, 'first_name': '', 'flags': 412317970704, 'friend_count': 0, 'gender': 'm', 'gender_for_display': 'Male', 'id': 302935349, 'is_custom_profile_icon': 0, 'last_name': '', 'locale_preference': 'pt_BR', 'member': 0, 'tags': ['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'profile_foo_id': 827119638, 'secure_encrypted_id': 'Z_xxx2dYx3t4YAdnmfgyKw', 'session_number': 2, 'signup_id': '201-19225-223', 'status': 'A', 'theme': 1, 'time_created': 1225237014, 'time_updated': 1233134493, 'unread_message_count': 0, 'user_group': '0', 'username': 'collinwinter', 'play_count': 9, 'view_count': 7, 'zip': ''}\n[[265867233, 265868503, 265252341, 265243910, 265879514, 266219766, 266021701, 265843726, 265592821, 265246784, 265853180, 45526486, 265463699, 265848143, 265863062, 265392591, 265877490, 265823665, 265828884, 265753032], 60]\n[{'ads_flags': '5.745254074355122e+18', 'age': '6.841777374050105e+18', 'bulletin_count': '7.334366096525491e+18', 'comment_count': '8.692569593515094e+18', 'country': '6.82435982436498e+18', 'encrypted_id': '8.506946583135982e+18', 'favorite_count': '2.675260114736814e+17', 'first_name': '4.294610970117113e+18', 'flags': '8.700929964341371e+18', 'friend_count': '5.985733746033431e+18', 'gender': '8.30934040360141e+18', 'gender_for_display': '1.0441407287869819e+18', 'id': '4.3263983386681057e+18', 'is_custom_profile_icon': '2.274232969433816e+18', 'last_name': '5.015308703812807e+18', 'locale_preference': '5.293673103535257e+18', 'member': '1.209570495402926e+17', 'tags': '1.9989795811513723e+18', 'profile_foo_id': '2.5777698394608865e+18', 'secure_encrypted_id': '8.45179427844029e+18', 'session_number': '7.06257071846422e+18', 'signup_id': '1.4720890292273613e+18', 'status': '7.352383270029485e+18', 'theme': '1.2799035264869704e+18', 'time_created': '5.694994311352681e+18', 'time_updated': '1.168594158595118e+18', 'unread_message_count': '1.6370214408128512e+16', 'user_group': '8.037290155272518e+18', 'username': '1.9318941412462285e+18', 'play_count': '1.9874629906961674e+18', 'view_count': '9.061235383560902e+18', 'zip': '8.046541388464759e+18'}, {'ads_flags': '2.668369194314582e+18', 'age': '8.868069197333565e+18', 'bulletin_count': '4.973458664398866e+18', 'comment_count': '6.25188266960104e+18', 'country': '1.888757648071681e+18', 'encrypted_id': '8.67897173578648e+18', 'favorite_count': '6.37004756708456e+18', 'first_name': '8.914982250048186e+18', 'flags': '8.243311997130569e+18', 'friend_count': '2.755841165388022e+18', 'gender': '3.33138914391184e+18', 'gender_for_display': '1.5306744566771692e+18', 'id': '1.3438629181738752e+18', 'is_custom_profile_icon': '6.008078108379474e+17', 'last_name': '2.779547103088761e+18', 'locale_preference': '5.562707885237316e+18', 'member': '3.1203768634783744e+16', 'tags': '6.252839800104303e+18', 'profile_foo_id': '3.116548464879439e+18', 'secure_encrypted_id': '2.8588573189496433e+18', 'session_number': '7.549496721360003e+18', 'signup_id': '4.434091711216032e+18', 'status': '2.9126773018956124e+18', 'theme': '4.438456207237471e+18', 'time_created': '6.499425587069929e+18', 'time_updated': '5.2574077955513446e+17', 'unread_message_count': '8.993706043853848e+18', 'user_group': '2.1089759671207834e+17', 'username': '6.915638441974233e+18', 'play_count': '7.792650769655468e+18', 'view_count': '1.6664360058521907e+17', 'zip': '7.265603445292544e+18'}, {'ads_flags': '3.3774556548101396e+18', 'age': '5.335894390717145e+18', 'bulletin_count': '8.373333913098957e+16', 'comment_count': '4.309815999706112e+17', 'country': '1.6686877460897792e+18', 'encrypted_id': '8.809979576054916e+18', 'favorite_count': '1.8125924804456673e+18', 'first_name': '6.970438093836431e+18', 'flags': '8.574556878689066e+18', 'friend_count': '8.688820713835033e+18', 'gender': '3.1763615845144996e+18', 'gender_for_display': '3.27238972639723e+18', 'id': '4.839520100667711e+18', 'is_custom_profile_icon': '7.153675157474977e+18', 'last_name': '9.966118110345103e+17', 'locale_preference': '6.902753706617102e+18', 'member': '7.353118245130537e+18', 'tags': '7.92928054383763e+18', 'profile_foo_id': '3.378666901104855e+17', 'secure_encrypted_id': '8.72346697917015e+18', 'session_number': '8.409858095261071e+17', 'signup_id': '3.142776726992565e+18', 'status': '5.633889634184356e+18', 'theme': '8.467859674442654e+18', 'time_created': '3.135573191543202e+18', 'time_updated': '8.524218479558036e+18', 'unread_message_count': '5.028066267830019e+18', 'user_group': '2.8818459995023145e+18', 'username': '2.921964129043587e+18', 'play_count': '1.636943551755901e+18', 'view_count': '7.212329416506399e+17', 'zip': '1.3730653599593196e+18'}]\n",
+      "aot_build_s": 6.245627201999014,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.03968016200087732,
+          "cpu_s": 0.03777499999999723,
+          "loop_s": 0.00047386599908350036,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9519870407575965
+        },
+        "jit": {
+          "wall_s": 0.5465004920006322,
+          "cpu_s": 0.5365959999999976,
+          "loop_s": 0.0009036480005306657,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9818765176873379
+        },
+        "aot": {
+          "wall_s": 0.003607732000091346,
+          "cpu_s": 0.0028740000000055943,
+          "loop_s": 0.000759775000915397,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.7966223655007706
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/json_loads.py",
+              "1"
+            ],
+            "wall_s": 0.03968016200087732,
+            "stdout": "json_loads 1\n{'ads_flags': 0, 'age': 18, 'bulletin_count': 0, 'comment_count': 0, 'country': 'BR', 'encrypted_id': 'G9urXXAJwjE', 'favorite_count': 9, 'first_name': '', 'flags': 412317970704, 'friend_count': 0, 'gender': 'm', 'gender_for_display': 'Male', 'id': 302935349, 'is_custom_profile_icon': 0, 'last_name': '', 'locale_preference': 'pt_BR', 'member': 0, 'tags': ['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'profile_foo_id': 827119638, 'secure_encrypted_id': 'Z_xxx2dYx3t4YAdnmfgyKw', 'session_number': 2, 'signup_id': '201-19225-223', 'status': 'A', 'theme': 1, 'time_created': 1225237014, 'time_updated': 1233134493, 'unread_message_count': 0, 'user_group': '0', 'username': 'collinwinter', 'play_count': 9, 'view_count': 7, 'zip': ''}\n[[265867233, 265868503, 265252341, 265243910, 265879514, 266219766, 266021701, 265843726, 265592821, 265246784, 265853180, 45526486, 265463699, 265848143, 265863062, 265392591, 265877490, 265823665, 265828884, 265753032], 60]\n[{'ads_flags': '5.745254074355122e+18', 'age': '6.841777374050105e+18', 'bulletin_count': '7.334366096525491e+18', 'comment_count': '8.692569593515094e+18', 'country': '6.82435982436498e+18', 'encrypted_id': '8.506946583135982e+18', 'favorite_count': '2.675260114736814e+17', 'first_name': '4.294610970117113e+18', 'flags': '8.700929964341371e+18', 'friend_count': '5.985733746033431e+18', 'gender': '8.30934040360141e+18', 'gender_for_display': '1.0441407287869819e+18', 'id': '4.3263983386681057e+18', 'is_custom_profile_icon': '2.274232969433816e+18', 'last_name': '5.015308703812807e+18', 'locale_preference': '5.293673103535257e+18', 'member': '1.209570495402926e+17', 'tags': '1.9989795811513723e+18', 'profile_foo_id': '2.5777698394608865e+18', 'secure_encrypted_id': '8.45179427844029e+18', 'session_number': '7.06257071846422e+18', 'signup_id': '1.4720890292273613e+18', 'status': '7.352383270029485e+18', 'theme': '1.2799035264869704e+18', 'time_created': '5.694994311352681e+18', 'time_updated': '1.168594158595118e+18', 'unread_message_count': '1.6370214408128512e+16', 'user_group': '8.037290155272518e+18', 'username': '1.9318941412462285e+18', 'play_count': '1.9874629906961674e+18', 'view_count': '9.061235383560902e+18', 'zip': '8.046541388464759e+18'}, {'ads_flags': '2.668369194314582e+18', 'age': '8.868069197333565e+18', 'bulletin_count': '4.973458664398866e+18', 'comment_count': '6.25188266960104e+18', 'country': '1.888757648071681e+18', 'encrypted_id': '8.67897173578648e+18', 'favorite_count': '6.37004756708456e+18', 'first_name': '8.914982250048186e+18', 'flags': '8.243311997130569e+18', 'friend_count': '2.755841165388022e+18', 'gender': '3.33138914391184e+18', 'gender_for_display': '1.5306744566771692e+18', 'id': '1.3438629181738752e+18', 'is_custom_profile_icon': '6.008078108379474e+17', 'last_name': '2.779547103088761e+18', 'locale_preference': '5.562707885237316e+18', 'member': '3.1203768634783744e+16', 'tags': '6.252839800104303e+18', 'profile_foo_id': '3.116548464879439e+18', 'secure_encrypted_id': '2.8588573189496433e+18', 'session_number': '7.549496721360003e+18', 'signup_id': '4.434091711216032e+18', 'status': '2.9126773018956124e+18', 'theme': '4.438456207237471e+18', 'time_created': '6.499425587069929e+18', 'time_updated': '5.2574077955513446e+17', 'unread_message_count': '8.993706043853848e+18', 'user_group': '2.1089759671207834e+17', 'username': '6.915638441974233e+18', 'play_count': '7.792650769655468e+18', 'view_count': '1.6664360058521907e+17', 'zip': '7.265603445292544e+18'}, {'ads_flags': '3.3774556548101396e+18', 'age': '5.335894390717145e+18', 'bulletin_count': '8.373333913098957e+16', 'comment_count': '4.309815999706112e+17', 'country': '1.6686877460897792e+18', 'encrypted_id': '8.809979576054916e+18', 'favorite_count': '1.8125924804456673e+18', 'first_name': '6.970438093836431e+18', 'flags': '8.574556878689066e+18', 'friend_count': '8.688820713835033e+18', 'gender': '3.1763615845144996e+18', 'gender_for_display': '3.27238972639723e+18', 'id': '4.839520100667711e+18', 'is_custom_profile_icon': '7.153675157474977e+18', 'last_name': '9.966118110345103e+17', 'locale_preference': '6.902753706617102e+18', 'member': '7.353118245130537e+18', 'tags': '7.92928054383763e+18', 'profile_foo_id': '3.378666901104855e+17', 'secure_encrypted_id': '8.72346697917015e+18', 'session_number': '8.409858095261071e+17', 'signup_id': '3.142776726992565e+18', 'status': '5.633889634184356e+18', 'theme': '8.467859674442654e+18', 'time_created': '3.135573191543202e+18', 'time_updated': '8.524218479558036e+18', 'unread_message_count': '5.028066267830019e+18', 'user_group': '2.8818459995023145e+18', 'username': '2.921964129043587e+18', 'play_count': '1.636943551755901e+18', 'view_count': '7.212329416506399e+17', 'zip': '1.3730653599593196e+18'}]\n",
+            "stderr": "seconds 0.00047386599908350036\n",
+            "returncode": 0,
+            "cpu_s": 0.03777499999999723,
+            "loop_s": 0.00047386599908350036
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/json_loads.py",
+              "1"
+            ],
+            "wall_s": 0.5465004920006322,
+            "stdout": "json_loads 1\n{'ads_flags': 0, 'age': 18, 'bulletin_count': 0, 'comment_count': 0, 'country': 'BR', 'encrypted_id': 'G9urXXAJwjE', 'favorite_count': 9, 'first_name': '', 'flags': 412317970704, 'friend_count': 0, 'gender': 'm', 'gender_for_display': 'Male', 'id': 302935349, 'is_custom_profile_icon': 0, 'last_name': '', 'locale_preference': 'pt_BR', 'member': 0, 'tags': ['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'profile_foo_id': 827119638, 'secure_encrypted_id': 'Z_xxx2dYx3t4YAdnmfgyKw', 'session_number': 2, 'signup_id': '201-19225-223', 'status': 'A', 'theme': 1, 'time_created': 1225237014, 'time_updated': 1233134493, 'unread_message_count': 0, 'user_group': '0', 'username': 'collinwinter', 'play_count': 9, 'view_count': 7, 'zip': ''}\n[[265867233, 265868503, 265252341, 265243910, 265879514, 266219766, 266021701, 265843726, 265592821, 265246784, 265853180, 45526486, 265463699, 265848143, 265863062, 265392591, 265877490, 265823665, 265828884, 265753032], 60]\n[{'ads_flags': '5.745254074355122e+18', 'age': '6.841777374050105e+18', 'bulletin_count': '7.334366096525491e+18', 'comment_count': '8.692569593515094e+18', 'country': '6.82435982436498e+18', 'encrypted_id': '8.506946583135982e+18', 'favorite_count': '2.675260114736814e+17', 'first_name': '4.294610970117113e+18', 'flags': '8.700929964341371e+18', 'friend_count': '5.985733746033431e+18', 'gender': '8.30934040360141e+18', 'gender_for_display': '1.0441407287869819e+18', 'id': '4.3263983386681057e+18', 'is_custom_profile_icon': '2.274232969433816e+18', 'last_name': '5.015308703812807e+18', 'locale_preference': '5.293673103535257e+18', 'member': '1.209570495402926e+17', 'tags': '1.9989795811513723e+18', 'profile_foo_id': '2.5777698394608865e+18', 'secure_encrypted_id': '8.45179427844029e+18', 'session_number': '7.06257071846422e+18', 'signup_id': '1.4720890292273613e+18', 'status': '7.352383270029485e+18', 'theme': '1.2799035264869704e+18', 'time_created': '5.694994311352681e+18', 'time_updated': '1.168594158595118e+18', 'unread_message_count': '1.6370214408128512e+16', 'user_group': '8.037290155272518e+18', 'username': '1.9318941412462285e+18', 'play_count': '1.9874629906961674e+18', 'view_count': '9.061235383560902e+18', 'zip': '8.046541388464759e+18'}, {'ads_flags': '2.668369194314582e+18', 'age': '8.868069197333565e+18', 'bulletin_count': '4.973458664398866e+18', 'comment_count': '6.25188266960104e+18', 'country': '1.888757648071681e+18', 'encrypted_id': '8.67897173578648e+18', 'favorite_count': '6.37004756708456e+18', 'first_name': '8.914982250048186e+18', 'flags': '8.243311997130569e+18', 'friend_count': '2.755841165388022e+18', 'gender': '3.33138914391184e+18', 'gender_for_display': '1.5306744566771692e+18', 'id': '1.3438629181738752e+18', 'is_custom_profile_icon': '6.008078108379474e+17', 'last_name': '2.779547103088761e+18', 'locale_preference': '5.562707885237316e+18', 'member': '3.1203768634783744e+16', 'tags': '6.252839800104303e+18', 'profile_foo_id': '3.116548464879439e+18', 'secure_encrypted_id': '2.8588573189496433e+18', 'session_number': '7.549496721360003e+18', 'signup_id': '4.434091711216032e+18', 'status': '2.9126773018956124e+18', 'theme': '4.438456207237471e+18', 'time_created': '6.499425587069929e+18', 'time_updated': '5.2574077955513446e+17', 'unread_message_count': '8.993706043853848e+18', 'user_group': '2.1089759671207834e+17', 'username': '6.915638441974233e+18', 'play_count': '7.792650769655468e+18', 'view_count': '1.6664360058521907e+17', 'zip': '7.265603445292544e+18'}, {'ads_flags': '3.3774556548101396e+18', 'age': '5.335894390717145e+18', 'bulletin_count': '8.373333913098957e+16', 'comment_count': '4.309815999706112e+17', 'country': '1.6686877460897792e+18', 'encrypted_id': '8.809979576054916e+18', 'favorite_count': '1.8125924804456673e+18', 'first_name': '6.970438093836431e+18', 'flags': '8.574556878689066e+18', 'friend_count': '8.688820713835033e+18', 'gender': '3.1763615845144996e+18', 'gender_for_display': '3.27238972639723e+18', 'id': '4.839520100667711e+18', 'is_custom_profile_icon': '7.153675157474977e+18', 'last_name': '9.966118110345103e+17', 'locale_preference': '6.902753706617102e+18', 'member': '7.353118245130537e+18', 'tags': '7.92928054383763e+18', 'profile_foo_id': '3.378666901104855e+17', 'secure_encrypted_id': '8.72346697917015e+18', 'session_number': '8.409858095261071e+17', 'signup_id': '3.142776726992565e+18', 'status': '5.633889634184356e+18', 'theme': '8.467859674442654e+18', 'time_created': '3.135573191543202e+18', 'time_updated': '8.524218479558036e+18', 'unread_message_count': '5.028066267830019e+18', 'user_group': '2.8818459995023145e+18', 'username': '2.921964129043587e+18', 'play_count': '1.636943551755901e+18', 'view_count': '7.212329416506399e+17', 'zip': '1.3730653599593196e+18'}]\n",
+            "stderr": "seconds 0.0009036480005306657\n",
+            "returncode": 0,
+            "cpu_s": 0.5365959999999976,
+            "loop_s": 0.0009036480005306657
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/json_loads",
+              "1"
+            ],
+            "wall_s": 0.003607732000091346,
+            "stdout": "json_loads 1\n{'ads_flags': 0, 'age': 18, 'bulletin_count': 0, 'comment_count': 0, 'country': 'BR', 'encrypted_id': 'G9urXXAJwjE', 'favorite_count': 9, 'first_name': '', 'flags': 412317970704, 'friend_count': 0, 'gender': 'm', 'gender_for_display': 'Male', 'id': 302935349, 'is_custom_profile_icon': 0, 'last_name': '', 'locale_preference': 'pt_BR', 'member': 0, 'tags': ['a', 'b', 'c', 'd', 'e', 'f', 'g'], 'profile_foo_id': 827119638, 'secure_encrypted_id': 'Z_xxx2dYx3t4YAdnmfgyKw', 'session_number': 2, 'signup_id': '201-19225-223', 'status': 'A', 'theme': 1, 'time_created': 1225237014, 'time_updated': 1233134493, 'unread_message_count': 0, 'user_group': '0', 'username': 'collinwinter', 'play_count': 9, 'view_count': 7, 'zip': ''}\n[[265867233, 265868503, 265252341, 265243910, 265879514, 266219766, 266021701, 265843726, 265592821, 265246784, 265853180, 45526486, 265463699, 265848143, 265863062, 265392591, 265877490, 265823665, 265828884, 265753032], 60]\n[{'ads_flags': '5.745254074355122e+18', 'age': '6.841777374050105e+18', 'bulletin_count': '7.334366096525491e+18', 'comment_count': '8.692569593515094e+18', 'country': '6.82435982436498e+18', 'encrypted_id': '8.506946583135982e+18', 'favorite_count': '2.675260114736814e+17', 'first_name': '4.294610970117113e+18', 'flags': '8.700929964341371e+18', 'friend_count': '5.985733746033431e+18', 'gender': '8.30934040360141e+18', 'gender_for_display': '1.0441407287869819e+18', 'id': '4.3263983386681057e+18', 'is_custom_profile_icon': '2.274232969433816e+18', 'last_name': '5.015308703812807e+18', 'locale_preference': '5.293673103535257e+18', 'member': '1.209570495402926e+17', 'tags': '1.9989795811513723e+18', 'profile_foo_id': '2.5777698394608865e+18', 'secure_encrypted_id': '8.45179427844029e+18', 'session_number': '7.06257071846422e+18', 'signup_id': '1.4720890292273613e+18', 'status': '7.352383270029485e+18', 'theme': '1.2799035264869704e+18', 'time_created': '5.694994311352681e+18', 'time_updated': '1.168594158595118e+18', 'unread_message_count': '1.6370214408128512e+16', 'user_group': '8.037290155272518e+18', 'username': '1.9318941412462285e+18', 'play_count': '1.9874629906961674e+18', 'view_count': '9.061235383560902e+18', 'zip': '8.046541388464759e+18'}, {'ads_flags': '2.668369194314582e+18', 'age': '8.868069197333565e+18', 'bulletin_count': '4.973458664398866e+18', 'comment_count': '6.25188266960104e+18', 'country': '1.888757648071681e+18', 'encrypted_id': '8.67897173578648e+18', 'favorite_count': '6.37004756708456e+18', 'first_name': '8.914982250048186e+18', 'flags': '8.243311997130569e+18', 'friend_count': '2.755841165388022e+18', 'gender': '3.33138914391184e+18', 'gender_for_display': '1.5306744566771692e+18', 'id': '1.3438629181738752e+18', 'is_custom_profile_icon': '6.008078108379474e+17', 'last_name': '2.779547103088761e+18', 'locale_preference': '5.562707885237316e+18', 'member': '3.1203768634783744e+16', 'tags': '6.252839800104303e+18', 'profile_foo_id': '3.116548464879439e+18', 'secure_encrypted_id': '2.8588573189496433e+18', 'session_number': '7.549496721360003e+18', 'signup_id': '4.434091711216032e+18', 'status': '2.9126773018956124e+18', 'theme': '4.438456207237471e+18', 'time_created': '6.499425587069929e+18', 'time_updated': '5.2574077955513446e+17', 'unread_message_count': '8.993706043853848e+18', 'user_group': '2.1089759671207834e+17', 'username': '6.915638441974233e+18', 'play_count': '7.792650769655468e+18', 'view_count': '1.6664360058521907e+17', 'zip': '7.265603445292544e+18'}, {'ads_flags': '3.3774556548101396e+18', 'age': '5.335894390717145e+18', 'bulletin_count': '8.373333913098957e+16', 'comment_count': '4.309815999706112e+17', 'country': '1.6686877460897792e+18', 'encrypted_id': '8.809979576054916e+18', 'favorite_count': '1.8125924804456673e+18', 'first_name': '6.970438093836431e+18', 'flags': '8.574556878689066e+18', 'friend_count': '8.688820713835033e+18', 'gender': '3.1763615845144996e+18', 'gender_for_display': '3.27238972639723e+18', 'id': '4.839520100667711e+18', 'is_custom_profile_icon': '7.153675157474977e+18', 'last_name': '9.966118110345103e+17', 'locale_preference': '6.902753706617102e+18', 'member': '7.353118245130537e+18', 'tags': '7.92928054383763e+18', 'profile_foo_id': '3.378666901104855e+17', 'secure_encrypted_id': '8.72346697917015e+18', 'session_number': '8.409858095261071e+17', 'signup_id': '3.142776726992565e+18', 'status': '5.633889634184356e+18', 'theme': '8.467859674442654e+18', 'time_created': '3.135573191543202e+18', 'time_updated': '8.524218479558036e+18', 'unread_message_count': '5.028066267830019e+18', 'user_group': '2.8818459995023145e+18', 'username': '2.921964129043587e+18', 'play_count': '1.636943551755901e+18', 'view_count': '7.212329416506399e+17', 'zip': '1.3730653599593196e+18'}]\n",
+            "stderr": "seconds 0.000759775000915397\n",
+            "returncode": 0,
+            "cpu_s": 0.0028740000000055943,
+            "loop_s": 0.000759775000915397
+          }
+        ]
+      }
+    },
+    {
+      "name": "logging",
+      "arguments": [
+        "1"
+      ],
+      "output": "logging 1 510\n",
+      "aot_build_s": 21.229778179000277,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.033880268998473184,
+          "cpu_s": 0.033480000000004395,
+          "loop_s": 0.0006119550016592257,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9881857786168455
+        },
+        "jit": {
+          "wall_s": 6.759317567997641,
+          "cpu_s": 6.756977999999998,
+          "loop_s": 0.00023491399770136923,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9996538751177013
+        },
+        "aot": {
+          "wall_s": 0.009568404999299673,
+          "cpu_s": 0.009035999999998268,
+          "loop_s": 0.00016802399841253646,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9443580200315127
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/bm_logging.py",
+              "1"
+            ],
+            "wall_s": 0.033880268998473184,
+            "stdout": "logging 1 510\n",
+            "stderr": "seconds 0.0006119550016592257\n",
+            "returncode": 0,
+            "cpu_s": 0.033480000000004395,
+            "loop_s": 0.0006119550016592257
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/bm_logging.py",
+              "1"
+            ],
+            "wall_s": 6.759317567997641,
+            "stdout": "logging 1 510\n",
+            "stderr": "seconds 0.00023491399770136923\n",
+            "returncode": 0,
+            "cpu_s": 6.756977999999998,
+            "loop_s": 0.00023491399770136923
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/logging",
+              "1"
+            ],
+            "wall_s": 0.009568404999299673,
+            "stdout": "logging 1 510\n",
+            "stderr": "seconds 0.00016802399841253646\n",
+            "returncode": 0,
+            "cpu_s": 0.009035999999998268,
+            "loop_s": 0.00016802399841253646
+          }
+        ]
+      }
+    },
+    {
+      "name": "meteor_contest",
+      "arguments": [
+        "1"
+      ],
+      "output": "meteor_contest 1 60 00001222012661126155865558633348893448934747977799 99997988878857765474655446532466132113321032210000\n",
+      "aot_build_s": 2.343220424001629,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.1768398089989205,
+          "cpu_s": 0.16577100000000078,
+          "loop_s": 0.1505141520028701,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9374077077917039
+        },
+        "jit": {
+          "wall_s": 0.25099738800054183,
+          "cpu_s": 0.24928199999999867,
+          "loop_s": 0.10829847900095046,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9931657137382662
+        },
+        "aot": {
+          "wall_s": 0.12319641100111767,
+          "cpu_s": 0.1226529999999979,
+          "loop_s": 0.11490153200065834,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9955890679224833
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/meteor_contest.py",
+              "1"
+            ],
+            "wall_s": 0.1768398089989205,
+            "stdout": "meteor_contest 1 60 00001222012661126155865558633348893448934747977799 99997988878857765474655446532466132113321032210000\n",
+            "stderr": "seconds 0.1505141520028701\n",
+            "returncode": 0,
+            "cpu_s": 0.16577100000000078,
+            "loop_s": 0.1505141520028701
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/meteor_contest.py",
+              "1"
+            ],
+            "wall_s": 0.25099738800054183,
+            "stdout": "meteor_contest 1 60 00001222012661126155865558633348893448934747977799 99997988878857765474655446532466132113321032210000\n",
+            "stderr": "seconds 0.10829847900095046\n",
+            "returncode": 0,
+            "cpu_s": 0.24928199999999867,
+            "loop_s": 0.10829847900095046
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/meteor_contest",
+              "1"
+            ],
+            "wall_s": 0.12319641100111767,
+            "stdout": "meteor_contest 1 60 00001222012661126155865558633348893448934747977799 99997988878857765474655446532466132113321032210000\n",
+            "stderr": "seconds 0.11490153200065834\n",
+            "returncode": 0,
+            "cpu_s": 0.1226529999999979,
+            "loop_s": 0.11490153200065834
+          }
+        ]
+      }
+    },
+    {
+      "name": "nbody",
+      "arguments": [
+        "1",
+        "100"
+      ],
+      "output": "nbody 1 100 -0.1690507623824095\n",
+      "aot_build_s": 1.8194240490010998,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.016947811000136426,
+          "cpu_s": 0.01654599999999462,
+          "loop_s": 0.00043369800187065266,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9762912744224862
+        },
+        "jit": {
+          "wall_s": 0.08801845299967681,
+          "cpu_s": 0.08767799999999282,
+          "loop_s": 6.688500070595182e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9961320270002332
+        },
+        "aot": {
+          "wall_s": 0.0031591129991284106,
+          "cpu_s": 0.0028610000000002245,
+          "loop_s": 5.5756998335709795e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9056339550973851
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/nbody.py",
+              "1",
+              "100"
+            ],
+            "wall_s": 0.016947811000136426,
+            "stdout": "nbody 1 100 -0.1690507623824095\n",
+            "stderr": "seconds 0.00043369800187065266\n",
+            "returncode": 0,
+            "cpu_s": 0.01654599999999462,
+            "loop_s": 0.00043369800187065266
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/nbody.py",
+              "1",
+              "100"
+            ],
+            "wall_s": 0.08801845299967681,
+            "stdout": "nbody 1 100 -0.1690507623824095\n",
+            "stderr": "seconds 6.688500070595182e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.08767799999999282,
+            "loop_s": 6.688500070595182e-05
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/nbody",
+              "1",
+              "100"
+            ],
+            "wall_s": 0.0031591129991284106,
+            "stdout": "nbody 1 100 -0.1690507623824095\n",
+            "stderr": "seconds 5.5756998335709795e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.0028610000000002245,
+            "loop_s": 5.5756998335709795e-05
+          }
+        ]
+      }
+    },
+    {
+      "name": "nqueens",
+      "arguments": [
+        "1",
+        "6"
+      ],
+      "output": "nqueens 1 6 4 (1, 3, 5, 0, 2, 4) (4, 2, 0, 5, 3, 1)\n",
+      "aot_build_s": 1.8118196750001516,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.027127201999974204,
+          "cpu_s": 0.02675200000000144,
+          "loop_s": 0.0021559429987974,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9861687910174769
+        },
+        "jit": {
+          "wall_s": 0.06557606499700341,
+          "cpu_s": 0.06512999999998792,
+          "loop_s": 0.0008034910024434794,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9931977468145446
+        },
+        "aot": {
+          "wall_s": 0.004186501999356551,
+          "cpu_s": 0.003856000000013182,
+          "loop_s": 0.0010538000024098437,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.921055334645925
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/nqueens.py",
+              "1",
+              "6"
+            ],
+            "wall_s": 0.027127201999974204,
+            "stdout": "nqueens 1 6 4 (1, 3, 5, 0, 2, 4) (4, 2, 0, 5, 3, 1)\n",
+            "stderr": "seconds 0.0021559429987974\n",
+            "returncode": 0,
+            "cpu_s": 0.02675200000000144,
+            "loop_s": 0.0021559429987974
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/nqueens.py",
+              "1",
+              "6"
+            ],
+            "wall_s": 0.06557606499700341,
+            "stdout": "nqueens 1 6 4 (1, 3, 5, 0, 2, 4) (4, 2, 0, 5, 3, 1)\n",
+            "stderr": "seconds 0.0008034910024434794\n",
+            "returncode": 0,
+            "cpu_s": 0.06512999999998792,
+            "loop_s": 0.0008034910024434794
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/nqueens",
+              "1",
+              "6"
+            ],
+            "wall_s": 0.004186501999356551,
+            "stdout": "nqueens 1 6 4 (1, 3, 5, 0, 2, 4) (4, 2, 0, 5, 3, 1)\n",
+            "stderr": "seconds 0.0010538000024098437\n",
+            "returncode": 0,
+            "cpu_s": 0.003856000000013182,
+            "loop_s": 0.0010538000024098437
+          }
+        ]
+      }
+    },
+    {
+      "name": "pidigits",
+      "arguments": [
+        "1",
+        "200"
+      ],
+      "output": "pidigits 1 200 200\n31415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819\n",
+      "aot_build_s": 2.822639617999812,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.021442566998302937,
+          "cpu_s": 0.021122999999998893,
+          "loop_s": 0.0028030280009261332,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9850966072145496
+        },
+        "jit": {
+          "wall_s": 0.2250473329986562,
+          "cpu_s": 0.22025500000000875,
+          "loop_s": 0.0051832370008924045,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9787052219868961
+        },
+        "aot": {
+          "wall_s": 0.008214855999540305,
+          "cpu_s": 0.00780599999999243,
+          "loop_s": 0.005107355998916319,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9502296814976727
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/pidigits.py",
+              "1",
+              "200"
+            ],
+            "wall_s": 0.021442566998302937,
+            "stdout": "pidigits 1 200 200\n31415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819\n",
+            "stderr": "seconds 0.0028030280009261332\n",
+            "returncode": 0,
+            "cpu_s": 0.021122999999998893,
+            "loop_s": 0.0028030280009261332
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/pidigits.py",
+              "1",
+              "200"
+            ],
+            "wall_s": 0.2250473329986562,
+            "stdout": "pidigits 1 200 200\n31415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819\n",
+            "stderr": "seconds 0.0051832370008924045\n",
+            "returncode": 0,
+            "cpu_s": 0.22025500000000875,
+            "loop_s": 0.0051832370008924045
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/pidigits",
+              "1",
+              "200"
+            ],
+            "wall_s": 0.008214855999540305,
+            "stdout": "pidigits 1 200 200\n31415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679821480865132823066470938446095505822317253594081284811174502841027019385211055596446229489549303819\n",
+            "stderr": "seconds 0.005107355998916319\n",
+            "returncode": 0,
+            "cpu_s": 0.00780599999999243,
+            "loop_s": 0.005107355998916319
+          }
+        ]
+      }
+    },
+    {
+      "name": "raytrace",
+      "arguments": [
+        "1",
+        "20",
+        "20"
+      ],
+      "output": "raytrace 1 20 20 46535\n",
+      "aot_build_s": 1.6752155260001018,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.02659230000062962,
+          "cpu_s": 0.02622100000000671,
+          "loop_s": 0.008848631998262135,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9860373115294985
+        },
+        "jit": {
+          "wall_s": 0.28940469000008306,
+          "cpu_s": 0.2886259999999998,
+          "loop_s": 0.0026523210035520606,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9973093386977142
+        },
+        "aot": {
+          "wall_s": 0.0054234359995462,
+          "cpu_s": 0.004412000000002081,
+          "loop_s": 0.002160161002393579,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.8135064192462583
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/raytrace.py",
+              "1",
+              "20",
+              "20"
+            ],
+            "wall_s": 0.02659230000062962,
+            "stdout": "raytrace 1 20 20 46535\n",
+            "stderr": "seconds 0.008848631998262135\n",
+            "returncode": 0,
+            "cpu_s": 0.02622100000000671,
+            "loop_s": 0.008848631998262135
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/raytrace.py",
+              "1",
+              "20",
+              "20"
+            ],
+            "wall_s": 0.28940469000008306,
+            "stdout": "raytrace 1 20 20 46535\n",
+            "stderr": "seconds 0.0026523210035520606\n",
+            "returncode": 0,
+            "cpu_s": 0.2886259999999998,
+            "loop_s": 0.0026523210035520606
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/raytrace",
+              "1",
+              "20",
+              "20"
+            ],
+            "wall_s": 0.0054234359995462,
+            "stdout": "raytrace 1 20 20 46535\n",
+            "stderr": "seconds 0.002160161002393579\n",
+            "returncode": 0,
+            "cpu_s": 0.004412000000002081,
+            "loop_s": 0.002160161002393579
+          }
+        ]
+      }
+    },
+    {
+      "name": "regex_dna",
+      "arguments": [
+        "1",
+        "1000"
+      ],
+      "output": "regex_dna 1 1000 ([1, 0, 0, 0, 1, 0, 0, 0, 2], 10245, 10000, 13348)\n",
+      "aot_build_s": 9.143224914998427,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.034884202999819536,
+          "cpu_s": 0.034372000000002956,
+          "loop_s": 0.004891718002909329,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9853170502470924
+        },
+        "jit": {
+          "wall_s": 2.156320431000495,
+          "cpu_s": 2.1558949999999975,
+          "loop_s": 0.0015109590021893382,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9998027051108077
+        },
+        "aot": {
+          "wall_s": 0.0037262599980749656,
+          "cpu_s": 0.003388000000001057,
+          "loop_s": 0.0009384580007463228,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9092226526735498
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/regex_dna.py",
+              "1",
+              "1000"
+            ],
+            "wall_s": 0.034884202999819536,
+            "stdout": "regex_dna 1 1000 ([1, 0, 0, 0, 1, 0, 0, 0, 2], 10245, 10000, 13348)\n",
+            "stderr": "seconds 0.004891718002909329\n",
+            "returncode": 0,
+            "cpu_s": 0.034372000000002956,
+            "loop_s": 0.004891718002909329
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/regex_dna.py",
+              "1",
+              "1000"
+            ],
+            "wall_s": 2.156320431000495,
+            "stdout": "regex_dna 1 1000 ([1, 0, 0, 0, 1, 0, 0, 0, 2], 10245, 10000, 13348)\n",
+            "stderr": "seconds 0.0015109590021893382\n",
+            "returncode": 0,
+            "cpu_s": 2.1558949999999975,
+            "loop_s": 0.0015109590021893382
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/regex_dna",
+              "1",
+              "1000"
+            ],
+            "wall_s": 0.0037262599980749656,
+            "stdout": "regex_dna 1 1000 ([1, 0, 0, 0, 1, 0, 0, 0, 2], 10245, 10000, 13348)\n",
+            "stderr": "seconds 0.0009384580007463228\n",
+            "returncode": 0,
+            "cpu_s": 0.003388000000001057,
+            "loop_s": 0.0009384580007463228
+          }
+        ]
+      }
+    },
+    {
+      "name": "regex_effbot",
+      "arguments": [
+        "1"
+      ],
+      "output": "regex_effbot 1 636833\n",
+      "aot_build_s": 8.564003053001215,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.06302309700186015,
+          "cpu_s": 0.06257400000000057,
+          "loop_s": 0.02901003000079072,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9928740886559998
+        },
+        "jit": {
+          "wall_s": 2.188628511998104,
+          "cpu_s": 2.187960999999996,
+          "loop_s": 0.020487499998125713,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9996950090001805
+        },
+        "aot": {
+          "wall_s": 0.02022135200240882,
+          "cpu_s": 0.019817000000003304,
+          "loop_s": 0.014692567001475254,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9800037108123458
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/regex_effbot.py",
+              "1"
+            ],
+            "wall_s": 0.06302309700186015,
+            "stdout": "regex_effbot 1 636833\n",
+            "stderr": "seconds 0.02901003000079072\n",
+            "returncode": 0,
+            "cpu_s": 0.06257400000000057,
+            "loop_s": 0.02901003000079072
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/regex_effbot.py",
+              "1"
+            ],
+            "wall_s": 2.188628511998104,
+            "stdout": "regex_effbot 1 636833\n",
+            "stderr": "seconds 0.020487499998125713\n",
+            "returncode": 0,
+            "cpu_s": 2.187960999999996,
+            "loop_s": 0.020487499998125713
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/regex_effbot",
+              "1"
+            ],
+            "wall_s": 0.02022135200240882,
+            "stdout": "regex_effbot 1 636833\n",
+            "stderr": "seconds 0.014692567001475254\n",
+            "returncode": 0,
+            "cpu_s": 0.019817000000003304,
+            "loop_s": 0.014692567001475254
+          }
+        ]
+      }
+    },
+    {
+      "name": "regex_v8",
+      "arguments": [
+        "1"
+      ],
+      "output": "regex_v8 1 369067584475\n",
+      "aot_build_s": 16.005891657001484,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.8616652370001248,
+          "cpu_s": 0.8584539999999894,
+          "loop_s": 0.03639592900071875,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9962732197351778
+        },
+        "jit": {
+          "wall_s": 6.259502476001217,
+          "cpu_s": 6.252139000000005,
+          "loop_s": 0.04539881799792056,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9988236323846116
+        },
+        "aot": {
+          "wall_s": 1.3512967099995876,
+          "cpu_s": 1.3480339999999984,
+          "loop_s": 0.02687160699861124,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9975854969708391
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/regex_v8.py",
+              "1"
+            ],
+            "wall_s": 0.8616652370001248,
+            "stdout": "regex_v8 1 369067584475\n",
+            "stderr": "seconds 0.03639592900071875\n",
+            "returncode": 0,
+            "cpu_s": 0.8584539999999894,
+            "loop_s": 0.03639592900071875
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/regex_v8.py",
+              "1"
+            ],
+            "wall_s": 6.259502476001217,
+            "stdout": "regex_v8 1 369067584475\n",
+            "stderr": "seconds 0.04539881799792056\n",
+            "returncode": 0,
+            "cpu_s": 6.252139000000005,
+            "loop_s": 0.04539881799792056
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/regex_v8",
+              "1"
+            ],
+            "wall_s": 1.3512967099995876,
+            "stdout": "regex_v8 1 369067584475\n",
+            "stderr": "seconds 0.02687160699861124\n",
+            "returncode": 0,
+            "cpu_s": 1.3480339999999984,
+            "loop_s": 0.02687160699861124
+          }
+        ]
+      }
+    },
+    {
+      "name": "richards",
+      "arguments": [
+        "1"
+      ],
+      "output": "richards 1 9297 23246\n",
+      "aot_build_s": 2.9808171180011414,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.10134611200192012,
+          "cpu_s": 0.10017000000001097,
+          "loop_s": 0.06957983699976467,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.988395094999926
+        },
+        "jit": {
+          "wall_s": 0.4369436470005894,
+          "cpu_s": 0.42134999999999323,
+          "loop_s": 0.0014275600005930755,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.964311995133379
+        },
+        "aot": {
+          "wall_s": 0.0028731820020766463,
+          "cpu_s": 0.0023079999999993106,
+          "loop_s": 0.0006875270009913947,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.8032905671590453
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/richards.py",
+              "1"
+            ],
+            "wall_s": 0.10134611200192012,
+            "stdout": "richards 1 9297 23246\n",
+            "stderr": "seconds 0.06957983699976467\n",
+            "returncode": 0,
+            "cpu_s": 0.10017000000001097,
+            "loop_s": 0.06957983699976467
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/richards.py",
+              "1"
+            ],
+            "wall_s": 0.4369436470005894,
+            "stdout": "richards 1 9297 23246\n",
+            "stderr": "seconds 0.0014275600005930755\n",
+            "returncode": 0,
+            "cpu_s": 0.42134999999999323,
+            "loop_s": 0.0014275600005930755
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/richards",
+              "1"
+            ],
+            "wall_s": 0.0028731820020766463,
+            "stdout": "richards 1 9297 23246\n",
+            "stderr": "seconds 0.0006875270009913947\n",
+            "returncode": 0,
+            "cpu_s": 0.0023079999999993106,
+            "loop_s": 0.0006875270009913947
+          }
+        ]
+      }
+    },
+    {
+      "name": "richards_super",
+      "arguments": [
+        "1"
+      ],
+      "output": "richards_super 1 9297 23246\n",
+      "aot_build_s": 2.536534085000312,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.08473024400154827,
+          "cpu_s": 0.08402399999999943,
+          "loop_s": 0.05717239899968263,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9916647944323642
+        },
+        "jit": {
+          "wall_s": 0.30239943799824687,
+          "cpu_s": 0.30112199999999856,
+          "loop_s": 0.0010719269994297065,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9957756601443958
+        },
+        "aot": {
+          "wall_s": 0.003670845999295125,
+          "cpu_s": 0.0032820000000128857,
+          "loop_s": 0.0011144499985675793,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.8940718299386831
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/richards_super.py",
+              "1"
+            ],
+            "wall_s": 0.08473024400154827,
+            "stdout": "richards_super 1 9297 23246\n",
+            "stderr": "seconds 0.05717239899968263\n",
+            "returncode": 0,
+            "cpu_s": 0.08402399999999943,
+            "loop_s": 0.05717239899968263
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/richards_super.py",
+              "1"
+            ],
+            "wall_s": 0.30239943799824687,
+            "stdout": "richards_super 1 9297 23246\n",
+            "stderr": "seconds 0.0010719269994297065\n",
+            "returncode": 0,
+            "cpu_s": 0.30112199999999856,
+            "loop_s": 0.0010719269994297065
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/richards_super",
+              "1"
+            ],
+            "wall_s": 0.003670845999295125,
+            "stdout": "richards_super 1 9297 23246\n",
+            "stderr": "seconds 0.0011144499985675793\n",
+            "returncode": 0,
+            "cpu_s": 0.0032820000000128857,
+            "loop_s": 0.0011144499985675793
+          }
+        ]
+      }
+    },
+    {
+      "name": "scimark",
+      "arguments": [
+        "1"
+      ],
+      "output": "scimark 1 1014.1847047522592 8107.719855829322 3.14852 0.0 0.0\n",
+      "aot_build_s": 2.0073714359969017,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.5279437399985909,
+          "cpu_s": 0.5252399999999726,
+          "loop_s": 0.47488774600060424,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9948787346192882
+        },
+        "jit": {
+          "wall_s": 0.23564373399858596,
+          "cpu_s": 0.23390500000001513,
+          "loop_s": 0.022605449998081895,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9926213442255958
+        },
+        "aot": {
+          "wall_s": 0.011102911001216853,
+          "cpu_s": 0.01060200000000222,
+          "loop_s": 0.006996376003371552,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9548847143636715
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/scimark.py",
+              "1"
+            ],
+            "wall_s": 0.5279437399985909,
+            "stdout": "scimark 1 1014.1847047522592 8107.719855829322 3.14852 0.0 0.0\n",
+            "stderr": "seconds 0.47488774600060424\n",
+            "returncode": 0,
+            "cpu_s": 0.5252399999999726,
+            "loop_s": 0.47488774600060424
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/scimark.py",
+              "1"
+            ],
+            "wall_s": 0.23564373399858596,
+            "stdout": "scimark 1 1014.1847047522592 8107.719855829322 3.14852 0.0 0.0\n",
+            "stderr": "seconds 0.022605449998081895\n",
+            "returncode": 0,
+            "cpu_s": 0.23390500000001513,
+            "loop_s": 0.022605449998081895
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/scimark",
+              "1"
+            ],
+            "wall_s": 0.011102911001216853,
+            "stdout": "scimark 1 1014.1847047522592 8107.719855829322 3.14852 0.0 0.0\n",
+            "stderr": "seconds 0.006996376003371552\n",
+            "returncode": 0,
+            "cpu_s": 0.01060200000000222,
+            "loop_s": 0.006996376003371552
+          }
+        ]
+      }
+    },
+    {
+      "name": "spectral_norm",
+      "arguments": [
+        "1"
+      ],
+      "output": "spectral_norm 1 1.6236422398020804\n",
+      "aot_build_s": 1.3747805050006718,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.11033661299734376,
+          "cpu_s": 0.10874300000000403,
+          "loop_s": 0.08592422600122518,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.985556806992271
+        },
+        "jit": {
+          "wall_s": 0.08405277699785074,
+          "cpu_s": 0.08358699999999342,
+          "loop_s": 0.003299371997854905,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9944585174399504
+        },
+        "aot": {
+          "wall_s": 0.003486320001684362,
+          "cpu_s": 0.00302899999999795,
+          "loop_s": 0.0013269990013213828,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.8688244333665684
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/spectral_norm.py",
+              "1"
+            ],
+            "wall_s": 0.11033661299734376,
+            "stdout": "spectral_norm 1 1.6236422398020804\n",
+            "stderr": "seconds 0.08592422600122518\n",
+            "returncode": 0,
+            "cpu_s": 0.10874300000000403,
+            "loop_s": 0.08592422600122518
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/spectral_norm.py",
+              "1"
+            ],
+            "wall_s": 0.08405277699785074,
+            "stdout": "spectral_norm 1 1.6236422398020804\n",
+            "stderr": "seconds 0.003299371997854905\n",
+            "returncode": 0,
+            "cpu_s": 0.08358699999999342,
+            "loop_s": 0.003299371997854905
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/spectral_norm",
+              "1"
+            ],
+            "wall_s": 0.003486320001684362,
+            "stdout": "spectral_norm 1 1.6236422398020804\n",
+            "stderr": "seconds 0.0013269990013213828\n",
+            "returncode": 0,
+            "cpu_s": 0.00302899999999795,
+            "loop_s": 0.0013269990013213828
+          }
+        ]
+      }
+    },
+    {
+      "name": "unpack_sequence",
+      "arguments": [
+        "1"
+      ],
+      "output": "unpack_sequence 1 90\n",
+      "aot_build_s": 1.6000115200004075,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.02088640199872316,
+          "cpu_s": 0.020427999999999003,
+          "loop_s": 3.0293998861452565e-05,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9780526105572334
+        },
+        "jit": {
+          "wall_s": 0.21195266200084006,
+          "cpu_s": 0.2113610000000028,
+          "loop_s": 2.525001036701724e-06,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.997208518188675
+        },
+        "aot": {
+          "wall_s": 0.0022808300018368755,
+          "cpu_s": 0.0018640000000003099,
+          "loop_s": 1.6700141713954508e-07,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.8172463526431738
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/unpack_sequence.py",
+              "1"
+            ],
+            "wall_s": 0.02088640199872316,
+            "stdout": "unpack_sequence 1 90\n",
+            "stderr": "seconds 3.0293998861452565e-05\n",
+            "returncode": 0,
+            "cpu_s": 0.020427999999999003,
+            "loop_s": 3.0293998861452565e-05
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+              "run",
+              "/workspace/scratch/0bc6e8bc1edf/match-main/bench/pyperformance/unpack_sequence.py",
+              "1"
+            ],
+            "wall_s": 0.21195266200084006,
+            "stdout": "unpack_sequence 1 90\n",
+            "stderr": "seconds 2.525001036701724e-06\n",
+            "returncode": 0,
+            "cpu_s": 0.2113610000000028,
+            "loop_s": 2.525001036701724e-06
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-sbbymxor/unpack_sequence",
+              "1"
+            ],
+            "wall_s": 0.0022808300018368755,
+            "stdout": "unpack_sequence 1 90\n",
+            "stderr": "seconds 1.6700141713954508e-07\n",
+            "returncode": 0,
+            "cpu_s": 0.0018640000000003099,
+            "loop_s": 1.6700141713954508e-07
+          }
+        ]
+      }
+    }
+  ]
+}

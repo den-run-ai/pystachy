@@ -1,0 +1,34 @@
+Rejected proposal: globally classify matchbind as static true and emit its walrus
+child from static_reads.
+
+Confirmed using hosted IR only, with a per-process monkeypatch and no repository
+edits. Source: audit_static_capture.py. Reproduction controller:
+audit_static_capture_probe.py REPO original|patched SOURCE OUTPUT.ll.
+
+CPython 3.13.16 prints: int other.
+Original right-associated compiler IR retains the captured union's tag test.
+With the proposed global static rule, classify unconditionally returns the string
+"other". Saved outputs: audit_static_capture_original.ll and
+audit_static_capture_patched.ll. The latter's @s.4 is "other", and classify has no
+union tag test.
+
+Cause: Gen.static recursively classifies the entire generated AND chain before
+static_reads emits the staged and user capture assignments. The later isinstance
+guard is folded using the old narrowed str value of captured. Emitting assignments
+afterward cannot undo the already chosen branch. static_now/static_whole/live_blocks
+also use static as analysis without executing static_reads; adding side effects to
+static would therefore introduce further inference risks.
+
+Reviewed safe local alternative (subject to execution/final CI): keep Gen.static
+unchanged. In gen_boolop, only when operator is AND and its immediate left node is
+matchbind, emit self.expr(left, "") first, preserve existing terminal fresh-label
+handling, then follow the existing ascond/kept/resultsoft RHS routes. This removes
+an always-true Boolean join only after the actual assignment invalidates stale
+narrowing. It neither touches ordinary user Boolean expressions nor changes
+global flow/speculation state rules. The new match_condition_order regression
+includes the union-rebinding case as well as equality/guard callback traces.
+
+Right-association review: pattern_then follows compiler-generated AND right
+spines. OR nodes and the final user guard remain opaque. Field/equality/capture
+evaluation order is unchanged; capture values still never undergo truth testing;
+false guards preserve committed bindings. No source-level semantic blocker found.

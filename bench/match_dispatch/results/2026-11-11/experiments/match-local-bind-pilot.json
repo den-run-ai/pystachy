@@ -1,0 +1,1115 @@
+{
+  "status": "passed",
+  "cases": [
+    {
+      "kind": "tuple",
+      "shape": "mixed",
+      "pairs": [
+        {
+          "baseline": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.1905378320007003,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 47778852\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 47778852
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.1347460079996381,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 12303737\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 12303737
+            }
+          },
+          "trial": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.32100845300010405,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 27805867\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 27805867
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.38655056599964155,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 13863063\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 13863063
+            }
+          }
+        },
+        {
+          "trial": {
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3657622499995341,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 13686831\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 13686831
+            },
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.29060977299741353,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 27393828\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 27393828
+            }
+          },
+          "baseline": {
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.13537450500007253,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 11943909\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 11943909
+            },
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.16107087199998205,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 46578269\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 46578269
+            }
+          }
+        },
+        {
+          "baseline": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.1717748480004957,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 50401185\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 50401185
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.12742163499933667,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 12534293\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 12534293
+            }
+          },
+          "trial": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.312857172000804,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 28138285\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 28138285
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3437334110021766,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 14096729\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 14096729
+            }
+          }
+        }
+      ],
+      "summary": {
+        "baseline_if_over_match": {
+          "median": 0.2564266396417608,
+          "min": 0.24869044249654051,
+          "max": 0.25751428686482464
+        },
+        "trial_if_over_match": {
+          "median": 0.4996319243882235,
+          "min": 0.49856611196478784,
+          "max": 0.5009803902405566
+        },
+        "baseline_over_trial_match": {
+          "median": 1.7183011053027046,
+          "min": 1.700319831167809,
+          "max": 1.7911960519271164
+        }
+      }
+    },
+    {
+      "kind": "tuple",
+      "shape": "skewed",
+      "pairs": [
+        {
+          "baseline": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.15544682499967166,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 35927325\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 35927325
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.13493894999919576,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 12783606\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 12783606
+            }
+          },
+          "trial": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.33771498699934455,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 23793757\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 23793757
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.32727189200159046,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 11046507\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 11046507
+            }
+          }
+        },
+        {
+          "trial": {
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3577641299998504,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 11896452\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 11896452
+            },
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3936317590014369,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 18989053\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 18989053
+            }
+          },
+          "baseline": {
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.1339248209988,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 12624739\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 12624739
+            },
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.18558282099911594,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 36875205\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 36875205
+            }
+          }
+        },
+        {
+          "baseline": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.1588595860011992,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 37302807\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 37302807
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.13387094199788407,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 15731161\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 15731161
+            }
+          },
+          "trial": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3156630759986001,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 18865530\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 18865530
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "tuple",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.2789370929967845,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 11473480\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 11473480
+            }
+          }
+        }
+      ],
+      "summary": {
+        "baseline_if_over_match": {
+          "median": 0.3558184752135039,
+          "min": 0.3423639000786572,
+          "max": 0.4217152076517995
+        },
+        "trial_if_over_match": {
+          "median": 0.6081716230606826,
+          "min": 0.46426073024113007,
+          "max": 0.6264900097966971
+        },
+        "baseline_over_trial_match": {
+          "median": 1.94191911518705,
+          "min": 1.5099475463248615,
+          "max": 1.9772997101062095
+        }
+      }
+    },
+    {
+      "kind": "dataclass",
+      "shape": "mixed",
+      "pairs": [
+        {
+          "baseline": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.18125531199984835,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 63938812\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 63938812
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.13170126499971957,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 16221951\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 16221951
+            }
+          },
+          "trial": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.2789304359976086,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 27980663\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 27980663
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3072105709979951,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 15035932\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 15035932
+            }
+          }
+        },
+        {
+          "trial": {
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3560339819996443,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 15849319\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 15849319
+            },
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3762859720009146,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 27974700\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 27974700
+            }
+          },
+          "baseline": {
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.14018545799990534,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 15917562\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 15917562
+            },
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.18358980400080327,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 63853394\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 63853394
+            }
+          }
+        },
+        {
+          "baseline": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.18277052600024035,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 61199272\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 61199272
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.23895021399948746,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 15162043\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 15162043
+            }
+          },
+          "trial": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.38212559100065846,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 29514791\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 29514791
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "mixed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.2967423760019301,
+              "stdout": "8166000\n8192000\n",
+              "stderr": "kernel_wall_ns 14604581\n",
+              "returncode": 0,
+              "checksum": 8166000,
+              "count": 8192000,
+              "kernel_wall_ns": 14604581
+            }
+          }
+        }
+      ],
+      "summary": {
+        "baseline_if_over_match": {
+          "median": 0.24928294336241547,
+          "min": 0.24774874773020175,
+          "max": 0.2537105475153339
+        },
+        "trial_if_over_match": {
+          "median": 0.5373686820787628,
+          "min": 0.4948224434318373,
+          "max": 0.566559033698306
+        },
+        "baseline_over_trial_match": {
+          "median": 2.282540795790482,
+          "min": 2.0735119554124575,
+          "max": 2.285107111293253
+        }
+      }
+    },
+    {
+      "kind": "dataclass",
+      "shape": "skewed",
+      "pairs": [
+        {
+          "baseline": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.20975431599799776,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 49314702\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 49314702
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.14203385899963905,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 22294655\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 22294655
+            }
+          },
+          "trial": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.40910308999809786,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 40622913\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 40622913
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.39644488699923386,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 12701217\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 12701217
+            }
+          }
+        },
+        {
+          "trial": {
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.28063083100278163,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 11075342\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 11075342
+            },
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.318257230999734,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 22863784\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 22863784
+            }
+          },
+          "baseline": {
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.1449951600006898,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 19952485\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 19952485
+            },
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.1670235669989779,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 47057601\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 47057601
+            }
+          }
+        },
+        {
+          "baseline": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.20946593600092456,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 51161871\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 51161871
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/match-main/pystachy",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-main/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.14907068499815068,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 22740095\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 22740095
+            }
+          },
+          "trial": {
+            "match": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "match",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.3296089849973214,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 22767232\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 22767232
+            },
+            "if": {
+              "command": [
+                "/workspace/scratch/0bc6e8bc1edf/dev-venv/bin/python",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/pystachy.py",
+                "run",
+                "/workspace/scratch/0bc6e8bc1edf/match-conjunction/bench/match_dispatch/workload.py",
+                "dataclass",
+                "if",
+                "skewed",
+                "2000",
+                "4096"
+              ],
+              "wall_s": 0.28368283700183383,
+              "stdout": "-224000\n8192000\n",
+              "stderr": "kernel_wall_ns 11534522\n",
+              "returncode": 0,
+              "checksum": -224000,
+              "count": 8192000,
+              "kernel_wall_ns": 11534522
+            }
+          }
+        }
+      ],
+      "summary": {
+        "baseline_if_over_match": {
+          "median": 0.44447348299674183,
+          "min": 0.42400132127432505,
+          "max": 0.45208941950009146
+        },
+        "trial_if_over_match": {
+          "median": 0.4844054684911299,
+          "min": 0.3126614036762947,
+          "max": 0.5066282102277518
+        },
+        "baseline_over_trial_match": {
+          "median": 2.0581720418632368,
+          "min": 1.2139627209895065,
+          "max": 2.2471713293912936
+        }
+      }
+    }
+  ],
+  "loops": 2000,
+  "size": 4096,
+  "samples": 3,
+  "cpu": 0,
+  "interpretation": "Kernel measurements compare native JIT output. Process wall times are not comparable because baseline compiler is native and trial compiler is CPython-hosted.",
+  "source_sha256": {
+    "bench/match_dispatch/workload.py": "98bd8300b8221557c1c0a10441d706f1260416ad1732c16344688581fa381e55",
+    "src/pystachy_compiler/expressions.py": "ebd991db9c9ec3da95850436462e44cea2160efd933f19de6a2546ca321f01b5",
+    "src/pystachy_compiler/patterns.py": "43d4b10314b87f6015edde218202c83863d7989d3056a2e9a57d1c707c4dd411"
+  }
+}

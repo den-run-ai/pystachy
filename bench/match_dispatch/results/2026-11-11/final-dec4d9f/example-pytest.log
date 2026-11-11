@@ -1,0 +1,2 @@
+match_dispatch/jit: passed (11 cases)
+match_dispatch/aot: passed (11 cases)

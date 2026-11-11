@@ -1,0 +1,257 @@
+[
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/README.md",
+    "bytes": 2011,
+    "sha256": "e39057764ce23fc7d0be3f0bc9369d7e950043dcb5a4133fe2740dea93bcf8af"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/extended-smoke.json",
+    "bytes": 59411,
+    "sha256": "ca2d58881e97aacef15ef7ebd80789a3fdba08bcaf37b55f5170c03fd13c5f52"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/files.json",
+    "bytes": 1328,
+    "sha256": "865088f53037b0d6b9aebd4c0cd9c3a4187dfa5ad8c4062b694b6561f07d37f1"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-dispatch-measured.json",
+    "bytes": 245842,
+    "sha256": "3f7ea1669ecbc2c5639c3b3fe6131e24e75de31a89d31700c4da045545601042"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-dispatch-smoke.json",
+    "bytes": 74337,
+    "sha256": "e54199761fc3e84f284a86a1d1c4bacc8e5e11f0ecd744f61d7822bc75e08725"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-dynany.json",
+    "bytes": 4976,
+    "sha256": "c2961c9030af2694c7d8af919a628fae3a8e24044f1bf0bbb73139c9b46ec210"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-measured.log",
+    "bytes": 381,
+    "sha256": "ed52288e4e3cdf7ecbc01cce3d8daa1a488a4a2bdaa1b9c17299696e0debe203"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-mode-matrix.json",
+    "bytes": 10273,
+    "sha256": "1c578a8565f05f9f052776e970665499060685b90dc8c1e8b88bd2390c31c7a9"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-pyperf-check.log",
+    "bytes": 5018,
+    "sha256": "46ac1c80177f58fdb337dc1afdb8c531a142c99396a070718426ebd7a9c5ad60"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-pyperf-if.json",
+    "bytes": 6734,
+    "sha256": "edd1863686487d9d57e92dca1356667723d8c27783998464ebac8ad9af27f43f"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-pyperf-manifest.json",
+    "bytes": 28842,
+    "sha256": "74e442ed76025ce7aa01ee38645e7fbbd2d43bd40c020eb0d4a38a825cf18c7e"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-pyperf-match.json",
+    "bytes": 6818,
+    "sha256": "71be71fbec0c6eedfb7448e510554d4e4bdbcd8cea0f417ef0a2870412b12721"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-pyperf.log",
+    "bytes": 3810,
+    "sha256": "89963e0ff937ac3fd0a2a93832241b8335eeadde8420d45b1485b03dd68827ca"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/match-python-int.json",
+    "bytes": 4846,
+    "sha256": "9951d92227572bba9ebd2dc64f85b93f2c2f850eaf8b33edfaa245b6030ed674"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/pyperformance-smoke.json",
+    "bytes": 106194,
+    "sha256": "c70c4c2ca34b4c04a2eb7bbf64523e12375ebc525c26aa46c1e72618c9be7e1a"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/pytest-match-hosted.json",
+    "bytes": 36580,
+    "sha256": "f7ac982a4123df04ff33327b6651817cbb52df6bdc04a2803423c215ab517604"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/pytest-pyperformance.json",
+    "bytes": 128270,
+    "sha256": "15ae0193733945899424d5ba74c577ada16ffe1009f4e8e35514906e87d34ec0"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/baseline-620c35f/run_match_pyperf.py",
+    "bytes": 4358,
+    "sha256": "4cf96a9fe9fa42ef72f62a4eeb7708777c308be5f247c030c6c096ca2bed989f"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/experiments/audit_static_capture.py",
+    "bytes": 242,
+    "sha256": "0f4dc9a48b9e4d95cb7b2e6476d0aaa8eb9bbd5b4823b71fb44230fb2c8eaa38"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/experiments/audit_static_capture_probe.py",
+    "bytes": 1172,
+    "sha256": "36438a5f92453146fd76989eec00b3a6b8d709c0ffc01e9cbfc6f0886be35b2b"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/experiments/match-local-bind-pilot.json",
+    "bytes": 38594,
+    "sha256": "a0cb3438db20304a40f09a8750dc337ff6be96c7509ed48f93386d21b2157ca4"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/experiments/match-local-bind-v2.patch",
+    "bytes": 3035,
+    "sha256": "849da9fde9c9add9274d17e00adf0259b1b5e331da874046d2b2a9454d9ff063"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/experiments/match-right-association-pilot.json",
+    "bytes": 38322,
+    "sha256": "348f3697f8def04298d36f3358cbe3488e375679c1cc3d6426edd6eae0c79d00"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/experiments/match-right-association-v1.patch",
+    "bytes": 1387,
+    "sha256": "a9f9fe67f39a1e2a39b0e7a17d6147972570b6b247961967a68ec96e7ac4fc03"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/experiments/match_static_review.txt",
+    "bytes": 2109,
+    "sha256": "2f4b3acd871888ebf3f7f11ba5834597412452761944d8b88608e96c596056c9"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/bootstrap.log",
+    "bytes": 786,
+    "sha256": "93a156a2ee730c58e2b4b6572f1536763efd12986f29f8d3f0775a4c8dc585b3"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/combined-matrix.log",
+    "bytes": 222,
+    "sha256": "05dab6c86cf646996a49571272d95d80fdaa352c431f2fa0a79963b68fc037fa"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/compiler-and-program-gc.log",
+    "bytes": 36,
+    "sha256": "e75083075705d6bac4f06f729e0fd827471cb894c095fa54fd094306281bae78"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/dynany.json",
+    "bytes": 5326,
+    "sha256": "e9c650d303cd0193a6b9f85ea014721b0bb067d757ee71c4be82e9876f5734dd"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/dynany.log",
+    "bytes": 118,
+    "sha256": "49ea689d1c872e5b4d4e5691e964951b205f57f44d004ad0415c5808cf9135fb"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/example-pytest.log",
+    "bytes": 76,
+    "sha256": "5f03ae10668a350920db1764b936643132e7a3d0eb4bea79c3f18a4eb0d47b8a"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/focused-hosted.log",
+    "bytes": 38,
+    "sha256": "1a96bc6d2314b50ea37022e4ee9dc275977406657ba8b708cf7320ba8bd11f98"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/focused-native.log",
+    "bytes": 38,
+    "sha256": "1a96bc6d2314b50ea37022e4ee9dc275977406657ba8b708cf7320ba8bd11f98"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/focused-program-gc.log",
+    "bytes": 38,
+    "sha256": "1a96bc6d2314b50ea37022e4ee9dc275977406657ba8b708cf7320ba8bd11f98"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/match-final-bootstrap.json",
+    "bytes": 733,
+    "sha256": "870aa2eb595e9aeb10c485b3c657bf83c9d2de39a828f3d29fd637ea250ca997"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/match-final-compiler-gc.json",
+    "bytes": 1456,
+    "sha256": "c9d6fa2167e2e300aebf320fb321354e682ba3cf88c517ad0d725f5e719ba285"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/match-mode-matrix.json",
+    "bytes": 11064,
+    "sha256": "f0667b81777db336bd448ecdc51e97af522c2af495e58c824e043214ddf72ab0"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/optimizer-off.log",
+    "bytes": 38,
+    "sha256": "e04206a15bd42b1d4a4ea06b683e88b4b00acf60bcaf32479f4b46fad7537c97"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/pytest-example.json",
+    "bytes": 36580,
+    "sha256": "c6ba58c3016cf1e615eaf3bd25c96ca11f17ea1836fac5b714fbf222cf9ec0ee"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/python_int.json",
+    "bytes": 5196,
+    "sha256": "642c40e01830eef28b21992ce13c8e295eac1e9c1f5d826b010b9737bd8cdaf6"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/python_int.log",
+    "bytes": 44,
+    "sha256": "4e202c221b8712d6fbfec4517ec9e85c6761418b85b1620efbcce25fc2eca481"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/final-dec4d9f/qualification.json",
+    "bytes": 18709,
+    "sha256": "cdc0bbf42fd6b0ef8ef491fb6043ca6e9342e8b651df18c04a1d7e1fc28fddd9"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/match-baseline-analysis.json",
+    "bytes": 81078,
+    "sha256": "d5163d82572f9865ede80487540d58f357625f2dc39d56871270dad205f335dc"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/match-baseline-analysis.md",
+    "bytes": 9389,
+    "sha256": "cb8960863286735c78530240769dc12bebb8363eed974fc6877af63bad17978f"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/match-performance-interpretation.md",
+    "bytes": 9414,
+    "sha256": "bd961f11f6a67d26d7914133f203df67e6fe21624c816a0b4fe2c9956338a8f6"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/match_final_review.md",
+    "bytes": 8936,
+    "sha256": "16952abbd6a39cf4af1bb233e9464fb193099f382a1b20aa601567cf8196060b"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/reproduce/analyze_match_results.py",
+    "bytes": 25981,
+    "sha256": "2aa3b6ff85ad9a44ad42de253839593c557b66deaf4d886c303efff4c6b6dd09"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/reproduce/check_match_matrix.py",
+    "bytes": 2877,
+    "sha256": "ea3f9c5c0252ffba6bc35e84ab91f6fa76b9ee9a6bb29b7a1cb52cdd918b0044"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/reproduce/qualify_match.py",
+    "bytes": 5384,
+    "sha256": "c92184e00b31eece3b6eb73b342bb24f4467e4caaa93219d0a536a4a4da1ec91"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/reproduce/run_match_irsame.py",
+    "bytes": 20932,
+    "sha256": "3af5c75bd7a42e542f39b6397c974fc9ff5a16806ff73fe51edb7f7a27e6e03e"
+  },
+  {
+    "path": "bench/match_dispatch/results/2026-11-11/reproduce/run_match_pyperf.py",
+    "bytes": 4580,
+    "sha256": "ee58dedf1eb77b2e813423e1ff65fa03485a82cb8d41479183f61e939f34514e"
+  }
+]
