@@ -90,6 +90,14 @@ retain a copy of their context across internal retries.
 
 Ordinary single-inheritance hierarchies carry a class tag. Base-typed instance-method calls
 select a concrete implementation, then reuse method specialization for that receiver.
+Up to eight concrete classes (`DISPATCH_INLINE`), each call site tests the tag itself, and
+LLVM may inline the overrides there. Wider hierarchies select the override in one internal
+function per receiver type, method and argument types (`@vd.N`, `Gen.dispatch_call`), which
+the call sites share: a site costs one call rather than an arm per class, and each override
+is inlined once. Arguments are evaluated and the receiver checked before that call, and
+each arm keeps its override's defaults. Calls whose arms depend on context keep the
+per-site form: generators, inferred or never-returning results, dunder methods, exception
+classes, star arguments and dynamic programs.
 A comparison tests both operands' classes (a `switch` on an ordinary tag), but compiles
 each distinct call once: pairs of classes that call one method instance, on the same
 operand, share its code. A method that takes the other operand as a template's parameter
@@ -545,7 +553,9 @@ calls passes through a counted function or a counted resume. A source function o
 that can be entered again counts; any other neither checks nor counts, and keeps its
 snapshot only when one of its handlers restores it. A Callable's adapter (`@cv.N`) only
 forwards to its target and never counts: a cycle through it also passes through the
-function that makes the indirect call, which reaches `U`.
+function that makes the indirect call, which reaches `U`. Nor does a shared virtual
+dispatch (`@vd.N`, `Gen.dispatch_call`): a cycle through it also passes through the
+override it selects, a source function.
 
 A counted function's snapshot becomes its entry, `recursion.enter`: it raises
 `RecursionError` if the depth has reached the limit (before any local handler or body

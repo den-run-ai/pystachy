@@ -478,6 +478,8 @@ from src.pystachy_compiler.calls import (
     gen_to_callable as calls_to_callable,
     gen_unbound_call as calls_unbound_call,
     gen_virtual_call as calls_virtual_call,
+    gen_shared_dispatch as calls_shared_dispatch,
+    gen_dispatch_call as calls_dispatch_call,
 )
 from src.pystachy_compiler.containers import (
     gen_list_id_kind as containers_list_id_kind,
@@ -1504,6 +1506,7 @@ class Gen:
         self.adapters: dict[str, str] = {}  # "<function value type> <Callable type>" -> its adapter's symbol (Gen.adapter)
         self.adrets: dict[str, str] = {}  # "<function value type> <parameter types>" -> what it returns (Gen.adapter_ret)
         self.ncv = 0  # the adapters named (@cv.N), each before its body is compiled, which may name others
+        self.dispatchers: dict[str, FnInfo] = {}  # "<receiver>.<method>(<argument types>)" -> its shared override selection (@vd.N, Gen.dispatch_call)
         self.cacheforms: dict[str, int] = {}  # cached calls: positional count and ordered keyword names
         self.decorated: dict[str, bool] = {}  # the defs of a module's top level that bind what their decorators give (decorate)
         self.decoexprs: dict[str, Node] = {}  # "<module> <line>" -> the dotted name of the decorator there (deco_callee)
@@ -4749,6 +4752,12 @@ class Gen:
 
     def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
         return calls_virtual_call(self, f, pre, args, want, none, resultsoft)
+
+    def shared_dispatch(self, f: FnInfo, cs: list[ClassInfo], pre: list[Val], args: list[Node]) -> str:
+        return calls_shared_dispatch(self, f, cs, pre, args)
+
+    def dispatch_call(self, f: FnInfo, o: Val, values: list[Val], names: list[str], ret: str) -> Val:
+        return calls_dispatch_call(self, f, o, values, names, ret)
 
     def fname(self, f: FnInfo) -> str:
         return calls_fname(self, f)

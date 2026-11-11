@@ -755,6 +755,11 @@ TEMPLATE_INSTANCES = 4096
 # a rejection fits tools/compilelimits.py's 256 MiB, hosted too (the corpus's largest total is
 # 4,736 bytes, tests/programs/apps/port_tomli_w_tables.py's 92 instances).
 TEMPLATE_RETAINED = 16777216
+# A method call through a base whose hierarchy has more concrete classes than this selects
+# the override in one shared function per receiver type, method and argument signature
+# (Gen.dispatch_call): each override's call, and LLVM's inlining of it, then exists once
+# rather than at every call site (a visitor's 100 classes at 100 sites took 251 s to build).
+DISPATCH_INLINE = 8
 # Effect letters: R may raise (in a program that has try or with, a raise allocates its exception, so a
 # collection may run before a handler takes it; if none does, the raise prints its message, flushes
 # stdout and exits); N never returns; A allocates on the way to returning (a collection may run, and
