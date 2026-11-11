@@ -22,7 +22,8 @@ cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
 cache_toolchain.SYSTEM_INPUTS
 driver.COMPILER_SOURCES driver.CPUID driver.LLJIT_LLVM driver.RTPARTS
 dynamic.XCMP dynamic.XOPS dynamic.BINOPS dynamic.UNOPS dynamic.CMPOPS
-dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.TRACKED expressions.ORDERS
+dynamic.BINDUNDERS dynamic.BUILTIN dynamic_proof.BUILTIN_KINDS dynamic_proof.BUILTIN_PAYLOADS
+dynamic_proof.BOX_TAGS expressions.ORDERS
 ir.NONUMS ir.NOVALS ir.NOLABELS ircheck.RESULT_NUMBERS
 lexer.KEYWORDS lexer.OPS lexer.ESCAPES lexer.PREFIXES lexer.NONPRINT lexer.NOTID
 loader.ENUM_NAMES loader.ENUM_BASES loader.ENUM_HOOKS

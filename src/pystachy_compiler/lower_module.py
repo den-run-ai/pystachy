@@ -82,7 +82,8 @@ def jit_alloc(ir: str) -> str:
 def address_runtime_ir(ir: str) -> str:
     # Attribute every generated definition, including internal helpers and those
     # with an exception personality. Clang's IR-input pipeline then runs ASan for
-    # this module alone, before linking the already-instrumented C runtime.
+    # this module alone, before linking the already-instrumented C runtime. The
+    # same serializer handles generated user modules for AOT/extension builds.
     lines: list[str] = []
     for line in ir.split("\n"):
         if line.startswith("define "):

@@ -4554,6 +4554,8 @@ LOOKUP Big pys_dict_bkey_big_setdefault(Dict *d, I klo, Mpz *km, I lo, Mpz *m) {
    reversed loop also ends at a position past the entries (a rebuild made the table smaller) */
 I pys_dict_key(Dict *d, I e) { return d->keys[e]; }
 I pys_dict_val(Dict *d, I e) { return d->vals[e]; }
+/* Private optional scalar reads: snapshot a found entry, or zero without touching storage. */
+I pys_dict_val_or_zero(Dict *d, I e) { return e < 0 ? 0 : d->vals[e]; }
 Mpz *pys_dict_big_val(Dict *d, I e) { return dbig(d, e); }   /* the Mpz of entry e's value, where pys_dict_val gave -2**63 */
 Mpz *pys_dict_big_key(Dict *d, I e) { return kbig(d, e); }   /* and of its key, where pys_dict_key gave -2**63 */
 I pys_dict_end(Dict *d) { return d->n; }
