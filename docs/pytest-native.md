@@ -113,7 +113,8 @@ PYTHONPATH=ports PYSTACHY_PATH=ports python3 tools/pytest_native.py \
 
 The target checks original pytest outcomes, negative controls, fixture lifecycle,
 shared module state, native JIT/AOT, GC stress and a mixed `Any` fixture. It runs
-inside the existing Lint job. The examples exercise current stdlib APIs and the
+inside the existing x86-64 `hosted` CI job on code PRs, main pushes and manual runs.
+The examples exercise current stdlib APIs and the
 iniconfig/jdcal/json_repair ports. The 35 cases include 16 JSON-repair cases for
 malformed/Unicode input, result objects, logs, fixture aliases and strict errors. These are
 original tests, not claims of complete upstream suite support. Keep the existing
@@ -205,7 +206,7 @@ changed source hash fails qualification. Generated CPython always runs before
 the native modes, distinguishing extraction errors from compiler/library gaps.
 
 ```sh
-# Bundled sources, also checked offline in the existing Lint job:
+# Bundled sources, also checked offline in the x86-64 hosted CI job:
 python3 tools/pytest_native_upstream.py --suite fnmatch --suite textwrap \
   --compiler ./pystachy --json build/pytest-upstream-bundled.json
 

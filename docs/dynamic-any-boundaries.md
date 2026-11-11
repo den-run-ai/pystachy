@@ -8,6 +8,12 @@ exercise dynamic behavior. An ordinary generic helper can also specialize to a
 dynamic argument type supplied by its caller; this is a local opt-in inventory,
 not a complete value-flow graph.
 
+`make check-fast` runs the
+[inventory test](../tools/test_dynamic_any_inventory.py). Using the compiler's
+pragma rule, it fails when a `lib/` or `ports/` module opts in without exactly one
+row here, or a row names a module that does not opt in. It checks completeness
+only; reviewers still judge each row's reasoning.
+
 The retained contracts below describe why silently replacing existing storage
 would change behavior. They do not prove that every current annotation or
 implementation choice is necessary. Compiler limitations and removable internal

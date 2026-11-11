@@ -388,8 +388,8 @@ exact cases and results. The PR aggregate requires both workers to pass.
 The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
-Markdown/docs-only PRs run Lint, submission format checks, fork DCO when applicable,
-and a lightweight `Verification` check. Both bootstrap workers classify the tested
+Markdown/docs-only PRs run Lint and submission format checks plus a lightweight
+`Verification` check. The legacy DCO job always skips pending branch settings. Both bootstrap workers classify the tested
 merge commit's changes against its base. When both select the documentation plan,
 they skip toolchain setup and builds, and CI skips the verification, variant and
 distribution jobs. Renaming a source file into `docs/` still selects code verification.
@@ -422,6 +422,15 @@ original-pytest comparison.
 Missing modules/results, empty suites, skips, xfails and failed builds fail this
 check. These tests supplement the exact CLI, FFI, upstream-reference and timing
 contracts below; they do not replace those distinct observations.
+
+The x86-64 `hosted` job also runs `make test-pytest-native` with the hosted compiler
+and pinned original pytest oracle. This covers collection, fixture lifecycle,
+JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
+methods. The existing job runs once on code PRs, main pushes and manual runs;
+documentation-only PRs retain their lightweight plan. Its artifact includes both
+example-mode reports, `pytest-controls.json` and `pytest-upstream-bundled.json`.
+Keeping this check outside Lint preserves the same coverage within the existing
+job, worker and 15-minute limits.
 
 The `example-cli` verification step runs in the `benchmarks` group: on x86-64 in
 PR CI and on both architectures in full CI. `tools/check_example_cli.py` runs 24 tiny cases through
@@ -502,8 +511,8 @@ end-to-end json_repair or all examples; broader benchmark history remains under 
 
 ### PR budget
 
-A code PR can create **20 workflow job rows**, including the conditional DCO job and the
-submission format job. Its separate `Submission format` commit status uses no runner.
+A code PR can create **20 workflow job rows**, including a skipped legacy DCO job and
+the submission format job. Its separate `Submission format` commit status uses no runner.
 Lint enforces at most **20 jobs across all workflows**, **two workers per task group**,
 and **15 minutes per job** (`tools/test_workflow_limits.py`). Path filters cannot hide a matrix
 from the budget. Each test runner uses at most four processes within its worker.
@@ -511,7 +520,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | PR work | Jobs | Coverage |
 |---|---:|---|
 | Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack, JIT runner and sanitizer linkage smoke. |
-| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs. |
+| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs and native runner qualification. |
 | Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
@@ -521,7 +530,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
 | Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke; netio epoll/kqueue and pipe parity, plus Linux hosted and sanitized ownership checks. |
 | `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |
-| Lint, performance, DCO and submission format | 4 | Lint includes CPython port preservation. DCO applies to forks. Submission format validates PR metadata. |
+| Lint, performance, legacy check and submission format | 4 | Lint includes CPython port preservation. DCO always skips; submission format validates metadata and sends an acknowledgment reminder. |
 
 `VERIFY_PROFILE=pr tests/verify.sh GROUP` selects this plan; plain `make verify` stays exhaustive.
 `tools/ci_sample.py` selects deterministic representatives and changed/new cases, including
@@ -591,7 +600,8 @@ A failed group leaves the others running. The aggregate checks are
 `make verify (Linux ARM64, LLVM 18, Python 3.13)`. For pull requests, maintainers
 verify `Verification` and `make lint (ruff, shellcheck, clang -Wall -Wextra)` on the
 current revision before merging. Branch protection requires both checks, including
-for administrators, and the fork DCO check.
+for administrators. Remove the retired DCO check in GitHub settings; until then it
+remains as an always-skipped compatibility job.
 [Issue #766](https://github.com/den-run-ai/pystachy/issues/766) records the enforcement
 work; [CONTRIBUTING.md](../CONTRIBUTING.md#ai-assistance-and-review) describes the
 review and submission requirements.
@@ -907,6 +917,15 @@ unittest processes. Lint waits for both, prints their logs separately and fails 
 either suite fails; the same coverage runs for documentation PRs, main and manual runs.
 The coordinator preserves normal SIGINT handling, cancels both process groups and
 reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
+
+Generated-user and generated-runtime ASan controls run in the existing x86-64
+`contracts` job on code PRs, main pushes and manual runs, using LLVM 18 and its
+compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;
+Lint discovers every other `test_runtime_*.py` file. This preserves the code
+verification coverage with the same jobs, workers and 15-minute timeouts.
+The ASan step is required by the contracts job's result and the aggregate gate;
+documentation-only PRs use the existing plan that skips native verification.
+
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
 the Git index and tests the gate against temporary repositories. It checks tracked
 files even when ignored; local untracked experiments are outside the merge gate.
@@ -927,7 +946,13 @@ the prototype, compiler, inspection exporter, boundary tests, Makefile, Lint wor
 Python/development dependency pins. Missing merge history runs the check;
 documentation-only PRs skip it. The selector has temporary-Git-history controls.
 It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
-`make check-lean-boundary`; no extra PR job is added. The bridge's Python tests
+`make check-lean-boundary`; no extra PR job is added. The x86_64 verification
+group `opt-in` on PRs, and `dynany-optin-0` on main and manual runs, run
+`make check-lean-corpus` with the same archive: the corpus tool's tests
+(`tools/test_lean_corpus.py`), then each dynamic-`Any` test program compiled by
+the hosted compiler, failing unless Lean proves every dynamic payload read guarded
+(in two workers, about four minutes; its report is uploaded as `lean-corpus.json`). Lint, already
+near its 15-minute bound, runs neither. The bridge's Python tests
 also run in `make check-fast`. Those tests skip executable checks when Lean has
 not been built; the dedicated target requires them and fails if the executable
 is missing. Lean is a development-only dependency for this bounded prototype.
@@ -985,8 +1010,8 @@ existing PR budget or run in the full matrix; raising limits or adding matrix ax
 Lint also runs the optional [communication buffer/completion probe](../examples/comm/README.md)
 with the hosted compiler, JIT/AOT, GC stress and a sanitized standalone C probe.
 
-The [DCO workflow](../.github/workflows/dco.yml) checks that the author of a pull request from a
-fork is listed in `.github/dco-signers.txt`, on main or in the pull request; pull requests from
-the repository's own branches skip it. It runs main's copy of the workflow and of
-`tools/dco_check.py`, so a change to either takes effect once merged. The
-[contributor guide](../CONTRIBUTING.md#rights-and-sign-off) states the rule.
+Contributions use the [contribution-rights policy](../CONTRIBUTING.md#contribution-rights)
+without DCO certification. The existing submission bot sends a one-time,
+non-blocking rights/guidelines/AI acknowledgment reminder on new PRs. The legacy
+DCO workflow always skips; remove it after deleting its required status in
+GitHub branch protection settings.

@@ -1,0 +1,209 @@
+{
+ "schema": 1,
+ "description": "One program under CPython, the Pystachy JIT and AOT (whole process; JIT includes compilation and startup; AOT excludes its build), 5 rounds, mode order rotated each round, every process pinned to one CPU; wall time and peak RSS from wait4; combined stdout+stderr of every run equals CPython's",
+ "measured_utc": "2026-11-11T06:32:05Z",
+ "source": "\"\"\"Simulate a checkout queue with one cashier and report the mean wait.\"\"\"\nfrom dataclasses import dataclass\nfrom random import Random\n\n\n@dataclass\nclass Stats:\n    served: int = 0\n    waited: float = 0.0\n\n\ndef arrivals(rng: Random, rate: float, count: int):\n    clock = 0.0\n    for _ in range(count):\n        clock += rng.expovariate(rate)\n        yield clock\n\n\ndef simulate(customers: int, seed: int) -> Stats:\n    rng = Random(seed)\n    stats = Stats()\n    free_at = 0.0\n    for arrival in arrivals(rng, 0.9, customers):\n        start = max(arrival, free_at)\n        free_at = start + rng.expovariate(1.0)\n        stats.served += 1\n        stats.waited += start - arrival\n    return stats\n\n\nstats = simulate(2_000_000, seed=7)\nprint(f\"{stats.served:,} customers, mean wait {stats.waited / stats.served:.2f}\")\n",
+ "source_sha256": "a7b8abd9c2d171f1dfcbc918914f95c926e4e4fcdfee4c0c1f2943bf66761c7a",
+ "output": "2,000,000 customers, mean wait 9.07\n",
+ "compiler": {
+  "revision": "f07472a535f165f939fdda774b1fcd4813e5c66d",
+  "version": "v0.4.0-alpha.3",
+  "status": "",
+  "binary_sha256": "57664c4c84b043001137b7b6a052fd1fa4d6f82e48dd565025877de4b26aa4bd"
+ },
+ "python": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]",
+ "llvm": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+ "host": {
+  "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "cpus": 4,
+  "pinned_cpu": 2
+ },
+ "environment": {
+  "PYTHONHASHSEED": "0",
+  "PYSTACHY_PROGRAM_CACHE": "0"
+ },
+ "aot_build_s": 1.527869684000052,
+ "executable_sha256": "07151c91f2919e78f36cf6ccbfa6fff23d135cf3ccf0dfdcb3a4264e48e863f1",
+ "executable_bytes": 137624,
+ "load_before": [
+  0.9189453125,
+  0.68798828125,
+  0.37451171875
+ ],
+ "load_after": [
+  0.92578125,
+  0.693359375,
+  0.3779296875
+ ],
+ "samples": {
+  "cpython": [
+   {
+    "wall_s": 0.7073807440000337,
+    "user_s": 0.673186,
+    "sys_s": 0.0,
+    "maxrss_kib": 15052,
+    "exit": 0,
+    "round": 0
+   },
+   {
+    "wall_s": 0.6855929079999896,
+    "user_s": 0.6794129999999999,
+    "sys_s": 0.004003,
+    "maxrss_kib": 14924,
+    "exit": 0,
+    "round": 1
+   },
+   {
+    "wall_s": 0.711821695000026,
+    "user_s": 0.6995859999999999,
+    "sys_s": 0.007948,
+    "maxrss_kib": 15064,
+    "exit": 0,
+    "round": 2
+   },
+   {
+    "wall_s": 0.6865181189999703,
+    "user_s": 0.674663,
+    "sys_s": 0.007901,
+    "maxrss_kib": 15056,
+    "exit": 0,
+    "round": 3
+   },
+   {
+    "wall_s": 0.6997974380000187,
+    "user_s": 0.687278,
+    "sys_s": 0.007972,
+    "maxrss_kib": 14948,
+    "exit": 0,
+    "round": 4
+   }
+  ],
+  "jit": [
+   {
+    "wall_s": 0.2669396680000773,
+    "user_s": 0.246529,
+    "sys_s": 0.015519999999999999,
+    "maxrss_kib": 64720,
+    "exit": 0,
+    "round": 0
+   },
+   {
+    "wall_s": 0.265490575000058,
+    "user_s": 0.23521299999999998,
+    "sys_s": 0.027452999999999998,
+    "maxrss_kib": 64816,
+    "exit": 0,
+    "round": 1
+   },
+   {
+    "wall_s": 0.2716705749999164,
+    "user_s": 0.24831299999999998,
+    "sys_s": 0.019421,
+    "maxrss_kib": 64776,
+    "exit": 0,
+    "round": 2
+   },
+   {
+    "wall_s": 0.2584350759999552,
+    "user_s": 0.24098399999999998,
+    "sys_s": 0.015827,
+    "maxrss_kib": 64840,
+    "exit": 0,
+    "round": 3
+   },
+   {
+    "wall_s": 0.26213554399998884,
+    "user_s": 0.230476,
+    "sys_s": 0.027510999999999997,
+    "maxrss_kib": 64804,
+    "exit": 0,
+    "round": 4
+   }
+  ],
+  "aot": [
+   {
+    "wall_s": 0.08832698200001232,
+    "user_s": 0.086962,
+    "sys_s": 0.0,
+    "maxrss_kib": 11276,
+    "exit": 0,
+    "round": 0
+   },
+   {
+    "wall_s": 0.09217387500007135,
+    "user_s": 0.09041099999999999,
+    "sys_s": 0.0,
+    "maxrss_kib": 11276,
+    "exit": 0,
+    "round": 1
+   },
+   {
+    "wall_s": 0.09114526600001227,
+    "user_s": 0.08637,
+    "sys_s": 0.003933,
+    "maxrss_kib": 11284,
+    "exit": 0,
+    "round": 2
+   },
+   {
+    "wall_s": 0.08444671199993081,
+    "user_s": 0.08356899999999999,
+    "sys_s": 0.0,
+    "maxrss_kib": 11288,
+    "exit": 0,
+    "round": 3
+   },
+   {
+    "wall_s": 0.08711060999996789,
+    "user_s": 0.086406,
+    "sys_s": 0.0,
+    "maxrss_kib": 11288,
+    "exit": 0,
+    "round": 4
+   }
+  ]
+ },
+ "summary": {
+  "cpython": {
+   "median_wall_s": 0.6997974380000187,
+   "min_wall_s": 0.6855929079999896,
+   "max_wall_s": 0.711821695000026,
+   "median_maxrss_mib": 14.69921875,
+   "min_maxrss_mib": 14.57421875,
+   "max_maxrss_mib": 14.7109375
+  },
+  "jit": {
+   "median_wall_s": 0.265490575000058,
+   "min_wall_s": 0.2584350759999552,
+   "max_wall_s": 0.2716705749999164,
+   "median_maxrss_mib": 63.28515625,
+   "min_maxrss_mib": 63.203125,
+   "max_maxrss_mib": 63.3203125
+  },
+  "aot": {
+   "median_wall_s": 0.08832698200001232,
+   "min_wall_s": 0.08444671199993081,
+   "max_wall_s": 0.09217387500007135,
+   "median_maxrss_mib": 11.01953125,
+   "min_maxrss_mib": 11.01171875,
+   "max_maxrss_mib": 11.0234375
+  },
+  "cpython_over_aot_wall": 7.922804811783573,
+  "cpython_over_jit_wall": 2.6358654652801357,
+  "cpython_over_aot_maxrss": 1.3339241403757534
+ },
+ "aot_gc_stats": {
+  "record": {
+   "wall_s": 0.10181516099999044,
+   "user_s": 0.098857,
+   "sys_s": 0.0,
+   "maxrss_kib": 11288,
+   "exit": 0
+  },
+  "stderr": "gc: 0 collections, 0.0 ms; heap peak 0.7 MiB; live 0.0 MiB at the last\n"
+ },
+ "status": "ok",
+ "recorded_date": "2026-11-11",
+ "note": "the compiler, runtime and library sources of the measured commit equal those of the v0.4.0-alpha.3 release commit c5cebb8bdeb71e7e099b48e4400119dd1e5b29e2; the source is the first program of README.md"
+}

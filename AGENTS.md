@@ -7,7 +7,7 @@ Keep this root guide at or below **28 KiB** (`test "$(wc -c < AGENTS.md)" -le 28
 count nested guidance too. Leave headroom and read linked details as needed; do not rely
 on raised local limits or another automatically imported file to evade the budget.
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for submission policy, DCO sign-offs and
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rights and
 AI-assistance disclosure. Keep those rules there; this guide covers development workflow.
 
 The ground rule ([#409](https://github.com/den-run-ai/pystachy/issues/409)): never change
@@ -99,7 +99,7 @@ make lint check-recordings
 | Harness/workflows/tools | Register unit tests in `lint.yml` or a CI-run make target; Lint runs `python3 -m unittest discover -s tools -p 'test_*verif*.py'` and other patterns. Update verify plans, CI matrix, `merge_verification.py` and [CI docs](docs/testing.md#continuous-integration) together; confirm steps ran. Pin actions by SHA; keep `persist-credentials: false` |
 | Syntax/diagnostics | `python3.13 -I tools/syntax_sweep.py --compiler ./pystachy <paths>`; valid boundaries and rejections |
 | Ports/performance | `make port-check` or affected checks; benchmark correctness before timings. Commit pristine upstream before marked edits; `ports/THIRD_PARTY_NOTICES` must equal the root copy |
-| Docs only | Check links, commands, byte budget and `git diff --check`. Docs-only PRs run Verification, Lint, submission format and fork DCO. Disclose unrun runtime suites. |
+| Docs only | Check links, commands, byte budget and `git diff --check`. Docs-only PRs run Verification, Lint and submission format. Disclose unrun runtime suites. |
 
 Coverage records execution, not correctness. Separate hosted compiler statements/branches
 from native C runtime coverage; neither measures `runtime.py` or every native compiler
@@ -306,7 +306,7 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 - Distinguish queued, running, failed, cancelled/skipped and `action_required` runs.
   No jobs can mean pending fork-workflow approval. Do not bypass approvals or cancel
   other sessions' useful runs. Integration branches must preserve fork provenance and
-  do not waive DCO or review before execution
+  do not waive review before execution
   ([#659](https://github.com/den-run-ai/pystachy/pull/659),
   [#665](https://github.com/den-run-ai/pystachy/pull/665)).
 - Codex review triggers on opening/readying a PR or `@codex review`, not later pushes.
@@ -315,12 +315,12 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
   each finding; fix real, proportionate ones with a regression and name the commit,
   or decline with reasons, then resolve the thread. Arrange fresh review through
   authorized means.
-- Follow CONTRIBUTING.md for DCO. An agent cannot certify for someone: add a signer
-  line or `Signed-off-by` only at that person's request, never anyone else's. Disclose
-  missing certification ([#673](https://github.com/den-run-ai/pystachy/pull/673)).
+- Preserve source licenses and provenance; see
+  [contribution rights](CONTRIBUTING.md#contribution-rights).
+  Never claim another person's review or authorization.
 - Add no tool attribution trailers, `Co-Authored-By`, session links or generated-by
-  footers to commits, PR bodies or comments. Disclose substantive AI assistance once
-  in Change, per [CONTRIBUTING.md](CONTRIBUTING.md#ai-assistance-and-review).
+  footers to commits, PR bodies or comments. Disclose substantive AI assistance in Change or a PR comment, per
+  [CONTRIBUTING.md](CONTRIBUTING.md#ai-assistance-and-review).
 - Follow the [submission format](CONTRIBUTING.md#issues-and-pull-requests): titles
   <=64 characters, bodies <=200 words, three filled sections, no checklist.
   Give the problem, bounded outcome and acceptance/validation; link code and evidence
