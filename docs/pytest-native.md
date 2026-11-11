@@ -16,11 +16,20 @@ python3 tools/pytest_native.py path/to/tests --mode jit --compare
 python3 tools/pytest_native.py path/to/tests --mode aot --compare --json build/test-results.json
 ```
 
-`--compare` runs the **original** files in real CPython pytest, independently of
+Oracle comparison is enabled by default; `--compare` also selects it explicitly.
+It runs the **original** files in real CPython pytest, independently of
 the transformed programs. It compares collected test IDs/order and every
 setup/call/teardown outcome. It does not claim exact traceback, warning, failure
 message or captured-output parity. Both executions must have equivalent external
 inputs; tests which modify persistent external state need their own isolation.
+
+Use `--no-compare` only for repeated runs of previously qualified, unchanged inputs.
+The CLI prints `UNVERIFIED` and records `"qualification": "unverified"` in JSON
+when the oracle is disabled. Static collection cannot identify pytest behavior
+hidden in imported objects, such as an imported autouse fixture. Default comparison
+turns these omissions into errors; disabling it removes that check. The direct
+execution timings below and in the benchmark are measured **after** oracle
+qualification, without repeating comparison inside every timed execution.
 
 `--mode python` runs generated code under CPython and is useful for distinguishing
 collector/helper mistakes from native compiler behavior. `--compiler './pystachy'`
@@ -52,7 +61,8 @@ This hosted tool currently targets Linux and macOS.
 - `@pytest.mark.parametrize` with bounded static tables, optional literal string
   IDs and stacked parametrization. Values are evaluated once at module import;
   shared mutable values retain aliases across their cases.
-- Function-scoped return/yield fixtures, dependencies and literal `autouse`.
+- Function-scoped return/yield fixtures defined in the selected module,
+  dependencies and literal `autouse`.
   Repeated requests share one fixture value within a test. Teardown resumes yield
   fixtures in reverse setup order, including after a test fails or later fixture
   setup fails; one cleanup failure does not discard the remaining cleanup.
@@ -65,7 +75,9 @@ This hosted tool currently targets Linux and macOS.
 - Explicit per-source dynamic `Any` opt-in for supported open payloads. The runner
   itself stores metadata, statuses and exceptions in concrete types.
 
-Unsupported collection is an error, never an implicit skip. The collector rejects
+Unsupported source forms detected by the collector are errors, never implicit skips.
+Imported fixtures are unsupported; the default oracle checks their observable
+collection and phase effects. The collector rejects
 test classes, async/generator tests, xunit setup/teardown hooks, conftest files,
 pytest configuration, test packages, relative test imports, custom decorators,
 plugins, dynamic test creation and unsupported pytest APIs. It also rejects
