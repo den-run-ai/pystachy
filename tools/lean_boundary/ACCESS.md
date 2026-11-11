@@ -55,10 +55,10 @@ wrapping one only where the facts show it fits. A write to a field of a class ke
 values of the class's other fields, of any object, and no other field's: a base and a derived
 class may view one object differently.
 
-The build checks 31 examples by kernel reduction: ten shapes the compiler emits and 21
-corruptions that must fail: a signed test of a possibly negative index, a list write between a test and its read or in
-a range loop's body, a missing or weaker unpacking check, a lookup's missing-key branch, a dict
-write before an entry's reuse, an entry of one dict used with another, a reload across a write
+The build checks 33 examples by kernel reduction: 11 shapes the compiler emits and 22
+corruptions that must fail: a signed test of a possibly negative index, a list write between
+a test and its read or in a range loop's body, a missing or weaker unpacking check, a lookup's
+missing-key branch or an iteration's end, a dict write before an entry's reuse, an entry of one dict used with another, a reload across a write
 of another class's field or of the same field of any object, an unguarded join and facts
 assumed at entry or around a loop. `Audit.lean` checks the theorem's axioms as for the payload
 checker.
@@ -67,33 +67,38 @@ checker.
 
 The adapter reads the typed-after snapshot and emits a node for each operation:
 
-- Private slots and module globals that the function only loads and stores directly are
-  values; a load copies one and a store assigns it. A global may change wherever an operation
-  may write globals. An object field's load and store read and write its cell, named by the
-  object's register and the field's class and index. A field address's operands, like a test's,
-  are SSA values, unchanged wherever its result is used.
-- `list.len`, and a word load at the address of a register the IR types as a native list
-  (a `List` is `{len, cap, a}`), read a length. `num.cmp` and `int.ucmp` of ints, and
-  `ptr.cmp`, become tests of their branch or `check`. `scalar.bin` adds a constant; an `ovf`
-  whose flag only its block's terminator tests splits its block's rest into the path where the
-  sum fits and the path where it overflows.
+- Private slots and module globals that the function only loads and stores directly are values;
+  a load copies one and a store assigns it. A global may change wherever an operation may write
+  globals. An object field's load and store read and write its cell, named by the object's
+  register and the field's class and index; a store of a constant or an unknown value writes
+  that field alone too. A field address's operands, like a test's, are SSA values, unchanged
+  wherever its result is used.
+- `list.len`, and a word load at the address of a register the IR types as a native list (a
+  `List` is `{len, cap, a}`), read a length. `num.cmp` and `int.ucmp` of ints, and `ptr.cmp`,
+  become tests of their branch or `check`. `scalar.bin` adds a constant; an `ovf` whose flag
+  only its block's terminator tests splits its block's rest into the path where the sum fits and
+  the path where it overflows.
 - `unpack_check(n, k)` continues only where `n == k`, and `unpack_ex_check(n, k)` only where
   `n >= k` (runtime.c raises `ValueError` otherwise). Lookups and iteration steps (`dict.find`,
-  `dict.int_find_any`, `dict.next`, `set.next` and their kin) return -1 or a live entry,
-  `dict.entry` and `dict.big_entry` a live entry or raise, and a write of an entry's value
-  (`dict.entry_set`) moves no entry; deleting one (`dict.entry_del`) is a dict write after it.
-- Every other operation defines its results with unknown values. What it may change comes from
-  its effects: a runtime operation's `RUNTIME` entry, with a possible user-code effect (`U?`)
-  resolved from its descriptor as the compiler does; a direct call's summary from the snapshot;
-  anything for an indirect call, an `init` or a generator resumption. A list write or user code
-  may change every list's length, except that `list.slice` writes only the new list it returns;
-  a dict write every dict's entries; an object write every field.
-- Edges are those of `check_lean_boundary.py`: terminator targets, an invoke's unwind edge,
-  each `check`'s error block and, from every point of a block a `try` statement covers, its
-  landing block. An operation's effects precede the exception edge from it.
+  `dict.int_find_any`, `dict.next`, `set.next` and their kin, and a dict comparison's lookups,
+  `dict.eq_find` and `dict.eq_pair_find`, which restart where a key's `__eq__` changes the
+  table) return -1 or a live entry; `dict.entry` and `dict.big_entry` a live entry or raise, as
+  `dict.big_put` returns the entry it finds or adds. A write of an entry's value
+  (`dict.entry_set`) moves no entry; deleting one (`dict.entry_del`) is a dict write after it. A
+  phi of -1 and of lookups of one dict, each of which only a jump separates from the phi, is
+  that dict's lookup there.
+- Every other operation defines its results with unknown values, and so does any other phi. What
+  it may change comes from its effects: a runtime operation's `RUNTIME` entry, with a possible
+  user-code effect (`U?`) resolved from its descriptor as the compiler does; a direct call's
+  summary from the snapshot; anything for an indirect call, an `init` or a generator resumption.
+  A list write or user code may change every list's length, except that `list.slice` writes only
+  the new list it returns; a dict write every dict's entries; an object write every field.
+- Edges are those of `check_lean_boundary.py`: terminator targets, an invoke's unwind edge, each
+  `check`'s error block and, from every point of a block a `try` statement covers, its landing
+  block. An operation's effects precede the exception edge from it.
 - Where a generator suspends (`gen.start`, `gen.yield`), its caller runs: any list, dict, field
-  or global may change, though not the generator's own slots, and a `throw()` or `close()` raises
-  there.
+  or global may change, though not the generator's own slots, and a `throw()` or `close()`
+  raises there.
 
 The adapter suggests facts by a forward analysis with the same rules, then lists at each point
 only the facts that an access needs, directly or through the facts that justify them. A node

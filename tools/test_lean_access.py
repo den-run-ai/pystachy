@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 import check_lean_access as access
 from check_lean_access import Unsupported, check_all, explain, normalize_snapshot
@@ -141,6 +142,32 @@ class ProvedCheckerTests(SnapshotFixture):
         self.assertEqual(fields["totals"]["proved_accesses"], 14)
         self.assertEqual(fields["totals"]["accesses"], 14)
 
+    def test_identical_functions_reuse_their_verdicts(self):
+        # (a corpus's programs share library functions: their normalized nodes and the checker,
+        # not their names, key the reuse, so a changed function is checked again)
+        verdicts = {}
+        calls = []
+        real = access.run_checker
+
+        def counted(*arguments, **keywords):
+            calls.append(arguments)
+            return real(*arguments, **keywords)
+
+        with mock.patch.object(access, "run_checker", counted):
+            first, _ = check_all(self.snapshot, CHECKER, verdicts)
+            checked = len(calls)
+            self.assertGreater(checked, 0)
+            second, _ = check_all(self.snapshot, CHECKER, verdicts)
+            self.assertEqual(len(calls), checked)
+            self.assertEqual(first["functions"], second["functions"])
+            snapshot, function = self.selected("@f.total")
+            block, index = self.find(function, "list.load")
+            listed = block["operations"][index]["operands"][0]["value"]
+            block["operations"].insert(index, op("rt", [(listed, "list[int]")], text="list.clear"))
+            third, _ = check_all(snapshot, CHECKER, verdicts)
+            self.assertEqual(len(calls), checked + 1)
+            self.assertEqual(third["status"], "rejected")
+
     def test_a_list_write_between_the_loop_test_and_the_read_rejects(self):
         snapshot, function = self.selected("@f.total")
         block, index = self.find(function, "list.load")
@@ -206,20 +233,55 @@ class ProvedCheckerTests(SnapshotFixture):
             op("mem.store", [("%d.2", "*dict[str,int]"), ("%t900", "dict[str,int]")])]
         self.assertFalse(self.verdict(snapshot, "@f.counted"))
 
+    def test_a_lookup_or_minus_one_through_a_phi_keeps_its_entry(self):
+        # (e = -1 if not d else lookup(d, k), as dynamic Any's int-key lookups compile: the phi
+        # holds -1 or the lookup's entry, still live where nothing runs between them)
+        def through_phi(between=(), other="-1"):
+            snapshot, function = self.selected("@f.counted")
+            entry = function["blocks"][0]
+            at = next(index for index, operation in enumerate(entry["operations"])
+                      if operation["text"] == "dict.find")
+            find, rest = entry["operations"][at], entry["operations"][at + 1:]
+            found = f"%t{find['results'][0]}"
+            table = find["operands"][0]["value"]
+            entry["operations"][at:] = [
+                op("mach.load", [(table, "%ptr")], [900], typ="int"),
+                op("num.cmp", [("%t900", "int"), ("0", "int")], [901], text="==", typ="bool"),
+                op("cbr", [("%t901", "bool")], targets=["Lphi", "Llook"])]
+            phi = op("phi", [(other, "int"), (found, "int")], [902], typ="int", targets=[entry["label"], "Llook"])
+            for operation in rest + [operation for block in function["blocks"][1:]
+                                     for operation in block["operations"]]:
+                for operand in operation["operands"]:
+                    if operand["value"] == found:
+                        operand["value"] = "%t902"
+            function["blocks"][1:1] = [
+                {"label": "Llook", "handler": "", "operations": [find, *between, op("br", targets=["Lphi"])]},
+                {"label": "Lphi", "handler": "", "operations": [phi, *rest]}]
+            return self.verdict(snapshot, "@f.counted"), table
+
+        accepted, table = through_phi()
+        self.assertTrue(accepted)
+        self.assertFalse(through_phi(between=[op("rt", [(table, "dict[str,int]")], text="dict.clear")])[0])
+        self.assertFalse(through_phi(other="0")[0])
+
     def test_another_field_of_the_class_keeps_the_dict_but_an_aliasing_view_does_not(self):
         self.assertTrue(self.verdict(self.snapshot, "@m.Cache.lookup"))
-        for aliasing in ("the dict's own field", "another class's view"):
-            snapshot, function = self.selected("@m.Cache.lookup")
-            # (self.hits += 1 stores through a field address: make it the dict's field, or a
-            # field of another class, which may view the same object)
-            store = next(operation for block in function["blocks"] for operation in block["operations"]
-                         if operation["op"] == "mem.store" and operation["operands"][0]["value"].startswith("%t"))
-            field = self.definition(function, store["operands"][0]["value"])
-            if aliasing == "the dict's own field":
-                field["immediate"] = 1
-            else:
-                field["operands"][0]["type"] = "object"
-            self.assertFalse(self.verdict(snapshot, "@m.Cache.lookup"), aliasing)
+        for aliasing in (None, "the dict's own field", "another class's view"):
+            for constant in (False, True):
+                snapshot, function = self.selected("@m.Cache.lookup")
+                # (self.hits += 1 stores through a field address: make it the dict's field, or a
+                # field of another class, which may view the same object; a constant stored, as
+                # where numeric identity clears a field's companion, writes that field alone too)
+                store = next(operation for block in function["blocks"] for operation in block["operations"]
+                             if operation["op"] == "mem.store" and operation["operands"][0]["value"].startswith("%t"))
+                field = self.definition(function, store["operands"][0]["value"])
+                if constant:
+                    store["operands"][1]["value"] = "0"
+                if aliasing == "the dict's own field":
+                    field["immediate"] = 1
+                elif aliasing == "another class's view":
+                    field["operands"][0]["type"] = "object"
+                self.assertEqual(self.verdict(snapshot, "@m.Cache.lookup"), aliasing is None, (aliasing, constant))
 
     def test_a_global_write_between_reloads_rejects(self):
         # (TABLE = {} after the lookup and before its reload: the entry belongs to another dict)

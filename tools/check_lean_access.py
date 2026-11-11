@@ -48,10 +48,12 @@ MAX_I64 = 2 ** 63 - 1
 ACCESS_RT = {"dict.val", "dict.key", "dict.big_val", "dict.big_key", "dict.entry_set", "dict.entry_set_big",
              "dict.entry_del", "set.key", "set.big_key"}
 # Lookups and iteration steps that return -1 or a live entry, and lookups that return a live
-# entry or raise KeyError (runtime.c).
+# entry or raise (runtime.c). A dict comparison's lookup of one dict's key in the other
+# (dict.eq_find, dict.eq_pair_find) runs the keys' __eq__ and restarts when it changes the table.
 FINDS = {"dict.find", "dict.big_find", "dict.find_int_nobox", "dict.int_find_any", "dict.next", "dict.prev",
-         "dict.eq_next", "set.next", "set.int_find_any"}
-ENTRIES = {"dict.entry", "dict.big_entry"}
+         "dict.eq_next", "dict.eq_find", "dict.eq_pair_find", "set.next", "set.int_find_any"}
+# dict.big_put finds or adds a promoting int key: its entry, live.
+ENTRIES = {"dict.entry", "dict.big_entry", "dict.big_put"}
 # Runtime operations whose list writes touch only the new list they return (runtime.c): no
 # existing list's length changes. A slice records missing item identities of its source too,
 # which leaves its length alone.
@@ -143,6 +145,11 @@ def mentions(fact):
     if fact[0] == "cell":
         return (fact[1], fact[4])
     return tuple(part for part in fact[1:] if isinstance(part, str))
+
+
+@functools.lru_cache(maxsize=1 << 16)
+def mention_set(fact):
+    return frozenset(mentions(fact))
 
 
 def rename(fact, x, y):
@@ -380,11 +387,11 @@ def prune(facts, live):
     kept = set()
     names = set()
     for fact in facts:
-        parts = mentions(fact)
-        if not parts or any(part in live for part in parts):
+        parts = mention_set(fact)
+        if not parts or not parts.isdisjoint(live):
             kept.add(fact)
-            names.update(parts)
-    return [fact for fact in facts if fact in kept or all(part in names for part in mentions(fact))]
+            names |= parts
+    return [fact for fact in facts if fact in kept or mention_set(fact) <= names]
 
 
 def safe(facts, node):
@@ -596,7 +603,11 @@ def infer_certificate(nodes, entry=0):
             if len(predecessors[target]) > 1:
                 # (a join of jumps: what every visited one knows)
                 incoming = prune(start, live[target])
-                merged = incoming if known[target] is None else [f for f in known[target] if f in incoming]
+                if known[target] is None:
+                    merged = incoming
+                else:
+                    arriving = set(incoming)
+                    merged = [f for f in known[target] if f in arriving]
                 justification = ([], {})
             else:
                 relevant = (live[target] | set().union(*(set(mentions(fact)) for fact in start))) if new else live[target]
@@ -779,7 +790,21 @@ def check_dominance(blocks, block_edges, sites):
 
 
 def normalize_snapshot(snapshot, function, effects_of=None):
-    """The access-model program of one function and its counts."""
+    """The access-model program of one function, with an inferred certificate, and its counts."""
+    return certify(*normalize_program(snapshot, function, effects_of))
+
+
+def certify(nodes, metadata):
+    """The candidate of normalized nodes: the program and an inferred certificate."""
+    certificate, _ = infer_certificate(nodes)
+    unproved = [index for index, node in enumerate(nodes)
+                if node["op"] in ("load", "value") and not safe([tuple(f) for f in certificate[index]], node)]
+    return ({"schema_version": 1, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate},
+            dict(metadata, unproved=len(unproved)))
+
+
+def normalize_program(snapshot, function, effects_of=None):
+    """The access-model nodes of one function, entry first, and its counts."""
     check_header(snapshot)
     fn = function_record(snapshot, function)
     symbol = name(fn.get("symbol"), "function symbol")
@@ -852,6 +877,10 @@ def normalize_snapshot(snapshot, function, effects_of=None):
                 pending.append(target)
     live_blocks = [block for block in blocks if block["label"] in reached]
     check_dominance(live_blocks, block_edges, sites)
+    into = {}   # (each reached block's predecessors, once per edge)
+    for block in live_blocks:
+        for target in block_edges(block):
+            into.setdefault(target, []).append(block["label"])
 
     # A slot is private when its address reaches only loads and stores of it.
     escaped = set()
@@ -969,12 +998,16 @@ def normalize_snapshot(snapshot, function, effects_of=None):
             return [], [{"op": "read_field", "dst": f"%t{op['results'][0]}", "object": obj, "class": cls,
                          "index": index}]
         if kind == "mem.store" and len(values) == 2 and values[0] in field_of:
-            # (a field's new value: a register's, else an unknown one, where any field may change)
+            # (a field's new value: a register's, else a literal or an unknown value held by a
+            # name of the store's own, its address and "=", which no register's name contains)
             obj, cls, index = field_of[values[0]]
             source = operand_of(values[1])
             if isinstance(source, str) and source.startswith("%"):
                 return [], [{"op": "write_field", "object": obj, "class": cls, "index": index, "value": source}]
-            return kill_nodes(False, False, False, True), []
+            stored = values[0] + "="
+            held = ({"op": "lit", "dst": stored, "value": source} if isinstance(source, int)
+                    else {"op": "havoc", "dst": stored})
+            return [], [held, {"op": "write_field", "object": obj, "class": cls, "index": index, "value": stored}]
         if kind == "mem.store":
             # (a global is no list, dict or field; any other address may be)
             heap = not values[0].startswith("@")
@@ -1042,6 +1075,42 @@ def normalize_snapshot(snapshot, function, effects_of=None):
             return {"cmp": "eq", "a": n, "b": k}
         return {"cmp": "sle", "a": k, "b": n}
 
+    def phi_lookup(op, label):
+        # A phi of -1 and of lookups' results (-1 or a live entry) of one dict is -1 or an entry
+        # live now, as a lookup of that dict at the phi may return, where nothing runs between
+        # each lookup and the phi: the lookup is its block's last operation before a jump here,
+        # or an invoke whose normal edge is a block, reached only from it, of only that jump.
+        # The dict, or None.
+        if (len(op["results"]) != 1 or op["type"] != "int" or not op["operands"]
+                or len(op["operands"]) != len(op["targets"])):
+            return None
+        table = None
+        for operand, source in zip(op["operands"], op["targets"]):
+            value = operand_of(operand["value"])
+            if value == -1:
+                continue
+            if not isinstance(value, str) or value not in definitions:
+                return None
+            lookup, (site, offset) = definitions[value], sites[value]
+            if lookup["op"] != "rt" or lookup["text"] not in FINDS or f"%t{lookup['results'][0]}" != value:
+                return None
+            operations = by_label[site]["operations"]
+            if site == source:
+                direct = (offset == len(operations) - 2 and operations[-1]["op"] == "br"
+                          and operations[-1]["targets"] == [label])
+            else:
+                forward = by_label.get(source, {}).get("operations", [])
+                direct = (offset == len(operations) - 1 and lookup["targets"][:1] == [source]
+                          and len(forward) == 1 and forward[0]["op"] == "br" and forward[0]["targets"] == [label]
+                          and into.get(source) == [site])
+            if not direct:
+                return None
+            looked = operand_of(lookup["operands"][0]["value"]) if lookup["operands"] else None
+            if not isinstance(looked, str) or table not in (None, looked):
+                return None
+            table = looked
+        return table
+
     def sequence(block, start, known):
         """Emit block's operations from start, with the overflow flags known on this path; the
         index of the first node."""
@@ -1075,7 +1144,11 @@ def normalize_snapshot(snapshot, function, effects_of=None):
             last = position == len(operations) - 1
             kind, values = op["op"], [operand["value"] for operand in op["operands"]]
             if kind == "phi":
-                run(havocs(op))
+                looked = phi_lookup(op, block["label"])
+                if looked is not None:
+                    run([{"op": "find", "dst": f"%t{op['results'][0]}", "dict": looked}])
+                else:
+                    run(havocs(op))
                 continue
             if not last and kind == "ovf":
                 flag = f"%t{op['results'][2]}" if len(op["results"]) == 3 else ""
@@ -1191,16 +1264,11 @@ def normalize_snapshot(snapshot, function, effects_of=None):
                 nodes[index][field] = emit({"op": "jump", "next": target})
     entry = starts[entry_label]
     candidate_nodes = relocate(nodes, entry)
-    certificate, known = infer_certificate(candidate_nodes)
-    program = {"entry": 0, "nodes": candidate_nodes}
-    unproved = [index for index, node in enumerate(candidate_nodes)
-                if node["op"] in ("load", "value") and not safe([tuple(f) for f in certificate[index]], node)]
     metadata = {"function": symbol, "nodes": len(candidate_nodes),
                 "accesses": sum(node["op"] in ("load", "value") for node in candidate_nodes),
                 "list_loads": accesses["list.load"],
-                "dict_entries": sum(count for key, count in accesses.items() if key != "list.load"),
-                "unproved": len(unproved)}
-    return {"schema_version": 1, "program": program, "certificate": certificate}, metadata
+                "dict_entries": sum(count for key, count in accesses.items() if key != "list.load")}
+    return candidate_nodes, metadata
 
 
 def relocate(nodes, entry):
@@ -1262,22 +1330,36 @@ def access_functions(snapshot):
     return found
 
 
-def check_all(snapshot, checker=DEFAULT_CHECKER):
+def check_all(snapshot, checker=DEFAULT_CHECKER, verdicts=None):
     """Check every function of the snapshot with an unchecked access. The report's fields and
-    the exit code of the worst result."""
+    the exit code of the worst result. verdicts, a dict, keeps each checked result by its
+    normalized nodes and checker, so that another snapshot's identical function (a library's,
+    in a corpus) reuses it: inference and Lean see only those nodes."""
     check_header(snapshot)
     effects_of = summaries(snapshot)
     records = []
     for symbol, count in access_functions(snapshot):
         record = {"function": symbol, "accesses": count}
         try:
-            candidate, metadata = normalize_snapshot(snapshot, symbol, effects_of)
-            encoded = encode(candidate)
-            record.update(nodes=metadata["nodes"], unproved=metadata["unproved"],
-                          candidate_sha256=hashlib.sha256(encoded.encode()).hexdigest())
-            record["status"] = "accepted" if run_checker(checker, encoded, metadata) else "rejected"
-            if record["status"] == "rejected":
-                record["message"] = (explain(candidate) or "")[:1000]
+            nodes, metadata = normalize_program(snapshot, symbol, effects_of)
+            key = cached = None
+            if verdicts is not None:
+                key = (str(Path(checker).resolve()), hashlib.sha256(
+                    json.dumps(nodes, sort_keys=True, separators=(",", ":")).encode()).hexdigest())
+                cached = verdicts.get(key)
+            if cached is not None:
+                record.update(cached)
+            else:
+                candidate, metadata = certify(nodes, metadata)
+                encoded = encode(candidate)
+                record.update(nodes=metadata["nodes"], unproved=metadata["unproved"],
+                              candidate_sha256=hashlib.sha256(encoded.encode()).hexdigest())
+                record["status"] = "accepted" if run_checker(checker, encoded, metadata) else "rejected"
+                if record["status"] == "rejected":
+                    record["message"] = (explain(candidate) or "")[:1000]
+                if key is not None:
+                    verdicts[key] = {field: record[field] for field in
+                                     ("nodes", "unproved", "candidate_sha256", "status", "message") if field in record}
         except Unsupported as error:
             record.update(status="unsupported", message=str(error))
         except (OSError, ValueError, subprocess.SubprocessError, RecursionError) as error:
