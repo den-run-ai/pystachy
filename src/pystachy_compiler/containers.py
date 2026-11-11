@@ -213,6 +213,8 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
                 et = v.t
     if not given and is_tuple(jt):
         et = self.none_items(jt)  # (None among the strs of a tuple's item: str | None)
+    if not given and self.class_join(et, jt, "") != "":
+        et = jt  # (objects of classes of one hierarchy: of their nearest common base)
     if et == "":
         self.err("cannot infer the type of a set of None")
     if self.elem_problem(et) != "":
