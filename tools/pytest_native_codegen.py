@@ -2,7 +2,8 @@
 
 Collection reads syntax, never imports or executes test modules. Generated modules
 retain their original top-level statements, fixtures and test bodies. Only known
-pytest declarations are replaced. Unknown collection behavior is an error.
+pytest declarations are replaced. Unknown source declarations are an error; the
+CLI's independent oracle detects collection behavior hidden in imported symbols.
 """
 
 import ast
@@ -165,7 +166,7 @@ class Generator:
                 prelude.append(f"{variable} = {ast.unparse(expression)}")
                 variables.append(variable)
             result.append(variables)
-            generated_ids.append(ids[index] if ids is not None else "-".join(
+            generated_ids.append(self.parameter_id("", ids[index], index) if ids is not None else "-".join(
                 self.parameter_id(name, item, index) for name, item in zip(names, items)))
         counts = {value: generated_ids.count(value) for value in generated_ids}
         used = set(generated_ids)

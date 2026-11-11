@@ -184,6 +184,30 @@ class ReportTests(TemporarySuite):
 
 
 class CollectionControls(TemporarySuite):
+    @unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
+    def test_default_oracle_rejects_imported_autouse_fixture_omission(self):
+        self.source("import pytest\n@pytest.fixture(autouse=True)\ndef guard():\n    assert False\n",
+                    "helper.py")
+        path = self.source("from helper import guard\ndef test_local():\n    pass\n")
+        evidence = self.root / "result.json"
+        arguments = [str(path), "--root", str(self.root), "--mode", "python",
+                     "--work-dir", str(self.work), "--json", str(evidence)]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            status = runner.main(arguments)
+        report = json.loads(evidence.read_text())
+        self.assertEqual(status, 2)
+        self.assertEqual(report["qualification"], "pytest-mismatch")
+        self.assertEqual(report["oracle"]["exit_code"], 1)
+        self.assertIn("setup/call/teardown outcomes differ from pytest", report["differences"])
+
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as error:
+            status = runner.main([*arguments, "--no-compare"])
+        report = json.loads(evidence.read_text())
+        self.assertEqual(status, 0)
+        self.assertEqual(report["qualification"], "unverified")
+        self.assertIsNone(report["oracle"])
+        self.assertIn("UNVERIFIED", error.getvalue())
+
     def test_imported_test_classes_cannot_disappear(self):
         self.source("class TestImported:\n    def test_failure(self):\n        assert False\n", "helper.py")
         for statement in ("from helper import TestImported", "from helper import TestImported as TestAlias",
@@ -398,6 +422,15 @@ class OriginalPytestParity(TemporarySuite):
 
     def test_cached_fixtures_alias_and_lifo_cleanup(self):
         self.check_parity(LIFECYCLE)
+
+    def test_explicit_parameter_ids_escape_unicode_and_controls(self):
+        self.check_parity(r'''
+            import pytest
+            @pytest.mark.parametrize("value", [1, 2, 3, 4, 5],
+                                     ids=["café", "café", "café0", "line\nfeed", "☃"])
+            def test_value(value):
+                assert value > 0
+        ''')
 
     def test_partial_setup_still_cleans_successful_fixtures(self):
         self.check_parity(PARTIAL_SETUP, "test-failed")
