@@ -121,6 +121,27 @@ also fall: an executable that builds a list of 4,194,305 integers peaked at 34.2
 RSS, against 171.2 MiB under CPython. The [performance guide](https://github.com/den-run-ai/pystachy/blob/main/docs/performance.md)
 has the full table, startup and memory costs, and reproduction commands.
 
+## How it works
+
+Pystachy compiles the whole program before it runs, including the library modules
+it imports; there is no interpreter fallback. The frontend checks and infers types,
+specializes functions and builds a [typed IR](https://github.com/den-run-ai/pystachy/blob/main/docs/typed-ir.md), where Pystachy's own
+optimizations run before LLVM's. `run`, `build` and `ext` share that pipeline and
+differ only in the last step. The [compiler internals](https://github.com/den-run-ai/pystachy/blob/main/docs/internals.md#compilation-pipeline)
+follow a program through each stage.
+
+```mermaid
+flowchart LR
+    py["Python source<br/>and library modules"]:::source --> ir["Pystachy frontend<br/>type inference, typed IR"]:::compiler --> llvm["LLVM"]:::backend
+    llvm --> run["pystachy run<br/>JIT"]:::output
+    llvm --> build["pystachy build<br/>native executable"]:::output
+    llvm --> ext["pystachy ext<br/>CPython extension"]:::output
+    classDef source fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef compiler fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef backend fill:#ede9fe,stroke:#7c3aed,color:#4c1d95
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#14532d
+```
+
 ## Compatibility
 
 Pystachy is experimental and compiles a subset of Python. It rejects most
