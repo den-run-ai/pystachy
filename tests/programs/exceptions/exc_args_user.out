@@ -1,0 +1,7 @@
+initial (1000,)
+(1000, 'detail') True True
+True (1000, 'detail')
+True (2000,) (1000, 'detail')
+('plain', 4) PlainError('plain', 4)
+('plain', 4) True
+[exit 0]

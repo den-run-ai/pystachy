@@ -7,6 +7,8 @@ CPython writes in C. All of them remain valid Python. A few modules, such as `sy
 it works: each module supports its own subset, which compiles with the program that uses it.
 Native `zip`, `map`, `filter`, `enumerate` and `reversed` values can be passed directly to
 iterator consumers such as `itertools.islice`; their source and item types stay concrete.
+Ports using dynamic `Any` can inspect [bounded exception payloads](language/semantics.md#exception-payloads)
+without reconstructing argument values from exception text.
 
 | Question | Reference |
 |---|---|

@@ -18,7 +18,7 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedExceptionArgs, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
@@ -4022,7 +4022,7 @@ def dyn_prepare_factory(self, c: str) -> None:
         # including a first inference-only retry before a later body error.
         self.newhints = hints
         self.newx = declined
-        if not isinstance(retry, NeedSliceEH) and self.idevent == "" and len(self.newcv) == 0:
+        if not isinstance(retry, NeedSliceEH) and not isinstance(retry, NeedExceptionArgs) and self.idevent == "" and len(self.newcv) == 0:
             self.newx[attempt] = True
         raise
     self.xtry = previous
@@ -4903,7 +4903,7 @@ def dyn_packed_invoke(self, f: FnInfo, fm: FnInfo, pre: list[Val], pos: Val, kws
         self.newhints = hints
         failed = attempt in self.newx
         self.newx = declined
-        if not isinstance(retry, NeedSliceEH) and self.idevent == "" and len(self.newcv) == 0:
+        if not isinstance(retry, NeedSliceEH) and not isinstance(retry, NeedExceptionArgs) and self.idevent == "" and len(self.newcv) == 0:
             if len(nested) > 0 and not failed:
                 # A nested protocol may install its own unsupported arm and
                 # leave this otherwise usable adapter intact on the next pass.

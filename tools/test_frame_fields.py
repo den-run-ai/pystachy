@@ -79,7 +79,11 @@ PROGRAM = """
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
     idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
+    excargs
 """.split()
+# excargs is a pass-wide representation choice installed by the driver before lowering.
+# A payload read (including in dry compilation) requests a fresh-Gen retry; nested functions
+# all use the same choice, and no function or operation changes it within the pass.
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.
 # Each with its reason, in one line.

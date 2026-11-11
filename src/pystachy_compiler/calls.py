@@ -88,6 +88,12 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         if r is not None:
             return r
     if len([a for a in args if a.kind == "starred" or a.kind == "dstar"]) > 0:
+        if self.excargs:
+            ep = [a for a in args if a.kind != "kw"]
+            ec = f.kind == "name" and ((f.s in EXCEPTIONS and not self.bound(f.s)) or (f.s in self.classes and self.classes[f.s].exc != "") or self.ltype.get(f.s, self.gtypes.get(f.s, "")) == "exctype")
+            si = f.kind == "attr" and f.s == "__init__" and f.kids[0].kind == "call" and f.kids[0].kids[0].kind == "name" and f.kids[0].kids[0].s == "super" and self.curfn.cls in self.classes and self.classes[self.curfn.cls].exc != ""
+            if (ec or si) and len(ep) == 1 and ep[0].kind == "starred" and ep[0].kids[0].kind not in ["list", "tuple"]:
+                self.err("retaining a sole unpacked exception tuple is not supported: pass its items explicitly")
         return self.star_call(n, want, resultsoft, typeargs)
     if f.kind == "name" and f.s not in self.ltype:
         self.read_ahead(f.s)

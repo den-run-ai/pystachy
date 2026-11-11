@@ -11,7 +11,7 @@ from src.pystachy_compiler.analysis import (
     other_bindings,
     reads,
 )
-from src.pystachy_compiler.diagnostics import dynamic_program, shown
+from src.pystachy_compiler.diagnostics import NeedExceptionArgs, dynamic_program, shown
 from src.pystachy_compiler.ir import Data, Exit, FnInfo, Ins, Try, Val, tmpname
 from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.specs import (
@@ -237,8 +237,8 @@ def gen_try_(self, n: Node) -> None:
 def gen_assert_fails(self, n: Node) -> None:
     # the AssertionError of assert statement n, whose test is false: with its message
     v = self.expr(n.kids[1], "") if len(n.kids) > 1 else Val(self.sconst(""), "str")
-    if self.eh and v.t != "str":
-        self.throw(self.exc_value("AssertionError", [v]))  # (repr(e) shows the repr of v)
+    if self.eh and (self.excargs or v.t != "str"):
+        self.throw(self.exc_value("AssertionError", [v] if len(n.kids) > 1 else []))  # (repr(e) shows the repr of v)
     else:
         self.raise_("AssertionError", self.to_str(v).v)
 
@@ -539,15 +539,17 @@ def gen_exc_vals(self, args: list[Node], name: str = "") -> list[Val]:
             self.expr(a.kids[0], "")
         elif a.kind == "starred" and (a.kids[0].kind == "list" or a.kids[0].kind == "tuple") and len([x for x in a.kids[0].kids if x.kind == "starred"]) == 0:
             for x in a.kids[0].kids:
-                vals.append(self.expr(x, ""))  # (*[a, b] of a display: its items)
+                vals.append(payload_arg(self, self.expr(x, "")))  # (*[a, b] of a display: its items)
         elif a.kind == "starred":
+            if self.excargs and len([x for x in args if x.kind != "kw"]) == 1:
+                self.err("retaining a sole unpacked exception tuple is not supported: pass its items explicitly")
             v = self.unwrap(self.expr(a.kids[0], ""), f"TypeError: {name + '() argument' if name != '' else 'Value'} after * must be an iterable, not NoneType")
             if not is_tuple(v.t):
                 self.err(f"unpacking a {typestr(v.t)} into the arguments of an exception is not supported (a tuple's items are)")
             for i in range(len(targs(v.t))):
-                vals.append(self.tget(v, i))
+                vals.append(payload_arg(self, self.tget(v, i)))
         else:
-            vals.append(self.expr(a, ""))
+            vals.append(payload_arg(self, self.expr(a, "")))
     return vals
 
 def gen_exc_class(self, e: Node) -> str:
@@ -819,6 +821,57 @@ def gen_exc_str_args(self, msg: str) -> str:
     empty = self.num_cmp('==', Val(self.mload('int', msg), "int"), Val("0", "int"))  # (its length in bytes)
     return self.select(empty.v, Val(self.sconst("''"), "%ptr"), Val("null", "%ptr"))
 
+def exception_payload(self, vals: list[Val]) -> Val:
+    # A tuple of the actual values, with the dynamic boundary's existing identity
+    # and alias rules. Neither str() nor repr() is used to recover an argument.
+    if len(vals) == 0:
+        return Val(self.rt("pys_exc_emptyargs", "ptr", []), "vtuple[dyn]")
+    for v in vals:
+        why = self.dyn_boxable(v.t)
+        if why != "":
+            self.err("exception argument cannot be retained: " + why)
+    return self.coerce(self.tuple_([self.dyn_box(v) for v in vals]), "vtuple[dyn]")
+
+def payload_arg(self, v: Val) -> Val:
+    if self.excargs and numeric_identity(v.t):
+        # A later argument or its formatting may rebind this numeric local.
+        # Snapshot its object at evaluation, before the later callback runs.
+        v.idfrom = self.dyn_id_box(v).v
+    return v
+
+def capture_payload(self, e: Val, vals: list[Val]) -> Val:
+    if self.excargs:
+        payload = exception_payload(self, vals)
+        self.rt("pys_exc_setargs", "void", [f"ptr {e.v}", f"ptr {payload.v}"])
+    return e
+
+def gen_exc_read(self, o: Val, name: str, exact: str = "") -> Val:
+    if not self.dyn_policy(self.line):
+        if o.t in self.classes:
+            return self.getfield(o, self.field(o, name), name)
+        self.err(f"reading exception {name} requires dynamic Any (# pystachy: dynamic-any)")
+    if exact == "":
+        # A generic caught exception erases the program object's concrete class.
+        # Its payload accessor cannot stand in for a user descriptor or method.
+        # Named constructors are exact; otherwise keep this new path
+        # bounded until erased exception lookup can dispatch user overrides.
+        for ci in self.classes.values():
+            if ci.exc != "" and (name in ci.ftypes or name in ci.methods):
+                if unopt(o.t) == "exc":
+                    self.err(f"reading exception {name} through a builtin exception type is not supported when user exceptions override {name}; catch the concrete user exception class")
+                if self.derives(ci.name, o.t):
+                    self.err(f"reading inherited exception {name} through {short(o.t)} is not supported when a subclass overrides {name}; catch the concrete user exception class")
+    if not self.excargs:
+        raise NeedExceptionArgs()
+    o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{name}'")
+    if o.t in self.classes:
+        self.notnone(o, f"AttributeError: 'NoneType' object has no attribute '{name}'")
+        if name == "value":
+            self.err("reading inherited StopIteration.value on a user exception is not supported")
+        return self.getfield(o, self.field(o, " payload"), " payload")
+    fn = "pys_exc_args" if name == "args" else "pys_exc_value"
+    return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "vtuple[dyn]" if name == "args" else "dyn")
+
 def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
     # the exception name(*vals) of a builtin class name (pys_exc_new): str(e), and what repr(e)
     # shows between its parentheses (null: the repr of str(e), as for one str argument)
@@ -838,10 +891,10 @@ def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
             args = self.exc_str_args(msg)
     elif len(vals) > 1 and exc_base_of(name, "OSError"):
         oe = self.os_error(name, vals)
-        return Val(self.rt("pys_exc_new", "ptr", [f"ptr {oe[0]}", f"ptr {oe[1]}", f"ptr {oe[2]}"]), "exc")
+        return capture_payload(self, Val(self.rt("pys_exc_new", "ptr", [f"ptr {oe[0]}", f"ptr {oe[1]}", f"ptr {oe[2]}"]), "exc"), vals[:2])
     elif EXCEPTIONS.get(name, "") == "u":
         ue = self.unicode_error(name, vals)
-        return Val(self.rt("pys_exc_new", "ptr", [f"ptr {self.sconst(name)}", f"ptr {ue[0]}", f"ptr {ue[1]}"]), "exc")
+        return capture_payload(self, Val(self.rt("pys_exc_new", "ptr", [f"ptr {self.sconst(name)}", f"ptr {ue[0]}", f"ptr {ue[1]}"]), "exc"), vals)
     elif len(vals) > 1:
         msg = self.repr(self.tuple_(vals)).v
         args = self.rt("pys_str_slice", "ptr", [f"ptr {msg}", "i64 1", "i64 -1"])
@@ -856,7 +909,7 @@ def gen_exc_value(self, name: str, vals: list[Val]) -> Val:
     e = self.rt("pys_exc_new", "ptr", [f"ptr {self.sconst(name)}", f"ptr {msg}", f"ptr {args}"])
     if detail != "":
         e = self.rt("pys_exc_detail", "ptr", [f"ptr {e}", f"ptr {detail}"])
-    return Val(e, "exc")
+    return capture_payload(self, Val(e, "exc"), vals)
 
 def gen_exit_(self, vals: list[Val], sysx: bool) -> None:
     # sys.exit(code) (sysx) and raise SystemExit(code): None is status 0, an int is the status,
@@ -865,8 +918,8 @@ def gen_exit_(self, vals: list[Val], sysx: bool) -> None:
     # arguments, anything but an int or a str) is thrown as the exception exit_value makes; a
     # value that may be None (an object, or T | None) is tested first, and then is its T
     opt = len(vals) == 1 and (vals[0].t in self.classes or is_opt(vals[0].t))
-    if self.eh and not opt and (len(vals) != 1 or (vals[0].t != "int" and vals[0].t != "str")):
-        self.throw(self.exit_value(vals))
+    if self.eh and not opt and (self.excargs or len(vals) != 1 or (vals[0].t != "int" and vals[0].t != "str")):
+        self.throw(self.no_code() if sysx and len(vals) == 1 and vals[0].t == "None" else self.exit_value(vals))
         return
     if len(vals) > 1:
         self.rt("pys_exit_msg", "void", [f"ptr {self.repr(self.tuple_(vals)).v}"])
@@ -900,7 +953,7 @@ def gen_exit_(self, vals: list[Val], sysx: bool) -> None:
 def gen_no_code(self) -> Val:
     # SystemExit(None): status 0, str(e) ""
     e = self.sconst("")
-    return Val(self.rt("pys_exc_exit", "ptr", ["i64 0", f"ptr {e}", f"ptr {e}"]), "exc")
+    return capture_payload(self, Val(self.rt("pys_exc_exit", "ptr", ["i64 0", f"ptr {e}", f"ptr {e}"]), "exc"), [])
 
 def gen_exit_value(self, vals: list[Val]) -> Val:
     # SystemExit(*vals): an int or bool code is the status the program ends with if nothing
@@ -910,7 +963,7 @@ def gen_exit_value(self, vals: list[Val]) -> Val:
         return self.no_code()
     if len(vals) == 1 and (vals[0].t == "int" or vals[0].t == "bool" or vals[0].t == "None" or vals[0].t == BIG):
         s = self.to_str(vals[0]).v
-        return Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.big_status(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc")
+        return capture_payload(self, Val(self.rt("pys_exc_exit", "ptr", [f"i64 {self.big_status(vals[0]).v if vals[0].t != 'None' else '0'}", f"ptr {s}", f"ptr {s}"]), "exc"), vals)
     if len(vals) == 1 and is_opt(vals[0].t):
         # a value that may be None: SystemExit(None), or the exception of the value it holds
         l1 = self.label()
@@ -960,7 +1013,7 @@ def gen_exc_object(self, c: str, args: list[Node]) -> Val:
             kws.append(a if pure_arg(a.kids[0]) else mk("kw", a.s, a.line, [self.vnode(self.expr(a.kids[0], self.kw_type(init, a.s)))]))
         else:
             j = len(vals) + 1
-            vals.append(self.expr(a, init.ptypes[j] if init is not None and j < init.npos else ""))
+            vals.append(payload_arg(self, self.expr(a, init.ptypes[j] if init is not None and j < init.npos else "")))
     if init is not None and len(vals) >= init.npos:
         self.err(f"{short(init.cls)}.__init__() takes {init.npos} positional argument{'s' if init.npos > 1 else ''} but {len(vals) + 1} were given")
     o = self.alloc_fixed(c)
@@ -1097,6 +1150,9 @@ def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
     # text between repr(e)'s parentheses; a SystemExit's status and whether its code is one
     # (unless coded is False: its code is None)
     c = o.t
+    if self.excargs:
+        pv = exception_payload(self, vals[:2] if len(vals) > 1 and self.derives(c, "OSError") else vals)
+        self.setfield(o, self.field(o, " payload"), " payload", pv)
     if len(vals) > 3 and self.derives(c, "OSError"):
         self.err(f"{short(c)}() with more than three arguments is not supported")
     if len(vals) > 1 and self.derives(c, "OSError"):
@@ -1138,7 +1194,11 @@ def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
 def gen_exc_of(self, v: Val) -> Val:
     # the exception that raises exception object v
     self.notnone(v, "TypeError: exceptions must derive from BaseException")
-    return Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc")
+    e = Val(self.rt("pys_exc_user", "ptr", [f"ptr {v.v}"]), "exc")
+    if self.excargs:
+        payload = self.field(v, " payload")
+        self.rt("pys_exc_argref", "void", [f"ptr {e.v}", f"ptr {payload.v}"])
+    return e
 
 def gen_exc_brepr(self, o: Val) -> Val:
     # BaseException.__repr__ of exception object o: the name of its class, and its args
@@ -1529,7 +1589,7 @@ def gen_exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
     # SystemExit's code)
     if len(vals) == 0:
         e = self.sconst("")
-        return Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 0", f"ptr {e}", f"ptr {e}", f"i64 {how}", "i64 0"]), "exc")
+        return capture_payload(self, Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 0", f"ptr {e}", f"ptr {e}", f"i64 {how}", "i64 0"]), "exc"), vals)
     v = vals[0]
     s = self.to_str(v).v
     r = self.repr(v).v
@@ -1561,7 +1621,7 @@ def gen_exc_make(self, c: Val, vals: list[Val], how: int = 0) -> Val:
         code = self.big_status(v).v if v.t == BIGOPT else self.optint(v, "0")
     if how != 0:
         flags = self.scalar('or', [Val(flags, "int"), Val(str(how), "int")])
-    return Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 1", f"ptr {s}", f"ptr {r}", f"i64 {flags}", f"i64 {code}"]), "exc")
+    return capture_payload(self, Val(self.rt("pys_exc_make", "ptr", [f"ptr {c.v}", "i64 1", f"ptr {s}", f"ptr {r}", f"i64 {flags}", f"i64 {code}"]), "exc"), vals)
 
 def gen_exc_ctors(self) -> int:
     # the functions that make an object of each class of the program used as a value (xvals) from

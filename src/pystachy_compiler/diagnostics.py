@@ -173,4 +173,10 @@ class NeedSliceEH(Rejoin):
     pass
 
 
+class NeedExceptionArgs(Rejoin):
+    # A real exception payload is read. Recompile before constructing any
+    # exception, retaining its original values and the user class's payload field.
+    pass
+
+
 # ---------------------------------------------------------------- lexer

@@ -210,11 +210,17 @@ a separate budget; JSON retains its 2,000-container cap (roughly 500 decoded or
 #### Exception contents
 
 Exception arguments are formatted at construction, after all arguments are
-evaluated. CPython formats `args` when needed. Later mutations are invisible;
+evaluated. CPython formats `args` when needed. Later mutations are invisible to that text;
 argument `__str__`/`__repr__` failures replace the intended exception. Missing-key
 `KeyError` similarly calls the key's `__repr__` immediately. Single-argument
 `SyntaxError`, `IndentationError` and `TabError` also test the argument's truth
 immediately ([deviation](../../tests/deviations/exc_syntax_error_truth.py)).
+
+Opt-in [exception payload reads](semantics.md#exception-payloads) retain actual values and
+mutable aliases separately from that cached text. Raw runtime `KeyError` keys and structured
+errno payloads remain unavailable; reading their `args` raises `NotImplementedError`
+([boundary](../../tests/deviations/exc_args_runtime_payload.py)). Explicit constructors
+retain these payloads when their arguments fit the supported dynamic representation.
 
 For user exceptions, redundant formatting is omitted when `__init__` is proven
 to replace it: its first initializer call must be `super().__init__(...)` or
@@ -634,7 +640,9 @@ See [user exception classes](semantics.md#user-exception-classes) and
   `OSError.errno/strerror/filename/filename2`, `ImportError.msg`). Fields set by builtin
   initialization (`StopIteration.value`, `AttributeError.name/obj`, `NameError.name`,
   `ImportError.name/path/name_from`) must be assigned after it or given class-body defaults.
-- **Attributes:** exception metadata beyond `__cause__`; user-exception `__cause__` (catch as
+- **Attributes:** exception metadata beyond `__cause__` and opt-in `args`/builtin
+  `StopIteration.value`; payload assignment; inherited user `StopIteration.value`;
+  user-exception `__cause__` (catch as
   a builtin exception); absent builtin fields; BaseException methods beyond `__str__` /
   `__repr__`; derived fields after `isinstance`, which does not narrow exception values.
 - **Initialization:** `x.__init__()` when a subclass overrides it; explicit calls naming
