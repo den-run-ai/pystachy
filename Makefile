@@ -434,6 +434,7 @@ check-lean-boundary:
 LEAN_CORPUS_FLAGS ?=
 check-lean-corpus:
 	cd tools/lean_boundary && lake build
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_corpus.py
 	$(PY) tools/check_lean_corpus.py $(LEAN_CORPUS_FLAGS)
 
 check-repository:

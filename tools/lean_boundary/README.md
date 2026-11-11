@@ -269,8 +269,10 @@ conservatively if its history is missing. Five workflow tests exercise the
 actual selector against temporary Git histories. `make check-lean-corpus` runs in
 the x86_64 verification group `opt-in` of every PR that changes code, and in
 `dynany-optin-0` on main and manual runs; a sixth test keeps both jobs on one
-Lean archive. Both download the pinned, SHA-256-checked Linux Lean release; no
-PR job is added. Lean is not a compiler, runtime or installation dependency.
+Lean archive; that target first runs the corpus tool's own tests
+(`tools/test_lean_corpus.py`). Both jobs download the pinned, SHA-256-checked
+Linux Lean release; no PR job is added. Lean is not a compiler, runtime or
+installation dependency.
 
 This is a verification building block for
 [#1210](https://github.com/den-run-ai/pystachy/issues/1210). The compiler already

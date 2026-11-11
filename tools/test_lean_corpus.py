@@ -1,4 +1,7 @@
-"""Select the dynamic-Any corpus as the compiler reaches it, and check programs with Lean."""
+"""Select the dynamic-Any corpus as the compiler reaches it, and check programs with Lean.
+
+make check-lean-corpus runs these before the corpus itself, in CI's opt-in verification group:
+they are not among Lint's test_lean_boundary*.py tests, whose job is at its time bound."""
 import json
 import os
 from pathlib import Path

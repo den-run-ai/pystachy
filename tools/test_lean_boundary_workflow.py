@@ -77,7 +77,6 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
 
     def test_adapter_inspection_tests_and_pins_run_lean(self):
         for name in ("tools/check_lean_boundary.py", "tools/inspect_compiler.py",
-                     "tools/check_lean_corpus.py", "tools/test_lean_boundary_corpus.py",
                      "tools/test_lean_boundary_workflow.py", "pystachy.py",
                      "tools/lean_boundary/PystachyBoundary.lean", "Makefile",
                      ".github/workflows/lint.yml", "tools/requirements-dev.txt", ".python-version"):
