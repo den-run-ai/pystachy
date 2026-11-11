@@ -54,6 +54,7 @@ def download(url: str, sha256: str, destination: Path, *, fallback_url: str | No
     # Share the retry budget across endpoints: snapshot, mirror, snapshot. The
     # mirror may prune old packages, so its 404 can use the final snapshot attempt.
     urls = (url, fallback_url or url, url)
+    failures = []
     for attempt in range(3):
         active_url = urls[attempt]
         digest = hashlib.sha256()
@@ -79,6 +80,7 @@ def download(url: str, sha256: str, destination: Path, *, fallback_url: str | No
             if digest.hexdigest() != sha256:
                 raise ValueError(f"LLVM download checksum mismatch: {active_url}")
             return
+        failures.append(f"attempt {attempt + 1} {active_url}: {error}")
         if isinstance(error, HTTPError):
             retryable = error.code in (408, 429, 500, 502, 503, 504)
             retryable = retryable or (attempt == 1 and fallback_url is not None and error.code == 404)
@@ -89,7 +91,7 @@ def download(url: str, sha256: str, destination: Path, *, fallback_url: str | No
         if isinstance(error, HTTPError):
             error.close()
         if not retryable or attempt == 2:
-            raise URLError(f"{active_url}: {error}") from error
+            raise URLError("; ".join(failures)) from error
         time.sleep(attempt + 1)
 
 

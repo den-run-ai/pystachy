@@ -133,6 +133,27 @@ class ManagedToolchainTests(unittest.TestCase):
             self.assertEqual(fetch.call_args_list, [call(url, timeout=60), call(mirror, timeout=60)])
             sleep.assert_called_once_with(1)
 
+    def test_download_failure_preserves_each_endpoint_and_reason(self):
+        url = "https://snapshot.invalid/package.deb"
+        mirror = "https://archive.invalid/package.deb"
+        errors = [
+            HTTPError(url, 503, "snapshot unavailable", {}, None),
+            HTTPError(mirror, 404, "mirror package missing", {}, None),
+            URLError(socket.gaierror(socket.EAI_AGAIN, "Temporary failure in name resolution")),
+        ]
+        with (tempfile.TemporaryDirectory() as directory,
+              patch.object(toolchain, "urlopen", side_effect=errors) as fetch,
+              patch("time.sleep")):
+            with self.assertRaises(URLError) as raised:
+                toolchain.download(url, "0" * 64, Path(directory) / "archive", fallback_url=mirror)
+            message = str(raised.exception)
+            self.assertIn(f"attempt 1 {url}: HTTP Error 503: snapshot unavailable", message)
+            self.assertIn(f"attempt 2 {mirror}: HTTP Error 404: mirror package missing", message)
+            self.assertIn(f"attempt 3 {url}: <urlopen error [Errno {socket.EAI_AGAIN}]", message)
+            self.assertIn("Temporary failure in name resolution", message)
+            self.assertIs(raised.exception.__cause__, errors[-1])
+            self.assertEqual(fetch.call_count, 3)
+
     def test_download_temporary_dns_failures_keep_three_attempt_budget(self):
         url = "https://snapshot.invalid/package.deb"
         mirror = "https://archive.invalid/package.deb"
