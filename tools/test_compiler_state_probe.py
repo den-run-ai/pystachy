@@ -64,6 +64,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newcv = {}
                 self.gtypes = {}
                 self.idevent = ""
                 self.idhint = {}
@@ -75,7 +76,9 @@ class StateProbeTests(unittest.TestCase):
                 test.assertEqual(driver.LIBS, ["prefix-lib"])
                 test.assertEqual(driver.LINKDL, ["prefix-dl"])
                 test.assertEqual(self.gtypes, {})
+                test.assertEqual(self.newcv, {})
                 if len(generations) == 1:
+                    test.assertEqual(self.cvwait, {})
                     driver.LAMBDAS[0] += 5
                     driver.RENAMED["tmp"] = "aborted"
                     driver.LIBS.append("aborted-lib")
@@ -83,9 +86,11 @@ class StateProbeTests(unittest.TestCase):
                     self.gtypes["xs"] = "list[int]"
                     self.newhints["join"] = "union[int,str]"
                     self.newx["A.__eq__"] = True
+                    self.newcv["recursive:int"] = True
                     raise Rejoin()
                 test.assertEqual(self.hints, {"join": "union[int,str]"})
                 test.assertEqual(self.xnot, {"A.__eq__": True})
+                test.assertEqual(self.cvwait, {"recursive:int": True})
                 return "clean pass"
 
         try:
@@ -108,6 +113,15 @@ class StateProbeTests(unittest.TestCase):
 
     def test_restart_rewinds_known_globals_and_uses_fresh_gen(self):
         self.restart_contract(driver.compile_program)
+
+    def test_missing_callable_readiness_replay_is_detected(self):
+        source = inspect.getsource(driver.compile_program)
+        replay = "cvwait[k] = True"
+        self.assertIn(replay, source)
+        namespace = dict(vars(driver))
+        exec(compile(source.replace(replay, "pass"), "<missing-callable-readiness-replay>", "exec"), namespace)
+        with self.assertRaises(AssertionError):
+            self.restart_contract(namespace["compile_program"])
 
     def ctypes_link_restart_contract(self, compile_fn, prefix):
         # Exercise the real CDLL lowering and ffi.load_library builtin, including
@@ -185,6 +199,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newcv = {}
                 self.idevent = ""
                 self.idhint = {}
                 generations.append(self)
@@ -230,6 +245,7 @@ class StateProbeTests(unittest.TestCase):
             def __init__(self):
                 self.newhints = {}
                 self.newx = {}
+                self.newcv = {}
                 self.idevent = ""
                 self.idhint = {}
                 generations.append(self)
