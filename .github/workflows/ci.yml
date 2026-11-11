@@ -205,6 +205,8 @@ jobs:
           tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
           PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
             make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
+          PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+            make check-lean-int LEAN_INT_FLAGS='--jobs 2 --report build/verify/lean-int.json'
 
       - name: Require C, embedding and extension FFI coverage
         if: matrix.group == 'contracts'
@@ -307,6 +309,7 @@ jobs:
             build/verify/dynany-fuzz/*.py
             build/verify/dynany-optin-*.json
             build/verify/lean-corpus.json
+            build/verify/lean-int.json
             build/verify/dynany-optin-*/tests/programs/*/*
             build/verify/python-int-optin-*.json
             build/verify/python-int-optin-*/tests/programs/*/*

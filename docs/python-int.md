@@ -300,6 +300,9 @@ Some operations prove a small result: remainder by a fitting divisor, right shif
 of a fitting value, and a mask with a fitting nonnegative operand. LLVM can then
 fold later pointer tests and use the mask's range. Loops such as
 `h = (h * 31 + c) & 0xFFFFFFFF` can carry their values as one 64-bit word.
+[Lean proofs](../tools/lean_boundary/INT.md) cover these claims and the inline
+paths' fit rules, and `make check-lean-int` checks every such claim of the test
+programs that opt in.
 
 ### Tuples and runtime traversal
 

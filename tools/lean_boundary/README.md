@@ -6,6 +6,9 @@ snapshot; `make check-lean-corpus` checks every such read of the dynamic-`Any`
 test programs. It does not change compilation, dynamic-`Any` opt-ins, library
 behavior or runtime checks.
 
+[INT.md](INT.md) describes the proofs of promoting ints' fit claims and
+`make check-lean-int`, which checks each such claim of the programs that opt in.
+
 ## Provenance and license
 
 The Pystachy-specific model, proofs, examples and checker source are covered by
@@ -23,8 +26,8 @@ it found no copied implementation. The shared logical axiom names and
 `Lean.collectAxioms` calls are standard Lean interfaces. This records a source
 and dependency review, not a formal proof of authorship.
 
-Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`
-module; `lake-manifest.json` contains no external packages. The pinned Lean
+Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary` and
+`PystachyInt` modules; `lake-manifest.json` contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
 [Apache-2.0 license](https://github.com/leanprover/lean4/blob/v4.35.0/LICENSE).
 It is downloaded for CI and is not vendored in this repository. Its license is

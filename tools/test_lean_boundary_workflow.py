@@ -78,7 +78,8 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
     def test_adapter_inspection_tests_and_pins_run_lean(self):
         for name in ("tools/check_lean_boundary.py", "tools/inspect_compiler.py",
                      "tools/test_lean_boundary_workflow.py", "pystachy.py",
-                     "tools/lean_boundary/PystachyBoundary.lean", "Makefile",
+                     "tools/lean_boundary/PystachyBoundary.lean", "tools/lean_boundary/PystachyInt.lean",
+                     "tools/check_lean_int.py", "tools/test_lean_int.py", "Makefile",
                      ".github/workflows/lint.yml", "tools/requirements-dev.txt", ".python-version"):
             with self.subTest(path=name):
                 self.merge_pr(name)
