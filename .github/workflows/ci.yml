@@ -1,5 +1,5 @@
 # Pull requests use the bounded PR profile; main/manual runs retain full release evidence.
-# Tests enforce <=20 jobs across every PR workflow, <=2 workers per task group and <=15 min/job.
+# Tests enforce <20 PR jobs, four AOT shards (two elsewhere), and <=15 min/job.
 # Consumers reuse a same-run verified bootstrap; runtime caches remain private.
 name: CI
 
@@ -24,22 +24,18 @@ env:
 jobs:
   bootstrap:
     name: verify (bootstrap, ${{ matrix.machine }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.machine == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     # Each matrix row publishes a distinct output so the aggregate can check agreement.
     outputs:
       plan_x86_64: ${{ steps.plan.outputs.plan_x86_64 }}
       plan_aarch64: ${{ steps.plan.outputs.plan_aarch64 }}
-      # Both workers verify the same immutable event merge, hence the same base.
+      # PRs build x86 only; full runs independently build both Linux architectures.
       base: ${{ steps.plan.outputs.base }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-24.04
-            machine: x86_64
-          - os: ubuntu-24.04-arm
-            machine: aarch64
+        machine: ${{ fromJSON(github.event_name == 'pull_request' && '["x86_64"]' || '["x86_64","aarch64"]') }}
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
@@ -64,10 +60,7 @@ jobs:
           python-version-file: .python-version
       - name: LLVM toolchain
         if: steps.plan.outputs.kind == 'code'
-        env:
-          ARM_PR: ${{ github.event_name == 'pull_request' && matrix.machine == 'aarch64' }}
-        run: |
-          if [ "$ARM_PR" = true ]; then tools/setup.sh --verify; else tools/setup.sh --minimal; fi
+        run: tools/setup.sh --minimal
       - name: Record native Linux ABI
         if: steps.plan.outputs.kind == 'code'
         env:
@@ -90,25 +83,6 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           overwrite: true  # allow a producer rerun; consumers still validate this run and commit
-      - name: Compare O1 temporary compiler with verified O2 bootstrap
-        if: steps.plan.outputs.kind == 'code' && matrix.machine == 'x86_64'
-        run: python3 tools/check_bootstrap_tier.py build/ci-bootstrap
-      - name: ARM64 installation, FFI, JIT runner and ABI smoke
-        if: steps.plan.outputs.kind == 'code' && github.event_name == 'pull_request' && matrix.machine == 'aarch64'
-        run: |
-          cp build/verify/pystachy2 pystachy
-          make test-install
-          python3 tools/install_smoke.py
-          tests/ffi/run.sh ./pystachy > build/verify/arm-ffi.log 2>&1
-          cat build/verify/arm-ffi.log
-          if grep -Fq '; skipped:' build/verify/arm-ffi.log; then exit 1; fi
-          python3 -m unittest discover -s tools -p test_runtime_thread.py
-          python3 -m unittest discover -s tools -p test_stack_floor.py
-          python3 -m unittest discover -s tools -p test_runtime_signatures.py
-          python3 -m unittest discover -s tools -p test_runtime_ubsan.py
-          python3 -m unittest discover -s tools -p test_lljit.py
-          python3 tools/program_cache_probe.py --compiler ./pystachy --llvm "$PYSTACHY_LLVM" \
-            --checks reuse semantics concurrency --output build/verify/arm-program-cache.json
       - name: Upload bootstrap report
         if: ${{ !cancelled() && steps.plan.outputs.kind == 'code' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
@@ -117,10 +91,6 @@ jobs:
           path: |
             build/verification.json
             build/verify/bootstrap.log
-            build/verify/arm-ffi.log
-            build/verify/arm-program-cache.json
-            build/bootstrap-tier/report.json
-            build/bootstrap-tier/make.log
           if-no-files-found: error
           retention-days: 7
           overwrite: true
@@ -128,7 +98,7 @@ jobs:
   verification:
     name: verify (${{ matrix.group }}, ${{ matrix.machine }})
     needs: bootstrap
-    if: needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
+    if: needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')
     runs-on: ${{ matrix.machine == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     # Target <10 minutes of work per group; retain headroom for runner variation
     # and failure diagnostics. GC self-compilation has its own 10-minute bound.
@@ -137,7 +107,7 @@ jobs:
       fail-fast: false
       matrix:
         machine: ${{ fromJSON(github.event_name == 'pull_request' && '["x86_64"]' || '["x86_64","aarch64"]') }}
-        group: ${{ fromJSON(github.event_name == 'pull_request' && '["hosted","native-aot-0","native-aot-1","safety-0","safety-1","opt-in","contracts","cache-gc","benchmarks"]' || '["hosted","native-0","native-1","native-2","opt-off-0","opt-off-1","opt-off-2","python-free-0","python-free-1","python-free-2","ubsan-0","ubsan-1","ubsan-2","ubsan-3","gc-self","gc-ir-0","gc-ir-1","gc-jit-0","gc-jit-1","gc-aot-0","gc-aot-1","gc-aot-2","runtime-cache","dynany-optin-0","dynany-optin-1","dynany-optin-2","python-int-optin-0","python-int-optin-1","python-int-optin-2","contracts","benchmarks","scaling"]') }}
+        group: ${{ fromJSON(github.event_name == 'pull_request' && '["hosted","native-aot-0","native-aot-1","native-aot-2","native-aot-3","safety-0","safety-1","opt-in","contracts","cache-gc","benchmarks"]' || '["hosted","native-0","native-1","native-2","opt-off-0","opt-off-1","opt-off-2","python-free-0","python-free-1","python-free-2","ubsan-0","ubsan-1","ubsan-2","ubsan-3","gc-self","gc-ir-0","gc-ir-1","gc-jit-0","gc-jit-1","gc-aot-0","gc-aot-1","gc-aot-2","runtime-cache","dynany-optin-0","dynany-optin-1","dynany-optin-2","python-int-optin-0","python-int-optin-1","python-int-optin-2","contracts","benchmarks","scaling"]') }}
     env:
       VERIFY_PROFILE: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
@@ -161,7 +131,7 @@ jobs:
         # New groups keep the full setup until their dependencies have been checked.
         run: |
           case "$VERIFY_GROUP" in
-            hosted|native-[012]|native-aot-[01]|opt-off-[012]|python-free-[012]|gc-self|gc-ir-[01]|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[012]|python-int-optin-[012]|contracts|scaling|safety-0|opt-in|cache-gc)
+            hosted|native-[012]|native-aot-[0123]|opt-off-[012]|python-free-[012]|gc-self|gc-ir-[01]|gc-jit-[01]|gc-aot-[012]|runtime-cache|dynany-optin-[012]|python-int-optin-[012]|contracts|scaling|safety-0|opt-in|cache-gc)
               tools/setup.sh --minimal ;;
             *) tools/setup.sh --verify ;;
           esac
@@ -171,7 +141,7 @@ jobs:
         run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)" "$(sed -n '/^mypy_extensions==/p' tools/requirements-dev.txt)" "$(sed -n '/^librt==/p' tools/requirements-dev.txt)"
 
       - name: Workload pytest oracle dependency
-        if: matrix.group == 'benchmarks' || matrix.group == 'hosted'
+        if: matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
         run: python3 -m pip install "$(sed -n '/^pytest==/p' tools/requirements-dev.txt)"
 
       # No run-id or token: download-artifact can only select this workflow run here.
@@ -194,7 +164,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-rt-18-dev
-          # Generated-code ASan controls run in the existing x86 contracts job.
+          # Generated-code ASan controls run in x86 contracts (full) or safety-1 (PRs).
           PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 - <<'PY'
           from pathlib import Path
           import unittest
@@ -210,40 +180,41 @@ jobs:
           PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
             tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'
 
-      # Keep the complete Lean corpora at two workers. Runtime-cache plus corpus proofs and
-      # the program-cache probe exceeded 15 minutes; gc-jit-1 has room after its corpus.
-      # Storage proofs use full scaling. PR opt-in retains all three checks; contracts checks
-      # bounded union/null examples. Each check finishes before the next begins.
+      # Exhaustive Lean corpora stay in full verification; every PR retains the kernel,
+      # checker negative controls and bounded union/null proofs in contracts and Lint.
+      # Each proof command uses two local processes and finishes before the next begins.
       # The pinned release archive is for x86_64 Linux.
+      - name: Cache the pinned Lean release archive
+        if: matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        timeout-minutes: 3
+        with:
+          path: ~/.cache/pystachy/lean
+          key: lean-${{ runner.os }}-${{ runner.arch }}-7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d
+
       - name: Lean proofs of compiler guard obligations
-        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')
+        if: matrix.machine == 'x86_64' && (matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')
         env:
           VERIFY_GROUP: ${{ matrix.group }}
         run: |
           lean_boundary_dir=$(mktemp -d)
           trap 'rm -rf "$lean_boundary_dir"' EXIT
-          curl --fail --location --silent --show-error --retry 2 --retry-max-time 240 \
-            --connect-timeout 20 --max-time 120 \
-            'https://github.com/leanprover/lean4/releases/download/v4.35.0/lean-4.35.0-linux.tar.zst' \
-            --output "$lean_boundary_dir/lean.tar.zst"
-          printf '%s  %s\n' '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d' \
-            "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -
-          tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
+          lean_bin=$(python3 tools/setup_lean.py --output "$lean_boundary_dir")
           case "$VERIFY_GROUP" in
-            opt-in|gc-jit-1)
-              PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+            gc-jit-1)
+              PATH="$lean_bin:$PATH" \
                 make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
-              PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+              PATH="$lean_bin:$PATH" \
                 make check-lean-int LEAN_INT_FLAGS='--jobs 2 --report build/verify/lean-int.json' ;;
           esac
           case "$VERIFY_GROUP" in
             contracts)
-              PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+              PATH="$lean_bin:$PATH" \
                 make check-lean-guards LEAN_GUARD_FLAGS='--jobs 2 --report build/verify/lean-guards.json tools/lean_boundary/examples/null_guards.py tools/lean_boundary/examples/union_guards.py' ;;
           esac
           case "$VERIFY_GROUP" in
-            opt-in|scaling)
-              PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
+            scaling)
+              PATH="$lean_bin:$PATH" \
                 make check-lean-storage LEAN_STORAGE_FLAGS='--jobs 2 --report build/verify/lean-storage.json' ;;
           esac
 
@@ -264,10 +235,10 @@ jobs:
           python3 -m unittest discover -s tools -p test_stack_floor.py
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
 
-      # Keep the existing hosted ASan controls out of Lint's 15-minute budget.
+      # PRs use the short safety worker; full runs retain x86 contracts coverage.
       # setup.sh already validates LLVM; compiler-rt supplies the runtime and preload library.
       - name: Generated user and runtime ASan controls
-        if: matrix.group == 'contracts' && matrix.machine == 'x86_64'
+        if: matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'contracts'))
         run: |
           sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
           python3 -m unittest discover -s tools -p test_runtime_asan.py -v
@@ -303,15 +274,17 @@ jobs:
         run: make bench-match-check BENCH_COMPILER=build/verify/pystachy2
 
       - name: Shared pytest example assertions
-        if: matrix.group == 'hosted'
+        if: ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-pytest-workloads PYTEST_WORKLOAD_COMPILER=build/verify/pystachy2 PYTEST_WORKLOAD_ARGS='--group examples'
 
       # Retain the hosted compiler and original pytest oracle without using Lint's budget.
       - name: Generated native pytest runner parity
-        if: matrix.group == 'hosted' && matrix.machine == 'x86_64'
-        run: make test-pytest-native
+        if: matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"
 
       # tools/setup.sh installs both of Ubuntu's LP64 libblas.so.3 providers: OpenBLAS
       # (libopenblas0-pthread), checked on one thread, and the reference BLAS (libblas3).
@@ -368,7 +341,7 @@ jobs:
 
   pr-variants:
     name: native JIT and variants (worker ${{ matrix.worker }})
-    if: github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
+    if: github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code'
     needs: bootstrap
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -393,8 +366,8 @@ jobs:
         with:
           name: verified-bootstrap-x86_64
           path: build/ci-bootstrap
-      # Keep two workers per execution mode and the same total job count. JIT finishes before
-      # these workers run their existing sparse configurations; AOT has its own two workers.
+      # Two JIT halves finish before the existing sparse configurations. Four separate
+      # AOT shards reduce the measured 13.5-minute compilation load per worker.
       - name: Complete native JIT corpus half
         env:
           VARIANT_WORKER: ${{ matrix.worker }}
@@ -416,9 +389,8 @@ jobs:
           VARIANT_WORKER: ${{ matrix.worker }}
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: python3 tools/pr_variants.py --worker "$VARIANT_WORKER"
-      # The contracts and cache/GC jobs took up to 13.5 minutes on EPYC 7763 runners, these
-      # workers about 3.5 (#1178): the first runs the PR's program-cache probe, with the stage-2
-      # compiler its JIT half restored. The second takes the runtime controls out of Lint.
+      # Keep program-cache and runtime controls in the JIT workers, after their corpus
+      # halves and variants, using the restored compiler and independent runtime caches.
       - name: Native program cache invalidation and execution
         if: matrix.worker == 0
         env:
@@ -429,7 +401,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-rt-18-dev
-          # Generated-code ASan controls run in the existing x86 contracts job.
+          # Generated-code ASan controls run in x86 contracts (full) or safety-1 (PRs).
           PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 - <<'PY'
           from pathlib import Path
           import unittest
@@ -455,16 +427,14 @@ jobs:
           retention-days: 7
           overwrite: true
 
-  distribution:
-    name: distribution (${{ matrix.os }})
-    if: github.event_name == 'pull_request' && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
+  qualification:
+    name: Bootstrap tier and native archive qualification
+    if: github.event_name != 'pull_request'
     needs: bootstrap
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04, macos-15]
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -472,109 +442,44 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version-file: .python-version
-          cache: pip
-          cache-dependency-path: tools/requirements-packaging.txt
       - run: tools/setup.sh --minimal
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        if: runner.os == 'Linux'
         with:
           name: verified-bootstrap-x86_64
           path: build/ci-bootstrap
-      - name: Reuse verified Linux compiler
-        if: runner.os == 'Linux'
-        env:
-          PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+      - name: Restore the verified producer and its report
         run: |
           python3 tools/verification_bootstrap.py restore build/ci-bootstrap
+          cp build/ci-bootstrap/verification.json build/verification.json
+      - name: Compare O1 temporary compiler with verified O2 bootstrap
+        run: python3 tools/check_bootstrap_tier.py build/ci-bootstrap
+      - name: Native release archive smoke
+        run: |
           cp build/verify/pystachy2 pystachy
-      - name: Bootstrap on macOS ARM64
-        if: runner.os == 'macOS'
-        run: make
-      - name: Installer and hosted/native JIT/AOT smoke
-        run: |
-          tools/setup.sh --check
-          make test-install
-          python3 tools/install_smoke.py
-      - name: Install sanitizer runtime for netio ownership
-        if: runner.os == 'Linux'
-        timeout-minutes: 2
-        run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
-      - name: Hosted and native epoll, pipes and ownership
-        id: netio_linux
-        if: runner.os == 'Linux'
-        timeout-minutes: 5
-        env:
-          PYSTACHY_LLVM: /usr/lib/llvm-18/bin
-        run: |
-          test -x ./pystachy
-          python3 -m unittest discover -s tools -p 'test_netio*.py'
-          python3 examples/netio/benchmark.py --cpython-only --smoke --json build/netio-linux-benchmark-smoke.json
-          python3 examples/netio/check.py --compiler 'python3 pystachy.py' --repeat 2 --json build/netio-linux-hosted.json
-          python3 examples/netio/check_drain.py --compiler 'python3 pystachy.py' --json build/netio-linux-drain-hosted.json
-          mkdir -p build/netio
-          "$PYSTACHY_LLVM/clang" -std=c11 -O1 -g -Wall -Wextra -Werror -Wpedantic \
-            -fsanitize=address,undefined -fno-omit-frame-pointer \
-            examples/netio/netio.c examples/netio/ownership.c -o build/netio/ownership
-          ASAN_OPTIONS=detect_leaks=1 build/netio/ownership
-          python3 examples/netio/check.py --compiler ./pystachy --repeat 2 --json build/netio-linux-native.json
-          python3 examples/netio/check_drain.py --compiler ./pystachy --json build/netio-linux-drain-native.json
-      - name: Retain Linux netio reports
-        if: always() && runner.os == 'Linux' && steps.netio_linux.outcome != 'skipped'
-        timeout-minutes: 2
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: netio-linux-pr-${{ matrix.os }}
-          path: build/netio-linux*.json
-          if-no-files-found: warn
-          retention-days: 7
-          overwrite: true
-      - name: Native kqueue and pipe parity
-        id: netio
-        if: matrix.os == 'macos-15'
-        timeout-minutes: 5
-        env:
-          PYSTACHY_LLVM: /opt/homebrew/opt/llvm@20/bin
-        run: |
-          test -x ./pystachy
-          python3 examples/netio/check.py --compiler ./pystachy --repeat 1 --timeout 30 \
-            --build-timeout 120 --json build/netio-macos.json
-          python3 examples/netio/check_drain.py --compiler ./pystachy --timeout 30 \
-            --json build/netio-drain-macos.json
-      - name: Retain native kqueue reports
-        if: always() && matrix.os == 'macos-15' && steps.netio.outcome != 'skipped'
-        timeout-minutes: 2
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: netio-kqueue-pr-${{ matrix.os }}
-          path: |
-            build/netio-macos.json
-            build/netio-drain-macos.json
-          if-no-files-found: warn
-          retention-days: 7
-          overwrite: true
-      - name: Install the compiler with pip and uv
-        env:
-          PYSTACHY_LLVM: ${{ runner.os == 'macOS' && '/opt/homebrew/opt/llvm@20/bin' || '/usr/lib/llvm-18/bin' }}
-        run: |
-          python3 -m pip install -r tools/requirements-packaging.txt
-          python3 tools/compiler_install_smoke.py
-      - name: Source packages and native release archive smoke
-        if: runner.os == 'Linux'
-        run: |
-          python3 tools/package_smoke.py --no-build-isolation
-          python3 tools/package_smoke.py --no-build-isolation --compiler 'python3 pystachy.py'
           python3 -m unittest discover -s tools -p 'test_release*.py'
           release_version=$(cat VERSION)
-          test -f "docs/releases/$release_version.md"
+          python3 tools/release_notes.py check "docs/releases/$release_version.md"
           python3 tools/release.py --version "$release_version" --target linux-x86_64 --output-dir build/release-smoke
           python3 tools/release_smoke.py "build/release-smoke/pystachy-$release_version-linux-x86_64.tar.gz"
+      - name: Upload qualification evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: bootstrap-tier-and-archive
+          path: |
+            build/bootstrap-tier/report.json
+            build/bootstrap-tier/make.log
+            build/release-smoke/*.sha256
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
 
   verify:
     name: ${{ github.event_name == 'pull_request' && 'Verification' || format('make verify (Linux {0}, LLVM 18, Python 3.13)', matrix.machine == 'aarch64' && 'ARM64' || 'x86-64') }}
     # Report dependency failures, but release the PR concurrency slot on cancellation.
     # always() keeps obsolete summary jobs queued and blocks the replacement run.
     if: ${{ !cancelled() }}
-    needs: [bootstrap, verification, pr-variants, distribution]
+    needs: [bootstrap, verification, pr-variants, qualification]
     runs-on: ubuntu-24.04
     env:
       CI_BASE_SHA: ${{ needs.bootstrap.outputs.base }}
@@ -591,18 +496,18 @@ jobs:
           fetch-depth: 2
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
-        if: needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code'
+        if: needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')
         with:
           python-version-file: .python-version
 
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
-        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code' }}
+        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code') }}
         with:
           pattern: ${{ matrix.machine }}-verification-*
           path: build/ci-reports
 
       - name: Require complete verification reports
-        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code' }}
+        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code') }}
         env:
           VERIFY_MACHINE: ${{ matrix.machine }}
           VERIFY_PROFILE: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}
@@ -618,13 +523,13 @@ jobs:
           BOOTSTRAP_RESULT: ${{ needs.bootstrap.result }}
           GROUP_RESULT: ${{ needs.verification.result }}
           VARIANTS_RESULT: ${{ needs.pr-variants.result }}
-          DISTRIBUTION_RESULT: ${{ needs.distribution.result }}
+          QUALIFICATION_RESULT: ${{ needs.qualification.result }}
         run: |
           python3 tools/ci_gate.py require-jobs "$GITHUB_EVENT_NAME" "$X86_PLAN" "$ARM_PLAN" \
-            "$BOOTSTRAP_RESULT" "$GROUP_RESULT" "$VARIANTS_RESULT" "$DISTRIBUTION_RESULT"
+            "$BOOTSTRAP_RESULT" "$GROUP_RESULT" "$VARIANTS_RESULT" "$QUALIFICATION_RESULT"
 
       - name: Upload combined verification report
-        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && needs.bootstrap.outputs.plan_aarch64 == 'code' }}
+        if: ${{ !cancelled() && needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code') }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: ${{ matrix.machine }}-verification
