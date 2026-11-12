@@ -3,6 +3,7 @@ import pytest
 
 import bpe_tokeniser
 import comprehensions
+import coroutines
 import fannkuch
 import generators
 import go
@@ -24,6 +25,11 @@ def test_fannkuch(size: int, expected: int):
 def test_generators(size: int):
     assert list(generators.tree(range(size))) == list(range(size))
     assert generators.bench_generators(1, size) == size * (size - 1) // 2
+
+
+@pytest.mark.parametrize("n,expected", [(0, 0), (1, 1), (10, 55), (20, 6765)])
+def test_coroutines(n: int, expected: int):
+    assert coroutines.bench_coroutines(1, n) == expected
 
 
 def test_comprehensions():

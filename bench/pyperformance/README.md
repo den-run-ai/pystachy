@@ -1,6 +1,6 @@
 # pyperformance benchmarks
 
-These are 25 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
+These are 26 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
 1.14.0, adapted so that Pystachy compiles them. CPython runs the same adapted files, so each
 comparison runs identical source in CPython, the JIT and AOT. The adaptations and smaller
 inputs change the work, so these results are not comparable with published pyperformance numbers.
@@ -38,8 +38,8 @@ cannot validate the kernels.
 
 ## Shared pytest correctness suite
 
-The [pytest tests](pytest/) import all 25 delivered benchmark modules and exercise
-their existing workload functions with 39 ordinary pytest cases. The same files
+The [pytest tests](pytest/) import all 26 delivered benchmark modules and exercise
+their existing workload functions with 43 ordinary pytest cases. The same files
 run under original CPython pytest and the [native runner](../../docs/pytest-native.md):
 
 ```sh
@@ -48,7 +48,7 @@ python3 tools/pytest_native_suites.py --group pyperformance --mode jit
 python3 tools/pytest_native_suites.py --group pyperformance --mode aot
 ```
 
-The registry preserves all 39 cases in five independent categories, each with
+The registry preserves all 43 cases in five independent categories, each with
 its own original-pytest oracle. This bounds native build memory and separates
 the JSON opt-in from typed workloads. `make bench-pyperformance-check` includes
 both native modes in addition to its existing process/timing/provenance checks.
@@ -128,7 +128,7 @@ pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTH
 are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
 header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
 `deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 25 benchmarks remain included.
+says the JavaScript original was GPL-licensed. The other 26 benchmarks remain included.
 `fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`, `regex_dna.py` and `spectral_norm.py` say they
 come from The Computer Language Benchmarks Game, whose programs are published under the
 3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
@@ -166,6 +166,7 @@ adaptations follow these rules:
 | `bpe_tokeniser` | Five kernel adaptations: annotate the decoder field and empty ranks dictionary; type the pair `Counter`; materialize `zip` for `enumerate`; pass the UTF-8 replacement policy positionally. The runner exposes the unchanged pattern, permits smaller vocabularies, and takes an explicit corpus path instead of `__file__`. |
 | `chaos` | A Park–Miller generator replaces `random.seed()` and `randrange()`, so the points differ from upstream. `GVector` has float parameters and defaults; `__rmul__ = __mul__` becomes a method; fields are annotated; loops replace two-clause comprehensions; `length` starts as `0.0`; `x` and `y` are converted to int in one assignment each; an impossible `type()` message is a literal. `main()` returns the game, whose `create_image_chaos()` the main times with the default arguments. |
 | `comprehensions` | The empty widget list is annotated. The upstream `Enum` and enum iteration are restored. The complete sorted widget order is checked. |
+| `coroutines` | The recursive `async def fibonacci()` and the `send(None)` loop that runs it are unchanged. An argument limits smoke/GC runs to `fibonacci(10)`; the normal run keeps `fibonacci(25)`. A second coroutine awaits `fibonacci()` outside the timer to check the result, because a coroutine's `StopIteration` carries no value in Pystachy. |
 | `logging` | All three kernels run directly on the same `StringIO` stream. The driver checks every emitted line and verifies that disabled calls produce no output. |
 | `generators` | The recursive `Tree`, `yield from`, range slicing and iteration are unchanged. A size argument limits smoke/GC runs to 100 nodes; the normal run keeps 100,000. The complete yielded sequence is checked outside the timer. |
 | `json_dumps` | Opt into dynamic `Any`; annotate the empty dict and the list of `(Any, range)` workload tuples. Preserve all four upstream payloads and counts by default; smoke uses one encode per case and a three-element HUGE list. Complete small encodings and the repeated huge encoding are checked outside the timer. |
@@ -243,7 +244,7 @@ blockers than its first error, and a newer compiler may have removed one.
 |---|---|---|
 | `2to3` | no `subprocess` module | `signal` imports the missing `_signal` |
 | `argparse` | bare `list` return annotation on `generate_arguments()` | a bare `list` annotation (`-> list`) |
-| `async_generators`, `coroutines` | `async def` | same |
+| `async_generators` | `async def` | same |
 | `async_tree`, `asyncio_tcp` | no `asyncio` module | `socket` imports the missing `_socket` |
 | `base64` | no `base64` module | `random.randbytes()` needs `int.to_bytes()` |
 | `concurrent_imap` | no `multiprocessing` module | `signal` imports the missing `_signal` |
