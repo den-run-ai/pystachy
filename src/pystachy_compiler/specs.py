@@ -714,6 +714,15 @@ GENNEW = 4
 GENDROPC = 1
 GENCLOSEC = 2
 GENTHROWC = 3
+# an async generator returns no value: its GENRET word holds its flags (asyncgens.py). AGYIELD: it is
+# suspended at a yield of its own (the value is the consumer's); AGRUN: a consumer's step runs it
+# (anext(): asynchronous generator is already running), and where it suspends so, an await of its
+# passes on what its awaitable yields; AGCLOSE: and that step is aclose()'s, whose GeneratorExit
+# finishes it
+AGFLAGS = 1
+AGYIELD = 1
+AGRUN = 2
+AGCLOSE = 6
 # the optimizations, passes over each IFn once the program is built (docs/typed-ir.md 7.1) and
 # tupleiter and listfast, choices of lowering (a tuple's slots in Gen.iterable, and checked
 # list[int] and bytes reads in Gen.list_read and Gen.bytes_read; listget also chooses the inline

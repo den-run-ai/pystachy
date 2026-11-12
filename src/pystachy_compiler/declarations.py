@@ -268,6 +268,12 @@ def gen_ann(self, n: Node) -> str:
                 if ct.startswith("!"):
                     return ct
             return self.coro_type(cy, cr)
+        if base == "asyncgenerator" or base == "asynciterator" or base == "asynciterable":
+            # AsyncGenerator[T, S], AsyncIterator[T] (typing's or collections.abc's): an async
+            # generator object, whose awaits yield None to the code that runs its consumer, as no
+            # annotation can say otherwise (asyncgens.py)
+            ta = self.agen_ann(n, False)
+            return "!" + ta[0] if len(ta) == 1 else self.agen_type(ta[0], ta[1], "None")
         if base == "callable":
             # Callable[[A, B], R] (typing's or collections.abc's): callable[R,A,B]
             if len(a) != 2 or (a[0].kind != "list" and a[0].kind != "ellipsis"):

@@ -18,7 +18,7 @@ from src.pystachy_compiler.ir import FnInfo, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, GENCLEAN, GENDONE, GENEXC, GENSTATE, TYPESMOD
 from src.pystachy_compiler.syntax import Node, has_kind, mk, names_in
-from src.pystachy_compiler.utils import cret, cyield, fbits, gelem, gsend, is_coro, is_gen, tname, typestr, unopt
+from src.pystachy_compiler.utils import coro_mark, cret, cyield, fbits, gelem, gsend, is_agen, is_coro, is_gen, tname, typestr, unopt
 
 
 def is_async(d: Node) -> bool:
@@ -37,6 +37,13 @@ def has_async(n: Node) -> bool:
         if has_async(k):
             return True
     return False
+
+
+def reused(t: str) -> str:
+    # CPython's message for an awaitable of coroutine type t that has finished, sent or awaited
+    # again: a coroutine's, or that of the awaitable of an async generator's method (coro_mark)
+    m = coro_mark(t)
+    return "cannot reuse already awaited " + ("__anext__()/asend()" if m == "asend" else "aclose()/athrow()" if m == "athrow" else "coroutine")
 
 
 def direct_name(x: Node) -> str:
@@ -215,7 +222,7 @@ def gen_coro_analyze(self) -> None:
     cands: dict[str, FnInfo] = {}
     for name in self.funcs:
         f = self.funcs[name]
-        if f.aio and f.bad == "" and f.cls == "" and name not in self.mvars:
+        if f.aio and not f.agen and f.bad == "" and f.cls == "" and name not in self.mvars:
             cands[name] = f
     nos: dict[str, bool] = {}
     for name in cands:
@@ -364,8 +371,12 @@ def gen_coro_scan(self, body: list[Node], kind: str) -> bool:
 
 def gen_coro_settle(self, f: FnInfo) -> None:
     # the coroutine type of async def f, being compiled, once what it returns is known: what a call
-    # of it, compiled from now on, gives
-    if f.gret != "":
+    # of it, compiled from now on, gives (an async generator's, once its first yield decides what
+    # it yields: asyncgens.py)
+    if f.agen:
+        if f.ret != "":
+            f.ret = self.agen_type(gelem(f.ret), f.gsend, f.ayield)
+    elif f.gret != "":
         f.ret = self.coro_type(f.ayield, f.gret)
 
 
@@ -483,9 +494,14 @@ def gen_await_protocol(self, n: Node, want: str) -> Val:
     # mgr.__aexit__(None, None, None) (aexitnone), of it.__anext__() (anext); or, awaiting
     # nothing, of iterator E.__aiter__() (aiter, E n's operand), which must have __anext__.
     # Where the objects do not support the protocol, CPython 3.13's TypeErrors
+    if n.s.startswith("ag"):
+        return self.agen_await(n, want)  # (a step of an async generator's method: asyncgens.py)
     line = n.line
     o = self.expr(n.kids[0], "")
     t = unopt(o.t)
+    if is_agen(t) and (n.s == "aiter" or n.s == "anext"):
+        # (an async generator is its own iterator, whose step its own code runs: asyncgens.py)
+        return o if n.s == "aiter" else self.agen_step(o, "anext", Val("", ""), Val("", ""), want)
     ms = self.classes[t].methods if t in self.classes else {}
     nomgr = "'NoneType' object does not support the asynchronous context manager protocol"
     if n.s == "aiter":
@@ -502,6 +518,8 @@ def gen_await_protocol(self, n: Node, want: str) -> Val:
             return self.await_dead(want)
         it = self.expr(mk("call", "", line, [mk("attr", "__aiter__", line, [self.vnode(o)])]), "")
         u = unopt(it.t)
+        if is_agen(u):
+            return it  # (an __aiter__ that is an async generator method: the one its call made)
         if u in self.classes:
             it = self.unwrap(it, "TypeError: 'async for' received an object from __aiter__ that does not implement __anext__: NoneType")
             self.notnone(it, "TypeError: 'async for' received an object from __aiter__ that does not implement __anext__: NoneType")
@@ -542,6 +560,8 @@ def gen_await_expr(self, x: Node, want: str, bad: str) -> Val:
     # it is an implicit await (await_protocol): CPython's TypeError for a value that is not
     # awaitable, but for the name of its type, which ends it
     self.gencall = ""
+    if bad == "" and self.agen_call(x):
+        return self.agen_await_call(x, want)  # (await ag.__anext__() and the like: asyncgens.py)
     # (an empty display, which only raises the TypeError below, takes an item type of its own)
     v = self.expr(x, "list[int]" if x.kind == "list" and len(x.kids) == 0 else "dict[int,int]" if x.kind == "dict" and len(x.kids) == 0 else "")
     callee = self.gencallf if self.gencall != "" and v.v == self.gencall else None
@@ -597,7 +617,7 @@ def gen_await_handle(self, v: Val, yi: str, r: str, callee: FnInfo | None, what:
     if callee is None and is_coro(v.t):
         p0 = self.gen_promise(v)
         s0 = self.mload("int", self.maddr("int", p0, str(GENSTATE)))
-        self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENDONE), "int")).v, "RuntimeError: cannot reuse already awaited coroutine")
+        self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENDONE), "int")).v, "RuntimeError: " + reused(v.t))
         # (suspended where it awaits: 0, or GENCLEAN where closing it runs code of its)
         idle = self.num_cmp("==", Val(s0, "int"), Val("0", "int")).v
         clean = self.num_cmp("==", Val(s0, "int"), Val(str(GENCLEAN), "int")).v
@@ -667,7 +687,7 @@ def gen_coro_method(self, o: Val, m: str, args: list[Node]) -> Val:
         e = self.exc_operand(args[0]) if m == "throw" else Val("", "")
         p = self.gen_promise(o)
         s0 = self.mload("int", self.maddr("int", p, str(GENSTATE)))
-        self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENDONE), "int")).v, "RuntimeError: cannot reuse already awaited coroutine")
+        self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENDONE), "int")).v, "RuntimeError: " + reused(o.t))
         done = self.label()
         y = cyield(o.t)
         p1 = self.gen_throw_into(o, e, done) if m == "throw" else self.gen_next(o, done)

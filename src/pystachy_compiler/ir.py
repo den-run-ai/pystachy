@@ -208,6 +208,10 @@ class FnInfo:
         self.ayield = "None"  # its Y so far: what the awaits compiled so far yield
         self.ynone = False  # an await compiled so far may yield None (Y must then hold None)
         self.ysure = False  # its Y can no longer change: a call of it was compiled while it was being compiled
+        # an async def that yields (aio and gen too): an async generator function, whose call makes
+        # an async generator object of type agen[T,S,Y] (ret; "" while its first yield decides T),
+        # Y being its ayield (docs/internals.md#async-generators)
+        self.agen = False
         # a module's async def that never suspends: each of its awaits is of a call of such an async
         # def by its name (Gen.coro_analyze). await of a call of it calls its twin, the same body
         # compiled as an ordinary function whose awaits are such calls too (direct): no coroutine

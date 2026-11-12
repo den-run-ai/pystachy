@@ -1,0 +1,22 @@
+driver got before 0
+main got 0
+driver got after
+source resumed 5
+driver got before 1
+main got 2
+driver got after
+source resumed 5
+driver got enter
+main got 6
+driver got exit
+finished
+waiting
+guarded caught KeyError('k')
+handled
+consumer got 2
+guarded finally
+consumer finished
+waiting
+guarded finally
+closed
+[exit 0]

@@ -1,0 +1,12 @@
+got 1
+RuntimeError async generator raised StopAsyncIteration StopAsyncIteration
+got 1
+RuntimeError async generator raised StopIteration StopIteration
+handled
+after
+stops 0
+stops 1
+awaits 0
+RuntimeError async generator raised StopAsyncIteration
+done
+[exit 0]

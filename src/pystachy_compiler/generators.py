@@ -16,6 +16,8 @@ from src.pystachy_compiler.diagnostics import int_program
 from src.pystachy_compiler.ir import Exit, FnInfo, Ins, IterArg, SeqStart, Try, Val, tmpname
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
+    AGFLAGS,
+    AGYIELD,
     BIG,
     EXCBASES,
     GENCLEAN,
@@ -35,7 +37,7 @@ from src.pystachy_compiler.specs import (
     exc_derives,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, has_kind, made_var, mk, names_in
-from src.pystachy_compiler.utils import gelem, gsend, is_coro, is_gen, is_list, typestr
+from src.pystachy_compiler.utils import gelem, gsend, is_agen, is_coro, is_gen, is_list, typestr
 
 
 def suspends(n: Node) -> bool:
@@ -97,9 +99,9 @@ def uses_protocol(n: Node) -> bool:
 
 
 def handle_noun(t: str) -> str:
-    # what CPython's messages call the object of handle type t: a coroutine (an async def's) or a
-    # generator
-    return "coroutine" if is_coro(t) else "generator"
+    # what CPython's messages call the object of handle type t: a coroutine (an async def's), an
+    # async generator or a generator
+    return "coroutine" if is_coro(t) else "async generator" if is_agen(t) else "generator"
 
 
 def reads_handled(n: Node) -> bool:
@@ -210,7 +212,7 @@ def gen_gen_declare(self, f: FnInfo, d: Node) -> str:
         f.gtry = f.gtry or has_kind(st, "try")
     f.gclose = f.gclose or f.gtry
     if len(d.kids) > 3 and d.kids[3].s == "async":
-        return "async generators are not supported"
+        return self.agen_declare(f, d)  # (an async generator function: asyncgens.py)
     if d.kids[1].kind == "noann":
         f.generic = True  # (its first yield decides what it yields, for each call's argument types)
         f.ret = ""
@@ -354,7 +356,9 @@ def gen_gen_end(self, f: FnInfo) -> None:
         f.gret = "None"
     elif fn.gnone and f.gret != "None" and f.gretinfer:
         f.gret = self.optional(f.gret)  # (it also ends without a value: R | None, the same pointer)
-    if f.aio:
+    if f.agen:
+        f.ret = self.agen_type(gelem(f.ret) if f.ret != "" else "None", f.gsend, f.ayield)  # (asyncgens.py)
+    elif f.aio:
         f.ret = self.coro_type(f.ayield, f.gret)  # (an async def's coroutine: coroutines.py)
     if fn.gpad != "":
         self.handler = ""
@@ -362,6 +366,8 @@ def gen_gen_end(self, f: FnInfo) -> None:
         e = self.landing(fn.gpad, slot, Val("0", "int"))
         p = self.gen_promise(Val("", ""))
         self.mstore("int", str(GENDONE), self.maddr("int", p, str(GENSTATE)))
+        if f.agen:
+            self.agen_landed(e, p)  # (no step runs it now; aclose()'s GeneratorExit finishes it)
         cmd = self.mload("int", self.maddr("int", p, str(GENCMD)))
         lc = self.label()
         lp = self.label()
@@ -381,8 +387,10 @@ def gen_gen_end(self, f: FnInfo) -> None:
         lo = self.label()
         self.cbr(self.exc_match(e, self.builtin_catch("StopIteration")), ls, lo)
         self.place(ls)
-        self.pep479(e, "coroutine" if f.aio else "generator")
+        self.pep479(e, "async generator" if f.agen else "coroutine" if f.aio else "generator")
         self.place(lo)
+        if f.agen:
+            self.agen_sai(e)  # (a StopAsyncIteration as RuntimeError too, PEP 525)
         self.throw(e)
     f.noret = False
 
@@ -498,12 +506,13 @@ def gen_gen_cleanup(self) -> int:
     return 0
 
 
-def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
+def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", closed: str = "") -> None:
     # the generator being compiled yields the value in slot (with hi, the pointer of an int in a
     # program where a module opts in to promoting ints: gen_slots), then goes on where it is resumed.
     # k: closing it here runs code of its (gen_cleanup), so a close raises GeneratorExit here,
     # having closed sub first, the generator a yield from delegates to (or none: Val("", "")):
-    # what closing sub raises is raised here (PEP 380). In a program that uses throw()
+    # what closing sub raises is raised here (PEP 380); or a close goes to closed, the block of
+    # an async generator's step that closes it (asyncgens.py). In a program that uses throw()
     # (Gen.gproto), the exception thrown into it is raised here too, or handed to thrown, the
     # block of a yield from that throws it into its generator
     fn = self.fn
@@ -543,10 +552,13 @@ def gen_gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str
                 self.mstore("int", "0", ea)
                 self.throw(e)
             self.place(lc)
-        if sub.v != "":
-            self.gen_close(sub)
-            self.gen_drop(sub)
-        self.raise_("GeneratorExit", self.sconst(""))
+        if closed != "":
+            self.br(closed)
+        else:
+            if sub.v != "":
+                self.gen_close(sub)
+                self.gen_drop(sub)
+            self.raise_("GeneratorExit", self.sconst(""))
         self.place(lgo)
 
 
@@ -589,9 +601,9 @@ def gen_yield_stmt(self, n: Node) -> None:
     v = self.expr(n.kids[0], y) if len(n.kids) > 0 else Val("null", "None")
     if y == "":
         if "?" in v.t:
-            self.err(f"cannot infer what {short(f.name)}() yields from an empty {typestr(v.t)}; annotate it -> Iterator[T]")
+            self.err(f"cannot infer what {short(f.name)}() yields from an empty {typestr(v.t)}; annotate it -> {'AsyncIterator' if f.agen else 'Iterator'}[T]")
         y = v.t
-        f.ret = self.gen_type(y, f.gsend)
+        f.ret = self.agen_type(y, f.gsend, f.ayield) if f.agen else self.gen_type(y, f.gsend)
     elif v.t != y and not (v.t == BIG and y == "int"):
         v = self.coerce(v, y)
     if dead:
@@ -600,6 +612,9 @@ def gen_yield_stmt(self, n: Node) -> None:
         self.unreachable()
         return
     w = ["0", ""] if y == "None" else self.gen_slots(v, gelem(f.ret))
+    if f.agen:
+        # (a yield of its own, which ends the step that runs it: the value is its consumer's)
+        self.mstore("int", str(AGYIELD), self.maddr("int", self.gen_promise(Val("", "")), str(AGFLAGS)))
     self.gen_suspend(w[0], self.gen_cleanup(), Val("", ""), "", w[1])
 
 
@@ -1091,7 +1106,7 @@ def gen_gen_stop(self) -> None:
     # (in a generator with exceptions off, which nothing in it can catch, PEP 479's RuntimeError
     # at once)
     if self.curfn.gen and not self.eh:
-        self.raise_("RuntimeError", self.sconst(("coroutine" if self.curfn.aio else "generator") + " raised StopIteration"))
+        self.raise_("RuntimeError", self.sconst(("async generator" if self.curfn.agen else "coroutine" if self.curfn.aio else "generator") + " raised StopIteration"))
     else:
         self.raise_("StopIteration", self.sconst(""))
 

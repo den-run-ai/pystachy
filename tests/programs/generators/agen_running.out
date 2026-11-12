@@ -1,0 +1,13 @@
+first stop
+waiting
+anext RuntimeError anext(): asynchronous generator is already running
+asend RuntimeError anext(): asynchronous generator is already running
+athrow RuntimeError athrow(): asynchronous generator is already running
+aclose RuntimeError aclose(): asynchronous generator is already running
+athrow-again RuntimeError cannot reuse already awaited aclose()/athrow()
+aclose-again RuntimeError cannot reuse already awaited aclose()/athrow()
+rest stop
+rest-again RuntimeError cannot reuse already awaited __anext__()/asend()
+outer stop
+nested RuntimeError anext(): asynchronous generator is already running
+[exit 0]

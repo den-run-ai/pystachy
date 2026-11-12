@@ -983,6 +983,28 @@ from src.pystachy_compiler.generators import (
     gen_gen_send as generators_gen_send,
     gen_yield_from_iter as generators_yield_from_iter,
 )
+from src.pystachy_compiler.asyncgens import (
+    gen_agen_ann as asyncgens_agen_ann,
+    gen_agen_args as asyncgens_agen_args,
+    gen_agen_await as asyncgens_agen_await,
+    gen_agen_await_call as asyncgens_agen_await_call,
+    gen_agen_awaitable as asyncgens_agen_awaitable,
+    gen_agen_call as asyncgens_agen_call,
+    gen_agen_close_sub as asyncgens_agen_close_sub,
+    gen_agen_declare as asyncgens_agen_declare,
+    gen_agen_for as asyncgens_agen_for,
+    gen_agen_landed as asyncgens_agen_landed,
+    gen_agen_method as asyncgens_agen_method,
+    gen_agen_raised as asyncgens_agen_raised,
+    gen_agen_result as asyncgens_agen_result,
+    gen_agen_sai as asyncgens_agen_sai,
+    gen_agen_step as asyncgens_agen_step,
+    gen_agen_stop as asyncgens_agen_stop,
+    gen_agen_type as asyncgens_agen_type,
+    gen_aiter_ as asyncgens_aiter_,
+    gen_anext_ as asyncgens_anext_,
+    gen_anext_default as asyncgens_anext_default,
+)
 from src.pystachy_compiler.coroutines import (
     gen_await_dead as coroutines_await_dead,
     gen_await_handle as coroutines_await_handle,
@@ -3489,6 +3511,66 @@ class Gen:
     def coro_method(self, o: Val, m: str, args: list[Node]) -> Val:
         return coroutines_coro_method(self, o, m, args)
 
+    def agen_declare(self, f: FnInfo, d: Node) -> str:
+        return asyncgens_agen_declare(self, f, d)
+
+    def agen_type(self, t: str, s: str, y: str) -> str:
+        return asyncgens_agen_type(self, t, s, y)
+
+    def agen_ann(self, n: Node, infer: bool) -> list[str]:
+        return asyncgens_agen_ann(self, n, infer)
+
+    def agen_landed(self, e: Val, p: str) -> None:
+        return asyncgens_agen_landed(self, e, p)
+
+    def agen_sai(self, e: Val) -> None:
+        return asyncgens_agen_sai(self, e)
+
+    def agen_raised(self, e: Val) -> None:
+        return asyncgens_agen_raised(self, e)
+
+    def agen_stop(self) -> None:
+        return asyncgens_agen_stop(self)
+
+    def agen_close_sub(self, ag: Val, x: Val) -> None:
+        return asyncgens_agen_close_sub(self, ag, x)
+
+    def agen_result(self, t: str, mode: str, dflt: Val) -> str:
+        return asyncgens_agen_result(self, t, mode, dflt)
+
+    def agen_step(self, ag: Val, mode: str, arg: Val, dflt: Val, want: str, stop: str = "") -> Val:
+        return asyncgens_agen_step(self, ag, mode, arg, dflt, want, stop)
+
+    def agen_for(self, n: Node) -> bool:
+        return asyncgens_agen_for(self, n)
+
+    def agen_args(self, m: str, args: list[Node]) -> None:
+        return asyncgens_agen_args(self, m, args)
+
+    def agen_await(self, n: Node, want: str) -> Val:
+        return asyncgens_agen_await(self, n, want)
+
+    def agen_call(self, x: Node) -> bool:
+        return asyncgens_agen_call(self, x)
+
+    def agen_await_call(self, x: Node, want: str) -> Val:
+        return asyncgens_agen_await_call(self, x, want)
+
+    def agen_method(self, o: Val, m: str, args: list[Node]) -> Val:
+        return asyncgens_agen_method(self, o, m, args)
+
+    def agen_awaitable(self, o: Val, mode: str, extra: list[Node]) -> Val:
+        return asyncgens_agen_awaitable(self, o, mode, extra)
+
+    def aiter_(self, args: list[Node]) -> Val:
+        return asyncgens_aiter_(self, args)
+
+    def anext_(self, args: list[Node]) -> Val:
+        return asyncgens_anext_(self, args)
+
+    def anext_default(self, it: Val, d: Val) -> Val:
+        return asyncgens_anext_default(self, it, d)
+
     def coro_analyze(self) -> None:
         return coroutines_coro_analyze(self)
 
@@ -3565,8 +3647,8 @@ class Gen:
     def gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
         return generators_gen_stream(self, name, v, args, want, resultsoft)
 
-    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
-        return generators_gen_suspend(self, slot, k, sub, thrown, hi)
+    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", closed: str = "") -> None:
+        return generators_gen_suspend(self, slot, k, sub, thrown, hi, closed)
 
     def yield_from_iter(self, what: str) -> None:
         return generators_yield_from_iter(self, what)
