@@ -1,0 +1,7 @@
+kept:yes kept:yes kept:yes kept:yes kept:yes   yes <Word.YES: 'yes'>
+one! one! one! one! one! 1 001
+perm(4) perm(6) perm(2) perm(4) 4    6
+plain! plain! plain! plain! plain!   plain!
+1 1 1   1 soft soft soft__
+['kept:yes'] ['one!'] one! 1
+[exit 0]
