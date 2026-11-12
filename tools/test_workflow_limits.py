@@ -309,6 +309,19 @@ class LimitTests(unittest.TestCase):
         self.assertEqual(job["env"]["VERIFY_PROFILE"],
                          "${{ github.event_name == 'pull_request' && 'pr' || 'full' }}")
 
+    def test_full_matrix_runs_every_declared_group_on_both_architectures(self):
+        plan = subprocess.run(["tests/verify.sh", "--list"], cwd=ROOT,
+                              env={**os.environ, "VERIFY_PROFILE": "full"},
+                              check=True, capture_output=True, text=True, timeout=10).stdout
+        groups = {line.split()[0] for line in plan.splitlines()} - {"all", "bootstrap"}
+        job = workflows()["ci.yml"]["jobs"]["verification"]
+        for event in ("push", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertCountEqual([(row["machine"], row["group"]) for row in matrix_rows(job, event)],
+                                      itertools.product(("x86_64", "aarch64"), groups))
+        pr_groups = {row["group"] for row in matrix_rows(job, "pull_request")}
+        self.assertFalse({"python-free-3", "ubsan-4"} & pr_groups)
+
     def test_full_qualification_does_not_block_bootstrap_consumers(self):
         jobs = workflows()["ci.yml"]["jobs"]
         bootstrap = jobs["bootstrap"]
@@ -343,7 +356,7 @@ class LimitTests(unittest.TestCase):
             "python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'",
         ])
 
-    def test_generated_asan_runs_once_on_short_pr_worker_and_full_contracts(self):
+    def test_generated_asan_runs_once_on_short_pr_worker_and_full_gc_jit(self):
         found = workflows()
         job = found["ci.yml"]["jobs"]["verification"]
         controls = [step for step in job["steps"] if "-p test_runtime_asan.py" in step.get("run", "")]
@@ -355,7 +368,7 @@ class LimitTests(unittest.TestCase):
             "python3 -m unittest discover -s tools -p test_runtime_asan.py -v",
         ])
         for event in ("pull_request", "push", "workflow_dispatch"):
-            group = "safety-1" if event == "pull_request" else "contracts"
+            group = "safety-1" if event == "pull_request" else "gc-jit-0"
             self.assertEqual(selected_rows(job, control["if"], event),
                              [{"machine": "x86_64", "group": group}])
         self.assertNotIn("continue-on-error", control)

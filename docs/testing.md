@@ -217,8 +217,9 @@ Use it when a refactor should preserve code generation. An intentional optimizat
 change IR and needs behavioral tests instead.
 
 `make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries,
-runtime calls, function attributes or field TBAA tags recorded for `tests/ir/*.py` (`NAME.fx`,
-`NAME.calls`, `NAME.attrs`, `NAME.tbaa`). These probes compile without running;
+runtime calls, function attributes, field TBAA tags or calls of compiled functions recorded for
+`tests/ir/*.py` (`NAME.fx`, `NAME.calls`, `NAME.attrs`, `NAME.tbaa`, `NAME.inline`). These probes
+compile without running;
 `tests/ir/pending/` holds probes for open bugs.
 
 ## Syntax errors against CPython
@@ -344,7 +345,7 @@ it lists more.
 The [Coverage workflow](../.github/workflows/coverage.yml) runs both measurements daily and on
 demand, and on pushes to `main` that change its setup or the suites' runners. PRs do not launch
 this exhaustive matrix; run it manually on a PR branch when coverage detail is needed.
-The compiler's coverage runs in ten parallel jobs (the corpus in eight shards, the FFI and IR
+The compiler's coverage runs in twelve parallel jobs (the corpus in ten shards, the FFI and IR
 suites in one, the runtime-cache and unit suites in another) and the runtime's in seven (the
 corpus in six shards and the FFI suite), following one verified compiler producer; a report job
 for each combines its parts. As for CI's groups, each job targets under ten minutes of work
@@ -596,7 +597,7 @@ limits alone do not establish current run times.
 
 ### Full verification
 
-Pushes to `main` and manual runs execute all thirty-two verification groups on both Linux
+Pushes to `main` and manual runs execute all thirty-four verification groups on both Linux
 architectures. They provide the exact-commit evidence required for releases. Local groups build
 their own bootstrap; CI builds it once per architecture. Large upstream regex runs alongside
 benchmark correctness, and Lint checks CPython port preservation. The full groups are:
@@ -606,11 +607,11 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `hosted` | The CPython-hosted compiler against stage 2 on every corpus case: identical IR, messages and exit status (`tools/irsame.sh`) and `check` results (`tools/irsame.sh --check`); one case in 64 and a program of each hosted-driver path after the IR also run end to end, JIT and AOT. |
 | `native-0`, `native-1`, `native-2` | Three disjoint thirds of the native differential suite, JIT and AOT. |
 | `opt-off-0`, `opt-off-1`, `opt-off-2` | Three disjoint thirds of the native suite with IR optimizations disabled. |
-| `python-free-0`, `python-free-1`, `python-free-2` | Rebuild with no Python on `PATH`; three disjoint thirds of the suite with that compiler. |
-| `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3` | Sanitized compiler/runtime; four disjoint quarters of the JIT/AOT suite. |
+| `python-free-0`, `python-free-1`, `python-free-2`, `python-free-3` | Rebuild with no Python on `PATH`; four disjoint quarters of the suite with that compiler. |
+| `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3`, `ubsan-4` | Sanitized compiler/runtime; five disjoint fifths of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
 | `gc-ir-0`, `gc-ir-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results. Both halves also compare `runtime.py`. |
-| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. Execution uses its own weighted partition, independently of the identity halves. The x86-64 `gc-jit-0` job then runs runtime ABI, cache and GC controls. |
+| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. Execution uses its own weighted partition, independently of the identity halves. The x86-64 `gc-jit-0` job then runs runtime ABI, cache, GC and generated-code ASan controls. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
@@ -770,14 +771,14 @@ with no difference. It rejects GC suites without both `gc-ir` halves, even in a 
 omits them. `tests/verify.sh gc-stress` still runs all GC checks locally with one bootstrap;
 `gc-ir` runs the two identity halves, `gc-jit` those and the two JIT halves, and `gc-aot` the
 three AOT thirds.
-The native, opt-off and python-free suites run in thirds, and the UBSan suite in quarters
+The native and opt-off suites run in thirds, Python-free in quarters, and UBSan in fifths
 (`tests/verify.sh`'s `shard_cases`). The gate requires each
 shard's identity and complete count, and that the shards together make as many checks as an
 unsharded suite: the JIT and AOT shards as many as `tests/verify.sh` counts in the whole corpus
 (each report's `sources.suite_checks`; opt-off's once per `PYSTACHY_OPT` setting), and the UBSan
-quarters, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
-all three of their thirds, `python-free` rebuilds the compiler once and runs its three thirds,
-and `ubsan` builds the sanitized compiler once and runs its four quarters.
+fifths, which run in each mode, twice `sources.mode_checks`. Locally, `native` and `opt-off` run
+all three of their thirds, `python-free` rebuilds the compiler once and runs its four quarters,
+and `ubsan` builds the sanitized compiler once and runs its five fifths.
 
 Every such suite is sharded by `tests/corpus.sh`'s `corpus_shard` (`tools/shard_cases.sh` for the
 coverage and variant workflows): the cases are taken heaviest first by their weight in
@@ -807,8 +808,11 @@ The runners vary far more: in that run a `znver3` runner took 1.2-1.4 times as l
 `znver4` one (the native halves took 598 s and 429 s), so a job's time depends mostly on the
 runner it lands on. Since a half took 10.0-10.4 minutes on `znver3` runners in that run, native
 and opt-off run in thirds. UBSan thirds took 10.85 and 10.87 minutes in CI run 40764559484,
-so UBSan now runs in four quarters with an independent sanitized rebuild in each CI job. The
-four-way split still needs CI timing evidence; the 15-minute job limit is unchanged.
+so UBSan was split into four quarters with an independent sanitized rebuild in each CI job.
+In [CI run 43263073296](https://github.com/den-run-ai/pystachy/actions/runs/43263073296),
+full x86-64 UBSan jobs reached 13m14s and Python-free reached 12m57s. UBSan now uses five
+shards and Python-free four, retaining their complete corpus and mode counts. The new placement
+still needs repeated CI timing evidence for the headroom target; the 15-minute job limit is unchanged.
 The CPython-hosted compiler is checked by identity rather than by executing its output again:
 `hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
 exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results
@@ -949,7 +953,7 @@ The coordinator preserves normal SIGINT handling, cancels both process groups an
 reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
 
 Generated-user and generated-runtime ASan controls run in the existing x86-64
-`safety-1` worker on code PRs and `contracts` on main pushes and manual runs, using
+`safety-1` worker on code PRs and `gc-jit-0` on main pushes and manual runs, using
 LLVM 18 and its compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;
 every other `test_runtime_*.py` file runs in the second native JIT/variant worker on PRs
 and the x86-64 `gc-jit-0` job on full runs. Those controls retain real-driver C-cache

@@ -916,6 +916,7 @@ from src.pystachy_compiler.expressions import (
 from src.pystachy_compiler.flow import (
     Flow,
     gen_default_home as flow_default_home,
+    gen_exc_shadows as flow_exc_shadows,
     gen_fl_defaults as flow_fl_defaults,
     gen_fl_expr as flow_fl_expr,
     gen_fl_fields as flow_fl_fields,
@@ -1318,6 +1319,9 @@ class Gen:
         self.source_lines = SourceLines(os.getenv("PYSTACHY_DEBUG_LINES", "") == "1")
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
+        # listguard (gen_listguard): how many calls of each function the program's IR makes, by
+        # symbol, once the program is built and before any pass copies one (call_counts)
+        self.callsites: dict[str, int] = {}
         self.summaries = EffectSummaries()
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}
@@ -3809,6 +3813,9 @@ class Gen:
 
     def default_home(self, ci: ClassInfo, fl: str) -> ClassInfo:
         return flow_default_home(self, ci, fl)
+
+    def exc_shadows(self, ci: ClassInfo, fl: str) -> list[ClassInfo]:
+        return flow_exc_shadows(self, ci, fl)
 
     def fl_defaults(self, n: Node) -> list[Node]:
         return flow_fl_defaults(self, n)

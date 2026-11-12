@@ -229,11 +229,13 @@ def report(group, steps):
                         check_identical=True, modes=["jit", "aot"], sample_index=0,
                         sample_count=merge.HOSTED_SAMPLE_OF)
             hosted_sample(step, *hosted_cases(), strata=dict(hosted_strata()))
-        if name in ("python-free-0", "python-free-1", "python-free-2"):
-            count = 4 if name.endswith("-0") else 3   # thirds of a 10-check suite
+        if name.startswith("python-free-"):
+            shards = merge.SHARDED_STEPS[name]
+            count = 10 // shards + (int(name[-1]) < 10 % shards)
             step.update(passed=count, expected=count)
-        if name in ("ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"):
-            count = 5   # quarters of a suite of 10 checks in each of two modes
+        if name.startswith("ubsan-"):
+            shards = merge.SHARDED_STEPS[name]
+            count = 20 // shards + (int(name[-1]) < 20 % shards)
             step.update(passed=count, expected=count)
         if name.startswith("tests-opt-off"):
             step.update(PYSTACHY_OPT=["-all"])
@@ -439,7 +441,7 @@ class ContractTests(unittest.TestCase):
                       "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
         for group in ("gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
-                      "ubsan-2", "ubsan-3", "python-free-0", "python-free-1", "python-free-2", "runtime-cache"):
+                      "ubsan-2", "ubsan-3", "ubsan-4", "python-free-0", "python-free-1", "python-free-2", "python-free-3", "runtime-cache"):
             self.assertEqual(groups[group], ["bootstrap", group])
         self.assertNotIn("gc-aot-3", groups)
         self.assertEqual(groups["hosted"], ["bootstrap", "tests-cpython"])  # one job: the IR oracle and its sample
@@ -474,7 +476,7 @@ class ContractTests(unittest.TestCase):
             self.assertEqual([step["name"] for step in result["steps"]], groups["all"])
             for group in ("opt-off-0", "opt-off-1", "opt-off-2", "gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2",
                           "hosted", "native-0", "native-1", "native-2", "python-free-0", "python-free-1",
-                          "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "runtime-cache", "contracts", "benchmarks",
+                          "python-free-2", "python-free-3", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "ubsan-4", "runtime-cache", "contracts", "benchmarks",
                           "scaling", "dynany-optin-0", "dynany-optin-1", "dynany-optin-2",
                           *(f"python-int-optin-{index}" for index in range(merge.PYTHON_INT_SHARDS))):
                 path = directory / f"verification-{group}" / "verification.json"
@@ -484,7 +486,7 @@ class ContractTests(unittest.TestCase):
                     merge.merge_reports(directory, groups, COMMIT)
                 path.write_text(original)
             for group in ("gc-jit-1", "gc-aot-0", "gc-aot-2", "native-0", "opt-off-1", "python-free-1",
-                          "python-free-2", "ubsan-0"):
+                          "python-free-2", "python-free-3", "ubsan-0", "ubsan-4"):
                 path = directory / f"verification-{group}" / "verification.json"
                 original = path.read_text()
                 for delta in (-1, 1):
@@ -526,7 +528,7 @@ class ContractTests(unittest.TestCase):
                     with self.subTest(suite_checks=suite), self.assertRaisesRegex(ValueError, error):
                         merge.merge_reports(directory, groups, COMMIT)
             # the shards of each GC suite make the checks of the corpus in one mode (sources.mode_checks),
-            # and the UBSan thirds twice as many
+            # and the UBSan fifths twice as many
             for checks, error in ((11, "GC JIT shards must cover the same full-suite check count"), (10, None)):
                 for path in paths:
                     data = json.loads(path.read_text())
@@ -575,6 +577,23 @@ class ContractTests(unittest.TestCase):
                     merge.merge_reports(directory, groups, COMMIT)
             path.write_text(original)
 
+    def test_full_partitions_preserve_every_corpus_case_and_check(self):
+        corpus = hosted_corpus()
+        self.assertTrue(corpus)
+        for suite, count, modes in (("python-free", 4, ["jit", "aot"]),
+                                     ("ubsan", 5, ["jit"]), ("coverage", 10, ["jit", "aot"])):
+            with self.subTest(suite=suite):
+                if suite != "coverage":
+                    self.assertEqual(merge.SHARDED_STEPS[f"{suite}-0"], count)
+                shards = [subprocess.run(
+                    ["tools/shard_cases.sh", f"{index}/{count}"], cwd=merge.ROOT,
+                    env={**os.environ, "LC_ALL": "C"}, check=True, capture_output=True,
+                    text=True, timeout=10).stdout.splitlines() for index in range(count)]
+                self.assertTrue(all(shards))
+                self.assertEqual(Counter(case for shard in shards for case in shard), Counter(corpus))
+                self.assertEqual(sum(merge.case_checks(shard, modes) for shard in shards),
+                                 merge.case_checks(corpus, modes))
+
     def test_gc_reports_require_original_stress_mode_ir_and_complete_counts(self):
         groups = merge.load_groups()
         mutations = {
@@ -602,7 +621,7 @@ class ContractTests(unittest.TestCase):
                            lambda step: step.update(shard_count=str(step["shard_count"])),
                            lambda step: step.pop("shard_count")]
         for group in ("native-0", "native-1", "native-2", "opt-off-0", "opt-off-1", "opt-off-2",
-                      "python-free-0", "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"):
+                      "python-free-0", "python-free-1", "python-free-2", "python-free-3", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "ubsan-4"):
             mutations[group] = shard_mutations + [lambda step: step.update(passed=step["expected"] - 1),
                                                   lambda step: step.update(failed=1),
                                                   lambda step: step.pop("expected")]
