@@ -422,9 +422,10 @@ def gen_path_union(self, ms: list[Node]) -> str:
     return ("opt[str]" if none else "str") if s else "!" + PATHLIKE
 
 def bad_attr(n: Node) -> Node | None:
-    # the first badattr in expression n, as CPython evaluates it (Loader.qexpr: a module
-    # attribute that does not exist, or a module as a value), or None
-    if n.kind == "badattr":
+    # the first read in expression n, as CPython evaluates it, of a module attribute that does
+    # not exist (Loader.qexpr's badattr: CPython's AttributeError), or that a module Pystachy
+    # provides does not offer; else None. A module as a value, or its __dict__, is no such read
+    if n.kind == "badattr" and (" has no attribute " in n.s or " is not offered by " in n.s):
         return n
     for k in n.kids:
         r = bad_attr(k)
@@ -458,8 +459,8 @@ def gen_typevar_def(self, st: Node) -> bool:
             self.err(f"a {kind}'s arguments other than its name{', constraints and bound' if kind == 'TypeVar' else ''} must be constants")
         b = bad_attr(a.kids[0] if a.kind == "kw" else a) if kind == "TypeVar" and (a.kind != "kw" or a.s == "bound") else None
         if b is not None:
-            # (an attribute that its module does not bind, or a module as a value, which
-            # Loader.qexpr leaves as badattr: CPython raises AttributeError or TypeError there)
+            # (an attribute that its module does not bind, which Loader.qexpr leaves as badattr:
+            # CPython raises AttributeError there, though it checks no bound or constraint)
             self.line = b.line
             self.err(f"{b.s} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
         if a.kind == "kw" and a.s == "default":
