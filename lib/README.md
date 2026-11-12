@@ -5,20 +5,22 @@
 Pystachy reuses CPython library code where it fits the typed subset. This directory
 contains unchanged CPython modules, adapted modules with localized
 `# Pystachy port:` comments, and subset implementations of APIs backed by C in
-CPython. The sources remain valid Python; successful execution under CPython does
-not by itself establish that every API compiles with Pystachy. The
+CPython. The sources remain valid Python, but an API that runs under CPython does not
+necessarily compile with Pystachy. The
 [library guide](../docs/stdlib.md#library-support-at-a-glance) summarizes support and gaps by
-area, and the [compatibility reference](compatibility.md) gives each module's limits.
+area, and the [compatibility reference](compatibility.md) defines each module's accepted
+inputs, unsupported APIs and observable differences from CPython.
 
 Imports search builtin modules first, then the program's directory,
 `PYSTACHY_PATH`, and `lib/`. See [module rules](../docs/language/modules.md).
 Compiler-provided `sys.setrecursionlimit()` bounds recursive native calls with
 catchable `RecursionError`; [its depth policy](../docs/language/compatibility.md#errors-and-control-flow)
-also applies to compiled library functions. Ports that opt in to
-[dynamic `Any`](../docs/dynamic-any.md) rely on its [operation](../docs/dynamic-any.md#operations)
-and [iteration](../docs/dynamic-any.md#iteration) contracts, including
+also applies to compiled library functions.
+
+Ports that opt in to [dynamic `Any`](../docs/dynamic-any.md) rely on its
+[operation](../docs/dynamic-any.md#operations) and [iteration](../docs/dynamic-any.md#iteration)
+contracts, including
 [class values, type-keyed registries, generic calls and annotated factories](../docs/dynamic-any.md#class-values-and-type-keyed-registries).
-That protocol support alone does not establish whole-module compatibility.
 
 ## Module guide
 
@@ -157,9 +159,7 @@ which `threading` and `_thread` describe.
 CPython VM adapters `opcode`, `_opcode`, `_imp` and `_ast` are not shipped; see the
 [library scope](../docs/stdlib.md#library-scope).
 
-The [compatibility reference](compatibility.md) defines each module's accepted
-inputs, unsupported APIs and observable differences from CPython. The
-[provenance reference](provenance.md) records upstream files and checks.
+The [provenance reference](provenance.md) records upstream files and checks.
 The [porting checklist](../docs/porting.md) describes compiled upstream test
 coverage and the pinned `make port-check` checks for fnmatch and textwrap.
 Builtin modules such as `sys`, `os` and `math` are documented in the
@@ -182,8 +182,8 @@ Builtin modules such as `sys`, `os` and `math` are documented in the
 ## Unchanged CPython files
 
 These files are byte-for-byte copies from CPython 3.13.16. `tests/record.sh --check`
-reads this table and verifies their SHA-256 hashes. API coverage remains limited
-to the compiled paths listed here and in the compatibility reference.
+reads this table and verifies their SHA-256 hashes. Only the compiled paths listed here
+and in the compatibility reference are supported.
 
 | Module | From CPython 3.13.16 | SHA-256 | Tested coverage |
 |---|---|---|---|
@@ -202,20 +202,24 @@ to the compiled paths listed here and in the compatibility reference.
 `curses/__init__.py` is a Pystachy stand-in for the package that normally imports
 `_curses`; it does not provide terminal control.
 
-`_pystachy_binascii.py` is `binascii`, `_pystachy_codecs.py` is `_codecs`, `_pystachy_atexit.py` is
-`atexit`, `_pystachy_struct.py` is `_struct`, `_pystachy_thread.py` is `_thread`,
-`_pystachy_unicodedata.py` is `unicodedata`, `_pystachy_itertools.py` is `itertools`,
-`_pystachy__io.py` is `_io`, modules CPython builds into its interpreter: Pystachy loads those
-files for `import binascii`, `import _codecs`, `import atexit`, `import _struct`, `import _thread`,
-`import unicodedata`, `import itertools` and `import _io`, where CPython imports its C modules.
-`tools/unicodedata_tables.py` writes the tables of `unicodedata`, `_pystachy_unicodedata_db.py` and
-`_pystachy_unicodedata_names.py`, from CPython's own module.
+CPython builds `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata`,
+`itertools` and `_io` into its interpreter. Where CPython imports those C modules, Pystachy
+loads `_pystachy_binascii.py` for `import binascii`, `_pystachy_codecs.py` for `import _codecs`,
+`_pystachy_atexit.py` for `import atexit`, `_pystachy_struct.py` for `import _struct`,
+`_pystachy_thread.py` for `import _thread`, `_pystachy_unicodedata.py` for `import unicodedata`,
+`_pystachy_itertools.py` for `import itertools` and `_pystachy__io.py` for `import _io`.
+`tools/unicodedata_tables.py` writes the tables of `unicodedata`, `_pystachy_unicodedata_db.py`
+and `_pystachy_unicodedata_names.py`, from CPython's own module.
+
 `_pystachy_abc.py` is `abc`, which CPython imports as it starts, so that a program's own `abc.py`
-is never imported there. `_pystachy_bfile.py` holds the binary files that `open()` of a binary mode makes
-(the compiler imports it where a module calls `open()` so: loader.py's `binary_opens`). `types.py` binds `TracebackType` from `_pystachy_types.py`, `MappingProxyType`
-from `_pystachy_mappingproxy.py` and CPython's other names of `types` from `_pystachy_typenames`, the
-compiler's, which only it may import. `_collections_abc` has no file here: it is the compiler's builtin
-`collections.abc`, as CPython's `collections` makes it `collections.abc`.
+is never imported there. `_collections_abc` has no file here: it is the compiler's builtin
+`collections.abc`, as CPython's `collections` makes it `collections.abc`. `types.py` binds
+`TracebackType` from `_pystachy_types.py`, `MappingProxyType` from `_pystachy_mappingproxy.py`
+and CPython's other names of `types` from `_pystachy_typenames`, the compiler's, which only it
+may import.
+
+`_pystachy_bfile.py` holds the binary files that `open()` of a binary mode makes. The compiler
+imports it where a module calls `open()` so (loader.py's `binary_opens`).
 
 `_pystachy_iterators.py` holds the iterator classes of `iter()` over builtin containers
 (`list_iterator`, `dict_keyiterator`, ...). The compiler loads it for a program that calls
@@ -272,8 +276,8 @@ does not change decoding, Unicode positions or repair heuristics.
 | [URL reports](../examples/urlstats/README.md) | `urllib.parse` |
 
 See [performance](../docs/performance.md) for the overall benchmark protocol and
-[caching](../docs/caching.md) for recent regex, router and textwrap measurements.
-Example tables record particular runs; they are not universal performance claims.
+[caching](../docs/caching.md) for regex, router and textwrap measurements. Example tables
+record particular runs.
 
 CPython-derived files and code are used under the PSF License Version 2.
 See [THIRD_PARTY_NOTICES](../THIRD_PARTY_NOTICES). The

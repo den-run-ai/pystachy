@@ -41,8 +41,9 @@ From a source checkout, use `./pystachy` after `make`, or replace `pystachy` wit
 
 ## Try an unsupported construct
 
-Fixed tuple and literal `match` patterns are supported. A list subject still needs
-an ordinary conditional. Insert this unsupported list pattern after the definition:
+Fixed tuple and literal `match` patterns are supported, but a list subject still
+needs an ordinary conditional. Insert this unsupported list pattern at the start
+of `sum_squares`:
 
 ```python
 def sum_squares(n: int) -> int:
@@ -73,10 +74,11 @@ the three-line `match` block with a supported conditional:
 ```
 
 Run the CPython, JIT and AOT commands again; each prints `285`. You can also call
-`sum_squares(0)` and check that all three return `0`. See
-[unsupported features](language.md#unsupported-features) when a diagnostic names
-a construct your program needs. `pystachy check` checks syntax only; compiling
-and executing the relevant path gives stronger evidence.
+`sum_squares(0)` and check that all three return `0`.
+
+When a diagnostic names a construct your program needs, see [unsupported
+features](language.md#unsupported-features). `pystachy check` checks syntax only;
+compiling and executing the relevant path gives stronger evidence.
 
 ## Measure the work you care about
 
@@ -94,9 +96,11 @@ correctness and a representative input, then separate these costs:
 The Linux native CLI uses a [program cache](program-cache.md) by default. Report
 first fills, validated hits and uncached launches separately. Set
 `PYSTACHY_PROGRAM_CACHE=0` when measuring repeated compilation, and warm the
-separate runtime cache first. Repeat measurements, compare medians, and check outputs in
-every mode. Ordinary integers are checked signed 64-bit values: increasing the
-input enough to overflow is a correctness change, not a useful timing sample.
+separate runtime cache first.
+
+Repeat measurements, compare medians, and check outputs in every mode. Ordinary
+integers are checked signed 64-bit values: increasing the input enough to overflow
+is a correctness change, not a useful timing sample.
 
 Use [performance](performance.md) for reproducible comparisons and LLVM inspection,
 or a complete application such as the [event router](../examples/route/README.md).

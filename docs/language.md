@@ -315,7 +315,6 @@ imports and code deferred until use.
 
 Common numeric, text, container, sorting and file operations are supported. Builtin modules
 provide selected APIs from `sys`, `os`, `math`, `time`, `errno`, `tempfile` and `select`.
-An imported module name does not imply every CPython API is available.
 
 The shipped libraries include unchanged upstream modules, localized ports such as
 `fnmatch`, `textwrap`, `difflib`, `random` and `datetime`, and implementations such as
@@ -372,9 +371,9 @@ The most important differences for supported programs are:
 | Lifetime | Garbage collection runs in batches; `__del__` never runs; close files explicitly |
 | Evaluation | Some consumers materialize their input before processing it |
 
-These are not the complete differences. Read the
-[compatibility reference](language/compatibility.md#deviations-from-cpython) when relying on
-Unicode, mutation during iteration, exception details, file buffering or object identity.
+The [compatibility reference](language/compatibility.md#deviations-from-cpython) lists the
+rest; read it when relying on Unicode, mutation during iteration, exception details, file
+buffering or object identity.
 The opt-in prototypes list their own [dynamic `Any`](dynamic-any.md#deviations) and
 [promoting int](python-int.md#deviations) differences, and module-specific differences remain
 in the [library compatibility reference](../lib/compatibility.md).
