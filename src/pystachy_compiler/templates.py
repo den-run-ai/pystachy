@@ -289,15 +289,17 @@ def gen_gspec_late(self, c: str, ts: list[str], given: dict[str, str], named: bo
     # a specialization of generic class c of a hierarchy, made as code compiles: code compiled
     # before it may have dispatched on its base's objects without it. The next pass makes it
     # before any code compiles (a "gspec:" hint that gspec_replay replays, as Rejoin's joins)
-    key = "gspec:" + doing
+    key = "gspec:" + self.stable(doing)
     if key in self.hints:
-        return  # (replayed, as this pass began)
+        self.err(f"internal error: the specialization of {short(c)} that an earlier pass made late was not made again before code compiled (see gspec_replay)")
     for x in ts + [given[k] for k in given]:
         w = ""
         for ch in x + " ":
             if ch in "[](),| ;=~>*?":
-                if w in self.classes and self.classes[w].origin != "":
-                    self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, whose type arguments are other specializations ({typestr(x)}) is not supported where it is first made in code (name it in an annotation that precedes that code)")
+                if w in self.classes and self.classes[w].origin != "" and self.classes[w].origin not in self.gtagged:
+                    # (a specialization of a hierarchy's generic class is replayed before it: its
+                    # stable name, as gspec_replay reads it back)
+                    self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, whose type arguments are other generic classes' specializations ({typestr(x)}) is not supported where it is first made in code (name it in an annotation that precedes that code)")
                 w = ""
             else:
                 w += ch
@@ -307,7 +309,7 @@ def gen_gspec_late(self, c: str, ts: list[str], given: dict[str, str], named: bo
         self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, on literal arguments is not supported")
     if self.final:
         self.err(f"internal error: a specialization of {short(c)} made after code that dispatches on its base (see gspec_late)")
-    self.newhints[key] = "\x1e".join([c, "1" if named else "0", "\x1f".join(ts), "\x1f".join([k + "=" + given[k] for k in given])])
+    self.newhints[key] = "\x1e".join([c, "1" if named else "0", "\x1f".join([self.stable(t) for t in ts]), "\x1f".join([k + "=" + self.stable(given[k]) for k in given])])
 
 
 def gen_gspec_replay(self) -> None:
@@ -316,7 +318,20 @@ def gen_gspec_replay(self) -> None:
     for key in self.hints:
         if not key.startswith("gspec:"):
             continue
-        parts = self.hints[key].split("\x1e")
+        v = self.hints[key]
+        # (the specializations its types name, by the stable names gspec_late wrote, made by the
+        # replays before it: their names in this pass, the longest first)
+        names = [n for n in self.classes if self.classes[n].speckey != "" and self.classes[n].origin in self.gtagged]
+        stables = [self.stable(n) for n in names]
+        order: list[int] = []
+        for i in range(len(names)):
+            j = 0
+            while j < len(order) and len(stables[order[j]]) >= len(stables[i]):
+                j += 1
+            order.insert(j, i)
+        for i in order:
+            v = v.replace(stables[i], names[i])
+        parts = v.split("\x1e")
         c = parts[0]
         ts = parts[2].split("\x1f") if parts[2] != "" else []
         given: dict[str, str] = {}

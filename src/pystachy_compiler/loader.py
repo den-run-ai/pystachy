@@ -1899,8 +1899,13 @@ class Loader:
         if base is None or base.kind != "index":
             return False
         g = base.kids[0]
-        if g.kind == "name" and m is self.dm and (m.kinds.get(g.s, "") == "c" or m.kinds.get(g.s, "").startswith("a:")) and g.s != name:
-            return self.generic_class(g)  # (class Task(Future[T]) of a generic class Future)
+        if (g.kind == "name" and (m.kinds.get(g.s, "") == "c" or m.kinds.get(g.s, "").startswith("a:")) and g.s != name) or (g.kind == "attr" and g.kids[0].kind == "name" and m.kinds.get(g.kids[0].s, "").startswith("m:")):
+            # (class Task(Future[T]) of a generic class Future, which g names in class name's module)
+            dm = self.dm
+            self.dm = m
+            r = self.generic_class(g)
+            self.dm = dm
+            return r
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
             return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"

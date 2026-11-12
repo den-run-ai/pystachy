@@ -1,0 +1,7 @@
+base b b
+fut int fut
+fut Fut fut
+task 2 3 fut
+task 's' 1 fut
+3 True True
+[exit 0]
