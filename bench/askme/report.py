@@ -17,7 +17,7 @@ ORDER = [
 ]
 LABELS = {
     "pystachy-aot": "Pystachy AOT",
-    "pystachy-jit": "Pystachy JIT (cached)",
+    "pystachy-jit": "Pystachy JIT",
     "mypyc": "mypyc + CPython",
     "cpython": "CPython",
     "pypy": "PyPy",
@@ -171,11 +171,16 @@ def main(argv):
             ]
         )
     if "pystachy_jit_first_launch_s" in builds:
+        # A launch far above the interpreters' is a compilation: the program cache
+        # skips a program that declares @ffi.extern libraries.
+        cached = summary("help", "pystachy-jit")["wall_median_ms"] < 1000
         rows.append(
             [
                 "Pystachy JIT",
                 f"{builds['pystachy_jit_first_launch_s']:.1f} s first launch",
-                "later launches reuse the program cache",
+                "later launches reuse the program cache"
+                if cached
+                else "every launch compiles: the program cache skips programs with `@ffi.extern`",
             ]
         )
     if "mypyc_build_s" in builds:
