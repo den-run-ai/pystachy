@@ -60,7 +60,7 @@ def source_hashes(source: Path, suite: Path) -> dict[str, str]:
              ROOT / "runtime.c", ROOT / "pyext.c", ROOT / "pyembed.c", ROOT / "lljit.c",
              ROOT / "VERSION"}
     for name in ("pytest_native.py", "pytest_native_codegen.py", "pytest_native_support.py",
-                 "pytest_native_fixtures.py"):
+                 "pytest_native_fixtures.py", "pytest_native_logging.py", "pytest_native_capture.py"):
         files.add(ROOT / "tools" / name)
     for directory, suffixes in (("src", {".py"}), ("lib", {".py"}),
                                 ("ryu", {".c", ".h"}), ("mpz", {".c", ".h"})):
