@@ -170,6 +170,11 @@ def gen_load_name(self, name: str) -> Val:
         self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
     if name in self.fglobals:
         self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")
+    if name in self.earlycopies and name not in self.gtypes and owner(name) != self.curfn.mod and owner(name) not in self.inited:
+        # (a module's copy of another module's constant, from m import K, read while its module
+        # is still being imported: typed as that constant is, program.py)
+        self.declare(name, self.earlycopies[name])
+        return self.load_name(name)
     if name in self.mvars and owner(name) != self.curfn.mod and owner(name) not in self.inited and self.comp[owner(name)] == self.comp[self.curfn.mod]:
         # (see ahead; this module imports that one, as it reads its global: that module imports
         # this one back if both are in one component of the import graph)

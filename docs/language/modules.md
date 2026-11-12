@@ -89,6 +89,11 @@ A global that module code may leave unbound is checked when a function or anothe
 reads it. A missing binding raises `NameError` or `AttributeError`. This includes a global
 assigned only in a branch, or read during a circular import before its assignment runs.
 
+During a circular import, code may read only the constants of a module that is still being
+imported: its `NAME = literal` (also `Final`) assignments, and its copies of other modules'
+constants (`from m import K`, as mypy's `types.py` re-exports `type_visitor`'s `ANY_STRATEGY`).
+Reading another of its globals there is a compile-time error.
+
 When a template is compiled before module code has assigned a global it reads, Pystachy
 infers the global's type from its first binding in the module-level branches retained by
 the compiler: an annotation, a value whose type is known, or an empty container later filled
