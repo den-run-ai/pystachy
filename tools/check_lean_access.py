@@ -27,8 +27,8 @@ import subprocess
 import sys
 
 from check_lean_boundary import (INVOKES, MAX_PROGRAM_BYTES, OP_KEYS, OUTCOMES, SEVERITY,
-                                 TERMINATORS, Unsupported, check_header, name, read_snapshot,
-                                 require, unique_object)
+                                 TERMINATORS, Unsupported, check_header, checker_result, name,
+                                 read_snapshot, require)
 from check_lean_effects import summaries
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -1516,16 +1516,13 @@ def encode(candidate):
 
 def run_checker(checker, encoded, metadata, timeout=60):
     """Whether the Lean checker accepts every obligation of one encoded candidate."""
-    completed = subprocess.run([str(Path(checker).resolve())], input=encoded, capture_output=True,
-                               text=True, timeout=timeout)
-    result = json.loads(completed.stdout, object_pairs_hook=unique_object)
+    result = checker_result(checker, encoded, timeout)
     require(isinstance(result, dict) and type(result.get("accepted")) is bool,
             "checker did not return an acceptance result")
-    require(result.get("nodes") == metadata["nodes"] and result.get("accesses") == metadata["accesses"],
+    require(set(result) == {"accepted", "nodes", "accesses"}, f"checker error: {result.get('error')}")
+    require(result["nodes"] == metadata["nodes"] and result["accesses"] == metadata["accesses"],
             "checker counts disagree with normalized input")
-    accepted = result["accepted"]
-    require(completed.returncode == (0 if accepted else 1), "checker result/exit status mismatch")
-    return accepted
+    return result["accepted"]
 
 
 def access_functions(snapshot):
