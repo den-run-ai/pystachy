@@ -277,7 +277,7 @@ or generator/async initializers retain eager formatting
   immediately, and opening a file with an existing writer first triggers collection.
   Conservative roots can still retain a dropped writer, delaying writes or
   reordering appends.
-- **Dropped suspended generators and coroutines never close**, including at exit, so their
+- **Dropped suspended generators, coroutines and async generators never close**, including at exit, so their
   `finally`/`with` cleanup is lost, and a coroutine that is never awaited prints no
   `RuntimeWarning`. A generator created as a `for` iterable closes
   when that loop exits, as do its `yield from` delegates when it is closed
@@ -351,9 +351,9 @@ See [generator semantics](semantics.md#generators).
   forwarding to a different send type, or to a non-generator iterator while accepting send values.
 - **Methods:** using `close()`'s result, `throw()` with multiple arguments, or `send` / `throw`
   as method values.
-- **Other forms:** return annotations outside `Iterator`, `Iterable` and `Generator`; async
-  generators; printing, comparing, `reversed()`, `len()` or `dict()` of a generator; passing
-  one where a list is required. A dict comprehension works.
+- **Other forms:** return annotations outside `Iterator`, `Iterable` and `Generator`; printing,
+  comparing, `reversed()`, `len()` or `dict()` of a generator; passing one where a list is
+  required. A dict comprehension works.
 - **Stored generator expressions:** capturing a surrounding comprehension variable, a variable
   of an outer function, or a local that may be unbound or rebound. These require late binding.
 
@@ -361,7 +361,20 @@ See [generator semantics](semantics.md#generators).
 
 See [coroutines](../coroutines.md).
 
-- **Statements and expressions:** asynchronous comprehensions and async generators.
+- **Async generators and asynchronous comprehensions:** a `for` loop over an async generator, a
+  synchronous consumer of one (`list()`, `sum()`) and an `async for` clause of a comprehension
+  over an object that is no asynchronous iterable, where CPython raises `TypeError` as the
+  program runs; return annotations outside `AsyncGenerator`, `AsyncIterator` and
+  `AsyncIterable`; `asend()` of anything but `None` without an `AsyncGenerator[T, S]`
+  annotation; `athrow(type, value, traceback)` and `ag_*` attributes. An annotation of a
+  variable or field holds async generators whose awaits yield `None` to the code that runs
+  them (a function's parameter, not a method's, takes any). Deviations: a dropped suspended async generator is never finalized (there are
+  no `sys.set_asyncgen_hooks`), and an awaitable of its methods never awaited prints no
+  `RuntimeWarning` ([deviation](../../tests/deviations/agen_finalization.py)); `throw()` of an
+  `asend()` or `athrow()` awaitable that has not started raises the exception at once, where
+  CPython first checks that the async generator is not running and then throws it into the
+  async generator; `type(anext(ag, d))` is `async_generator_asend`, where CPython's is
+  `anext_awaitable`.
 - **Awaitables:** a generator held in a variable (await the call of its `@types.coroutine`
   function); an `__await__` that returns an iterator object instead of yielding; a coroutine's
   own `__await__()`.

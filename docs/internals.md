@@ -492,6 +492,55 @@ type is a number and that also ends without a value returns `R | None` from the 
 end of its twin, as a bare `return` does, where a function ending without a value raises
 `RuntimeError` ([deviations](language/compatibility.md)).
 
+<a id="async-generators"></a>
+
+### Async generators
+
+An `async def` that yields (`asyncgens.py`, `FnInfo.agen`) is one LLVM coroutine, compiled as a
+generator function is, whose call makes an async generator object of type `agen[T,S,Y]` (shown
+as `AsyncGenerator[T, S, Y]`): `T` is what it yields to its consumer, from its return annotation
+(`AsyncGenerator[T, S]`, `AsyncIterator[T]`, `AsyncIterable[T]`) or its first yield; `S` what
+`asend()` sends (`None` unless the annotation names an `S | None`); and `Y` what its awaits yield
+to the code that runs the coroutine that consumes it, inferred as a coroutine's `Y` is
+(`coro_yields`, `yield:` hints). An annotation of a variable or field has `Y` `None`; a function's
+parameter so annotated makes it a template that takes its argument's type (`agen_param`).
+Its frame suspends in two ways: at a `yield` of its own, whose value is the consumer's, and where
+one of its awaits passes on what its awaitable yields. An async generator returns no value, so
+the promise's `GENRET` word holds its flags (`AGFLAGS`): a yield of its own stores `AGYIELD`; a
+consumer's step stores `AGRUN` (or `AGCLOSE` for `aclose()`) before it resumes the frame, so that a
+suspension that leaves `AGRUN` is an await's, and another step raises `RuntimeError:
+anext(): asynchronous generator is already running` while one runs. Its landing block clears
+the flags, turns a `StopIteration` or `StopAsyncIteration` that leaves the body into
+`RuntimeError` (`async generator raised ...`), and finishes it where `aclose()`'s
+`GeneratorExit` arrives.
+
+A step (`agen_step`) is code of the awaiting coroutine, as CPython's `async_generator_asend` and
+`async_generator_athrow` would run it: it checks the state (finished: `StopAsyncIteration`, or
+`None` for `athrow()` and `aclose()`), resumes the frame (`gen.resume`; `athrow()` and `aclose()`
+throw into it, `asend()` stores the value its `yield` gives), and then reads the flags: a yield
+of its own is the await's value; an await's suspension makes the awaiting coroutine suspend with
+that value (converted to its own `Y`) and resume the frame when it is resumed, also with what
+`throw()` throws into it; `close()` of it, or a thrown `GeneratorExit`, throws `GeneratorExit`
+into the frame, and `RuntimeError: coroutine ignored GeneratorExit` follows if it yields again.
+`await ag.__anext__()`, `asend(v)`, `athrow(e)`, `aclose()` and `anext(ag[, d])` of an async
+generator compile to the step itself; used as values they are coroutine objects of async defs
+made where they are used, whose bodies await the step (`await` nodes of kinds `agnext`, `agsend`,
+`agthrow`, `agclose`), of type `coro[Y,None,R,K]`, `K` (`asend` or `athrow`) naming CPython's
+type and its `cannot reuse already awaited ...` message. `async for` over an async generator
+(`agen_for`, the `try` statement of `desugar_async`'s loop whose iterator is one) goes from the
+step to the loop's end where the frame finishes, raising and catching no `StopAsyncIteration`, so
+an item costs a resume, a suspend and a few loads and stores, as a `for` over a generator does.
+Nothing finalizes a dropped suspended async generator (no `sys.set_asyncgen_hooks`).
+
+Asynchronous comprehensions (PEP 530) become ordinary comprehensions once `Symtable` has checked
+the module (`desugar_comp`): each `async for` clause's iterable is an `await` node of kind `aiterc`,
+which gives what its `__aiter__()` gives as an async generator (an iterator object of a class
+with `__anext__` through one that steps it, `agen_adapter`); a `for` loop over that value
+(`for_seq`, mode `async`) runs a step for each item and ends where it finishes. A generator
+expression with an `async for` clause or an `await` outside its first iterable (an `asynccomp`
+node) is an `async def`'s generator expression (`genexp_value`), an async generator; the parser
+marks one whose first clause is `async for` (`aiterof`), as its `s` says `gen`.
+
 <a id="whole-program-optimization"></a>
 <a id="two-tiers"></a>
 

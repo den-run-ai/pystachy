@@ -82,9 +82,11 @@ tests/programs/upstream/upstream_textwrap_indent.py and tests/programs/upstream/
 adapt that commit's Lib/test/test_textwrap.py. tests/programs/upstream/upstream_functools_cache.py
 adapts selected methods from Lib/test/test_functools.py, whose source SHA-256 is
 recorded in its header. tests/programs/upstream/upstream_contextlib.py, tests/programs/upstream/upstream_generators_protocol.py,
-tests/programs/upstream/upstream_coroutines.py and tests/programs/upstream/upstream_coroutines_with_for.py
-adapt selected cases of that commit's Lib/test/test_contextlib.py, Lib/test/test_generators.py
-and Lib/test/test_coroutines.py.
+tests/programs/upstream/upstream_coroutines.py, tests/programs/upstream/upstream_coroutines_with_for.py,
+tests/programs/upstream/upstream_coroutines_comp.py, tests/programs/upstream/upstream_asyncgen.py and
+tests/errors/syntax/syntax_asyncgen_*.py adapt selected cases of that commit's
+Lib/test/test_contextlib.py, Lib/test/test_generators.py, Lib/test/test_coroutines.py and
+Lib/test/test_asyncgen.py.
 They preserve the upstream assertions for the supported cases and disclose adaptations and
 exclusions; the same PSF license applies.
 
