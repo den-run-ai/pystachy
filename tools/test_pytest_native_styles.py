@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shlex
 import sys
 import textwrap
@@ -739,6 +740,13 @@ RESOLVED = {
 }
 
 
+# tmp_path_factory, tmpdir, caplog and the monkeypatch calls the generator writes out.
+FIXTURES = {
+    'settings.py': 'LIMIT = 5\nNAMES: dict[str, int] = {"a": 1}\n\n\ndef limit() -> int:\n    return LIMIT\n\n\nclass Config:\n    def __init__(self) -> None:\n        self.depth = 1\n        self.label = "x"\n',
+    'test_fixtures.py': 'import logging\nimport os\n\nimport pytest\n\nimport settings\n\nLOG = logging.getLogger("pkg.sub")\nTABLE = {"k": 1, "j": 2}\n\n\ndef test_setattr_object(monkeypatch):\n    config = settings.Config()\n    monkeypatch.setattr(config, "depth", 7)\n    monkeypatch.setattr(config, "label", "patched")\n    assert config.depth == 7 and config.label == "patched"\n    monkeypatch.undo()\n    assert config.depth == 1 and config.label == "x"\n\n\ndef test_setattr_module(monkeypatch):\n    monkeypatch.setattr(settings, "LIMIT", 50)\n    assert settings.limit() == 50\n\n\ndef test_module_restored():\n    assert settings.limit() == 5\n\n\ndef test_setitem_and_delitem(monkeypatch):\n    for key in ["k", "new"]:\n        monkeypatch.setitem(TABLE, key, 10)\n    monkeypatch.delitem(TABLE, "j")\n    monkeypatch.delitem(TABLE, "absent", raising=False)\n    assert TABLE == {"k": 10, "new": 10}\n    with pytest.raises(KeyError):\n        monkeypatch.delitem(TABLE, "absent")\n    monkeypatch.setitem(settings.NAMES, "b", 2)\n    assert settings.NAMES == {"a": 1, "b": 2}\n\n\ndef test_items_restored():\n    assert TABLE == {"k": 1, "j": 2}\n    assert settings.NAMES == {"a": 1}\n\n\ndef test_context(monkeypatch):\n    with monkeypatch.context() as m:\n        m.setattr(settings, "LIMIT", 9)\n        m.setenv("PYN_CONTEXT", "1")\n        assert settings.limit() == 9\n    assert settings.limit() == 5\n    assert "PYN_CONTEXT" not in os.environ\n\n\ndef test_caplog(caplog):\n    LOG.warning("first %s", "one")\n    LOG.info("not recorded")\n    assert caplog.messages == ["first one"]\n    assert caplog.record_tuples == [("pkg.sub", logging.WARNING, "first one")]\n    assert "first one" in caplog.text\n    caplog.clear()\n    caplog.set_level(logging.INFO)\n    LOG.info("second")\n    assert [record.levelname for record in caplog.records] == ["INFO"]\n    with caplog.at_level(logging.DEBUG, logger="pkg"):\n        LOG.debug("third")\n    LOG.debug("fourth")\n    assert caplog.messages == ["second", "third"]\n\n\ndef test_caplog_levels_restored(caplog):\n    LOG.info("dropped")\n    assert caplog.records == []\n\n\n@pytest.fixture(scope="session")\ndef shared_dir(tmp_path_factory):\n    directory = tmp_path_factory.mktemp("shared")\n    (directory / "data.txt").write_text("payload")\n    return directory\n\n\ndef test_factory(shared_dir, tmp_path_factory):\n    assert (shared_dir / "data.txt").read_text() == "payload"\n    assert shared_dir.name == "shared0"\n    other = tmp_path_factory.mktemp("shared")\n    assert other.name == "shared1"\n    plain = tmp_path_factory.mktemp("plain", numbered=False)\n    assert plain.name == "plain" and plain.parent == tmp_path_factory.getbasetemp()\n\n\ndef test_tmpdir(tmpdir):\n    target = tmpdir.join("sub", "file.txt")\n    target.ensure()\n    target.write("text")\n    assert target.read() == "text"\n    assert target.check() and target.isfile() and target.basename == "file.txt"\n    assert [item.basename for item in tmpdir.listdir()] == ["sub"]\n    made = tmpdir.mkdir("made")\n    assert made.isdir() and os.path.isdir(str(made))\n    assert (tmpdir / "made") == made\n',
+}
+
+
 CONFIGURED = {
     'pyproject.toml': '[project]\nname = "sample"\n\n[tool.pytest.ini_options]\nminversion = "8.0"\ntestpaths = ["tests"]\naddopts = "-ra --strict-markers --tb=short -W error::DeprecationWarning"\nxfail_strict = true\npythonpath = ["src"]\nmarkers = ["slow: takes a while"]\nfilterwarnings = ["ignore:harmless:UserWarning"]\nlog_cli_level = "INFO"\n',
     'src/lib/__init__.py': 'import warnings\n\n\ndef old() -> int:\n    warnings.warn("old", DeprecationWarning)\n    return 1\n\n\ndef noisy() -> int:\n    warnings.warn("harmless noise", UserWarning)\n    return 2\n',
@@ -983,6 +991,28 @@ class StyleParity(TemporarySuite):
             "tests/test_resolved.py::TestShared::test_own",
             "tests/test_resolved.py::test_inert_names"])
 
+    def test_builtin_fixtures_and_written_patches(self):
+        results, expected = self.run_paths(self.files(FIXTURES), "python")
+        self.assertEqual([result.state for result in results], ["passed"])
+        self.assertEqual(len(expected["cases"]), 10)
+
+    def test_patch_forms_the_program_cannot_write(self):
+        forms = {
+            'monkeypatch.setattr("os.sep", "/")': "dotted name",
+            'monkeypatch.setattr(os, name, "/")': 'setattr(target, "name", value)',
+            'monkeypatch.setattr(os, "sep", "/", raising=False)': "raising=False",
+            'monkeypatch.setattr(os, "sep", value="/")': "by position",
+            'undo = monkeypatch.setattr(os, "sep", "/")': "statement of its own",
+            'monkeypatch.setitem(os.environ, "A")': "setitem(mapping, key, value)",
+            'monkeypatch.delitem(os.environ)': "delitem(mapping, key)",
+            'monkeypatch.delattr(os, "sep")': "monkeypatch.delattr is unsupported",
+            'monkeypatch.syspath_prepend("x")': "monkeypatch.syspath_prepend is unsupported",
+        }
+        for statement, message in forms.items():
+            source = f"import os\nname = 'sep'\ndef test_patch(monkeypatch):\n    {statement}\n"
+            with self.subTest(statement=statement), self.assertRaisesRegex(CollectionError, re.escape(message)):
+                generate(source, "test_patch.py")
+
     def test_bases_that_only_type_a_class(self):
         path = self.source("""
             import abc
@@ -1217,6 +1247,11 @@ class StyleParity(TemporarySuite):
         self.assertEqual([result.state for result in results], ["test-failed", "passed"])
 
     @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_jit_builtin_fixtures_and_written_patches(self):
+        results, _ = self.run_paths(self.files(FIXTURES), "jit")
+        self.assertEqual([result.state for result in results], ["passed"], results[0].error + results[0].stderr)
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
     def test_native_jit_bases_in_the_source_tree(self):
         results, _ = self.run_paths(self.files(RESOLVED), "jit")
         self.assertEqual([result.state for result in results], ["test-failed"])
@@ -1293,6 +1328,14 @@ class StyleRejections(TemporarySuite):
         module, _ = generate_conftest(hooks, "conftest.py", verified=True)
         self.assertNotIn("def pytest_", module.source)
         self.assertEqual(module.hooks, ["pytest_addoption", "pytest_collection_modifyitems"])
+        # So is a fixture that only fills the namespace of doctests, which the program does not run.
+        doctest = ("import pytest\n@pytest.fixture(autouse=True)\ndef names(doctest_namespace):\n"
+                   "    doctest_namespace['os'] = __import__('os')\n@pytest.fixture\ndef kept():\n    return 1\n")
+        with self.assertRaisesRegex(CollectionError, "names is not run natively"):
+            generate_conftest(doctest, "conftest.py")
+        module, exported = generate_conftest(doctest, "conftest.py", verified=True)
+        self.assertNotIn("doctest_namespace", module.source)
+        self.assertEqual((module.hooks, list(exported)), (["names (doctest_namespace)"], ["kept"]))
         for source, message in (
                 ("def pytest_generate_tests(metafunc): pass\n", "unsupported pytest hook: pytest_generate_tests"),
                 ("def pytest_configure(config): pass\nHOOK = pytest_configure\n", "is used by other code")):

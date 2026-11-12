@@ -30,6 +30,8 @@ class GeneratedModule:
     cases: list[str]
     # The program imports pytest_native_fixtures (tmp_path, monkeypatch).
     builtin_fixtures: bool = False
+    # The program imports pytest_native_logging (caplog).
+    log_fixtures: bool = False
     # Generated line -> original line, for the compiler's diagnostics (line_map).
     lines: dict[int, int] = field(default_factory=dict)
     # conftest.py hooks left out of the program, which the pytest comparison answers for.
@@ -151,11 +153,18 @@ PYTEST_TYPES = {"MonkeyPatch", "FixtureRequest", "SubRequest", "TempPathFactory"
                 "CallInfo", "TestReport", "CollectReport", "RaisesExc", "RaisesGroup"}
 UNITTEST_IMPORTS = {"TestCase", "SkipTest", "skip", "skipIf", "skipUnless", "expectedFailure", "main"}
 UNITTEST_MARKS = {"unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure"}
-MONKEYPATCH = {"setenv", "delenv", "undo"}
+MONKEYPATCH = {"setenv", "delenv", "undo", "context"}
+# monkeypatch methods the generator writes out where they are called (Generator.patch_plan).
+MONKEYPATCH_WRITTEN = {"setattr", "setitem", "delitem"}
 BUILTIN_FIXTURES = {
     "tmp_path": Fixture(None, [], False, False, call="_pyn_fixtures.tmp_path", named=True, origin="builtin"),
     "monkeypatch": Fixture(None, [], True, False, call="_pyn_fixtures.monkeypatch", valued=True, origin="builtin"),
     "recwarn": Fixture(None, [], True, False, call="_pyn_fixtures.recwarn", valued=True, origin="builtin"),
+    "tmp_path_factory": Fixture(None, [], False, False, scope="session", call="_pyn_fixtures.tmp_path_factory",
+                                origin="builtin"),
+    "tmpdir": Fixture(None, [], False, False, call="_pyn_fixtures.tmpdir", named=True, origin="builtin"),
+    # (Its own module: only a suite that asks for caplog compiles logging.)
+    "caplog": Fixture(None, [], True, False, call="_pyn_logging.caplog", valued=True, origin="builtin"),
 }
 
 
@@ -539,6 +548,10 @@ class Generator:
         # the runner evaluates those declarations at module level.
         self.shadowed = None
         self.builtins_used = False
+        self.logging_used = False
+        # monkeypatch calls the program writes out (patch_plan), and their functions.
+        self.patches = {}
+        self.patch_functions = []
 
     def error(self, node, message):
         raise CollectionError(f"{self.filename}:{getattr(node, 'lineno', 1)}: {message}")
@@ -547,12 +560,17 @@ class Generator:
         """Leave out the hooks of a conftest.py that the native program does not run."""
         hooks = [node for node in self.tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
                  and node.name in REPORT_HOOKS | VERIFIED_HOOKS]
-        for node in hooks:
-            if node.name in VERIFIED_HOOKS:
+        # A fixture that fills doctest_namespace serves doctests, which the program does not run.
+        doctests = [node for node in self.tree.body if isinstance(node, ast.FunctionDef)
+                    and any(argument.arg == "doctest_namespace" for argument in node.args.args)
+                    and any("fixture" in ast.unparse(decorator) for decorator in node.decorator_list)]
+        for node in hooks + doctests:
+            if node.name in VERIFIED_HOOKS or node in doctests:
                 if not self.verified:
                     self.error(node, f"{node.name} is not run natively, and only the comparison with pytest "
                                "shows that no outcome depends on it: run with that comparison (no --no-compare)")
-                self.hooks.append(node.name)
+                self.hooks.append(node.name + (" (doctest_namespace)" if node in doctests else ""))
+        hooks += doctests
         names = {node.name for node in hooks}
         self.tree.body = [node for node in self.tree.body if node not in hooks]
         for node in ast.walk(self.tree):
@@ -2273,6 +2291,13 @@ class Generator:
                            for fixture in fixtures.values()}
         monkeypatch = all("monkeypatch" not in fixtures for fixtures in
                           [self.shared, self.fixtures, *self.class_fixtures.values()])
+        # monkeypatch, and each m of `with monkeypatch.context() as m:`.
+        receivers = {"monkeypatch"} | {
+            item.optional_vars.id for node in ast.walk(self.tree) if isinstance(node, ast.With)
+            for item in node.items if isinstance(item.optional_vars, ast.Name)
+            and isinstance(item.context_expr, ast.Call) and isinstance(item.context_expr.func, ast.Attribute)
+            and item.context_expr.func.attr == "context" and isinstance(item.context_expr.func.value, ast.Name)
+            and item.context_expr.func.value.id == "monkeypatch"}
         for node in ast.walk(self.tree):
             if node in decorators or isinstance(node, (ast.Import, ast.ImportFrom, ast.alias)):
                 continue
@@ -2283,8 +2308,12 @@ class Generator:
                     and isinstance(node.value, ast.Name) and node.value.id == "self"):
                 self.error(node, "fixture functions may only be requested by argument name")
             if (monkeypatch and isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+                    and node.value.id in receivers and node.attr in MONKEYPATCH_WRITTEN):
+                self.patch_plan(node, parents)
+            elif (monkeypatch and isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
                     and node.value.id == "monkeypatch" and node.attr not in MONKEYPATCH):
-                self.error(node, f"monkeypatch.{node.attr} is unsupported; setenv, delenv and undo are supported")
+                self.error(node, f"monkeypatch.{node.attr} is unsupported; setenv, delenv, setattr, setitem, "
+                           "delitem, context and undo are supported")
             if isinstance(node, ast.Global) and any(name in self.fixture_functions() for name in node.names):
                 self.error(node, "mutating fixture declarations through globals is unsupported")
             if isinstance(node, ast.Name) and node.id in self.fixture_functions():
@@ -2393,6 +2422,91 @@ class Generator:
                     if len(parent.args) == fixed and any(kw.arg != "msg" for kw in parent.keywords):
                         self.error(parent, f"{node.attr} supports an exception class"
                                    + (" and a pattern" if fixed == 2 else "") + " only")
+
+    def patch_plan(self, node, parents):
+        """Plan monkeypatch.setattr(target, "name", value), setitem(mapping, key, value) or delitem(mapping, key).
+
+        A compiled program has no object to hold "the attribute name of any target",
+        so each call becomes a call of its own function, typed by its arguments, that
+        changes the value and hands monkeypatch the statements that put it back
+        (patch_function). A target that is a name of the module, such as an imported
+        module or a class, is written there as the test names it: neither is a value
+        the program can pass.
+        """
+        method = node.attr
+        call = parents.get(node)
+        statement = parents.get(call)
+        if not (isinstance(call, ast.Call) and call.func is node and isinstance(statement, ast.Expr)):
+            self.error(node, f"monkeypatch.{method} is supported as a statement of its own")
+        arguments = list(call.args)
+        raising = True
+        for option in call.keywords:
+            if option.arg == "raising" and isinstance(option.value, ast.Constant) \
+                    and isinstance(option.value.value, bool) and method != "setitem":
+                raising = option.value.value
+            else:
+                self.error(call, f"monkeypatch.{method} takes its arguments by position, and raising= as a literal")
+        if any(isinstance(argument, ast.Starred) for argument in arguments):
+            self.error(call, f"monkeypatch.{method} arguments cannot be unpacked")
+        if method == "setattr":
+            if len(arguments) == 2 and isinstance(arguments[0], ast.Constant) and isinstance(arguments[0].value, str):
+                self.error(call, "monkeypatch.setattr with a dotted name is unsupported: give the object and "
+                           "the attribute's name")
+            if len(arguments) != 3 or not (isinstance(arguments[1], ast.Constant) and isinstance(arguments[1].value, str)
+                                           and arguments[1].value.isidentifier()):
+                self.error(call, 'monkeypatch.setattr is supported as setattr(target, "name", value)')
+            if not raising:
+                self.error(call, "monkeypatch.setattr(raising=False) is unsupported: a compiled object has "
+                           "the attributes its class gives it")
+        elif len(arguments) != (3 if method == "setitem" else 2):
+            self.error(call, f"monkeypatch.{method} is supported as "
+                       + ("setitem(mapping, key, value)" if method == "setitem" else "delitem(mapping, key)"))
+        target = arguments[0]
+        root = target
+        while isinstance(root, ast.Attribute):
+            root = root.value
+        function = parents.get(statement)
+        while function is not None and not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            function = parents.get(function)
+        local = set()
+        if function is not None and not isinstance(function, ast.Lambda):
+            local = _local_bindings(function) | {argument.arg for argument in ast.walk(function.args)
+                                                 if isinstance(argument, ast.arg)}
+        named = isinstance(root, ast.Name) and root.id in self.bound and root.id not in local
+        self.patches[call] = (method, len(self.patches), named, raising)
+
+    def patch_function(self, call):
+        """(the function of one monkeypatch call, the call of it): see patch_plan."""
+        method, number, named, raising = self.patches[call]
+        receiver = call.func.value
+        target = ast.unparse(call.args[0]) if named else "_pyn_target"
+        passed = [receiver] + ([] if named else [call.args[0]])
+        parameters = ["_pyn_patch"] + ([] if named else ["_pyn_target"])
+        name = f"_pyn_patch_{number}"
+        if method == "setattr":
+            place = f"{target}.{call.args[1].value}"
+            passed.append(call.args[2])
+            body = [f"_pyn_old = {place}", "def _pyn_undo() -> None:", f"    {place} = _pyn_old",
+                    f"{place} = _pyn_value", "_pyn_patch.later(_pyn_undo)"]
+            parameters.append("_pyn_value")
+        elif method == "setitem":
+            passed += call.args[1:]
+            parameters += ["_pyn_key", "_pyn_value"]
+            # (Without an old value, the new one stands in to type the variable.)
+            body = [f"_pyn_had = _pyn_key in {target}",
+                    f"_pyn_old = {target}[_pyn_key] if _pyn_had else _pyn_value",
+                    "def _pyn_undo() -> None:", "    if _pyn_had:", f"        {target}[_pyn_key] = _pyn_old",
+                    f"    elif _pyn_key in {target}:", f"        del {target}[_pyn_key]",
+                    f"{target}[_pyn_key] = _pyn_value", "_pyn_patch.later(_pyn_undo)"]
+        else:
+            passed.append(call.args[1])
+            parameters.append("_pyn_key")
+            body = [f"if _pyn_key not in {target}:",
+                    *(["    raise KeyError(_pyn_key)"] if raising else ["    return"]),
+                    f"_pyn_old = {target}[_pyn_key]", "def _pyn_undo() -> None:",
+                    f"    {target}[_pyn_key] = _pyn_old", f"del {target}[_pyn_key]", "_pyn_patch.later(_pyn_undo)"]
+        text = "\n".join([f"def {name}({', '.join(parameters)}) -> None:", *("    " + line for line in body)])
+        return text, ast.Expr(ast.Call(ast.Name(name, ast.Load()), passed, []))
 
     def pytest_annotations(self):
         """Annotations of functions' parameters, and their returns, that name pytest."""
@@ -2760,6 +2874,10 @@ class Generator:
                     block = self.callable_raises(call, None)
                     if block is not None:
                         return block
+                if call in generator.patches:
+                    text, replacement = generator.patch_function(call)
+                    generator.patch_functions.append(text)
+                    return self.generic_visit(ast.copy_location(replacement, node))
                 return self.generic_visit(node)
 
             def visit_Assign(self, node):
@@ -2957,6 +3075,8 @@ class Generator:
         imports += [f"import {module} as {alias}" for module, alias in self.imports]
         if self.builtins_used:
             imports.append("import pytest_native_fixtures as _pyn_fixtures")
+        if self.logging_used:
+            imports.append("import pytest_native_logging as _pyn_logging")
         output = []
         # Each entry: (text, the statement it came from or None).
         placed = False
@@ -3107,7 +3227,10 @@ class Generator:
             if fixture.request:
                 arguments.append(f"_pyn_request_param={fixture_values[name]}")
             if fixture.origin == "builtin":
-                self.builtins_used = True
+                if fixture.call.startswith("_pyn_logging."):
+                    self.logging_used = True
+                else:
+                    self.builtins_used = True
             call = f"{fixture.call}({', '.join(arguments)})"
             variable = f"_pyn_fixture_{index}"
             p = "    " * indent
@@ -3337,6 +3460,7 @@ class Generator:
         # original opt-ins; the runner never opts the input into Any itself.
         pragmas = "\n".join(token.string for token in tokenize.generate_tokens(io.StringIO(self.source).readline)
                             if token.type == tokenize.COMMENT and re.match(r"#\s*pystachy:", token.string))
+        chunks += [(text, None) for text in self.patch_functions]
         chunks += [(self.scope_block(fixture), fixture.function) for fixture in self.fixtures.values()
                    if fixture.scope != "function"]
         if not self.conftest:
@@ -3366,7 +3490,7 @@ class Generator:
             parts.append(text + "\n\n")
             first += text.count("\n") + 2
         return GeneratedModule("".join(parts).rstrip("\n") + "\n", [cases[index] for index in run],
-                               self.builtins_used, lines, self.hooks)
+                               self.builtins_used, self.logging_used, lines, self.hooks)
 
     def adapt(self):
         """This helper module's source for the generated program (adapt_helper)."""

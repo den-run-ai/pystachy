@@ -1073,8 +1073,8 @@ class FormRejections(TemporarySuite):
             "scope mismatch parameter": (fixture + "@pytest.fixture(scope='module')\ndef big(n): return n\n"
                                          "@pytest.mark.parametrize('n', [1])\ndef test_a(big, n): pass\n",
                                          "cannot request n of function scope"),
-            "monkeypatch.setattr": ("import os\ndef test_a(monkeypatch):\n    monkeypatch.setattr(os, 'sep', '/')\n",
-                                    "monkeypatch.setattr is unsupported"),
+            "monkeypatch.delattr": ("import os\ndef test_a(monkeypatch):\n    monkeypatch.delattr(os, 'sep')\n",
+                                    "monkeypatch.delattr is unsupported"),
             "capsys": ("def test_a(capsys): pass\n", "unsupported fixture: capsys"),
             "approx keyword": (fixture + "def test_a():\n    assert 1 == pytest.approx(1, extra=2)\n", "approx supports"),
             "empty raises tuple": (fixture + "def test_a():\n    with pytest.raises(()):\n        pass\n", "raises supports"),
