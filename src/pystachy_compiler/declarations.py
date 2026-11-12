@@ -2297,15 +2297,19 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if root.s not in asg:
             return f"fn[b:{p}]"
     if k == "name" and e.s in self.globvalues and e.s not in f.params and e.s not in self.guessing:
-        # a module global that one assignment binds (a constant: analysis.module_values), unless a
-        # local of the function has its name: the type of its value, typed in its own module's
-        # code. Not where that module's ints promote or its values may be Any's, whose types the
-        # value's spelling does not give
+        # a module global that one assignment binds (a constant: analysis.module_values), or one
+        # in each branch that binds it, unless a local of the function has its name: the type of
+        # its value (of each, where they agree), typed in its own module's code. Not where that
+        # module's ints promote or its values may be Any's, whose types the value's spelling does
+        # not give
         asg = {}
         if f.name != "<module>":
             local_names(guess_scope(f), asg)  # (a module's own names are its globals)
         v = self.globvalues[e.s]
-        if e.s not in asg and not self.int_policy(v.line) and not self.dyn_policy(v.line):
+        vs = [v]
+        if e.s in self.globalts:
+            vs = vs + self.globalts[e.s]
+        if e.s not in asg and len([x for x in vs if self.int_policy(x.line) or self.dyn_policy(x.line)]) == 0:
             if len(self.guessing) == 0:
                 self.globguess = {}  # (each guess of a constant's value starts afresh: see below)
             if e.s in self.globguess:
@@ -2318,6 +2322,11 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             t = ""
             try:
                 t = self.guess(v, init)
+                for x in vs[1:]:
+                    # (bindings in other branches: their type where they agree, else none, but the
+                    # error of one that guess finds a call it cannot compile in)
+                    tx = self.guess(x, init) if not t.startswith("!") else t
+                    t = tx if tx.startswith("!") else t if tx == t else ""
             finally:
                 del self.guessing[e.s]  # (also where an error unwinds to the next pass: Rejoin)
             if self.guesscuts == cuts:

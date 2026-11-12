@@ -640,6 +640,22 @@
       "diagnostic": "tests/programs/inference/field_module_constants.py:21: error: cannot infer the type of field 'local'; annotate it (self.local: T = ...)",
       "reason": "With the pragma the entry module's ints promote, so its constant (N = 3, LOCAL = 3) is a promoting int whose spelling does not give its type: it types no field or class attribute; the unchanged program passes.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/field_global_branches.py",
+      "mode": "jit",
+      "category": "unsupported-inference",
+      "diagnostic": "tests/programs/inference/field_global_branches.py:32: error: cannot infer the type of field 'types'; annotate it (self.types: T = ...)",
+      "reason": "With the pragma the entry module's ints promote, so its globals' values do not give their types: they type no field (here c_pyssize_t_rprimitive's stand-in, bound in each branch); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/field_global_branches.py",
+      "mode": "aot",
+      "category": "unsupported-inference",
+      "diagnostic": "tests/programs/inference/field_global_branches.py:32: error: cannot infer the type of field 'types'; annotate it (self.types: T = ...)",
+      "reason": "With the pragma the entry module's ints promote, so its globals' values do not give their types: they type no field (here c_pyssize_t_rprimitive's stand-in, bound in each branch); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }

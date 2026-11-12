@@ -1476,6 +1476,7 @@ class Gen:
         # field inference types them by (guess); guessing: those whose value it is typing now
         self.globvalues: dict[str, Node] = {}
         self.globowners: dict[str, Mod] = {}
+        self.globalts: dict[str, list[Node]] = {}  # (the values of other bindings in if branches)
         self.guessing: dict[str, bool] = {}
         # the types guess() gave constants' values within one guess of a constant's value, which
         # starts afresh, and the reads of a constant being guessed that it has cut (guess)
