@@ -324,7 +324,7 @@ provably disjoint fresh storage retain facts across unrelated writes.
 
 Standalone tag reads and box construction also require these proofs. An integer
 machine load whose defined source is a union is checked as a tag read, including its
-nonnull requirement. Simple guards of immutable, nonnullable union parameters can
+nonnull requirement; one from a `tuple[T, ...] | None` reads its length word, no tag. Simple guards of immutable, nonnullable union parameters can
 be proved by a bounded predecessor walk without allocating dataflow states. Mutable
 slots, nullable sources, raw payload transport and unsupported control-flow shapes
 fall back to the general solver.
