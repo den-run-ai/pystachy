@@ -688,6 +688,7 @@ class Loader:
         self.fragile: dict[str, str] = {}
         self.solid: dict[str, bool] = {}
         self.first_import: dict[str, bool] = {}  # first local import site's need for a binding flag
+        self.gvisit: dict[str, bool] = {}  # the classes generic_class is deciding: a recursion guard
         # the submodules that imports in try statements run, which their package has as an attribute
         # only once an import of them has run to its end (Gen.modchk), and the reads through such an
         # attribute that qmod() found in the expression being qualified (Node.mchk)
@@ -1195,6 +1196,8 @@ class Loader:
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 if k == "subclass" and (len(st.kids) == 2 or st.kids[1].kind == "typeparams") and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
                     m.cbases[st.s] = st.kids[1]
+                elif k == "subclass" and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
+                    m.cmulti[st.s] = st.kids[1:]  # (several bases: class N(Generic[T], A[T], B), S(A[T], B))
                 for x in st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids if k == "subclass" else []:
                     if x.kind == "assign" and len(x.kids) == 2 and x.kids[0].kind == "name" and x.kids[0].s == "__class_getitem__":
                         v = x.kids[1]
@@ -1894,8 +1897,29 @@ class Loader:
         base = m.cbases.get(name, None)
         if base is not None and base.kind == "typeparams":
             return True  # (class C[T])
+        if m.q + name in self.gvisit:
+            return False  # (a class whose bases name it again: CPython's NameError)
+        if base is None and name in m.cmulti:
+            # (several bases: generic where one is Generic[...], or a generic class's subscript that
+            # passes on a type variable, if each is a class or a subscript of one, as gen_program's
+            # generic_traits and implicit_tparams take them)
+            bs = m.cmulti[name]
+            if len([x for x in bs if x.kind != "index" and x.kind != "name" and x.kind != "attr"]) > 0:
+                return False
+            self.gvisit[m.q + name] = True
+            r = len([x for x in bs if x.kind == "index" and self.generic_base(m, x)]) > 0
+            del self.gvisit[m.q + name]
+            return r
         if base is None or base.kind != "index":
             return False
+        self.gvisit[m.q + name] = True
+        r = self.generic_base(m, base)
+        del self.gvisit[m.q + name]
+        return r
+
+    def generic_base(self, m: Mod, base: Node) -> bool:
+        # is base, a subscript that a class statement of module m names as a base, typing.Generic[...],
+        # or a generic class's subscript that passes on a type variable (class S(Visitor[T]))
         g = base.kids[0]
         dm = self.dm
         self.dm = m
