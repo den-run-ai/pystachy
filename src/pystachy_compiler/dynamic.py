@@ -23,7 +23,7 @@ from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, 
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
-from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
+from src.pystachy_compiler.syntax import Node, has_kind, made_var, mentions, mk
 from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
@@ -4450,12 +4450,21 @@ def gen_dyn_method_found(self, o: Val, m: str, args: list[Node], h: Val) -> Val:
     return Val(self.phi(ph), DYN)
 
 
-def gen_dyn_mixed(self, es: list[Node]) -> bool:
+def gen_dyn_mixed(self, es: list[Node], display: list[Node]) -> bool:
     # do the items es of a display (in a module that compiles Any so) have no one type, so that
     # it is a container of dynamic values, and the displays among the items are made so too: the
-    # types of those that are not empty displays, which a dry run gives
+    # types of those that are not empty displays, which a dry run gives. An item that reads a
+    # name that a := of the display binds (of its items, display, a dict's keys and values both)
+    # is left out: the dry runs come before any item binds it, and do not bind it themselves, so
+    # a run would reject the read of [z := x, z], which compiling the items in order accepts
+    # (star_display leaves such expansions out too)
+    rebound: dict[str, bool] = {}
+    for e in display:
+        walrus_names(e, rebound)
     ts: list[str] = []
     for e in es:
+        if len(rebound) > 0 and e.kind != "starred" and e.kind != "dstar" and mentions(e, list(rebound)):
+            continue  # (before dyn_untyped_empty too, whose dry runs read the items of [y])
         if self.dyn_untyped_empty(e):
             continue  # (its type comes of the items before it, #782; a dry run alone would reject it)
         if e.kind == "starred" or e.kind == "dstar":
