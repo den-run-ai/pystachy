@@ -1,0 +1,29 @@
+both in.json:2 out.json:0
+file in.json:7
+loop IN.JSON
+loop IN.JSON
+in.json [2, 3] ['out.json'] out.json
+checked False
+out.json:-1 OUT.JSON False
+0
+count 5
+ratio 1.5
+- [2, 3] [] nothing
+no output False None
+checked False
+1
+file x:1
+loop X
+loop X
+x [2, 3] [] x
+no output True None
+checked True
+1
+- [2, 3] [] nothing
+no output False None
+checked False
+1
+first A.txt:1 None
+second a.txt
+p:3 Namespace(output='p')
+[exit 0]

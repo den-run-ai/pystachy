@@ -289,6 +289,85 @@ def parse_uses(n: Node, schemas: dict[str, Schema]) -> None:
         parse_uses(kid, schemas)
 
 
+def namespace_reads(n: Node, name: str, reads: list[Node]) -> bool:
+    # Does code n use local name only to read its attributes? The reads in name's own scope are
+    # collected; a function, class or comprehension in n may read attributes too. Any other use
+    # (the bare name, a store through it, a declaration) may alias or change the object it holds.
+    if n.kind == "attr" and n.kids[0].kind == "name" and n.kids[0].s == name:
+        reads.append(n)
+        return True
+    if n.s == name and n.kind in ("name", "alias", "walrus", "global", "nonlocal", "except"):
+        return False
+    stores: list[Node] = []
+    if n.kind == "assign":
+        stores = n.kids[:-1]
+    elif n.kind in ("augassign", "annassign", "for", "compfor"):
+        stores = n.kids[:1]
+    elif n.kind in ("listcomp", "asynccomp"):
+        stores = n.kids[1:2]
+    elif n.kind == "del":
+        stores = n.kids
+    elif n.kind == "withitem":
+        stores = n.kids[1:]
+    for t in stores:
+        if names_name(t, name):
+            return False
+    inner = reads
+    if n.kind in ("lambda", "def", "class", "subclass", "listcomp", "asynccomp", "setcomp", "dictcomp"):
+        inner = []  # (another scope's reads stay reads of the field)
+    for k in n.kids:
+        if not namespace_reads(k, name, inner):
+            return False
+    return True
+
+
+def copy_optional_fields(body: list[Node], schemas: dict[str, Schema]) -> None:
+    # args = parser.parse_args(...) in a function's own statements, where the function then only
+    # reads args.FIELD: nothing else holds the new Namespace, so no call can change its fields.
+    # Each optional field the function reads is copied to a local of its own after the statement,
+    # and the reads become that local, which a test narrows as it does any local:
+    #     if args.output:
+    #         open(args.output, "w")
+    by: dict[str, Schema] = {}
+    for k in schemas:
+        by[schemas[k].generated] = schemas[k]
+    for i in range(len(body) - 1, -1, -1):
+        st = body[i]
+        if st.kind != "assign" or len(st.kids) != 2 or st.kids[0].kind != "name" or st.kids[1].kind != "call":
+            continue
+        fn = st.kids[1].kids[0]
+        if fn.kind != "name" or fn.s not in by:
+            continue
+        name = st.kids[0].s
+        reads: list[Node] = []
+        ok = sole_binding(body, i, name) and not names_name(st.kids[1], name)
+        for j in range(len(body)):
+            if j < i and names_name(body[j], name):
+                ok = False
+            elif j > i and not namespace_reads(body[j], name, reads):
+                ok = False
+        if not ok:
+            continue
+        schema = by[fn.s]
+        copies: list[Node] = []
+        for a in schema.arguments:
+            if a.action == "version" or a.nargs in ("*", "+") or a.required or a.default.kind != "None":
+                continue  # (not a field, or one that is never None: Schema.declarations())
+            local = fn.s + "_" + name + "_" + a.dest
+            used = False
+            for r in reads:
+                if r.kind == "attr" and r.s == a.dest:
+                    r.kind = "name"
+                    r.s = local
+                    r.kids = []
+                    used = True
+            if used:
+                field = mk("attr", a.dest, st.line, [mk("name", name, st.line, [])])
+                copies.append(mk("assign", "", st.line, [mk("name", local, st.line, []), field]))
+        for c in reversed(copies):
+            body.insert(i + 1, c)
+
+
 def dotted_name(n: Node) -> str:
     if n.kind == "name":
         return n.s
@@ -333,6 +412,8 @@ def lower_scope(body: list[Node], aliases: dict[str, int], shadowed: dict[str, b
             if st.kind in ("def", "class", "subclass") and captures(st, k):
                 reject(st, "parser must be used in its declaring scope")
         made += schemas[k].declarations(prefix)
+    if not top and len(schemas) > 0:
+        copy_optional_fields(body, schemas)
 
 
 def uses_prefix(n: Node, prefix: str) -> bool:

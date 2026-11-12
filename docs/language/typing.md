@@ -390,6 +390,8 @@ only when every incoming path agrees.
 Globals, fields and cells assigned by a `nonlocal` closure are not narrowed across
 calls. Copy their value to an ordinary local before testing it. The copy remains
 valid when the original storage is changed because the tagged box is immutable.
+One object's fields are narrowed: the [`argparse` Namespace](../../lib/compatibility.md#argparse)
+that `parse_args()` returned to a function's local, where the function only reads its fields.
 Container types stay invariant: `list[int]` cannot become `list[int | str]`.
 
 Truth tests, `bool()`, `str()`, `repr()`, printing, plain f-strings and `==`/`!=`

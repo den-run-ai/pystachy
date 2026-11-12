@@ -274,8 +274,9 @@ are not UTF-8, which CPython rejects or escapes as it reads them. `loads()` coun
 each byte that starts no UTF-8 sequence as one character, as `str` does, in values
 and error positions ([deviation](../tests/deviations/json_invalid_utf8.py)).
 The default `JSONDecoder.decode()` and `raw_decode()` are supported with typed
-`JSONValue` storage. Bytes input, file APIs, configured decoder constructors,
-encoder classes, hooks, `strict` and indentation remain unsupported. Typed
+`JSONValue` storage. `load()` and `dump()` read and write a text file's whole document, and
+the encoders take `indent`. Bytes input, configured decoder constructors,
+encoder classes, hooks and `strict` remain unsupported. Typed
 `JSONValue` excludes non-string object keys, tuples, `default`, `skipkeys` and
 `check_circular`; the dynamic `Any` encoder supports those. Existing typed containers are not implicitly converted to
 recursive mutable storage. `ensure_ascii=False` returns non-ASCII and surrogate
@@ -1430,6 +1431,22 @@ so `type(result) is argparse.Namespace` is false and its name is compiler-genera
 Equality compares declared fields. A foreign operand returns false without
 reflected comparison. Distinct results sharing a NaN field can compare unequal
 under the native float identity rules.
+
+A test narrows an optional field where a function assigns `parse_args()`'s result to one local
+in its own statements and then only reads that local's fields, as command-line code does:
+
+```python
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-o", "--output")
+    args = parser.parse_args()
+    if args.output:
+        open(args.output, "w").close()  # args.output is a str here
+```
+
+Nothing else holds that Namespace, so no call can change its fields. A function that passes
+the Namespace on, stores to one of its fields or keeps it at module level reads the fields
+themselves, which a test does not narrow: copy the field to a local first.
 
 Code can raise and catch `argparse.ArgumentTypeError` when validating values.
 Parser declarations must stay in their owning scope. Runtime-defined schemas,
