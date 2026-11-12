@@ -79,10 +79,11 @@ python tools/json_repair_wheel_smoke.py build/json-repair-wheel/pystachy_json_re
 ```
 
 The wheel uses the local platform tag `cp312-abi3-linux_x86_64`. Use it on the build
-host or a compatible system. Its required glibc and system libraries depend on the build
-environment. The wheel contains both compiled binaries and their licenses. The executable
-runs without Python or LLVM. The [extension threading contract](ffi.md#threading-and-host-lifetime)
-applies to calls from CPython.
+host or a compatible system, because its required glibc and system libraries depend on
+the build environment. The wheel contains both compiled binaries and their licenses. The
+executable runs without Python or LLVM. The
+[extension threading contract](ffi.md#threading-and-host-lifetime) applies to calls from
+CPython.
 
 ## What gets shipped
 
@@ -96,9 +97,10 @@ Packaging does not expand the [supported language](language.md#support-at-a-glan
 dynamic import hooks and arbitrary PyPI dependencies are not supported by native
 compilation. Wheels must contain the `.py` sources; a platform wheel is not evidence
 of compatibility. Test the public API under CPython and Pystachy JIT/AOT.
-Runtime data files and external commands/libraries must be shipped separately;
-AOT does not embed package resources. Existing [AskMe-mini](../examples/agent/README.md)
-and [router](../examples/route/README.md) examples show standalone apps.
+
+Runtime data files and external commands/libraries must be shipped separately; AOT does
+not embed package resources. The [AskMe-mini](../examples/agent/README.md) and
+[router](../examples/route/README.md) examples show standalone apps.
 
 The ports wheel preserves upstream import names and ships the adapted sources,
 licenses and port notes. Keep it separate from installations of the corresponding

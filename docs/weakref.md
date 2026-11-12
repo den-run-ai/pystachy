@@ -207,6 +207,7 @@ strongly still fails these tests.
 The basic callback test allocates nothing in its callbacks, preventing a new
 collection between draining the queue and checking references. Tests whose
 callbacks allocate hold strong owners during live reads for the same reason.
+
 [`tools/test_typed_ir.py`](../tools/test_typed_ir.py) separately checks that weak
 reads before and after an allocating operation have distinct canonical values.
 Error cases cover unsupported target types, invalid callback values, keywords,
@@ -245,4 +246,4 @@ the list root so a stale conservative address cannot invalidate the test.
 It also runs under `make verify` and the CI `contracts` group.
 
 The [CPython weakref reference](https://docs.python.org/3.13/library/weakref.html)
-defines the comparison behavior; Pystachy's collector timing remains different.
+defines the comparison behavior.

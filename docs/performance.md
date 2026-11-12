@@ -49,8 +49,9 @@ release's compiler, runtime and library sources.
   [this page as of `f07472a5`](https://github.com/den-run-ai/pystachy/blob/f07472a535f165f939fdda774b1fcd4813e5c66d/docs/performance.md#benchmarks),
   which also links the table before it.
 
-The [pyperformance results](../bench/pyperformance/README.md#recorded-results) compare alpha.3 and alpha.4 AOT instruction
-counts on the benchmarks adapted from pyperformance 1.14.0. These are comparisons on adapted
+The [pyperformance results](../bench/pyperformance/README.md#recorded-results) compare
+v0.1.0-alpha.3 and v0.1.0-alpha.4 AOT instruction counts on the benchmarks adapted from
+pyperformance 1.14.0. These are comparisons on adapted
 sources, not official pyperformance scores. The [port notes](../bench/pyperformance/README.md)
 describe adaptations, unsupported benchmarks and how to time CPython, JIT and AOT.
 
@@ -84,10 +85,12 @@ slower than CPython's `_sre`, even when cache hits are faster.
 Appending to a str local with `+=` is linear while the loop reads the local only through `len()`.
 Any other read (printing, comparing, slicing, passing or storing it) may share the str, so the
 next append copies it, where CPython copies only when another reference remains; such a loop is
-quadratic. `"".join(parts)` stays linear. A str that appends keep growing past 8,200 bytes, the
-largest size class, gets room for as much again from its second copy on. After its length is
-unchanged across two consecutive sweeps, the collector trims excess capacity in place when
-more than a quarter of it is unused, and returns the unused whole pages to the operating system.
+quadratic. `"".join(parts)` stays linear.
+
+A str that appends keep growing past 8,200 bytes, the largest size class, gets room for as
+much again from its second copy on. After its length is unchanged across two consecutive
+sweeps, the collector trims excess capacity in place when more than a quarter of it is
+unused, and returns the unused whole pages to the operating system.
 
 Cross-function exceptions require stack unwinding and can be expensive in hot loops.
 Same-function handlers use branches. The [extended benchmark guide](extended-performance.md)
@@ -157,11 +160,13 @@ python3 tools/ir_cost_report.py --ir raw=/tmp/sieve.raw.ll \
 Repeat `--ir LABEL=FILE` to compare raw, JIT, and AOT optimized modules in one
 report. Labels are supplied by the caller; record the source revision, toolchain
 versions, flags, and commands beside the report. Keep the exact module used by
-each compilation stage. `opt` on raw program IR cannot inline C helper bodies
-that are only declarations. AOT's driver links the needed runtime bitcode before
-running Clang's optimizer; a GCC object sidecar is a different experiment. The
-`runtime_symbols` entries expose headers and referenced attribute groups so this
-distinction can be checked for the helpers under investigation.
+each compilation stage.
+
+`opt` on raw program IR cannot inline C helper bodies that are only declarations. AOT's
+driver links the needed runtime bitcode before running Clang's optimizer; a GCC object
+sidecar is a different experiment. The `runtime_symbols` entries expose headers and
+referenced attribute groups so this distinction can be checked for the helpers under
+investigation.
 
 For AOT, capture the driver's `prog.bc` at the `clang -O2 -c` invocation,
 after `llvm-link --only-needed` (with `allocelide`, the first of two: `-emit-llvm`, then
@@ -182,9 +187,11 @@ python3 tools/ir_cost_report.py --ir raw=/tmp/program.raw.ll \
 Here `/tmp/program.raw.ll` must be emitted from the same source and settings as
 the captured build. The Clang command replays the default AOT optimizer; preserve
 any extra compilation flags when investigating a non-default build. It does not
-capture machine-code instructions. For executed JIT bitcode, the wrappers of the JIT runner and `lli`
-in [`tools/jitprobe.py`](../tools/jitprobe.py) read their bitcode input descriptor before execution;
-do not label raw-IR `opt -O2` output as the JIT pipeline.
+capture machine-code instructions.
+
+For executed JIT bitcode, the wrappers of the JIT runner and `lli` in
+[`tools/jitprobe.py`](../tools/jitprobe.py) read their bitcode input descriptor before
+execution; do not label raw-IR `opt -O2` output as the JIT pipeline.
 
 Read `modules[LABEL].functions[NAME].calls` for a specific function, and compare
 `runtime_symbols` to check whether its callees have bodies. A filter that matches
@@ -248,6 +255,7 @@ AOT optimizes the program and runtime together. The measured tradeoffs are recor
 JIT execution includes frontend and LLVM work; a built AOT executable starts directly.
 The first JIT run after a runtime rebuild also pays for compiling the runtime cache.
 Separate process startup, first calls and warmed execution when reporting results.
+
 For startup-sensitive runs, `PYSTACHY_JIT_CODEGEN=0` opts into `-O0` code generation, which
 the [JIT runner](internals.md#the-jit-runner) does itself (with `lli`, an object of `llc`'s,
 whose extra process costs tiny programs). It can reduce large-program startup while slowing

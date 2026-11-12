@@ -40,10 +40,6 @@ print(strlen("hello"))
 ./example
 ```
 
-The symbol is resolved when its definition runs, using the named library's
-handle. Use a library name or path for reproducibility; `@extern("")` searches
-the process's own libraries, which differ between CPython, JIT and AOT.
-
 Use `ffi.c_int`, `c_uint`, `c_int64`, `c_uint64`, `c_size_t` or `c_ssize_t` for C
 integers, `float` for `double`, `ffi.c_float` for C's 32-bit `float`, and `c_void_p` for pointers. A `str` argument is a
 temporary UTF-8 C string. A `list[float]` argument lends C the list's own items as a
@@ -63,9 +59,7 @@ cblas_daxpy(len(xs), 2.0, xs, 1, ys, 1)   # ys is now [12.0, 24.0]
 ```
 
 `ffi.at(xs, k)` passes a list from its index `k`: C gets a pointer to item `k` of the list's
-own items, and may use the `len(xs) - k` items from there. It is only an argument of an
-`@extern` call, for a list parameter. `k` is checked as the call starts, once the other
-arguments are evaluated: outside `0 <= k <= len(xs)` it raises `IndexError`.
+own items, and may use the `len(xs) - k` items from there.
 
 ```python
 from ffi import at
@@ -126,6 +120,7 @@ The compiler does not read C headers or infer C calling conventions.
 | `None` result | `void` | No value. |
 
 C integer annotations are ordinary `int` inside a stub's subset signature.
+
 `ffi.string_at(addr, n)` copies `n` bytes into a string; negative `n` raises
 `ValueError` rather than reading to a NUL as ctypes would.
 `ffi.bytes_at(addr, n)` copies bytes, preserving NULs; `n=-1` reads to a NUL.
@@ -165,10 +160,10 @@ are a single-process reference backend, not distributed communication.
 
 ## Static ctypes declarations
 
-The experimental ctypes subset accepts an immutable module declaration block
-and lowers it to ordinary `@ffi.extern` stubs. It uses the existing native loader,
-ABI checks and call lowering, without libffi or an embedded CPython.
-The same source runs with CPython's real ctypes:
+The experimental ctypes subset lowers an immutable module declaration block to
+ordinary `@ffi.extern` stubs, which use the native loader, ABI checks and call
+lowering without libffi or an embedded CPython. The same source runs with CPython's
+real ctypes:
 
 ```python
 import ctypes
@@ -259,12 +254,13 @@ PYTHONPATH=tools/rt_cpython python3 jsondemo.py   # the twin under CPython
 `lib/pyobj.py` is subset code over CPython's stable ABI. It declares the CPython
 functions it uses with `@extern("python")`, which only a module of Pystachy's `lib/`
 that imports `ffi` may do; such a module's C functions are called directly rather
-than looked up when their `def` runs. `python` means `$PYSTACHY_LIBPYTHON`, a shared
-libpython of CPython 3.12 or later: `pystachy run` has its JIT runner (or `lli`) load it with
-the machine code of `pyembed.c`, and `pystachy build` links both, the library with an
-rpath. The driver rejects an unset variable or, by its file name, an older
-library. `pystachy ext` links no libpython: an extension module's `pyobj` uses the
-host interpreter.
+than looked up when their `def` runs.
+
+`python` means `$PYSTACHY_LIBPYTHON`: `pystachy run` has its JIT runner (or `lli`)
+load it with the machine code of `pyembed.c`, and `pystachy build` links both, the
+library with an rpath. The driver rejects an unset variable or, by its file name, an
+older library. `pystachy ext` links no libpython: an extension module's `pyobj` uses
+the host interpreter.
 
 ### The API
 
@@ -289,17 +285,20 @@ No container converts implicitly; Pystachy code reaches Python's containers as
 
 ### Retained CPU buffer prototype
 
-`Object.buffer_f64()` acquires a [CPython buffer export](https://docs.python.org/3/c-api/buffer.html)
-and returns an opaque `Buffer`. This is a bounded ownership experiment for
+`Object.buffer_f64()` acquires a
+[CPython buffer export](https://docs.python.org/3/c-api/buffer.html) and returns an
+opaque `Buffer`. This is a bounded ownership experiment for
 [#493](https://github.com/den-run-ai/pystachy/issues/493) and
 [#582](https://github.com/den-run-ai/pystachy/issues/582): the first consumer is a
-native dot product over existing host arrays. Imports require one dimension,
-native format `d`, eight-byte items, a positive eight-byte stride and direct
-storage. Empty and unaligned buffers are supported. Wrong formats, dimensions,
-indirection and noncontiguous imports are rejected before reading payload data.
-An [optional CPython DLPack adapter](../examples/cpu_dlpack/README.md) uses
-NumPy to expose a compatible CPU view. Arrow, device memory and general ndarray
-operations remain outside this native buffer API.
+native dot product over existing host arrays. An
+[optional CPython DLPack adapter](../examples/cpu_dlpack/README.md) uses NumPy to
+expose a compatible CPU view. Arrow, device memory and general ndarray operations
+remain outside this native buffer API.
+
+Imports require one dimension, native format `d`, eight-byte items, a positive
+eight-byte stride and direct storage. Empty and unaligned buffers are supported.
+Wrong formats, dimensions, indirection and noncontiguous imports are rejected before
+reading payload data.
 
 ```python
 from pyobj import import_module
@@ -357,11 +356,13 @@ Dot reads the payload directly, without copying it or boxing each element. The
 collector charges each handle a conservative pressure estimate: 512 bytes plus
 the descriptor and up to 1 GiB of the retained root export. Multiple views can
 charge the same backing span repeatedly. This estimate is neither unique retained
-memory nor physical allocation/RSS. The Linux-only fault probe
-`tools/check_cpu_buffers.sh` tests malformed metadata and allocation cleanup.
-Lint runs its address/undefined-sanitized probe and missing-release negative control.
-`tests/ffi/py_cpu_buffer.py` and `tests/ffi/ext/cbclient.py` cover normal ownership,
-GC, aliases and numerical behavior.
+memory nor physical allocation/RSS.
+
+The Linux-only fault probe `tools/check_cpu_buffers.sh` tests malformed metadata and
+allocation cleanup. Lint runs its address/undefined-sanitized probe and
+missing-release negative control. `tests/ffi/py_cpu_buffer.py` and
+`tests/ffi/ext/cbclient.py` cover normal ownership, GC, aliases and numerical
+behavior.
 
 ### Startup, output and exceptions
 
@@ -549,11 +550,10 @@ containers, C callbacks and calls from arbitrary threads are unsupported. Mutabl
 containers are not copied implicitly because that would lose identity and shared
 mutation; see [#108](https://github.com/den-run-ai/pystachy/issues/108). A
 `list[float]` or `list[ffi.c_int64]` argument of `@extern` is lent, not copied, for
-the call.
-Embedding needs a shared libpython of CPython 3.12 or later. `pyobj` calls take
-positional arguments only; passing compiled callables through `pyobj` and raw C
-callbacks are unsupported. CPython can call exported functions through the
-[extension interface](#extension-modules), subject to its host-entry restrictions.
+the call. `pyobj` calls take positional arguments only; passing compiled callables
+through `pyobj` and raw C callbacks are unsupported. CPython can call exported
+functions through the [extension interface](#extension-modules), subject to its
+host-entry restrictions.
 
 <a id="invariants-for-maintainers"></a>
 ## Maintainer checks

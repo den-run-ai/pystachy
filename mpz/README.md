@@ -50,7 +50,7 @@ a pointer before an array.
 No external bigint library or embedded CPython is needed.
 
 Long division is quadratic and multiplication stops at Karatsuba, as in
-CPython for these sizes; this is not a claim of GMP performance. The parser
-reuses Pystachy's Unicode numeric normalization and CPython-style base/prefix/
-underscore rules. Non-power-of-two input and decimal output use CPython's
-default 4300-digit limit; changing that limit is not supported by this module.
+CPython for these sizes. The parser reuses Pystachy's Unicode numeric
+normalization and CPython-style base/prefix/underscore rules. Non-power-of-two
+input and decimal output use CPython's default 4300-digit limit; changing that
+limit is not supported by this module.

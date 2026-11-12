@@ -78,24 +78,23 @@ commit. `latest` advances only for stable releases; prereleases use explicit ver
 
 ## Install from GitHub with pip or uv
 
-Installing from GitHub requires Git and Python 3.11+. The installed command runs
-the compiler under Python. On Ubuntu 24.04 x86-64/ARM64 and macOS 15+
-Apple Silicon, the first compile downloads and verifies a pinned LLVM toolchain
-without administrator access. Ubuntu uses LLVM 18.1.3 from the Ubuntu
-snapshot archive (about 70 MB), falling back to Ubuntu's architecture-specific
-archive on a transient network failure. Both endpoints must match the same pinned
-package SHA-256; three total attempts per package are shared across them. Checksum, certificate
-and local file errors stop immediately. macOS uses LLVM 20.1.8 from the LLVM release
-archive (about 1.45 GB). Ubuntu needs the host C toolchain (`build-essential`)
-and shared libraries (`libedit2`, `libffi8`, `libxml2`). macOS needs the Xcode
-Command Line Tools.
+Installing from GitHub requires Git and Python 3.11+, and the installed command runs the
+compiler under Python. On Ubuntu 24.04 x86-64/ARM64 and macOS 15+ Apple Silicon, the
+first compile downloads and verifies a pinned LLVM toolchain without administrator
+access. Ubuntu needs the host C toolchain (`build-essential`) and shared libraries
+(`libedit2`, `libffi8`, `libxml2`); macOS needs the Xcode Command Line Tools.
+
+Ubuntu uses LLVM 18.1.3 from the Ubuntu snapshot archive (about 70 MB), falling back to
+Ubuntu's architecture-specific archive on a transient network failure. Both endpoints
+must match the same pinned package SHA-256, and they share three attempts per package.
+Checksum, certificate and local file errors stop immediately. macOS uses LLVM 20.1.8
+from the LLVM release archive (about 1.45 GB).
 
 The download is shared across pip and uv in `$XDG_CACHE_HOME/pystachy/toolchains`
 (default `~/.cache/pystachy/toolchains`). Use `PYSTACHY_LLVM_CACHE` to select a
 different cache. Set `PYSTACHY_LLVM` to an existing LLVM `bin` directory to
 use a host toolchain or work offline. Other platforms use the usual
-[LLVM discovery](#check-or-prepare-dependencies). Ordinary AOT executables run
-without Python or LLVM.
+[LLVM discovery](#check-or-prepare-dependencies).
 
 Choose a GitHub tag or a full commit SHA that includes the source package.
 The GitHub URL is the package source for both commands.
@@ -122,11 +121,11 @@ uv tool install "$PYSTACHY_SOURCE"
 pystachy --version
 ```
 
-If uv's command directory is missing from `PATH`, run `uv tool update-shell`
-and open a new shell. To change the installed revision, rerun the first block
-with the new tag or commit. Repeat the install command with `--force-reinstall`
-for pip or `--reinstall` for uv. Remove the command with
-`python -m pip uninstall pystachy` in the pip environment or `uv tool uninstall pystachy`.
+If uv's command directory is missing from `PATH`, run `uv tool update-shell` and open a
+new shell. To change the installed revision, rerun the first block with the new tag or
+commit, then repeat the install command with `--force-reinstall` for pip or
+`--reinstall` for uv. Remove the command with `python -m pip uninstall pystachy` in the
+pip environment or `uv tool uninstall pystachy`.
 
 ## Build from source
 
@@ -161,11 +160,12 @@ make install
 Homebrew's LLVM 20 is keg-only. Pystachy discovers its standard Intel and Apple Silicon
 locations automatically, as well as Ubuntu's versioned toolchain. For a custom Homebrew
 prefix, use `export PYSTACHY_LLVM="$(brew --prefix llvm@20)/bin"`.
-`make` prefers `python3.13` when available, then `python3`; `make PY=/path/to/python`
-selects a different bootstrap interpreter.
 
 LLVM 20 supplies the Apple Silicon JIT's compact unwind registration; LLVM 18 remains
 the Linux toolchain used by full verification.
+
+`make` prefers `python3.13` when available, then `python3`; `make PY=/path/to/python`
+selects a different bootstrap interpreter.
 
 The installation CI checks bootstrap, ordinary JIT/AOT, exceptions, files and garbage
 collection on both Linux and macOS architectures. The full verification suite runs
@@ -219,11 +219,13 @@ tools/setup.sh --minimal     # install missing build dependencies with apt/Homeb
 
 An explicit `PYSTACHY_LLVM` takes precedence over discovery; it must point to a complete
 platform's LLVM `bin` directory. Set it to an empty string to explicitly select `PATH`.
-If no standard installation exists, Pystachy uses the unversioned
-`clang`, `opt`, `lli`, `llvm-link` and `llvm-as` on `PATH`, and `llc` where `lli` runs a
-program with `PYSTACHY_JIT_CODEGEN=0`. On Linux, `pystachy run` builds its
-[JIT runner](internals.md#the-jit-runner) at first use with that `clang`, linked to the shared
-`libLLVM` that `lli` loads (LLVM 18 to 23; no LLVM headers are needed); without one it runs `lli`.
+If no standard installation exists, Pystachy uses the unversioned `clang`, `opt`, `lli`,
+`llvm-link` and `llvm-as` on `PATH`, and `llc` where `lli` runs a program with
+`PYSTACHY_JIT_CODEGEN=0`.
+
+On Linux, `pystachy run` builds its [JIT runner](internals.md#the-jit-runner) at first
+use with that `clang`, linked to the shared `libLLVM` that `lli` loads (LLVM 18 to 23;
+no LLVM headers are needed); without one it runs `lli`.
 
 On other Linux distributions, install LLVM 18, Python 3.11+ and `make` using the system
 package manager, then run `tools/setup.sh --check`. The script does not configure package
@@ -235,10 +237,12 @@ On Linux, `PYSTACHY_LLVM` may also name the complete `bin` directory of one LLVM
 from 19 to 23, such as `/usr/lib/llvm-23/bin` from [apt.llvm.org](https://apt.llvm.org);
 `tools/setup.sh --check` accepts it. The emitted IR is the same for every release
 ([internals](internals.md#typed-ir-and-llvm)), and each toolchain keeps its own runtime
-cache entries. CI verifies only the defaults, LLVM 18 on Linux and LLVM 20 on macOS.
-On Linux x86-64, LLVM 23 has also passed the bootstrap and the full differential tests,
-and LLVM 20 and 22 the bootstrap and a sample of those tests. LLVM 19 and 21, and other
-releases on macOS, are untested.
+cache entries.
+
+CI verifies only the defaults, LLVM 18 on Linux and LLVM 20 on macOS. On Linux x86-64,
+LLVM 23 has also passed the bootstrap and the full differential tests, and LLVM 20 and
+22 the bootstrap and a sample of those tests. LLVM 19 and 21, and other releases on
+macOS, are untested.
 
 ## Python and development tools with uv
 
@@ -263,8 +267,8 @@ PATH="$PWD/.venv/bin:$PATH" make typecheck  # mypy; no LLVM or compiler bootstra
 make verify PY="$PWD/.venv/bin/python"
 ```
 
-`make verify` uses Python 3.13 on Linux x86-64 and ARM64. The extra pip packages and sanitizer
-runtime are for development and verification, rather than ordinary installation.
+`make verify` uses Python 3.13 on Linux x86-64 and ARM64. Ordinary installation needs
+neither the extra pip packages nor the sanitizer runtime.
 
 ## Platform and deployment boundaries
 
@@ -272,19 +276,18 @@ Linux x86-64, Linux ARM64 and macOS Apple Silicon are the primary release target
 Linux targets have full native verification; macOS currently has narrower installation
 and release-consumer coverage. Intel macOS remains a secondary target with the same
 archive and installation checks; it is retained while those builds remain maintainable.
-Primary status does not imply identical testing depth across operating systems.
 
-Linux ARM64 uses the little-endian LP64 ABI and untagged heap pointers below
-2^48, matching Linux's default allocation range; explicitly requested 52-bit
-heap mappings and tagged-pointer allocators are not supported. The collector's page
-heap maps 2 MiB regions and queries the OS page size before returning pages to the
-system (free pages and the room a trimmed string leaves). Its regression control
-covers 4/16/64 KiB page boundaries; native CI verifies the runner's page size and
-does not establish complete execution coverage on every kernel page-size variant.
-Cross-compilation, 32-bit ARM,
-big-endian ARM and musl/Alpine are not covered by these glibc packages. Native
-Windows and WASI are separate future ports. Linux source builds inside WSL2 can
-follow the Ubuntu instructions, but WSL2 is not an independently verified target.
+Linux ARM64 uses the little-endian LP64 ABI and untagged heap pointers below 2^48,
+matching Linux's default allocation range; explicitly requested 52-bit heap mappings and
+tagged-pointer allocators are not supported. The collector's page heap maps 2 MiB
+regions and queries the OS page size before returning pages to the system (free pages
+and the room a trimmed string leaves). Its regression control covers 4/16/64 KiB page
+boundaries; native CI verifies only the runner's page size.
+
+Cross-compilation, 32-bit ARM, big-endian ARM and musl/Alpine are not covered by these
+glibc packages. Native Windows and WASI are separate future ports. Linux source builds
+inside WSL2 can follow the Ubuntu instructions, but WSL2 is not an independently
+verified target.
 
 The compiler package's baseline and a generated executable's baseline are separate.
 An AOT executable targets the compiler host's OS/CPU and the installed linker/sysroot
