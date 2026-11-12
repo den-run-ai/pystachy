@@ -238,7 +238,7 @@
   <details class="pz-details" id="method">
     <summary>How this was measured</summary>
     <ul>
-      <li>Commits: end-of-day points on main and every release tag from 7 October to 11 November 2026, each built with its own bootstrap (CPython 3.13 hosting stage 1, LLVM 18.1.3) in a separate worktree and checked at its own fixed point.</li>
+      <li>Commits: end-of-day points on main and eight of the fifteen release tags from 7 October to 11 November 2026, each built with its own bootstrap (CPython 3.13 hosting stage 1, LLVM 18.1.3) in a separate worktree and checked at its own fixed point.</li>
       <li>CPython test methods: today's tools/cpython_test_methods.py extracted 9,855 unittest methods from the 144 pinned CPython 3.13.16 test files of tests/upstream/core-methods.sha256; 5,905 complete under CPython 3.13.18 and form the denominator. A method passes when the commit's JIT prints CPython's stdout and stderr and exits the same way, including on a retry with promoting ints. The latest commit reproduces the repository's own census within one method.</li>
       <li>Language and builtins tests are the 60 files that test syntax, builtins and core types (test_set, test_patma, test_builtin, test_exceptions and the like); the rest test standard-library modules.</li>
       <li>Performance: today's 25 adapted pyperformance ports and the six original microbenchmarks, built AOT by each commit and run pinned to one core on an otherwise idle 4-vCPU x86-64 VM, every commit interleaved in each repetition with CPython 3.13.18. Ports report pyperf's timed region; microbenchmarks report process wall time. Every run's output must equal CPython's. unpack_sequence is left out because AOT removes its timed loop.</li>
