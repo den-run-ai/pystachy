@@ -65,6 +65,7 @@ described [below](#unchanged-cpython-files).
 |---|---|---|---|
 | 🟡 `struct` | Unchanged CPython on a subset port of the C module `_struct` (`_pystachy_struct`) | `pack`, `unpack`, `unpack_from`, `iter_unpack`, `calcsize` and `Struct` for every code of the native and standard tables, with CPython's bytes, values and errors | The format must be known as the program compiles (`calcsize()` takes any); `bytes` buffers; no `pack_into` |
 | 🟢 `binascii` | Subset port of CPython's C module (`_pystachy_binascii`) | Hex with separators, base64 with strict mode, uu, quoted-printable, `crc32`, `crc_hqx`, `Error` and `Incomplete` | Bytes and ASCII-str arguments only; Python functions, not builtins |
+| 🟡 `hashlib` | Subset implementation, from the algorithms' specifications | `md5`, `sha1`, `sha224`, `sha256` and `new()`: hash objects with `update()`, `digest()`, `hexdigest()`, `copy()`, `name`, `digest_size` and `block_size`, with CPython's digests | `bytes` data; no SHA-384, SHA-512, SHA-3 or BLAKE2, `file_digest()`, `pbkdf2_hmac()` or `scrypt()`; see [limits](compatibility.md#hashlib) |
 | 🟡 `codecs` | Adapted CPython on a subset `_codecs` (`_pystachy_codecs`) | BOM constants, `encode`, `decode`, the UTF-8, Latin-1, ASCII and charmap codec functions, `lookup_error`, `register_error`, the incremental classes | No codec registry (`lookup()`); no UTF-16, UTF-32, UTF-7 or escape codecs |
 
 ### Collections and functional tools
