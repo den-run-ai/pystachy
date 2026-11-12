@@ -75,10 +75,14 @@ three trees. "ok" means the same stdout and exit status.
   (`mypy/nodes.py:3863`, `mypyc/ir/ops.py:1461`). #1275 accepts `@final` on classes.
   Draft #1244 accepts `@final` and `@override` on functions and methods (#712).
 - **Set-fields change (this session, branch `claude/confident-einstein-ep3lh6-set-fields`,
-  `1d1493e3`):** fields and class attributes typed by set displays and by another
+  `3b1c2a5b`, no pull request yet):** fields and class attributes typed by set displays and by another
   class's class attributes, enum members included. With the
   stack it clears `mypy/checker.py:3636`, `mypy/stubutil.py:583` and `:609`, and
   `mypyc/ir/pprint.py:82`.
+  It merges without conflicts, one at a time, with 13 open branches that edit the same
+  function (#1282, #1286, #1295, #1298, #1315, #1317, #1361, #1362, #1368, #1374, #1375,
+  #1376, #1384). On a trial tree with #1275, #1280 to #1282, #1374, #1376 and #1384 the
+  probes above still match CPython, and `frozenset({...})` values are typed too.
 
 ## Still rejected with everything above
 
