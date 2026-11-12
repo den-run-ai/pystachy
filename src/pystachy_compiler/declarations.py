@@ -2247,6 +2247,13 @@ def guess_scope(f: FnInfo) -> list[Node]:
     return f.node.kids[0].kids if f.node.kind == "class" else f.node.kids[2].kids
 
 
+def attr_root(e: Node) -> Node:
+    # what attribute chain e (a.b.c) reads its first attribute of: a's node (a call's, ...)
+    while e.kind == "attr":
+        e = e.kids[0]
+    return e
+
+
 def gen_guess(self, e: Node, f: FnInfo) -> str:
     k = e.kind
     if k == "int" or k == "float" or k == "str" or k == "bytes":
@@ -2269,6 +2276,10 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return BIG  # (as unary() computes it in a module whose ints promote: bigints.py)
         # (-True is -1, as unary() computes it; -o is what o.__neg__ returns, unknown as for o + o)
         return "int" if t == "bool" else "" if t in self.classes and UNARY[e.s] in self.classes[t].methods else t
+    if k == "name" and e.s in self.guessvars and self.guessowner[e.s] is f:
+        # (a variable of a comprehension of f: an item of its iterable, see below; not of another
+        # function, whose fields or instance the comprehension's element may need guessed)
+        return self.guessvars[e.s]
     if k == "name" and e.s in f.params:
         t = f.ptypes[f.params.index(e.s)]
         if t == "" and takes_self(f) and e.s == f.params[0] and self.classes[f.cls].tag != 0:
@@ -2307,9 +2318,11 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if e.s not in ci.ftypes and e.s in ci.methods and ci.methods[e.s].deco == "":
             return f"fn[m:{f.cls}.{e.s}]"  # (self.m: the method bound to the object)
         return ci.ftypes.get(e.s, "")
-    if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s in f.params and e.kids[0].s != me:
-        # p.k of a parameter p holding an object: the type of its field k (its class's fields are
-        # declared first: a class declared later, as a forward reference or a TYPE_CHECKING import names it)
+    if k == "attr" and not (e.kids[0].kind == "name" and e.kids[0].s == me) and attr_root(e).kind == "name" and (attr_root(e).s in f.params or (attr_root(e).s in self.guessvars and self.guessowner[attr_root(e).s] is f)):
+        # p.k of a parameter p holding an object (also of a comprehension's variable, or of an
+        # attribute of either or of self's: p.j.k, self.j.k): the type of its field k, or what its
+        # property k returns (its class's fields are declared first: a class declared later, as a
+        # forward reference or a TYPE_CHECKING import names it)
         t = self.guess(e.kids[0], f)
         chain: list[str] = []
         c = t
@@ -2323,6 +2336,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
                 self.declare_fields(self.classes[chain[j]])
         if t in self.classes and e.s in self.classes[t].ftypes and e.s not in self.classes[t].methods:
             return self.classes[t].ftypes[e.s]
+        if t in self.classes and e.s in self.classes[t].methods and self.classes[t].methods[e.s].prop and self.classes[t].methods[e.s].bad == "":
+            return self.classes[t].methods[e.s].ret
     if k == "dictstar":
         # {**a, **b} of **kwargs records: their record, each name with its last value's type
         names: list[str] = []
@@ -2427,6 +2442,10 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         return ms[e.kids[0].s].ret if e.kids[0].s in ms and ms[e.kids[0].s].deco != "" else ""
     if k == "cmp" or (k == "unary" and e.s == "not"):
         return "bool"
+    if k == "ifexp" and e.kids[1].kind == "None":
+        # None if c else v: v's type or None
+        t = self.guess(e.kids[2], f)
+        return t if t.startswith("!") else self.optional(t) if t != "" and t != "None" and "?" not in t else ""
     if k == "ifexp":
         return self.guess(e.kids[1], f)
     if k == "walrus":
@@ -2434,6 +2453,32 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
     if k == "list" and len(e.kids) > 0:
         t = self.guess(e.kids[0], f)
         return self.ctype("list", [t]) if t != "" and not t.startswith("!") else t
+    if k == "listcomp" and e.s == "" and len(e.kids) == 3 and e.kids[1].kind == "name":
+        # [v for x in xs]: a list of v's type, where x is an item of xs (a list's, a tuple's, a
+        # set's, a str's, a range's, or a dict's key), as guessvars binds it while v is typed
+        arg = e.kids[2]
+        rng = arg.kind == "call" and arg.kids[0].kind == "name" and arg.kids[0].s == "range" and not self.bound("range")
+        t = "list[int]" if rng else self.guess(arg, f)
+        et = "int" if t == RANGEC else self.iter_elem(t)
+        if t.startswith("!") or et == "" or "?" in et:
+            return t if t.startswith("!") else ""
+        cv = e.kids[1].s
+        had = cv in self.guessvars
+        outer = self.guessvars[cv] if had else ""
+        outerf = self.guessowner[cv] if had else f
+        self.guessvars[cv] = et
+        self.guessowner[cv] = f
+        vt = ""
+        try:
+            vt = self.guess(e.kids[0], f)
+        finally:
+            if had:
+                self.guessvars[cv] = outer
+                self.guessowner[cv] = outerf
+            else:
+                del self.guessvars[cv]
+                del self.guessowner[cv]
+        return vt if vt.startswith("!") else self.ctype("list", [vt]) if vt != "" and vt != "None" and "?" not in vt else ""
     if k == "tuple" and 0 < len(e.kids) <= 9:
         ts = [self.guess(x, f) for x in e.kids if x.kind != "starred"]
         bad = [t for t in ts if t.startswith("!")]

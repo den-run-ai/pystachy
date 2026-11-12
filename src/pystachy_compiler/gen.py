@@ -1472,6 +1472,8 @@ class Gen:
         self.objectused = False  # and of lib's object class, which object() makes
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
+        self.guessvars: dict[str, str] = {}  # comprehension variables that guess binds to their items' types
+        self.guessowner: dict[str, FnInfo] = {}  # and the function whose comprehension binds each
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
         self.abstracts: dict[str, list[str]] = {}  # each class's own @abstractmethod methods (abstract_defs)
         self.abcmeta: dict[str, bool] = {}  # the classes whose statements pass metaclass=ABCMeta
