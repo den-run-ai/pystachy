@@ -565,7 +565,7 @@ jobs:
           python3 tools/package_smoke.py --no-build-isolation --compiler 'python3 pystachy.py'
           python3 -m unittest discover -s tools -p 'test_release*.py'
           release_version=$(cat VERSION)
-          test -f "docs/releases/$release_version.md"
+          python3 tools/release_notes.py check "docs/releases/$release_version.md"
           python3 tools/release.py --version "$release_version" --target linux-x86_64 --output-dir build/release-smoke
           python3 tools/release_smoke.py "build/release-smoke/pystachy-$release_version-linux-x86_64.tar.gz"
 

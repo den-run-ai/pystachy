@@ -181,6 +181,9 @@ jobs:
       - name: Issue and PR reading budgets and metadata checks
         run: python3 -m unittest discover -s tools -p test_submission.py
 
+      - name: Release notes rendering and the current version's notes
+        run: python3 -m unittest discover -s tools -p test_release_notes.py
+
       - name: Coverage report checks tests
         run: python3 -m unittest discover -s tools -p test_coverage_report.py
 
