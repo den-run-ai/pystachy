@@ -398,6 +398,13 @@ def initialized_classes(snapshot, field_results):
     return frozenset(cls for cls in layouts if cls not in excluded)
 
 
+def argument_parameters(parameters):
+    """The declared parameter index of each operand a direct call passes, in order: a parameter
+    of type None takes no operand (lowering passes it no value), and the operands past these are
+    numeric identity companions (%aidN), no parameter's value."""
+    return [index for index, parameter in enumerate(parameters) if parameter["representation"] != "None"]
+
+
 def memory_keys(snapshot):
     """Typed union memory (proved_domains): each key and its union domain, the keys each function
     writes, and the functions whose address other code takes. A key is a field word (a field
@@ -409,6 +416,7 @@ def memory_keys(snapshot):
         return _KEYS[1]
     context = snapshot_context(snapshot)
     symbols = {fn["symbol"] for fn in snapshot["functions"]}
+    callees = {fn["symbol"]: argument_parameters(fn["parameters"]) for fn in snapshot["functions"]}
     keys, conflicts, writers, taken = {}, set(), {}, set()
     def note(key, typ):
         tags = union_members(typ or "")
@@ -443,7 +451,7 @@ def memory_keys(snapshot):
                     if key is not None:
                         note(key, op["type"][1:])
                 elif kind == "call" and op["text"] in symbols:
-                    written.update(("param", op["text"], i) for i, a in enumerate(args))
+                    written.update(("param", op["text"], i) for i in callees[op["text"]][:len(args)])
                 elif kind == "icall" and any(union_members(a["type"]) is not None for a in args):
                     written.add(("indirect",))
                 if kind in {"mem.store", "mach.store", "mem.load", "mach.load"} and args and direct_access(op):
@@ -1016,6 +1024,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         return value
     typed = domains is not None and not null_mode
     keys = memory_keys(snapshot)[0] if typed else {}
+    callees = {other["symbol"]: argument_parameters(other["parameters"]) for other in snapshot["functions"]} if typed else {}
     views = fields.class_tables(snapshot)[1] if typed and initialized else {}
     late = late_functions(snapshot) if typed else {}
     # Module globals and class variables of union type that fn loads and stores only directly, at
@@ -1665,9 +1674,9 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
             key = memory_key(context, producers, args[0]["value"])
             if key in domains:
                 found.append((args[1]["value"], key, domains[key]))
-        elif kind == "call":
+        elif kind == "call" and op["text"] in callees:
             found.extend((a["value"], ("param", op["text"], i), domains[("param", op["text"], i)])
-                         for i, a in enumerate(args) if ("param", op["text"], i) in domains)
+                         for a, i in zip(args, callees[op["text"]]) if ("param", op["text"], i) in domains)
         elif kind == "icall" and ("indirect",) in domains:
             found.extend((a["value"], ("indirect",), union_members(a["type"]))
                          for a in args if union_members(a["type"]) is not None)

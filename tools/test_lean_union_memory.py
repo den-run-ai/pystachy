@@ -86,6 +86,17 @@ class UnionMemoryTests(unittest.TestCase):
         call["operands"][0] = {"value": "null", "type": UNION}
         self.assertEqual(self.status(snapshot, "@f.replaced"), "rejected")
 
+    def test_argument_after_none_parameter_outside_its_union_is_rejected(self):
+        # (a None parameter takes no operand: the union argument is the call's first operand)
+        snapshot = copy.deepcopy(self.memory)
+        noted = next(fn for fn in snapshot["functions"] if fn["symbol"].startswith("@f.noted"))
+        self.assertEqual([p["representation"] for p in noted["parameters"]], ["None", UNION])
+        main = self.function(snapshot, "@main.init")
+        call = next(op for _, _, op in self.operations(main) if op["op"] == "call" and op["text"] == noted["symbol"])
+        self.assertEqual(len(call["operands"]), 1)
+        call["operands"][0] = {"value": "null", "type": UNION}
+        self.assertEqual(self.status(snapshot, noted["symbol"]), "rejected")
+
     def test_chained_join_branch_swap_is_rejected(self):
         snapshot = copy.deepcopy(self.memory)
         single = self.function(snapshot, "@f.single")
