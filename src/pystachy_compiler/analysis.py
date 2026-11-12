@@ -427,6 +427,21 @@ def called_only(n: Node, fn: str) -> bool:
     return True
 
 
+def reads_args(n: Node) -> list[int]:
+    # the arguments (kids) of call n of a builtin of READS_ONLY_FNS that it only iterates: each
+    # positional one of zip's; the first of enumerate's, sorted's and sum's (a second is a start,
+    # which sum may return); the only one of the others' (min(xs, ys) compares xs itself)
+    pos = [i for i in range(1, len(n.kids)) if n.kids[i].kind != "kw"]
+    if len([i for i in pos if n.kids[i].kind == "starred"]) > 0 or len(pos) == 0 or pos[0] != 1:
+        return []
+    f = n.kids[0].s
+    if f == "zip":
+        return pos
+    if f == "enumerate" or f == "sorted" or f == "sum" or len(pos) == 1:
+        return [1]
+    return []
+
+
 def reads_only(n: Node, name: str, fns: list[str]) -> bool:
     # does code n (a function's body) use variable name only to read its items, so that no code
     # can tell a list in it from a tuple or keep it: as the iterable of a for loop or of a
@@ -462,10 +477,12 @@ def reads_only(n: Node, name: str, fns: list[str]) -> bool:
     elif k == "while" or k == "if" or k == "ifexp" or k == "assert" or (k == "unary" and n.s == "not"):
         ok = [0]
     elif k == "cmp":
+        # (the container of the chain's last membership test: a middle operand is compared again,
+        # 0 in xs == [])
         ops = n.s.split(",")
-        ok = [i + 1 for i in range(len(ops)) if ops[i] == "in" or ops[i] == "not in"]
+        ok = [len(ops)] if ops[-1] == "in" or ops[-1] == "not in" else []
     elif k == "call" and n.kids[0].kind == "name" and n.kids[0].s in fns:
-        ok = list(range(1, len(n.kids)))
+        ok = reads_args(n)
     tests = k == "while" or k == "if" or k == "ifexp" or k == "assert" or (k == "unary" and n.s == "not")
     for i in range(len(n.kids)):
         x = n.kids[i]

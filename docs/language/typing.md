@@ -105,9 +105,9 @@ The supported `collections.abc` annotations use concrete container types:
 These types are invariant. A tuple or string is not a `Sequence`, and `isinstance()`
 tests of these annotations are decided using the compiled type. A `Sequence[T]` parameter's
 empty tuple default, `= ()`, is an empty list where the function only reads the parameter's
-items: it loops over it, tests membership or truth, or passes it to `len()`, `sorted()`,
-`sum()` and similar builtins, but never indexes, stores, returns, changes or rebinds it, so
-nothing can tell the list from `()`
+items: it loops over it, tests membership (last in a chain) or truth, or passes it as the
+iterable that `len()`, `sorted()`, `sum()` and similar builtins read, but never indexes, compares,
+stores, returns, changes or rebinds it, so nothing can tell the list from `()`
 ([test](../../tests/programs/generics/sequence_tuple_default.py)).
 `str | os.PathLike[str]` simplifies to `str`, because paths must be strings;
 `os.fspath()` returns its string argument. Other `PathLike` annotations are unsupported.

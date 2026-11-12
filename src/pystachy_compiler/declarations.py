@@ -1106,7 +1106,8 @@ def gen_seq_default(self, p: Node, d: Node) -> bool:
     a = self.parse_expr(p.kids[0].s) if p.kids[0].kind == "str" else p.kids[0]
     if p.kind != "param" or p.kids[1].kind != "tuple" or len(p.kids[1].kids) > 0 or a.kind != "index" or self.typing_ref(a.kids[0]) != "Sequence":
         return False
-    fns = [x for x in READS_ONLY_FNS if not self.bound(x) and called_only(d.kids[2], x)]
+    params = [q.s for q in d.kids[0].kids]
+    fns = [x for x in READS_ONLY_FNS if not self.bound(x) and x not in params and called_only(d.kids[2], x)]
     return reads_only(d.kids[2], p.s, fns)
 
 def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
