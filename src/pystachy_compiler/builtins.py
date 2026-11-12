@@ -458,8 +458,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             v = self.gen_list(v, "")
         if v.t == "bytes":
             v = Val(self.rt("pys_bytes_list", "ptr", [f"ptr {v.v}"]), "list[int]")
-        if self.iter_object(v.t) or v.t == RANGEC:
-            v = self.as_list(v, "tuple")  # (the items of its iterator object; a range's numbers)
+        if self.iter_object(v.t) or v.t == RANGEC or is_set(v.t) or is_dict(v.t):
+            # (the items of its iterator object; a range's numbers; a set's items or a dict's keys,
+            # in the order list() gives them)
+            v = self.as_list(v, "tuple")
         if not is_list(v.t):
             self.err(f"tuple() of {typestr(v.t)} is not supported: use a list, string or tuple")
         if unopt(elem(v.t)) not in ["int", "float", "bool", "str", "dyn"]:

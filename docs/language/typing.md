@@ -44,7 +44,8 @@ messages.
 
 `tuple(xs)` copies a supported homogeneous list or a string into an immutable
 runtime-length tuple; later list mutation does not change it. A string converts to a tuple of
-its code points ([text](compatibility.md#text-and-file-positions)). `tuple(t)` returns an
+its code points ([text](compatibility.md#text-and-file-positions)); a set gives its items and
+a dict its keys, in the order `list()` gives them. `tuple(t)` returns an
 existing tuple unchanged unless an annotation requests a representation conversion
 ([identity limitations](compatibility.md#functions-and-object-identity)). A fixed tuple literal can initialize `tuple[T, ...]`,
 including `()`, and a tuple display with a starred list makes one (`(*xs, 0)`). Supported
@@ -59,7 +60,7 @@ into a new tuple of one item type, or return the other operand itself where one 
 CPython does; items of a type and items that are `None`, or of that type or `None`, make a tuple
 of that type or `None` (`nums + (None,)`). They do not
 support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
-from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
+from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, set, dict, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
 `bool`, `str` or optional versions of those types, the objects of iterator classes and
 generators. Direct `enumerate` and `zip` produce tuple-valued items, which runtime-length tuples cannot
