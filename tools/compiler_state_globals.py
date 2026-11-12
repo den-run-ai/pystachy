@@ -15,7 +15,7 @@ PREFIX = "src.pystachy_compiler."
 # These are initialized when modules load, then reviewed as lookup tables. Adding
 # a container or a post-import writer requires an explicit ownership decision.
 LOOKUP = set("""
-analysis.BINDERS builtins.FSPRIMS
+analysis.BINDERS asyncgens.AGMETHODS builtins.FSPRIMS
 ctypes_schema.SCALARS ctypes_schema.MARKERS
 bigints.BIGOPS bigints.BKEY bigints.PROMOTES bigints.NUMOPS bigints.NUMCALLS
 cached_run.BUILD_ENV cached_run.CPU_FIELDS cached_run.KEYED_ENV
@@ -46,7 +46,7 @@ specs.FSETMETHODS specs.SETMETHODS specs.IROPS specs.OPTS specs.VALUE_AT specs.F
 specs.FXBIT specs.RUNTIME specs.NARROWED specs.READ_HELPERS specs.INT_HELPERS specs.RTDATA specs.RTSYM
 structs.STRUCT_FNS structs.NATIVE_SIZES structs.STANDARD_SIZES
 syntax.DCOPTS syntax.EXPRNAMES syntax.STARTS syntax.CMPOPS syntax.AUGOPS syntax.BINOPS syntax.NOKIDS
-utils.DECRUNS
+utils.DECRUNS utils.CORONAMES
 """.split())
 
 # These four rewind boundaries have executable removal controls in
