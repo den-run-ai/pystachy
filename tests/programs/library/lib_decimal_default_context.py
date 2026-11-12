@@ -19,3 +19,13 @@ d = DefaultContext.copy()
 print(d.prec, d.capitals)
 setcontext(Context(prec=3))
 print(Decimal(1) / Decimal(7), getcontext().prec, repr(Context(prec=5)))
+# create_decimal() takes a number's text as the specification writes it: the constructor's
+# surrounding whitespace and underscores are a syntax error there.
+from decimal import InvalidOperation
+strict = Context(prec=5)
+for text in [" 1.23 ", "1_000", "1.23", "5\n", "+1.5E+2", "1.23456789", ""]:
+    try:
+        print(repr(text), repr(strict.create_decimal(text)), repr(Decimal(text if text != "" else "0")))
+    except InvalidOperation as error:
+        print(repr(text), "InvalidOperation", error)
+print(repr(strict.create_decimal(7)), repr(strict.create_decimal(1.5)), repr(strict.create_decimal()))

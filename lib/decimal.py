@@ -235,6 +235,10 @@ class Context:
 
     def create_decimal(self, num: str | int | float = "0") -> "Decimal":
         """A Decimal from num, rounded to this context (unlike the Decimal constructor)."""
+        if isinstance(num, str) and (num != num.strip() or "_" in num):
+            # (text as the specification writes a number: the constructor's surrounding
+            # whitespace and underscores are not part of it)
+            raise InvalidOperation("[<class 'decimal.ConversionSyntax'>]")
         d = Decimal(num, self)
         if d._kind >= _NAN and _ndigits(d._int) > self._prec - self._clamp and d._int != 0:
             raise InvalidOperation("[<class 'decimal.ConversionSyntax'>]")
