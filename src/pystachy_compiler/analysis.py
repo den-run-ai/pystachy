@@ -862,24 +862,47 @@ def constant_writes(n: Node, count: dict[str, int]) -> None:
         constant_writes(k, count)
 
 
-def module_values(mods: list[Mod], values: dict[str, Node], owners: dict[str, Mod]) -> None:
+def module_assigns(body: list[Node], found: dict[str, list[Node]], copies: list[Node], top: bool) -> None:
+    # the values of the direct assignments x = v of module code body, also in the branches of its
+    # if statements, in order, for each name; and, at its top level, its from-imports of a name
+    for st in body:
+        if st.kind == "if":
+            module_assigns(st.kids[1].kids, found, copies, False)
+            module_assigns(st.kids[2].kids, found, copies, False)
+        elif st.kind == "assign" and len(st.kids) == 2 and st.kids[0].kind == "name":
+            if st.s == "from" and st.kids[1].kind == "name" and top:
+                copies.append(st)
+            elif st.s != "from":
+                if st.kids[0].s not in found:
+                    found[st.kids[0].s] = []
+                found[st.kids[0].s].append(st.kids[1])
+
+
+def module_values(mods: list[Mod], values: dict[str, Node], owners: dict[str, Mod], alts: dict[str, list[Node]]) -> None:
     # The module globals that one direct module-level assignment binds (x = v, also x: Final = v,
     # which typing_forms makes that), or a from-import of another such name: the value v and the
     # module whose code binds it, which field inference reads the global's type from (Gen.guess).
-    # Like module_strs's, a name that any other binding writes is not one.
+    # Like module_strs's, a name that any other binding writes is not one. So also a global that
+    # the branches of module-level if statements bind (as mypyc's rtypes.py binds
+    # c_pyssize_t_rprimitive under if IS_32_BIT_PLATFORM: and else:), each binding a direct
+    # assignment: its first value, and its others (alts), which guess types alike
     count: dict[str, int] = {}
     for m in mods:
         constant_writes(m.body, count)
     copies: list[Node] = []
     for m in mods:
-        for st in m.body.kids:
-            if st.kind != "assign" or len(st.kids) != 2 or st.kids[0].kind != "name" or count.get(st.kids[0].s, 0) != 1:
-                continue
-            if st.s == "from" and st.kids[1].kind == "name":
+        found: dict[str, list[Node]] = {}
+        own: list[Node] = []
+        module_assigns(m.body.kids, found, own, True)
+        for st in own:
+            if count.get(st.kids[0].s, 0) == 1:
                 copies.append(st)
-            elif st.s != "from":
-                values[st.kids[0].s] = st.kids[1]
-                owners[st.kids[0].s] = m
+        for nm in found:
+            if count.get(nm, 0) == len(found[nm]):
+                values[nm] = found[nm][0]
+                owners[nm] = m
+                if len(found[nm]) > 1:
+                    alts[nm] = found[nm][1:]
     more = True
     while more:
         more = False
