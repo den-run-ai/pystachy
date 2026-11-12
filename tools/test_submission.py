@@ -64,6 +64,7 @@ class FormatTests(unittest.TestCase):
                 self.assertIn("one line", "\n".join(errors))
         allowed = ("Steps:\n- one\n- two", "| a | b |\n|---|---|\n| 1 | 2 |", "```\nline 1\nline 2\n```",
                    "> quoted log line 1\n> quoted log line 2", "Break here  \nthen continue.",
+                   "Run:\n\n    make\n    make test\n    make lint",
                    "Preserve the value.<!-- note\nspanning lines -->")
         for text in allowed:
             with self.subTest(text=text):

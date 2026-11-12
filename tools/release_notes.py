@@ -95,8 +95,8 @@ def blocks(text):
             kind = "reference"
         elif LIST_ITEM.match(line):
             kind, in_list = "text", True
-        elif previous == "blank" and not in_list and (line.startswith("    ") or line.startswith("\t")):
-            kind = "code"
+        elif previous in ("blank", "code") and not in_list and line.startswith(("    ", "\t")):
+            kind = "code"  # an indented code block runs until a less indented line
         else:
             kind = "text"
             if previous == "blank" and not line.startswith((" ", "\t")):

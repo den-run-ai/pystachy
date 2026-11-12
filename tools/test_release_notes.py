@@ -80,6 +80,11 @@ class UnwrapTests(unittest.TestCase):
                          "Line with a break  \nnext line\\\nlast\n\n<!-- keep\nthis -->\n\n"
                          "    indented code\n    stays\n")
 
+    def test_keeps_every_line_of_an_indented_code_block(self):
+        text = "Run:\n\n    print(1)\n    print(2)\n    print(3)\n\n    print(4)\nAfter.\n"
+        self.assertEqual(notes.unwrap(text), text)
+        self.assertEqual(notes.check_text(text), [])
+
     def test_list_continuation_paragraph_is_not_code(self):
         text = "- Item\n\n    Its second paragraph\n    wraps.\n"
         self.assertEqual(notes.unwrap(text), "- Item\n\n    Its second paragraph wraps.\n")
