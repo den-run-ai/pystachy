@@ -675,7 +675,8 @@ def gen_newtype_name(self, name: str) -> bool:
     return name in self.taliases and self.taliases[name].kind == "assign" and self.taliases[name].kids[1].kind == "call"
 
 def gen_ann_reads(self, e: Node) -> None:
-    # CPython evaluates e, an assigned type alias's value or the T of N = NewType("N", T), where
+    # CPython evaluates e, an assigned type alias's value, the T of N = NewType("N", T) or an
+    # annotation of module code or a class body (def_ann_reads, an annotated assignment's), where
     # its statement runs (aliasvalue, newtype): an attribute it reads through a module (a.C),
     # which Loader.reads marks (Node.chk), may not be bound yet, as during a circular import, or
     # the import it needs may have raised: their errors, as isinstance's argument has them
@@ -690,6 +691,25 @@ def gen_ann_reads(self, e: Node) -> None:
         return
     for k in e.kids:
         self.ann_reads(k)
+
+def gen_def_ann_reads(self, d: Node) -> None:
+    # def statement d runs in module code or a class body: CPython evaluates its annotations
+    # there (unless its module imports annotations from __future__, where Loader.ann marks none),
+    # after its defaults, in the order its compiler visits them: the parameters after the
+    # positional-only ones, those, *args, the keyword-only ones, **kwargs, then the return's
+    # (each as ann_reads checks a type alias's value)
+    ps = d.kids[0].kids
+    lim = d.kids[0].s.split(",")
+    posonly = int(lim[0])
+    kwonly = int(lim[1])
+    order: list[Node] = [ps[i] for i in range(len(ps)) if ps[i].kind == "param" and i >= posonly and (kwonly < 0 or i < kwonly)]
+    order.extend(ps[:posonly])
+    order.extend([p for p in ps if p.kind == "starparam"])
+    order.extend([ps[i] for i in range(len(ps)) if ps[i].kind == "param" and kwonly >= 0 and i >= kwonly])
+    order.extend([p for p in ps if p.kind == "dstarparam"])
+    for p in order:
+        self.ann_reads(p.kids[0])
+    self.ann_reads(d.kids[1])
 
 def gen_alias_kept(self, name: str) -> bool:
     # does the assignment that binds type alias name stay in the module's code: Pos = int binds

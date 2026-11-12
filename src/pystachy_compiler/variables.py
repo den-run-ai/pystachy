@@ -253,6 +253,8 @@ def gen_decorate(self, n: Node) -> Val:
             wraps.append([])
             callees.append(self.vnode(self.call(e, "")) if len(decos[i].kids) > 0 else e)
     v = self.closure(n)
+    if self.modlevel:
+        self.def_ann_reads(n)  # (module code's def: after its defaults, before the decorators run)
     for j in range(len(callees) - 1, -1, -1):
         self.line = callees[j].line
         if len(wraps[j]) > 0:
