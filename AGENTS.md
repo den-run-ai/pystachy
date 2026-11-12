@@ -113,11 +113,11 @@ Start focused, then broaden for the risk and required gates. `make test` is not 
 `tests/verify.sh` and `tools/merge_verification.py` define coverage: prove expected counts,
 source/toolchain identity and every stage, not just zero failures. Report both a timed-out
 stage and its later isolated pass; never relabel a partial matrix complete or disable gates.
-PR CI: at most 20 jobs, two workers/group, 15 minutes/job (`tools/test_workflow_limits.py`).
-Keep native JIT/AOT and hosted IR coverage complete; sample alternate configurations with
-`VERIFY_PROFILE=pr`. Main/manual runs stay exhaustive. Compact slow PR groups instead of
-expanding matrices. `gc-self` is one stressed
-self-compilation with a ten-minute bound: fix compiler cost, not its timeout
+PR CI: at most 19 job rows; four AOT shards, two workers/other group; four local
+processes/worker and 15 minutes/job (`tools/test_workflow_limits.py`). Keep every native
+JIT/AOT and hosted IR case; `VERIFY_PROFILE=pr` samples alternate configurations.
+Main/manual retain exhaustive x86/ARM, distribution, full Lean and performance checks.
+Keep `gc-self`'s ten-minute bound: fix cost, not timeout
 ([#581](https://github.com/den-run-ai/pystachy/pull/581)).
 
 ## Hosted agent sessions
@@ -321,11 +321,12 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 - Add no tool attribution trailers, `Co-Authored-By`, session links or generated-by
   footers to commits, PR bodies or comments. Disclose substantive AI assistance in Change or a PR comment, per
   [CONTRIBUTING.md](CONTRIBUTING.md#ai-assistance-and-review).
-- Follow the [submission format](CONTRIBUTING.md#issues-and-pull-requests): titles
+- Write issues, PRs, docs and release notes per the [writing guide](docs/writing.md).
+  Follow the [submission format](CONTRIBUTING.md#issues-and-pull-requests): titles
   <=64 characters, bodies <=200 words, three filled sections, no checklist.
   Give the problem, bounded outcome and acceptance/validation; link code and evidence
   instead of copying history. Separate local/CI results and label old measurements.
-  Use structured bodies or `--body-file`; pin code links to commits. Read back published
+  Use `--body-file` with one line per paragraph; pin code links to commits. Read back published
   metadata and compare the tree/diff to the intended base, including file modes.
 - For [releases](docs/releasing.md), require the gate on the release commit and verify
   downloaded archives/images, checksums and version/commit. Smoke tests must prove the
