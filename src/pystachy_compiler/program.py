@@ -18,6 +18,7 @@ from src.pystachy_compiler.specs import (
     PLAIN_EXC_BASES,
     exc_derives,
     GALIAS,
+    GENERICS,
     INERT,
     INERT_DECOS,
     is_excname,
@@ -802,19 +803,6 @@ def gen_abc_class(self, c: str) -> bool:
         c = self.classes[c].base
     return False
 
-def tv_attrs(e: Node) -> list[Node]:
-    # the attribute reads in expression e (C.Missing), outermost first
-    out: list[Node] = []
-    todo = [e]
-    while len(todo) > 0:
-        n = todo.pop()
-        if n.kind == "attr":
-            out.append(n)
-        for k in n.kids:
-            todo.append(k)
-    return out
-
-
 def tv_reads(st: Node) -> list[Node]:
     # the names that TypeVar statement st's constraints and bound read, as qualified (Loader.qexpr)
     out: list[Node] = []
@@ -830,6 +818,29 @@ def tv_reads(st: Node) -> list[Node]:
 
 # typing's names that TypeVar's bound may not be plain (typing._type_check's TypeError)
 BOUND_FORMS = "Annotated ClassVar Concatenate Final Generic Literal NotRequired Optional Protocol ReadOnly Required TypeGuard TypeIs Union Unpack".split()
+
+# typing's names that typing._type_check takes as types (as TypeVar's bound, and as an argument of
+# a subscript of typing's), each with the number of type arguments that it takes: 0, the special
+# forms that are types; * any (Tuple); the others typing's aliases of classes
+TV_TYPES = (
+    "Any:0 LiteralString:0 Never:0 NoReturn:0 Self:0 TypeAlias:0 AbstractSet:1 AsyncContextManager:1-2 AsyncGenerator:1-2 "
+    "AsyncIterable:1 AsyncIterator:1 Awaitable:1 Callable:2 ChainMap:2 Collection:1 Container:1 ContextManager:1-2 "
+    "Coroutine:3 Counter:1 DefaultDict:2 Deque:1 Dict:2 FrozenSet:1 Generator:1-3 ItemsView:2 Iterable:1 Iterator:1 "
+    "KeysView:1 List:1 Mapping:2 MappingView:1 Match:1 MutableMapping:2 MutableSequence:1 MutableSet:1 OrderedDict:2 "
+    "Pattern:1 Reversible:1 Sequence:1 Set:1 Tuple:* Type:1 ValuesView:1"
+).split()
+
+# why tv_problem() rejects what it cannot tell evaluates
+TVFORMS = "only classes, type aliases, TypeVars, typing's types, their subscripts and '|' of them, None and strings are supported in a TypeVar's constraints and bound, which Pystachy does not evaluate (CPython does, when the assignment runs)"
+
+
+def tv_type(nm: str) -> str:
+    # (TV_TYPES) how many type arguments typing's nm takes, a type that TypeVar takes as its
+    # bound; or "" if it is no such type
+    for x in TV_TYPES:
+        if x.startswith(nm + ":"):
+            return x[len(nm) + 1 :]
+    return ""
 
 
 def gen_bound_problem(self, x: Node) -> str:
@@ -848,23 +859,98 @@ def gen_bound_problem(self, x: Node) -> str:
     return f"Plain <class 'typing.{nm}'> is not valid as type argument" if nm == "Generic" or nm == "Protocol" else f"Plain typing.{nm} is not valid as type argument"
 
 
-def gen_class_binds(self, c: str, nm: str) -> bool:
-    # does class c's body, or a base's (derives: also secondary bases), bind nm (a def, a class,
-    # an assignment, also annotated); type gives every class its dunder attributes (__name__, ...),
-    # and an exception class's attributes come from a builtin class too
-    if nm.startswith("__") and nm.endswith("__"):
-        return True
-    for k in self.classes:
-        if not self.derives(c, k):
+def gen_tv_names(self, e: Node) -> str:
+    # what name or attribute e of a TypeVar's constraints or bound names: "class" (also a
+    # builtin one), "typevar", "alias" (a type alias), or "typing.<name>" or
+    # "collections.abc.<name>"; else "" (a variable, a function, a class's attribute)
+    if e.kind == "name" and (e.s in self.classes or e.s in GENERICS or e.s in ["int", "float", "complex", "str", "bytes", "bool", "object"]):
+        return "class"
+    if e.kind == "name" and e.s in self.typevars:
+        return "typevar" if e.s not in self.tvtuples else ""
+    if e.kind == "name" and e.s in self.taliases:
+        return "alias"
+    p = self.imported_ref(e)
+    p = "typing." + p[18:] if p.startswith("typing_extensions.") else p
+    return p if (p.startswith("typing.") and p[7:] in TYPING) or p.startswith("collections.abc.") else ""
+
+
+def gen_tv_problem(self, e: Node, ctx: int) -> str:
+    # why Pystachy cannot drop e, part of a TypeVar's constraint (ctx 0) or bound (1), which it
+    # does not evaluate: CPython's error there, or "!" where it cannot tell that CPython
+    # evaluates e without error (or running code of the program) and TypeVar takes it; else "".
+    # e may also be an argument of a subscript of typing's (2: typing._type_check checks it as
+    # TypeVar checks a bound, and makes a string a forward reference, which it compiles), of a
+    # builtin class's or collections.abc's (3: any), of a generic class's (4: a string is a
+    # forward reference), or an operand of '|' (5)
+    k = e.kind
+    if k == "None":
+        return ""
+    if k == "str":
+        return "" if ctx == 0 or ctx == 1 or ctx == 3 else "!"
+    if k == "badattr":
+        # (a module or its __dict__, which TypeVar takes: a missing attribute is typevar_def's)
+        return "" if ctx < 2 and (e.s.endswith("cannot be used as a value") or e.s == "module attribute '__dict__' is not supported") else "!"
+    if k == "name" or k == "attr":
+        r = self.tv_names(e)
+        if r == "class" or r == "typevar" or r.startswith("collections.abc."):
+            return ""
+        if r == "alias":
+            # (its value, which CPython evaluated where it assigned it)
+            st = self.taliases[e.s]
+            return self.tv_problem(st.kids[-1], ctx) if st.kind != "typealias" else ""
+        nm = r[7:]
+        if r == "":
+            return "!"
+        if ctx == 0 or ctx == 3 or ctx == 4 or tv_type(nm) != "":
+            return ""
+        if nm in BOUND_FORMS and ctx != 5:
+            return f"Plain <class 'typing.{nm}'> is not valid as type argument" if nm == "Generic" or nm == "Protocol" else f"Plain typing.{nm} is not valid as type argument"
+        return "!"
+    if k == "binop" and e.s == "|":
+        if e.kids[0].kind == "None" and e.kids[1].kind == "None":
+            return "unsupported operand type(s) for |: 'NoneType' and 'NoneType'"
+        r = self.tv_problem(e.kids[0], 5)
+        return r if r != "" else self.tv_problem(e.kids[1], 5)
+    if k != "index":
+        return "!"
+    b = e.kids[0]
+    xs = e.kids[1].kids if e.kids[1].kind == "tuple" else [e.kids[1]]
+    r = self.tv_names(b) if b.kind == "name" or b.kind == "attr" else ""
+    nm = r[r.rfind(".") + 1 :]
+    if r == "class" and b.s in GENERICS:
+        return self.tv_items(xs, 3, b.s == "tuple")  # (types.GenericAlias: any arguments)
+    if r == "class" and b.s in self.tparams:
+        return self.tv_items(xs, 4, False)  # (the number of them: alias_problem)
+    if nm == "Callable" and (r.startswith("typing.") or r.startswith("collections.abc.")):
+        # (Callable[[A, B], R] or Callable[..., R]; typing's makes each of A and B a forward
+        # reference if a string, and checks R)
+        c = 2 if r.startswith("typing.") else 3
+        if len(xs) != 2 or (xs[0].kind != "list" and xs[0].kind != "ellipsis"):
+            return "Callable must be used as Callable[[arg, ...], result]"
+        p = self.tv_items(xs[0].kids, 4 if c == 2 else 3, False)
+        return p if p != "" else self.tv_problem(xs[1], c)
+    if r.startswith("collections.abc."):
+        return self.tv_items(xs, 3, False)
+    w = tv_type(nm) if r.startswith("typing.") else ""
+    if nm != "Optional" and nm != "Union" and (w == "" or w == "0"):
+        return "!"  # (Literal, Annotated, ClassVar, ...: not supported)
+    lo = 1 if nm == "Optional" or nm == "Union" else 0 if w == "*" else int(w[0])
+    hi = 1 if nm == "Optional" else len(xs) if w == "*" or nm == "Union" else int(w[-1])
+    if len(xs) < lo or len(xs) > hi:
+        return f"Too {'many' if len(xs) > hi else 'few'} arguments for typing.{nm}; actual {len(xs)}, expected {str(hi) if lo == hi else 'at least ' + str(lo) if len(xs) < lo else str(hi)}"
+    return self.tv_items(xs, 2, nm == "Tuple")
+
+
+def gen_tv_items(self, xs: list[Node], ctx: int, tup: bool) -> str:
+    # (tv_problem) the first problem of xs, a subscript's arguments, each in ctx; of a tuple's
+    # (tup), the last of two or more may be ...
+    for i in range(len(xs)):
+        if xs[i].kind == "ellipsis" and tup and i > 0 and i == len(xs) - 1:
             continue
-        if self.classes[k].exc != "":
-            return True
-        for d in self.classes[k].node.kids[0].kids:
-            if (d.kind == "def" or d.kind == "class" or d.kind == "subclass") and d.s == nm:
-                return True
-            if (d.kind == "assign" or d.kind == "annassign") and len([t for t in (d.kids[:-1] if d.kind == "assign" else d.kids[:1]) if t.kind == "name" and t.s == nm]) > 0:
-                return True
-    return False
+        r = self.tv_problem(xs[i], ctx)
+        if r != "":
+            return r
+    return ""
 
 
 def gen_program(self, mods: list[Mod]) -> str:
@@ -1161,14 +1247,17 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.line = st.line
                 self.err(f"class '{shown(rd.s)}' may not be defined where this TypeVar reads it through its module (as during a circular import): not supported (CPython raises AttributeError if it is not)")
         for a in st.kids[1].kids[2:] if self.imported_ref(st.kids[1].kids[0]) == "typing.TypeVar" else NOKIDS:
-            # (what TypeVar checks of its bound, typing._type_check; and attributes of a class
-            # that it does not bind, CPython's AttributeError: Loader.qexpr leaves C.Missing so)
-            why = self.bound_problem(a.kids[0]) if a.kind == "kw" and a.s == "bound" else ""
-            for ra in tv_attrs(a.kids[0] if a.kind == "kw" else a) if why == "" and (a.kind != "kw" or a.s == "bound") else NOKIDS:
-                if ra.kids[0].kind == "name" and ra.kids[0].s in self.classes and not self.class_binds(ra.kids[0].s, ra.s):
-                    why = f"type object '{short(ra.kids[0].s)}' has no attribute '{ra.s}'"
+            # (what TypeVar checks of its bound, typing._type_check; and what Pystachy cannot tell
+            # CPython evaluates without error, which it rejects: tv_problem)
+            if a.kind == "kw" and a.s != "bound":
+                continue
+            x = a.kids[0] if a.kind == "kw" else a
+            why = self.bound_problem(x) if a.kind == "kw" else ""
+            why = self.tv_problem(x, 1 if a.kind == "kw" else 0) if why == "" and not is_const(x) else why
+            self.line = st.line
+            if why == "!":
+                self.err(TVFORMS)
             if why != "":
-                self.line = st.line
                 self.err(f"{why} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
     for nm in self.gflag:
         if nm in self.funcs or nm in self.classes:

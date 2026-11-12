@@ -1,36 +1,29 @@
 # What CPython's TypeVar accepts as its bound and constraints, which Pystachy does not evaluate:
-# Any and a plain Callable, a class attribute (also a base's, or one an exception class has from
-# its builtin base), and a plain special form such as Union as a constraint, which TypeVar does
-# not check as it checks a bound.
+# Any and a plain Callable; a plain special form such as Union as a constraint, which TypeVar does
+# not check as it checks a bound, or as an argument of a builtin class's subscript, which checks
+# none; typing's subscripts of types, and '|' of them. mods.tvforms has such TypeVars of an
+# imported module, as mypy's are.
+import typing
 from collections.abc import Callable
-from typing import Any, TypeVar, Union
+from typing import Any, Dict, NoReturn, Optional, Tuple, TypeVar, Union
 
-
-class Base:
-    y = 2
-
-    def m(self) -> int:
-        return 1
-
-
-class C(Base):
-    x = 1
-
-
-class E(Exception):
-    pass
-
+from mods.tvforms import apply, pick
 
 A = TypeVar("A", bound=Any)
 B = TypeVar("B", bound=Callable)
-D = TypeVar("D", bound=C.y)
-F = TypeVar("F", C.m, C.x)
-G = TypeVar("G", bound=E.args)
 H = TypeVar("H", int, Union)
+I = TypeVar("I", bound=Optional[int] | Dict[str, int])
+J = TypeVar("J", Tuple[int, ...], list[Union], tuple[()])
+K = TypeVar("K", bound=typing.Callable[[int, list[Union]], NoReturn])
+L = TypeVar("L", bound=None | int)
 
 
 def first(xs: list[A]) -> A:
     return xs[0]
 
 
-print(first([1, 2]), first(["a"]))
+def double(n: int) -> int:
+    return n * 2
+
+
+print(first([1, 2]), first(["a"]), apply(double, 4), pick(None), pick("s"))
