@@ -189,7 +189,11 @@ cases retained from 0.64.8 have unchanged outcomes.
 Upstream's own test suite runs against the port under CPython: of the 413 tests that pass
 for pristine 0.64.9 in an environment without `jsonschema`, 376 pass for the port. The other
 37 read what the port replaces: 35 the schema module's internals, and 2 the string scanner's
-accumulator state. The corpus and this run establish these cases, not full-package parity.
+accumulator state. A [differential fuzz](../../tests/upstream/json_repair/README.md#differential-fuzz)
+of 1,000,000 generated cases, with text placed at the boundaries of the string scanner's chunks
+and the comment scanner's windows, found no difference between pristine upstream and the port,
+under CPython or natively. The corpus and these runs establish these cases, not full-package
+parity.
 
 Valid input takes the default fast path, `json.loads()`, whose nesting counts against the
 native recursion limit: at the default limit, about 500 nested containers decode and return as

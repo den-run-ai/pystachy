@@ -92,6 +92,38 @@ or raw output dumps. The checker requires every case exactly once and exits
 nonzero on missing, duplicate or unexpected IDs, malformed output and every
 content/type/error mismatch. It does not treat an early exit as a partial pass.
 
+## Differential fuzz
+
+[json_repair_fuzz.py](../../../tools/json_repair_fuzz.py) generates inputs beyond this corpus
+and replays them, with this directory's replay program and the checker's type-exact comparison,
+through pristine upstream under CPython (the oracle, whose sources it checks against the
+manifest's hashes), the port under CPython and the port's native build:
+
+```sh
+python3.13 tools/json_repair_fuzz.py --upstream /tmp/json_repair_upstream --seed 1 --cases 250000 --jit --gc-stress 500
+```
+
+Each generated text runs under three of eleven API and option combinations. There are four
+families of text. `mixed` mutates this corpus's inputs and renderings of random values. `long`
+puts quotes, escapes and structural characters at the 64-code-point chunk boundaries of the
+port's string scanner. `number` builds numeric tokens. `comment` puts terminators at the
+boundaries of the comment scanner's windows.
+
+| Family | Cases | Distinct texts | Upstream raises | Port under CPython | Native AOT | Native JIT | AOT, stressed collector (first 500) |
+|---|---|---|---|---|---|---|---|
+| `mixed` | 250,000 | 68,876 | 12,735 | equal | equal | equal | equal |
+| `long` | 250,000 | 83,289 | 9,124 | equal | equal | equal | equal |
+| `number` | 250,000 | 78,036 | 3,468 | equal | equal | equal | equal |
+| `comment` | 250,000 | 83,326 | 17,233 | equal | equal | equal | equal |
+
+The run above, with seed 1 on 2026-11-12, the compiler of commit `2321d2ad` and CPython 3.13.18
+(a patch release of the pinned 3.13.16), found no difference: all 1,000,000 cases match upstream
+in each configuration, and so do the first 500 of each family with the native collector stressed
+(a stressed replay takes seconds for a case with long output). This is evidence for these
+generated inputs, not proof of parity. The texts hold no surrogate code points, and the generator
+gives the same texts under CPython 3.11 to 3.13. CI does not run the fuzz: it needs an upstream
+checkout. [Its unit tests](../../../tools/test_json_repair_fuzz.py) run in `make check-fast`.
+
 ## Regenerate the oracle
 
 Use a pristine upstream checkout and an isolated Python process:
