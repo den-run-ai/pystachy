@@ -1051,8 +1051,8 @@ class Decimal:
 
     def _isodd(self) -> bool:
         # is this integer value (_isinteger) odd
-        if self._exp > 0:
-            return False
+        if self._exp > 0 or self._int == 0:
+            return False  # (even: a multiple of ten, or zero, whatever its exponent)
         return (self._int // 10 ** -self._exp) % 2 == 1
 
     def _power(self, other: "Decimal", context: Context) -> "Decimal":
@@ -1130,6 +1130,8 @@ class Decimal:
 
     def _integer(self) -> int:
         # the magnitude of this integer value (_isinteger)
+        if self._int == 0:
+            return 0  # (whatever its exponent, of which no power of ten is made)
         return self._int * 10 ** self._exp if self._exp >= 0 else self._int // 10 ** -self._exp
 
     def _pow_real(self, other: "Decimal", context: Context) -> "Decimal":
