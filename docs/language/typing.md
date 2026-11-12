@@ -1136,7 +1136,20 @@ bases may declare one only where the class overrides it
 ([error test](../../tests/errors/classes/inheritance_secondary_conflict.py)). Overrides of secondary
 methods must keep their parameter and return types (but those that name a generic base's type
 variables) and may widen positional-only parameters to accept keywords. The primary hierarchy
-and the class that combines the bases cannot use `super()`. Abstract base classes
-(`abc.ABC`), `__slots__` in the combined hierarchy, and secondary bases with fields,
-properties, constructors or other special methods are outside
-this subset. Single inheritance from the combined class works, `super()` included.
+and the class that combines the bases may call `super()` only for methods that no secondary
+base defines: CPython's method resolution order puts the secondary bases after the primary's,
+where such a call could find them. Abstract base classes (`abc.ABC`), `__slots__` in the
+combined hierarchy (but with traits, below), and secondary bases with fields, properties,
+constructors or other special methods are outside this subset. Single inheritance from the
+combined class works, `super()` included.
+
+A secondary base may also be a trait, as mypyc compiles them: a subclass of a class on the
+primary base's chain that adds no fields (at most `__slots__ = ()`, no `__init__` and no stores
+to the instance), such as mypy's `Statement(Node)` in
+`class FuncDef(FuncItem, SymbolNode, Statement)`
+([test](../../tests/programs/classes/inheritance_traits.py)). Objects of the combined class begin
+with the fields of the class they share, so a value of the trait's type reads them. A trait's
+methods may read the instance and be properties, class or static methods, abstract or not, but
+may not call `super()`. Methods resolve in CPython's order: the class's own, then the primary
+chain's own, then a trait's, which comes before what the primary base inherits from the class
+they share. `__slots__` in such a hierarchy needs every trait to declare `__slots__ = ()`.

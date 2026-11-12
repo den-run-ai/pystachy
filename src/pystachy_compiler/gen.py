@@ -1100,6 +1100,9 @@ from src.pystachy_compiler.program import (
     gen_pure as program_pure,
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
+    gen_on_chain as program_on_chain,
+    gen_trait_root as program_trait_root,
+    gen_slotted_trait as program_slotted_trait,
     gen_generic_subclass as program_generic_subclass,
     gen_generic_traits as program_generic_traits,
     gen_tmpl_ann as program_tmpl_ann,
@@ -3737,6 +3740,15 @@ class Gen:
 
     def derives(self, c: str, base: str) -> bool:
         return program_derives(self, c, base)
+
+    def on_chain(self, c: str, a: str) -> bool:
+        return program_on_chain(self, c, a)
+
+    def trait_root(self, primary: str, secondary: str) -> str:
+        return program_trait_root(self, primary, secondary)
+
+    def slotted_trait(self, cls: str, role: str) -> bool:
+        return program_slotted_trait(self, cls, role)
 
     def init_template(self, st: Node) -> bool:
         return program_init_template(self, st)

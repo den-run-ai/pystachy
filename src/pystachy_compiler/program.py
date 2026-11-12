@@ -75,6 +75,50 @@ def role_body_uses_storage(n: Node, receiver: str, methods: list[str]) -> bool:
     return False
 
 
+def stores_attr(n: Node, receiver: str) -> bool:
+    # does code n store to or delete an attribute of name receiver (self.x = v, self.x += v,
+    # del self.x), also in what it nests
+    if (n.kind == "assign" or n.kind == "augassign" or n.kind == "annassign" or n.kind == "del") and len(n.kids) > 0:
+        for t in n.kids[:-1] if n.kind == "assign" else n.kids[:1] if n.kind != "del" else n.kids:
+            if t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s == receiver:
+                return True
+    for k in n.kids:
+        if stores_attr(k, receiver):
+            return True
+    return False
+
+
+def fieldless(c: Node) -> bool:
+    # does class c (its class node) add no fields: no annotated class-body variable, no
+    # __init__, no store to an attribute of a method's first parameter, and no __slots__ but ()
+    for d in c.kids[0].kids:
+        slots = (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s == "__slots__"
+        if slots and not (d.kids[-1].kind == "tuple" and len(d.kids[-1].kids) == 0 and len(d.kids) == (2 if d.kind == "assign" else 3)):
+            return False
+        if d.kind == "annassign" and not slots:
+            return False
+        if d.kind == "def" and (d.s == "__init__" or (len(d.kids[0].kids) > 0 and stores_attr(d.kids[2], d.kids[0].kids[0].s))):
+            return False
+    return True
+
+
+def super_calls(n: Node, shadow: dict[str, bool]) -> bool:
+    # does code n use super() otherwise than as super().m(...) of a method m that no secondary
+    # base defines (shadow): CPython's method resolution order puts the secondary bases after
+    # the primary's, so such a call finds what the primary base's bases have, as Pystachy's does
+    if n.kind == "name" and n.s == "super":
+        return True
+    kids = n.kids
+    if n.kind == "call" and kids[0].kind == "attr" and kids[0].kids[0].kind == "call" and len(kids[0].kids[0].kids) == 1 and kids[0].kids[0].kids[0].kind == "name" and kids[0].kids[0].kids[0].s == "super":
+        if kids[0].s in shadow:
+            return True
+        kids = kids[1:]
+    for k in kids:
+        if super_calls(k, shadow):
+            return True
+    return False
+
+
 def gen_subclass_problem(self, st: Node) -> str:
     # why class statement st, which names bases, cannot be compiled, or "": one ordinary
     # class declared before it, or one of the supported exception bases
@@ -101,26 +145,44 @@ def gen_subclass_problem(self, st: Node) -> str:
         secondaries = [b.s for b in st.kids[2:]]
         if primary not in self.classes or self.abc_class(primary) or self.classes[primary].exc != "" or self.is_dc(primary) or len(st.kids[0].kids) != 1:
             return why
+        shadow: dict[str, bool] = {}  # (the methods of the secondary bases' own classes: super_calls)
         for secondary in secondaries:
             if secondary not in self.classes or secondaries.count(secondary) > 1 or self.derives(primary, secondary):
                 return why
-            # (a root class of methods alone; a generic one binds nothing: it has no __init__)
+            # (a root class of methods alone; a generic one binds nothing: it has no __init__. Or
+            # a trait, as mypyc's: a class of methods alone whose bases end at a class of the
+            # primary base's chain, so its objects' fields come first in the primary's too)
             role = self.classes[secondary]
-            if role.base != "" or len(role.node.kids) != 1 or secondary in self.nts or self.abc_class(secondary):
+            if (role.base != "" and self.trait_root(primary, secondary) == "") or len(role.node.kids) != 1 or secondary in self.nts or self.abc_class(secondary):
                 return why
+            c = secondary
+            while c in self.classes and not self.on_chain(primary, c):
+                for d in self.classes[c].node.kids[0].kids:
+                    if d.kind == "def":
+                        shadow[d.s] = True
+                c = self.classes[c].base
         ancestor = primary
         while ancestor in self.classes:
             info = self.classes[ancestor]
-            if mentions(info.node, ["super"]):
+            if super_calls(info.node, shadow):
                 return "super() in a primary hierarchy with a secondary base is not supported"
             ancestor = info.base
-        if mentions(st.kids[0], ["super"]):
+        if super_calls(st.kids[0], shadow):
             return "super() in a class with a secondary base is not supported"
         for secondary in secondaries:
             role = self.classes[secondary]
+            trait = role.base != ""
             methods = [d.s for d in role.node.kids[0].kids if d.kind == "def"]
             for d in role.node.kids[0].kids:
                 if d.kind == "pass" or (d.kind == "expr" and d.kids[0].kind == "str"):
+                    continue
+                if trait and (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s == "__slots__":
+                    continue  # (an empty one: fieldless)
+                if trait and d.kind == "def" and not d.s.startswith("__") and len(d.kids[0].kids) > 0 and len([x for x in d.kids[3:] if len(x.kids) > 0 or (self.imported(x.s) != "abc.abstractmethod" and x.s not in ["property", "classmethod", "staticmethod"])]) == 0:
+                    # (a trait's methods may read the instance, whose fields are its bases', and be
+                    # properties, class or static methods, abstract or not; they may not call super())
+                    if mentions(d, ["super"]):
+                        return "secondary base methods may not use super() or read or write the instance"
                     continue
                 # (abc's @abstractmethod, without abc.ABCMeta, marks a method only: CPython makes
                 # its objects as any other's)
@@ -283,8 +345,20 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         generic = r in self.tparams
         for method in role.methods:
             original = role.methods[method]
+            if role.base != "" and self.on_chain(ci.base, original.cls):
+                continue  # (a trait's from a class of the primary chain, which the primary base has too)
             if r not in b.roles:
-                if method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
+                own = method in ci.methods and ci.methods[method].cls == ci.name
+                pm = b.methods[method].cls if method in b.methods else ""
+                if role.base != "" and own:
+                    pass  # (its own comes first, checked against the trait's below)
+                elif role.base != "" and pm != "" and self.derives(r, pm):
+                    # (the primary base's is a class's that the trait derives from: the trait's comes
+                    # first in CPython's method resolution order)
+                    ci.methods[method] = original
+                elif role.base != "" and pm != "" and self.on_chain(ci.base, pm):
+                    pass  # (the primary chain's own comes first: kept, and checked against the trait's)
+                elif method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
                     # (also another secondary base's: CPython's method resolution order picks one)
                     self.line = ci.node.line
                     self.bad_class(ci, f"both bases declare method '{method}'")
@@ -295,8 +369,8 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             for j in range(1, len(fn.ptypes) if same else 0):
                 if fn.ptypes[j] != original.ptypes[j] and not (generic and original.ptypes[j] == ""):
                     same = False
-            if fn.cls == ci.name and (
-                fn.deco != "" or fn.prop or not same or (fn.ret != original.ret and not (generic and original.ret == ""))
+            if fn is not original and (fn.cls == ci.name or role.base != "") and (
+                fn.deco != original.deco or fn.prop != original.prop or not same or (fn.ret != original.ret and not (generic and original.ret == ""))
                 or fn.posonly > original.posonly or fn.npos != original.npos
                 or fn.kwarg != original.kwarg or fn.vararg != original.vararg
             ):
@@ -357,6 +431,41 @@ def gen_dc_options(self, ci: ClassInfo) -> None:
         self.err(f"unsupported decorator @{st.kids[1].s}" + (" (import dataclass from dataclasses)" if st.kids[1].s == "dataclass" else ""))
     if len(st.kids) > 2:
         self.err(f"unsupported decorator @{st.kids[2].s}")
+
+def gen_on_chain(self, c: str, a: str) -> bool:
+    # is class a class c or one of the classes c derives from by its primary bases
+    while c in self.classes:
+        if c == a:
+            return True
+        c = self.classes[c].base
+    return False
+
+def gen_trait_root(self, primary: str, secondary: str) -> str:
+    # the class of primary's chain (on_chain) that secondary base secondary, a subclass, reaches
+    # by its own primary bases, where it and each class on the way add no fields (fieldless) and
+    # have no secondary bases of their own: every object of a class deriving from both then
+    # begins with that class's fields, as secondary's objects do; else ""
+    c = secondary
+    while c in self.classes:
+        info = self.classes[c]
+        if info.exc != "" or self.is_dc(c) or c in self.nts or len(info.roles) > 0 or not fieldless(info.node):
+            return ""
+        c = info.base
+        if self.on_chain(primary, c):
+            return c
+    return ""
+
+def gen_slotted_trait(self, cls: str, role: str) -> bool:
+    # is secondary base role of class cls a trait (trait_root) whose classes up to cls's chain
+    # all declare __slots__ (an empty one): its objects then have no __dict__ in CPython
+    c = role
+    if self.classes[c].base == "":
+        return False
+    while c in self.classes and not self.on_chain(cls, c):
+        if len([d for d in self.classes[c].node.kids[0].kids if (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s == "__slots__"]) == 0:
+            return False
+        c = self.classes[c].base
+    return True
 
 def gen_derives(self, c: str, base: str) -> bool:
     # is c, a class of the program or a builtin exception class, base or derived from it
@@ -1042,7 +1151,8 @@ def gen_program(self, mods: list[Mod]) -> str:
                 others: list[str] = [r for r in ci.roles if r != role]
                 ancestor = ci.base
                 while ancestor in self.classes:
-                    others.append(ancestor)
+                    if not self.on_chain(role, ancestor):  # (a trait's own bases are its bases)
+                        others.append(ancestor)
                     ancestor = self.classes[ancestor].base
                 for other in others:
                     if role not in self.classes[other].overlaps:
