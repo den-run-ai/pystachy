@@ -477,17 +477,20 @@ def gen_any_in(self, anns: list[Node]) -> bool:
             return True
     return False
 
-def gen_any_variables(self, n: Node, classbody: bool) -> None:
+def gen_any_variables(self, n: Node, classbody: bool, local: bool = False) -> None:
     # Initialized module/local names can use the same inference as plain assignments.
     # Do this before flow, global lookahead and local retyping inspect the statements.
     # Class fields and attribute targets keep their storage annotations; annotation-only
-    # declarations also stay intact, since they establish a local without assigning it.
+    # declarations of a function's names (local) also stay intact, since they establish a
+    # local without assigning it, while a module's binds nothing (CPython records only its
+    # annotation), so the name's assignments type it, as if unannotated (mypy's orjson: Any
+    # before an optional import)
     if n.kind == "class" or n.kind == "subclass":
         for k in n.kids:
-            self.any_variables(k, True)
+            self.any_variables(k, True, local)
         return
     if n.kind == "def":
-        self.any_variables(n.kids[2], False)
+        self.any_variables(n.kids[2], False, True)
         return
     # (In a module that compiles Any as dyn, an annotation is kept, but one that gives a class of
     # the program a type argument that mentions Any, box: Box[Any] = Box(3): a generic class's
@@ -496,8 +499,11 @@ def gen_any_variables(self, n: Node, classbody: bool) -> None:
     if not classbody and n.kind == "annassign" and len(n.kids) == 3 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]) and (not self.dyn_policy(n.line) or generic):
         n.kind = "assign"
         n.kids = [n.kids[0], n.kids[2]]
+    elif not classbody and not local and n.kind == "annassign" and len(n.kids) == 2 and n.kids[0].kind == "name" and self.any_in([n.kids[1]]) and not self.dyn_policy(n.line):
+        n.kind = "pass"
+        n.kids = []
     for k in n.kids:
-        self.any_variables(k, classbody)
+        self.any_variables(k, classbody, local)
 
 def gen_class_params(self, st: Node) -> str:
     # class C[T, *Ts] (subclass node st, its type parameters its first base): why it cannot be a

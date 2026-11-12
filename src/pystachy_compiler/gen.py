@@ -704,7 +704,11 @@ from src.pystachy_compiler.exceptions import (
     gen_as_type as exceptions_as_type,
     gen_assert_fails as exceptions_assert_fails,
     gen_bind_as as exceptions_bind_as,
+    gen_catch_item as exceptions_catch_item,
+    gen_catch_named as exceptions_catch_named,
     gen_catch_set as exceptions_catch_set,
+    gen_catch_test as exceptions_catch_test,
+    gen_catch_values as exceptions_catch_values,
     gen_catches as exceptions_catches,
     gen_cause as exceptions_cause,
     gen_cause_value as exceptions_cause_value,
@@ -733,6 +737,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_make as exceptions_exc_make,
     gen_exc_sub as exceptions_exc_sub,
     gen_exc_tables as exceptions_exc_tables,
+    gen_exc_strict as exceptions_exc_strict,
     gen_exc_test as exceptions_exc_test,
     gen_exc_tree as exceptions_exc_tree,
     gen_exc_type_of as exceptions_exc_type_of,
@@ -1022,6 +1027,7 @@ from src.pystachy_compiler.ircheck import (
 from src.pystachy_compiler.lowering import (
     gen_eh_ir as lowering_eh_ir,
     gen_field_tag as lowering_field_tag,
+    gen_list_tag as lowering_list_tag,
     gen_invoke as lowering_invoke,
     gen_lower as lowering_lower,
     gen_lower_ins as lowering_lower_ins,
@@ -1044,6 +1050,7 @@ from src.pystachy_compiler.optimizations import (
     gen_dictfuse as optimizations_dictfuse,
     gen_disjoint as optimizations_disjoint,
     gen_listget as optimizations_listget,
+    gen_listguard as optimizations_listguard,
     gen_nullcheck as optimizations_nullcheck,
     gen_nullslot as optimizations_nullslot,
     gen_charslots as optimizations_charslots,
@@ -2852,8 +2859,8 @@ class Gen:
     def any_in(self, anns: list[Node]) -> bool:
         return declarations_any_in(self, anns)
 
-    def any_variables(self, n: Node, classbody: bool) -> None:
-        declarations_any_variables(self, n, classbody)
+    def any_variables(self, n: Node, classbody: bool, local: bool = False) -> None:
+        declarations_any_variables(self, n, classbody, local)
 
     def class_tvars(self, cls: str) -> list[str]:
         return declarations_class_tvars(self, cls)
@@ -3598,6 +3605,9 @@ class Gen:
     def field_tag(self, c: str, k: int) -> str:
         return lowering_field_tag(self, c, k)
 
+    def list_tag(self, what: str) -> str:
+        return lowering_list_tag(self, what)
+
     def tbaa_nodes(self) -> list[str]:
         return lower_module_tbaa_nodes(self)
 
@@ -3639,6 +3649,9 @@ class Gen:
 
     def listget(self, fn: IFn) -> int:
         return optimizations_listget(self, fn)
+
+    def listguard(self, fn: IFn) -> int:
+        return optimizations_listguard(self, fn)
 
     def dictfuse(self, fn: IFn) -> int:
         return optimizations_dictfuse(self, fn)
@@ -3921,6 +3934,21 @@ class Gen:
 
     def catch_set(self, t: Node) -> str:
         return exceptions_catch_set(self, t)
+
+    def catch_item(self, c: Node) -> Node:
+        return exceptions_catch_item(self, c)
+
+    def catch_named(self, c: Node) -> bool:
+        return exceptions_catch_named(self, c)
+
+    def catch_values(self, t: Node) -> bool:
+        return exceptions_catch_values(self, t)
+
+    def catch_test(self, e: Val, t: Node) -> Val:
+        return exceptions_catch_test(self, e, t)
+
+    def exc_strict(self, t: str) -> bool:
+        return exceptions_exc_strict(self, t)
 
     def as_type(self, h: Node) -> str:
         return exceptions_as_type(self, h)

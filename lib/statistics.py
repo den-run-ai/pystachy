@@ -1539,10 +1539,15 @@ def linear_regression(x, y, /, *, proportional=False):
     if not proportional:
         xbar = fsum(x) / n
         ybar = fsum(y) / n
-        x = [xi - xbar for xi in x]  # List because used three times below
-        y = (yi - ybar for yi in y)  # Generator because only used once below
-    sxy = sumprod(x, y) + 0.0        # Add zero to coerce result to a float
-    sxx = sumprod(x, x)
+        # Pystachy port: into new variables, x_c and y_c, as a variable has one type (CPython
+        # rebinds x to this list of floats and y to this generator), with each branch's sums
+        x_c = [xi - xbar for xi in x]  # List because used three times below
+        y_c = (yi - ybar for yi in y)  # Generator because only used once below
+        sxy = sumprod(x_c, y_c) + 0.0  # Add zero to coerce result to a float
+        sxx = sumprod(x_c, x_c)
+    else:
+        sxy = sumprod(x, y) + 0.0        # Add zero to coerce result to a float
+        sxx = sumprod(x, x)
     try:
         slope = sxy / sxx   # equivalent to:  covariance(x, y) / variance(x)
     except ZeroDivisionError:
