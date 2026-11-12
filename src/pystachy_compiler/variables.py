@@ -167,7 +167,7 @@ def gen_load_name(self, name: str) -> Val:
     if name in self.classes:
         if self.dyn_policy(self.line):
             return self.refl_class_value(name)
-        self.err(f"class '{name}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)")
+        return self.class_value(name)  # (an ordinary class: its class object, class_values.py)
     if name in self.fglobals:
         self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")
     if name in self.mvars and owner(name) != self.curfn.mod and owner(name) not in self.inited and self.comp[owner(name)] == self.comp[self.curfn.mod]:
@@ -753,7 +753,7 @@ def gen_read(self, n: Node) -> Val:
         if name in self.gidbox and self.idhere():
             self.dyn_id_read(val, self.gidbox[name])  # (its binding's object, as an Any value: dyn_box)
         return val
-    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and (self.classes[name].exc != "" or self.dyn_policy(n.line)):
+    if name not in self.ltype and name not in self.gtypes and name not in self.funcs and name not in self.aliases and name in self.classes and (self.classes[name].exc != "" or self.dyn_policy(n.line) or self.class_value_named(name)):
         self.class_ready(n)  # (a class value is unbound before its class statement runs)
     return self.load_name(name)
 

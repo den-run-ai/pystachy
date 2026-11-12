@@ -1,0 +1,35 @@
+picking 0
+evaluating n0
+Shape('n0', 0) area=0.00
+picking 1
+evaluating n1
+Square('n1', 1) area=4.00
+picking 2
+evaluating n2
+Circle('n2', 2) area=3.00
+picking 3
+evaluating n3
+Shape('n3', 3) area=0.00
+Square('sq', 4) area=4.00 Circle('c', 0) area=3.00 Shape('s', 0) area=0.00
+["Circle('x0', 0) area=3.00", "Square('x1', 4) area=4.00", "Shape('x2', 0) area=0.00", "Square('x3', 4) area=4.00"]
+['Circle', 'Square', 'Shape', 'Square'] [False, True, False, True]
+['Circle("x0\'", 0) area=3.00', 'Square("x1\'", 4) area=4.00', 'Shape("x2\'", 0) area=0.00', 'Square("x3\'", 4) area=4.00'] ['Circle', 'Square', 'Shape', 'Square']
+circle Circle 3.0 3.0
+square Square 4.0 4.0
+evaluating argument
+evaluating argument
+Circle('argument', 0) area=3.00 | TypeError: 'NoneType' object is not callable
+5 | TypeError: Can't instantiate abstract class Task without an implementation for abstract method 'run'
+[Point(x=1, y=2), Point3(x=1, y=2, z=3)] ['Point', 'Point3'] Point3(x=5, y=6, z=3) True Point(x=1, y=9)
+Pair(a=1, b='x') Pair True
+Square 4.0
+Circle 3.0
+Square('t', 4) area=4.00 Circle('u', 0) area=3.00 -
+Square 3.0 ['Circle', 'Shape']
+4.0 Circle
+['Circle', 'Shape', 'Square'] 3.0
+Square 4.0 True True
+Circle 3.0 False False
+Shape 0.0 True False
+['Circle', 'Square', 'Circle']
+[exit 0]

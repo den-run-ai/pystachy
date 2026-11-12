@@ -48,6 +48,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
     'src/pystachy_compiler/cached_run.py',
+    'src/pystachy_compiler/class_values.py',
     'src/pystachy_compiler/cache_toolchain.py',
     'src/pystachy_compiler/containers.py',
     'src/pystachy_compiler/conversions.py',

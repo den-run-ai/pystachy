@@ -16,6 +16,7 @@ from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    is_clsval,
     lib_file,
     lib_source,
     opaque_class,
@@ -179,6 +180,8 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         return "builtins" if what == "__module__" else tname(c)
     if c == BIG:
         c = "int"  # (a promoting int's class is int: bigints.py)
+    if is_clsval(c):
+        return "builtins" if what == "__module__" else "type"  # (an ordinary class's class object: class_values.py)
     if c == "None" or c in BUILTIN_TYPES or is_list(c) or is_dict(c) or is_tuple(c) or is_vtuple(c) or is_set(c) or is_kw(c):
         b = "NoneType" if c == "None" else "list" if is_list(c) else "dict" if is_dict(c) or is_kw(c) else "tuple" if is_tuple(c) or is_vtuple(c) else c[: c.find("[")] if is_set(c) else c
         return "builtins" if what == "__module__" else b
@@ -535,8 +538,11 @@ def gen_refl_type_cmp(self, n: Node) -> Val | None:
         else:
             # (a value: an exception class's class object, or else not supported)
             v = self.expr(k, "")
-            if unopt(v.t) != "exctype":
-                self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
+            if is_clsval(unopt(v.t)):
+                # (an ordinary class's class object held as a value: its record, or null for None)
+                v = Val(v.v, "%ptr")
+            elif unopt(v.t) != "exctype":
+                self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486), or a class object of the program's classes (#7)")
             sides.append(v)
     neg = n.s == "is not" or n.s == "!="
     if (unopt(sides[0].t) == "exctype") != (unopt(sides[1].t) == "exctype"):

@@ -519,7 +519,7 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   inherited `cls`-using classmethods through base-typed objects, across modules or with
   nonconstant defaults; `super` outside supported instance-method contexts, with an unrelated
   class or a different receiver.
-- **Methods and hooks:** using or assigning `cls` as a value; static/class decorators on special
+- **Methods and hooks:** assigning `cls`; static/class decorators on special
   methods; `C.m(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
   property/setter/deleter, dataclass and overload. Defining or inheriting `__new__`,
   `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
@@ -680,11 +680,20 @@ See [user exception classes](semantics.md#user-exception-classes) and
 
 See [reflection rules](semantics.md#reflection).
 
-- **Types:** stored `type(x)` values outside the
-  [dynamic-Any class registry prototype](../dynamic-any.md#class-values-and-type-keyed-registries)
-  and exception class objects; dynamic class calls beyond ordinary reconstruction
+- **Types:** stored `type(x)` values of anything but objects of the program's classes and
+  exceptions, outside the
+  [dynamic-Any class registry prototype](../dynamic-any.md#class-values-and-type-keyed-registries);
+  dynamic class calls beyond ordinary reconstruction
   and the bounded annotated-factory path, runtime class creation and metaclasses. Type names of files
   remain unsupported.
+- **[Class objects](semantics.md#classes-as-values):** those of classes without a base class in
+  common in one variable or container; of class templates, generic classes and builtin types;
+  `typing.Type[C]`; attributes and methods read through one (`k.x`, `k.m()`) other than its
+  names; a call with `*` / `**` arguments, or with arguments that the constructor of a class it
+  may be does not take; `isinstance()` / `issubclass()` with a tuple holding one; `k == o`
+  where the class of object `o` defines `__eq__` outside a hierarchy; passing one to `Any` in
+  a module that opts in. A class whose body assigns `__module__` or `__qualname__`,
+  and one read from a module in a circular import with the reader, are not values.
 - **Runtime names:** retaining, passing, calling, comparing or sorting by a `getattr` result;
   formatting its text with a spec, or obtaining that text for dataclasses, generics, classes
   with annotated class attributes or builtins; `setattr` without slots, with values incompatible with any

@@ -46,6 +46,7 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
+    is_clsval,
     atomic_dict,
     atomic_list,
     bool_for_int,
@@ -551,7 +552,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return self.refl_type_value(tv)
         if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-        self.err("type(x) as a value (a class object) is not supported (#7); type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
+        if self.class_value_named(tv.t):
+            return self.class_value_of(tv, self.knownobj(args[0]))  # (an object's class: its class object, class_values.py)
+        self.err("type(x) as a value (a class object) is supported for objects of the program's classes (#7); of other values, type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
     if name == "callable" and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred":
         # decided by the static type: an object is callable where its class defines __call__
         # and it is not None
@@ -626,12 +629,19 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[1].kind != "starred" and not self.exc_classes(args[1]) and self.exc_dynamic(args[1]):
         # issubclass(t, c) of an exception class's class object t, c a value holding them
         v = self.expr(args[0], "")
+        if is_clsval(unopt(v.t)):
+            return self.class_value_issub(v, args[1])  # (an ordinary class's class object: class_values.py)
         if unopt(v.t) != "exctype":
             self.err(f"issubclass() is supported for exception classes (type[BaseException]), not {typestr(v.t)}")
         return self.exc_test(v, args[1], "issubclass")
     if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and self.exc_classes(args[1]):
         # issubclass(t, C) of an exception class's class object t
         v = self.expr(args[0], "")
+        if is_clsval(unopt(v.t)):
+            # (an ordinary class's class object derives from no exception class)
+            self.isinst_reads(args[1])
+            self.unwrap(v, "TypeError: issubclass() arg 1 must be a class")
+            return Val("false", "bool")
         if unopt(v.t) != "exctype":
             self.err(f"issubclass() is supported for the class of an exception (type[BaseException], as __exit__ takes it), not {typestr(v.t)}")
         self.isinst_reads(args[1])
@@ -641,6 +651,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             # class object type() gives of an exception that is None)
             return self.ptr_cmp('!=', v, self.exc_none_class())
         return self.exc_isinst(Val(v.v, "exc"), args[1])
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[0].kind != "starred" and args[1].kind != "starred" and not self.dyn_policy(self.line) and self.class_value_holds(self.dry(args[0])):
+        # issubclass(t, c) of an ordinary class's class object t, c no exception class
+        # (class_values.py)
+        return self.class_value_issub(self.expr(args[0], ""), args[1])
     if name == "isinstance" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw":
         # decided by the static types, or by whether it is None (an optional value, an object)
         v = self.expr(args[0], "")
@@ -667,16 +681,26 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if v.t == "None" and self.exc_classes(args[1]):
             # (None is no exception: __exit__(None, None, None) of an unannotated __exit__)
             return Val("false", "bool")
-        if is_union(unopt(v.t)) and self.isinst(v.t, args[1]) == -1:
+        if is_union(unopt(v.t)) and self.isinst(v.t, args[1]) == -1 and not self.class_value_dynamic(args[1]):
             return Val(self.uisinst(v, args[1]), "bool")
         known = self.isinst(v.t, args[1])
         if known < -1:
             return self.ptr_cmp('!=' if known == -2 else '==', v, Val('null', 'None'))
         if known < 0:
-            if v.t in self.classes and self.classes[v.t].tag > 0:
+            tagged = v.t in self.classes and self.classes[v.t].tag > 0
+            if tagged and not self.class_value_dynamic(args[1]):
                 return self.obj_isinst(v, args[1])
-            if self.exc_dynamic(args[1]):
+            if not tagged and not is_union(unopt(v.t)) and self.exc_dynamic(args[1]):
                 return self.exc_test(v, args[1], "isinstance")  # (exception classes held as values)
+            if self.class_value_dynamic(args[1]):
+                # (an ordinary class's class object held as a value: an object's class is tested
+                # against it, a union's member's too; a value of another type is an instance
+                # of no class of the program: class_values.py)
+                clsv = self.expr(args[1], "")
+                if self.class_value_named(v.t) or v.t == "None" or is_union(unopt(v.t)):
+                    return self.class_value_isinst(v, clsv, self.knownobj(args[0]))
+                self.unwrap(clsv, "TypeError: isinstance() arg 2 must be a type, a tuple of types, or a union")
+                return Val("false", "bool")
             self.err("isinstance() is only supported with the builtin types and classes as its second argument")
         return Val("true" if known == 1 else "false", "bool")
     if (name == "any" or name == "all") and len(args) == 1 and (self.iterator_call(args[0]) or (args[0].kind == "listcomp" and args[0].s == "gen")):
@@ -1170,9 +1194,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
 def gen_callable_type(self, t: str) -> int:
     # callable(x) for x of static type t: 1 (a function or Callable), 0, or -2 (an object whose
     # class defines __call__: callable unless it is None)
-    if is_fn(t) or is_callable(t) or t == "exctype":
+    if is_fn(t) or is_callable(t) or t == "exctype" or is_clsval(t):
         return 1  # (a class object too: a call makes an object of its class)
-    if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype"):
+    if is_opt(t) and (is_callable(unopt(t)) or unopt(t) == "exctype" or is_clsval(unopt(t))):
         return -2
     cs = [t] if t in self.classes else umembers(unopt(t)) if self.reference_union(t) else []
     calls = [c for c in cs if c in self.classes and "__call__" in self.classes[c].methods]
