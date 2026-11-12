@@ -2846,8 +2846,8 @@ class Gen:
     def any_in(self, anns: list[Node]) -> bool:
         return declarations_any_in(self, anns)
 
-    def any_variables(self, n: Node, classbody: bool) -> None:
-        declarations_any_variables(self, n, classbody)
+    def any_variables(self, n: Node, classbody: bool, local: bool = False) -> None:
+        declarations_any_variables(self, n, classbody, local)
 
     def class_tvars(self, cls: str) -> list[str]:
         return declarations_class_tvars(self, cls)
