@@ -131,7 +131,9 @@ length tuple conversions retain their existing item-type restrictions.
 Parameter, return, class-body and module-level annotations follow CPython 3.13's evaluation
 timing. They are checked even in unused imported definitions. A name must be bound when its
 annotation is evaluated; use `"Node"` for a forward reference or
-`from __future__ import annotations` to defer evaluation.
+`from __future__ import annotations` to defer evaluation. A class that an evaluated annotation
+reads through a module that has not bound it yet, as during a circular import, raises
+`AttributeError` there ([test](../../tests/programs/reflection/annotation_cycle.py)).
 
 Evaluated annotations may name classes, supported typing forms, builtin generics, unions,
 type variables and [type aliases](#type-aliases). Aliases of supported classes can name

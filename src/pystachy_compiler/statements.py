@@ -373,6 +373,9 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):
                 self.class_store(ci, fl, self.expr(st.kids[2], t))
                 self.pending.pop(ci.fglob[fl], False)
+            self.ann_reads(st.kids[1])  # (CPython evaluates the annotation after the value)
+        elif st.kind == "annassign":
+            self.ann_reads(st.kids[1])
         elif st.kind == "def":
             f = ci.methods[st.s]
             for k in [st.s + ".setter", st.s + ".deleter"]:
@@ -382,6 +385,7 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             bound[st.s] = True
             if f.name != "__init__" or not syn:
                 self.hoist(f)
+            self.def_ann_reads(st)  # (after its defaults)
     if syn:
         init = ci.methods["__init__"]
         for j in range(1, len(init.params)):
@@ -699,6 +703,8 @@ def gen_stmt_main(self, n: Node) -> None:
         # an annotation that names a class template types nothing: x: Box = v is x = v
         if len(n.kids) == 3:
             self.stmt(mk("assign", "", n.line, [n.kids[0], n.kids[2]]))
+        if self.modlevel:
+            self.ann_reads(n.kids[1])  # (module code's, which CPython evaluates after the value)
     elif k == "annassign":
         if n.s != "" and self.ann_problem(n.kids[1], False) != "":
             self.err(n.s)  # (the declaration of a local that only dropped code binds: Loader.dropped_locals())
@@ -709,6 +715,8 @@ def gen_stmt_main(self, n: Node) -> None:
             v = self.expr(n.kids[2], t)
             # (x: T | None = <a T> knows x holds a T, see narrowed)
             self.assign(n.kids[0], v if n.kids[0].kind == "name" and ((is_opt(t) and self.widens(v.t, t)) or (is_union(unopt(t)) and (self.widens(v.t, t) or self.boxes(v.t, t)))) else self.coerce(v, t))
+        if self.modlevel:
+            self.ann_reads(n.kids[1])  # (module code's, which CPython evaluates after the value)
     elif k == "augassign":
         self.augassign(n)
     elif k == "if":
@@ -1104,6 +1112,7 @@ def gen_stmt_main(self, n: Node) -> None:
         if k == "defaults":
             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != "" else [], {})
             self.hoist(self.funcs[n.s])
+            self.def_ann_reads(self.funcs[n.s].node)  # (after its defaults, as CPython evaluates them)
             ef = self.funcs[n.s]
             if ef.extern and not self.rtmode and ef.mod not in GLUE:
                 # @ffi.extern looks its C function up when the def runs, as ctypes.CDLL does (cextern)
