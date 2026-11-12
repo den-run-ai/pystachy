@@ -2310,15 +2310,6 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         t = self.guess(e.kids[0], f)
         if t in self.classes and e.s in self.classes[t].ftypes and e.s not in self.classes[t].methods:
             return self.classes[t].ftypes[e.s]
-    if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s in self.classes and e.kids[0].s not in f.params and e.kids[0].s not in self.tmpl and e.kids[0].s not in self.nts:
-        # C.k of a class C: the type of the class attribute k that its body, or a base's, binds
-        # (class_attr reads it), unless a local of the method, or a name of the class body whose
-        # attribute this types, has the class's name
-        ci = self.classes[e.kids[0].s]
-        asg = {}
-        local_names(guess_scope(f), asg)
-        if e.kids[0].s not in asg and ci.bad == "" and e.s in ci.fdefault and e.s not in ci.methods and "?" not in ci.ftypes.get(e.s, "?"):
-            return ci.ftypes[e.s]
     if k == "dictstar":
         # {**a, **b} of **kwargs records: their record, each name with its last value's type
         names: list[str] = []
@@ -2334,6 +2325,15 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
                     names.append(kw_names(t)[j])
                     types.append(kw_types(t)[j])
         return "kw[" + ",".join([names[j] + ":" + types[j] for j in range(len(names))]) + "]"
+    if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s in self.classes and e.kids[0].s not in f.params and e.kids[0].s not in self.tmpl and e.kids[0].s not in self.nts:
+        # C.k of a class C: the type of the class attribute k that its body, or a base's, binds
+        # (class_attr reads it), unless a local of the method, or a name of the class body whose
+        # attribute this types, has the class's name
+        ci = self.classes[e.kids[0].s]
+        asg = {}
+        local_names(guess_scope(f), asg)
+        if e.kids[0].s not in asg and ci.bad == "" and e.s in ci.fdefault and e.s not in ci.methods and "?" not in ci.ftypes.get(e.s, "?"):
+            return ci.ftypes[e.s]
     if k == "call" and e.kids[0].kind == "attr" and e.kids[0].kids[0].kind == "name" and e.kids[0].kids[0].s == me:
         ms = self.classes[f.cls].methods
         m = e.kids[0].s
@@ -2436,12 +2436,6 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if len(bad) > 0:
             return bad[0]
         return self.ctype("tuple", ts) if "" not in ts and len(ts) == len(e.kids) else ""
-    if k == "dict" and len(e.kids) > 0 and len(e.kids) % 2 == 0:
-        kt = self.guess(e.kids[0], f)
-        vt = self.guess(e.kids[1], f)
-        if kt.startswith("!") or vt.startswith("!"):
-            return kt if kt.startswith("!") else vt
-        return self.ctype("dict", [kt, vt]) if kt != "" and vt != "" and self.key_problem(kt) == "" else ""
     if k == "set" and len(e.kids) > 0 and len([x for x in e.kids if x.kind == "starred"]) == 0:
         # {a, b, ...}: a set of its first item's type, as a list display is a list of its (the
         # display's other items are then compiled as items of that type: set_display)
@@ -2449,6 +2443,12 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if t == "" or t.startswith("!"):
             return t
         return self.ctype("set", [t]) if "?" not in t and t != "None" and self.elem_problem(t) == "" else ""
+    if k == "dict" and len(e.kids) > 0 and len(e.kids) % 2 == 0:
+        kt = self.guess(e.kids[0], f)
+        vt = self.guess(e.kids[1], f)
+        if kt.startswith("!") or vt.startswith("!"):
+            return kt if kt.startswith("!") else vt
+        return self.ctype("dict", [kt, vt]) if kt != "" and vt != "" and self.key_problem(kt) == "" else ""
     if k == "call" and e.kids[0].kind == "name" and (e.kids[0].s == "list" or e.kids[0].s == "sorted") and len(e.kids) == 2 and not self.bound(e.kids[0].s):
         # list(range(n)), list(xs), sorted(xs): a list of the items
         arg = e.kids[1]

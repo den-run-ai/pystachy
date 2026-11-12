@@ -951,11 +951,7 @@ false where it raises `AttributeError`, as in CPython.
 
 Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
 can be inferred from parameters, literals, constructors, declared function or method results,
-function values, and supported container displays and operations. A list or set display
-takes its first item's type (`{"if", "else"}` is a `set[str]`). A class attribute read
-through an ordinary class declared earlier (`Branch.BOOL`, `Color.RED`), or through a
-subclass that inherits it, has its declared or inferred type; a generic class's, a
-NamedTuple's `_fields` and a method need an annotation. A field that `__init__`
+function values, and supported container displays and operations. A field that `__init__`
 sets to `None` takes `T | None` from the first other value the program gives it, or holds
 only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its
@@ -971,9 +967,8 @@ classes and `dataclasses.replace()`. Explicit method calls such as `obj.__init__
 
 A class-body default is a class attribute, read by instances until they assign their own
 value. Later changes to the class attribute affect those instances. Unannotated class-body
-assignments infer their type as fields do, except in dataclasses and NamedTuples, where
-annotations are required. Supported subclasses also inherit their base's fields and class
-attributes.
+assignments infer their type, except in dataclasses and NamedTuples, where annotations are
+required. Supported subclasses also inherit their base's fields and class attributes.
 
 A class attribute may hold a function (`encode = enc`, as CPython's `encodings` modules bind
 their codec functions). It is read and called through its class or a subclass
@@ -982,6 +977,13 @@ attribute holds (`size = len`) is read as itself, as in CPython, and so is a fun
 module that `lib/` stands in for a C module (`dec = codecs.utf_8_decode`), CPython's builtin. A
 Python function is not: CPython binds it to the object as a method there, and Pystachy rejects
 that read.
+
+A field or class attribute given a set display takes the display's first item's type, as one
+given a list display does (`KEYWORDS = {"if", "else"}` is a `set[str]`). One given a class
+attribute read through an ordinary class declared earlier, or through a subclass that
+inherits it (`self.kind = Branch.BOOL`, `DEFAULT = Color.RED`), has that attribute's declared
+or inferred type. A generic class's attribute, a NamedTuple's `_fields`, a method and a class
+declared further down type nothing: annotate the field.
 
 A `@dataclass` writes `__init__` (which calls `__post_init__`), `__repr__` and `__eq__` unless
 its `init`, `repr` or `eq` option is false, and with `order=True` the comparisons of the tuples
