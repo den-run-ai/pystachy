@@ -9,7 +9,7 @@ closures and class fields are described in [typing](typing.md); imports and buil
 | Category | Supported statements |
 |---|---|
 | Assignment | Simple, chained, annotated and augmented assignment; tuple/list unpacking, with one starred target or none, and swaps |
-| Control flow | `if` / `elif` / `else`, `while`, `for`, loop `else`, `break`, `continue`, `return` |
+| Control flow | `if` / `elif` / `else`, bounded `match`, `while`, `for`, loop `else`, `break`, `continue`, `return` |
 | Scope and definitions | `global`, `nonlocal`, `def`, nested function definitions, lambdas, supported class definitions |
 | Runtime checks | `assert`, `raise`, `try` / `except` / `else` / `finally` |
 | Resources | `with` over files and [context managers](#context-managers) of the program's classes, several items, with or without parentheses |
@@ -35,6 +35,48 @@ item of each in turn and stops at the first exhausted one.
 
 Restrictions on iterator options, snapshots and mutation are listed in
 [compatibility](compatibility.md).
+
+### Structural patterns
+
+`match` supports literal values (`None`, booleans, integers, floats, strings and bytes),
+wildcards, captures, `as`, alternatives (`|`), guards, fixed tuple patterns and plain fields
+of statically known dataclasses. The subject is evaluated once. Cases and alternatives run
+in source order. Captured values are staged until the whole pattern succeeds, then bound
+before its guard runs. A failed later subpattern leaves existing user bindings unchanged;
+a successful pattern followed by a false guard keeps its captures. A capture that never
+executes retains ordinary unbound-local behavior. Closures capture these variables as
+they do assignments.
+
+```python
+def classify(point: tuple[int, int]) -> str:
+    match point:
+        case (0, y) if y > 0:
+            return "positive axis"
+        case (x, y):
+            return str(x + y)
+```
+
+Tuple lengths and known subject types select branches during compilation. Dataclass
+positional fields follow generated `__match_args__`, including `init=False`, `kw_only`
+and `match_args=False`; keywords can select initialized plain fields. Field values are
+obtained before their subpatterns run, so an equality callback cannot change a later
+field's already selected value. Captures retain their concrete storage; the lowering
+uses ordinary assignments and branches, without a runtime pattern matcher. Where a case's
+test is true its captures are bound, so its guard and body read them without an
+unbound-local check.
+
+Mapping patterns, starred sequence patterns, list or other general sequence subjects,
+complex literals, arbitrary class patterns, dataclass hierarchies, custom `__match_args__`
+and attribute hooks remain unsupported; the error names the statement's first such pattern.
+A class body rejects a `match` statement as it rejects an `if` statement there. Dataclass
+patterns require a concrete subject type; dynamic `Any` and union subjects are rejected
+rather than treated as mismatches.
+Sequence patterns require a concrete fixed tuple; known scalar subjects, including
+promoting integers, fall through. Optional, union and dynamic sequence subjects need
+explicit narrowing before matching.
+Literal and capture patterns can still consume dynamic `Any`. Boolean singleton patterns require concrete
+`bool` or dynamic `Any` when the subject could hold more than one scalar type. Existing
+equality and inference restrictions apply to value patterns and capture joins.
 
 ## Literals and formatting
 
@@ -97,10 +139,11 @@ module code around it, also from a comprehension or generator expression (PEP 57
 `v`. Tests such as `if (m := pattern.match(s)) is not None:` narrow `x` as a test of the name
 does. Where the expression may not have run (after `and` or `or`, in one arm of a conditional
 expression, in a comprehension over nothing), a later read of `x` raises `UnboundLocalError` or
-`NameError`. This also covers assignment expressions in lambda defaults: the defaults run
-when the lambda is created. A comprehension's filters run before its element. An unannotated
-template parameter specialized to `None` cannot be rebound by a conditional assignment
-expression; annotate that parameter as `T | None` to allow both values.
+`NameError`. This also covers assignment expressions in lambda defaults: the defaults run when
+the lambda is created. Where an `if` statement's test is true, each operand of its `and` has
+run, so the branch reads what they bound without that check. A comprehension's filters run
+before its element. An unannotated template parameter specialized to `None` cannot be rebound by
+a conditional assignment expression; annotate that parameter as `T | None` to allow both values.
 
 `is` and `is not` are supported for identity-bearing values, not numbers.
 Booleans use their two fixed values, so `flag is True` behaves as equality. A number or bool is
@@ -640,7 +683,15 @@ class's class object. `type(e)` of an exception that is `None` is `NoneType`'s, 
 - `contextlib.suppress()` given class objects (`suppress(type(e))`), or kept as a value, tests
   its classes as CPython's does.
 
-An `except` clause names its classes; one that takes class objects is not supported.
+An `except` clause names its classes, or takes class objects from a
+variable such as `StatisticsError = statistics.StatisticsError`, a parameter, a field, a call
+or a flat tuple of them with classes named ([test](../../tests/programs/exceptions/except_class_values.py)).
+As in CPython, the clause's expression is evaluated only when an exception gets to that clause,
+then every class is checked to derive from `BaseException` before matching begins. A `NoneType`
+class object from `type(e)` where `e` is `None` raises `TypeError`, even after a class that would
+match ([test](../../tests/programs/exceptions/except_class_value_validation.py)). Nested tuples
+are rejected; `isinstance()` still accepts them. A class object that may be `None` is rejected, since CPython
+raises `TypeError` where it tests `None` ([error test](../../tests/errors/exceptions/except_class_value_optional.py)).
 
 ## Syntax errors
 
@@ -652,9 +703,10 @@ Checks include bracket and indentation limits, unterminated literals, invalid ta
 argument-list errors, invalid `global` / `nonlocal`, misplaced control-flow statements,
 late future imports and excessive statically nested blocks. A `match` statement's patterns
 follow CPython's grammar and its compiler's checks (a capture or `_` before the last case,
-alternatives that bind different names, a name bound twice, duplicate mapping keys), although
-match statements themselves are not compiled. Error selection follows the parser, tokenizer
-where reached, symbol table, then compiler checks.
+alternatives that bind different names, a name bound twice, duplicate mapping keys).
+Execution supports the [bounded structural patterns](#structural-patterns) above;
+unsupported patterns are rejected when their statement is compiled. Error selection
+follows the parser, tokenizer where reached, symbol table, then compiler checks.
 
 Some messages fall back to `invalid syntax` where CPython is more specific, and the supported
 source syntax has [additional restrictions](compatibility.md#source-text).

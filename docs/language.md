@@ -42,7 +42,7 @@ their own contracts; [interoperability](ffi.md) covers C, embedded CPython and e
 | [Functions](language/typing.md#functions-callables-and-closures) | 🟢 Native | Every parameter kind and default; lambdas, closures and `nonlocal`; function decorators; `*args` and `**kwargs` per call shape; `Callable` values and bound methods | — | `f(*xs)` of a list and run-time `**` expansion; `Callable[..., R]`; keyword calls through a `Callable` |
 | [Classes](language/typing.md#single-inheritance) | 🟢 Native<br>🟡 Hierarchies | Fields, methods, properties, static and class methods, operator methods, dataclasses, `NamedTuple`, single inheritance with overrides and `super()`, one method-only secondary base, two plain builtin exception bases, `__slots__`, `abc` | General multiple inheritance; subclasses of builtin types; general metaclasses and class decorators; `__getattr__`-style hooks | No reflected arithmetic (`__radd__`) or `NotImplemented` results |
 | [Reflection](language/semantics.md#reflection) | 🟡 Bounded | `getattr`, `setattr`, `hasattr`, `vars`, `dir` and `type(x).__name__` on classes the compiler knows | `eval`, `exec`; values of attributes named at run time | A run-time name works where only its text or a test is needed |
-| [Statements](language/semantics.md#statements) | 🟢 Native | Assignment and unpacking, `:=`, `if`, loops with `else`, `with`, `assert`, `del`, `global`, `nonlocal` | `match`; `async` and `await` | Deleting a global from a function |
+| [Statements](language/semantics.md#statements) | 🟡 Bounded | Assignment and unpacking, `:=`, `if`, loops with `else`, `with`, `assert`, `del`, `global`, `nonlocal`; [bounded `match`](language/semantics.md#structural-patterns) | Mapping and general sequence/class patterns; `async` and `await` | Deleting a global from a function |
 | [Generators and iterators](language/semantics.md#generators) | 🟢 Direct<br>🟡 Suspended | `yield`, `yield from`, `send()`, `throw()` and `close()`; generator expressions; iterator classes; lazy `itertools` | — | A dropped suspended generator is never closed; some consumers materialize their input |
 | [Exceptions](language/semantics.md#exceptions) | 🟡 Bounded | CPython 3.13's builtin hierarchy; user exception classes; `raise ... from`; `try` / `except` / `else` / `finally`; catchable `RecursionError` | `except*` and exception groups | No `e.args` or traceback objects; uncaught errors print only the last line; `MemoryError` and Ctrl-C end the program |
 | [Modules](language/modules.md) | 🟡 Bounded | Modules and packages; relative, circular and optional imports; compile-time `__main__`, platform and version branches | CPython C extensions; imports chosen at run time (`importlib`, `__import__`) | A builtin module's import binds program-wide; a module whose code raises keeps its partial globals |
@@ -342,7 +342,7 @@ can avoid compiling unused branches that contain one. The main gaps:
 - **Values:** `complex` numbers, `bytearray`, `memoryview`, arbitrary slice bounds and
   general object unions; arbitrary-precision ints and dynamic `Any` values outside their opt-in
   prototypes ([promoting ints](python-int.md), [dynamic `Any`](dynamic-any.md)).
-- **Syntax and calls:** `match`, `async` / `await`, `except*` and unrestricted argument
+- **Syntax and calls:** mapping and general sequence/class patterns, `async` / `await`, `except*` and unrestricted argument
   expansion.
 - **Run-time code:** `eval`, `exec` and imports chosen at run time.
 - **Concurrency:** native threads and `asyncio`; CPython can run compiled extension modules in

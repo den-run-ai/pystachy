@@ -84,7 +84,8 @@ which change from run to run, but are equal for equal strs and for the same obje
 Explicit closed scalar unions such as `int | str` are supported, including `None`.
 Bounded native reference unions are also supported. `typing.Any` can annotate supported
 function/method signatures, constructor parameters and initialized module/local variables,
-which use concrete [inference](#function-and-method-templates); there is no dynamic `Any` value,
+which use concrete [inference](#function-and-method-templates), as does a module-level name that
+`x: Any` declares without a value (it binds nothing); there is no dynamic `Any` value,
 but in a module that opts in to the [dynamic `Any` prototype](../dynamic-any.md).
 `None` alone can annotate a return, but cannot be a container's entire element type.
 
