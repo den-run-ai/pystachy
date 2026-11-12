@@ -71,7 +71,11 @@ def sentinel_test(f: FnInfo, n: Node) -> str:
     if n.kind != "if" or len(n.kids[2].kids) > 0:
         return ""
     t = n.kids[0]
-    if t.kind == "cmp" and t.s == "is" and t.kids[0].kind == "name" and t.kids[1].kind == "name" and t.kids[0].s in f.sentinels and f.sentinels[t.kids[0].s] == t.kids[1].s:
+    loc: dict[str, bool] = {}
+    local_names(f.node.kids[2].kids, loc)
+    if t.kind == "cmp" and t.s == "is" and t.kids[0].kind == "name" and t.kids[1].kind == "name" and t.kids[0].s in f.sentinels and f.sentinels[t.kids[0].s] == t.kids[1].s and t.kids[1].s not in f.params and t.kids[1].s not in loc:
+        # (S must be the module's sentinel: a parameter or local spelled so is another object,
+        # which Gen.static compares at run time, so p = v is no straight-line rebinding then)
         # (only an instance whose p is the sentinel itself, where Gen.static decides the test:
         # one of Any's dyn type tests it at run time, and its store is no straight-line code)
         j = f.params.index(t.kids[0].s) if t.kids[0].s in f.params else -1
