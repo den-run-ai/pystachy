@@ -1,0 +1,14 @@
+tuple 99 1
+alternatives 99 5 5
+nested (99, 77) (5, 1)
+as (99, (77, 88)) (1, (1, 0))
+class 99 1
+equality callback [99] 1 1
+failed guard 1 1
+closed 99 1
+private 99 1
+nonlocal failure 99
+nonlocal success 1
+failed alias ['old'] ['new']
+matched alias True ['new', 'shared']
+[exit 0]

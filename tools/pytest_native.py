@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shlex
 import subprocess
 import sys
@@ -38,6 +39,51 @@ class Result:
     stdout: str = ""
     stderr: str = ""
     error: str = ""
+
+
+def compiler_command(text: str) -> list[str]:
+    """Anchor explicit executable and Python script paths before changing cwd.
+
+    PATH commands, module names, options and compiler arguments retain their
+    meaning. Preserve symlinks, notably virtual-environment Python executables.
+    """
+    command = shlex.split(text)
+    if not command:
+        return command
+
+    def anchor(index: int) -> None:
+        path = Path(command[index])
+        # Missing paths must still fail at the caller's location, not resolve
+        # to an unrelated file after the runner changes to the suite root.
+        if not path.is_absolute():
+            command[index] = str(path.absolute())
+
+    if os.sep in command[0]:
+        anchor(0)
+    if not re.fullmatch(r"(?:python|pypy)(?:\d+(?:\.\d+)*)?(?:\.exe)?", Path(command[0]).name):
+        return command
+    index = 1
+    while index < len(command):
+        part = command[index]
+        if part == "--":
+            index += 1
+            break
+        if part in {"-c", "-m", "-"}:
+            return command
+        if part in {"-W", "-X", "--check-hash-based-pycs"}:
+            index += 2
+        elif part.startswith(("-W", "-X", "--check-hash-based-pycs=")):
+            index += 1
+        elif part.startswith("-"):
+            # Unknown options may consume the next token; never guess it is a script.
+            if not set(part[1:]) <= set("bBdEiIOPqRsSuvx"):
+                return command
+            index += 1
+        else:
+            break
+    if index < len(command) and command[index] != "-":
+        anchor(index)
+    return command
 
 
 def discover(paths: list[Path], root: Path) -> list[Path]:
@@ -376,6 +422,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
     try:
+        args.compiler = shlex.join(compiler_command(args.compiler))
         with lock_work_directory(args.work_dir.resolve()):
             return execute(args)
     except (CollectionError, OSError) as error:
