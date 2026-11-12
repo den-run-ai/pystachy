@@ -368,7 +368,7 @@ class UnionProof:
                     # container typing is its own contract, as for a list's items (list.get), so
                     # an item read from the slot has its members. A length read is no union read.
                     # (Also of a tuple that may be None, read where it is not: a field's.)
-                    owner = self.native.get(i.a[0].v, "")
+                    owner = self.declared(i.a[0].v)
                     owner = owner[4:-1] if is_opt(owner) else owner
                     items = targs(owner) if owner.startswith("tuple[") or owner.startswith("vtuple[") else []
                     if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]) and self.item_slot(i, owner.startswith("vtuple["), len(items)):
@@ -560,8 +560,17 @@ class UnionProof:
         # Is an integer machine load from v the length word of a tuple[T, ...] that may be None
         # (a field's, read after its test): no union's tag, though None and the tuple make two
         # members of v's domain. The compiler checks None before such a read where it must.
-        t = self.native.get(v, "")
+        t = self.declared(v)
         return is_opt(t) and t[4:-1].startswith("vtuple[")
+
+    def declared(self, v: str) -> str:
+        # The type that value v's definition declares: a load's is that of its storage
+        # (memtypes: a parameter's, a local's, a global's or a field's declaration), never the
+        # load's own annotation, which a narrower type could spell; else its definition's.
+        d = self.defs[v] if v in self.defs else None
+        if d is not None and (d.op == "mem.load" or d.op == "mach.load"):
+            return self.memtypes[d.a[0].v] if len(d.a) > 0 and d.a[0].v in self.memtypes else ""
+        return self.native.get(v, "")
 
     def box(self, s: UnionState, v: str) -> str:
         k = "U:" + v
