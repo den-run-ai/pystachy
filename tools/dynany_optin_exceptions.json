@@ -30,6 +30,20 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/782"
     },
     {
+      "case": "tests/programs/inference/any_generator_variable.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/any_generator_variable.py:12: error: expected Generator[Any], got Generator[int]",
+      "reason": "A typed Generator[int] value is assigned to a variable whose Generator[Any] annotation is dynamic storage; that typed-to-Any crossing is unsupported, as for the initialized form.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
+      "case": "tests/programs/inference/any_generator_variable.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/any_generator_variable.py:12: error: expected Generator[Any], got Generator[int]",
+      "reason": "A typed Generator[int] value is assigned to a variable whose Generator[Any] annotation is dynamic storage; that typed-to-Any crossing is unsupported, as for the initialized form.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/777"
+    },
+    {
       "case": "tests/programs/inference/any_iterators.py",
       "mode": "jit",
       "diagnostic": "tests/programs/inference/any_iterators.py:60: error: expected list[Any], got list[int]",

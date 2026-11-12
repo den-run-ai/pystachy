@@ -310,6 +310,7 @@ def main(argv=None):
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
+    args.compiler = shlex.join(runner.compiler_command(args.compiler))
     args.mode = args.mode or ["jit", "aot"]
     names = args.suite or list(manifest["suites"])
     if (not math.isfinite(args.timeout) or args.timeout <= 0 or len(set(names)) != len(names)
