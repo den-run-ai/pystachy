@@ -33,21 +33,17 @@ test-py:
 .PHONY: test-pytest-native test-pytest-workloads test-pytest-upstream test-pytest-json-upstream
 
 # Hosted collection/oracle and real native execution; no compiler bootstrap needed.
-# The runner's own tests, its failure controls, the bundled upstream methods and the
-# examples' AOT build compile many programs: CI gives them its verified native compiler.
-# The examples' JIT run always uses the hosted compiler, the runner's default.
+# CI supplies the verified native compiler for repeated builds; examples still
+# exercise the hosted compiler in JIT mode.
 PYTEST_NATIVE_COMPILER ?= $(PY) $(CURDIR)/pystachy.py
-# The runner's test modules are independent (each test works in a directory of its own), so
-# PYTEST_NATIVE_TEST_JOBS of them run at a time. They run first and alone: one of them uses
-# the examples' default work directory, which a concurrent example run would hold locked.
-# The four parts after them each lock a work directory of their own, and run that many at a
-# time, each part's output kept together.
 PYTEST_NATIVE_TEST_JOBS ?= 4
 PYTEST_NATIVE_PARTS = pytest-native-examples-jit pytest-native-examples-aot pytest-native-controls pytest-native-upstream
 .PHONY: $(PYTEST_NATIVE_PARTS)
 test-pytest-native:
 	printf '%s\n' tools/test_pytest_native*.py | PYSTACHY_PYTEST_NATIVE_COMPILER="$(PYTEST_NATIVE_COMPILER)" xargs -n 1 -P $(PYTEST_NATIVE_TEST_JOBS) sh -c 'exec $(PY) -m unittest discover -s tools -p "$${1##*/}"' sh
-	$(MAKE) -j$(PYTEST_NATIVE_TEST_JOBS) --output-sync=target $(PYTEST_NATIVE_PARTS)
+	$(MAKE) -j$(PYTEST_NATIVE_TEST_JOBS) $(PYTEST_NATIVE_PARTS)
+# Keep modules above separate: some use the examples' default work directory.
+# These four parts have separate work directories and can run together safely.
 pytest-native-examples-jit:
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode jit --compare --json build/pytest-native/examples.json
 pytest-native-examples-aot:

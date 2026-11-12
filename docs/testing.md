@@ -390,10 +390,11 @@ The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including 
 to `main` and manual dispatch. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
 Markdown/docs-only PRs run Lint and submission format checks plus a lightweight
-`Verification` check. The legacy DCO job always skips pending branch settings. Both bootstrap workers classify the tested
-merge commit's changes against its base. When both select the documentation plan,
-they skip toolchain setup and builds, and CI skips the verification, variant and
-distribution jobs. Renaming a source file into `docs/` still selects code verification.
+`Verification` check. The legacy DCO job always skips pending branch settings. The x86-64
+bootstrap worker classifies the tested merge commit's changes against its base. The
+documentation plan skips toolchain setup, builds and verification/variant workers.
+The full-only qualification job skips on every PR. Renaming a source file into `docs/`
+still selects code verification.
 Classification verifies the immutable event merge SHA and its PR-head parent. If
 GitHub generated that merge against a newer base than the event payload records,
 CI requires code verification and uses the validated merge's first parent for changed-case
@@ -431,14 +432,14 @@ Missing modules/results, empty suites, skips, xfails and failed builds fail this
 check. These tests supplement the exact CLI, FFI, upstream-reference and timing
 contracts below; they do not replace those distinct observations.
 
-The x86-64 `hosted` job also runs `make test-pytest-native` with the pinned original
-pytest oracle. Its examples run in JIT with the hosted compiler; their AOT build and
-the runner's own tests, failure controls and bundled upstream methods use the job's
-verified compiler (`PYTEST_NATIVE_COMPILER`). The runner's test modules run four at a time
-(`PYTEST_NATIVE_TEST_JOBS`), then the examples, controls and upstream methods run together,
-each in a work directory of its own, which keeps the job within its bound.
-This covers collection, fixture lifecycle, unittest cases, package layouts,
-`conftest.py` hooks answered for by the comparison, `-k`/`-m` selection,
+The x86-64 `hosted` job also runs `make test-pytest-native` with the verified compiler
+and pinned original pytest oracle. Its JIT examples retain the hosted compiler; repeated
+native builds use `PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"`, with `PYSTACHY_HOME`
+pointing at the checkout. Test modules run first, at most four at once. Only after they
+finish do the JIT examples, AOT examples, failure controls and bundled upstream methods
+run together, each with its own work directory. This ordering prevents tests from
+competing with examples for the default directory's lock. The checks cover collection, fixture lifecycle,
+unittest cases, package layouts, `conftest.py` hooks answered for by the comparison, `-k`/`-m` selection,
 JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
 methods. The existing job runs once on code PRs, main pushes and manual runs;
 documentation-only PRs retain their lightweight plan. Its artifact includes both
@@ -477,14 +478,14 @@ inherited compiler options and shares its runtime cache across its small command
 `--cache` can select an isolated cache for concurrent work.
 
 The independent [Performance smoke workflow](../.github/workflows/performance.yml) runs on
-the same events (excluding documentation-only PRs). One job measures eleven small workloads:
+main pushes, weekly schedules and manual dispatch, outside the PR budget. One job measures eleven small workloads:
 scalar autograd, dense projection/softmax, fnmatch, mixed JSON parsing, repair-style scanning,
 integer/float copies and mutable-global reads in a dynamic-Any opt-in module without observed identity,
 heterogeneous cyclic graph deep-copy/checksum processing, and the
 existing adapted pyperformance `regex_effbot`. The [kernel notes](../bench/smoke/README.md)
 map each case to its coverage and limits. It builds each revision's
-native compiler once, then compares the PR merge against its base, or a main push against
-its previous SHA, on one CPU with separate warmed caches and identical head workload sources.
+native compiler once, then compares a main push against its previous SHA, or a scheduled/manual
+run against its selected reference, on one CPU with separate warmed caches and identical head workload sources.
 This is a performance probe, not another bootstrap verification stage.
 
 Each workload checks output against CPython and records three alternating base/head pairs:
@@ -525,26 +526,27 @@ end-to-end json_repair or all examples; broader benchmark history remains under 
 
 ### PR budget
 
-A code PR can create **20 workflow job rows**, including a skipped legacy DCO job and
-the submission format job. Its separate `Submission format` commit status uses no runner.
-Lint enforces at most **20 jobs across all workflows**, **two workers per task group**,
-and **15 minutes per job** (`tools/test_workflow_limits.py`). Path filters cannot hide a matrix
+A code PR can create **19 workflow job rows**, including the skipped full-only qualification
+and legacy DCO jobs, plus the submission format job. Its separate `Submission format` commit
+status uses no runner. Lint enforces at most **19 jobs across all PR workflows**, **four native
+AOT shards and two workers per other task group**, and **15 minutes per job**
+(`tools/test_workflow_limits.py`). Path filters cannot hide a matrix
 from the budget. Each test runner uses at most four processes within its worker.
 
 | PR work | Jobs | Coverage |
 |---|---:|---|
-| Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack, JIT runner and sanitizer linkage smoke. |
+| Linux bootstrap | 1 | x86-64 compiler/runtime fixed points and verified compiler bundle. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs and native runner qualification. |
-| Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
+| Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution, the second runtime ABI, cache and GC controls. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles. |
-| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks. |
+| Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks; bounded Lean null/union proofs. |
 | Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
-| Distribution | 2 | Linux x86-64 and macOS ARM64 installation, including pip/uv; Linux source packages and native archive smoke; netio epoll/kqueue and pipe parity, plus Linux hosted and sanitized ownership checks. |
+| Full-only qualification | 1 skipped | O1 bootstrap comparison and native archive smoke run on main/manual CI. |
 | `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |
-| Lint, performance, legacy check and submission format | 4 | Lint includes CPython port preservation. DCO always skips; submission format validates metadata and sends an acknowledgment reminder. |
+| Lint, legacy check and submission format | 3 | Lint includes CPython port preservation and selected Lean kernel/checker controls. DCO always skips; submission format validates metadata and sends an acknowledgment reminder. |
 
 `VERIFY_PROFILE=pr tests/verify.sh GROUP` selects this plan; plain `make verify` stays exhaustive.
 `tools/ci_sample.py` selects deterministic representatives and changed/new cases, including
@@ -553,33 +555,35 @@ surviving cases affected by removed or moved fixtures. Workers and the gate use 
 sampled; the normal native suite is not. PR reports explicitly identify the
 `pr` profile and cannot certify full verification.
 
-The two variant workers and Linux distribution job reuse the same verified bootstrap as the
-verification groups. Every consumer checks source bytes, commit, architecture, toolchain,
+The two JIT/variant workers reuse the same verified bootstrap as the verification groups.
+Every consumer checks source bytes, commit, architecture, toolchain,
 workflow run and artifact hashes. Runtime caches stay private; Python-free and sanitized builds
 remain independent. Pip downloads are cached by the pinned dependency files.
-The x86-64 bootstrap job then runs `python3 tools/check_bootstrap_tier.py build/ci-bootstrap`.
+The separate full-run qualification job reuses that run's x86-64 bundle and runs
+`python3 tools/check_bootstrap_tier.py build/ci-bootstrap`.
 It forces the production Make recipe to rebuild with an O1 temporary compiler and an O2 final
 compiler, using the same checkout and a private runtime cache. All three compiler and all three
 runtime witnesses must match the standard bundle byte for byte; no path normalization is used.
 The check revalidates source, toolchain and run identity after the build and requires the standard
 bundle and verification report to remain unchanged. Consumers continue using the standard O2
-bundle. The separate `build/bootstrap-tier/report.json` and `make.log` are uploaded with the
-bootstrap report. Build durations and final executable hashes are diagnostic; performance remains
+bundle. The separate `build/bootstrap-tier/report.json` and `make.log` are uploaded as
+qualification evidence. Build durations and final executable hashes are diagnostic; performance remains
 inconclusive until controlled measurements. Lint separately executes scalar and allocating native
 programs at O0, O1 and O2, both normally and with program GC stress. These checks preserve the
 existing job/worker/time limits and do not qualify lower tiers for general application use.
-PR native work uses two JIT halves and two AOT halves, each with one execution mode.
+PR native work uses two JIT halves and four AOT quarters, each with one execution mode.
 Both modes retain every corpus case; the inexpensive rejection and parser checks repeat.
 The aggregate requires every exact case/mode pair once and the producer's bootstrap identity,
 including the native baselines deferred by opt-in checks. The JIT workers upload their native
-reports before running their existing sampled configurations in sequence. This keeps the same
-16 CI jobs and 20 total PR jobs while separating costly AOT compilation from JIT execution.
+reports before running their existing sampled configurations in sequence. CI creates 16 job
+rows, including the skipped qualification row; all PR workflows together create 19.
 The compact cache/GC group finishes both parallel cache checks before starting its
 collector-stressed self-compilation, preserving the latter's ten-minute bound without
 three competing compiler processes.
 Native program-cache checks run last in the first JIT worker, with the stage-2 compiler
-its corpus half restored: on EPYC 7763 runners the JIT workers took about 3.5 minutes,
-the contracts and cache/GC groups up to 13.5 (#1178).
+its corpus half restored. [Issue #1178](https://github.com/den-run-ai/pystachy/issues/1178)
+records historical slow jobs and the measured headroom acceptance criteria; configured
+limits alone do not establish current run times.
 
 ### Full verification
 
@@ -628,7 +632,7 @@ to look like an ARM artifact is rejected. Combined reports are `x86_64-verificat
 `aarch64-verification`; download the corresponding `MACHINE-verification-*` artifacts
 and use `tools/merge_verification.py DIRECTORY --machine MACHINE -o REPORT.json` to
 reproduce either full gate. Main and manual runs require both architectures. PRs run the
-x86-64 aggregate, with ARM64 platform smoke checks in the ARM64 bootstrap job. To reproduce
+x86-64 aggregate; full CI and Installation retain ARM64 coverage. To reproduce
 the PR aggregate, use `--profile pr --machine x86_64` and the same `CI_BASE_SHA` as the
 workflow run. Its combined report is labelled `pr` and requires every compact group. Lint
 checks that each profile's group list matches the workflow matrix.
@@ -966,26 +970,30 @@ and manual dispatch. For PRs, it checks the cumulative merge diff for changes to
 the prototype, compiler, inspection exporter, boundary tests, Makefile, Lint workflow or
 Python/development dependency pins. Missing merge history runs the check;
 documentation-only PRs skip it. The selector has temporary-Git-history controls.
-It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
-`make check-lean-boundary`; no extra PR job is added. The x86_64 verification
-group `opt-in` on PRs, and `gc-jit-1` on main and manual runs, run
-`make check-lean-corpus` with the same archive: the corpus tool's tests
+It builds the checker with pinned Lean 4.35.0, then runs the kernel, adapter and negative
+controls once through `make check-fast`, requiring the checker. No extra PR job is added.
+Lint and verification cache only the pinned release archive. `tools/setup_lean.py` checks
+its SHA-256 on every restore, downloads a verified replacement for a missing or corrupt
+archive, and extracts a fresh toolchain. Compiled checkers and proof results are not cached.
+
+Complete Lean corpus sweeps run on main and manual CI. The x86-64 `gc-jit-1` group runs
+`make check-lean-corpus`: the corpus tool's tests
 (`tools/test_lean_corpus.py`), then each dynamic-`Any` test program compiled by
 the hosted compiler, failing unless Lean proves every dynamic payload read guarded
 and every [unchecked list read and dict entry](../tools/lean_boundary/ACCESS.md) in
 bounds and live, followed by `make check-lean-int` for promoting-integer
 [fit claims](../tools/lean_boundary/INT.md). Reports are uploaded as
-`lean-corpus.json` and `lean-int.json`. PR `opt-in` and full-run x86 `scaling`
-also run `make check-lean-storage` for [storage guards](../tools/lean_boundary/STORAGE.md),
+`lean-corpus.json` and `lean-int.json`. Full-run x86 `scaling`
+runs `make check-lean-storage` for [storage guards](../tools/lean_boundary/STORAGE.md),
 including programs that import opted-in modules, and upload `lean-storage.json`.
-The x86 `contracts` group runs `make check-lean-guards` on the explicit
+Code PRs and full CI retain `make check-lean-guards` in the x86 `contracts` group on the explicit
 `null_guards.py` and `union_guards.py` examples, uploading
 `lean-guards.json`. The selection and its limits are recorded in
 [GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard
 coverage; the strict full-corpus guard command remains an investigation tool with
 unsupported forms, not a passing whole-corpus gate. Arithmetic reports separately
 count actual checked overflow reconstructions and other observed arithmetic.
-All sweeps use two workers within existing jobs and their 15-minute limits.
+All sweeps use two local processes within existing jobs and their 15-minute limits.
 On full runs, the corpus and integer proofs start after `gc-jit-1` finishes;
 runtime-cache and program-cache probes retain their own job. This keeps those
 cache checks from sharing a time budget with the complete Lean corpora.
@@ -1013,24 +1021,26 @@ intrinsics. It does not replace bootstrap, IR parity or runtime verification.
 
 On `main` and manual dispatch, the [Installation workflow](../.github/workflows/install.yml)
 builds on Ubuntu x86-64/ARM64 and macOS ARM64/x86-64, then runs hosted/native JIT/AOT
-installation smoke (`tools/install_smoke.py`). Both Linux smoke jobs, the macOS
-ARM64 smoke job, and both PR distribution jobs also check the optional
-[netio bridge](../examples/netio/README.md). They use the freshly built compiler
-or, for PR Linux distribution, its verified bootstrap artifact. All twelve
+installation smoke (`tools/install_smoke.py`). Both Linux smoke jobs and the macOS
+ARM64 smoke job also check the optional [netio bridge](../examples/netio/README.md)
+with the freshly built compiler. All twelve
 socket/readiness scenarios and the completion-order pipe drain run against
 CPython's stdlib oracle in native JIT/AOT and both GC-stress modes. Linux also
 runs the same scenarios with the hosted compiler, every netio harness test,
 the CPython smoke benchmark, and the standalone C ownership probe with ASan,
-UBSan and leak detection. These Linux checks run in distribution/Installation
+UBSan and leak detection. These Linux checks run in Installation
 rather than Lint so Lint retains its 15-minute bound. Netio probe steps have a
 five-minute limit and retain JSON reports for seven days, including failed or
 incomplete runs; only reports with `result: pass` and all expected modes
 establish successful validation. The three primary platforms also install the
 compiler with pip and uv from the exact GitHub commit and verify JIT/AOT outside the checkout
-(`tools/compiler_install_smoke.py`). PR distribution checks exercise pip and uv against the
-checked-out source. The [Packages workflow](../.github/workflows/packages.yml) builds the example and ports source wheels and runs them under CPython, JIT and AOT
-(`tools/package_smoke.py`) on `main` and manual dispatch. PRs run these checks, release unit
-tests and one native archive smoke in the Linux distribution job. The
+(`tools/compiler_install_smoke.py`). The [Packages workflow](../.github/workflows/packages.yml)
+builds the example and ports source wheels and runs them under CPython, JIT and AOT
+(`tools/package_smoke.py`) on `main` and manual dispatch. Full CI's separate qualification
+job runs release unit tests and native archive smoke after the O1 bootstrap comparison,
+using the original verified O2 compiler for the archive. Distribution checks stay outside
+PRs; both Linux architectures retain full FFI, stack, ABI, JIT-runner and cache coverage
+in the main/manual verification matrix. The
 [Release workflow](../.github/workflows/release.yml) reserves its full archive/container matrix
 for tags and release dispatch; publishing requires CI, Installation, Lint and Packages on the exact release commit
 ([releases](releasing.md)).
@@ -1042,7 +1052,7 @@ does the [Variants workflow](../.github/workflows/variants.yml), which
 
 Every job, including release jobs, has a time limit of at most 15 minutes. Release preparation
 waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the
-existing PR budget or run in the full matrix; raising limits or adding matrix axes is not a fix.
+existing PR budget or run in the full matrix; keep the job and time ceilings unchanged.
 
 Lint also runs the optional [communication buffer/completion probe](../examples/comm/README.md)
 with the hosted compiler, JIT/AOT, GC stress and a sanitized standalone C probe.

@@ -1,4 +1,4 @@
-"""Cap PRs at 20 jobs, task groups at two workers, and every job at 15 minutes."""
+"""Cap PRs below 20 jobs, AOT at four shards, other groups at two, and jobs at 15 minutes."""
 
 import ast
 from collections import Counter
@@ -16,7 +16,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 LIMIT = 15
-PR_LIMIT = 20
+PR_LIMIT = 19
 PR_EVENTS = ("pull_request", "pull_request_target")
 PR_AXIS = re.compile(
     r"\$\{\{\s*fromJSON\(github\.event_name\s*==\s*'pull_request'\s*"
@@ -134,9 +134,12 @@ def require_pr_budget(found: dict) -> dict:
     counts, groups = pr_job_counts(found)
     if sum(counts.values()) > PR_LIMIT:
         raise ValueError(f"PR job budget {sum(counts.values())} exceeds {PR_LIMIT}: {counts}")
-    over = {name: count for name, count in groups.items() if count > 2}
+    # AOT saturates four local CPUs for almost 14 minutes with two shards. Reallocate
+    # retired PR distribution/performance slots to four AOT shards; all other groups stay two.
+    over = {name: count for name, count in groups.items()
+            if count > (4 if name == "ci.yml/pull_request/verification/native-aot" else 2)}
     if over:
-        raise ValueError(f"PR task groups exceed two workers: {over}")
+        raise ValueError(f"PR task groups exceed their worker budget: {over}")
     return counts
 
 
@@ -216,16 +219,36 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(sum(require_pr_budget(found).values()), 4)
         matrix = found["fixture.yml"]["jobs"]["verification"]["strategy"]["matrix"]
         matrix["group"].append("native-2")
-        with self.assertRaisesRegex(ValueError, "exceed two workers"):
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
             require_pr_budget(found)
         matrix["group"].pop()
         matrix["machine"] = ["x86_64", "aarch64"]
-        with self.assertRaisesRegex(ValueError, "exceed two workers"):
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
             require_pr_budget(found)
 
     def test_other_matrices_cannot_exceed_two_workers(self):
-        with self.assertRaisesRegex(ValueError, "exceed two workers"):
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
             require_pr_budget(self.workflow({"worker": ["0", "1", "2"]}))
+
+    def test_only_ci_native_aot_can_use_four_workers(self):
+        found = self.workflow({"group": [f"native-aot-{n}" for n in range(4)]})
+        workflow = found.pop("fixture.yml")
+        workflow["jobs"]["verification"] = workflow["jobs"].pop("work")
+        found["ci.yml"] = workflow
+        self.assertEqual(sum(require_pr_budget(found).values()), 4)
+        matrix = workflow["jobs"]["verification"]["strategy"]["matrix"]
+        matrix["group"].append("native-aot-4")
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
+            require_pr_budget(found)
+        matrix["group"] = [f"hosted-{n}" for n in range(4)]
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
+            require_pr_budget(found)
+
+    def test_twenty_pr_jobs_are_over_budget_even_without_matrices(self):
+        found = self.workflow()
+        found["fixture.yml"]["jobs"] = {f"job-{n}": {} for n in range(20)}
+        with self.assertRaisesRegex(ValueError, "PR job budget 20 exceeds 19"):
+            require_pr_budget(found)
 
     def test_unknown_dynamic_matrices_and_reusable_workflows_fail_closed(self):
         for matrix in ("${{ fromJSON(needs.plan.outputs.matrix) }}",
@@ -270,23 +293,24 @@ class LimitTests(unittest.TestCase):
         self.assertEqual(job["env"]["VERIFY_PROFILE"],
                          "${{ github.event_name == 'pull_request' && 'pr' || 'full' }}")
 
-    def test_o1_bootstrap_qualification_follows_standard_export_in_existing_x86_job(self):
-        job = workflows()["ci.yml"]["jobs"]["bootstrap"]
-        steps = job["steps"]
-        probes = [step for step in steps if "tools/check_bootstrap_tier.py" in step.get("run", "")]
-        self.assertEqual(len(probes), 1)
-        probe = probes[0]
-        self.assertEqual(probe["if"], "steps.plan.outputs.kind == 'code' && matrix.machine == 'x86_64'")
-        self.assertIn("build/ci-bootstrap", probe["run"])
-        self.assertNotIn("continue-on-error", probe)
-        self.assertNotIn("continue-on-error", job)
-        exports = [step for step in steps if "verification_bootstrap.py export build/ci-bootstrap" in step.get("run", "")]
-        self.assertEqual(len(exports), 1)
-        self.assertLess(steps.index(exports[0]), steps.index(probe))
-        reports = [step for step in steps if "build/bootstrap-tier/report.json" in step.get("with", {}).get("path", "")]
-        self.assertEqual(len(reports), 1)
-        self.assertIn("build/bootstrap-tier/make.log", reports[0]["with"]["path"])
-        self.assertIn("!cancelled()", reports[0]["if"])
+    def test_full_qualification_does_not_block_bootstrap_consumers(self):
+        jobs = workflows()["ci.yml"]["jobs"]
+        bootstrap = jobs["bootstrap"]
+        qualification = jobs["qualification"]
+        self.assertEqual(matrix_rows(bootstrap, "pull_request"), [{"machine": "x86_64"}])
+        self.assertEqual(matrix_rows(bootstrap, "push"), [{"machine": "x86_64"}, {"machine": "aarch64"}])
+        self.assertEqual(qualification["if"], "github.event_name != 'pull_request'")
+        self.assertEqual(qualification["needs"], "bootstrap")
+        self.assertEqual(jobs["verification"]["needs"], "bootstrap")
+        self.assertEqual(jobs["pr-variants"]["needs"], "bootstrap")
+        for job in (bootstrap, jobs["verification"], jobs["pr-variants"]):
+            self.assertFalse(any("check_bootstrap_tier.py" in step.get("run", "") for step in job["steps"]))
+        commands = "\n".join(step.get("run", "") for step in qualification["steps"])
+        for command in ("verification_bootstrap.py restore", "check_bootstrap_tier.py", "tools/release_smoke.py"):
+            self.assertIn(command, commands)
+        self.assertNotIn("continue-on-error", qualification)
+        self.assertNotIn("pull_request", workflows()["performance.yml"]["on"])
+        self.assertNotIn("distribution", jobs)
 
     def test_lint_overlaps_exactly_two_control_suites_on_every_event(self):
         steps = workflows()["lint.yml"]["jobs"]["lint"]["steps"]
@@ -426,9 +450,8 @@ class LimitTests(unittest.TestCase):
         probes = [step for step in steps if "make test-pytest-native" in step.get("run", "")]
         self.assertEqual(len(probes), 1)
         probe = probes[0]
-        # The runner's own tests use the job's verified compiler; its examples' JIT run the hosted one.
         self.assertEqual(probe["run"], 'make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"')
-        self.assertEqual(probe["env"], {"PYSTACHY_HOME": "${{ github.workspace }}"})
+        self.assertEqual(probe["env"]["PYSTACHY_HOME"], "${{ github.workspace }}")
         self.assertEqual(probe["if"], "matrix.group == 'hosted' && matrix.machine == 'x86_64'")
         self.assertNotIn("continue-on-error", probe)
         self.assertNotIn("continue-on-error", job)
