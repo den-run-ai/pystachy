@@ -1447,7 +1447,6 @@ default rejection 398
 398 tests/errors/optimizations/opt_builtin_arg.py
 398 tests/errors/optimizations/opt_builtin_unsupported.py
 398 tests/errors/optimizations/opt_dataclass_default.py
-398 tests/errors/optimizations/opt_dict_key.py
 377 tests/errors/optimizations/opt_file.py
 398 tests/errors/optimizations/opt_isinstance_tuple_call.py
 394 tests/errors/optimizations/opt_isinstance_tuple_none.py
@@ -1465,11 +1464,9 @@ default rejection 398
 394 tests/errors/optimizations/opt_narrow_loop_else.py
 394 tests/errors/optimizations/opt_narrow_reassigned.py
 394 tests/errors/optimizations/opt_none_empty_list.py
-394 tests/errors/optimizations/opt_none_unknown.py
 440 tests/errors/optimizations/opt_return.py
 398 tests/errors/optimizations/opt_scalar_arg.py
 377 tests/errors/optimizations/opt_scalar_is.py
-369 tests/errors/optimizations/opt_scalar_key_type.py
 419 tests/errors/optimizations/opt_scalar_list_arg.py
 394 tests/errors/optimizations/opt_scalar_sum.py
 372 tests/errors/optimizations/opt_template_empty_none.py

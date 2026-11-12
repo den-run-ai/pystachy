@@ -1,0 +1,14 @@
+0 False False 0 set()
+1 False True 1 {None}
+2 True True 1 {None}
+True False True
+set() 1 {}
+{None} 2 True True {None: ['m', 'm']}
+set() {None} {None} set()
+{None: ['a', 'c'], 'x.py': ['b'], 'y.py': ['d']} 2 1 -1
+{None} set() True False False ({None}, set())
+[set(), {None}] [0, 1] True True
+{None} {'q'} True False True
+True None
+False {None} 1
+[exit 0]
