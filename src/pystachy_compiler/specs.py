@@ -648,7 +648,7 @@ SETMETHODS: list[str] = FSETMETHODS + "add clear difference_update discard inter
 IROPS: dict[str, str] = {
     "slot": "", "rt": "*", "call": "*", "icall": "*", "init": "*", "br": "T", "cbr": "T", "switch": "T", "check": "T R",
     "ret": "T", "ret.none": "T", "raise": "T R N", "unreachable": "T", "phi": "", "select": "", "ovf": "",
-    "list.load": "rL", "list.len": "rL",
+    "list.load": "rL", "list.store": "rL wL", "list.len": "rL",
     "alloc.fixed": "A", "vtuple.make": "A",
     "mem.load": "*", "mem.store": "*",
     "mach.load": "*", "mach.store": "*", "mach.addr": "",
@@ -723,7 +723,7 @@ GENTHROWC = 3
 # and bools) from pys_new, whose calls lowering marks as allocations, so that LLVM deletes those
 # whose objects nothing keeps (lowering's alloc_call and ref_free), which PYSTACHY_OPT turns off:
 # "-name", comma-separated, or "-all"
-OPTS: list[str] = ["charslots", "listget", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "allocelide", "callbacks"]
+OPTS: list[str] = ["charslots", "listget", "listguard", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "allocelide", "callbacks"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)

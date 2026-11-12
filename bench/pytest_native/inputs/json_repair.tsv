@@ -1,0 +1,8 @@
+1000	{name: "café", active: true,}	{"name": "café", "active": true}
+1000	prefix {"items":[1,2,]} suffix	{"items": [1, 2]}
+1000	[1, /* retained item */ 2]	[1, 2]
+1000	{界: "é",}	{"界": "é"}
+1000	[1e, 2]	[1, 2]
+1000	{tool: "search", arguments: [true, null, 3,],}	{"tool": "search", "arguments": [true, null, 3]}
+1000	{"empty":[],"nested":{"n":7,},}	{"empty": [], "nested": {"n": 7}}
+1000	{"text":"hello","count":2	{"text": "hello", "count": 2}

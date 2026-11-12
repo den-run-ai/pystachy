@@ -154,7 +154,7 @@ behavioral differences are listed as [deviations from CPython](https://github.co
 | Functions | Closures, lambdas, decorators, `*args` and `**kwargs`, generators | `async` and `await` |
 | Classes | Single inheritance, dataclasses, `NamedTuple`, properties, operator methods | General multiple inheritance, metaclasses, subclasses of builtin types |
 | Typing | Inferred locals and returns, generics, closed unions, `T \| None` narrowing, `final`/`override` markers | General object unions |
-| Syntax | Comprehensions, f-strings, `with`, `try`/`except`/`finally`, `:=` | `match`, `except*` |
+| Syntax | Comprehensions, f-strings, `with`, `try`/`except`/`finally`, `:=`, bounded `match` | Mapping and general sequence/class patterns; `except*` |
 | Runtime | Modules and packages, automatic memory management | Native threads, `__del__` finalizers, `eval` and `exec` |
 
 An `int` is a checked 64-bit value: overflow raises `OverflowError`. A module can

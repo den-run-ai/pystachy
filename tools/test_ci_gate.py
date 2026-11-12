@@ -115,22 +115,29 @@ class PlanTests(unittest.TestCase):
 
 class GateTests(unittest.TestCase):
     def test_expected_job_results(self):
-        require_jobs("pull_request", "docs", "docs", ["success", "skipped", "skipped", "skipped"])
-        require_jobs("pull_request", "code", "code", ["success"] * 4)
-        require_jobs("push", "code", "code", ["success", "success", "skipped", "skipped"])
+        require_jobs("pull_request", "docs", "", ["success", "skipped", "skipped", "skipped"])
+        require_jobs("pull_request", "code", "", ["success", "success", "success", "skipped"])
+        require_jobs("push", "code", "code", ["success", "success", "skipped", "success"])
 
-    def test_code_rejects_missing_skipped_failed_and_cancelled_jobs(self):
-        for index in range(4):
-            for result in ("", "skipped", "failure", "cancelled"):
-                with self.subTest(index=index, result=result), self.assertRaises(ValueError):
-                    results = ["success"] * 4
-                    results[index] = result
-                    require_jobs("pull_request", "code", "code", results)
+    def test_code_rejects_any_unexpected_job_result(self):
+        for event, arm, expected in (
+            ("pull_request", "", ["success", "success", "success", "skipped"]),
+            ("push", "code", ["success", "success", "skipped", "success"]),
+            ("workflow_dispatch", "code", ["success", "success", "skipped", "success"]),
+        ):
+            for index in range(4):
+                for result in ("", "skipped", "success", "failure", "cancelled"):
+                    if result == expected[index]:
+                        continue
+                    with self.subTest(event=event, index=index, result=result), self.assertRaises(ValueError):
+                        results = expected.copy()
+                        results[index] = result
+                        require_jobs(event, "code", arm, results)
 
     def test_docs_requires_successful_classification_and_explicit_skips(self):
         for event, plan, arm_plan, results in (
             ("push", "docs", "docs", ["success", "skipped", "skipped", "skipped"]),
-            ("pull_request", "docs", "", ["success", "skipped", "skipped", "skipped"]),
+            ("pull_request", "docs", "docs", ["success", "skipped", "skipped", "skipped"]),
             ("pull_request", "docs", "code", ["success", "skipped", "skipped", "skipped"]),
             ("pull_request", "docs", "docs", ["cancelled", "skipped", "skipped", "skipped"]),
             ("pull_request", "docs", "docs", ["success", "cancelled", "skipped", "skipped"]),
@@ -145,7 +152,7 @@ class GateTests(unittest.TestCase):
         gate = ci["jobs"]["verify"]
         self.assertIn("'Verification'", gate["name"])
         self.assertEqual(gate["if"], "${{ !cancelled() }}")
-        self.assertEqual(set(gate["needs"]), {"bootstrap", "verification", "pr-variants", "distribution"})
+        self.assertEqual(set(gate["needs"]), {"bootstrap", "verification", "pr-variants", "qualification"})
 
     def test_workflow_checks_event_identity_and_shares_the_validated_base(self):
         ci = workflows()["ci.yml"]

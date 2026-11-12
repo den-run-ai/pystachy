@@ -33,12 +33,25 @@ test-py:
 .PHONY: test-pytest-native test-pytest-workloads test-pytest-upstream test-pytest-json-upstream
 
 # Hosted collection/oracle and real native execution; no compiler bootstrap needed.
+# CI supplies the verified native compiler for repeated builds; examples still
+# exercise the hosted compiler in JIT mode.
+PYTEST_NATIVE_COMPILER ?= $(PY) $(CURDIR)/pystachy.py
+PYTEST_NATIVE_TEST_JOBS ?= 4
+PYTEST_NATIVE_PARTS = pytest-native-examples-jit pytest-native-examples-aot pytest-native-controls pytest-native-upstream
+.PHONY: $(PYTEST_NATIVE_PARTS)
 test-pytest-native:
-	PYSTACHY_PYTEST_NATIVE_COMPILER="$(PY) $(CURDIR)/pystachy.py" $(PY) -m unittest discover -s tools -p 'test_pytest_native*.py'
+	printf '%s\n' tools/test_pytest_native*.py | PYSTACHY_PYTEST_NATIVE_COMPILER="$(PYTEST_NATIVE_COMPILER)" xargs -n 1 -P $(PYTEST_NATIVE_TEST_JOBS) sh -c 'exec $(PY) -m unittest discover -s tools -p "$${1##*/}"' sh
+	$(MAKE) -j$(PYTEST_NATIVE_TEST_JOBS) $(PYTEST_NATIVE_PARTS)
+# Keep modules above separate: some use the examples' default work directory.
+# These four parts have separate work directories and can run together safely.
+pytest-native-examples-jit:
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode jit --compare --json build/pytest-native/examples.json
-	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode aot --compare --work-dir build/pytest-native-aot --json build/pytest-native-aot/examples.json
-	$(PY) tools/pytest_native_controls.py --compiler "$(PY) $(CURDIR)/pystachy.py" --json build/pytest-controls.json
-	$(PY) tools/pytest_native_upstream.py --suite fnmatch --suite textwrap --compiler "$(PY) $(CURDIR)/pystachy.py" --json build/pytest-upstream-bundled.json
+pytest-native-examples-aot:
+	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode aot --compare --compiler "$(PYTEST_NATIVE_COMPILER)" --work-dir build/pytest-native-aot --json build/pytest-native-aot/examples.json
+pytest-native-controls:
+	$(PY) tools/pytest_native_controls.py --compiler "$(PYTEST_NATIVE_COMPILER)" --json build/pytest-controls.json
+pytest-native-upstream:
+	$(PY) tools/pytest_native_upstream.py --suite fnmatch --suite textwrap --compiler "$(PYTEST_NATIVE_COMPILER)" --json build/pytest-upstream-bundled.json
 
 # Complete optional upstream qualification uses only explicitly fetched pinned
 # sources. The bundled fnmatch/textwrap subset above remains offline in CI.
@@ -53,9 +66,10 @@ test-pytest-json-upstream:
 # Independent application/benchmark suites share original pytest assertions.
 # CI supplies its already verified compiler; local users can use hosted compilation.
 PYTEST_WORKLOAD_COMPILER ?= $(PY) $(CURDIR)/pystachy.py
+PYTEST_WORKLOAD_JOBS ?= 4
 PYTEST_WORKLOAD_ARGS ?=
 test-pytest-workloads:
-	$(PY) tools/pytest_native_suites.py --compiler "$(PYTEST_WORKLOAD_COMPILER)" --json build/pytest-workloads.json $(PYTEST_WORKLOAD_ARGS)
+	$(PY) tools/pytest_native_suites.py --compiler "$(PYTEST_WORKLOAD_COMPILER)" --jobs $(PYTEST_WORKLOAD_JOBS) --json build/pytest-workloads.json $(PYTEST_WORKLOAD_ARGS)
 
 # the statements and branches of the compiler's own source (src/pystachy_compiler/) that the corpus, the
 # FFI and runtime-cache suites, the IR checks and the compiler's unit tests run (or FILES of the corpus
@@ -159,7 +173,17 @@ blas-check: $(BENCH_COMPILER)
 bench-pyperformance-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_pyperformance.py
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" --smoke --json build/pyperformance-smoke.json
-	$(PY) tools/pytest_native_suites.py --group pyperformance --compiler "$(BENCH_COMPILER)" --json build/pytest-pyperformance.json
+	$(PY) tools/pytest_native_suites.py --group pyperformance --compiler "$(BENCH_COMPILER)" --jobs $(PYTEST_WORKLOAD_JOBS) --json build/pytest-pyperformance.json
+
+# CPython/JIT/AOT checksums for match and equivalent handwritten branches.
+# Smoke reports validate execution and contain no performance thresholds.
+.PHONY: bench-match-check bench-match
+bench-match-check: $(BENCH_COMPILER)
+	$(PY) -m unittest discover -s bench/match_dispatch -p test_bench.py
+	$(PY) bench/match_dispatch/bench.py --compiler "$(BENCH_COMPILER)" --smoke --json build/match-dispatch-smoke.json
+
+bench-match: $(BENCH_COMPILER)
+	$(PY) bench/match_dispatch/bench.py --compiler "$(BENCH_COMPILER)" $(BENCH_ARGS)
 
 # Slots that dict lookups visit for keys that defeat a weak hash (tools/dictprobe.c): deterministic
 # counts, so the run fails above a fixed limit; the timings it prints are for information only
@@ -448,6 +472,15 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_exception_bindings.py
 	$(PY) -m unittest discover -s tools -p test_inspect_compiler.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_access.py
+	$(PY) -m unittest discover -s tools -p test_lean_inline.py
+	$(PY) -m unittest discover -s tools -p test_lean_effects.py
+	$(PY) -m unittest discover -s tools -p test_lean_closure_cells.py
+	$(PY) -m unittest discover -s tools -p test_lean_range_bounds.py
+	$(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_int.py
+	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
@@ -458,14 +491,40 @@ check-fast: lint-python typecheck check-repository
 check-lean-boundary:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_boundary*.py'
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_access.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_inline.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_effects.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_closure_cells.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_range_bounds.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_int.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) -m unittest discover -s tools -p test_lean_layout_metadata.py
 
 # Every dyn.payload read of the dynamic-Any test programs, each compiled by the hosted
-# compiler, proved guarded by the Lean checker (tools/lean_boundary/README.md).
+# compiler, proved guarded by the Lean checker (tools/lean_boundary/README.md), and every
+# unchecked list read and dict entry proved in bounds and live (tools/lean_boundary/ACCESS.md).
 LEAN_CORPUS_FLAGS ?=
 check-lean-corpus:
 	cd tools/lean_boundary && lake build
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_corpus.py
 	$(PY) tools/check_lean_corpus.py $(LEAN_CORPUS_FLAGS)
+
+# Every promoting-int fit claim (a null digit pointer selected after pys_big_op) of the test
+# programs that opt in to promoting ints, proved by the Lean checker (tools/lean_boundary/INT.md).
+LEAN_INT_FLAGS ?=
+check-lean-int:
+	cd tools/lean_boundary && lake build
+	$(PY) tools/check_lean_int.py --corpus $(LEAN_INT_FLAGS)
+
+# Low words, tuple digit slots and representation crossings, including imported int mode.
+LEAN_STORAGE_FLAGS ?=
+check-lean-storage:
+	cd tools/lean_boundary && lake build
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
+	$(PY) tools/check_lean_storage_corpus.py $(LEAN_STORAGE_FLAGS)
+
+.PHONY: check-lean-storage
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
@@ -495,4 +554,13 @@ uninstall:
 test-install:
 	$(PY) -m unittest discover -s tools -p test_install.py
 
-.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary check-lean-corpus lint clean install uninstall test-install
+.PHONY: test test-py coverage runtime-coverage variants test-cache test-program-cache test-ffi bench bench-extended bench-extended-check example-cli-check netio-check netio-dogfood-check bench-netio blas-check bench-pyperformance bench-pyperformance-check dictprobe listprobe eqprobe fileprobe selectprobe weakrefprobe boxprobe streamprobe jitprobe aotprobe unicode-audit unicodeprobe bytescanprobe floatprobe verify irsame irsame-py ref check-ir check-runtime check-recordings port-check test-cpython-subset port-check-large re-fuzz dynany-fuzz dynany-optin python-int-optin python-int-gate re-probe re-specialize-check typecheck lint-python check-repository check-fast check-lean-boundary check-lean-corpus check-lean-int lint clean install uninstall test-install
+
+# Explicit programs give a bounded gate; without them this inventories the entire corpus.
+LEAN_GUARD_FLAGS ?=
+check-lean-guards:
+	cd tools/lean_boundary && lake build
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_guard*.py'
+	$(PY) tools/check_lean_guard_corpus.py $(LEAN_GUARD_FLAGS)
+
+.PHONY: check-lean-guards

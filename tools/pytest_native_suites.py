@@ -4,14 +4,19 @@ Each suite keeps its own import directory and process. This is an explicit set
 of independent suites, not cross-directory pytest collection or a timing tool.
 """
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass
 import json
 import math
 import os
 from pathlib import Path
+from queue import Empty, SimpleQueue
 import shlex
+import signal
 import subprocess
 import sys
+import threading
 
 from check_example_cli import run as run_process
 import pytest_native as runner
@@ -19,7 +24,7 @@ from pytest_native_codegen import generate
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ("agent", "byte_bpe", "column", "csvstat", "cut", "guarded_score", "id_filter", "latency",
-            "linediff", "mailmerge", "mazepath", "miniui", "montecarlo", "nanogpt", "ndarray",
+            "linediff", "mailmerge", "match_dispatch", "mazepath", "miniui", "montecarlo", "nanogpt", "ndarray",
             "route", "suggest", "topk", "urlstats")
 IMPORTS = {"byte_bpe": ("bench/pyperformance",), "nanogpt": ("examples/ndarray",)}
 
@@ -51,7 +56,7 @@ def select(names, group):
     return [suite for suite in SUITES if group == "all" or suite.group == group]
 
 
-def environment(suite):
+def environment(suite, cache=None):
     env = os.environ.copy()
     # Both interpreters must see the same explicit application modules. Caller
     # search paths or optimized-away CPython assertions cannot certify a suite.
@@ -59,6 +64,10 @@ def environment(suite):
         env.pop(key, None)
     paths = os.pathsep.join(str(ROOT / path) for path in suite.imports)
     env.update(PYTHONPATH=paths, PYSTACHY_PATH=paths, PYSTACHY_HOME=str(ROOT))
+    if cache is not None:
+        # Workers may reuse their own runtime, but never race another worker's
+        # cache publication/cleanup or inherit an unrelated caller's cache.
+        env.update(PYSTACHY_CACHE=str(cache), PYSTACHY_JOBS="1")
     return env
 
 
@@ -103,8 +112,10 @@ def run(suite, mode, args):
                    "--root", str(ROOT), "--work-dir", str(work), "--mode", mode, "--compare",
                    "--compiler", args.compiler, "--python", args.python,
                    "--timeout", str(args.timeout), "--json", str(report)]
-        result = run_process(suite.name + "/" + mode, command, environment(suite), ROOT,
-                             status=None, timeout=3 * args.timeout + 30)
+        cache = getattr(args, "cache_dir", work / "cache")
+        result = run_process(suite.name + "/" + mode, command, environment(suite, cache), ROOT,
+                             status=None, timeout=3 * args.timeout + 30,
+                             process_scope=getattr(args, "process_scope", None))
         row.update(exit_code=result.returncode, stdout=result.stdout.decode(), stderr=result.stderr.decode())
         evidence = json.loads(report.read_text())
         row["evidence"] = evidence
@@ -113,6 +124,102 @@ def run(suite, mode, args):
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.TimeoutExpired) as error:
         row["error"] = str(error)
     return row
+
+
+class WorkerProcesses:
+    """Own only this invocation's process groups, including compiler children."""
+
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.stopped = threading.Event()
+        self.processes = set()
+
+    @staticmethod
+    def kill(process):
+        # The leader can exit while a compiler descendant still holds its
+        # pipes. The group remains ours until communicate has completed.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+    @contextmanager
+    def scope(self, process):
+        with self.lock:
+            if self.stopped.is_set():
+                self.kill(process)
+                raise InterruptedError("suite execution was cancelled")
+            self.processes.add(process)
+        try:
+            yield
+        finally:
+            with self.lock:
+                self.processes.discard(process)
+
+    def cancel(self):
+        with self.lock:
+            self.stopped.set()
+            for process in self.processes:
+                self.kill(process)
+
+
+def run_selected(selected, modes, args):
+    """Parallelize independent suites, never the tests within a suite.
+
+    Each lane serializes its compiler children and owns a runtime cache. Keep
+    suite/mode work paths distinct, and restore selection order in the report
+    even when later lanes finish first. Failures never truncate the inventory.
+    """
+    tasks = [(suite, mode) for suite in selected for mode in modes]
+    workers = min(args.jobs, len(tasks))
+    if not workers:
+        return []
+    processes = WorkerProcesses()
+    pending = SimpleQueue()
+    for offset in range(len(tasks)):
+        pending.put(offset)
+
+    def lane(index):
+        local = argparse.Namespace(**vars(args))
+        local.cache_dir = args.work_dir.resolve() / "worker-caches" / str(index)
+        local.process_scope = processes.scope
+        rows = []
+        while not processes.stopped.is_set():
+            try:
+                offset = pending.get_nowait()
+            except Empty:
+                break
+            rows.append((offset, run(*tasks[offset], local)))
+        return rows
+
+    def terminate(signum, frame):
+        raise SystemExit(128 + signum)
+
+    main_thread = threading.current_thread() is threading.main_thread()
+    previous = signal.signal(signal.SIGTERM, terminate) if main_thread else None
+    try:
+        if workers == 1:
+            results = lane(0)
+        else:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                try:
+                    futures = [executor.submit(lane, index) for index in range(workers)]
+                    # A later worker can fail while an earlier worker is still
+                    # blocked in a subprocess. Observe that failure immediately;
+                    # inventory order is restored by the offset sort below.
+                    results = [item for future in as_completed(futures) for item in future.result()]
+                except BaseException:
+                    # Cancel before the executor waits for workers, otherwise
+                    # an interrupted coordinator could wait every suite timeout.
+                    processes.cancel()
+                    raise
+    except BaseException:
+        processes.cancel()
+        raise
+    finally:
+        if main_thread:
+            signal.signal(signal.SIGTERM, previous)
+    return [row for _, row in sorted(results)]
 
 
 def main(argv=None):
@@ -125,8 +232,11 @@ def main(argv=None):
     parser.add_argument("--work-dir", type=Path, default=ROOT / "build/pytest-workloads")
     parser.add_argument("--json", type=Path)
     parser.add_argument("--timeout", type=float, default=120)
+    parser.add_argument("--jobs", type=int, choices=range(1, 5), default=1,
+                        help="independent suite workers (1–4; default: 1)")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
+    args.compiler = shlex.join(runner.compiler_command(args.compiler))
     try:
         selected = select(args.suite, args.group)
         modes = args.mode or ["jit", "aot"]
@@ -138,17 +248,14 @@ def main(argv=None):
         for suite in selected:
             print(f"{suite.name}: {suite.path} ({suite.group})")
         return 0
-    rows = []
     try:
         with runner.lock_work_directory(args.work_dir.resolve()):
-            for suite in selected:
-                for mode in modes:
-                    row = run(suite, mode, args)
-                    rows.append(row)
-                    print(f"{suite.name}/{mode}: {row['state']} ({row['cases']} cases)", flush=True)
-                    if row["state"] != "passed":
-                        print(row.get("error", "") + "\n" + row.get("stderr", "")
-                              + row.get("stdout", ""), file=sys.stderr, flush=True)
+            rows = run_selected(selected, modes, args)
+            for row in rows:
+                print(f"{row['suite']}/{row['mode']}: {row['state']} ({row['cases']} cases)", flush=True)
+                if row["state"] != "passed":
+                    print(row.get("error", "") + "\n" + row.get("stderr", "")
+                          + row.get("stdout", ""), file=sys.stderr, flush=True)
             status = 0 if rows and all(row["state"] == "passed" for row in rows) else 2
             if args.json:
                 runner.write_changed(args.json.resolve(), json.dumps({
