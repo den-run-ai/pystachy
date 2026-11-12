@@ -37,9 +37,9 @@ First errors of the 5,389 rejected methods on main, grouped by `scripts/groups.p
 | Need | Methods | Largest rows |
 |---|---:|---|
 | A missing module or name | 2,260 | other modules 1,179 (configparser, decimal, `_pyio`, locale, pprint, queue, calendar, array); `enum.member`/`verify` 885 (all of `test_enum`); `gc` 142; `inspect` 54 |
-| Class-model, inference or `match` work a static compiler can do | 1,699 | field/class-attribute types 688; classes inside functions 365; builtin bases 178; class-body statements 164; empty containers 96; generic-template bases 91; `match` mapping/star/class patterns 77; multiple inheritance 40 |
+| Class-model, inference or `match` work a static compiler can do | 1,710 | field/class-attribute types 688; classes inside functions 365; builtin bases 178; class-body statements 164; empty containers 96; generic-template bases 91; `match` patterns 88; multiple inheritance 40 |
 | Runtime reflection or dynamic semantics | 475 | `pickle`/`copyreg`/`marshal` 247; modules or classes as values 73; `eval`/`exec`/`compile`, `ast`, `dis` 58; computed `str.format` 49; exception attributes 48 |
-| Unassigned | 955 | value-type mismatches, missing methods and calls |
+| Unassigned | 944 | value-type mismatches, missing methods and calls |
 
 Classes inside functions (`scripts/local_classes.py`, `raw/local-classes-8434a911.txt`): 361
 of the 365 methods have extracted programs; they define 627 local classes, of which 101 read a

@@ -8,11 +8,11 @@ compile    164  language   44  files   9  class-body statements (nested class, a
 library    142  language   98  files   8  gc module (collect, is_tracked, thresholds)
 compile     96  language   62  files  28  empty containers not inferred
 compile     91  language   28  files   8  inheritance from generic class templates
-compile     77  language   77  files   1  match: mapping/star/class patterns
+compile     88  language   88  files   1  match patterns (mapping, starred, class, non-tuple subjects, complex)
 reflect     73  language    9  files   9  modules or classes as values
 reflect     58  language   54  files  18  eval / exec / compile, ast, dis
 library     54  language   50  files   6  inspect module (mostly cleandoc)
 reflect     49  language   45  files   4  str.format of a computed format string
 reflect     48  language   48  files   6  exception attributes (__context__, __traceback__, args)
 compile     40  language   11  files   4  multiple inheritance
-{'library': 2260, 'compile': 1699, 'reflect': 475} of 5389 rejected; unassigned 955
+{'library': 2260, 'compile': 1710, 'reflect': 475} of 5389 rejected; unassigned 944

@@ -18,7 +18,7 @@ GROUPS = [
     ("compile", "builtin base classes (set/frozenset/bytes...)", r"unsupported base class"),
     ("compile", "inheritance from generic class templates", r"inheritance with generic class templates"),
     ("compile", "multiple inheritance", r"multiple inheritance requires"),
-    ("compile", "match: mapping/star/class patterns", r"patterns are not supported|class patterns require"),
+    ("compile", "match patterns (mapping, starred, class, non-tuple subjects, complex)", r"patterns are not supported|patterns require"),
     ("library", "enum.member / enum.verify / STRICT", r"from 'enum'"),
     ("library", "gc module (collect, is_tracked, thresholds)", r"there is no gc\.py"),
     ("library", "inspect module (mostly cleandoc)", r"there is no inspect\.py"),
