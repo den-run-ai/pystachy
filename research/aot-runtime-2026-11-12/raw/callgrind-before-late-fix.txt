@@ -1,0 +1,36 @@
+# Executed instructions (callgrind) of main 84b1c2cb's and ec408fe0's executables, before c739499c:
+# the late module had no body of pys_new, so programs whose allocations survived -O2 called it out of line
+barnes_hut       main 206678996 pr 206613003  -0.03%
+bpe_tokeniser    main 17485712073 pr 17433697977  -0.30%
+chaos            main 230937496 pr 245039343  +6.11%
+comprehensions   main 418714127 pr 400118542  -4.44%
+fannkuch         main 1851973686 pr 1818161004  -1.83%
+float            main 355329481 pr 369350666  +3.95%
+generators       main 1267244245 pr 1319889226  +4.15%
+go               main 196332309 pr 193332955  -1.53%
+hexiom           main 357385446 pr 357843193  +0.13%
+json_dumps       main 1511965647 pr 1510538964  -0.09%
+json_loads       main 8796147415 pr 8850521294  +0.62%
+logging          main 25864902 pr 26324954  +1.78%
+meteor_contest   main 2323216994 pr 2320726014  -0.11%
+nbody            main 580810679 pr 580857579  +0.01%
+nqueens          main 2302449306 pr 2404341562  +4.43%
+pidigits         main 11528888366 pr 11528971936  +0.00%
+raytrace         main 328746311 pr 322693110  -1.84%
+regex_dna        main 2203533176 pr 2204750705  +0.06%
+regex_effbot     main 3339551407 pr 3339706686  +0.00%
+regex_v8         main 18508824954 pr 18647095414  +0.75%
+richards         main 132050345 pr 132092476  +0.03%
+richards_super   main 134790721 pr 134833255  +0.03%
+scimark          main 156793829 pr 156977346  +0.12%
+spectral_norm    main 174348227 pr 173502571  -0.49%
+unpack_sequence  main 1573347 pr 1623872  +3.21%
+micro_fib        main 597515674 pr 597540003  +0.00%
+micro_mandel     main 268873901 pr 268475815  -0.15%
+micro_nbody      main 422323129 pr 422346448  +0.01%
+micro_sieve      main 401264504 pr 401288965  +0.01%
+micro_spectral   main 240861602 pr 240913584  +0.02%
+micro_words      main 538608067 pr 552144061  +2.51%
+hello            main 301815 pr 326185  +8.07%
+imports          main 1484455 pr 1488696  +0.29%
+exit 0

@@ -1,0 +1,35 @@
+# Executed instructions (valgrind --tool=callgrind, Collected) of the executables of raw/perfab-builds.json:
+# main 84b1c2cb and c739499c, same inputs as the timing runs
+barnes_hut       main 206905164 pr 206400964  -0.24%
+bpe_tokeniser    main 17485718404 pr 17433702636  -0.30%
+chaos            main 230689686 pr 230640501  -0.02%
+comprehensions   main 418963913 pr 397635396  -5.09%
+fannkuch         main 1852199841 pr 1818415718  -1.82%
+float            main 355104938 pr 355129248  +0.01%
+generators       main 1267244169 pr 1317102304  +3.93%
+go               main 196553553 pr 193587354  -1.51%
+hexiom           main 357386372 pr 357438935  +0.01%
+json_dumps       main 1511966522 pr 1510539727  -0.09%
+json_loads       main 8795900596 pr 8850274091  +0.62%
+logging          main 25617951 pr 26060121  +1.73%
+meteor_contest   main 2323526138 pr 2320975818  -0.11%
+nbody            main 580586324 pr 580609781  +0.00%
+nqueens          main 2302229742 pr 2404093743  +4.42%
+pidigits         main 11529142994 pr 11529216510  +0.00%
+raytrace         main 328995908 pr 321948668  -2.14%
+regex_dna        main 2203533926 pr 2204748707  +0.06%
+regex_effbot     main 3339552398 pr 3339704872  +0.00%
+regex_v8         main 18508825708 pr 18646564690  +0.74%
+richards         main 132050957 pr 132096560  +0.03%
+richards_super   main 134791539 pr 134837481  +0.03%
+scimark          main 156794804 pr 156838509  +0.03%
+spectral_norm    main 174123701 pr 173250079  -0.50%
+unpack_sequence  main 1574061 pr 1624772  +3.22%
+micro_fib        main 597747123 pr 597789894  +0.01%
+micro_mandel     main 268874766 pr 268476681  -0.15%
+micro_nbody      main 422549348 pr 422600619  +0.01%
+micro_sieve      main 401495884 pr 401538884  +0.01%
+micro_spectral   main 240862260 pr 240914458  +0.02%
+micro_words      main 538839423 pr 552393579  +2.52%
+hello            main 533168 pr 575832  +8.00%
+imports          main 1738279 pr 1734619  -0.21%

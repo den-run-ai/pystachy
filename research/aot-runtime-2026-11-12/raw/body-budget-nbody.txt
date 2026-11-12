@@ -1,0 +1,10 @@
+# clang -O2 -c -emit-llvm of bench/nbody.py's IR linked (llvm-link --only-needed) against an
+# interface whose bodies are limited to functions of up to N instructions (declarations above),
+# main 84b1c2cb's runtime specialized for pys_plain=1; pinned to CPU 3, three runs, seconds
+bound 0: 9 bodies linked; O2: 0.038 0.039 0.039
+bound 50: 20 bodies linked; O2: 0.056 0.054 0.057
+bound 100: 24 bodies linked; O2: 0.056 0.056 0.056
+bound 200: 37 bodies linked; O2: 0.078 0.071 0.072
+bound 400: 61 bodies linked; O2: 0.128 0.131 0.128
+bound 1000: 120 bodies linked; O2: 0.351 0.352 0.408
+# for comparison, main's pipeline (the needed runtime linked as definitions): O2 0.53 s, codegen 0.49 s

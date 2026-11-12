@@ -1,0 +1,3 @@
+275 runtime functions that main's AOT pipeline inlined into program code (352-program corpus);
+1 of them have no body in the interface (declared), with size and programs:
+   902 instructions    4 programs  pys_str_float

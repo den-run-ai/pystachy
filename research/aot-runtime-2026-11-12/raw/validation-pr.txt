@@ -1,0 +1,13 @@
+# Validation of c739499c (claude/peaceful-faraday-2yr9q6-aot-runtime) on an idle 4-vCPU x86-64 VM, Ubuntu 24.04,
+# LLVM 18.1.3, CPython 3.13.18; tests/run.sh with 4 workers; slices: tests/programs/{numbers,containers,strings,classes}
+make exit 0 279 s: fixed point: stage1 == stage2 == stage3 (915800 lines of IR) fixed point: runtime.py's IR, rt1 == rt2 == rt3 (21214 lines) 
+runtime unit tests: ok 93 run, 8 skipped, 0 failed
+test_bootstrap_tier.py: OK
+test_compiler_state_timing.py: OK
+test_retained_ir.py: OK
+test-cache exit 0: 95 passed, 0 failed 97 passed, 0 failed 
+aotprobe exit 0
+corpus aot exit 0 414 s: 4595 passed, 0 failed
+ubsan aot slice exit 0 85 s: 506 passed, 0 failed; .fail markers: 0
+gc-stress aot slice exit 0 60 s: 506 passed, 0 failed
+jit slice exit 0 14 s: 506 passed, 0 failed

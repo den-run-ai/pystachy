@@ -1,0 +1,198 @@
+PY="python3.13" tests/cache.sh ./pystachy
+-- the compiler: ./pystachy
+ok   a first run builds the runtime
+ok   one entry: a .bc and its .o
+ok   no partial or temporary file is left
+ok   the shared library is cached beside the .o
+ok   and lli loads it
+ok   a run that finds no shared library makes it from the .o, and builds no runtime
+ok   and caches it
+ok   a run that may not execute the cached library builds no runtime
+ok   and lli links the .o instead
+ok   nothing changed: the cache is used
+ok   the same entry, not written again
+ok   the hashes of settled files are kept
+ok   the AOT tier uses the cache, and builds its precompiled runtime
+ok   the AOT tier writes no runtime entry
+ok   the precompiled runtime is cached beside the runtime: object, interface, late module
+ok   the next AOT build links it, as it is
+ok   a precompiled runtime that cannot be built: the build links the runtime into the program, silently
+ok   and leaves its .fail beside the runtime
+ok   and no partial or temporary file
+ok   later AOT builds do not try again, and link the runtime into the program
+ok   without its .fail, the next AOT build builds it
+ok   and writes no runtime entry
+ok   the same tools through another path (a symbolic link): the cache is used
+ok   the same entry
+ok   an edit of runtime.py of the same size, its mtime set back: built again
+ok   the new entry replaces the old
+ok   and removes the old runtime's precompiled runtime
+ok   the next AOT build builds the new runtime's
+ok   and its shared library the old one's
+ok   an edit of runtime.c: built again
+ok   an edit of ryu/common.h, which runtime.c includes: built again, from the home's ryu/
+ok   an edit of mpz/mpz.c, which runtime.c includes: built again, from the home's mpz/
+ok   and used then
+ok   runtime.py and runtime.c edited while the runtime is built: it holds what was read
+ok   the next run builds the edited sources
+ok   and the run after it uses them
+ok   a failed llvm-link fails the run
+ok   a failed build leaves no entry
+ok   nor a partial or temporary file
+ok   the same flags then build the runtime
+ok   PYSTACHY_CFLAGS: an entry of their own
+ok   PYSTACHY_OPT=-all: built
+ok   PYSTACHY_OPT: an entry of its own
+ok   the same passes turned off by name: the same entry
+ok   without them, the first entry is used
+ok   opt changed: built again
+ok   the new entry replaces the one of the old opt
+ok   and used then
+ok   the compiler changed: built again
+ok   the compiler edited, the same size, its mtime set back: built again
+ok   the new entry replaces the old compiler's
+ok   run by name through PATH, past a directory and a file that is not executable: the cache is used
+ok   run by name through a symbolic link: the cache is used
+ok   the same entries
+ok   the tools found through PATH, past a directory named clang: built with them
+ok   an entry of their own
+ok   and used then
+ok   the same entries
+ok   no partial or temporary file is left
+ok   pystachy ext builds pyembed.c and pyext.c once, beside the cached runtime
+ok   and python3.13 loads the module
+ok   and uses them then
+ok   the runtime's entries are the same
+ok   no partial or temporary file is left
+ok   a first run builds the JIT runner beside the runtime, which runs the program
+ok   one runner in the cache
+ok   the next run uses it
+ok   an edit of lljit.c: built again
+ok   and the new runner replaces the old
+ok   a runner that the run may not execute: lli runs the program
+ok   a runner that cannot be built: lli runs the program, silently
+ok   and later runs do not build it again
+ok   lljit.c repaired: built and used again
+ok   a runner removed before the run becomes it: lli runs the same bitcode
+ok   the next run builds it again
+ok   PYSTACHY_JIT_LAUNCHER=lli: lli runs the program
+ok   an lli that is a script, as a wrapper may be: lli runs the program
+ok   one runner in the cache
+ok   the runtime's entries are the same
+ok   no partial or temporary file is left
+ok   a tool not settled: a run builds a runtime of its own
+ok   and publishes nothing
+ok   and leaves nothing
+ok   an AOT build links a runtime of its own into the program, and builds no precompiled runtime
+ok   and publishes no runtime
+ok   and leaves nothing
+ok   pystachy ext builds a runtime and glue of its own
+ok   and python3.13 loads the module
+ok   and publishes no runtime
+ok   nor glue
+ok   and leaves nothing
+ok   a build killed after opt ends the run
+ok   and writes no entry
+ok   the next run builds the runtime
+ok   and its entry replaces the old
+95 passed, 0 failed
+tests/cache.sh "python3.13 -m pystachy"
+-- the compiler: python3.13 -m pystachy
+ok   a first run builds the runtime
+ok   one entry: a .bc and its .o
+ok   no partial or temporary file is left
+ok   the shared library is cached beside the .o
+ok   and lli loads it
+ok   a run that finds no shared library makes it from the .o, and builds no runtime
+ok   and caches it
+ok   a run that may not execute the cached library builds no runtime
+ok   and lli links the .o instead
+ok   nothing changed: the cache is used
+ok   the same entry, not written again
+ok   the hashes of settled files are kept
+ok   the AOT tier uses the cache, and builds its precompiled runtime
+ok   the AOT tier writes no runtime entry
+ok   the precompiled runtime is cached beside the runtime: object, interface, late module
+ok   the next AOT build links it, as it is
+ok   a precompiled runtime that cannot be built: the build links the runtime into the program, silently
+ok   and leaves its .fail beside the runtime
+ok   and no partial or temporary file
+ok   later AOT builds do not try again, and link the runtime into the program
+ok   without its .fail, the next AOT build builds it
+ok   and writes no runtime entry
+ok   the same tools through another path (a symbolic link): the cache is used
+ok   the same entry
+ok   an edit of runtime.py of the same size, its mtime set back: built again
+ok   the new entry replaces the old
+ok   and removes the old runtime's precompiled runtime
+ok   the next AOT build builds the new runtime's
+ok   and its shared library the old one's
+ok   an edit of runtime.c: built again
+ok   an edit of ryu/common.h, which runtime.c includes: built again, from the home's ryu/
+ok   an edit of mpz/mpz.c, which runtime.c includes: built again, from the home's mpz/
+ok   and used then
+ok   runtime.py and runtime.c edited while the runtime is built: it holds what was read
+ok   the next run builds the edited sources
+ok   and the run after it uses them
+ok   a failed llvm-link fails the run
+ok   a failed build leaves no entry
+ok   nor a partial or temporary file
+ok   the same flags then build the runtime
+ok   PYSTACHY_CFLAGS: an entry of their own
+ok   PYSTACHY_OPT=-all: built
+ok   PYSTACHY_OPT: an entry of its own
+ok   the same passes turned off by name: the same entry
+ok   without them, the first entry is used
+ok   opt changed: built again
+ok   the new entry replaces the one of the old opt
+ok   and used then
+ok   the compiler changed: built again
+ok   the compiler edited, the same size, its mtime set back: built again
+ok   the new entry replaces the old compiler's
+ok   a compiler component changed: built again
+ok   a component edited, the same size, its mtime set back: built again
+ok   the new entry replaces the old component's
+ok   python3 pystachy.py opens ./pystachy.py, not the one on PATH: the cache is used
+ok   the same entries
+ok   the tools found through PATH, past a directory named clang: built with them
+ok   an entry of their own
+ok   and used then
+ok   the same entries
+ok   no partial or temporary file is left
+ok   pystachy ext builds pyembed.c and pyext.c once, beside the cached runtime
+ok   and python3.13 loads the module
+ok   and uses them then
+ok   the runtime's entries are the same
+ok   no partial or temporary file is left
+ok   a first run builds the JIT runner beside the runtime, which runs the program
+ok   one runner in the cache
+ok   the next run uses it
+ok   an edit of lljit.c: built again
+ok   and the new runner replaces the old
+ok   a runner that the run may not execute: lli runs the program
+ok   a runner that cannot be built: lli runs the program, silently
+ok   and later runs do not build it again
+ok   lljit.c repaired: built and used again
+ok   a runner removed before the run becomes it: lli runs the same bitcode
+ok   the next run builds it again
+ok   PYSTACHY_JIT_LAUNCHER=lli: lli runs the program
+ok   an lli that is a script, as a wrapper may be: lli runs the program
+ok   one runner in the cache
+ok   the runtime's entries are the same
+ok   no partial or temporary file is left
+ok   a tool not settled: a run builds a runtime of its own
+ok   and publishes nothing
+ok   and leaves nothing
+ok   an AOT build links a runtime of its own into the program, and builds no precompiled runtime
+ok   and publishes no runtime
+ok   and leaves nothing
+ok   pystachy ext builds a runtime and glue of its own
+ok   and python3.13 loads the module
+ok   and publishes no runtime
+ok   nor glue
+ok   and leaves nothing
+ok   a build killed after opt ends the run
+ok   and writes no entry
+ok   the next run builds the runtime
+ok   and its entry replaces the old
+97 passed, 0 failed

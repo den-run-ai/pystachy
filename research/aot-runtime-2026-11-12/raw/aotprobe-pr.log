@@ -1,0 +1,12 @@
+hosted: precompiled runtimes for pys_plain 1, 0, 0, 0, 0; the plain executable keeps none of 12 opt-in symbols, the python-int one 12 and the dynamic-any one 12; outputs as CPython's
+hosted: -O2's pys_list_set stores 1 time in the plain program, 3 times in the python-int one
+hosted: allocations after -O2: none where no object escapes, 1 where a list keeps them; the late step inlines each
+hosted: with PYSTACHY_CFLAGS=-O0 (a runtime whose pys_new is optnone), the late step runs and the output is CPython's
+hosted: held objects stay alive through collections, also under GC stress; their holders come from pys_alloc, the objects from pys_new
+hosted: collections over 150 MiB of small lists: 4 in the default 32 MiB window, 136 with PYSTACHY_GC_MIN=1, 0 with 256; invalid values keep the default
+native: precompiled runtimes for pys_plain 1, 0, 0, 0, 0; the plain executable keeps none of 12 opt-in symbols, the python-int one 12 and the dynamic-any one 12; outputs as CPython's
+native: -O2's pys_list_set stores 1 time in the plain program, 3 times in the python-int one
+native: allocations after -O2: none where no object escapes, 1 where a list keeps them; the late step inlines each
+native: with PYSTACHY_CFLAGS=-O0 (a runtime whose pys_new is optnone), the late step runs and the output is CPython's
+native: held objects stay alive through collections, also under GC stress; their holders come from pys_alloc, the objects from pys_new
+native: collections over 150 MiB of small lists: 4 in the default 32 MiB window, 136 with PYSTACHY_GC_MIN=1, 0 with 256; invalid values keep the default
