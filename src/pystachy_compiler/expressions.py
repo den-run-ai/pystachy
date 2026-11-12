@@ -7,6 +7,7 @@ from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists,
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, short
+from src.pystachy_compiler.patterns import pattern_expr, pattern_static
 from src.pystachy_compiler.reflection import VARS_USES, refl_annotated, refl_body, refl_fold, refl_reflective
 from src.pystachy_compiler.specs import (
     BIG,
@@ -193,6 +194,8 @@ def gen_static(self, n: Node) -> int:
     # its argument types, can so dispatch on them as unannotated code does, also with None is
     # x, x == None and x != None for its parameter x (not where x's class defines __eq__ or
     # __ne__). Elsewhere == runs: the branch it would remove may give a list its item type.
+    if n.kind == "matchseq" or n.kind == "matchclass":
+        return pattern_static(self, n)
     if self.reflcopies > 1 and refl_fold(n) >= 0:
         return refl_fold(n)  # (a test of the literals an unrolled copy reads: reflection.py)
     k = n.kind
@@ -281,7 +284,11 @@ def gen_static_len(self, n: Node) -> int:
 def gen_static_reads(self, n: Node) -> None:
     # test n, which static() decides, still reads the classes of its isinstance() tests where it
     # runs, up to where and/or stops (see isinst_reads)
-    if n.kind == "unary" and n.s == "not":
+    if n.kind == "matchseq" or n.kind == "matchclass":
+        self.expr(n.kids[0], "")
+        if n.kind == "matchclass":
+            self.isinst_reads(n.kids[1])
+    elif n.kind == "unary" and n.s == "not":
         self.static_reads(n.kids[0])
     elif n.kind == "boolop":
         self.static_reads(n.kids[0])
@@ -787,6 +794,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     self.line = n.line
     want = self.rec_type(want)
     k = n.kind
+    if k in ["matchbind", "matchconst", "matchvalue", "matchseq", "matchclass", "matchfield", "matchunsupported"]:
+        return pattern_expr(self, n)
     resultsoft = resultsoft or n is self.soft
     if returnctx and k in ["binop", "boolop", "ifexp"]:
         # Contextual return inference follows fresh literal trees and calls.

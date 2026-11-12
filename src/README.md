@@ -8,7 +8,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 
 | Area | Modules and responsibility |
 |---|---|
-| Syntax | [lexer](pystachy_compiler/lexer.py), [parser](pystachy_compiler/parser.py), [syntax](pystachy_compiler/syntax.py): tokens, parsing and AST nodes. |
+| Syntax | [lexer](pystachy_compiler/lexer.py), [parser](pystachy_compiler/parser.py), [syntax](pystachy_compiler/syntax.py): tokens, parsing and AST nodes; [patterns](pystachy_compiler/patterns.py): bounded structural patterns lowered to typed branches. |
 | Imports | [loader](pystachy_compiler/loader.py), [module](pystachy_compiler/module.py): source discovery, qualification and module records. [argparse_schema](pystachy_compiler/argparse_schema.py) generates typed Namespace classes; [ctypes_schema](pystachy_compiler/ctypes_schema.py) lowers bounded ctypes declarations to the existing C FFI. |
 | Analysis | [analysis](pystachy_compiler/analysis.py), [scope](pystachy_compiler/scope.py), [flow](pystachy_compiler/flow.py): AST queries, lexical checks and definite assignment. |
 | Compilation | [gen](pystachy_compiler/gen.py), [program](pystachy_compiler/program.py), [functions](pystachy_compiler/functions.py): compiler state, program orchestration and function compilation. |

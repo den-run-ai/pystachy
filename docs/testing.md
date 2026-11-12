@@ -39,6 +39,7 @@ Run these from the repository root:
 | `make irsame REF=<commit>` | Compare IR, diagnostics and exit status with a reference compiler for a refactor. |
 | `make bench-extended-check` | Check the extended benchmark runner and CPython/JIT/AOT checksums; no timing thresholds. |
 | `make bench-pyperformance-check` | Check the pyperformance runner, ported benchmarks' CPython/JIT/AOT output, and shared pytest API assertions; no timing thresholds. |
+| `make bench-match-check` | Check literal, tuple and dataclass `match` dispatch against handwritten branches under CPython/JIT/AOT, including mixed and skewed inputs; no timing thresholds. |
 | `make test-pytest-workloads` | Run independent example and pyperformance pytest suites in JIT/AOT, with original CPython pytest as the oracle; no skipped or xfailed workload cases. |
 | `make example-cli-check` | Check real example command lines against pinned CPython, JIT and AOT, plus JSON repair process cases, a native replay of the JSON repair corpus and the agent's loopback HTTP transport. |
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
@@ -414,7 +415,14 @@ It also runs the shared pytest API assertions for all 26 delivered workloads.
 The group's artifact includes `pyperformance-smoke.json` and `pytest-pyperformance.json`. This is correctness coverage,
 with no timing thresholds or claim to run the upstream pyperf harness.
 
-The `hosted` CI job runs 19 independent example API suites through
+The same group runs `make bench-match-check`: six workload/distribution combinations
+validate literal, tuple and dataclass patterns against equivalent handwritten branches
+under CPython, JIT and AOT. The controller rejects mismatched checksums, work counts and
+unexpected output. Its `match-dispatch-smoke.json` artifact is correctness evidence;
+paired performance and optional pyperf measurements have separate reproduction commands
+in [the match benchmark](../bench/match_dispatch/README.md).
+
+The `hosted` CI job runs 20 independent example API suites through
 `make test-pytest-workloads PYTEST_WORKLOAD_ARGS='--group examples'`, reusing the
 verified compiler. Splitting these checks between existing jobs leaves more room
 within the 15-minute budget without adding workers. `pytest-workloads.json` records every
@@ -522,7 +530,7 @@ from the budget. Each test runner uses at most four processes within its worker.
 | Linux bootstrap | 2 | x86-64 and ARM64 compiler/runtime fixed points; ARM64 installer, FFI, thread, stack, JIT runner and sanitizer linkage smoke. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs and native runner qualification. |
 | Native AOT | 2 | Disjoint halves of the **complete** corpus in AOT. |
-| Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution. |
+| Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution, the second runtime ABI, cache and GC controls. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles. |
 | Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks. |
@@ -583,7 +591,7 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `ubsan-0`, `ubsan-1`, `ubsan-2`, `ubsan-3` | Sanitized compiler/runtime; four disjoint quarters of the JIT/AOT suite. |
 | `gc-self` | Collector-stressed self-compilation and identical-IR check. |
 | `gc-ir-0`, `gc-ir-1` | Two disjoint halves of the corpus: the compiler collecting every 1,000 allocations gives stage 2's IR, messages and exit status for every case and stage 2's `check` results. Both halves also compare `runtime.py`. |
-| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. Execution uses its own weighted partition, independently of the identity halves. |
+| `gc-jit-0`, `gc-jit-1` | Two disjoint halves of the JIT suite with program GC stress, one case in 16 of each half with the compiler stressed too. Execution uses its own weighted partition, independently of the identity halves. The x86-64 `gc-jit-0` job then runs runtime ABI, cache and GC controls. |
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
@@ -912,6 +920,9 @@ compilation overhead and does not establish that lookup tables are deeply immuta
 
 The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make check-fast lint`,
 report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
+When Lean validation is selected, Lint builds and audits the pinned checker first;
+`make check-fast` then runs all boundary test groups once with missing checkers treated as
+errors. Ordinary local `make check-fast` retains its existing optional Lean behavior.
 The verification-harness and compiler-state control suites overlap as two isolated
 unittest processes. Lint waits for both, prints their logs separately and fails if
 either suite fails; the same coverage runs for documentation PRs, main and manual runs.
@@ -921,9 +932,13 @@ reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
 Generated-user and generated-runtime ASan controls run in the existing x86-64
 `contracts` job on code PRs, main pushes and manual runs, using LLVM 18 and its
 compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;
-Lint discovers every other `test_runtime_*.py` file. This preserves the code
-verification coverage with the same jobs, workers and 15-minute timeouts.
-The ASan step is required by the contracts job's result and the aggregate gate;
+every other `test_runtime_*.py` file runs in the second native JIT/variant worker on PRs
+and the x86-64 `gc-jit-0` job on full runs. Those controls retain real-driver C-cache
+integration, sanitizer setup, and both positive and negative CPU-buffer ownership probes.
+They run after each worker's existing checks, with at most the C-cache test's two
+concurrent producers. This preserves code verification coverage with the same jobs,
+workers and 15-minute timeouts while keeping native controls out of Lint's budget.
+Each controls step is required by its job's result and the aggregate gate;
 documentation-only PRs use the existing plan that skips native verification.
 
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
@@ -947,7 +962,7 @@ Python/development dependency pins. Missing merge history runs the check;
 documentation-only PRs skip it. The selector has temporary-Git-history controls.
 It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
 `make check-lean-boundary`; no extra PR job is added. The x86_64 verification
-group `opt-in` on PRs, and `runtime-cache` on main and manual runs, run
+group `opt-in` on PRs, and `gc-jit-1` on main and manual runs, run
 `make check-lean-corpus` with the same archive: the corpus tool's tests
 (`tools/test_lean_corpus.py`), then each dynamic-`Any` test program compiled by
 the hosted compiler, failing unless Lean proves every dynamic payload read guarded
@@ -965,6 +980,9 @@ coverage; the strict full-corpus guard command remains an investigation tool wit
 unsupported forms, not a passing whole-corpus gate. Arithmetic reports separately
 count actual checked overflow reconstructions and other observed arithmetic.
 All sweeps use two workers within existing jobs and their 15-minute limits.
+On full runs, the corpus and integer proofs start after `gc-jit-1` finishes;
+runtime-cache and program-cache probes retain their own job. This keeps those
+cache checks from sharing a time budget with the complete Lean corpora.
 Lint runs none of these corpora. The bridge's Python tests also run in
 `make check-fast`; they skip executable checks when Lean has not been built.
 The dedicated target requires executable checks and fails if the executable
