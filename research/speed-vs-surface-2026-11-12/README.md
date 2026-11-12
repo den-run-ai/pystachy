@@ -86,6 +86,8 @@ excluded: AOT removes its timed loop.
 
 ## Files
 
+- `export/report.pdf`: the print edition, one topic per page (`print/` builds it); `export/report.html`
+  and `report.md` keep the dashboard layout.
 - `followup/`: the same measurements on main `8434a911` (12 November), the two
   regressions reproduced with their mechanisms, blocker groups and the dynamic `Any` opt-in.
 

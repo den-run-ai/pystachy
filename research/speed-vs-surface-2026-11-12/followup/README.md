@@ -104,6 +104,16 @@ instructions inclusive on main). Marking (`scan`) grew from 0.8M to 37.8M instru
 
 Neither benchmark is in the Performance smoke workflow's eleven workloads.
 
+## Paired timing of alpha.5 and main
+
+`raw/timing-paired-a5-main.json.gz` times alpha.5 and main together with CPython (7 runs per
+port, 9 per microbenchmark, the parent report's method). Main's indices were 0.986 times
+alpha.5's for the core ports (11.14 against 11.29) and 1.004 times for the microbenchmarks (18.60
+against 18.52). The same alpha.5 build measured 5% lower on the core index than in the history
+run, and single ports up to 40% slower (raytrace), so main is compared with alpha.5 only within
+this run. `barnes_hut` alternates between about 14 ms and 25-28 ms per run; 15 interleaved runs
+(`raw/retime-barnes_hut.json`) give medians of 14.42-14.48 ms for Nov 10, alpha.5 and main.
+
 ## Compile cost
 
 `pystachy ir bench/nbody.py` takes 5-15 ms at the first sample, alpha.2 and main; its IR
