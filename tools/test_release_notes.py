@@ -89,6 +89,10 @@ class UnwrapTests(unittest.TestCase):
                 self.assertEqual(notes.unwrap(text), text)
                 self.assertEqual(notes.check_text(text), [])
 
+    def test_keeps_display_math_blocks(self):
+        text = "Summary.\n\n$$\nE = mc^2\n+ x\n$$\n"
+        self.assertEqual(notes.unwrap(text), text)
+
     def test_keeps_fenced_code_nested_in_a_list_item(self):
         text = "Summary.\n\n1. Run:\n\n    ```python\n    print(1)\n    print(2)\n    ```\n\n2. Done.\n"
         self.assertEqual(notes.unwrap(text), text)

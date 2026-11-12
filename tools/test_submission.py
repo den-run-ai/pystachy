@@ -57,7 +57,9 @@ class FormatTests(unittest.TestCase):
         self.assertTrue(check.validate("Small change", body))
 
     def test_paragraphs_and_list_items_stay_on_one_line(self):
-        wrapped = ("A supported input\nfails.", "- First item\n  wraps.", "1. Step\ncontinues.")
+        wrapped = ("A supported input fails whenever the runtime\nreads it twice.",
+                   "- The first item explains the change in detail\n  and wraps.",
+                   "1. Build the compiler and run the focused tests\ncontinues.")
         for text in wrapped:
             with self.subTest(text=text):
                 errors = check.validate("Small change", PR.replace("Preserve the value.", text), True)
@@ -69,6 +71,8 @@ class FormatTests(unittest.TestCase):
                    "1. Run:\n\n    ```python\n    print(1)\n    print(2)\n    ```\n\n2. Done.",
                    "Results:\n\ncase | ms\n--- | ---:\nfast | 1.2\nslow | 9.8",
                    "Notes\n=====\n\nOne line.",
+                   "Display:\n\n$$\nE = \\sum_{i=1}^{n} x_i^2 + \\frac{\\alpha}{\\beta} \\cdot \\gamma\n$$",
+                   "Short lines\nare tolerated.",
                    "Preserve the value.<!-- note\nspanning lines -->")
         for text in allowed:
             with self.subTest(text=text):

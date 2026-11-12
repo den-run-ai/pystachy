@@ -27,7 +27,8 @@ PRERELEASE = ("As a prerelease, this version does not move GitHub's latest relea
               "Docker's `latest` tag.")
 
 # Fences may be indented under a list item; treating any indented fence as code keeps it verbatim.
-FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})")
+# GitHub also renders $$ ... $$ blocks as display math.
+FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,}|\$\$)")
 HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]|$)")
 LIST_ITEM = re.compile(r"^ *(?:[-*+]|[0-9]{1,9}[.)])(?:[ \t]|$)")
 RULE = re.compile(r"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")

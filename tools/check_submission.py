@@ -36,9 +36,17 @@ ACK_BODY = (ACK_MARKER + "\nThanks for contributing! Please reply once to acknow
             "This reminder is **not a blocking check**.")
 
 
+PROSE_LINE = 40  # wrapped prose has long lines; short ones are tolerated
+
+
 def wrapped(text):
-    """Return whether a paragraph or list item continues on another line."""
-    return any(kind == "text" and len(lines) > 1 for kind, lines in blocks(text))
+    """Return whether a paragraph or list item continues after a long line.
+
+    GitHub shows each newline in a body as a line break. Requiring a long line before the
+    break keeps rare misreadings of short, code-like lines from blocking a submission.
+    """
+    return any(kind == "text" and any(len(line.strip()) >= PROSE_LINE for line in lines[:-1])
+               for kind, lines in blocks(text))
 
 
 def validate(title, body, is_pr=False):
