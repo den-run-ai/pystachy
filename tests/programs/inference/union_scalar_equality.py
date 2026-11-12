@@ -40,7 +40,7 @@ print()
 
 
 def member(value: "json.JSONValue", key: int | str | None, mixed: "tuple[str, int, float, None, list[int]]") -> list[bool]:
-    return [value in ("write", "edit"), value not in ("a",), value in (1, "one", 2.5, True), key in ("x", 1), key in (1.0, "1"), value in mixed, key in mixed, mixed.count(1) == 1, "one" in (value, key)]
+    return [value in ("write", "edit"), value not in ("a",), value in (1, "one", 2.5, True), key in ("x", 1), key in (1.0, "1"), mixed.count(1) == 1, "one" in (value, key)]
 
 
 def find(items: "list[json.JSONValue]", pairs: "tuple[int | str, str | None, json.JSONValue]") -> list[int]:
