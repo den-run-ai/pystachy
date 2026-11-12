@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
-from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
+from src.pystachy_compiler.diagnostics import LINES, Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.module import Mod
@@ -990,8 +990,9 @@ def gen_join(self, a: str, b: str) -> str:
         if j in self.classes:
             return "type[" + j + "]"
         # (classes without a common base: any class's, type[object]; a module that opts in to
-        # dynamic Any keeps the Any values it has always made of them, unless one is typed so)
-        return "type[object]" if clsof(a) == "object" or clsof(b) == "object" or not self.dyn_policy(self.line) else ""
+        # dynamic Any keeps the Any values it has always made of them, unless one is typed so
+        # or the module names type[C], which no module compiled before class objects were typed)
+        return "type[object]" if clsof(a) == "object" or clsof(b) == "object" or not self.dyn_policy(self.line) or self.class_value_annotated(self.line // LINES) else ""
     if a == "None" or b == "None":
         return self.optional(b if a == "None" else a)
     if is_opt(a) or is_opt(b):
