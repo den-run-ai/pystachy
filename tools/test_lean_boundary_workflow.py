@@ -1,6 +1,7 @@
 """Exercise Lean workflow selection, corpus placement and dependency coverage."""
 
 import ast
+from collections import Counter
 import os
 import re
 import shlex
@@ -116,28 +117,70 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
             with self.subTest(event=event):
                 self.assertTrue(self.selected(event))
 
-    def test_corpus_proof_uses_pr_opt_in_and_full_runtime_cache_with_the_same_lean(self):
+    def test_lint_runs_every_boundary_group_once_and_requires_selected_checkers(self):
+        lint = yaml.load((ROOT / ".github/workflows/lint.yml").read_text(), Loader=yaml.BaseLoader)
+        steps = lint["jobs"]["lint"]["steps"]
+        builds = [step for step in steps if "lake build" in step.get("run", "")]
+        self.assertEqual(len(builds), 1)
+        build = builds[0]
+        self.assertEqual(build["if"], "steps.lean-boundary.outputs.run == 'true'")
+        self.assertIn("cd tools/lean_boundary\n", build["run"])
+        self.assertNotIn("continue-on-error", build)
+        checks = [step for step in steps if "make check-fast" in step.get("run", "")]
+        self.assertEqual(len(checks), 1)
+        check = checks[0]
+        self.assertEqual(check["run"], "make check-fast lint")
+        self.assertNotIn("if", check)
+        self.assertNotIn("continue-on-error", check)
+        self.assertLess(steps.index(build), steps.index(check))
+        self.assertEqual(check["env"]["LEAN_BOUNDARY_REQUIRED"],
+                         "${{ steps.lean-boundary.outputs.run != 'false' && '1' || '' }}")
+        commands = "\n".join(step.get("run", "") for step in steps)
+        self.assertNotIn("make check-lean-boundary", commands)
+
+        def patterns(target):
+            # Expand the actual make targets without invoking their tests or LLVM.
+            result = subprocess.run(["make", "--dry-run", "--no-print-directory", target,
+                                     "PY=python3", "PYSTACHY_LLVM=/unused"],
+                                    cwd=ROOT, capture_output=True, text=True, check=True, timeout=10)
+            found = []
+            for line in result.stdout.splitlines():
+                args = shlex.split(line)
+                if "unittest" in args and "-p" in args:
+                    found.append(args[args.index("-p") + 1])
+            return Counter(found)
+
+        boundary, fast = patterns("check-lean-boundary"), patterns("check-fast")
+        self.assertTrue(boundary)
+        self.assertEqual({pattern: fast[pattern] for pattern in boundary}, boundary)
+        self.assertTrue(all(count == 1 for count in boundary.values()))
+
+    def test_corpus_proof_uses_pr_opt_in_and_full_gc_jit_with_the_same_lean(self):
         def lean_step(steps, command):
             return next(step for step in steps if command in step.get("run", ""))
         lint = yaml.load((ROOT / ".github/workflows/lint.yml").read_text(), Loader=yaml.BaseLoader)
         ci = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
         verification = ci["jobs"]["verification"]
-        boundary = lean_step(lint["jobs"]["lint"]["steps"], "make check-lean-boundary")
+        boundary = lean_step(lint["jobs"]["lint"]["steps"], "lake build")
         corpus = lean_step(verification["steps"], "make check-lean-corpus")
-        # (the same pinned release archive, checked against the same digest, in both jobs)
-        def pins(run):
-            return (re.findall(r"https://github\.com/leanprover/lean4/releases/download/\S+?\.tar\.zst", run),
-                    re.findall(r"\b[0-9a-f]{64}\b", run), "sha256sum --check -" in run)
-        self.assertEqual(pins(corpus["run"]), pins(boundary["run"]))
-        self.assertEqual([len(found) for found in pins(boundary["run"])[:2]], [1, 1])
+        # Both jobs use one checksum-validating helper, caching only the pinned archive.
+        import setup_lean
+        for job in (lint["jobs"]["lint"], verification):
+            caches = [step for step in job["steps"] if step.get("uses", "").startswith("actions/cache@")]
+            self.assertEqual(len(caches), 1)
+            self.assertEqual(caches[0]["with"]["path"], "~/.cache/pystachy/lean")
+            self.assertTrue(caches[0]["with"]["key"].endswith(setup_lean.SHA256))
+            self.assertNotIn("restore-keys", caches[0]["with"])
+        for step in (corpus, boundary):
+            self.assertIn('python3 tools/setup_lean.py --output "$lean_boundary_dir"', step["run"])
+            self.assertIn('PATH="$lean_bin:$PATH"', step["run"])
         self.assertEqual(corpus["if"], "matrix.machine == 'x86_64' && "
-                                       "(matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling' || matrix.group == 'contracts')")
+                                       "(matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')")
         for event in ("pull_request", "push", "workflow_dispatch"):
             with self.subTest(event=event):
                 selected = [(row["machine"], row["group"]) for row in matrix_rows(verification, event)
                             if self.selects_matrix_row(corpus["if"], row)]
-                group = "opt-in" if event == "pull_request" else "runtime-cache"
-                self.assertEqual(set(selected), {("x86_64", group), ("x86_64", "contracts")} if event == "pull_request" else {("x86_64", "runtime-cache"), ("x86_64", "scaling"), ("x86_64", "contracts")})
+                self.assertEqual(set(selected), {("x86_64", "contracts")} if event == "pull_request" else {("x86_64", "gc-jit-1"), ("x86_64", "scaling"), ("x86_64", "contracts")})
         # (two workers, explicitly: the runner would otherwise start up to four)
         self.assertIn("LEAN_CORPUS_FLAGS='--jobs 2 ", corpus["run"])
         self.assertEqual(verification["timeout-minutes"], "15")
@@ -159,11 +202,12 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         make.write_text('#!/bin/sh\nprintf "%s\\n" "$1"\n'
                         'if [ "$1" = "check-lean-guards" ]; then printf "%s\\n" "$2"; fi\n')
         make.chmod(0o755)
-        for group, expected in (("opt-in", ["check-lean-corpus", "check-lean-int", "check-lean-storage"]),
-                                ("runtime-cache", ["check-lean-corpus", "check-lean-int"]),
+        for group, expected in (("opt-in", []),
+                                ("gc-jit-1", ["check-lean-corpus", "check-lean-int"]),
+                                ("gc-jit-0", []), ("runtime-cache", []),
                                 ("scaling", ["check-lean-storage"]), ("contracts", ["check-lean-guards"]), ("hosted", [])):
             with self.subTest(group=group):
-                env = dict(os.environ, VERIFY_GROUP=group, lean_boundary_dir=str(self.directory),
+                env = dict(os.environ, VERIFY_GROUP=group, lean_bin=str(self.directory / "lean-bin"),
                            PATH=str(bin_dir) + os.pathsep + os.environ["PATH"])
                 completed = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c", selector],
                                            env=env, capture_output=True, text=True, timeout=10)
@@ -197,7 +241,7 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
                 with self.subTest(event=event, **row):
                     opted = row["group"] == "opt-in" or row["group"].startswith(
                         ("dynany-optin-", "python-int-optin-"))
-                    lean_full = row["machine"] == "x86_64" and row["group"] == "runtime-cache"
+                    lean_full = row["machine"] == "x86_64" and row["group"] == "gc-jit-1"
                     self.assertEqual(self.selects_matrix_row(dependency["if"], row), opted or lean_full)
 
     def test_missing_merge_parent_runs_lean(self):
