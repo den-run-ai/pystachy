@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 2
+          fetch-depth: 3  # controls commit, original diagnostic, pinned 8434 base
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         with:
           python-version-file: .python-version
@@ -30,14 +30,14 @@ jobs:
         run: tools/setup.sh --minimal
       - name: Check diagnostic harness
         run: python3 -m unittest discover -s tools -p test_arm_listprobe_diagnostic.py
-      - name: Repeat original and instrumented ARM probes
-        run: python3 tools/arm_listprobe_diagnostic.py --repetitions 24
+      - name: Check isolated candidate and nine native control cases
+        run: python3 tools/arm_listprobe_isolation_controls.py
       - name: Preserve every diagnostic outcome
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: arm-listprobe-diagnostic-${{ github.sha }}
-          path: build/arm-listprobe-diagnostic/
+          name: arm-listprobe-isolation-controls-${{ github.sha }}
+          path: build/arm-listprobe-isolation-controls/
           if-no-files-found: error
           retention-days: 7
 
