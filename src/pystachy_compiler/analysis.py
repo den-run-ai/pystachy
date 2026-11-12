@@ -896,6 +896,20 @@ def module_ints(mods: list[Mod], at: dict[str, int]) -> dict[str, str]:
     return out
 
 
+def module_anns(mods: list[Mod], out: dict[str, Node]) -> None:
+    # The module globals that one module-level annotated assignment binds (x: T = v, also
+    # x: Final[T] = v), which nothing else binds: their annotations, by which field inference
+    # types a read of the global (Gen.guess). As for module_strs, a name that any other binding
+    # writes is not one.
+    count: dict[str, int] = {}
+    for m in mods:
+        constant_writes(m.body, count)
+    for m in mods:
+        for st in m.body.kids:
+            if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name" and count.get(st.kids[0].s, 0) == 1:
+                out[st.kids[0].s] = st.kids[1]
+
+
 def module_strs(mods: list[Mod], tuples: dict[str, list[str]]) -> dict[str, str]:
     # The module globals that one direct module-level assignment binds to a str literal, or a
     # from-import of another such name: their text, which str.format() of the name reads as
