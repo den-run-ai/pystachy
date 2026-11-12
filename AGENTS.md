@@ -321,11 +321,12 @@ Lessons from reviewed changes (links are evidence, not claims about today's open
 - Add no tool attribution trailers, `Co-Authored-By`, session links or generated-by
   footers to commits, PR bodies or comments. Disclose substantive AI assistance in Change or a PR comment, per
   [CONTRIBUTING.md](CONTRIBUTING.md#ai-assistance-and-review).
-- Follow the [submission format](CONTRIBUTING.md#issues-and-pull-requests): titles
+- Write issues, PRs, docs and release notes per the [writing guide](docs/writing.md).
+  Follow the [submission format](CONTRIBUTING.md#issues-and-pull-requests): titles
   <=64 characters, bodies <=200 words, three filled sections, no checklist.
   Give the problem, bounded outcome and acceptance/validation; link code and evidence
   instead of copying history. Separate local/CI results and label old measurements.
-  Use structured bodies or `--body-file`; pin code links to commits. Read back published
+  Use `--body-file` with one line per paragraph; pin code links to commits. Read back published
   metadata and compare the tree/diff to the intended base, including file modes.
 - For [releases](docs/releasing.md), require the gate on the release commit and verify
   downloaded archives/images, checksums and version/commit. Smoke tests must prove the
