@@ -274,6 +274,10 @@ lib/statistics.py is CPython 3.13.16's Lib/statistics.py with the edits lib/READ
 marked in the source; it is derived from Python and is used under the same license and copyright
 notice.
 
+lib/platform.py is Pystachy's own code, written after CPython 3.13.16's Lib/platform.py
+(lib/provenance.md); it keeps the docstrings and the function _unknown_as_blank() it copies
+from it. It is derived from Python and is used under the same license and copyright notice.
+
 lib/random.py is CPython 3.13.16's Lib/random.py with the edits lib/README.md lists, each
 marked in the source. lib/_pyrandom.py
 is Pystachy's own _random.Random for it, written after Modules/_randommodule.c and the float hash
