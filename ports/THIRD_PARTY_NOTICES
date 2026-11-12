@@ -554,7 +554,7 @@ Kuhn's code that wcwidth derives from.
 pyperformance (bench/pyperformance/)
 ------------------------------------
 
-The Python files in bench/pyperformance/ are the run_benchmark.py files of 25 benchmarks from
+The Python files in bench/pyperformance/ are the run_benchmark.py files of 28 benchmarks from
 pyperformance 1.14.0 (https://github.com/python/pyperformance), edited where
 bench/pyperformance/README.md lists (each edit is marked "Pystachy port:"); that README records
 the sdist's and each file's SHA-256. pyperformance is used under the MIT License, whose text is in
