@@ -4,6 +4,7 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.names import short
+from src.pystachy_compiler.syntax import made_var, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
@@ -198,6 +199,13 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
             # A fresh immutable tuple of boxes; an existing list or tuple's
             # numeric storage must never be reinterpreted as pointer slots.
             return Val(self.rt("pys_vtuple_box", "ptr", [f"ptr {v.v}"]), t)
+        if is_union(et) and self.vtuple_item(et) and self.uboxes(targs(v.t)[0], et):
+            # a tuple[A, ...] where a tuple[A | B, ...] is wanted: a new tuple of the items' union
+            # boxes (its slots hold A's objects, which a union's slots cannot be read as), as a
+            # display converts a list of another item type (containers.py)
+            item = made_var("__pys_item", self.line)
+            boxes = self.listcomp(mk("listcomp", "", self.line, [item, item, self.vnode(v)]), self.ctype("list", [et]))
+            return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {boxes.v}"]), t)
     if v.t == "None" and t in self.classes:
         return Val("null", t)
     if v.t in self.classes and t in self.classes and self.derives(v.t, t):

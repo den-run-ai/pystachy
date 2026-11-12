@@ -58,8 +58,8 @@ the ordering method at the first unequal pair; `hash()` hashes each with its cla
 by identity where the class defines neither `__eq__` nor `__hash__`. A tuple of a subclass's
 objects is one of its base class's. Objects of a [union](#native-reference-unions) of classes
 are items too (`tuple[Capsule | SourceDep, ...]`), which narrow with `isinstance()` as a loop
-reads them; such a tuple does not compare or `repr()` yet, and a `tuple[A, ...]` is no
-`tuple[A | B, ...]`.
+reads them; such a tuple does not compare or `repr()` yet. A `tuple[A, ...]` where a
+`tuple[A | B, ...]` is wanted converts to a new tuple of the items' union boxes.
 Optional scalar elements use boxes when needed; widening an immutable tuple to
 optional elements copies its slots rather than reinterpreting numeric bits as pointers.
 
