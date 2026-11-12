@@ -1,0 +1,74 @@
+'write' write
+'read' other
+1 one
+1.0 one
+True one
+False other
+2.5 float
+None other
+[] other
+{} other
+['write'] other
+{'write': 1} other
+0 other
+nan other
+'' other
+4611686018427387904 other
+-1 other
+1 True [False, True, True, True, True, False, True, True, False, False]
+1 False [False, True, True, True, True, False, False, False, True, False]
+1 'x' [False, True, True, True, True, True, False, True, False, False]
+1 None [False, True, True, True, True, False, False, True, False, False]
+1 '' [False, True, True, True, True, False, False, True, False, False]
+1.0 True [False, True, True, True, True, False, True, True, False, False]
+1.0 False [False, True, True, True, True, False, False, False, True, False]
+1.0 'x' [False, True, True, True, True, True, False, True, False, False]
+1.0 None [False, True, True, True, True, False, False, True, False, False]
+1.0 '' [False, True, True, True, True, False, False, True, False, False]
+'x' True [True, False, False, False, False, False, True, True, False, False]
+'x' False [True, False, False, False, False, False, False, False, True, False]
+'x' 'x' [True, False, False, False, False, True, False, True, False, False]
+'x' None [True, False, False, False, False, False, False, True, False, False]
+'x' '' [True, False, False, False, False, False, False, True, False, False]
+0 True [False, False, False, False, True, False, True, True, False, False]
+0 False [False, False, False, False, True, False, False, False, True, False]
+0 'x' [False, False, False, False, True, True, False, True, False, False]
+0 None [False, False, False, False, True, False, False, True, False, False]
+0 '' [False, False, False, False, True, False, False, True, False, False]
+0.5 True [False, False, False, False, True, False, True, True, False, True]
+0.5 False [False, False, False, False, True, False, False, False, True, True]
+0.5 'x' [False, False, False, False, True, True, False, True, False, True]
+0.5 None [False, False, False, False, True, False, False, True, False, True]
+0.5 '' [False, False, False, False, True, False, False, True, False, True]
+nan True [False, False, False, False, True, False, True, True, False, False]
+nan False [False, False, False, False, True, False, False, False, True, False]
+nan 'x' [False, False, False, False, True, True, False, True, False, False]
+nan None [False, False, False, False, True, False, False, True, False, False]
+nan '' [False, False, False, False, True, False, False, True, False, False]
+'1' True [False, False, False, False, True, False, True, True, False, False]
+'1' False [False, False, False, False, True, False, False, False, True, False]
+'1' 'x' [False, False, False, False, True, True, False, True, False, False]
+'1' None [False, False, False, False, True, False, False, True, False, False]
+'1' '' [False, False, False, False, True, False, False, True, False, False]
+[False, True, False, True] [False, True, False, True]
+True False True False | False True False False | False True True True | False True True True | False True True True | False True False False | False True False True | False True True False | False True False False | False True False False | False True False False | False True False False | False True False False | False True False False | False True False False | False True False False | False True False False | 
+[True, True, False, True, True, False, True, True, False] [True, True, False, True, False, False, False, True, False] [True, True, False, False, False, False, True, True, False] [True, True, False, False, True, False, False, True, False] [True, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, True, True, True, True, True, True, False] [False, True, True, True, False, True, False, True, False] [False, True, True, False, False, True, True, True, False] [False, True, True, False, True, True, False, True, False] [False, True, True, False, False, True, False, True, False] 
+[False, True, True, True, True, True, True, True, False] [False, True, True, True, False, True, False, True, False] [False, True, True, False, False, True, True, True, False] [False, True, True, False, True, True, False, True, False] [False, True, True, False, False, True, False, True, False] 
+[False, True, True, True, True, True, True, True, False] [False, True, True, True, False, True, False, True, False] [False, True, True, False, False, True, True, True, False] [False, True, True, False, True, True, False, True, False] [False, True, True, False, False, True, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, True, True, True, True, True, True, False] [False, True, True, True, False, True, False, True, False] [False, True, True, False, False, True, True, True, False] [False, True, True, False, True, True, False, True, False] [False, True, True, False, False, True, False, True, False] 
+[False, True, False, True, True, True, True, True, False] [False, True, False, True, False, True, False, True, False] [False, True, False, False, False, True, True, True, False] [False, True, False, False, True, True, False, True, False] [False, True, False, False, False, True, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[False, True, False, True, True, False, True, True, False] [False, True, False, True, False, False, False, True, False] [False, True, False, False, False, False, True, True, False] [False, True, False, False, True, False, False, True, False] [False, True, False, False, False, False, False, True, False] 
+[0, 2, 1, 5, 1, 1, 0, 3, 6]
+[-1, 0, 0, -1, 0, 1, 2, 0, 0]
+[exit 0]
