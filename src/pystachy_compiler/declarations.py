@@ -2511,6 +2511,11 @@ def gen_refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
     # here on: so does the field of the class that declares it and of each class deriving from
     # that one, whose objects begin with its fields. Its stores of None compiled so far store a
     # null pointer, which t's None is too (see optional)
+    if self.xtry.startswith("narrow:") and "union[" in t:
+        # (a union isinstance(x, (A, B)) narrowed x to would type the field for code outside
+        # the attempt, also as a container's items ([x]), whether a store gives it its type or a
+        # read's lookahead finds it (if self.x is None: self.x = [x]): declined, see narrows)
+        self.err(f"field '{name}' would take a union that a narrowing made")
     if t == "dyn":
         # (an Any value's None is a box: those stores, and the tests of the field by is None
         # compiled so far, see a null pointer, dynamic.py)
@@ -2706,11 +2711,6 @@ def gen_none_field_store(self, o: Val, name: str, v: Val) -> None:
     # value gives the variable its type
     if o.t not in self.classes or self.classes[o.t].ftypes.get(name, "") != NONEVAR or v.t == "None" or v.t == NONEVAR:
         return
-    if self.xtry.startswith("narrow:") and "union[" in v.t:
-        # (a union isinstance(x, (A, B)) narrowed x to would type the field for code outside
-        # the attempt, also as a container's items ([x]): declined, the narrowing is not made,
-        # see narrows)
-        self.err(f"field '{name}' would take a union that a narrowing made")
     ci = self.classes[o.t]
     key = self.field_root(ci, name).name + "." + name
     if key in self.nonereads:
