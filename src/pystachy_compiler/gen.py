@@ -616,6 +616,8 @@ from src.pystachy_compiler.declarations import (
     gen_imported_ref as declarations_imported_ref,
     gen_init_after as declarations_init_after,
     gen_iter_ann as declarations_iter_ann,
+    gen_tv_plan as declarations_tv_plan,
+    gen_tv_bound as declarations_tv_bound,
     gen_iter_item as declarations_iter_item,
     gen_join as declarations_join,
     gen_none_items as declarations_none_items,
@@ -1097,6 +1099,7 @@ from src.pystachy_compiler.program import (
     gen_pure as program_pure,
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
+    gen_generic_subclass as program_generic_subclass,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
 )
@@ -1616,6 +1619,10 @@ class Gen:
         # the generic classes (class C(Generic[T, *Ts]) and class C[T, *Ts]): their type variables,
         # which the arguments of the call that makes an object bind (see bind)
         self.tparams: dict[str, list[str]] = {}
+        # class V(G[X, ...]) of a generic class G that binds nothing (generic_subclass): G and the
+        # types X, ..., which bind G's TypeVars for the methods of V's objects (tv_bound)
+        self.genbase: dict[str, str] = {}
+        self.genargs: dict[str, list[str]] = {}
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
@@ -2959,6 +2966,12 @@ class Gen:
     def iter_ann(self, n: Node) -> str:
         return declarations_iter_ann(self, n)
 
+    def tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> None:
+        declarations_tv_plan(self, f, ps, ret, tvs)
+
+    def tv_bound(self, f: FnInfo, ts: list[str]) -> str:
+        return declarations_tv_bound(self, f, ts)
+
     def iter_item(self, n: Node) -> Node | None:
         return declarations_iter_item(self, n)
 
@@ -3695,6 +3708,9 @@ class Gen:
 
     def subclass_problem(self, st: Node) -> str:
         return program_subclass_problem(self, st)
+
+    def generic_subclass(self, st: Node) -> str:
+        return program_generic_subclass(self, st)
 
     def exc_base(self, b: Node) -> str:
         return program_exc_base(self, b)

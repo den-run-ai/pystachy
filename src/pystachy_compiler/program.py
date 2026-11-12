@@ -131,7 +131,7 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "inheritance from a NamedTuple is not supported"
         if self.is_dc(base_ci.name) and not dc:
             return "inheritance from a dataclass is only supported by a @dataclass class"
-        if base_ci.name in self.tparams or self.init_template(base_ci.node) or self.init_template(st.kids[0]):
+        if self.init_template(base_ci.node) or self.init_template(st.kids[0]):
             return "inheritance with generic class templates is not supported: " + self.template_fix([base_ci.node, st.kids[0]])
         if dc and not self.is_dc(base_ci.name):
             return "a @dataclass class whose base is not a dataclass is not supported"
@@ -147,6 +147,26 @@ def gen_subclass_problem(self, st: Node) -> str:
         return f"deriving from {b} is not supported"  # (u: a UnicodeError whose five arguments make its message)
     if len(st.kids[0].kids) > 1:
         return f"an exception class with a decorator (@{st.kids[0].kids[1].s}) is not supported"
+    return ""
+
+def gen_generic_subclass(self, st: Node) -> str:
+    # class V(Visitor[str]): a base that subscripts a generic class without an __init__ of its
+    # own, which binds nothing (Visitor[str] is Visitor, see generic_ann), is that class, whose
+    # methods' parameters that name its type variables take each call's types. Its type
+    # arguments are checked as the annotation Visitor[str] checks them, and the statement then
+    # names the class itself, as the rest of declaration reads its base (#962). "" or why not
+    b = st.kids[1] if len(st.kids) == 2 else st
+    if b.kind != "index" or b.kids[0].kind != "name" or b.kids[0].s not in self.tparams or b.kids[0].s not in self.classes:
+        return ""
+    g = b.kids[0].s
+    if self.init_template(self.classes[g].node):
+        return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
+    t = self.generic_ann(g, b.kids[1])
+    if t.startswith("!"):
+        return t[1:]
+    self.genbase[st.s] = g  # (the types that bind its TypeVars for the methods of st's objects)
+    self.genargs[st.s] = [self.ann(x) for x in (b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]])]
+    st.kids[1] = b.kids[0]
     return ""
 
 def gen_exc_base(self, b: Node) -> str:
@@ -902,7 +922,9 @@ def gen_program(self, mods: list[Mod]) -> str:
                 # keeping the earlier ClassInfo would silently construct the stale class.
                 why = f"redefinition of class '{st.s}' is not supported"
             elif st.kind == "subclass":
-                why = self.subclass_problem(st)
+                why = self.generic_subclass(st)
+                if why == "":
+                    why = self.subclass_problem(st)
                 if why == "" and m.name != "":
                     why = self.class_problem(m, st.kids[0], True)
             elif st.kind == "class" and m.name != "":

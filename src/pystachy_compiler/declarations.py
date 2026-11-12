@@ -1179,6 +1179,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     if tv != "" and (cls == "" or template_ok(d.s)):
         # def f(x: T) with T = TypeVar("T"): what mentions a TypeVar is left unannotated, as in
         # def f[T](x: T) (a template); also *args: *Ts
+        self.tv_plan(f, ps, d.kids[1], tvs)
         for p in ps:
             if self.typevar_in([p.kids[0]], tvs) != "":
                 p.kids[0] = mk("noann", "", d.line, [])
@@ -1416,6 +1417,38 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         else:
             held[i].kids[0] = anns[i]
     return f
+
+def gen_tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> None:
+    # def accept(self, visitor: Visitor[T]) -> T: a template whose return is its own TypeVar T
+    # (f.tvret), and the parameters annotated G[..., T, ...] of a generic class G (f.tvb*),
+    # whose argument binds T where its class derives from G[X, ...] (tv_bound)
+    r = self.parse_expr(ret.s) if ret.kind == "str" else ret
+    if r.kind != "name" or r.s not in self.typevars or r.s in tvs or r.s in self.tvtuples:
+        return
+    for i in range(len(ps)):
+        a = self.parse_expr(ps[i].kids[0].s) if ps[i].kids[0].kind == "str" else ps[i].kids[0]
+        if ps[i].kind != "param" or a.kind != "index" or a.kids[0].kind != "name" or a.kids[0].s not in self.tparams:
+            continue
+        xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
+        for k in range(len(xs)):
+            if xs[k].kind == "name" and xs[k].s == r.s:
+                f.tvret = r.s
+                f.tvbparams.append(i)
+                f.tvbclass.append(a.kids[0].s)
+                f.tvbpos.append(k)
+
+def gen_tv_bound(self, f: FnInfo, ts: list[str]) -> str:
+    # what an instance of template f (tv_plan) returns for arguments of types ts: X, where the
+    # class of an argument for a parameter annotated G[..., T, ...] derives from G[..., X, ...]
+    # (class V(G[X]): generic_subclass), else "" (its returns decide, as for any template)
+    for i in range(len(f.tvbparams)):
+        j = f.tvbparams[i]
+        c = unopt(ts[j]) if j < len(ts) else ""
+        while c in self.classes:
+            if self.genbase.get(c, "") == f.tvbclass[i] and f.tvbpos[i] < len(self.genargs[c]):
+                return self.genargs[c][f.tvbpos[i]]
+            c = self.classes[c].base
+    return ""
 
 def gen_iter_ann(self, n: Node) -> str:
     # an __iter__'s (or __reversed__'s) return annotation Iterator[T] or Iterable[T] (typing's or collections.abc's):
@@ -2330,6 +2363,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         m = e.kids[0].s
         if m in ms and ms[m].prop:
             return targs(ms[m].ret)[0] if is_callable(ms[m].ret) else ""
+        if m in ms and ms[m].bad == "" and ms[m].ret == "" and ms[m].tvret != "" and len([x for x in e.kids[1:] if x.kind == "kw" or x.kind == "starred" or x.kind == "dstar"]) == 0:
+            # self.accept(Visitor()) of a method -> T that a visitor's class binds (tv_bound)
+            return self.tv_bound(ms[m], [f.cls] + [self.guess(x, f) for x in e.kids[1:]])
         return "" if m not in ms else ms[m].ret if ms[m].bad == "" else "!" + ms[m].bad
     if k == "call" and e.kids[0].kind == "name" and e.kids[0].s == me:
         ms = self.classes[f.cls].methods  # self(...): self.__call__(...)

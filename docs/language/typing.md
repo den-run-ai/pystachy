@@ -896,6 +896,20 @@ class name or `Self` inside its methods and fields, or an explicit specializatio
 `"Pair[V, K]"`. A method's separate type variables (a module-level `TypeVar`, or its own,
 `def map[U](self, f: Callable[[T], U]) -> "Box[U]"`) make it a function template.
 
+A class can derive from a generic class without an `__init__` of its own, which binds nothing:
+`class TupleNameVisitor(RTypeVisitor[str])` derives from `RTypeVisitor`, whose type arguments
+are checked as the annotation `RTypeVisitor[str]` checks them, as can `class V(RTypeVisitor)`.
+A template method that returns its own type variable and takes a parameter annotated with it,
+as visitors are written (`def accept(self, visitor: RTypeVisitor[T]) -> T`), returns `str` for
+an argument whose class derives from `RTypeVisitor[str]`. That is decided before its body
+compiles, so a visitor's methods may call `accept()` again, and a field stored from
+`self.accept(TupleNameVisitor())` takes it too
+([test](../../tests/programs/classes/generic_visitor_postponed.py)). A variable annotated with
+the base holds any visitor, whose methods then dispatch to every visitor class and need one
+return type ([error test](../../tests/errors/classes/generic_visitor_base_variable.py)). A class
+cannot yet derive from a generic class whose `__init__` binds its type variables
+(`class IntBox(Box[int])`), nor pass on one of its own (`class Sub(RTypeVisitor[T])`).
+
 Function and class specializations share a limit of 4,096 per compilation. Additional
 nesting and size limits are listed in [compatibility](compatibility.md#templates-and-empty-containers).
 
