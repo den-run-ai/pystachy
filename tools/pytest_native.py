@@ -245,6 +245,42 @@ def layout(paths: list[Path], root: Path) -> Layout:
     return Layout(modules, ordered, bases, packages)
 
 
+def resolver(tree: Layout, root: Path):
+    """Find the module beside the tests that `from module import name` reads (Generator.resolve).
+
+    Only modules the generated program has adapted copies of are read: those of the
+    tests' packages and those in the tests' own directories.
+    """
+
+    def resolve(importer, level, module, name):
+        importer = Path(importer)
+        if level:
+            directory = importer.parent
+            for _ in range(level - 1):
+                directory = directory.parent
+            starts = [directory]
+        else:
+            starts = tree.bases
+        parts = module.split(".") if module else []
+        for start in starts:
+            target = start.joinpath(*parts)
+            for candidate in ([target.with_suffix(".py")] if parts else []) + [target / "__init__.py"]:
+                if not candidate.is_file() or not candidate.is_relative_to(root):
+                    continue
+                inside = any(candidate.is_relative_to(package) for package in tree.packages)
+                if not inside and candidate.parent not in tree.bases:
+                    continue
+                base = import_root(candidate, root)
+                dotted = ".".join(candidate.relative_to(base).with_suffix("").parts).removesuffix(".__init__")
+                try:
+                    return candidate.read_text(), candidate.relative_to(root).as_posix(), str(candidate), dotted
+                except (OSError, UnicodeError):
+                    return None
+        return None
+
+    return resolve
+
+
 def mirror(work: Path, tree: Layout, generated: set[Path], root: Path) -> dict[str, str]:
     """Write the modules beside the tests where the generated ones import them.
 
@@ -254,6 +290,7 @@ def mirror(work: Path, tree: Layout, generated: set[Path], root: Path) -> dict[s
     others are imported from their own directory). Returns {written file: source file}.
     """
     written: dict[str, str] = {}
+    resolve = resolver(tree, root)
 
     def adapted(path: Path, name: str, target: Path, always: bool) -> None:
         try:
@@ -262,7 +299,7 @@ def mirror(work: Path, tree: Layout, generated: set[Path], root: Path) -> dict[s
             return
         try:
             result = adapt_helper(text, path.relative_to(root).as_posix() if path.is_relative_to(root) else path.name,
-                                  str(path), name)
+                                  str(path), name, resolve)
         except (CollectionError, SyntaxError, RecursionError):
             result = text  # (as written: the compiler reports it if the tests import it)
         if always or result != text:
@@ -424,6 +461,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     conftest_names = [conftest.relative_to(root).as_posix() for conftest in tree.conftests]
     aliases = {conftest: f"_pyn_conftest_{index}" for index, conftest in enumerate(tree.conftests)}
     texts: dict[Path, str] = {}
+    resolve = resolver(tree, root)
 
     def build(operands: bool):
         """Every module's generated source, or the collection errors on results."""
@@ -442,7 +480,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
                 shared, imports, package = context(conftest)
                 module, exported[conftest] = generate_conftest(
                     conftest.read_text(), name, operands, str(conftest), tree.modules[conftest], shared, imports,
-                    package, aliases[conftest])
+                    package, aliases[conftest], resolve)
                 modules.append(module)
             except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
                 for result in results:
@@ -453,7 +491,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
             path = paths[index]
             shared, imports, package = context(path)
             return generate(texts[path], results[index].path, operands, selections.get(path) if selections else None,
-                            shared, session_end, str(path), tree.modules[path], imports, package)
+                            shared, session_end, str(path), tree.modules[path], imports, package, resolve)
 
         generated = []
         for index, (path, result) in enumerate(zip(paths, results)):

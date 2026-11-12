@@ -303,9 +303,15 @@ class Generator:
     def __init__(self, source: str, filename: str, operands: bool = True, selected=None,
                  shared=None, conftest: bool = False, session_end: bool = True, path: str = "",
                  module: str = "", imports=None, package: bool = False, alias: str = "_pyn_conftest",
-                 helper: bool = False):
+                 helper: bool = False, resolve=None):
         self.source = source
         self.filename = filename
+        # resolve(path, level, module, name) -> (source, filename, path, module) of the module
+        # beside the tests that `from module import name` reads, or None: where a test
+        # class's imported base class is defined.
+        self.resolve = resolve
+        self.imported = {}
+        self.external = {}
         # What the test module reads as __file__ and __name__: pytest imports the original
         # file under its own name, where the generated one has another path.
         self.path = path or filename
@@ -1109,9 +1115,80 @@ class Generator:
                 if local is not None and local is not node and local not in seen:
                     if self.unittest_bases(local, (*seen, node)):
                         return True
-                elif local is None and base.id.endswith("TestCase"):
-                    return True
+                elif local is None:
+                    external = self.external_info(base.id)
+                    if external is not None and external.unit or external is None and base.id.endswith("TestCase"):
+                        return True
         return False
+
+    def scan_imports(self):
+        """Note what this module imports from pytest and unittest, and each `from` import."""
+        for node in self.tree.body:
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name in ("pytest", "unittest"):
+                        self.aliases[alias.asname or alias.name] = alias.name
+            elif isinstance(node, ast.ImportFrom):
+                if node.module in ("pytest", "unittest") and not node.level:
+                    for alias in node.names:
+                        self.aliases[alias.asname or alias.name] = node.module + "." + alias.name
+                else:
+                    for alias in node.names:
+                        self.imported[alias.asname or alias.name] = (node.level, node.module, alias.name)
+
+    def external_info(self, name, depth=0):
+        """The class a `from` import binds to this name, read from its module beside the tests.
+
+        Returns its ClassInfo, or None for a name that is no such class. Only a plain
+        class is read: one whose own tests carry no decorators and that defines no
+        fixtures, since its module is adapted, not collected.
+        """
+        if name in self.external:
+            return self.external[name]
+        self.external[name] = None
+        if self.resolve is None or name not in self.imported or depth > 8:
+            return None
+        level, module, original = self.imported[name]
+        found = self.resolve(self.path, level, module, original)
+        if found is None:
+            return None
+        source, filename, path, dotted = found
+        try:
+            other = Generator(source, filename, False, path=path, module=dotted, package=True, helper=True,
+                              resolve=self.resolve)
+        except CollectionError:
+            return None
+        other.class_nodes = {node.name: node for node in other.tree.body if isinstance(node, ast.ClassDef)}
+        other.infos = {}
+        other.scan_imports()
+        node = other.class_nodes.get(original)
+        if node is None:
+            # (A package's __init__ may pass on a class of one of its modules.)
+            info = other.external_info(original, depth + 1)
+        else:
+            info = other.class_info(node)
+            for ancestor in info.mro:
+                if ancestor.tests or ancestor.node not in other.class_nodes.values():
+                    continue
+                if ancestor.node.decorator_list:
+                    self.error(ancestor.node, f"{filename}: decorators on an imported base class are unsupported: "
+                               + ancestor.node.name)
+                for statement in ancestor.node.body:
+                    if any(target == "pytestmark" for target in _bound_names(statement)):
+                        self.error(statement, f"{filename}: pytestmark in an imported base class is unsupported")
+                    if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        continue
+                    if any(other.name(dec.func if isinstance(dec, ast.Call) else dec)
+                           for dec in statement.decorator_list) or (
+                            statement.name.startswith("test") and statement.decorator_list):
+                        self.error(statement, f"{filename}: decorated methods of an imported base class are "
+                                   "unsupported: " + statement.name)
+                    if ancestor.unit and statement.name in UNIT_UNSUPPORTED:
+                        self.error(statement, f"{filename}: unsupported unittest.TestCase method: " + statement.name)
+                    if statement.name.startswith("test") and isinstance(statement, ast.FunctionDef):
+                        ancestor.tests[statement.name] = Test(statement, ancestor.node, [], [], [], ancestor.unit)
+        self.external[name] = info
+        return info
 
     def class_info(self, node):
         """This class with its module-level bases resolved, or an error for bases it cannot read."""
@@ -1127,6 +1204,8 @@ class Generator:
             elif isinstance(base, ast.Name) and self.class_nodes.get(base.id) not in (None, node) \
                     and self.class_nodes[base.id].lineno < node.lineno:
                 bases.append(self.class_info(self.class_nodes[base.id]))
+            elif isinstance(base, ast.Name) and base.id not in self.class_nodes and self.external_info(base.id):
+                bases.append(self.external_info(base.id))
             elif not (isinstance(base, ast.Name) and base.id == "object" and "object" not in self.bound):
                 self.error(node, "test classes with imported or computed base classes are unsupported: "
                            + ast.unparse(base))
@@ -1160,6 +1239,7 @@ class Generator:
         parents = {child: node for node in ast.walk(self.tree) for child in ast.iter_child_nodes(node)}
         self.class_nodes = {node.name: node for node in self.tree.body if isinstance(node, ast.ClassDef)}
         self.infos = {}
+        self.scan_imports()
         seen = set()
         assigned = {}
         for node in self.tree.body:
@@ -1219,7 +1299,9 @@ class Generator:
             if (isinstance(node, ast.ClassDef) and node not in classes and node.bases
                     and any(isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name.startswith("test")
                             for item in node.body)
-                    and any(not (isinstance(base, ast.Name) and base.id in self.class_nodes) for base in node.bases)):
+                    and any(not (isinstance(base, ast.Name) and (base.id in self.class_nodes
+                                                                 or self.external_info(base.id) is not None))
+                            for base in node.bases)):
                 # Its base may be a unittest case defined elsewhere, which pytest would collect.
                 self.error(node, "a class with test methods has a base class the collector cannot read: "
                            + ast.unparse(node.bases[0]))
@@ -1304,6 +1386,16 @@ class Generator:
                 if any((alias.asname or alias.name).startswith(("test", "Test")) or alias.name == "*"
                        for alias in node.names):
                     self.error(node, "imported tests and star imports are unsupported")
+                for alias in node.names:
+                    # pytest collects a unittest case from every module that imports it.
+                    external = self.external_info(alias.asname or alias.name)
+                    if external is not None and external.unit and not self.conftest:
+                        bound = copy.copy(external.node)
+                        bound.name = alias.asname or alias.name
+                        info = ClassInfo(bound, True, external.bases, [], tests=external.tests, names=external.names)
+                        info.mro = [info, *external.mro[1:]]
+                        self.infos[bound] = info
+                        self.collected_tests(info)
             elif node is marks.get(self.tree):
                 if self.conftest:
                     self.error(node, "pytestmark in conftest.py is unsupported")
@@ -1385,8 +1477,12 @@ class Generator:
                 info.tests[statement.name] = test
         self.shadowed = None
         self.classes.append(node)
-        if not collected:
-            return
+        if collected:
+            self.collected_tests(info)
+
+    def collected_tests(self, info):
+        """Add the tests of a class pytest collects: its own and those it inherits."""
+        node = info.node
         # Marks of the class and its bases apply to each test: a base's first, as pytest
         # lists them along the class's ancestry.
         parameters = [parameter for ancestor in reversed(info.mro) for parameter in ancestor.parameters]
@@ -1776,8 +1872,10 @@ class Generator:
     def unit_methods(self):
         """Each method of a unittest case with the name of its receiver (`self`)."""
         methods = {}
+        own = set(self.class_nodes.values())
         for info in self.infos.values():
-            if info.unit:
+            # (A base class imported from another module is adapted with that module.)
+            if info.unit and info.node in own:
                 for statement in info.node.body:
                     if isinstance(statement, ast.FunctionDef) and statement.args.args and not any(
                             isinstance(dec, ast.Name) and dec.id in ("staticmethod", "classmethod")
@@ -2579,20 +2677,13 @@ class Generator:
         """This helper module's source for the generated program (adapt_helper)."""
         self.class_nodes = {node.name: node for node in self.tree.body if isinstance(node, ast.ClassDef)}
         self.infos = {}
-        for node in self.tree.body:
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name in ("pytest", "unittest"):
-                        self.aliases[alias.asname or alias.name] = alias.name
-            elif isinstance(node, ast.ImportFrom) and node.module in ("pytest", "unittest") and not node.level:
-                for alias in node.names:
-                    self.aliases[alias.asname or alias.name] = node.module + "." + alias.name
+        self.scan_imports()
         for node in self.class_nodes.values():
-            if self.unittest_bases(node):
-                try:
+            try:
+                if self.unittest_bases(node):
                     self.class_info(node)
-                except CollectionError:
-                    pass  # (left as written: the compiler reports what it cannot build)
+            except CollectionError:
+                pass  # (left as written: the compiler reports what it cannot build)
         chunks = self.transform_source()
         pragmas = [token.string for token in tokenize.generate_tokens(io.StringIO(self.source).readline)
                    if token.type == tokenize.COMMENT and re.match(r"#\s*pystachy:", token.string)]
@@ -2635,7 +2726,7 @@ def original_line(module: GeneratedModule, line: int) -> int | None:
 
 def generate(source: str, filename: str, operands: bool = True, selected=None, shared=None,
              session_end: bool = True, path: str = "", module: str = "", imports=None,
-             package: bool = False) -> GeneratedModule:
+             package: bool = False, resolve=None) -> GeneratedModule:
     """Collect and adapt one module, or reject unsupported collection explicitly.
 
     operands keeps comparison operands for assertion failures (Generator.captured);
@@ -2644,26 +2735,28 @@ def generate(source: str, filename: str, operands: bool = True, selected=None, s
     (generate_conftest), one group per file from the outermost, and imports the
     (module, alias) each is imported as; session_end is false for every module but the
     last that runs; path and module are what the test module reads as __file__ and
-    __name__; package says its directory is one, where relative imports resolve.
+    __name__; package says its directory is one, where relative imports resolve;
+    resolve finds the module of an imported base class (Generator.__init__).
     """
     return Generator(source, filename, operands, selected, shared, False, session_end, path, module, imports,
-                     package).generate()
+                     package, resolve=resolve).generate()
 
 
 def generate_conftest(source: str, filename: str, operands: bool = True, path: str = "", module: str = "",
-                      shared=None, imports=None, package: bool = False, alias: str = "_pyn_conftest"):
+                      shared=None, imports=None, package: bool = False, alias: str = "_pyn_conftest",
+                      resolve=None):
     """Adapt a conftest.py: its generated module, and its fixtures for generate(shared=).
 
     shared and imports name the conftest.py files above it, whose fixtures its own may
     request; other modules call its fixtures through alias.
     """
     generator = Generator(source, filename, operands, None, shared, True, True, path, module, imports, package,
-                          alias)
+                          alias, resolve=resolve)
     module = generator.generate()
     return module, generator.export()
 
 
-def adapt_helper(source: str, filename: str, path: str = "", module: str = "") -> str:
+def adapt_helper(source: str, filename: str, path: str = "", module: str = "", resolve=None) -> str:
     """A module beside the tests as the generated program imports it.
 
     Nothing is collected from it. Its pytest and unittest imports name the runner's
@@ -2672,4 +2765,5 @@ def adapt_helper(source: str, filename: str, path: str = "", module: str = "") -
     """
     if not re.search(r"\b(pytest|unittest|__file__)\b", source):
         return source
-    return Generator(source, filename, False, path=path, module=module, package=True, helper=True).adapt()
+    return Generator(source, filename, False, path=path, module=module, package=True, helper=True,
+                     resolve=resolve).adapt()
