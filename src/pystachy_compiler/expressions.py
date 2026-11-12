@@ -1023,7 +1023,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 if self.class_value_typed(o, self.knownobj(n.kids[0])):
                     return self.class_value_of(o, self.knownobj(n.kids[0]))  # (as in other modules)
                 return self.refl_type_value(o)
-        builtin_class = self.refl_builtin_class(o.t) if self.dyn_policy(n.line) else ""
+        builtin_class = self.refl_builtin_class(o.t)
         if builtin_class != "" and n.s in ["__name__", "__qualname__", "__module__"]:
             return Val(self.sconst(self.refl_type_name(builtin_class, n.s)), "str")
         if is_fn(o.t) and (n.s == "__name__" or n.s == "__qualname__"):
@@ -1254,6 +1254,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items); class objects: of a base class in common
         if not kgiven and is_clsval(kj):
             kv[0] = kj  # (class objects as keys: of a base class their classes have in common)
+        if not kgiven and self.refl_builtin_class(kj) != "":
+            kv[0] = "type[object]"  # (a builtin class named as the key: its class object)
         if not given and jt == "-" and not self.term:
             vh = vs[0].t
             for b in vs[1:]:
@@ -2062,6 +2064,8 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
     # format()'s argument
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         v = self.dyn_box(v)
+    elif self.refl_builtin_class(v.t) != "":
+        v = self.class_value_builtin(v)  # (a builtin class named: its class object)
     empty = spec.kind == "str" and spec.s == ""
     if v.t == "dyn":
         # by its box's type (dynamic.py): a boxed class's __format__, else str() for an empty spec
@@ -3411,10 +3415,12 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
     t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
     if e1 != "" and e2 != "" and a.t != b.t and (want == "" or is_opt(want)) and is_opt(self.join(a.t, b.t)):
         t = self.join(a.t, b.t)  # x if c else None: T | None
-    if e1 != "" and e2 != "" and a.t != b.t and is_clsval(a.t) and is_clsval(b.t) and self.join(a.t, b.t) != "":
-        t = self.join(a.t, b.t)  # (class objects: of the nearest base class their classes have in common)
-    elif e1 != "" and e2 != "" and a.t != b.t and is_clsval(a.t) and is_clsval(b.t) and unopt(want) == "type[object]":
-        t = "type[object]"  # (of classes without one, where any class's class object is wanted)
+    aclass = is_clsval(a.t) or self.refl_builtin_class(a.t) != ""
+    bclass = is_clsval(b.t) or self.refl_builtin_class(b.t) != ""
+    if e1 != "" and e2 != "" and a.t != b.t and aclass and bclass and is_clsval(self.join(a.t, b.t)):
+        t = self.join(a.t, b.t)  # (class objects: of the nearest base class their classes have in common, or any class's)
+    elif e1 != "" and e2 != "" and a.t != b.t and aclass and bclass and (unopt(want) == "type[object]" or self.refl_builtin_class(a.t) != "" or self.refl_builtin_class(b.t) != ""):
+        t = "type[object]"  # (of classes without one, where any class's class object is wanted, or a builtin class is named)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == "dyn":
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == BIG:
@@ -4766,6 +4772,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if (a.t == "dyn" and is_clsval(unopt(b.t))) or (b.t == "dyn" and is_clsval(unopt(a.t))):
         # (a class object and an Any value, where a module opts in to dynamic Any: as class boxes)
         a, b = self.dyn_box(a), self.dyn_box(b)
+    if is_clsval(unopt(a.t)) and self.refl_builtin_class(b.t) != "":
+        b = self.class_value_builtin(b)  # (a builtin class named beside a class object: its class object)
+    elif is_clsval(unopt(b.t)) and self.refl_builtin_class(a.t) != "":
+        a = self.class_value_builtin(a)
     if (op == "==" or op == "!=" or op == "is" or op == "is not") and (is_clsval(unopt(a.t)) or is_clsval(unopt(b.t))) and not self.class_value_asks(op, a, b):
         # (class objects of ordinary classes, by identity: class_values.py; before the objects'
         # comparisons, which only an object whose class defines __eq__ or __ne__ decides)

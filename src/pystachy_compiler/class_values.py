@@ -30,9 +30,10 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, ClassBoxes, dynamic_program, where
 from src.pystachy_compiler.ir import Data, Ins, Val
 from src.pystachy_compiler.names import ENUMCLASSES, short
+from src.pystachy_compiler.reflection import RF_BUILTIN
 from src.pystachy_compiler.specs import ITERS, OBJECTC, RANGEC
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clsof, is_clsval, is_opt, is_union, pure_arg, typestr, umembers, unopt
+from src.pystachy_compiler.utils import clsof, is_callable, is_clsval, is_fn, is_opt, is_union, pure_arg, typestr, umembers, unopt
 
 NONETYPE_ARGS = "NoneType takes no arguments"
 
@@ -75,6 +76,25 @@ def gen_class_value(self, c: str) -> Val:
         # is bound where its statement runs, which "ready" does not check, #804)
         self.err(f"class '{c}' cannot be used as a value here: its module and this one import each other (a circular import), where the read depends on how far each module's code has run")
     return Val(self.refl_record(c), "type[" + c + "]")
+
+
+def gen_class_value_builtin_record(self, name: str) -> str:
+    # the reflection record of builtin class name (int, str, list, object, ...), its class
+    # object: the record that type(x) of its values gives. object(), ranges and the iterators
+    # are objects of lib's classes, whose records stand for the builtin classes' in a program
+    # without dynamic Any (with it, refl_record shares the builtin's)
+    if not dynamic_program():
+        for c in self.classes:
+            if (c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$")) and short(c) == name:
+                return self.refl_record(c)
+    return self.refl_record("%class:" + name)
+
+
+def gen_class_value_builtin(self, v: Val) -> Val:
+    # the class object of the builtin class that v denotes, a builtin class's name read as a
+    # value (int, str, list: a builtin function's type, which a call of it compiles by): any
+    # class's class object (type[object]), as an ordinary class's is
+    return Val(self.class_value_builtin_record(self.refl_builtin_class(v.t)[7:]), "type[object]")
 
 
 def gen_class_value_static(self, c: str, mod: str, line: int) -> bool:
@@ -159,6 +179,10 @@ def gen_class_value_isa(self, v: Val, t: str) -> str:
     self.place(box)
     rec = Val(self.mload("%ptr", self.maddr("%ptr", v.v, "1")), "%ptr")
     r = "false"
+    if clsof(t) == "object":
+        # (any class's: a builtin class's record too, which its flags tell)
+        flags = Val(self.mload("int", self.maddr("%ptr", rec.v, "3")), "int")
+        r = self.num_cmp("!=", Val(self.scalar("and", [flags, Val(str(RF_BUILTIN), "int")]), "int"), Val("0", "int")).v
     for k in self.class_value_kinds(clsof(t)) + ["None"]:
         # (NoneType's too, which type(x) of an x that is None gives a typed location)
         if k == "None" or self.class_value_problem(k) == "":
@@ -223,6 +247,24 @@ def gen_class_value_of(self, v: Val, known: bool) -> Val:
     return Val(self.refl_class_of(v, known).v, "type[" + (t if t in self.classes else "object") + "]")
 
 
+def gen_class_value_type(self, v: Val, known: bool) -> Val:
+    # type(v) as a value, of a v that is no object of an ordinary class: the class object of its
+    # builtin class (int's of an int, list's of a list), any class's (type[object]); by its tag
+    # where v is a union's value, NoneType's where v is None, and type's of a class object
+    t = unopt(v.t)
+    if is_callable(t) or is_fn(t) and self.refl_builtin_class(t) == "":
+        self.err(f"type(x) of {typestr(t)} as a value is not supported: a function's class is not a value here")
+    if self.refl_builtin_class(t) != "" or is_clsval(t) or t == "exctype":
+        k = Val(self.class_value_builtin_record("type"), "type[object]")
+        if not self.refl_may_none(v) or known:
+            return k
+        return Val(self.select(self.ptr_cmp("==", v, Val("null", "None")).v, Val(self.refl_record("None"), "type[object]"), k), "type[object]")
+    for leaf in self.refl_type_of(v, "__name__", known):
+        if leaf.c in self.classes and self.class_value_problem(leaf.c) != "":
+            self.err(self.class_value_problem(leaf.c))
+    return Val(self.refl_class_of(v, known).v, "type[object]")
+
+
 def gen_class_value_objects(self, t: str) -> bool:
     # is t the type of objects whose type(x) is a typed class object: an ordinary class, or a
     # union of ordinary classes (which may hold None)
@@ -276,12 +318,34 @@ def gen_class_value_is(self, k: Val, c: str) -> Val:
     return self.ptr_cmp("==", k, Val(self.refl_record(c), k.t))
 
 
+def gen_class_value_chain(self, c: str, top: str) -> list[str]:
+    # the records of the classes that a value of exact type c is an instance of, among those a
+    # class object of type[top] may be: an ordinary class's own and its bases'. Any class's
+    # class object (type[object]) may be a builtin class's as well: that of a value that is no
+    # object of the program (int's of an int, bool's and int's of a bool, NoneType's of None),
+    # tuple's of a named tuple, and object's of every value
+    recs: list[str] = []
+    if self.class_value_named(c):
+        recs = [self.refl_record(b) for b in self.class_value_bases(c, top)]
+        if top == "object" and c in self.nts:
+            recs.append(self.class_value_builtin_record("tuple"))
+    elif c == "None":
+        recs = [self.refl_record("None")]
+    elif top == "object" and c not in self.classes:
+        recs = [self.class_value_builtin_record(self.refl_type_name(c, "__name__"))]
+        if c == "bool":
+            recs.append(self.class_value_builtin_record("int"))
+    if top == "object" and self.class_value_builtin_record("object") not in recs:
+        recs.append(self.class_value_builtin_record("object"))
+    return recs
+
+
 def gen_class_value_sub(self, c: str, k: Val) -> Val:
     # whether class c is the class of class object k or derives from it: k is the class object
     # of c or of one of the classes c derives from (among those k's type lets it be)
     out = Val("false", "bool")
-    for b in self.class_value_bases(c, clsof(k.t)):
-        hit = self.class_value_is(k, b)
+    for rec in self.class_value_chain(c, clsof(k.t)):
+        hit = self.ptr_cmp("==", k, Val(rec, k.t))
         out = hit if out.v == "false" else Val(self.scalar('or', [out, hit]), "bool")
     return out
 
@@ -295,7 +359,9 @@ def gen_class_value_isinst(self, v: Val, k: Val, known: bool) -> Val:
     ph = Ins("phi", "bool", "")
     for leaf in leaves:
         self.place(leaf.label)
-        r = self.class_value_is(k, "None") if leaf.c == "None" else self.class_value_sub(leaf.c, k)
+        if clsof(k.t) == "object" and leaf.c != "None" and leaf.c not in self.classes and self.refl_type_name(leaf.c, "__name__") == "":
+            self.err(f"isinstance() of {typestr(leaf.c)} and a class object is not supported")
+        r = self.class_value_sub(leaf.c, k)
         self.incoming(ph, r.v, self.cur)
         self.br(end)
     self.place(end)
@@ -303,7 +369,26 @@ def gen_class_value_isinst(self, v: Val, k: Val, known: bool) -> Val:
 
 
 def gen_class_value_issub(self, k: Val, t: Node) -> Val:
-    # issubclass(k, t) of class object k: t names an ordinary class, or is a class object
+    # issubclass(k, t) of class object k: t names an ordinary class, or is a class object, or a
+    # tuple of them, one of which k derives from (every item is read before k is checked)
+    if self.refl_builtin_class(k.t) != "":
+        k = self.class_value_builtin(k)  # (a builtin class named: its class object)
+    if t.kind == "tuple":
+        items: list[Node] = []
+        for x in t.kids:
+            xnamed = x.kind == "name" and x.s not in self.ltype and (x.s in self.classes or (x.s == "object" and not self.bound("object")))
+            if x.kind == "tuple" or x.kind == "starred":
+                self.err("issubclass() with a tuple inside its tuple of classes is not supported: list the classes in one tuple")
+            if xnamed:
+                self.isinst_reads(x)
+            items.append(x if xnamed else self.vnode(self.expr(x, "")))
+        k = self.unwrap(k, "TypeError: issubclass() arg 1 must be a class")
+        self.nn[k.v] = True
+        found = Val("false", "bool")
+        for x in items:
+            one = self.class_value_issub(k, x)
+            found = one if found.v == "false" else Val(self.scalar('or', [found, one]), "bool")
+        return found
     named = t.kind == "name" and t.s in self.classes and t.s not in self.ltype
     anyclass = t.kind == "name" and t.s == "object" and not self.bound("object")
     # CPython evaluates both arguments before it checks either: the second is read, or
@@ -333,6 +418,17 @@ def gen_class_value_issub(self, k: Val, t: Node) -> Val:
         return out
     if anyclass:
         return Val("true", "bool")  # (every class derives from object, NoneType too)
+    if o.t.startswith("fn[b:") and base == "object":
+        # (a builtin class named: k may be its class object, bool's for int, a named tuple's
+        # for tuple)
+        name = o.t[5:-1]
+        subs = [self.class_value_builtin_record(name)] + ([self.class_value_builtin_record("bool")] if name == "int" else [])
+        subs += [self.refl_record(c) for c in kinds if name == "tuple" and c in self.nts]
+        out = Val("false", "bool")
+        for rec in subs:
+            isk = self.ptr_cmp("==", k, Val(rec, k.t))
+            out = isk if out.v == "false" else Val(self.scalar('or', [out, isk]), "bool")
+        return out
     if o.t == "exctype" or o.t.startswith("fn[b:"):
         return Val("false", "bool")  # (an exception class, or a builtin type such as int: no class k may be derives from one)
     if not is_clsval(unopt(o.t)):
@@ -348,8 +444,15 @@ def gen_class_value_issub(self, k: Val, t: Node) -> Val:
         self.incoming(ph, self.class_value_sub(c, o).v, self.cur)
         self.br(end)
         self.place(miss)
-    # (NoneType's class object, which derives from no class of the program)
-    self.incoming(ph, self.ptr_cmp("==", k, o).v, self.cur)
+    # (NoneType's class object, which derives from no class of the program; a builtin class's
+    # too where k is any class's: it derives from itself and from object, and bool from int)
+    same = self.ptr_cmp("==", k, o)
+    if base == "object" and clsof(unopt(o.t)) == "object":
+        same = Val(self.scalar('or', [same, self.ptr_cmp("==", o, Val(self.class_value_builtin_record("object"), o.t))]), "bool")
+        isbool = self.ptr_cmp("==", k, Val(self.class_value_builtin_record("bool"), k.t))
+        isint = self.ptr_cmp("==", o, Val(self.class_value_builtin_record("int"), o.t))
+        same = Val(self.scalar('or', [same, Val(self.scalar('and', [isbool, isint]), "bool")]), "bool")
+    self.incoming(ph, same.v, self.cur)
     self.br(end)
     self.place(end)
     return Val(self.phi(ph), "bool")
@@ -383,7 +486,8 @@ def gen_class_value_dynamic(self, t: Node) -> bool:
             # isinstance() takes as that class object)
             return True
         if not self.class_value_named(unopt(xt)):
-            return False
+            # (type(x) of another value: its builtin class's class object, class_value_type)
+            return xt != "dyn" and xt != "exc" and unopt(xt) != "exctype" and unopt(xt) not in self.classes
         # (where a module opts in to dynamic Any, type(x) may be a class box: class_value_typed)
         return not self.dyn_policy(self.line) or is_clsval(unopt(self.dry(t)))
     if t.kind == "attr" and t.kids[0].kind == "name" and self.dotted(t) == "":

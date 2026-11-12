@@ -20,7 +20,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | `T \| None` | Optional values, including containers, `Callable`, generators (`Generator[Y, None, None] \| None`) and exceptions (`BaseException \| None`) |
 | `type[E]`, `type[E] \| None` | The class of an exception (`E` an exception class), as a context manager's `__exit__` takes it; see [context managers](semantics.md#context-managers) |
 | `type[C]`, `type[C] \| None` | The class object of `C`, a class of the program, or of a class deriving from it; see [classes as values](semantics.md#classes-as-values) |
-| `type[object]`, `type` | The class object of any ordinary class of the program |
+| `type[object]`, `type` | The class object of any class: an ordinary class of the program or a builtin class |
 | `TextIO` | Text files |
 | `Generator[Y, S, R]`; `Iterator[T]` or `Iterable[T]` as a generator function's return | Generator objects that yield `Y` (any generator function's) and take `S` from `send()`; see [generators](semantics.md#generators). Elsewhere `Iterator[T]` and `Iterable[T]` type nothing ([iterators](semantics.md#iterators)) |
 

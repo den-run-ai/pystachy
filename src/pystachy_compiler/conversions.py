@@ -209,6 +209,8 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         self.err(f"expected an object of {short(t)}, got a builtin exception, which is not converted to a class of the program (catch it as one: except {short(t)} as e)")
     if self.widens(v.t, t):
         return Val(v.v, t).identity(v)
+    if unopt(t) == "type[object]" and self.refl_builtin_class(v.t) != "":
+        return Val(self.class_value_builtin(v).v, t)  # (a builtin class named: its class object, class_values.py)
     if is_union(unopt(t)) and v.t != "None":
         return self.to_union(v, t, what)
     if is_fn(v.t) and is_callable(unopt(t)):

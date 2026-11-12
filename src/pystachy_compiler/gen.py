@@ -492,6 +492,10 @@ from src.pystachy_compiler.class_values import (
     gen_class_value_typed as class_values_class_value_typed,
     gen_class_value_kinds as class_values_class_value_kinds,
     gen_class_value_bases as class_values_class_value_bases,
+    gen_class_value_builtin as class_values_class_value_builtin,
+    gen_class_value_type as class_values_class_value_type,
+    gen_class_value_builtin_record as class_values_class_value_builtin_record,
+    gen_class_value_chain as class_values_class_value_chain,
     gen_class_value_holds as class_values_class_value_holds,
     gen_class_value_of as class_values_class_value_of,
     gen_class_value_objects as class_values_class_value_objects,
@@ -4756,6 +4760,18 @@ class Gen:
 
     def class_value_bases(self, c: str, top: str) -> list[str]:
         return class_values_class_value_bases(self, c, top)
+
+    def class_value_builtin(self, v: Val) -> Val:
+        return class_values_class_value_builtin(self, v)
+
+    def class_value_type(self, v: Val, known: bool) -> Val:
+        return class_values_class_value_type(self, v, known)
+
+    def class_value_builtin_record(self, name: str) -> str:
+        return class_values_class_value_builtin_record(self, name)
+
+    def class_value_chain(self, c: str, top: str) -> list[str]:
+        return class_values_class_value_chain(self, c, top)
 
     def class_value_holds(self, t: str) -> bool:
         return class_values_class_value_holds(self, t)

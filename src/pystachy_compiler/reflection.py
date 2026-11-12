@@ -174,8 +174,8 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     # or "" where Pystachy does not know it
     if c.startswith("%class:"):
         return "builtins" if what == "__module__" else c[7:]
-    if dynamic_program() and self.refl_builtin_class(c) != "":
-        return "builtins" if what == "__module__" else "type"
+    if self.refl_builtin_class(c) != "":
+        return "builtins" if what == "__module__" else "type"  # (a builtin class named: its class is type)
     if dynamic_program() and (is_fn(c) or is_gen(c)):
         return "builtins" if what == "__module__" else tname(c)
     if c == BIG:
