@@ -457,8 +457,9 @@ and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
   holding the class object ([test](../../tests/programs/imports/import_attr_class_alias_fnbefore.py)).
 
 The [rejected forms](compatibility.md#reflection) include class objects of unrelated classes in
-one variable, attributes read through a class object and builtin types as values. A module that
-opts in to dynamic `Any` keeps that prototype's class values instead.
+one variable, attributes read through a class object and builtin types as values. In a module
+that opts in to dynamic `Any`, a class object stored as `Any` is that prototype's
+[class value](../dynamic-any.md#class-values-and-type-keyed-registries).
 
 ### Attribute names the compiler knows
 

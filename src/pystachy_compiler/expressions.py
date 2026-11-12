@@ -1019,6 +1019,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     # static base does not. The existing boxed-class dispatcher
                     # preserves that exact lookup and the receiver's identity.
                     return self.dyn_getattr(self.dyn_box(o), n.s)
+                if self.class_value_typed(o, self.knownobj(n.kids[0])):
+                    return self.class_value_of(o, self.knownobj(n.kids[0]))  # (as in other modules)
                 return self.refl_type_value(o)
         builtin_class = self.refl_builtin_class(o.t) if self.dyn_policy(n.line) else ""
         if builtin_class != "" and n.s in ["__name__", "__qualname__", "__module__"]:
@@ -4745,6 +4747,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             b = self.coerce(b, unopt(a.t))
         elif is_tuple(a.t) and is_vtuple(unopt(b.t)):
             a = self.coerce(a, unopt(b.t))
+    if (a.t == "dyn" and is_clsval(unopt(b.t))) or (b.t == "dyn" and is_clsval(unopt(a.t))):
+        # (a class object and an Any value, where a module opts in to dynamic Any: as class boxes)
+        a, b = self.dyn_box(a), self.dyn_box(b)
     if (op == "==" or op == "!=" or op == "is" or op == "is not") and (is_clsval(unopt(a.t)) or is_clsval(unopt(b.t))) and not self.class_value_asks(op, a, b):
         # (class objects of ordinary classes, by identity: class_values.py; before the objects'
         # comparisons, which only an object whose class defines __eq__ or __ne__ decides)

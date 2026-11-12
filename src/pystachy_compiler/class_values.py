@@ -1,7 +1,7 @@
 """Class objects as values component of the self-hosting Pystachy compiler.
 
-An ordinary class of the program is a value where a module that does not opt in to dynamic Any
-uses one (#7): k = B, f(B), [A, B], {"b": B}, self.kind = kind, type(x) kept in a variable. Its
+An ordinary class of the program is a value where a module uses one (#7): k = B, f(B), [A, B],
+{"b": B}, self.kind = kind, type(x) kept in a variable. Its
 type is type[C], the class object of C or of a class deriving from C, and the value is a pointer
 to that class's reflection record (reflection.py's refl_record: name, qualified name, module),
 the constant that type(x).__name__ and type(x) is C already read and compare. A record is the
@@ -15,11 +15,21 @@ type[C] value may be, C and those deriving from it, so the call compares the rec
 class's and runs that class's constructor, as the call that names the class does (class_new).
 Exception classes keep the class objects exceptions.py gives them (exctype), and an enum class
 its EnumType object.
+
+A module that opts in to dynamic Any made a class box of each class it used as a value, an Any
+value (reflection.py's refl_class_value: the record, with type's DynType), before class objects
+were typed. It reads its classes as typed class objects too, and a class object that an Any
+location takes is that box (class_value_box), which a type[C] location takes back
+(class_value_unbox). A program that such a module compiled before must compile as it did, with
+all it could do with a box: where a program that names no type[C] does not compile with typed
+class objects, or stores an Any value where a class object's type was inferred, the driver
+compiles it again with the module's classes read as boxes (ClassBoxes, class_value_static).
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import dynamic_program, where
-from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.diagnostics import LINES, ClassBoxes, dynamic_program, where
+from src.pystachy_compiler.ir import Data, Ins, Val
 from src.pystachy_compiler.names import ENUMCLASSES, short
+from src.pystachy_compiler.specs import ITERS, OBJECTC, RANGEC
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import clsof, is_clsval, is_opt, is_union, pure_arg, typestr, unopt
 
@@ -66,6 +76,107 @@ def gen_class_value(self, c: str) -> Val:
     return Val(self.refl_record(c), "type[" + c + "]")
 
 
+def gen_class_value_static(self, c: str, mod: str, line: int) -> bool:
+    # is class c's class object a typed value (type[c]) where code at source line line of module
+    # mod ("": not known), which opts in to dynamic Any, reads it: where it is one in other
+    # modules. Else the module keeps the class box it has always made of the class there
+    # (reflection.py's refl_class_value), an Any value: as do all its reads once a program that
+    # names no type[C] does not compile with typed ones (ClassBoxes: the driver's clsany), so
+    # that the programs compiled before class objects were typed are compiled as they were
+    if line // LINES in self.clsany or not self.class_value_named(c) or self.class_value_problem(c) != "":
+        return False
+    if c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$"):
+        # (lib's classes of object()'s objects, of ranges and of iterators: in a program with
+        # such a module their class values are the builtin classes', object and range, whose
+        # records they share: reflection.py's refl_record)
+        return False
+    m = self.classes[c].mod
+    if mod != "" and m != mod and m in self.comp and mod in self.comp and self.comp[m] == self.comp[mod]:
+        return False
+    self.clsused[line // LINES] = True
+    return True
+
+
+def gen_class_value_annotated(self) -> bool:
+    # does the program name type[C] of an ordinary class C (in an annotation: nothing else
+    # subscripts type): it was not compiled before class objects were typed, so its errors are
+    # those of its typed class objects, and its type[C] locations take Any values as other typed
+    # locations do (class_value_unbox), with no ClassBoxes
+    if self.clsann < 0:
+        self.clsann = 0
+        for body in self.clsbodies:
+            if type_subscript(self, body.kids):
+                self.clsann = 1
+    return self.clsann == 1
+
+
+def type_subscript(self, ns: list[Node]) -> bool:
+    for n in ns:
+        if n.kind == "index" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and self.class_value_named(n.kids[1].s):
+            return True
+        if type_subscript(self, n.kids):
+            return True
+    return False
+
+
+def gen_class_value_box(self, v: Val) -> Val:
+    # class object v (or None) as an Any value: a class box of its record, the constant that a
+    # module that opts in to dynamic Any has always made of a class it names where the record
+    # is known (refl_class_value)
+    if v.v == "null":
+        return Val(self.rtdata("pys_dyn_none_box"), "dyn")
+    if v.v.startswith("@pys.refl."):
+        name = "@dbc." + v.v[1:]
+        if name not in self.dynboxes:
+            self.dynboxes[name] = True
+            box = Data("dynbox", name)
+            box.refs = [self.rtdata("pys_dyntype_type"), v.v]
+            self.consts.append(box)
+        return Val(name, "dyn")
+    if not is_opt(v.t):
+        return Val(self.rt("pys_dyn_ref", "ptr", [f"ptr {self.rtdata('pys_dyntype_type')}", f"ptr {v.v}"]), "dyn")
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", "dyn", "")
+    self.incoming(ph, self.rtdata("pys_dyn_none_box"), self.cur)
+    self.cbr(self.ptr_cmp("==", v, Val("null", "None")).v, end, some)
+    self.place(some)
+    made = self.rt("pys_dyn_ref", "ptr", [f"ptr {self.rtdata('pys_dyntype_type')}", f"ptr {v.v}"])
+    self.incoming(ph, made, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "dyn")
+
+
+def gen_class_value_isa(self, v: Val, t: str) -> str:
+    # i1: is Any value v the class box of a class that a value of type t (type[C]) may be
+    end = self.label()
+    box = self.label()
+    ph = Ins("phi", "bool", "")
+    self.incoming(ph, "false", self.cur)
+    self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(v), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, box, end)
+    self.place(box)
+    rec = Val(self.mload("%ptr", self.maddr("%ptr", v.v, "1")), "%ptr")
+    r = "false"
+    for k in self.class_value_kinds(clsof(t)):
+        if self.class_value_problem(k) == "":
+            x = self.scalar_cmp("eq", rec, Val(self.refl_record(k), "%ptr"))
+            r = x if r == "false" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])
+    self.incoming(ph, r, self.cur)
+    self.br(end)
+    self.place(end)
+    return self.phi(ph)
+
+
+def gen_class_value_unbox(self, v: Val, t: str) -> Val:
+    # Any value v as a class object of type t (type[C]): its record where v is the class box of
+    # C or of a class deriving from it, else TypeError (as a typed location takes an Any value)
+    if len(self.clsused) > 0 and not self.class_value_annotated():
+        raise ClassBoxes()  # (the type was inferred of a class a module read: that module's class box)
+    self.guard(self.scalar("xor", [Val(self.class_value_isa(v, t), "bool"), Val("true", "bool")]), f"TypeError: expected {typestr(t)}")
+    return Val(self.mload("%ptr", self.maddr("%ptr", v.v, "1")), t)
+
+
 def gen_class_value_kinds(self, c: str) -> list[str]:
     # the classes whose class object a type[c] value may be: c and the classes deriving from it
     # that have objects (in the order of their class statements)
@@ -81,6 +192,17 @@ def gen_class_value_bases(self, c: str, top: str) -> list[str]:
 def gen_class_value_holds(self, t: str) -> bool:
     # is t the type of a class object (which may be None)
     return is_clsval(unopt(t))
+
+
+def gen_class_value_typed(self, v: Val, known: bool) -> bool:
+    # is type(v) a typed class object (class_value_of) in a module that opts in to dynamic Any: v
+    # is an object of an ordinary class, each class that it may be one with a class object
+    if not self.class_value_named(unopt(v.t)):
+        return False
+    for leaf in self.refl_type_of(v, "__name__", known):
+        if leaf.c != "None" and not self.class_value_static(leaf.c, self.curfn.mod, self.line):
+            return False
+    return True
 
 
 def gen_class_value_of(self, v: Val, known: bool) -> Val:
@@ -215,8 +337,6 @@ def gen_class_value_dynamic(self, t: Node) -> bool:
     # hold or name such classes, or another expression that is no type, as dry() types it
     # (kinds[0], pick(), a.b.c). Not a class named (the static test decides those), a tuple or
     # a union
-    if self.dyn_policy(self.line):
-        return False
     if t.kind == "name":
         if t.s not in self.ltype and (t.s in self.classes or t.s not in self.gtypes):
             return False
@@ -231,7 +351,10 @@ def gen_class_value_dynamic(self, t: Node) -> bool:
     if t.kind == "call" or (t.kind == "attr" and t.s == "__class__"):
         x = self.refl_typeof(t)
     if x is not None:
-        return self.class_value_named(unopt(self.dry(x)))
+        if not self.class_value_named(unopt(self.dry(x))):
+            return False
+        # (where a module opts in to dynamic Any, type(x) may be a class box: class_value_typed)
+        return not self.dyn_policy(self.line) or is_clsval(unopt(self.dry(t)))
     if t.kind == "attr" and t.kids[0].kind == "name" and self.dotted(t) == "":
         o = unopt(self.static_type(t.kids[0]))
         return o in self.classes and t.s not in self.classes[o].methods and is_clsval(unopt(self.classes[o].ftypes.get(t.s, "")))

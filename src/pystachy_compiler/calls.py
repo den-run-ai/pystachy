@@ -155,7 +155,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 return self.exit_value(vals)
             return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)
         return self.builtin(f.s, args, want, resultsoft)
-    if f.kind == "attr" and f.s == "__class__" and not self.dyn_policy(self.line) and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))):
+    if f.kind == "attr" and f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
         # o.__class__(args): a call of the class object of o's class (class_values.py)
         return self.obj_call(self.expr(f, ""), args, want, resultsoft)
     if f.kind == "attr":

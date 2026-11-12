@@ -1,0 +1,14 @@
+Square s! 4.0 True True True
+Circle s 3.0 True True True
+x! Square/Square True False
+<class '__main__.Square'> [<class '__main__.Square'>] {'k': <class '__main__.Square'>} <class '__main__.Square'> <class '__main__.Circle'>
+True True False True Square
+square circle int False 3
+Square Square Square str
+t! Square t! Square t Circle
+True 4.0 m!
+True None
+True True
+True <class '__main__.Square'>
+None
+[exit 0]

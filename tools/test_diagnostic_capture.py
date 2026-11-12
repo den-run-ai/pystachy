@@ -83,7 +83,8 @@ class DiagnosticCaptureTests(unittest.TestCase):
                          ["compiling outer(int)", "compiling helper.inner(int)"])
 
     def generator(self, **changes):
-        values = dict(xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4)
+        values = dict(xtry="", newx={}, newhints={}, final=False, making=[], recursive=[], line=4,
+                      clsused={}, class_value_annotated=lambda: False)
         values.update(changes)
         return SimpleNamespace(**values)
 
@@ -97,6 +98,20 @@ class DiagnosticCaptureTests(unittest.TestCase):
                 self.assertEqual(output.getvalue(), "")
                 self.assertEqual(diagnostics.CAPTURED, [])
         self.assertEqual(generator.newhints, {"local": "int | str"})
+
+    def test_typed_class_objects_retry_as_class_boxes(self):
+        # (class_values.py) an error in a program without a type[C] annotation, a dynamic-Any
+        # module of which read a class as a typed class object, is no terminal error yet
+        diagnostics.CAPTURE = True
+        generator = self.generator(clsused={3: True}, final=True)
+        with redirect_stderr(StringIO()) as output, self.assertRaises(diagnostics.ClassBoxes):
+            gen_err(generator, "expected type[A], got Any")
+        self.assertEqual(output.getvalue(), "")
+        self.assertEqual(diagnostics.CAPTURED, [])
+        annotated = self.generator(clsused={3: True}, final=True, class_value_annotated=lambda: True)
+        with redirect_stderr(StringIO()) as output, self.assertRaises(SystemExit):
+            gen_err(annotated, "expected type[A], got Any")
+        self.assertEqual(output.getvalue(), "main.py:4: error: expected type[A], got Any\n")
 
     def test_terminal_specialization_context_matches_legacy_message(self):
         diagnostics.CAPTURE = True

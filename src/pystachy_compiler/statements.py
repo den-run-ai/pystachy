@@ -302,7 +302,7 @@ def gen_hoist(self, f: FnInfo) -> None:
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
     # as its form shows, or ""
-    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "" and (self.dyn_policy(e.line) or self.class_value_problem(e.s) != ""):
+    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "" and (self.class_value_problem(e.s) != "" or (self.dyn_policy(e.line) and not self.class_value_static(e.s, "", e.line))):
         return f"class '{short(e.s)}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
     if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower() and not is_excname(e.s):
         return f"the builtin '{e.s}' cannot be used as a value (not supported)"

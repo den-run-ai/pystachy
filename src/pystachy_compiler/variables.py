@@ -165,8 +165,8 @@ def gen_load_name(self, name: str) -> Val:
     if name in self.classes and self.classes[name].node.line in ENUMCLASSES:
         return self.expr(self.enum_view(name, self.line), "")  # (an enum class: its EnumType object)
     if name in self.classes:
-        if self.dyn_policy(self.line):
-            return self.refl_class_value(name)
+        if self.dyn_policy(self.line) and not self.class_value_static(name, self.curfn.mod, self.line):
+            return self.refl_class_value(name)  # (a class box, an Any value: reflection.py)
         return self.class_value(name)  # (an ordinary class: its class object, class_values.py)
     if name in self.fglobals:
         self.err(f"name '{name}' is not defined yet here: a function assigns it, so declare it at module level{self.where_def(name)} first ({short(name)}: T)")

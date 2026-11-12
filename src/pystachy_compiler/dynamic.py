@@ -24,7 +24,7 @@ from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_clsval, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -297,6 +297,8 @@ def gen_dyn_boxable(self, t: str) -> str:
     # of these, and dyn
     if t == DYN or dyn_builtin_type(t) != "" or t == BIG or t == NONEVAR or self.refl_builtin_class(t) != "":
         return ""
+    if is_clsval(t):
+        return ""  # (an ordinary class's class object: its class box, class_values.py)
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"
@@ -1421,6 +1423,8 @@ def gen_dyn_box(self, v: Val) -> Val:
     builtin_class = self.refl_builtin_class(t)
     if builtin_class != "":
         return self.refl_class_value(builtin_class)
+    if is_clsval(unopt(t)):
+        return self.class_value_box(v)
     if len(self.idoff) > 0:
         self.identity_box(v, t)  # (where a module's code does not track numeric identity)
     if t == "None" or t == NONEVAR or (is_opt(t) and v.v == "null"):
@@ -2338,6 +2342,8 @@ def gen_dyn_unbox(self, v: Val, t: str, what: str = "") -> Val:
         if numeric_identity(t):
             result.idfrom = v.v
         return result
+    if is_clsval(t):
+        return self.class_value_unbox(v, t)
     if dyn_builtin_type(t) != "":
         r = self.rt("pys_dyn_unbox", "i64", [f"ptr {v.v}", f"ptr {self.dyn_type(t)}"])
         x = self.from_slot(self.to_slot(Val(r, "int")), t) if t != "int" else Val(r, "int")
@@ -2374,7 +2380,7 @@ def gen_dyn_check(self, v: Val, ts: list[str], shown: str) -> None:
 def gen_dyn_unboxable(self, t: str) -> bool:
     # Can dyn_unbox prove t's physical layout? A native integer list requires its exact
     # descriptor; checking the current items of an unrestricted boxed list proves nothing.
-    if t == DYN or t == "None" or t == BIG or dyn_builtin_type(t) != "":
+    if t == DYN or t == "None" or t == BIG or dyn_builtin_type(t) != "" or is_clsval(t):
         return True
     if is_opt(t) and t != NONEVAR:
         return self.dyn_unboxable(unopt(t))
@@ -2400,6 +2406,8 @@ def gen_dyn_isa(self, v: Val, t: str) -> str:
         return "" if r == "" else self.scalar("or", [Val(self.dyn_test(v, ["None"]), "bool"), Val(r, "bool")])
     if t == BIG or dyn_builtin_type(t) != "":
         return self.dyn_test(v, [t])
+    if is_clsval(t):
+        return self.class_value_isa(v, t)
     if t in self.classes and t not in self.tmpl and self.classes[t].exc == "":
         # (an object of t or a subclass, or None, as pys_dyn_unbox walks the box's bases: also of
         # a subclass that the program boxes after this test is compiled)

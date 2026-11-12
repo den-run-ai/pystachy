@@ -549,6 +549,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if tv.t == "exc" or tv.t == "opt[exc]" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             return self.exc_type_of(tv)  # (type(e) of an exception, as a value: its class's class object)
         if self.dyn_policy(self.line):
+            if self.class_value_typed(tv, self.knownobj(args[0])):
+                return self.class_value_of(tv, self.knownobj(args[0]))  # (as in other modules)
             return self.refl_type_value(tv)
         if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
@@ -651,7 +653,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             # class object type() gives of an exception that is None)
             return self.ptr_cmp('!=', v, self.exc_none_class())
         return self.exc_isinst(Val(v.v, "exc"), args[1])
-    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[0].kind != "starred" and args[1].kind != "starred" and not self.dyn_policy(self.line) and self.class_value_holds(self.dry(args[0])):
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[0].kind != "starred" and args[1].kind != "starred" and self.class_value_holds(self.dry(args[0])):
         # issubclass(t, c) of an ordinary class's class object t, c no exception class
         # (class_values.py)
         return self.class_value_issub(self.expr(args[0], ""), args[1])

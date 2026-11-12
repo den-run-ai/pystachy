@@ -691,8 +691,8 @@ See [reflection rules](semantics.md#reflection).
   `typing.Type[C]`; attributes and methods read through one (`k.x`, `k.m()`) other than its
   names; a call with `*` / `**` arguments, or with arguments that the constructor of a class it
   may be does not take; `isinstance()` / `issubclass()` with a tuple holding one; `k == o`
-  where the class of object `o` defines `__eq__` outside a hierarchy; passing one to `Any` in
-  a module that opts in. A class whose body assigns `__module__` or `__qualname__`,
+  where the class of object `o` defines `__eq__` outside a hierarchy; `isinstance()` of an
+  `Any` value with one. A class whose body assigns `__module__` or `__qualname__`,
   and one read from a module in a circular import with the reader, are not values.
 - **Runtime names:** retaining, passing, calling, comparing or sorting by a `getattr` result;
   formatting its text with a spec, or obtaining that text for dataclasses, generics, classes

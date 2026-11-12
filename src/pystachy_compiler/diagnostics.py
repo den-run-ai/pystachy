@@ -173,4 +173,12 @@ class NeedSliceEH(Rejoin):
     pass
 
 
+class ClassBoxes(Rejoin):
+    # A module that opts in to dynamic Any read its classes as typed class objects (type[C]) and
+    # the program did not compile so, or stored an Any value where a class object's type was
+    # inferred: the program is compiled from the start with those modules' classes read as the
+    # class boxes they always were, Any values (class_values.py's class_value_static)
+    pass
+
+
 # ---------------------------------------------------------------- lexer

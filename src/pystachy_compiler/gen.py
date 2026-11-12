@@ -484,6 +484,12 @@ from src.pystachy_compiler.class_values import (
     gen_class_value_named as class_values_class_value_named,
     gen_class_value_problem as class_values_class_value_problem,
     gen_class_value as class_values_class_value,
+    gen_class_value_static as class_values_class_value_static,
+    gen_class_value_annotated as class_values_class_value_annotated,
+    gen_class_value_box as class_values_class_value_box,
+    gen_class_value_isa as class_values_class_value_isa,
+    gen_class_value_unbox as class_values_class_value_unbox,
+    gen_class_value_typed as class_values_class_value_typed,
     gen_class_value_kinds as class_values_class_value_kinds,
     gen_class_value_bases as class_values_class_value_bases,
     gen_class_value_holds as class_values_class_value_holds,
@@ -1404,6 +1410,14 @@ class Gen:
         # an object of a class whose code does not track it may be of (identity_box)
         self.idoff: dict[str, bool] = {}
         self.idfull = False
+        # (class_values.py) the files of modules that opt in to dynamic Any whose classes are
+        # read as class boxes (the driver's, kept across passes); those that read one as a typed
+        # class object in this pass; the modules' statements, and whether one names type[C] of
+        # an ordinary class (-1: not looked for yet)
+        self.clsany: dict[int, bool] = {}
+        self.clsused: dict[int, bool] = {}
+        self.clsbodies: list[Node] = []
+        self.clsann = -1
         # Fixed for a compilation pass; dry traversal retains these program policies,
         # and a restart makes a fresh Gen before disabling hints or tracking everything.
         self.idtry = True  # try checked identity-inert module hints on this pass
@@ -4713,6 +4727,24 @@ class Gen:
 
     def class_value(self, c: str) -> Val:
         return class_values_class_value(self, c)
+
+    def class_value_static(self, c: str, mod: str, line: int) -> bool:
+        return class_values_class_value_static(self, c, mod, line)
+
+    def class_value_annotated(self) -> bool:
+        return class_values_class_value_annotated(self)
+
+    def class_value_box(self, v: Val) -> Val:
+        return class_values_class_value_box(self, v)
+
+    def class_value_isa(self, v: Val, t: str) -> str:
+        return class_values_class_value_isa(self, v, t)
+
+    def class_value_unbox(self, v: Val, t: str) -> Val:
+        return class_values_class_value_unbox(self, v, t)
+
+    def class_value_typed(self, v: Val, known: bool) -> bool:
+        return class_values_class_value_typed(self, v, known)
 
     def class_value_kinds(self, c: str) -> list[str]:
         return class_values_class_value_kinds(self, c)

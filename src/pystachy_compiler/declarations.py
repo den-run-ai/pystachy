@@ -224,7 +224,7 @@ def gen_ann(self, n: Node) -> str:
         # type[BaseException], as __exit__ takes the class of the exception: exctype, which is the
         # exception itself (its class is what it shows)
         return "exctype"
-    elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and self.class_value_named(n.kids[1].s) and not self.dyn_policy(n.line):
+    elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and self.class_value_named(n.kids[1].s):
         # type[C] of an ordinary class C of the program: its class object, or that of a class
         # deriving from it (class_values.py)
         return "type[" + n.kids[1].s + "]"
@@ -2299,7 +2299,7 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return "exctype"
-    if k == "name" and self.class_value_named(e.s) and not self.dyn_policy(e.line):
+    if k == "name" and self.class_value_named(e.s) and (not self.dyn_policy(e.line) or self.class_value_static(e.s, f.mod, e.line)):
         # an ordinary class: its class object (unless a local of the method has its name)
         asg = {}
         local_names(guess_scope(f), asg)
