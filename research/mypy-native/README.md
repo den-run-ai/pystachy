@@ -2,7 +2,8 @@
 
 Research branch material, not for `main` ([CONTRIBUTING](../../CONTRIBUTING.md#repository-contents)).
 Measured on 11 November 2026 at Pystachy `b40ee87` (v0.4.0-alpha.4) against the mypy
-release the repository already pins, 2.4.1.
+release the repository already pins, 2.4.1. On 12 November the import sweep and the
+probes gave the same counts at `6e02b36` (v0.4.0-alpha.6): 26 of 242 and 27 of 50.
 
 ## Proposal
 
@@ -176,8 +177,10 @@ Two runtime behaviors matter at mypy's heap size. mypy tunes CPython's collector
 raises the thresholds, disables collection while it loads the module graph, and then
 promotes what it loaded with a `gc.freeze()`/`gc.unfreeze()` pair. These calls should map
 to Pystachy's collector controls; whether a region that is no longer marked pays off is
-unmeasured. mypy also sets the recursion limit to 2**14 to walk deep trees, so the native
-stack must follow `sys.setrecursionlimit` while `RecursionError` stays catchable.
+unmeasured. mypy also sets the recursion limit to 2**14 to walk deep trees. That already
+works: at `6e02b36`, `sys.setrecursionlimit(2**14)` followed by a 12,000-deep recursion
+runs natively (checked on 12 November, after the first version of this note claimed
+otherwise).
 
 ### Parser
 
@@ -237,7 +240,7 @@ keeps its 20-job and 15-minute limits and gains only a smoke subset.
 | 0 Foundations | Method tables, codegen units and object cache, #261, compiler-known `mypy_extensions`, the sweep and probes as a maintained tool | 200 × 400 probe under a minute; self-build wall time halved on four cores; baseline reproducible from pinned inputs |
 | 1 Class model | Traits, class-set narrowing, decorators, small typing forms, dict base | `mypy.nodes` closure (10 modules) compiles; Q1 |
 | 2 Generics, unions, variance | #962, representation slots, wide and mixed unions, covariant views | `mypy.types` closure compiles; Q2 |
-| 3 Runtime and parser | `librt`, stdlib modules, collector freeze, stack depth, Rust parser link | Q3, Q4 |
+| 3 Runtime and parser | `librt`, stdlib modules, collector controls, Rust parser link | Q3, Q4 |
 | 4 Checker and CLI | Remaining blockers found by Q5 | Q5, Q6, performance gates; pipeline uses 1 and 2 |
 | 5 Integration | Type facts, typeshed contract, mypyc front end, the IR decision | Q7; annotations removed |
 
