@@ -659,7 +659,7 @@ def gen_none_global(self, name: str) -> str:
 def gen_none_global_resolve(self, name: str, t: str) -> None:
     # Unlike a local's pending slot, this read can belong to any function compiled earlier.
     # Keep its hint separate from union joins, which may override a declaration's type.
-    if self.xtry.startswith("narrow:") and "union[" in t:
+    if self.xtry.startswith("narrow:") and self.holds_union(t, []):
         # (a union isinstance(x, (A, B)) narrowed x to would type the global for code outside
         # the attempt, also as a container's items ([x]), whether a store gives it its type or a
         # read's lookahead finds it (if items is None: items = [x]): declined, see narrows)
@@ -1203,7 +1203,7 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         if "?" in self.ret and name in self.qret.get(self.curfn.ll, "").split():
             self.adopt(t)  # the function returned it: so it returns t
     else:
-        if self.xtry.startswith("narrow:") and "union[" in t:
+        if self.xtry.startswith("narrow:") and self.holds_union(t, []):
             # (a union isinstance(x, (A, B)) narrowed x to would type the global's items for code
             # outside the attempt: declined, see narrows)
             self.err(f"'{short(name)}' would take a union that a narrowing made")

@@ -600,6 +600,7 @@ from src.pystachy_compiler.declarations import (
     gen_none_field as declarations_none_field,
     gen_none_field_store as declarations_none_field_store,
     gen_refine_field as declarations_refine_field,
+    gen_holds_union as declarations_holds_union,
     gen_set_elsewhere as declarations_set_elsewhere,
     gen_frozen as declarations_frozen,
     gen_frozen_store as declarations_frozen_store,
@@ -3055,6 +3056,9 @@ class Gen:
 
     def refine_field(self, ci: ClassInfo, name: str, t: str) -> None:
         return declarations_refine_field(self, ci, name, t)
+
+    def holds_union(self, t: str, seen: list[str]) -> bool:
+        return declarations_holds_union(self, t, seen)
 
     def none_field(self, cls: str, name: str, cmp: bool) -> str:
         return declarations_none_field(self, cls, name, cmp)
