@@ -640,11 +640,7 @@ def aot_build(tc: list[str], usebc: str, plain: bool, tmp: str, parts: list[str]
         views = aot_runtime.split(f.read(), aot_runtime.BODY)
         f.close()
         for i in range(len(views)):
-            text = views[i]
-            if i == 2 and text != "":
-                # a use of pys_new, which llvm-link --only-needed then takes with what it needs; the late
-                # step's globaldce removes it. (Attribute groups are the interface's: the body brings its own)
-                text = " ".join([t for t in text.split(" ") if not t.startswith("#")]) + "\n@pys.late = internal constant ptr @pys_new"
+            text = views[i] if i < 2 else aot_runtime.late_root(views[i])
             f = open(p[3 + i], "w", encoding=RAW)
             f.write(text + "\n")
             f.close()
@@ -1310,8 +1306,9 @@ def main() -> None:
         if code == 0 and newalloc:
             late = f"{llvm}opt -passes={LATE_PASSES} {LATE_INLINE} {q(obc)} -o {q(lbc)}"
             if aotrt[2] != "":
-                # (into -O2's module itself, which opt then reads, as without the precompiled runtime)
-                late = f"{llvm}llvm-link {q(obc)} {q(aotrt[2])} -o {q(obc)} && {llvm}opt -passes={LATE_PASSES},elim-avail-extern,globaldce {LATE_INLINE} {q(obc)} -o {q(lbc)}"
+                # (pys_new's body, into -O2's module itself, which opt then reads, as without the
+                # precompiled runtime)
+                late = f"{llvm}llvm-link --only-needed {q(obc)} {q(aotrt[2])} -o {q(obc)} && {llvm}opt -passes={LATE_PASSES},elim-avail-extern,globaldce {LATE_INLINE} {q(obc)} -o {q(lbc)}"
             code = timed_sh("program.late_inline", late)
         if code == 0:
             cc = f"{llvm}clang -O{aotopt} -c -Xclang -disable-llvm-passes {q(lbc)}" if newalloc else f"{llvm}clang -O{aotopt} -c {q(bc)}"

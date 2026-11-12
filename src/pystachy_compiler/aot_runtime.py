@@ -91,6 +91,17 @@ def declaration(head: str, end: int) -> str:
     return "declare " + head[:end] + ("" if len(kept) == 0 else " " + " ".join(kept))
 
 
+def late_root(new: str) -> str:
+    # the module from which llvm-link --only-needed makes the late step's module with the
+    # interface: pys_new's declaration (new; its attribute groups are the interface's, and the body
+    # brings its own) and a use of it, an external one: llvm-link takes a local or
+    # available_externally value only where a value it takes uses it. The late step's own llvm-link
+    # --only-needed takes pys_new's body, not this use. "" where the interface has no body of it
+    if new == "":
+        return ""
+    return " ".join([t for t in new.split(" ") if not t.startswith("#")]) + "\n@pys.late = constant ptr @pys_new"
+
+
 def numbered(s: str) -> bool:
     # a global named by number (@0): unnamed, which a hidden symbol cannot be (opt's
     # name-anon-globals names them first: driver.aot_build)

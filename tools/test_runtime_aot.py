@@ -17,7 +17,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-from src.pystachy_compiler.aot_runtime import BODY, split  # noqa: E402
+from src.pystachy_compiler.aot_runtime import BODY, late_root, split  # noqa: E402
 
 
 def body(n):
@@ -206,6 +206,33 @@ class WithLLVM(unittest.TestCase):
         link = ["-Wl,-dead_strip"] if sys.platform == "darwin" else ["-Wl,--gc-sections"]
         self.run_tool(tools / "clang", "program.o", "runtime.o", "-o", "program", *link, cwd=root)
         return self.run_tool(root / "program", cwd=root)
+
+    def test_late_step_inlines_pys_new(self):
+        # the late module (late_root, linked with the interface) brings pys_new's body back to a
+        # module whose -O2 left calls of it; the late step's passes (driver.LATE_PASSES) inline each
+        # and leave neither the body nor the anchor that took it into the late module
+        tools = llvm()
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            _, face, new = split(MODULE, BODY)
+            (root / "face.ll").write_text(face)
+            (root / "root.ll").write_text(late_root(new) + "\n")
+            (root / "prog.ll").write_text("declare ptr @pys_new(i64)\ndefine ptr @f() {\n  %p = call ptr @pys_new(i64 16)\n  ret ptr %p\n}\n")
+            self.run_tool(tools / "opt", "face.ll", "-o", "face.bc", cwd=root)
+            self.run_tool(tools / "llvm-link", "--only-needed", "root.ll", "face.bc", "-o", "late.bc", cwd=root)
+            self.assertIn("define available_externally", self.run_tool(tools / "opt", "-S", "late.bc", "-o", "-", cwd=root))
+            self.run_tool(tools / "llvm-link", "--only-needed", "prog.ll", "late.bc", "-o", "linked.bc", cwd=root)
+            ir = self.run_tool(tools / "opt", "-S", "-passes=forceattrs,forceattrs,always-inline,elim-avail-extern,globaldce",
+                               "-force-remove-attribute=pys_new:noinline", "-force-attribute=pys_new:alwaysinline",
+                               "linked.bc", "-o", "-", cwd=root)
+            self.assertNotIn("call ptr @pys_new", ir)
+            self.assertNotIn("@pys.late", ir)
+            self.assertIn("@pys_fl", ir, "the inlined fast path reads the runtime's free lists")
+            # negative control: with a local use, llvm-link takes nothing, and the fast path stays a call
+            (root / "local.ll").write_text(late_root(new).replace("@pys.late = constant", "@pys.late = internal constant") + "\n")
+            self.run_tool(tools / "llvm-link", "--only-needed", "local.ll", "face.bc", "-o", "empty.bc", cwd=root)
+            self.assertNotIn("@pys_new", self.run_tool(tools / "opt", "-S", "empty.bc", "-o", "-", cwd=root))
+        self.assertEqual(late_root(""), "")
 
     def test_one_static_for_inlined_and_runtime_code(self):
         tools = llvm()

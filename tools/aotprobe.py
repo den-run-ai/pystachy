@@ -25,7 +25,8 @@ Allocations (allocelide, #1017): compiled code's objects that hold no reference 
 floats and bools) come from pys_new, which -O2 sees as an allocation and deletes where nothing
 keeps the object, before the late step inlines the allocator's fast path into the calls left. An
 opt wrapper keeps the module -O2 gave that step (prog-opt.bc, with the late module that brings back
-pys_new's body), where each allocation left is a
+pys_new's body), and the clang wrapper the step's result (prog-late.bc), where no call of pys_new
+may be left: each was inlined. In prog-opt.bc each allocation left is a
 call of pys_new (the runtime's C code never calls it): TEMPS, whose vectors never leave walk(),
 keeps none, and KEPT, whose objects a list keeps, does. With allocelide off there is no late step,
 and with pys_new inlined before -O2 KEPT keeps no call: either fails here. KEPT also builds with
@@ -228,6 +229,7 @@ def main():
         capture = temp / "captured.bc"
         linked = temp / "linked"
         late = temp / "opt.bc"
+        inlined = temp / "late.bc"
         bindir = temp / "bin"
         bindir.mkdir()
         real = {}
@@ -243,6 +245,7 @@ def main():
         # the module -O2 made, which allocelide's late step (opt) reads
         wrapper = bindir / "clang"
         wrapper.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog.bc) cp \"$a\" {shlex.quote(str(capture))} ;;"
+                           f" */prog-late.bc) cp \"$a\" {shlex.quote(str(inlined))} ;;"
                            f" *.aot0.o | *.aot1.o) printf '%s\\n' \"$a\" >> {shlex.quote(str(linked))} ;; esac; done\n"
                            f"exec {shlex.quote(real['clang'])} \"$@\"\n")
         wrapper.chmod(0o755)
@@ -309,17 +312,21 @@ def main():
                 src.write_text(text)
                 exe = temp / f"{label}-{name}"
                 late.unlink(missing_ok=True)
+                inlined.unlink(missing_ok=True)
                 run(cmd + ["build", str(src), "-o", str(exe)], env)
                 if not late.exists():
                     raise RuntimeError(f"{label} {name}: the AOT build had no late step (prog-opt.bc): is allocelide off?")
                 left[name] = len(NEW.findall(run([real["llvm-dis"], str(late), "-o", "-"], env).decode()))
+                after = len(NEW.findall(run([real["llvm-dis"], str(inlined), "-o", "-"], env).decode())) if inlined.exists() else -1
+                if after != 0:
+                    raise RuntimeError(f"{label} {name}: after the late step, {after} calls of pys_new are left (-1: no prog-late.bc): its fast path was not inlined")
                 if run([str(exe)], env, temp) != run([sys.executable, f"{name}.py"], env, temp):
                     raise RuntimeError(f"{label} {name}: the AOT executable's output differs from CPython's")
             if left["temps"] != 0:
                 raise RuntimeError(f"{label}: objects that never escape stay allocated ({left['temps']} calls of pys_new after -O2)")
             if left["kept"] == 0:
                 raise RuntimeError(f"{label}: no allocation left where a list keeps the objects: the check counts nothing")
-            print(f"{label}: allocations after -O2: none where no object escapes, {left['kept']} where a list keeps them")
+            print(f"{label}: allocations after -O2: none where no object escapes, {left['kept']} where a list keeps them; the late step inlines each")
             exe = temp / f"{label}-kept-O0"
             late.unlink(missing_ok=True)
             run(cmd + ["build", str(temp / "kept.py"), "-o", str(exe)], env | {"PYSTACHY_CFLAGS": "-O0"})
