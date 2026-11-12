@@ -547,13 +547,13 @@ from the budget. Each test runner uses at most four processes within its worker.
 |---|---:|---|
 | Linux bootstrap | 1 | x86-64 compiler/runtime fixed points and verified compiler bundle. |
 | Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
-| Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT. |
+| Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT; the fourth worker also checks scaling's second half. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution, the second runtime ABI, cache and GC controls. |
 | Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress; generated ASan controls on the second worker. |
 | Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles; shared pytest example APIs and native runner qualification. |
 | Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks; bounded Lean null/union proofs. |
 | Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
-| Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
+| Benchmarks and scaling | 1 | Correctness, scaling's first half, BLAS and large upstream regex. |
 | Full-only qualification | 1 skipped | O1 bootstrap comparison and native archive smoke run on main/manual CI. |
 | `Verification` | 1 | Confirms the selected plan. For code PRs, checks reports, profiles, selection manifests, counts and job results. |
 | Lint, legacy check and submission format | 3 | Lint includes CPython port preservation and selected Lean kernel/checker controls. DCO always skips; submission format validates metadata and sends an acknowledgment reminder. |
@@ -615,7 +615,7 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
-| `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side; then native program-cache invalidation and execution. |
+| `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side; annotation-widening parity with CPython, native JIT/AOT and focused GC checks; then native program-cache invalidation and execution. |
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress; independent steps run side by side. |
 | `benchmarks` | Benchmark correctness/timings, real example CLI parity, JSON repair process cases and agent loopback HTTP; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |

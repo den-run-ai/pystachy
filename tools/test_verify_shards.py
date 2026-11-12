@@ -83,6 +83,11 @@ import sys
 args = sys.argv[1:]
 if args and args[0] == "tools/ci_sample.py":
     os.execv(sys.executable, [sys.executable, *args])
+if args and args[0] == "tools/scaling.py":
+    if args[1:4] != ["--check", "--ops", "-x"] or args[args.index("-n") + 1] != "500,1000":
+        sys.exit(9)
+    print("| calls | 500 | mock |\\n| calls | 1000 | mock |")
+    sys.exit(1 if Path("mock-mode").read_text() == "scaling-failure" else 0)
 if args == ["-"]:
     os.execv(sys.executable, [sys.executable, "-"])
 if args == ["--version"]:
@@ -203,7 +208,10 @@ esac
                 with self.subTest(group=group):
                     result, report, logs = self.run_group(group, profile="pr")
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-                    self.assertEqual([step["name"] for step in report["steps"]], ["bootstrap", name])
+                    expected_steps = ["bootstrap", name] + (["scaling-1"] if group == "native-aot-3" else [])
+                    self.assertEqual([step["name"] for step in report["steps"]], expected_steps)
+                    if group == "native-aot-3":
+                        self.assertEqual(report["steps"][-1]["shapes"], ["calls"])
                     step = report["steps"][1]
                     self.assertEqual(step["modes"], [mode])
                     self.assertEqual(step["compiler"], "stage2")
@@ -214,10 +222,14 @@ esac
                                      (checks(shards[index], mode), 0, checks(shards[index], mode)))
                     self.assertIn(f"/pystachy2 {mode}\n", logs[name])
                     pairs.extend((case, mode) for case in shards[index])
-                    for failure in ("suite-failure", "short-suite"):
+                    failures = ["suite-failure", "short-suite"] + (["scaling-failure"] if group == "native-aot-3" else [])
+                    for failure in failures:
                         failed, failed_report, _ = self.run_group(group, failure, profile="pr")
                         self.assertNotEqual(failed.returncode, 0)
                         self.assertEqual(failed_report["result"], "fail")
+                        if failure == "scaling-failure":
+                            self.assertEqual(failed_report["steps"][1]["result"], "pass")
+                            self.assertEqual(failed_report["steps"][-1]["result"], "fail")
         self.assertCountEqual(pairs, [(case, mode) for case in CASES for mode in ("jit", "aot")])
 
     def test_each_shard_runs_its_share_of_the_corpus(self):

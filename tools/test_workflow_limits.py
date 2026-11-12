@@ -95,7 +95,9 @@ def selected_rows(job: dict, condition: str, event: str) -> list[dict]:
     """Evaluate literal row ownership, rejecting syntax this control cannot model."""
     selected = []
     for row in matrix_rows(job, event):
-        expression = condition.replace("github.event_name", repr(event))
+        expression = re.sub(r"startsWith\(matrix.group, '([^']*)'\)",
+                            lambda match, row=row: str(row.get("group", "").startswith(match[1])), condition)
+        expression = expression.replace("github.event_name", repr(event))
         for key in ("machine", "group"):
             expression = expression.replace("matrix." + key, repr(row.get(key)))
         expression = ast.parse(expression.replace("&&", " and ").replace("||", " or "), mode="eval")
@@ -471,6 +473,27 @@ class LimitTests(unittest.TestCase):
                     if not stage:
                         expected.append("controls")
                     self.assertEqual(log.read_text().splitlines(), expected)
+
+    def test_pinned_typing_dependency_follows_full_widening_owner(self):
+        job = workflows()["ci.yml"]["jobs"]["verification"]
+        steps = job["steps"]
+        installs = [step for step in steps if "/^typing_extensions==/p" in step.get("run", "")]
+        self.assertEqual(len(installs), 1)
+        install = installs[0]
+        self.assertIn("tools/requirements-dev.txt", install["run"])
+        self.assertNotIn("continue-on-error", install)
+        verify = next(step for step in steps if step.get("name") == "Verify group")
+        self.assertLess(steps.index(install), steps.index(verify))
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            expected = ([{"machine": "x86_64", "group": "opt-in"}] if event == "pull_request" else
+                        [{"machine": machine, "group": group}
+                         for machine in ("x86_64", "aarch64")
+                         for group in ("runtime-cache", *(f"{family}-{index}"
+                                                         for family in ("dynany-optin", "python-int-optin")
+                                                         for index in range(3)))] +
+                        [{"machine": "x86_64", "group": "gc-jit-1"}])
+            with self.subTest(event=event):
+                self.assertCountEqual(selected_rows(job, install["if"], event), expected)
 
     def test_native_pytest_parity_runs_once_with_oracle_on_short_pr_worker(self):
         found = workflows()
