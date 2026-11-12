@@ -695,7 +695,9 @@ LIST_WRITES: dict[str, str] = {
 # Commands: close (a loop that owns it drops it: what closing raises is reported), close()
 # (raised by close()), throw() (raised at the yield). In a program where a module opts in to
 # promoting ints (diagnostics.int_program), nine: also the pointers of the promoting ints it
-# yielded last and returned (null where they fit, docs/python-int.md)
+# yielded last and returned (null where they fit, docs/python-int.md). On demand
+# for exception payloads/close results, GENRET instead holds a Dyn pointer; the
+# native yield-from reader unboxes it. This adds no slot to ordinary generators.
 GENVAL = 0
 GENRET = 1
 GENSTATE = 2

@@ -425,6 +425,15 @@ opts in to [promoting ints](python-int.md) gives its generators nine words: also
 the promoting ints yielded last and returned (`specs.GENVALP`, `GENRETP`), which every `yield` of
 an int writes, null where the value fits.
 
+Reading exception payloads or using a `close()` result enables `Gen.excargs` on a
+compilation retry. In that mode the existing `GENRET` word keeps a boxed return
+value, including boxed `None`; no promise word is added. A typed `yield from`
+unboxes it to the generator's return type. Public completion raises
+`StopIteration(value)` (or `StopIteration()` for `None`), while an already finished
+resume clears the word first so a later completion has no arguments. Closing a
+never started or finished generator clears it too. Numeric return identity is
+captured before unwinding `finally` blocks, which may rebind the source variable.
+
 A generator expression that no consumer takes directly becomes an anonymous generator
 function, called with its first iterable (evaluated where it is written) and the values of
 the enclosing function's variables it reads. Programs without `yield` and without such

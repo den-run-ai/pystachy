@@ -981,6 +981,7 @@ from src.pystachy_compiler.generators import (
     gen_gen_value_type as generators_gen_value_type,
     gen_gen_returned as generators_gen_returned,
     gen_gen_stop as generators_gen_stop,
+    gen_gen_stop_from as generators_gen_stop_from,
     gen_gen_raised as generators_gen_raised,
     gen_gen_close as generators_gen_close,
     gen_exc_operand as generators_exc_operand,
@@ -3548,6 +3549,9 @@ class Gen:
 
     def gen_stop(self) -> None:
         return generators_gen_stop(self)
+
+    def gen_stop_from(self, g: Val) -> None:
+        return generators_gen_stop_from(self, g)
 
     def gen_raised(self, e: Val) -> None:
         return generators_gen_raised(self, e)

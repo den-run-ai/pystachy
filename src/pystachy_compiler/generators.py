@@ -12,7 +12,7 @@ docs/internals.md#generators.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import closure_free, comp_shared, comp_unbound
-from src.pystachy_compiler.diagnostics import int_program
+from src.pystachy_compiler.diagnostics import NeedExceptionArgs, int_program
 from src.pystachy_compiler.ir import Exit, FnInfo, Ins, IterArg, SeqStart, Try, Val, tmpname
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import (
@@ -35,7 +35,7 @@ from src.pystachy_compiler.specs import (
     exc_derives,
 )
 from src.pystachy_compiler.syntax import Node, comp_names, has_kind, made_var, mk, names_in
-from src.pystachy_compiler.utils import gelem, gsend, is_gen, is_list, typestr
+from src.pystachy_compiler.utils import gelem, gsend, is_gen, is_list, numeric_identity, typestr
 
 
 def with_yield(body: list[Node]) -> bool:
@@ -407,7 +407,12 @@ def gen_gen_ret(self, v: Val) -> None:
     # the generator being compiled finishes, returning v: its final suspend
     self.gen_unhandle()
     i = Ins("gen.ret", "", "")
-    if v.t == BIG:
+    if self.excargs:
+        why = self.dyn_boxable(v.t)
+        if why != "":
+            self.err("generator return payload cannot be retained: " + why)
+        i.a = [Val(self.to_slot(self.dyn_box(v)), "%slot")]
+    elif v.t == BIG:
         i.a = [Val(self.big_lo(v).v, "%slot"), Val(self.big_hi(v).v, "%ptr")]  # (GENRETP)
     elif v.t != "None":
         i.a = [Val(self.to_slot(v), "%slot")]
@@ -454,6 +459,8 @@ def gen_gen_return(self, n: Node) -> None:
             v = self.coerce(v, r)
     else:
         self.gen_none_end()
+    if self.excargs and numeric_identity(v.t):
+        v.idfrom = self.dyn_id_box(v).v  # a finally callback may rebind the original local
     self.carried = v  # (the value first: a finally block runs after it is computed)
     ended = self.leave(0)
     v = self.carried
@@ -775,6 +782,8 @@ def gen_gen_returned(self, h: Val, r: str) -> Val:
     # the value that finished generator h returned, of type r (the value of a yield from): a
     # promoting int's pointer is in GENRETP
     pr = self.gen_promise(h)
+    if self.excargs:
+        return self.coerce(Val(self.mload("dyn", self.maddr("int", pr, str(GENRET))), "dyn"), r)
     s = self.mload("int", self.maddr("int", pr, str(GENRET)))
     if r == BIG:
         return self.big(Val(s, "int"), self.mload("%ptr", self.maddr("int", pr, str(GENRETP))))
@@ -853,7 +862,12 @@ def gen_gen_next(self, h: Val, done: str) -> str:
     st = self.maddr("int", p, str(GENSTATE))
     s0 = self.mload("int", st)
     go = self.label()
-    self.cbr(self.num_cmp("==", Val(s0, "int"), Val(str(GENDONE), "int")).v, done, go)
+    exhausted = self.label() if self.excargs else done
+    self.cbr(self.num_cmp("==", Val(s0, "int"), Val(str(GENDONE), "int")).v, exhausted, go)
+    if self.excargs:
+        self.place(exhausted)
+        self.mstore("dyn", self.rtdata("pys_dyn_none_box"), self.maddr("int", p, str(GENRET)))
+        self.br(done)
     self.place(go)
     self.guard(self.num_cmp("==", Val(s0, "int"), Val(str(GENRUN), "int")).v, "ValueError: generator already executing")
     resumed = self.gen_resume_enter(st)
@@ -1019,10 +1033,14 @@ def gen_gen_method(self, o: Val, m: str, args: list[Node]) -> Val:
     if m == "close":
         if len(args) != 0:
             self.err(f"generator.close() takes no arguments ({len(args)} given)")
-        if self.mcall is None or self.mcall is not self.stmtexpr:
-            self.err("the value of generator.close() is not supported (it is what a generator returns as it closes): call close() as a statement")
+        result = self.mcall is None or self.mcall is not self.stmtexpr
+        if result:
+            if not self.dyn_policy(self.line):
+                self.err("the value of generator.close() is not supported (it is what a generator returns as it closes): call close() as a statement")
+            if not self.excargs:
+                raise NeedExceptionArgs()
         self.gen_close(o)
-        return Val("null", "None")
+        return Val(self.mload("dyn", self.maddr("int", self.gen_promise(o), str(GENRET))), "dyn") if result else Val("null", "None")
     if (m == "send" or m == "throw") and not self.gproto:
         self.err(f"generator.{m}() is supported where it is called (g.{m}(...)), not as a value")
     if m == "throw":
@@ -1056,7 +1074,7 @@ def gen_gen_next_value(self, g: Val, dflt: Val) -> Val:
     self.br(end)
     self.place(done)
     if dflt.v == "":
-        self.gen_stop()
+        self.gen_stop_from(g)
         self.place(end)
         return v
     d = self.coerce(dflt, t)
@@ -1079,6 +1097,23 @@ def gen_gen_stop(self) -> None:
         self.raise_("RuntimeError", self.sconst("generator raised StopIteration"))
     else:
         self.raise_("StopIteration", self.sconst(""))
+
+
+def gen_gen_stop_from(self, g: Val) -> None:
+    # The actual completion carries one boxed return value only in programs that
+    # read payloads. A later next() cleared that slot on its already-done path.
+    if not self.excargs or (self.curfn.gen and not self.eh):
+        self.gen_stop()
+        return
+    p = self.gen_promise(g)
+    value = Val(self.mload("dyn", self.maddr("int", p, str(GENRET))), "dyn")
+    empty = self.label()
+    full = self.label()
+    self.cbr(self.ptr_cmp("==", value, Val(self.rtdata("pys_dyn_none_box"), "dyn")).v, empty, full)
+    self.place(empty)
+    self.throw(self.exc_value("StopIteration", []))
+    self.place(full)
+    self.throw(self.exc_value("StopIteration", [value]))
 
 
 def gen_gen_raised(self, e: Val) -> None:
@@ -1134,12 +1169,16 @@ def gen_gen_close(self, h: Val) -> None:
         self.mstore("int", "0", ca)
         self.raise_("RuntimeError", self.sconst("generator ignored GeneratorExit"))
         self.place(fin)
+        if self.excargs:
+            self.mstore("dyn", self.rtdata("pys_dyn_none_box"), self.maddr("int", p, str(GENRET)))
         self.mstore("int", str(GENDONE), st)
         self.br(end)
         self.place(end)
         return
     self.br(fin)
     self.place(fin)
+    if self.excargs:
+        self.mstore("dyn", self.rtdata("pys_dyn_none_box"), self.maddr("int", p, str(GENRET)))
     self.mstore("int", str(GENDONE), st)
 
 
@@ -1213,7 +1252,7 @@ def gen_gen_throw(self, g: Val, args: list[Node]) -> Val:
     end = self.label()
     self.br(end)
     self.place(done)
-    self.gen_stop()
+    self.gen_stop_from(g)
     self.place(end)
     return v
 
@@ -1252,7 +1291,7 @@ def gen_gen_send(self, g: Val, args: list[Node]) -> Val:
     self.br(end)
     self.place(done)
     self.mstore("int", "0", sa)
-    self.gen_stop()
+    self.gen_stop_from(g)
     self.place(end)
     return r
 

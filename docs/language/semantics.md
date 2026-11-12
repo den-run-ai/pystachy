@@ -305,8 +305,21 @@ A generator suspended inside a `with` block keeps its context manager: closing i
 into it, runs the manager's `__exit__` as CPython does, and `contextlib.contextmanager` drives a
 generator through these calls (see [context managers](#context-managers)).
 
-`close()` is supported as a statement; its value (what a generator returns as it closes, in
-CPython 3.13) is not. `throw(type, value, traceback)`, `async` generators and frame
+In a module opting in to dynamic `Any`, a generator's return is available through
+`StopIteration.value` and `args`, including completion through `next`, `send` and `throw`.
+The first completion carries the result; later attempts carry `None` and empty arguments.
+`next(g, default)` discards a return value as it suppresses `StopIteration`. Typed and boxed
+`next` share this behavior; typed `yield from` retains its ordinary return type.
+
+`close()` is supported as a statement everywhere. In a module opting in to dynamic `Any`,
+its result is also available: the value returned while handling `GeneratorExit`, or `None`
+when it was never started, was already finished, or returns no value during cleanup.
+These return values follow the [exception payload](#exception-payloads) storage bounds.
+Programs that read neither exception payloads nor `close()` results retain their native
+return slots; programs using those features keep a boxed return in the existing slot.
+Automatic finalization of dropped suspended generators remains unsupported.
+
+`throw(type, value, traceback)`, `async` generators and frame
 introspection are not supported, nor `yield from` of an iterator that is no generator in a
 generator that takes a value from `send()` (CPython sends the value on to the iterator, which has
 no `send()`). A generator the program drops while it is suspended is not closed (see
@@ -613,7 +626,8 @@ objects and supported mutable aliases are preserved; native tuple identity has t
 dynamic boundary limitation. Repeated reads return the same tuple. A user exception's `super().__init__()`
 replaces that tuple, including through an alias caught as a builtin exception.
 `OSError`'s optional filename is excluded from `args`, as in CPython. Builtin
-`StopIteration.value` reads its first argument, or `None` for no argument.
+`StopIteration.value` reads its first argument, or `None` for no argument, including the
+return from a completed [generator](#generators).
 Explicit user properties and methods named `args` or `value` retain their
 ordinary lookup, including through a concrete user exception catch. A read through
 builtin exception storage is rejected when the program defines a user exception
@@ -622,7 +636,7 @@ concrete user exception class to retain its lookup. Inherited payload reads thro
 a user base class have the same restriction when a subclass overrides that name.
 A directly named constructor has a known class and remains supported.
 
-Payload retention is enabled only by a payload read; other programs keep the existing
+Payload retention is enabled only by a payload read or use of a generator's `close()` result; other programs keep the existing
 exception layout and constructor path. When enabled, every reachable explicit exception
 argument must fit dynamic storage. Bytes, exception objects and unsupported typed
 containers cannot be retained. A sole unpacked tuple argument is rejected where the
