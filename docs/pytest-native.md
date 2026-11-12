@@ -284,8 +284,9 @@ PYTHONPATH=ports PYSTACHY_PATH=ports python3 tools/pytest_native.py \
 The target checks original pytest outcomes, negative controls, fixture lifecycle,
 shared module state, native JIT/AOT, GC stress and a mixed `Any` fixture. It runs
 inside the existing x86-64 `hosted` CI job on code PRs, main pushes and manual runs.
-The examples build with the hosted compiler; `PYTEST_NATIVE_COMPILER=./pystachy`
-gives the runner's own tests and controls a bootstrapped compiler, as CI does.
+The examples' JIT run uses the hosted compiler; `PYTEST_NATIVE_COMPILER="$PWD/pystachy"`
+gives their AOT build and the runner's own tests and controls a bootstrapped
+compiler, as CI does.
 The examples exercise current stdlib APIs and the
 iniconfig/jdcal/json_repair/roman ports. The 72 cases include 16 JSON-repair cases for
 malformed/Unicode input, result objects, logs, fixture aliases and strict errors, 14

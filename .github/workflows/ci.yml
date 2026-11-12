@@ -309,8 +309,8 @@ jobs:
         run: make test-pytest-workloads PYTEST_WORKLOAD_COMPILER=build/verify/pystachy2 PYTEST_WORKLOAD_ARGS='--group examples'
 
       # Retain the hosted compiler and original pytest oracle without using Lint's budget:
-      # the examples build with the hosted compiler, and the runner's own tests, controls
-      # and upstream methods with the verified one, which keeps the job within its bound.
+      # the examples' JIT run uses the hosted compiler; their AOT build and the runner's own
+      # tests, controls and upstream methods use the verified one, within the job's bound.
       - name: Generated native pytest runner parity
         if: matrix.group == 'hosted' && matrix.machine == 'x86_64'
         env:
