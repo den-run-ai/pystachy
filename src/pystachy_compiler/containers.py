@@ -1247,6 +1247,8 @@ def gen_repr(self, v: Val) -> Val:
         return self.big_tuple_repr(v)  # (of promoting ints, item by item: bigints.py)
     if self.reference_union(v.t):
         return self.refl_union_str(v, "__repr__")  # (each class's: reflection.py)
+    if self.object_union(v.t):
+        return self.uop(v, "repr")  # (the member's: unions.py)
     if v.t in self.classes:
         return self.obj_str(v, "__repr__")
     if v.t == "None":

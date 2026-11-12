@@ -15,6 +15,7 @@ from src.pystachy_compiler.union_arithmetic import (
     gen_unumeric as union_arithmetic_unumeric,
     gen_unumeric_case as union_arithmetic_unumeric_case,
     gen_uorders as union_arithmetic_uorders,
+    gen_unequal_types as union_arithmetic_unequal_types,
     gen_usplit as union_arithmetic_usplit,
 )
 from src.pystachy_compiler.memory_ir import (
@@ -253,6 +254,7 @@ from src.pystachy_compiler.unions import (
     gen_replay_state as unions_replay_state,
     gen_stable as unions_stable,
     gen_ueq_type as unions_ueq_type,
+    gen_object_union as unions_object_union,
     gen_scalar_union as unions_scalar_union,
     gen_num_union as unions_num_union,
     gen_value_union as unions_value_union,
@@ -418,6 +420,9 @@ from src.pystachy_compiler.builtins import (
     gen_comp_end as builtins_comp_end,
     gen_neumaier as builtins_neumaier,
     gen_sum_union_item as builtins_sum_union_item,
+    gen_sum_objects as builtins_sum_objects,
+    gen_sum_object_item as builtins_sum_object_item,
+    gen_sum_object_end as builtins_sum_object_end,
     gen_sum_union_end as builtins_sum_union_end,
     gen_reverse_arg as builtins_reverse_arg,
     gen_bytes_ as builtins_bytes_,
@@ -741,6 +746,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_tree as exceptions_exc_tree,
     gen_exc_type_of as exceptions_exc_type_of,
     gen_exc_isinst as exceptions_exc_isinst,
+    gen_exc_overlap as exceptions_exc_overlap,
     gen_exc_init_keeps as exceptions_exc_init_keeps,
     gen_exc_keep as exceptions_exc_keep,
     gen_exc_kw as exceptions_exc_kw,
@@ -3169,6 +3175,9 @@ class Gen:
     def uorders(self, a: str, b: str) -> bool:
         return union_arithmetic_uorders(self, a, b)
 
+    def unequal_types(self, a: str, b: str) -> bool:
+        return union_arithmetic_unequal_types(self, a, b)
+
     def ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
         return union_arithmetic_ucmp(self, op, a, b, nonnull)
 
@@ -3920,6 +3929,9 @@ class Gen:
 
     def exc_isinst(self, v: Val, t: Node) -> Val:
         return exceptions_exc_isinst(self, v, t)
+
+    def exc_overlap(self, a: str, b: str) -> bool:
+        return exceptions_exc_overlap(self, a, b)
 
     def catch_set(self, t: Node) -> str:
         return exceptions_catch_set(self, t)
@@ -4920,6 +4932,15 @@ class Gen:
     def sum_union_item(self, r: Reduce, v: Val) -> None:
         return builtins_sum_union_item(self, r, v)
 
+    def sum_objects(self, t: str, stt: str) -> bool:
+        return builtins_sum_objects(self, t, stt)
+
+    def sum_object_item(self, r: Reduce, v: Val) -> None:
+        return builtins_sum_object_item(self, r, v)
+
+    def sum_object_end(self, r: Reduce) -> Val:
+        return builtins_sum_object_end(self, r)
+
     def sum_union_end(self, r: Reduce) -> Val:
         return builtins_sum_union_end(self, r)
 
@@ -5153,6 +5174,9 @@ class Gen:
 
     def ueq_type(self, t: str) -> bool:
         return unions_ueq_type(self, t)
+
+    def object_union(self, t: str) -> bool:
+        return unions_object_union(self, t)
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)

@@ -686,6 +686,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if g.kind != "listcomp":
             g = mk("listcomp", "gen", g.line, [mk("name", "__item", g.line, []), made_var("__item", g.line), g])
         return self.listcomp(g, "", name)
+    if name == "sum" and len(args) == 2 and args[0].kind != "kw" and args[1].kind == "kw" and args[1].s == "start":
+        args = [args[0], args[1].kids[0]]  # (sum(iterable, start=s) is sum(iterable, s))
     if name == "sum" or name == "min" or name == "max":
         stt = self.stream_start(name, args)
         if stt != "-":
@@ -852,6 +854,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             vals = [self.big_narrow(v) for v in vals]  # (keyed min/max and int | None compare their values as they are)
     if (name == "sum" or name == "math.prod") and len(vals) == 2 and vals[1].t == "bool":
         self.err(f"{name}() with a bool start is not supported: it returns the bool for an empty iterable, else a number; use int(start) for a numeric result")
+    if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and self.sum_objects(gelem(vals[0].t) if is_gen(vals[0].t) else self.iter_elem(unopt(vals[0].t)), vals[1].t if len(vals) == 2 else ""):
+        # (objects: each added by its class's methods as it comes, see sum_object_item)
+        item = made_var("__item", self.line)
+        return self.reduce(name, [mk("listcomp", "gen", self.line, [item, item, self.vnode(vals[0])])] + [self.vnode(v) for v in vals[1:]], vals[1].t if len(vals) == 2 else "")
     if name == "sum" and len(vals) == 2 and (self.iter_object(vals[0].t) or is_gen(vals[0].t)) and (vals[1].t == "int" or vals[1].t == "float"):
         # (an iterator object's or a generator's items, added as they come)
         item = made_var("__item", self.line)
@@ -1043,6 +1049,11 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if name == "divmod" and len(vals) == 2 and t in self.classes and "__divmod__" in self.classes[t].methods:
         self.none_operand("divmod()", v, vals[1])
         return self.method(v, "__divmod__", [self.vnode(vals[1])], want, resultsoft)
+    if name == "divmod" and len(vals) == 2 and (t == "int" or t == "float" or t == "bool" or t == BIG) and vals[1].t in self.classes and "__rdivmod__" in self.classes[vals[1].t].methods:
+        # divmod(x, o) for a number x, which has no method for an object: o.__rdivmod__(x), as
+        # x + o is o.__radd__(x) (gen_dunder); for a None o, CPython's TypeError
+        self.notnone(vals[1], f"TypeError: unsupported operand type(s) for divmod(): '{tname(t)}' and 'NoneType'")
+        return self.method(vals[1], "__rdivmod__", [self.vnode(v)], want, resultsoft)
     if (name == "int" or name == "float") and len(vals) == 1 and t in self.classes:
         # int(o) is o.__int__(), else o.__index__(); float(o) is o.__float__(), else o.__index__()
         # as a float. CPython checks the result's type where the call returns: here the method's
@@ -1210,7 +1221,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(NONEARG[name].replace("NoneType", tname(t)))
     if name == "type" and len(vals) == 1 and (t == "exc" or (t in self.classes and self.classes[t].exc != "")):
         self.err(f"unsupported call {key}: type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-    us = [j for j in range(len(vals)) if self.scalar_union(vals[j].t) and not is_opt(vals[j].t)]
+    us = [j for j in range(len(vals)) if (self.scalar_union(vals[j].t) and not is_opt(vals[j].t)) or self.object_union(vals[j].t)]
     if len(us) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         return self.usplit(name, vals, us[0], want)  # (each member's call: union splitting)
     self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range')}")
@@ -1724,7 +1735,7 @@ def gen_stream_start(self, name: str, args: list[Node]) -> str:
     if len(args) == 1:
         return ""
     t = self.dry(args[1])
-    return t if t == "int" or t == "float" or t == BIG else "-"
+    return t if t == "int" or t == "float" or t == BIG or self.sum_objects("", t) else "-"
 
 def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     # sum(), min() or max() of a generator expression or an iterator call: each item is added
@@ -1752,6 +1763,10 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     if name == "math.prod":
         sv = self.expr(args[1], "")
         self.mstore(r.stt, self.coerce(sv, r.stt).v, r.acc)
+    elif name == "sum" and r.start != "":
+        sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")
+        self.mstore(r.stt if r.stt != "" else "int", self.coerce(sv, r.stt if r.stt != "" else "int").v, r.start)
+        self.mstore('bool', 'true', r.first)
     elif name == "sum" and r.t == BIG:
         sv = self.expr(args[1], "") if len(args) == 2 else Val("0", "int")  # (an int: stream_start)
         self.mstore(BIG, self.to_big(sv).v, r.acc)
@@ -1784,6 +1799,8 @@ def gen_reduce(self, name: str, args: list[Node], stt: str) -> Val:
     self.place(back)
     if name == "math.prod":
         return Val(self.mload(r.stt, r.acc), r.stt)
+    if name == "sum" and r.start != "":
+        return self.sum_object_end(r)
     if name != "sum" and r.collect:
         d = self.sconst(self.desc(r.t, ">" if name == "max" else "<"))
         lv = self.mload('%ptr', r.acc)
@@ -1903,6 +1920,13 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     # an item of reduce()'s generator: added to the sum, or compared with the item kept. Its
     # accumulators are made at its first compilation, which gives the items' type
     v = self.expr(e, "")
+    if r.t == "" and r.name == "sum" and self.sum_objects(v.t, r.stt):
+        r.t = v.t
+        r.start = self.alloca(r.stt if r.stt != "" else "int", "")
+        r.first = self.alloca("bool", "")
+    if r.start != "":
+        self.sum_object_item(r, v)
+        return
     if r.t == "":
         r.t = v.t
         if r.name == "sum" and r.stt != "float" and (v.t == BIG or ((v.t == "int" or v.t == "bool") and (r.stt == BIG or self.int_policy(self.line)))):
@@ -1993,6 +2017,81 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     self.neumaier(r.acc, r.comp, v.v)
     self.br(nm)
     self.place(nm)
+
+def gen_sum_objects(self, t: str, stt: str) -> bool:
+    # is sum() of items of type t ("" where not known yet) from a start of type stt ("" where
+    # none is given) a sum of objects (sum_object_item): an item or the start is a class's
+    # object, or a union's that holds one beside numbers (object_union), which + adds by its
+    # methods. Exceptions, NamedTuples (tuples to +) and range objects are none
+    for x in [t, stt]:
+        if x in self.classes and self.classes[x].exc == "" and x not in self.nts and x != RANGEC:
+            return True
+        if self.object_union(x) and len([m for m in umembers(unopt(x)) if m == "str" or m == "file"]) == 0:
+            return True
+    return False
+
+def gen_sum_object_item(self, r: Reduce, v: Val) -> None:
+    # an item added to a sum of objects as CPython adds it: the first one to the start, start +
+    # item (0 + item where no start is given: the item's reflected method, as CPython's int
+    # declines it, gen_dunder), then each to the sum so far, sum + item. The first addition
+    # gives the sum's type, which the others must keep. No operand is dropped or swapped: an
+    # __add__ or __radd__ that records its operands sees CPython's, in CPython's order (#636)
+    st = r.stt if r.stt != "" else "int"
+    if st in ["int", "float", "bool", BIG] and v.t in self.classes and "__radd__" not in self.classes[v.t].methods:
+        self.err(f"unsupported call sum(list[{typestr(v.t)}]{',' + typestr(r.stt) if r.stt != '' else ''}): its first addition is {'0' if r.stt == '' else typestr(st)} + {typestr(v.t)}, which needs {tname(v.t)}.__radd__; or give it a start to add to, as in sum(items, start)")
+    lfirst = self.label()
+    lnext = self.label()
+    lend = self.label()
+    self.cbr(self.mload('bool', r.first), lfirst, lnext)
+    self.place(lfirst)
+    one = self.arith("+", Val(self.mload(st, r.start), st), v)
+    if not self.term:
+        if r.sumt == "":
+            r.sumt = one.t
+            r.acc = self.alloca(one.t, "")
+        if one.t != r.sumt:
+            self.err(f"sum() of {typestr(v.t)}: its first addition is a {typestr(r.sumt)} for one item and a {typestr(one.t)} for another; add the items in a loop")
+        self.mstore(r.sumt, one.v, r.acc)
+        self.mstore('bool', 'false', r.first)
+        self.br(lend)
+    self.place(lnext)
+    if r.sumt == "":
+        self.unreachable()  # (the first addition always raises: no item follows one)
+    else:
+        more = self.arith("+", Val(self.mload(r.sumt, r.acc), r.sumt), v)
+        if not self.term:
+            if more.t != r.sumt and not is_union(unopt(r.sumt)):
+                self.err(f"sum() of {typestr(v.t)}: adding an item to the sum, a {typestr(r.sumt)}, makes a {typestr(more.t)}; add the items in a loop, whose variable is annotated with both")
+            self.mstore(r.sumt, self.coerce(more, r.sumt).v, r.acc)
+            self.br(lend)
+    self.place(lend)
+
+def gen_sum_object_end(self, r: Reduce) -> Val:
+    # a sum of objects: the start itself where no item came (the int 0 where none is given, as
+    # CPython's sum() of no items is), else the sum; of their union where their types differ
+    st = r.stt if r.stt != "" else "int"
+    if r.sumt == "":
+        return Val(self.mload(st, r.start), st)
+    rt = st if st == r.sumt else self.union_type([st, r.sumt])
+    if rt.startswith("!"):
+        self.err(f"unsupported call sum(list[{typestr(r.t)}]{',' + typestr(r.stt) if r.stt != '' else ''}): it is its start, a {typestr(st)}, for no items, else a {typestr(r.sumt)}, which have no union; add the items in a loop")
+    lnone = self.label()
+    lsome = self.label()
+    lend = self.label()
+    self.cbr(self.mload('bool', r.first), lnone, lsome)
+    self.place(lnone)
+    a = self.coerce(Val(self.mload(st, r.start), st), rt)
+    ea = self.cur
+    self.br(lend)
+    self.place(lsome)
+    b = self.coerce(Val(self.mload(r.sumt, r.acc), r.sumt), rt)
+    eb = self.cur
+    self.br(lend)
+    self.place(lend)
+    ph = Ins("phi", rt, "")
+    self.incoming(ph, a.v, ea)
+    self.incoming(ph, b.v, eb)
+    return Val(self.phi(ph), rt)
 
 def gen_iterator_call(self, n: Node) -> bool:
     if n.kind != "call" or n.kids[0].kind != "name" or self.bound(n.kids[0].s):

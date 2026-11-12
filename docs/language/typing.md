@@ -16,7 +16,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`; integer indexing checked at runtime, and slicing |
 | Classes, dataclasses, `NamedTuple` | Fields have static types |
 | `Callable[[A, B], R]` | Fixed positional signature; also supports zero arguments |
-| `A \| B` | Explicit scalar unions, or up to four non-overlapping native class/file members |
+| `A \| B` | Explicit scalar unions, or up to four non-overlapping native class/file members, with or without scalar members beside them |
 | `T \| None` | Optional values, including containers, `Callable`, generators (`Generator[Y, None, None] \| None`) and exceptions (`BaseException \| None`) |
 | `type[E]`, `type[E] \| None` | The class of an exception (`E` an exception class), as a context manager's `__exit__` takes it; see [context managers](semantics.md#context-managers) |
 | `TextIO` | Text files |
@@ -505,7 +505,7 @@ These ordinary unions describe finite-depth JSON-shaped data. The
 `type Value = None | int | str | list[Value] | dict[str, Value]` with data depth
 chosen at runtime. General `Any` is a [prototype](../dynamic-any.md) that a module opts in to.
 Native class/file members
-retain the separate reference-union restrictions below.
+retain the separate reference-union restrictions below, and combine with scalar members only.
 
 Truth tests, `bool()`, `str()`, `repr()`, printing and f-strings support these mixed
 unions without narrowing, including nested containers and different list/dict
@@ -562,7 +562,8 @@ whose type holds its objects: `Base | Child` and `datetime | date` are the base 
 a whole declared member is supported, while narrowing a base member to a subclass is not yet
 implemented.
 
-Reference unions cannot mix with scalar or container members or exception types.
+Reference unions cannot mix with container members or exception types; scalar members
+may join them, as [below](#objects-beside-scalars).
 Callable fields, bound-method extraction and unpacked method arguments
 are unsupported. Use a typed local for an empty-container argument that needs an
 expected type. Field and property reads and stores dispatch on the member. A read of
@@ -574,6 +575,45 @@ to a member before equality comparison, truth testing or formatting. Containers 
 invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
+
+### Objects beside scalars
+
+A union may hold `int`, `float`, `bool` and `str` members beside its class or file members,
+as `int | Decimal`, `str | Path` and `TextIO | str` do. The four-member limit counts the
+class and file members only. The box, its tags and `isinstance()` narrowing are those of the
+unions above, and such a union may hold `None` as any union with a class member may: after
+`isinstance(value, Money)` is excluded, an `int | Money` is an `int | None`, so test the
+scalar member (`isinstance(value, int)`) where an `int` is needed.
+
+```python
+def cents(value: int | Money) -> int:
+    if isinstance(value, Money):
+        return value.cents
+    if isinstance(value, int):
+        return value
+    raise TypeError("no value")
+```
+
+Where every member has the operation, the value is used without narrowing, and the member
+that the tag selects performs it:
+
+- binary and unary arithmetic, an object's by its methods and by its reflected method for a
+  number on its left; the result is the union of the members' results (`int | Money` plus a
+  `Money` is a `Money` where both additions return one);
+- `==`, `!=` and the orderings, an object's by its methods; a number or `str` and an object
+  whose class defines no `__eq__` are never equal;
+- truth tests, `str()`, `repr()`, printing, f-strings and `format()`, an object's by its
+  `__bool__`, `__str__`, `__repr__` and `__format__`;
+- `int()`, `float()`, `abs()`, `round()`, `math.floor()` and the other builtin calls that
+  take each member.
+
+A `None` value raises CPython's `TypeError` there, or is `None`'s own text and truth. A `str`
+member has no arithmetic to select, and members whose results have no union (two differently
+typed tuples from `divmod()`) are rejected: narrow first. So are a method call, an attribute,
+`is` between two such values, `hash()`, and use as a set element, a dict key or in `sorted()`.
+A comparison method whose parameter is such a union (`other: Money | int`) takes each member.
+No union with a class member is [inferred](#inferred-unions): annotate the variable, as in
+`total: int | Money = 0`. [`sum()` of objects](semantics.md#sums-of-objects) returns one.
 
 ## Function and method templates
 

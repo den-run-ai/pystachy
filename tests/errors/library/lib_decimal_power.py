@@ -1,4 +1,4 @@
-# error: lib_decimal_power.py:5: error: ** and pow() of objects are not supported (Decimal ** Decimal calls Decimal.__pow__)
+# error: lib_decimal_power.py:5: error: expected int, got Decimal
 # Decimal ** Decimal needs exp() and ln(), which are not provided: the exponent is an int.
 from decimal import Decimal
 

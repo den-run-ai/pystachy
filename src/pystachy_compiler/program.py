@@ -96,6 +96,30 @@ def gen_subclass_problem(self, st: Node) -> str:
             if len(st.kids[0].kids) > 1:
                 return "an exception class with a decorator is not supported"
             return ""
+        if first != "" and second != "":
+            # An exception class of the program as one of two exception bases (decimal's
+            # DivisionByZero is a DecimalException and a ZeroDivisionError). The first base gives
+            # the object its layout, methods and text; the second only what catches it and what
+            # isinstance() and issubclass() tell (derives), so it defines nothing itself.
+            if (first not in self.classes and first not in PLAIN_EXC_BASES) or (second not in self.classes and second not in PLAIN_EXC_BASES):
+                return "two builtin exception bases must be independent and have ordinary Exception behavior"
+            if self.derives(first, second) or self.derives(second, first):
+                return "the two exception bases of a class must be independent: neither derives from the other"
+            ancestor = second
+            while ancestor in self.classes and not self.derives(first, ancestor):
+                # (as far as an ancestor that the first base shares, whose own the object has)
+                info = self.classes[ancestor]
+                for d in info.node.kids[0].kids:
+                    if d.kind != "pass" and not (d.kind == "expr" and d.kids[0].kind == "str"):
+                        return f"a second exception base must define no methods or fields, which {ancestor} does: the first base gives the object its own"
+                if info.excsecond != "":
+                    return "a second exception base with two bases of its own is not supported"
+                ancestor = info.base
+            if ancestor not in self.classes and ancestor != "Exception" and ancestor not in PLAIN_EXC_BASES:
+                return "two builtin exception bases must be independent and have ordinary Exception behavior"
+            if len(st.kids[0].kids) > 1:
+                return "an exception class with a decorator is not supported"
+            return ""
         if st.kids[1].kind != "name" or st.kids[2].kind != "name":
             return why
         primary = st.kids[1].s
@@ -292,8 +316,8 @@ def gen_derives(self, c: str, base: str) -> bool:
         info = self.classes[c]
         if info.role != "" and info.role == base:
             return True
-        if info.excsecond != "" and exc_derives(info.excsecond, base):
-            return True
+        if info.excsecond != "" and self.derives(info.excsecond, base):
+            return True  # (its second exception base, a builtin class or one of the program)
         c = info.base
     return c in EXCBASES and exc_derives(c, base)
 

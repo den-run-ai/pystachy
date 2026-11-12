@@ -1,6 +1,7 @@
 """Numeric operations on explicit, finite unions, using native typed lowering."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.specs import DUNDER, NONEARG
 from src.pystachy_compiler.syntax import mk
 from src.pystachy_compiler.utils import is_opt, is_union, tname, typestr, umembers, unopt
 
@@ -12,20 +13,44 @@ def unarith(op: str, t: str) -> bool:
     return len([m for m in umembers(unopt(t)) if m not in ["int", "float", "bool", "None"]]) > 0
 
 
+def none_call_error(name: str, ts: list[str], i: int) -> str:
+    # CPython's TypeError message for builtin name called with None as argument i (the others
+    # of types ts), where usplit knows it; "" where the call is compiled for None as it is
+    if name in NONEARG:
+        return NONEARG[name]
+    if name == "math.floor" or name == "math.ceil":
+        return "must be real number, not NoneType"
+    if name == "math.trunc":
+        return "type NoneType doesn't define __trunc__ method"
+    if (name == "divmod" or name == "pow") and len(ts) == 2:
+        names = [tname(ts[k]) if k != i else "NoneType" for k in range(2)]
+        return f"unsupported operand type(s) for {'divmod()' if name == 'divmod' else '** or pow()'}: '{names[0]}' and '{names[1]}'"
+    return ""
+
+
 def gen_unumeric(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
-    if op not in (["+", "-"] if unary else ["+", "-", "*", "/", "//", "%"]):
+    # A union that holds objects beside numbers (object_union: int | Decimal, what sum() of
+    # objects is) selects each member's operation too: an object's method, the reflected one for
+    # a number on its left (gen_dunder), which every operator may be. Its operations' results
+    # are their union, where there is one. A str member has no arithmetic: narrow it first.
+    objects = False
+    for v in [a] if unary else [a, b]:
+        members = umembers(unopt(v.t)) if is_union(unopt(v.t)) else [unopt(v.t)]
+        if self.object_union(v.t) and len([m for m in members if m == "str" or m == "file"]) == 0:
+            objects = True
+    if not objects and op not in (["+", "-"] if unary else ["+", "-", "*", "/", "//", "%"]):
         self.err("closed numeric union arithmetic supports +, -, *, /, //, % and unary + or -; narrow other operations first")
     nominal: list[str] = []
     for v in [a] if unary else [a, b]:
         for m in umembers(unopt(v.t)) if is_union(unopt(v.t)) else [unopt(v.t)]:
-            if m not in ["int", "float", "bool", "None"]:
+            if m not in ["int", "float", "bool", "None"] and not objects:
                 self.err("closed union arithmetic requires narrowing with isinstance() first" + self.unarrowed(a if is_union(unopt(a.t)) else b))
             if m != "None":
                 nominal.append("float" if m == "float" or op == "/" else "int")
     result = self.unumeric_case(op, a, b, shown, unary)
     # An explicitly None operand can make every path raise. Keep a numeric
     # placeholder for the surrounding expression's type checking, never None.
-    return Val("undef", self.union_type(nominal)) if self.term else result
+    return Val("undef", self.union_type(nominal)) if self.term and not objects else result
 
 def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
     # Expression evaluation has already happened, left to right and exactly once.
@@ -38,10 +63,18 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
             message = f"bad operand type for unary {op}: 'NoneType'" if unary else f"unsupported operand type(s) for {shown if shown != '' else op}: '{tname(a.t)}' and '{tname(b.t)}'"
             self.raise_("TypeError", self.sconst(message))
             return Val("null", "None")
+        if not unary and shown == op + "=" and b.t in self.classes and (a.t == "int" or a.t == "float" or a.t == "bool"):
+            # (a number that the union's variable holds, and an object: the object's reflected
+            # method, whose result the variable takes, as CPython's x += o rebinds x: gen_dunder
+            # keeps that for a variable of the number's type, which could not hold it)
+            rm = "__r" + DUNDER[op][2:] if op in DUNDER else ""
+            if rm in self.classes[b.t].methods:
+                self.notnone(b, f"TypeError: unsupported operand type(s) for {shown}: '{tname(a.t)}' and 'NoneType'")
+                return self.call_fn(self.classes[b.t].methods[rm], [b, a], [])
         return self.unary(mk("unary", op, 0, [self.vnode(a)])) if unary else self.arith(op, a, b, shown)
     members = umembers(unopt(v.t)) if is_union(unopt(v.t)) else [unopt(v.t)]
-    if is_opt(v.t):
-        members = ["None"] + members
+    if is_opt(v.t) or (self.object_union(v.t) and v.v not in self.nn):
+        members = ["None"] + members  # (a union that holds objects may be None, as they may)
     end = self.label()
     results: list[Val] = []
     edges: list[str] = []
@@ -71,6 +104,8 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
     # A fixed operator has a finite result set: int, float, or int | float.
     # Do not widen int to float, which would lose its runtime type and precision.
     result_type = self.union_type([r.t for r in results])
+    if result_type.startswith("!"):
+        self.err(f"unsupported operand types for {shown if shown != '' else op}: the results of {typestr(v.t)}'s members ({', '.join([typestr(r.t) for r in results])}) have no union; narrow it with isinstance() first")
     ph = Ins("phi", result_type, "")
     for i in range(len(results)):
         r = self.convert_at(results[i], result_type, edges[i])
@@ -83,6 +118,8 @@ def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
     # and the union of their results (int | float: abs(), math's results are floats)
     u = vals[i]
     members = umembers(u.t)
+    if self.object_union(u.t) and u.v not in self.nn:
+        members = ["None"] + members  # (a union that holds objects may be None, as they may)
     end = self.label()
     results: list[Val] = []
     edges: list[str] = []
@@ -91,12 +128,18 @@ def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
         miss = self.label() if j + 1 < len(members) else ""
         if miss == "":
             self.br(hit)
+        elif members[j] == "None":
+            self.cbr(self.ptr_cmp('==', u, Val('null', 'None')).v, hit, miss)
         else:
             self.cbr(self.utest(u, [members[j]], False), hit, miss)
         self.place(hit)
         args = [self.vnode(v) for v in vals]
-        args[i] = self.vnode(self.uget(u, members[j]))
-        r = self.builtin(name, args, want)
+        args[i] = self.vnode(Val("null", "None") if members[j] == "None" else self.uget(u, members[j]))
+        r = Val("null", "None")
+        if members[j] == "None" and none_call_error(name, [v.t for v in vals], i) != "":
+            self.raise_("TypeError", self.sconst(none_call_error(name, [v.t for v in vals], i)))  # (CPython's, for None)
+        else:
+            r = self.builtin(name, args, want)
         if not self.term:
             results.append(r)
             edges.append(self.cur)
@@ -115,6 +158,16 @@ def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
         r = self.convert_at(results[j], result_type, edges[j])
         self.incoming(ph, r.v, self.convedge)
     return Val(self.phi(ph), result_type)
+
+def gen_unequal_types(self, a: str, b: str) -> bool:
+    # is a number or str (a) never equal to an object of class b: no class b's object may be of
+    # defines __eq__ (or __ne__), so CPython compares the two by identity
+    if a not in ["int", "float", "bool", "str"] or b not in self.classes or self.classes[b].exc != "" or b in self.nts:
+        return False
+    for c in self.classes.values():
+        if (c.name == b or self.derives(c.name, b)) and ("__eq__" in c.methods or "__ne__" in c.methods or self.is_dc(c.name)):
+            return False
+    return True
 
 def gen_uorders(self, a: str, b: str) -> bool:
     # can a value of type a be ordered (<, <=, >, >=) with one of type b, one of them a union, by
@@ -149,21 +202,46 @@ def gen_ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
     left = is_union(a.t)
     v = a if left else b
     members = umembers(v.t)
+    if self.object_union(v.t) and v.v not in self.nn and not nonnull:
+        members = ["None"] + members  # (a union that holds objects may be None, as they may)
     end = self.label()
     ph = Ins("phi", "bool", "")
+    reached = 0
     for j in range(len(members)):
         hit = self.label()
         miss = self.label() if j + 1 < len(members) else ""
         if miss == "":
             self.br(hit)
+        elif members[j] == "None":
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, hit, miss)
         else:
             self.cbr(self.utest(v, [members[j]], False), hit, miss)
         self.place(hit)
-        x = self.uget(v, members[j])
-        r = self.cmp2(op, x if left else a, b if left else x)  # (the other operand's union, in turn)
-        self.incoming(ph, r.v, self.cur)
-        self.br(end)
+        x = Val("null", "None") if members[j] == "None" else self.uget(v, members[j])
+        la = x if left else a
+        lb = b if left else x
+        ordering = op in ["<", "<=", ">", ">="]
+        r = Val("false" if op == "==" else "true", "bool")
+        if (la.t == "None" or lb.t == "None") and (is_union(la.t) or is_union(lb.t)):
+            # None with the other operand's union: its members, in turn (an object's __eq__ is
+            # asked about None too, and None equals a union that holds None)
+            r = self.ucmp(op, la, lb)
+        elif ordering and (la.t == "None" or lb.t == "None") and la.t not in self.classes and lb.t not in self.classes:
+            # None has no ordering with a number, a str or None: CPython's TypeError, which names
+            # both operands' types. (An object's method is asked about None, as it is below.)
+            self.raise_("TypeError", self.sconst(f"'{op}' not supported between instances of '{tname(la.t)}' and '{tname(lb.t)}'"))
+        elif (op == "==" or op == "!=") and (self.unequal_types(la.t, lb.t) or self.unequal_types(lb.t, la.t)):
+            pass  # (a number or str and an object whose class has no __eq__: never equal)
+        else:
+            r = self.cmp2(op, la, lb)  # (the other operand's union, in turn)
+        if not self.term:
+            self.incoming(ph, r.v, self.cur)
+            reached += 1
+            self.br(end)
         if miss != "":
             self.place(miss)
     self.place(end)
+    if reached == 0:
+        self.unreachable()  # (every member's comparison raises)
+        return Val("false", "bool")
     return Val(self.phi(ph), "bool")

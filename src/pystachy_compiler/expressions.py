@@ -460,7 +460,7 @@ def gen_isinst(self, t: str, c: Node) -> int:
                 return -2
             return -1 if self.derives(c.s, t) or c.s in self.classes[t].overlaps else 0
         # (an exception of class t, or of a builtin one, may be an object of a class deriving from t)
-        xc = self.classes[c.s].exc != "" and (t == "exc" or (t in self.classes and (self.derives(t, c.s) or self.derives(c.s, t))))
+        xc = self.classes[c.s].exc != "" and (t == "exc" or (t in self.classes and (self.derives(t, c.s) or self.derives(c.s, t) or self.exc_overlap(t, c.s))))
         return -2 if t == c.s or (t in self.classes and self.classes[t].origin == c.s) else -1 if xc else 0
     if self.bound(c.s):
         return -1
@@ -2098,6 +2098,37 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
             # None's own __format__ accepts only an empty spec
             self.guard(self.ptr_cmp('==', v, Val('null', 'None')).v, "TypeError: unsupported format string passed to NoneType.__format__")
         return self.call_fn(self.classes[v.t].methods["__format__"], [v, sv], [])
+    if self.object_union(v.t):
+        # A union that holds objects beside scalars: value and spec run once, then the member
+        # the tag selects formats itself, an object by its __format__, which an empty spec
+        # calls too (or raises, as it would alone). None's own accepts only an empty spec.
+        sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        end = self.label()
+        ph = Ins("phi", "str", "")
+        if v.v not in self.nn:
+            none = self.label()
+            some = self.label()
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, none, some)
+            self.place(none)
+            self.guard(self.num_cmp('!=', Val(self.mload('int', sv.v), "int"), Val('0', "int")).v, "TypeError: unsupported format string passed to NoneType.__format__")
+            self.incoming(ph, self.sconst("None"), self.cur)
+            self.br(end)
+            self.place(some)
+        members = umembers(unopt(v.t))
+        for i in range(len(members)):
+            nxt = self.label() if i + 1 < len(members) else ""
+            if nxt != "":
+                arm = self.label()
+                self.cbr(self.utest(Val(v.v, unopt(v.t)), [members[i]], False), arm, nxt)
+                self.place(arm)
+            text = self.format_(self.uget(Val(v.v, unopt(v.t)), members[i]), spec if empty else self.vnode(sv))
+            if not self.term:
+                self.incoming(ph, text.v, self.cur)
+                self.br(end)
+            if nxt != "":
+                self.place(nxt)
+        self.place(end)
+        return Val(self.phi(ph), "str")
     if empty:
         return self.to_str(v)
     if v.t == BIG:
@@ -3598,6 +3629,16 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if op == "!=" and self.cmp_method(b.t, "__eq__", "None") != "":
             return Val(self.scalar('xor', [Val(self.eqcall(bm['__eq__'], True, b, a).v, 'bool'), Val('true', 'bool')]), "bool")
         return Val("", "")
+    if (op == "==" or op == "!=") and (a.t == "int" or a.t == "float" or a.t == "bool" or a.t == "str" or a.t == BIG) and b.t in self.classes and self.classes[b.t].exc == "":
+        # x == o for a number or str x: its own __eq__ declines an object, so CPython asks o's,
+        # as for None above (and o's __ne__ for !=, else not its __eq__). An o that is None
+        # equals no number or str (eqcall). A method that cannot take x stays cmp2's error.
+        bm = self.classes[b.t].methods
+        if m in bm and self.cmp_method(b.t, m, a.t) != "":
+            return self.eqcall(bm[m], op == "==", b, a)
+        if op == "!=" and m not in bm and self.cmp_method(b.t, "__eq__", a.t) != "":
+            return Val(self.scalar('xor', [Val(self.eqcall(bm['__eq__'], True, b, a).v, 'bool'), Val('true', 'bool')]), "bool")
+        return Val("", "")
     # (two specializations of one class template are one class to CPython)
     same = a.t == b.t or (self.tmpl_of(a.t) != "" and self.tmpl_of(a.t) == self.tmpl_of(b.t))
     sh = shown if shown != "" else op
@@ -3607,13 +3648,27 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if a.t in self.classes and self.isnum(b.t) and "__pow__" in self.classes[a.t].methods:
             self.none_operand(shown if shown != "" else "** or pow()", a, b)
             return self.call_fn(self.classes[a.t].methods["__pow__"], [a], [self.vnode(b)])
+        if shown != "**=" and b.t in self.classes and (a.t == "int" or a.t == "float" or a.t == "bool" or a.t == BIG) and "__rpow__" in self.classes[b.t].methods:
+            # A builtin number to an object's power: the number's own method declines an object,
+            # so CPython calls the object's reflected one, as for the other operators below.
+            self.notnone(b, f"TypeError: unsupported operand type(s) for ** or pow(): '{tname(a.t)}' and 'NoneType'")
+            return self.call_fn(self.classes[b.t].methods["__rpow__"], [b, a], [])
         # CPython calls a.__ipow__(b) (**=), a.__pow__(b), else b.__rpow__(a) (b of another class)
         pw = ""
         for x, n in [(a, "__ipow__" if shown == "**=" else ""), (a, "__pow__"), (b, "__rpow__" if not same else "")]:
             if pw == "" and x.t in self.classes and n in self.classes[x.t].methods:
                 pw = f"{tname(x.t)}.{n}"
-        if pw != "":
+        # An object to an object's power is its __pow__, as a + b is a.__add__(b): the checks
+        # below reject the pairs whose reflected method CPython would ask first. a **= b is that
+        # too where no class a may be of defines __ipow__; a reflected-only pair stays rejected.
+        forward = a.t in self.classes and b.t in self.classes and "__pow__" in self.classes[a.t].methods
+        if forward and shown == "**=":
+            forward = len([c for c in self.classes.values() if "__ipow__" in c.methods and (c.name == a.t or self.derives(c.name, a.t))]) == 0
+        if pw != "" and not forward:
             self.err(f"** and pow() of objects are not supported ({tname(unopt(a.t))} {sh} {tname(b.t)} calls {pw})")
+        if forward:
+            self.none_operand("** or pow()", a, b)
+            m = "__pow__"
     rm = "__r" + m[2:]
     if m != "" and op != "==" and op != "!=" and (shown == "" or shown == op) and b.t in self.classes and (a.t == "int" or a.t == "float" or a.t == "bool" or a.t == BIG) and rm in self.classes[b.t].methods:
         # A builtin number on the left has no method for an object: CPython calls the object's
@@ -3715,6 +3770,8 @@ def gen_cmp_method(self, t: str, m: str, other: str) -> str:
     f = self.classes[t].methods[m]
     if (f.bad != "" and not self.lenient) or (f.bad == "" and len(f.params) == 2 and (self.widens(other, f.ptypes[1]) or f.ptypes[1] == "")):
         return m  # (a method that cannot be compiled: the call reports why; see desc. A template takes any operand)
+    if f.bad == "" and len(f.params) == 2 and self.object_union(f.ptypes[1]) and self.uboxes(other, f.ptypes[1]):
+        return m  # (a parameter that is a union of objects and scalars takes a member, boxed as a call boxes it)
     if f.bad == "" and len(f.params) == 2 and f.ptypes[1] == "dyn" and self.dyn_boxable(other) == "":
         return m  # (an Any parameter, in a module that compiles Any so: the operand boxed, dynamic.py)
     if f.bad == "" and len(f.params) == 2 and ((other == "int" and (f.ptypes[1] == BIG or f.ptypes[1] == BIGOPT)) or (other == BIG and self.widens("int", f.ptypes[1]))):
@@ -4672,6 +4729,12 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if op in ["==", "!=", "<", "<=", ">", ">="] and (self.object_union(a.t) or self.object_union(b.t)) and a.t != "None" and b.t != "None":
+        # A union that holds objects beside scalars: its member's own comparison, an object's by
+        # its methods, selected by the tag before any rule below takes the box for an operand of
+        # its own (a class hierarchy's dispatch would compare the box's pointer). None itself is
+        # compared below, with the box's pointer, which is null where the union holds None.
+        return self.ucmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":

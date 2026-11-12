@@ -1,9 +1,9 @@
-# error: reference unions cannot mix native references with scalar or container members
+# error: reference unions cannot mix native references with container members
 class Stream:
     pass
 
 
-def check(value: Stream | int) -> None:
+def check(value: Stream | list[int]) -> None:
     pass
 
 
