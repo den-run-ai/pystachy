@@ -302,7 +302,8 @@ def _attribute(name):
 class Generator:
     def __init__(self, source: str, filename: str, operands: bool = True, selected=None,
                  shared=None, conftest: bool = False, session_end: bool = True, path: str = "",
-                 module: str = ""):
+                 module: str = "", imports=None, package: bool = False, alias: str = "_pyn_conftest",
+                 helper: bool = False):
         self.source = source
         self.filename = filename
         # What the test module reads as __file__ and __name__: pytest imports the original
@@ -311,9 +312,20 @@ class Generator:
         self.module = module or filename.rsplit("/", 1)[-1].removesuffix(".py")
         self.operands = operands
         self.selected = selected
-        # conftest.py's fixtures as this module calls them (export), or None.
-        self.shared = shared or {}
+        # The fixtures of the conftest.py files above this module as it calls them (export):
+        # one group per file, the outermost directory's first; a nearer file's fixture
+        # replaces an outer one of its name.
+        self.shared_groups = [shared] if isinstance(shared, dict) else list(shared or [])
+        self.shared = {name: fixture for group in self.shared_groups for name, fixture in group.items()}
+        # (module, alias) for each of those files, which this module imports.
+        self.imports = imports if imports is not None else [("conftest", "_pyn_conftest")] if self.shared else []
+        # The name this conftest.py's own fixtures are called through elsewhere.
+        self.alias = alias
         self.conftest = conftest
+        # In a package, where relative imports resolve.
+        self.package = package
+        # A module beside the tests that only needs adapting: nothing is collected from it.
+        self.helper = helper
         # The last case that runs also ends the session scope.
         self.session_end = session_end
         try:
@@ -1251,8 +1263,9 @@ class Generator:
                     self.error(node, "dynamically assigning tests is unsupported")
             if isinstance(node, ast.Global) and any(name.startswith(("test", "Test")) for name in node.names):
                 self.error(node, "mutating test bindings through globals is unsupported")
-            if isinstance(node, ast.ImportFrom) and node.level:
-                self.error(node, "relative imports require package-aware collection")
+            if isinstance(node, ast.ImportFrom) and node.level and not self.package:
+                # (Python has no parent package to resolve it in: pytest fails to import this.)
+                self.error(node, "relative imports require the test's directory to be a package (__init__.py)")
             if isinstance(node, (ast.Import, ast.ImportFrom)) and node not in direct:
                 imported = ([item.name for item in node.names] if isinstance(node, ast.Import)
                             else [node.module or ""])
@@ -1471,11 +1484,12 @@ class Generator:
         fixtures = self.fixtures if owner is None else self.class_fixtures.setdefault(owner.name, {})
         if fixture_name in fixtures:
             self.error(decorator, "duplicate fixture name: " + fixture_name)
-        if owner is None and fixture_name in self.shared:
-            self.error(decorator, "overriding a conftest.py fixture is unsupported: " + fixture_name)
         if owner is not None and scope != "function":
             self.error(decorator, "fixtures defined in a test class must be function-scoped")
         arguments = self.arguments(node, bound=owner is not None)
+        if fixture_name in arguments:
+            # (pytest gives such a fixture the one it overrides.)
+            self.error(decorator, "a fixture that requests the fixture it overrides is unsupported: " + fixture_name)
         request = "request" in arguments
         parameter = None
         if table is not None:
@@ -1597,11 +1611,13 @@ class Generator:
         """
         fixtures = self.visible(test.owner)
         names = []
-        groups = [self.shared, self.fixtures]
+        groups = [*self.shared_groups, self.fixtures]
         if test.owner is not None:
             groups.append(self.own_fixtures(test.owner))
-        for group in groups:
-            names += sorted((name for name, fixture in group.items() if fixture.autouse),
+        for index, group in enumerate(groups):
+            # (A fixture that a nearer file, the module or the class overrides is theirs.)
+            names += sorted((name for name, fixture in group.items() if fixture.autouse
+                             and not any(name in later for later in groups[index + 1:])),
                             key=lambda name: group[name].function.name)
         names += test.usefixtures + self.arguments(test.function, bound=test.owner is not None)
         closure = []
@@ -2018,6 +2034,10 @@ class Generator:
             def visit_FunctionDef(self, node):
                 if node in declarations:
                     node.decorator_list = []
+                elif generator.helper:
+                    # (A helper's fixtures and marks are not collected; only its code is kept.)
+                    node.decorator_list = [decorator for decorator in node.decorator_list if not generator.name(
+                        decorator.func if isinstance(decorator, ast.Call) else decorator)]
                 if node in requests:
                     node = RequestParameter().visit(node)
                 if node in unit_methods:
@@ -2049,6 +2069,9 @@ class Generator:
                 if node in classes:
                     node.decorator_list = []
                     node.body = [statement for statement in node.body if statement not in dropped] or [ast.Pass()]
+                elif generator.helper:
+                    node.decorator_list = [decorator for decorator in node.decorator_list if not generator.name(
+                        decorator.func if isinstance(decorator, ast.Call) else decorator)]
                 self.receivers.append(None)
                 try:
                     return self.scoped(node, "other")
@@ -2183,10 +2206,10 @@ class Generator:
                 return node
 
         # Validate before removing syntax; otherwise an unsupported use could disappear.
-        self.validate_body()
+        if not self.helper:
+            self.validate_body()
         imports = ["import pytest_native_support as _pyn_support"]
-        if self.shared:
-            imports.append("import conftest as _pyn_conftest")
+        imports += [f"import {module} as {alias}" for module, alias in self.imports]
         if self.builtins_used:
             imports.append("import pytest_native_fixtures as _pyn_fixtures")
         output = []
@@ -2552,15 +2575,38 @@ class Generator:
         return GeneratedModule(source.rstrip("\n") + "\n", [cases[index] for index in run], self.builtins_used,
                                lines)
 
+    def adapt(self):
+        """This helper module's source for the generated program (adapt_helper)."""
+        self.class_nodes = {node.name: node for node in self.tree.body if isinstance(node, ast.ClassDef)}
+        self.infos = {}
+        for node in self.tree.body:
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name in ("pytest", "unittest"):
+                        self.aliases[alias.asname or alias.name] = alias.name
+            elif isinstance(node, ast.ImportFrom) and node.module in ("pytest", "unittest") and not node.level:
+                for alias in node.names:
+                    self.aliases[alias.asname or alias.name] = node.module + "." + alias.name
+        for node in self.class_nodes.values():
+            if self.unittest_bases(node):
+                try:
+                    self.class_info(node)
+                except CollectionError:
+                    pass  # (left as written: the compiler reports what it cannot build)
+        chunks = self.transform_source()
+        pragmas = [token.string for token in tokenize.generate_tokens(io.StringIO(self.source).readline)
+                   if token.type == tokenize.COMMENT and re.match(r"#\s*pystachy:", token.string)]
+        return "\n".join([*pragmas, *(text for text, _ in chunks)]) + "\n"
+
     def export(self):
         """This conftest.py's fixtures as a test module of its directory calls them."""
         fixtures = {}
         for name, fixture in self.fixtures.items():
             params = fixture.params
             if params is not None:
-                params = Parameter(params.names, [["_pyn_conftest." + value for value in row]
+                params = Parameter(params.names, [[self.alias + "." + value for value in row]
                                                   for row in params.values], params.ids, params.marks)
-            fixtures[name] = dataclasses.replace(fixture, call="_pyn_conftest." + fixture.call, params=params,
+            fixtures[name] = dataclasses.replace(fixture, call=self.alias + "." + fixture.call, params=params,
                                                  origin="conftest")
         return fixtures
 
@@ -2588,20 +2634,42 @@ def original_line(module: GeneratedModule, line: int) -> int | None:
 
 
 def generate(source: str, filename: str, operands: bool = True, selected=None, shared=None,
-             session_end: bool = True, path: str = "", module: str = "") -> GeneratedModule:
+             session_end: bool = True, path: str = "", module: str = "", imports=None,
+             package: bool = False) -> GeneratedModule:
     """Collect and adapt one module, or reject unsupported collection explicitly.
 
     operands keeps comparison operands for assertion failures (Generator.captured);
     selected lists node-ID selectors (`name`, `name[id]`, `Class` or `Class::name`) to
-    run, in order; shared holds the fixtures of the directory's conftest.py
-    (generate_conftest); session_end is false for every module but the last that runs;
-    path and module are what the test module reads as __file__ and __name__.
+    run, in order; shared holds the fixtures of the conftest.py files above the module
+    (generate_conftest), one group per file from the outermost, and imports the
+    (module, alias) each is imported as; session_end is false for every module but the
+    last that runs; path and module are what the test module reads as __file__ and
+    __name__; package says its directory is one, where relative imports resolve.
     """
-    return Generator(source, filename, operands, selected, shared, False, session_end, path, module).generate()
+    return Generator(source, filename, operands, selected, shared, False, session_end, path, module, imports,
+                     package).generate()
 
 
-def generate_conftest(source: str, filename: str, operands: bool = True, path: str = "", module: str = ""):
-    """Adapt a conftest.py: its generated module, and its fixtures for generate(shared=)."""
-    generator = Generator(source, filename, operands, conftest=True, path=path, module=module)
+def generate_conftest(source: str, filename: str, operands: bool = True, path: str = "", module: str = "",
+                      shared=None, imports=None, package: bool = False, alias: str = "_pyn_conftest"):
+    """Adapt a conftest.py: its generated module, and its fixtures for generate(shared=).
+
+    shared and imports name the conftest.py files above it, whose fixtures its own may
+    request; other modules call its fixtures through alias.
+    """
+    generator = Generator(source, filename, operands, None, shared, True, True, path, module, imports, package,
+                          alias)
     module = generator.generate()
     return module, generator.export()
+
+
+def adapt_helper(source: str, filename: str, path: str = "", module: str = "") -> str:
+    """A module beside the tests as the generated program imports it.
+
+    Nothing is collected from it. Its pytest and unittest imports name the runner's
+    replacement, its unittest cases are adapted as a test module's are, and __file__
+    is its original path. A module that needs none of this is returned unchanged.
+    """
+    if not re.search(r"\b(pytest|unittest|__file__)\b", source):
+        return source
+    return Generator(source, filename, False, path=path, module=module, package=True, helper=True).adapt()

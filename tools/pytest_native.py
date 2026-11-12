@@ -22,7 +22,7 @@ import sys
 import textwrap
 import time
 
-from pytest_native_codegen import CollectionError, generate, generate_conftest, original_line
+from pytest_native_codegen import CollectionError, adapt_helper, generate, generate_conftest, original_line
 
 TOOLS = Path(__file__).resolve().parent
 REPO = TOOLS.parent
@@ -76,21 +76,6 @@ def parse_targets(arguments: list[str], root: Path) -> dict[Path, list[str]] | N
     return selections
 
 
-def module_names(paths: list[Path]) -> list[str]:
-    """Import generated modules under their test modules' names where possible.
-
-    pytest imports a test module by its file name, which classes and functions show in
-    __module__ and repr(). Names that cannot be imported keep a reserved one.
-    """
-    names = []
-    for index, path in enumerate(paths):
-        stem = path.stem
-        usable = (stem.isidentifier() and not keyword.iskeyword(stem) and not stem.startswith("_pyn_")
-                  and stem != "pytest_native_support" and stem not in names)
-        names.append(stem if usable else f"_pyn_module_{index}")
-    return names
-
-
 def outcome_counts(results: list[Result]) -> dict[str, int]:
     """Count cases as pytest's summary does: setup or call outcome, plus teardown errors."""
     counts: dict[str, int] = {}
@@ -130,13 +115,12 @@ def compiler_command(text: str) -> list[str]:
 
 
 def discover(paths: list[Path], root: Path) -> list[Path]:
-    """Select test modules without importing them or silently ignoring conftest.
+    """Select test modules without importing them.
 
-    A conftest.py is read only in the directory the selected tests share (run_suite);
-    elsewhere under --root it would add fixtures that this runner does not load.
+    Tests may sit in packages and in several directories; layout() works out how
+    pytest imports each and which conftest.py files apply to it.
     """
     files: set[Path] = set()
-    conftests: set[Path] = set()
     for path in paths:
         path = path.resolve()
         if not path.exists():
@@ -151,28 +135,15 @@ def discover(paths: list[Path], root: Path) -> list[Path]:
             for directory, dirs, names in os.walk(path):
                 dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS)
                 base = Path(directory)
-                if "conftest.py" in names:
-                    conftests.add(base)
                 for name in sorted(names):
                     if name.endswith(".py") and (name.startswith("test_") or name.endswith("_test.py")):
                         files.add(base / name)
-    directories = {path.parent for path in files}
-    shared = next(iter(directories)) if len(directories) == 1 else None
-    for directory in sorted(conftests):
-        if directory != shared:
-            raise CollectionError("conftest.py is supported only in the directory of the selected tests: "
-                                  f"{directory / 'conftest.py'}")
     checked: set[Path] = set()
     for path in sorted(files):
         for parent in path.parents:
             if not parent.is_relative_to(root) or parent in checked:
                 break
             checked.add(parent)
-            if (parent / "__init__.py").exists():
-                raise CollectionError(f"test packages are not supported: {parent / '__init__.py'}")
-            if (parent / "conftest.py").exists() and parent != shared:
-                raise CollectionError("conftest.py is supported only in the directory of the selected tests: "
-                                      f"{parent / 'conftest.py'}")
             for name in CONFIGS:
                 if (parent / name).exists():
                     raise CollectionError(f"pytest configuration is not supported: {parent / name}")
@@ -182,6 +153,146 @@ def discover(paths: list[Path], root: Path) -> list[Path]:
                 if config.exists() and marker in config.read_text():
                     raise CollectionError(f"pytest configuration is not supported: {config}")
     return sorted(files)
+
+
+@dataclass
+class Layout:
+    """How pytest imports the selected tests, which the generated program's files mirror.
+
+    pytest imports a module of a package (a directory with __init__.py) under its
+    dotted name from the directory above the outermost package, and any other module
+    under its file's name from its own directory. A conftest.py applies to the tests
+    of its directory and those below.
+    """
+    # Every generated file's module name: the tests, then the conftest.py files.
+    modules: dict[Path, str]
+    # conftest.py files that apply to a selected test, an outer directory's first.
+    conftests: list[Path]
+    # The directories pytest puts on sys.path for these tests, in first-use order.
+    bases: list[Path]
+    # The outermost package directories the tests are in.
+    packages: list[Path]
+
+    def above(self, path: Path) -> list[Path]:
+        """The conftest.py files whose fixtures a module of this directory can request."""
+        return [conftest for conftest in self.conftests
+                if path.parent.is_relative_to(conftest.parent) and conftest != path]
+
+
+def import_root(path: Path, root: Path) -> Path:
+    """The directory above a module's outermost package, or the module's own."""
+    directory = path.parent
+    while (directory / "__init__.py").is_file():
+        if directory == root or not directory.is_relative_to(root):
+            raise CollectionError(f"--root is inside a package of the tests: {directory / '__init__.py'}")
+        directory = directory.parent
+    return directory
+
+
+def layout(paths: list[Path], root: Path) -> Layout:
+    modules: dict[Path, str] = {}
+    bases: list[Path] = []
+    packages: list[Path] = []
+    conftests: set[Path] = set()
+    for path in paths:
+        directory = path.parent
+        while directory.is_relative_to(root):
+            if (directory / "conftest.py").is_file():
+                conftests.add(directory / "conftest.py")
+            if directory == root:
+                break
+            directory = directory.parent
+    ordered = sorted(conftests, key=lambda conftest: (len(conftest.parts), conftest))
+    flat = [conftest for conftest in ordered if not (conftest.parent / "__init__.py").is_file()]
+    taken: dict[str, Path] = {}
+    for index, path in enumerate([*paths, *ordered]):
+        base = import_root(path, root)
+        parts = path.relative_to(base).with_suffix("").parts
+        if len(parts) > 1:
+            if any(not part.isidentifier() or keyword.iskeyword(part) for part in parts):
+                raise CollectionError(f"a package module's path must be made of identifiers: {path}")
+            name = ".".join(parts)
+            if base / parts[0] not in packages:
+                packages.append(base / parts[0])
+        elif path.name == "conftest.py":
+            # (Test modules may import the one conftest.py beside them by its name.)
+            name = "conftest" if len(flat) == 1 else f"_pyn_conftest_file_{index}"
+        else:
+            stem = path.stem
+            usable = (stem.isidentifier() and not keyword.iskeyword(stem) and not stem.startswith("_pyn_")
+                      and stem not in ("pytest_native_support", "pytest_native_fixtures", "conftest"))
+            name = stem if usable else f"_pyn_module_{index}"
+        if name.split(".")[0] in taken and taken[name.split(".")[0]] != base / parts[0] or name in modules.values():
+            # pytest imports one file under a name and fails on the next ("import file mismatch").
+            raise CollectionError(f"two test modules would be imported as {name.split('.')[0]}: {path} and "
+                                  f"{taken[name.split('.')[0]]}; make their directories packages")
+        taken[name.split(".")[0]] = base / parts[0]
+        modules[path] = name
+        if base not in bases:
+            bases.append(base)
+    # pytest puts each test's directory first on sys.path as it imports that test, so a
+    # name in two of them means a different module to each. A compiled program has one.
+    importable: dict[str, Path] = {}
+    for base in bases:
+        names = {path.stem for path in base.glob("*.py") if path.stem != "conftest"}
+        names |= {path.parent.name for path in base.glob("*/__init__.py")}
+        for name in sorted(names):
+            if name in importable and (importable[name] / name) not in packages:
+                raise CollectionError(f"modules named {name} are importable from both {importable[name]} and "
+                                      f"{base}, which pytest resolves by the importing test's directory; "
+                                      "rename one or make the directories packages")
+            importable.setdefault(name, base)
+    return Layout(modules, ordered, bases, packages)
+
+
+def mirror(work: Path, tree: Layout, generated: set[Path], root: Path) -> dict[str, str]:
+    """Write the modules beside the tests where the generated ones import them.
+
+    A package's generated tests replace their files in a copy of the package, so the
+    rest of it is copied too, each module adapted as adapt_helper() describes. Beside
+    tests that are in no package, only modules that need adapting are written (the
+    others are imported from their own directory). Returns {written file: source file}.
+    """
+    written: dict[str, str] = {}
+
+    def adapted(path: Path, name: str, target: Path, always: bool) -> None:
+        try:
+            text = path.read_text()
+        except (OSError, UnicodeError):
+            return
+        try:
+            result = adapt_helper(text, path.relative_to(root).as_posix() if path.is_relative_to(root) else path.name,
+                                  str(path), name)
+        except (CollectionError, SyntaxError, RecursionError):
+            result = text  # (as written: the compiler reports it if the tests import it)
+        if always or result != text:
+            write_changed(target, result)
+            written[str(target)] = str(path)
+
+    for package in tree.packages:
+        expected = set()
+        for directory, dirs, names in os.walk(package):
+            dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS)
+            for name in sorted(names):
+                path = Path(directory) / name
+                if not name.endswith(".py"):
+                    continue
+                relative = path.relative_to(package.parent)
+                expected.add(work / relative)
+                if path not in generated:
+                    adapted(path, ".".join(relative.with_suffix("").parts), work / relative, True)
+        # A module removed from the package must not stay importable from an earlier run.
+        for directory, _, names in os.walk(work / package.name):
+            for name in names:
+                if name.endswith(".py") and Path(directory) / name not in expected:
+                    (Path(directory) / name).unlink()
+    for directory in dict.fromkeys(path.parent for path in generated):
+        if (directory / "__init__.py").is_file():
+            continue
+        for path in sorted(directory.glob("*.py")):
+            if path not in generated and path.name != "conftest.py" and path.stem.isidentifier():
+                adapted(path, path.stem, work / path.name, False)
+    return written
 
 
 def write_changed(path: Path, content: str) -> None:
@@ -302,38 +413,54 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     directory supplies fixtures to every module.
     """
     results = [Result(path=path.relative_to(root).as_posix()) for path in paths]
-    if len({path.parent for path in paths}) > 1:
-        for result in results:
-            result.error = ("selected tests must share one source directory; source-aware imports across "
-                            "directories are not supported")
-        return results
     if not results:
         return []
-    conftest = paths[0].parent / "conftest.py"
-    conftest_name = conftest.relative_to(root).as_posix() if conftest.is_file() else ""
+    try:
+        tree = layout(paths, root)
+    except CollectionError as error:
+        for result in results:
+            result.error = str(error)
+        return results
+    conftest_names = [conftest.relative_to(root).as_posix() for conftest in tree.conftests]
+    aliases = {conftest: f"_pyn_conftest_{index}" for index, conftest in enumerate(tree.conftests)}
     texts: dict[Path, str] = {}
 
     def build(operands: bool):
         """Every module's generated source, or the collection errors on results."""
-        shared = None
+        exported: dict[Path, dict] = {}
         modules = []
-        if conftest_name:
+
+        def context(path):
+            # The conftest.py files above a module: their fixtures and how it imports them.
+            above = tree.above(path)
+            return ([exported[conftest] for conftest in above],
+                    [(tree.modules[conftest], aliases[conftest]) for conftest in above],
+                    (path.parent / "__init__.py").is_file())
+
+        for conftest, name in zip(tree.conftests, conftest_names):
             try:
-                module, shared = generate_conftest(conftest.read_text(), conftest_name, operands, str(conftest),
-                                                   "conftest")
+                shared, imports, package = context(conftest)
+                module, exported[conftest] = generate_conftest(
+                    conftest.read_text(), name, operands, str(conftest), tree.modules[conftest], shared, imports,
+                    package, aliases[conftest])
                 modules.append(module)
             except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
                 for result in results:
                     result.error = str(error)
                 return None
+
+        def one(index, session_end):
+            path = paths[index]
+            shared, imports, package = context(path)
+            return generate(texts[path], results[index].path, operands, selections.get(path) if selections else None,
+                            shared, session_end, str(path), tree.modules[path], imports, package)
+
         generated = []
-        for path, result in zip(paths, results):
+        for index, (path, result) in enumerate(zip(paths, results)):
             try:
                 if path not in texts:
                     texts[path] = path.read_text()
-                generated.append(generate(texts[path], result.path, operands,
-                                          selections.get(path) if selections else None, shared, False,
-                                          str(path), path.stem))
+                generated.append(one(index, False))
                 result.cases = generated[-1].cases
                 result.state = "collected"
             except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
@@ -347,9 +474,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         # The last module with cases ends the session scope in its last case.
         last = max((index for index, module in enumerate(generated) if module.cases), default=None)
         if last is not None:
-            generated[last] = generate(texts[paths[last]], results[last].path, operands,
-                                       selections.get(paths[last]) if selections else None, shared, True,
-                                       str(paths[last]), paths[last].stem)
+            generated[last] = one(last, True)
         return modules + generated
 
     instrumented = build(True)
@@ -357,15 +482,18 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         return results
     identity = "\n".join(result.path for result in results)
     suite_work = work / hashlib.sha256(identity.encode()).hexdigest()[:16]
-    names = module_names(paths)
-    generated_names = (["conftest"] if conftest_name else []) + names
+    names = [tree.modules[path] for path in paths]
+    # Generated files in the order build() returns their modules: conftest.py files first.
+    generated_names = [tree.modules[conftest] for conftest in tree.conftests] + names
+    generated_files = [suite_work.joinpath(*name.split(".")).with_suffix(".py") for name in generated_names]
     if suite_work.is_dir():
-        # Earlier runners wrote suite.py there, which a test's own `import suite` found first.
-        for stale in [suite_work / "suite.py", suite_work / "suite", suite_work / "conftest.py",
-                      suite_work / "pytest_native_fixtures.py", *suite_work.glob("_pyn_module_*.py")]:
-            if stale.name.removesuffix(".py") not in generated_names:
+        # Earlier runs wrote other modules there, which a test's own import would find first.
+        current = {str(file) for file in generated_files}
+        for stale in [suite_work / "suite.py", suite_work / "suite", suite_work / "pytest_native_fixtures.py",
+                      *suite_work.glob("*.py")]:
+            if str(stale) not in current and stale.name not in ("_pyn_suite.py", "pytest_native_support.py"):
                 stale.unlink(missing_ok=True)
-    imports = ["import conftest"] if conftest_name else []
+    imports = [f"import {tree.modules[conftest]}" for conftest in tree.conftests]
     calls = []
     reports = []
     for index, name in enumerate(names):
@@ -393,22 +521,23 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     write_changed(suite_work / "pytest_native_support.py", (TOOLS / "pytest_native_support.py").read_text())
     if builtin:
         write_changed(suite_work / "pytest_native_fixtures.py", (TOOLS / "pytest_native_fixtures.py").read_text())
-    env = environment([suite_work, *dict.fromkeys(path.parent for path in paths), root])
+    # The modules beside the tests, where the generated ones import them.
+    mirror(suite_work, tree, {*paths, *tree.conftests}, root)
+    env = environment([suite_work, *tree.bases, root])
     # Suite-level cost/output is attached to the first result, not multiplied by
     # the number of modules. The JSON records this execution model explicitly.
     first = results[0]
-    origins = ([conftest_name] if conftest_name else []) + [result.path for result in results]
+    origins = conftest_names + [result.path for result in results]
 
     def sources_of(modules):
         # The compiler names generated lines; translate() shows the test's own beside them.
         if mode == "python":
             return {}
-        return {str(suite_work / (name + ".py")): (origin, module)
-                for name, origin, module in zip(generated_names, origins, modules)}
+        return {str(file): (origin, module) for file, origin, module in zip(generated_files, origins, modules)}
 
     def attempt(modules):
-        for name, module in zip(generated_names, modules):
-            write_changed(suite_work / (name + ".py"), module.source)
+        for file, module in zip(generated_files, modules):
+            write_changed(file, module.source)
         for report in reports:
             report.unlink(missing_ok=True)
         marker.unlink(missing_ok=True)
@@ -540,9 +669,9 @@ def pytest_sessionfinish(session, exitstatus):
 
 def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: float,
            selections: dict[Path, list[str]] | None = None) -> dict:
-    # pytest reads the conftest.py that discover() allows: the one beside the tests.
-    # --confcutdir keeps those above --root out, as --noconftest does without one.
-    conftest = bool(paths) and (paths[0].parent / "conftest.py").is_file()
+    # pytest reads the conftest.py files layout() finds: those from --root down to the
+    # tests. --confcutdir keeps those above --root out, as --noconftest does without any.
+    conftest = bool(paths) and bool(layout(paths, root).conftests)
     write_changed(work / "_pyn_oracle.py", ORACLE_PLUGIN)
     write_changed(work / "empty.ini", "[pytest]\n")
     report = work / "oracle.jsonl"

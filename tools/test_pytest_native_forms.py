@@ -1097,20 +1097,27 @@ class FormRejections(TemporarySuite):
             with self.subTest(form=name), self.assertRaisesRegex(CollectionError, message):
                 generate_conftest(source, "conftest.py")
         _, shared = generate_conftest("import pytest\n@pytest.fixture\ndef value(): return 1\n", "conftest.py")
-        with self.assertRaisesRegex(CollectionError, "overriding a conftest.py fixture is unsupported: value"):
-            generate("import pytest\n@pytest.fixture\ndef value(): return 2\n", "test_suite.py", shared=shared)
+        # A module's fixture replaces the conftest.py one of its name, unless it asks for it.
+        generate("import pytest\n@pytest.fixture\ndef value(): return 2\n", "test_suite.py", shared=shared)
+        with self.assertRaisesRegex(CollectionError, "requests the fixture it overrides is unsupported: value"):
+            generate("import pytest\n@pytest.fixture\ndef value(value): return 2\n", "test_suite.py", shared=shared)
 
-    def test_conftest_is_read_only_beside_the_tests(self):
+    def test_conftest_files_apply_from_the_root_down(self):
         nested = self.source("def test_a(): pass\n", "tests/test_a.py")
-        self.source("", "conftest.py")
-        with self.assertRaisesRegex(CollectionError, "only in the directory of the selected tests"):
-            runner.discover([nested], self.root)
-        (self.root / "conftest.py").unlink()
-        self.source("", "tests/conftest.py")
-        self.assertEqual(runner.discover([self.root / "tests"], self.root), [nested])
+        deeper = self.source("def test_b(): pass\n", "tests/unit/test_b.py")
+        outer = self.source("", "conftest.py")
+        inner = self.source("", "tests/unit/conftest.py")
         self.source("", "tests/data/conftest.py")
-        with self.assertRaisesRegex(CollectionError, "only in the directory of the selected tests"):
-            runner.discover([self.root / "tests"], self.root)
+        paths = runner.discover([self.root], self.root)
+        self.assertEqual(paths, [nested, deeper])
+        tree = runner.layout(paths, self.root)
+        # (tests/data has no selected test: its conftest.py applies to none.)
+        self.assertEqual(tree.conftests, [outer, inner])
+        self.assertEqual(tree.above(nested), [outer])
+        self.assertEqual(tree.above(deeper), [outer, inner])
+        self.assertEqual(tree.above(inner), [outer])
+        self.assertEqual([tree.modules[path] for path in (nested, deeper)], ["test_a", "test_b"])
+        self.assertEqual(len({tree.modules[outer], tree.modules[inner]}), 2)
 
     def test_conftest_is_not_a_test_module(self):
         path = self.source("def test_a(): pass\n", "conftest.py")

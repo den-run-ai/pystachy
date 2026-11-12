@@ -59,9 +59,10 @@ class DiscoveryTests(TemporarySuite):
         second = self.source("import helper\ndef test_b(): assert helper.value == 1", "b/test_b.py")
         self.source("value = 1", "a/helper.py")
         self.source("value = 2", "b/helper.py")
+        # pytest gives test_b its own directory's helper; one program has one module per name.
         results = runner.run_suite([first, second], self.root, self.work, "python", [], sys.executable, 10)
         self.assertTrue(all(result.state == "collection-error" for result in results))
-        self.assertTrue(all("one source directory" in result.error for result in results))
+        self.assertTrue(all("modules named helper are importable from both" in result.error for result in results))
 
     def test_discovery_is_deterministic_and_deduplicated(self):
         second = self.source("def test_b(): pass", "nested/test_b.py")
@@ -72,10 +73,16 @@ class DiscoveryTests(TemporarySuite):
 
     def test_conftest_never_disappears_from_collection(self):
         path = self.source("def test_a(): pass", "nested/test_a.py")
-        self.source("raise RuntimeError('must not execute')", "conftest.py")
+        outer = self.source("raise RuntimeError('runs where pytest runs it')", "conftest.py")
+        self.source("VALUE = 1", "other/conftest.py")
         for selected in ([path], [self.root]):
-            with self.subTest(selected=selected), self.assertRaisesRegex(CollectionError, "conftest"):
-                runner.discover(selected, self.root)
+            with self.subTest(selected=selected):
+                paths = runner.discover(selected, self.root)
+                # The conftest.py above the test applies to it; one beside no test does not.
+                self.assertEqual(runner.layout(paths, self.root).conftests, [outer])
+        result = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
+        self.assertEqual(result.state, "execution-error")
+        self.assertIn("runs where pytest runs it", result.stderr)
 
     def test_pytest_configuration_is_not_silently_ignored(self):
         path = self.source("def test_a(): pass")
