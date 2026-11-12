@@ -98,6 +98,20 @@
       "diagnostic": "tests/programs/inference/field_module_constants.py:21: error: cannot infer the type of field 'local'; annotate it (self.local: T = ...)",
       "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/field_global_branches.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/field_global_branches.py:32: error: cannot infer the type of field 'types'; annotate it (self.types: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/field_global_branches.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/field_global_branches.py:32: error: cannot infer the type of field 'types'; annotate it (self.types: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
     }
   ]
 }
