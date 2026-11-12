@@ -56,6 +56,7 @@ from src.pystachy_compiler.utils import (
     timing_end,
     timing_start,
     typestr,
+    unopt,
 )
 
 
@@ -407,8 +408,11 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             for j in range(1, len(fn.ptypes) if same else 0):
                 if fn.ptypes[j] != original.ptypes[j] and not (generic and original.ptypes[j] == ""):
                     same = False
+            # (an override may return a class that derives from what the secondary base's returns,
+            # as one of a primary base's may: its objects are the base's, also in a trait's view)
+            covariant = unopt(fn.ret) in self.classes and unopt(original.ret) in self.classes and (fn.ret == unopt(fn.ret)) == (original.ret == unopt(original.ret)) and self.derives(unopt(fn.ret), unopt(original.ret))
             if fn is not original and (fn.cls == ci.name or role.base != "") and (
-                fn.deco != original.deco or fn.prop != original.prop or not same or (fn.ret != original.ret and not (generic and original.ret == ""))
+                fn.deco != original.deco or fn.prop != original.prop or not same or (fn.ret != original.ret and not (generic and original.ret == "") and not covariant)
                 or fn.posonly > original.posonly or fn.npos != original.npos
                 or fn.kwarg != original.kwarg or fn.vararg != original.vararg
             ):
