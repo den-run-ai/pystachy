@@ -1,7 +1,10 @@
 """Original correctness checks of the imported pyperformance workload functions."""
+import asyncio
+
 import pytest
 
 import async_generators
+import async_tree
 import bpe_tokeniser
 import comprehensions
 import coroutines
@@ -34,6 +37,15 @@ def test_async_generators(size: int):
     async_generators.run(async_generators.collect(size))
     assert async_generators.VALUES == list(range(size))
     async_generators.run(async_generators.bench_async_generators(size))
+
+
+@pytest.mark.parametrize("variant,cache", [("none", 0), ("memoization", 28), ("cpu_io_mixed", 21)])
+def test_async_tree(variant: str, cache: int):
+    async_tree.SIZES[0] = 2.0
+    async_tree.SIZES[1] = 0.0
+    tree = async_tree.make_tree(variant, False)
+    asyncio.run(tree.run())
+    assert len(tree.cache) == cache
 
 
 @pytest.mark.parametrize("n,expected", [(0, 0), (1, 1), (10, 55), (20, 6765)])
