@@ -1095,6 +1095,48 @@ CPython runs the module's import of `random`, which `kde_random` and
 matching now lowers `kde`'s kernel selection, but its distinct lambda values cannot
 share one inferred native function slot; function `__doc__` writes also remain unsupported.
 
+### `decimal`
+
+`decimal` is a subset implementation (`lib/decimal.py`) that opts in to
+[promoting ints](../docs/python-int.md) for its coefficients. `Decimal` values are exact when
+constructed and rounded to the current context by arithmetic, with CPython's results, text,
+hashes and messages for the supported API
+([API walk](../tests/programs/library/lib_decimal.py),
+[operand grid](../tests/programs/library/lib_decimal_grid.py),
+[typed program data](../tests/programs/library/lib_decimal_records.py)).
+
+Supported: construction from `str`, `int` and `float`; `+ - * / // %`, `divmod()`, integer
+`**`, unary operators and `abs()`, with a `Decimal` or an `int` on either side; comparison with
+a `Decimal`, `int` or `float`; `hash()`, `int()`, `float()`, `round()`, `math.floor()`,
+`math.ceil()`, `math.trunc()`, `bool()`, `str()`, `repr()` and `format()`; `quantize()`,
+`to_integral_value()`, `normalize()`, `sqrt()`, `fma()`, `remainder_near()`, `scaleb()`,
+`compare()`, `max()`, `min()`, the `is_*()`, `copy_*()` and `as_*()` methods; `Context`,
+`getcontext()`, `setcontext()`, `localcontext()` and the three predefined contexts; all eight
+rounding modes; NaNs, infinities and signed zeros.
+
+- **Signals.** Flags are not recorded and traps are fixed at the default:
+  `InvalidOperation`, `DivisionByZero` and `Overflow` always raise, and the other signals
+  never do. `Context` has no `flags` or `traps`, and its `repr()` shows none set.
+- **Exception classes.** A class has one exception base here: `DivisionByZero` derives from
+  `ZeroDivisionError` but not from `DecimalException`; `Overflow` and `Underflow` derive from
+  `Inexact` but not from `Rounded` (or `Subnormal`); `FloatOperation` is not a `TypeError`.
+- **Constructor.** `Decimal(d)` of a `Decimal`, `Decimal(True)` and
+  `Decimal((sign, digits, exponent))` are compile-time errors: use the value itself, or `+d`
+  to round it to the context.
+- **Powers and logarithms.** The exponent of `**` is an `int`; `exp()`, `ln()`, `log10()`,
+  `logb()`, the logical and shifting operations, `next_minus()`, `next_plus()`,
+  `next_toward()`, `compare_total()` and `compare_signal()` are not provided, and
+  `int ** Decimal` is not supported.
+- **Integers beyond 64 bits.** `int()`, `round()`, `math.floor()` and `as_integer_ratio()`
+  return large integers to a module that opts in to promoting ints
+  ([test](../tests/programs/library/lib_decimal_python_int.py)) and raise `OverflowError` in
+  one that does not. An `int` given to the constructor or to an operator is a 64-bit value:
+  pass a larger one as text.
+- **Typing.** `sum()` of Decimals is not supported: add them in a loop. `Decimal` cannot be
+  subclassed. A NaN hashes to 0, and one context is shared by all threads.
+- **Formatting.** The `n` type uses the C locale's format, and a value whose coefficient has
+  more than 4,300 digits cannot be converted to text.
+
 ### `mpz`
 
 The experimental non-stdlib `mpz.mpz` type is an explicit arbitrary-precision
