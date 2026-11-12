@@ -48,6 +48,7 @@ from src.pystachy_compiler.analysis import (
     special_import,
     specials,
     surely_binds,
+    targets,
     top_bindings,
     walrus_names,
 )
@@ -2107,8 +2108,13 @@ class Loader:
         kept: dict[str, bool] = {}
         for x in run:
             # (only what it binds at its own level, which simplify() keeps: a binding in a block of
-            # its own may be in code that simplify() drops too, as in if False: x = 1)
-            if x.kind == "assign" or (x.kind == "annassign" and len(x.kids) == 3) or x.kind == "def" or x.kind == "class" or x.kind == "subclass" or x.kind == "import":
+            # its own may be in code that simplify() drops too, as in if False: x = 1; and not
+            # what a := in a value binds, which fold_tests() may drop: (x := 1) if False else 0)
+            if x.kind == "assign" or (x.kind == "annassign" and len(x.kids) == 3):
+                targets(x, kept, False)
+            elif x.kind == "def" or x.kind == "class" or x.kind == "subclass":
+                kept[x.s] = True
+            elif x.kind == "import":
                 binds([x], kept, True)
         for x in st.kids[2].kids if r == 1 else st.kids[1].kids:
             names: dict[str, bool] = {}
