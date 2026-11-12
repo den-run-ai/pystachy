@@ -11,12 +11,13 @@ into native heterogeneous Python values, with no CPython embedding. It uses Pyst
 dynamic `Any` for JSON values and repair logs, and static types for parser state.
 
 Until 0.64.8 the port was a schema-free rewrite: 2,671 of its lines differed from upstream.
-It is now upstream's source: 1,330 lines differ from 0.64.9, of which 743 are the
-[schema stand-in](#schema-guided-repair), 51 the [command](#file-and-pipe-command) and 116
-the body of upstream's `cli()`, which is in [a module of its own](#imports) with two lines
-changed. Thirteen modules differ only by their opt-in comment, and
-`utils/string_file_wrapper.py` not at all. Its behavior is upstream's; a difference that this
-page does not list is a bug.
+It is now upstream's source: 678 lines differ from 0.64.9, of which 208 are the
+[string scanner](#performance), 51 the [command](#file-and-pipe-command) and 116 the body of
+upstream's `cli()`, which is in [a module of its own](#imports) with two lines changed. Twelve
+modules differ only by their opt-in comments, and `utils/string_file_wrapper.py` not at all.
+The port adds one package, [a JSON Schema validator](#schema-guided-repair) of 1,003 lines, in
+place of the `jsonschema` package. Its behavior is upstream's; a difference that this page
+does not list is a bug.
 
 ## API and scope
 
@@ -29,6 +30,8 @@ value: Any = loads('{tool: "search", arguments: [true, null, 3,],}')
 value['arguments'].append({'ok': False})
 print(repair_json('{message: "hello",}', sort_keys=True))
 print(from_file("broken.json"))
+schema: Any = {"type": "object", "properties": {"count": {"type": "integer"}}, "required": ["count"]}
+print(loads('{count: "3", note: "x"', schema=schema))  # {'count': 3, 'note': 'x'}
 ```
 
 Set `PYSTACHY_PATH=ports` for JIT/AOT and `PYTHONPATH=ports` for CPython.
@@ -59,20 +62,39 @@ Each difference is marked `Pystachy port` in the source.
 
 ### Schema-guided repair
 
-Upstream imports the optional `jsonschema` package, and `pydantic` for schema models, only
-when a schema is used. Neither is available natively. [schema_repair.py](schema_repair.py)
-stands in for upstream's module with the same interface and behaves as upstream does where
-those packages are not installed, also under CPython where they are:
+A JSON Schema dict or a boolean schema guides repair natively, in both repair modes:
+[schema_repair.py](schema_repair.py) and [parser_schema.py](parser_schema.py) are upstream's,
+with the changes [the compiler needs](#types-the-compiler-needs).
 
-- A boolean schema works: `schema=True` accepts any value, `schema=False` raises
-  `ValueError("Schema does not allow any values.")`.
-- A JSON Schema dict raises `ValueError("jsonschema is required when using schema-aware
-  repair.")` before any repair; a schema model path raises the corresponding `pydantic` error.
-- `schema` with `strict`, and `schema_repair_mode="salvage"` without a schema, raise
-  upstream's errors.
+Upstream validates with the optional `jsonschema` package, which no native program can
+import. The port validates with its own [validator](_jsonschema/validators.py), natively and
+under CPython, also where `jsonschema` is installed. It follows jsonschema 4.26 keyword by
+keyword for drafts 4, 6, 7, 2019-09 and 2020-12: what each keyword accepts, the order in which
+a schema's keywords are tried, and each message, so that a repair fails with upstream's
+`ValueError`. A schema is checked against [its draft's metaschema](_jsonschema/_metaschemas.py)
+before any repair, and an invalid one raises upstream's `Invalid schema: ...`.
 
-The parser's schema hooks are upstream's. They never see a JSON Schema dict, so the two
-functions of [parser_schema.py](parser_schema.py) that read one raise the same error.
+What the validator leaves out fails; nothing is accepted unchecked:
+
+- **References.** `$ref`, `$dynamicRef` and `$recursiveRef` resolve `#` and `#/...` pointers
+  into the root schema, also through the root's own `$id`. An anchor (`#name`), another
+  document, and a reference inside a subschema that has an `$id` of its own raise
+  jsonschema's `_WrappedReferencingError` with `Unresolvable: REF`, where jsonschema may
+  resolve them (it fetches remote schemas). Upstream's repair itself resolves only `#/...`.
+- **Draft 3.** A schema that declares it raises `Invalid schema: Draft 3 schemas are not supported.`
+- **Formats.** `format` is asserted only while a schema is checked, and only `regex`, as with
+  `jsonschema` installed alone. `pattern` and `patternProperties` use the native
+  [`re`](../../lib/compatibility.md).
+- **Order.** Upstream iterates two sets of names in an order that the hash seed decides: an
+  object's additional properties (jsonschema) and a schema's required names
+  (`parser_schema.py`). The port uses the instance's order and the schema's. This decides
+  which of several errors is reported, the order of missing names in one, and the order of
+  the properties that salvage mode fills.
+- **Schema models.** No native program can import `pydantic`, or a module by its name. A
+  model passed as `schema` is rejected as any value that is no schema, and
+  `load_schema_model()` (`--schema-model`) raises
+  `pydantic is required when using schema models.`, also under CPython where pydantic is
+  installed.
 
 ### Files and streams
 
@@ -96,6 +118,10 @@ started 7% slower, two thirds of its code being the `re` engine. The port loads 
   function; natively, a program that runs the command imports `json_repair._cli` itself.
 - `Path` is imported for type checking only, `from_file()`'s annotation is quoted, and the
   file is opened with `open(str(filename))`, as `Path(filename).open()` opens it.
+- Upstream imports `jsonschema` where a schema is used. A native function imports only what
+  module-level code loads, so `schema_repair.py` imports the port's validator, and the
+  validator `re`, as it loads. A program that repairs without a schema carries both: see
+  [the cost](#what-schema-support-costs-a-program-without-a-schema).
 - `parse_json()` scans for the characters of upstream's two patterns, `[{\[(#/]` and that set
   with the string delimiters, in place of `pattern.search()`.
 
@@ -114,6 +140,15 @@ started 7% slower, two thirds of its code being the `re` engine. The port loads 
   character is its own key, two or more single characters are a NUL and those characters, and
   other targets are the `repr()` of their list. A scalar and its singleton list share an
   entry, as upstream's tuples do.
+- In `schema_repair.py`: the two `json.loads()` results are declared `Any`, as above. A
+  schema's list of types is a `list[Any]`, and the container class that a decoded string must
+  be is an `Any` value compared with `type(x) is`, where upstream has `list[str]`,
+  `type[object]` and `isinstance()`. The cached schema check returns `True`: a cache of
+  `None` results has no type. One `dict(value)` is `value.copy()`, where the compiler loses
+  that `value` is a dict. The module imports `json_repair.json_repair` by name where upstream
+  calls `importlib.import_module()`, and it and the validator opt in to promoting integers.
+- `parser_schema.py` keeps a schema's required names in a list, in the schema's order, where
+  upstream has a set ([order](#schema-guided-repair)).
 
 ### Performance
 
@@ -145,6 +180,17 @@ changes a result.
 
 The comment, root-scan and schema-path changes also save work under CPython and are
 candidates for upstream. The string module is not: under CPython upstream's is faster.
+
+#### What schema support costs a program without a schema
+
+A native program compiles what it can reach, and `repair_json()` reaches the schema modules,
+the validator and `re` whether or not a schema is passed. For a program that repairs one
+string, against the port before schema support, with one compiler: repair itself is unchanged
+(0.993 to 1.010 times the instructions on the ten
+[benchmark workloads](../../bench/json_repair/README.md)); it starts in 723,491 instructions
+against 702,242 (3.0% more, `re` being 12,852 of them); its executable is 1,243 KB against
+567 KB; its typed IR is 168,355 lines against 48,781, from 43 modules against 31, and takes
+1.1 s to produce against 0.4 s.
 
 ## File and pipe command
 
@@ -189,14 +235,19 @@ serialized output, logs and error messages. Pristine 0.64.9 and the port under C
 the port in native JIT and AOT, with and without program GC stress, each pass all 962. The 943
 cases retained from 0.64.8 have unchanged outcomes.
 
-Upstream's own test suite runs against the port under CPython: of the 413 tests that pass
-for pristine 0.64.9 in an environment without `jsonschema`, 376 pass for the port. The other
-37 read what the port replaces: 35 the schema module's internals, and 2 the string scanner's
-accumulator state. A [differential fuzz](../../tests/upstream/json_repair/README.md#differential-fuzz)
-of 1,000,000 generated cases, with text placed at the boundaries of the string scanner's chunks
-and the comment scanner's windows, found no difference between pristine upstream and the port,
-under CPython or natively. The corpus and these runs establish these cases, not full-package
-parity.
+Upstream's own test suite runs against the port under CPython. With `jsonschema` and
+`pydantic` installed, pristine 0.64.9 passes 573 tests and the port 556: 15 of the other 17
+pass a pydantic model, and 2 read the string scanner's accumulator state. A
+[differential fuzz](../../tests/upstream/json_repair/README.md#differential-fuzz)
+of 1,000,000 generated schema-free cases, with text placed at the boundaries of the string
+scanner's chunks and the comment scanner's windows, found no difference between pristine
+upstream and the port, under CPython or natively. Its schema family found none in 30,000
+repairs under generated schemas, against upstream with `jsonschema` 4.26 and
+[the two orders pinned](#schema-guided-repair), and the validator alone agrees with
+`jsonschema` on 50,000 generated schemas, but for the references it leaves out. A
+[native regression](../../tests/programs/apps/port_json_repair_schema.py) replays 739 of the
+schema cases against upstream's recorded outcomes. The corpus and these runs establish these
+cases, not full-package parity.
 
 Valid input takes the default fast path, `json.loads()`, whose nesting counts against the
 native recursion limit: at the default limit, about 500 nested containers decode and return as

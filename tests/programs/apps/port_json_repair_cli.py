@@ -41,7 +41,7 @@ def upstream_command() -> None:
         except SystemExit as e:
             print("exit", str(e))
     print(upstream([os.path.join(directory, "missing.json")]))
-    print(upstream([source, "--schema", schema]))  # (the port's schema stand-in: PORT.md)
+    print(upstream([source, "--schema", schema]))  # (which the port's own validator checks: PORT.md)
     print(text(source) == '{name: "café", items: [1, 2, 3,], nested: {a: tru, b: nul}, empty: [], none: {}}')
     os.remove(schema)
     os.remove(target)

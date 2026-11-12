@@ -13,7 +13,9 @@ class ObjectSchemaConfig:
     properties: dict[str, Any]
     pattern_properties: dict[str, Any]
     additional_properties: object | None
-    required: set[str]
+    # Pystachy port: the names in the schema's order, each once (upstream: set[str], whose order the
+    # hash seed decides, and with it the order of missing properties in an error and of salvaged ones)
+    required: list[Any]
 
 
 @dataclass(frozen=True)
@@ -52,11 +54,37 @@ def resolve_parser_array_schema(
     return repairer, schema, array_schema_config(schema)
 
 
+def _each_once(names: Any) -> list[Any]:
+    # Pystachy port: set(names), in order
+    out: list[Any] = []
+    for name in names:
+        if name not in out:
+            out.append(name)
+    return out
+
+
 def object_schema_config(schema: dict[str, Any]) -> ObjectSchemaConfig:
-    # Pystachy port: not reached; a JSON Schema dict raises before parsing (schema_repair.py).
-    raise ValueError("jsonschema is required when using schema-aware repair.")
+    properties = schema.get("properties", {})
+    if not isinstance(properties, dict):
+        properties = {}
+    pattern_properties = schema.get("patternProperties", {})
+    if not isinstance(pattern_properties, dict):
+        pattern_properties = {}
+    return ObjectSchemaConfig(
+        properties=properties,
+        pattern_properties=pattern_properties,
+        additional_properties=schema.get("additionalProperties"),
+        required=_each_once(schema.get("required", [])),
+    )
 
 
 def array_schema_config(schema: dict[str, Any]) -> ArraySchemaConfig:
-    # Pystachy port: not reached; a JSON Schema dict raises before parsing (schema_repair.py).
-    raise ValueError("jsonschema is required when using schema-aware repair.")
+    if isinstance(schema.get("prefixItems"), list):
+        return ArraySchemaConfig(
+            items_schema=schema["prefixItems"],
+            additional_items=schema.get("items"),
+        )
+    return ArraySchemaConfig(
+        items_schema=schema.get("items"),
+        additional_items=schema.get("additionalItems"),
+    )

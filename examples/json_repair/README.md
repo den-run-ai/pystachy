@@ -1,8 +1,8 @@
 # JSON repair from CPython
 
-The companion module calls the schema-free [json_repair port](../../ports/json_repair/PORT.md)
-from a normal CPython application. It has its own import name, so an application
-can also install upstream `json_repair` for schema and file-wrapper APIs.
+The companion module calls the [json_repair port](../../ports/json_repair/PORT.md)'s
+schema-free repair from a normal CPython application. It has its own import name, so an
+application can also install upstream `json_repair` for schema and file-wrapper APIs.
 
 Build from the repository root on Linux with a built compiler, LLVM and
 GIL-enabled CPython 3.12 or later.

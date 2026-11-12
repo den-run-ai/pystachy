@@ -1,5 +1,5 @@
 # pystachy: dynamic-any
-"""Replay schema-free inputs through pristine/adapted CPython or native Pystachy.
+"""Replay inputs, with or without a schema, through pristine/adapted CPython or native Pystachy.
 
 Usage: native_parity.py inputs.jsonl
 The host checker reads the tagged output; strings are code points so separate
@@ -67,6 +67,8 @@ with open(sys.argv[1]) as source:
                     logging=flags.get("logging", False),
                     stream_stable=flags.get("stream_stable", False),
                     strict=flags.get("strict", False),
+                    schema=flags.get("schema"),
+                    schema_repair_mode=flags.get("schema_repair_mode", "standard"),
                 )
             else:
                 result = repair_json(
@@ -77,6 +79,8 @@ with open(sys.argv[1]) as source:
                     stream_stable=flags.get("stream_stable", False),
                     strict=flags.get("strict", False),
                     ensure_ascii=flags.get("ensure_ascii", True),
+                    schema=flags.get("schema"),
+                    schema_repair_mode=flags.get("schema_repair_mode", "standard"),
                 )
             row["value"] = tagged(result)
         except Exception as exc:

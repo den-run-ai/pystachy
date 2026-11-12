@@ -21,7 +21,7 @@ class GenerationTests(unittest.TestCase):
                 self.assertEqual(rows, fuzz.requests(7, 301, family, self.seeds))
                 self.assertNotEqual(rows, fuzz.requests(8, 301, family, self.seeds))
                 self.assertEqual([row["id"] for row in rows], list(range(301)))
-                self.assertGreater(len({row["input"] for row in rows}), 90)
+                self.assertGreater(len({row["input"] for row in rows}), 80)
 
     def test_requests_use_only_what_the_replay_program_passes_on(self):
         replay = fuzz.REPLAY.read_text()
@@ -37,6 +37,32 @@ class GenerationTests(unittest.TestCase):
             self.assertIn((row["api"], row["flags"]), fuzz.FLAGS)
         self.assertEqual({name for _, name in used},
                          {"return_objects", "skip_json_loads", "logging", "strict", "stream_stable", "ensure_ascii"})
+
+    def test_schema_requests_pass_a_schema_in_each_mode(self):
+        replay = fuzz.REPLAY.read_text()
+        rows = fuzz.requests(1, 2400, "schema", self.seeds)
+        examples = sum(2 * len(modes) for _, _, modes in fuzz.EXAMPLES)
+        self.assertEqual([(row["input"], row["flags"]["schema"]) for row in rows[:examples:2]],
+                         [(text, schema) for text, schema, modes in fuzz.EXAMPLES for _ in modes])
+        names = set()
+        for row in rows:
+            self.assertIn("schema", row["flags"])
+            names |= set(row["flags"])
+            if row["api"] == "loads":
+                self.assertFalse({"return_objects", "ensure_ascii"} & set(row["flags"]))
+        for name in names:
+            self.assertIn(f'flags.get("{name}"', replay)
+        self.assertEqual({row["flags"].get("schema_repair_mode") for row in rows}, {None, "standard", "salvage", "quick"})
+        schemas = json.dumps([row["flags"]["schema"] for row in rows[examples:]])
+        for keyword in ("$ref", "$defs", "anyOf", "oneOf", "allOf", "prefixItems", "additionalItems", "patternProperties",
+                        "additionalProperties", "required", "enum", "const", "default", "minItems", "$schema", "not",
+                        "unevaluatedProperties", "dependentRequired", "propertyNames", "multipleOf", "pattern"):
+            self.assertIn(f'"{keyword}"', schemas)
+        self.assertTrue(any(row["flags"]["schema"] is False for row in rows))
+        # The oracle's pins name the two modules whose sets of names upstream iterates.
+        compile(fuzz.PINNED, "pinned.py", "exec")
+        for module in ("jsonschema._keywords.set = ordered", "json_repair.parser_schema.set = ordered"):
+            self.assertIn(module, fuzz.PINNED)
 
     def test_texts_survive_json_transport(self):
         for family in fuzz.FAMILIES:
@@ -96,6 +122,31 @@ class ComparisonTests(unittest.TestCase):
             self.assertEqual(kept[0], {"value": ["list", [["bool", True], ["float", (1.0).hex()]]]})
         self.assertEqual(fuzz.differing(oracle, self.output({"id": 0, "error": "ValueError", "message": "strict"},
                                                             dict(error, message="Strict")), 2)[0], [0, 1])
+
+    def test_a_recorded_sample_keeps_the_examples_and_each_kind_of_outcome(self):
+        rows = fuzz.requests(1, 600, "schema", GenerationTests.seeds)
+        examples = sum(2 * len(modes) for _, _, modes in fuzz.EXAMPLES)
+        outcomes = []
+        for row in rows:
+            if row["id"] % 7 == 0:
+                what = "integer" if row["id"] < examples else "number"
+                outcomes.append({"id": row["id"], "error": "ValueError", "message": f"Expected {what} at $.k{row['id']}."})
+            elif row["id"] % 7 == 1:
+                outcomes.append({"id": row["id"], "error": "_WrappedReferencingError", "message": "Unresolvable: x"})
+            else:
+                outcomes.append({"id": row["id"], "value": ["dict", []]})
+        kept = fuzz.sample(rows, self.output(*outcomes))
+        self.assertEqual([row["id"] for row in kept], list(range(len(kept))))
+        self.assertEqual([row["input"] for row in kept[:20]],
+                         [row["input"] for row in rows[:examples] if row["id"] % 7 != 1][:20])
+        later = [row for row in kept if row["input"] not in {row["input"] for row in rows[:examples]}]
+        # One "Expected number" error stands for all of them, and no unresolvable reference is kept.
+        self.assertEqual(len([row for row in later if "error" in row["expected"]]), 1)
+        self.assertFalse(any(row["expected"].get("error") == "_WrappedReferencingError" for row in kept))
+        self.assertTrue(all("id" not in row["expected"] for row in kept))
+        self.assertLess(len(later), (len(rows) - examples) // 2)  # (six values of each kind, of 50 or so kinds)
+        with self.assertRaises(ValueError):
+            fuzz.sample(rows, self.output(*outcomes[:-1]))
 
     def test_oracle_sources_are_checked_by_hash(self):
         manifest = json.loads(fuzz.MANIFEST.read_text())

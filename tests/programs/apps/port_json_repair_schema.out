@@ -1,0 +1,8 @@
+739 recorded cases, of which upstream raises in 231 and the port differs in 0
+anchor {"error": "_WrappedReferencingError", "message": "Unresolvable: #name"}
+own $id {"error": "_WrappedReferencingError", "message": "Unresolvable: #/$defs/n"}
+remote {"error": "_WrappedReferencingError", "message": "Unresolvable: https://example.com/schema.json"}
+draft 3 {"error": "SchemaDefinitionError", "message": "Invalid schema: Draft 3 schemas are not supported."}
+own {"value": ["dict", [[["str", [97]], ["int", "1"]], [["str", [98]], ["str", [120]]]]]}
+own {"error": "ValueError", "message": "Unsupported $ref: https://example.com/root#/$defs/a~1b"}
+[exit 0]

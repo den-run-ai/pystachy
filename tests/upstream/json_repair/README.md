@@ -18,7 +18,7 @@ tables they import from upstream's `tests/utils` case module), and the upstream
 to discover inputs. The manifest lists the unresolved calls: three whose input no
 literal gives (Python's configurable integer conversion limit, a runtime recursion
 depth search and a parametrized buffered-input comparison) and five that pass a schema. Schema, file, CLI and internal-parser
-tests are outside its scope.
+tests are outside its scope; [schema-guided repair](#schema-guided-repair) has its own evidence.
 
 Extracted calls retain their API, serialization defaults, parsing options,
 `ensure_ascii=False` and repair logging. Unsupported keywords are reported rather
@@ -104,7 +104,7 @@ python3.13 tools/json_repair_fuzz.py --upstream /tmp/json_repair_upstream --seed
 ```
 
 Each generated text runs under three of eleven API and option combinations. There are four
-families of text. `mixed` mutates this corpus's inputs and renderings of random values. `long`
+schema-free families of text. `mixed` mutates this corpus's inputs and renderings of random values. `long`
 puts quotes, escapes and structural characters at the 64-code-point chunk boundaries of the
 port's string scanner. `number` builds numeric tokens. `comment` puts terminators at the
 boundaries of the comment scanner's windows.
@@ -123,6 +123,42 @@ in each configuration, and so do the first 500 of each family with the native co
 generated inputs, not proof of parity. The texts hold no surrogate code points, and the generator
 gives the same texts under CPython 3.11 to 3.13. CI does not run the fuzz: it needs an upstream
 checkout. [Its unit tests](../../../tools/test_json_repair_fuzz.py) run in `make check-fast`.
+
+## Schema-guided repair
+
+The corpus above is schema-free. Schema-guided repair has its own evidence, because its
+oracle needs `jsonschema`, which upstream validates with and the port
+[replaces](../../../ports/json_repair/PORT.md#schema-guided-repair):
+
+- The fuzz's `schema` family repairs values that nearly fit a generated JSON Schema, in both
+  repair modes, after 124 runs of documented examples. Its oracle pins the two orders that
+  upstream leaves to the hash seed (an object's additional properties, a schema's required
+  names) to the port's. It needs `jsonschema` in the CPython that runs it:
+
+  ```sh
+  python3.13 tools/json_repair_fuzz.py --upstream /tmp/json_repair_upstream --family schema --seed 1 --cases 30000 --jit --gc-stress 500
+  ```
+
+  | Seed | Cases | Distinct texts | Upstream raises | Port under CPython | Native AOT | Native JIT | AOT, stressed collector (first 500) |
+  |---|---|---|---|---|---|---|---|
+  | 1 | 30,000 | 7,464 | 20,235 | equal | equal | equal | equal |
+
+  This run, on 2026-11-12 with jsonschema 4.26.0 and CPython 3.13.18, found no difference.
+  Upstream raises in two thirds of the cases: a repair that cannot satisfy its schema is an
+  error, and so are the option combinations it rejects.
+- [json_repair_validator_fuzz.py](../../../tools/json_repair_validator_fuzz.py) compares the
+  port's validator alone with `jsonschema`, on generated schemas of drafts 4 to 2020-12, valid
+  and invalid, and instances for them: `check_schema()`, `validate()` and `is_valid()`, by
+  error class and message. Seeds 1 and 2 with 25,000 schemas each (31,820 of them valid, with
+  190,920 instances) gave no difference. A reference that the port leaves out is counted
+  (1,899 times there), not compared.
+- CI runs neither. It runs what they recorded:
+  [the native regression](../../../tests/programs/apps/port_json_repair_schema.py) replays 739
+  of the family's cases against upstream's outcomes (its `.in` file, written by `--record`),
+  and [the validator's unit tests](../../../tools/test_json_repair_validator.py) hold it to
+  `jsonschema`'s answers for [97 hand-written cases](validator_answers.json) (`--answers`).
+- [metaschemas.py](metaschemas.py) regenerates the port's metaschemas from
+  jsonschema-specifications 2025.9.1, whose files' hashes it pins.
 
 ## Regenerate the oracle
 

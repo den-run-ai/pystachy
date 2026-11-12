@@ -56,7 +56,21 @@ exit 1
 exit 1
 exit 1
 1
-1
+{
+  "name": "café",
+  "items": [
+    1,
+    2,
+    3
+  ],
+  "nested": {
+    "a": "tru",
+    "b": "nul"
+  },
+  "empty": [],
+  "none": {}
+}
+0
 True
 0
 {name: "café", values: [true, null,],}

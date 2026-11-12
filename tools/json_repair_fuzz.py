@@ -6,7 +6,14 @@ build, and compares typed values, serialized text, repair logs and error message
 
 Input families: "mixed" mutates recorded corpus inputs and rendered random values; "long" places
 quotes, escapes and structural characters at the string scanner's 64-code-point chunk boundaries;
-"number" builds numeric tokens; "comment" places terminators at the comment scanner's windows.
+"number" builds numeric tokens; "comment" places terminators at the comment scanner's windows;
+"schema" repairs values that nearly fit a generated JSON Schema, in both schema repair modes.
+
+The schema family needs jsonschema in the CPython that runs this tool: upstream validates with
+it, the port with its own validator. Upstream iterates two sets of names, an object's additional
+properties (jsonschema) and a schema's required names (json_repair), in an order that the hash
+seed decides, and with it which error comes first and the order of salvaged properties. The
+family's oracle pins both to the order of the instance and of the schema, which is the port's.
 
 The result is evidence for the generated inputs, not proof of parity. Exit status 1: a difference.
 """
@@ -16,6 +23,7 @@ import json
 import os
 from pathlib import Path
 import random
+import re
 import subprocess
 import sys
 import tempfile
@@ -26,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 REPLAY = ROOT / "tests/upstream/json_repair/replay.py"
 MANIFEST = ROOT / "tests/upstream/json_repair/manifest.json"
 CASES = ROOT / "tests/upstream/json_repair/cases.json"
-FAMILIES = ("mixed", "long", "number", "comment")
+FAMILIES = ("mixed", "long", "number", "comment", "schema")
 CHUNKS = (64, 128, 192, 256, 320, 384)  # ends of the string scanner's chunks
 WINDOWS = (64, 192, 448, 960)  # ends of the comment scanner's doubling windows
 TOKENS = list('{}[](),:"\'`#/*\\ \n\t\r') + list("abntrufse019-+.eE_x") + [
@@ -58,6 +66,355 @@ FLAGS = [("repair_json", {"return_objects": True}),
          ("repair_json", {"return_objects": False, "skip_json_loads": True}),
          ("loads", {}),
          ("loads", {"logging": True})]
+
+
+SCHEMA_FLAGS = [("repair_json", {"return_objects": True}),
+                ("repair_json", {"return_objects": True, "skip_json_loads": True}),
+                ("repair_json", {"return_objects": True, "logging": True}),
+                ("repair_json", {"return_objects": True, "skip_json_loads": True, "logging": True}),
+                ("repair_json", {"return_objects": False}),
+                ("repair_json", {"return_objects": False, "ensure_ascii": False}),
+                ("repair_json", {"return_objects": True, "stream_stable": True}),
+                ("repair_json", {"return_objects": True, "strict": True}),
+                ("loads", {}),
+                ("loads", {"skip_json_loads": True}),
+                ("loads", {"logging": True}),
+                ("loads", {"skip_json_loads": True, "logging": True})]
+NAMES = ["a", "b", "name", "id", "tags", "x-1", "user id", "n\u00e9"]
+SCALARS = ["string", "integer", "number", "boolean", "null"]
+PATTERNS = ["^a", "id$", "^x-", "a", "^name$", "[0-9]+", "^(a|b)$", "\\d", "^\u00e9"]
+DIALECTS = ["http://json-schema.org/draft-07/schema#", "http://json-schema.org/draft-06/schema#",
+            "http://json-schema.org/draft-04/schema#", "https://json-schema.org/draft/2019-09/schema",
+            "https://json-schema.org/draft/2020-12/schema", "https://example.com/no-such-dialect"]
+# The pins of the schema family's oracle (see the module's description).
+PINNED = """import runpy
+import sys
+
+import jsonschema._keywords
+import json_repair.parser_schema
+
+
+def ordered(names=()):
+    return list(dict.fromkeys(names))
+
+
+jsonschema._keywords.set = ordered
+json_repair.parser_schema.set = ordered
+sys.argv = sys.argv[1:]
+runpy.run_path(sys.argv[0], run_name="__main__")
+"""
+
+
+PERSON = {"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"},
+                                           "tags": {"type": "array", "items": {"type": "string"}},
+                                           "active": {"type": "boolean", "default": True}},
+          "required": ["name", "age"]}
+TREE = {"$defs": {"node": {"type": "object", "properties": {"value": {"type": "number"},
+                                                            "children": {"type": "array",
+                                                                         "items": {"$ref": "#/$defs/node"}}},
+                           "required": ["value"], "additionalProperties": False}},
+        "$ref": "#/$defs/node"}
+# What schema-guided repair is documented and tested to do, each text under every mode it is given:
+# (text, schema, modes).
+EXAMPLES = [
+    ('{name: "Ann", age: "42", tags: "x"}', PERSON, ("standard", "salvage")),
+    ('{"name": "Ann", "age": 41.0, "extra": 1, "tags": [1, 2.5]}', PERSON, ("standard",)),
+    ('{"name": "Ann"}', PERSON, ("standard", "salvage")),
+    ('["Ann", 42, ["a"], "yes"]', PERSON, ("standard", "salvage")),
+    ('[{"name": "Ann", "age": 1}]', PERSON, ("standard", "salvage")),
+    ('"{\\"name\\": \\"Ann\\", \\"age\\": 3}"', PERSON, ("standard", "salvage")),
+    ('{"name": "Ann", "age": "x"}', PERSON, ("standard", "salvage")),
+    ('{"name": 7, "age": "7", "active": "no"', PERSON, ("standard",)),
+    ('{"value": "1.5", "children": [{"value": 2, "x": 1}, {"children": []}]}', TREE, ("standard", "salvage")),
+    ('{"value": 1, "children": {"value": 2}}', TREE, ("standard",)),
+    ('{"a": "1", "b": 2}', {"type": "object", "properties": {"a": {"type": "integer"}}, "additionalProperties": False},
+     ("standard",)),
+    ('{"a": 1, "b_id": "2", "c": 3}', {"type": "object", "patternProperties": {"_id$": {"type": "integer"},
+                                                                              "^[0-9]+$": {"type": "string"}},
+                                       "additionalProperties": False}, ("standard",)),
+    ('{"k": "v", "n": "3"}', {"type": "object", "additionalProperties": {"type": ["integer", "string"]}}, ("standard",)),
+    ('[1, "2", 3.0, "x"]', {"type": "array", "items": {"type": "integer"}}, ("standard", "salvage")),
+    ('["1", "b", 3]', {"type": "array", "prefixItems": [{"type": "integer"}, {"type": "string"}], "items": False},
+     ("standard",)),
+    ('["1", "b", 3]', {"type": "array", "items": [{"type": "integer"}, {"type": "string"}], "additionalItems": False},
+     ("standard",)),
+    ('["1", "b", "3"]', {"$schema": "http://json-schema.org/draft-07/schema#", "type": "array",
+                         "items": [{"type": "integer"}], "additionalItems": {"type": "integer"}}, ("standard",)),
+    ('[]', {"type": "array", "items": {"type": "integer"}, "minItems": 1}, ("standard", "salvage")),
+    ('3', {"type": "array", "items": {"type": "integer"}}, ("standard",)),
+    ('{"mode": "FAST"}', {"type": "object", "properties": {"mode": {"enum": ["fast", "slow"]}}}, ("standard",)),
+    ('{"mode": "fast"}', {"type": "object", "properties": {"mode": {"const": "slow"}}}, ("standard",)),
+    ('{}', {"type": "object", "properties": {"mode": {"enum": ["fast", "slow"]}, "n": {"const": 3},
+                                            "s": {"type": "string"}, "l": {"type": "array"}},
+           "required": ["mode", "n", "s", "l"]}, ("standard", "salvage")),
+    ('{"v": "12"}', {"type": "object", "properties": {"v": {"anyOf": [{"type": "integer"}, {"type": "string"}]}}},
+     ("standard",)),
+    ('{"v": "12"}', {"type": "object", "properties": {"v": {"oneOf": [{"type": "integer"}, {"type": "number"}]}}},
+     ("standard",)),
+    ('{"v": 12.5}', {"type": "object", "properties": {"v": {"allOf": [{"type": "number"}, {"maximum": 10}]}}},
+     ("standard",)),
+    ('{"v": null}', {"type": "object", "properties": {"v": {"type": ["string", "null"]}}}, ("standard",)),
+    ('{"v": "abc"}', {"type": "object", "properties": {"v": {"type": "string", "pattern": "^[0-9]+$"}}}, ("standard",)),
+    ('{"v": "abc"}', {"type": "object", "properties": {"v": {"type": "string", "maxLength": 2}}}, ("standard",)),
+    ('{"v": 7}', {"type": "object", "properties": {"v": {"type": "integer", "multipleOf": 2}}}, ("standard",)),
+    ('{"v": [1, 1]}', {"type": "object", "properties": {"v": {"type": "array", "uniqueItems": True}}}, ("standard",)),
+    ('{"a": 1}', {"type": "object", "dependentRequired": {"a": ["b"]}}, ("standard",)),
+    ('{"a": 1, "b": 2}', {"type": "object", "properties": {"a": {}}, "unevaluatedProperties": False}, ("standard",)),
+    ('{"a": 1}', {"if": {"required": ["a"]}, "then": {"required": ["b"]}, "else": {"required": ["c"]}}, ("standard",)),
+    ('{"a": 1}', {"not": {"required": ["a"]}}, ("standard",)),
+    ('{"a": 1}', {"$ref": "#/$defs/missing"}, ("standard",)),
+    ('{"a": {"b": 1}}', {"type": "object", "properties": {"a": {"anyOf": [{"$ref": "#/$defs/missing"}]}}},
+     ("standard",)),
+    ('{"a": 1}', {"$ref": "other.json#/a"}, ("standard",)),
+    ('{"a": 1}', {"$ref": 3}, ("standard",)),
+    ('{"a": 1}', {"type": "objekt"}, ("standard",)),
+    ('{"a": 1}', {"properties": {"a": {"type": "string", "pattern": "("}}}, ("standard",)),
+    ('{"a": 1}', {"required": "a"}, ("standard",)),
+    ('{"a": 1}', {"type": "object", "properties": {"a": {"minimum": "1"}}}, ("standard",)),
+    ('{"a": 1}', True, ("standard", "salvage")),
+    ('{"a": 1}', False, ("standard",)),
+    ('{"a": 1', {}, ("standard",)),
+    ('{"a": "1", "b": [true, "no"]}', {"type": "object", "properties": {"a": {"type": "number"},
+                                                                     "b": {"type": "array",
+                                                                           "items": {"type": "boolean"}}}},
+     ("standard",)),
+    ('{"n": 1e400, "big": 123456789012345678901234567890, "f": "1e3"}',
+     {"type": "object", "properties": {"n": {"type": "number"}, "big": {"type": "integer"}, "f": {"type": "integer"}}},
+     ("standard",)),
+    ('{"n\u00e9": "\u00e9t\u00e9", "x": "\\ud83d\\ude00"}', {"type": "object", "properties": {"n\u00e9": {"type": "string", "minLength": 4}}},
+     ("standard",)),
+]
+
+
+def scalar_schema(rng, kind):
+    schema = {"type": kind}
+    extra = rng.randrange(9)
+    if kind == "string":
+        if extra == 0:
+            schema["enum"] = rng.sample(TEXTS, rng.randrange(1, 4))
+        elif extra == 1:
+            schema["minLength"] = rng.randrange(0, 4)
+        elif extra == 2:
+            schema["maxLength"] = rng.randrange(0, 6)
+        elif extra == 3:
+            schema["pattern"] = rng.choice(PATTERNS)
+        elif extra == 4:
+            schema["const"] = rng.choice(TEXTS)
+        elif extra == 5:
+            schema["format"] = rng.choice(["date", "email", "regex", "uuid"])
+    elif kind in ("integer", "number"):
+        if extra == 0:
+            schema["minimum"] = rng.choice([0, 1, -5, 2.5])
+        elif extra == 1:
+            schema["maximum"] = rng.choice([0, 10, 100, 2.5])
+        elif extra == 2:
+            schema["exclusiveMinimum"] = rng.choice([0, 1])
+        elif extra == 3:
+            schema["multipleOf"] = rng.choice([1, 2, 5, 0.5, 0.1])
+        elif extra == 4:
+            schema["enum"] = rng.sample([0, 1, 2, 3, 1.5, 10, True], rng.randrange(1, 4))
+        elif extra == 5:
+            schema["exclusiveMaximum"] = rng.choice([10, 100])
+    elif kind == "boolean" and extra == 0:
+        schema["const"] = rng.choice([True, False])
+    if rng.randrange(6) == 0:
+        schema["default"] = random_value(rng, 0)
+    return schema
+
+
+def random_schema(rng, depth, defs):
+    """A schema as a tool or a model declares one: mostly objects of typed properties, with unions,
+    references into $defs, defaults and constraints, and now and then a keyword that upstream's
+    repair ignores and only validation reads."""
+    pick = rng.randrange(20 if depth > 0 else 9)
+    if pick < 6:
+        return scalar_schema(rng, rng.choice(SCALARS))
+    if pick == 6:
+        return rng.choice([True, True, False, {}])
+    if pick == 7 and defs:
+        return {"$ref": "#/$defs/" + rng.choice(sorted(defs))} if rng.randrange(8) else {"$ref": "#/$defs/missing"}
+    if pick == 8:
+        return {"type": rng.sample(SCALARS + ["array", "object"], rng.randrange(1, 4))}
+    if pick < 12:
+        schema = {"type": "array"}
+        shape = rng.randrange(6)
+        if shape < 4:
+            schema["items"] = random_schema(rng, depth - 1, defs)
+        elif shape == 4:
+            schema["prefixItems"] = [random_schema(rng, depth - 1, defs) for _ in range(rng.randrange(1, 3))]
+            if rng.randrange(2):
+                schema["items"] = rng.choice([False, True, {"type": "string"}])
+        else:
+            schema["items"] = [random_schema(rng, depth - 1, defs) for _ in range(rng.randrange(1, 3))]
+            if rng.randrange(2):
+                schema["additionalItems"] = rng.choice([False, True, {"type": "integer"}])
+        for keyword, values in (("minItems", [0, 1, 2]), ("maxItems", [0, 1, 3]), ("uniqueItems", [True]),
+                                ("contains", [{"type": "integer"}, {"const": "a"}])):
+            if rng.randrange(7) == 0:
+                schema[keyword] = rng.choice(values)
+        if rng.randrange(3) == 0:
+            del schema["type"]
+        return schema
+    if pick < 17:
+        names = rng.sample(NAMES, rng.randrange(1, 5))
+        schema = {"type": "object", "properties": {name: random_schema(rng, depth - 1, defs) for name in names}}
+        if rng.randrange(3):
+            schema["required"] = rng.sample(names, rng.randrange(0, len(names) + 1))
+        extra = rng.randrange(8)
+        if extra == 0:
+            schema["additionalProperties"] = False
+        elif extra == 1:
+            schema["additionalProperties"] = random_schema(rng, depth - 1, defs)
+        elif extra == 2:
+            schema["patternProperties"] = {rng.choice(PATTERNS): random_schema(rng, depth - 1, defs)}
+            if rng.randrange(2):
+                schema["additionalProperties"] = False
+        elif extra == 3:
+            schema[rng.choice(["minProperties", "maxProperties"])] = rng.randrange(0, 3)
+        elif extra == 4:
+            schema["propertyNames"] = {"pattern": rng.choice(PATTERNS)}
+        elif extra == 5:
+            schema["dependentRequired"] = {names[0]: rng.sample(NAMES, rng.randrange(1, 3))}
+        elif extra == 6:
+            schema["unevaluatedProperties"] = rng.choice([False, {"type": "string"}])
+        if rng.randrange(5) == 0:
+            del schema["type"]
+        return schema
+    if pick < 19:
+        keyword = rng.choice(["anyOf", "oneOf", "allOf"])
+        return {keyword: [random_schema(rng, depth - 1, defs) for _ in range(rng.randrange(1, 4))]}
+    keyword = rng.choice(["not", "if"])
+    schema = {keyword: random_schema(rng, depth - 1, defs)}
+    if keyword == "if":
+        schema[rng.choice(["then", "else"])] = random_schema(rng, depth - 1, defs)
+    return schema
+
+
+def fitting(rng, schema, root, depth):
+    """A value that fits the schema, more or less: what a model that read the schema would write."""
+    if not isinstance(schema, dict) or depth > 6:
+        return random_value(rng, 1)
+    if isinstance(schema.get("$ref"), str):
+        target = root
+        for part in schema["$ref"].lstrip("#/").split("/"):
+            target = target.get(part) if isinstance(target, dict) else None
+        return fitting(rng, target, root, depth + 1)
+    for keyword in ("anyOf", "oneOf", "allOf"):
+        if isinstance(schema.get(keyword), list) and schema[keyword]:
+            return fitting(rng, rng.choice(schema[keyword]), root, depth + 1)
+    if "const" in schema and rng.randrange(4):
+        return schema["const"]
+    if isinstance(schema.get("enum"), list) and schema["enum"] and rng.randrange(4):
+        return rng.choice(schema["enum"])
+    kind = schema.get("type")
+    if isinstance(kind, list) and kind:
+        kind = rng.choice(kind)
+    if kind is None:
+        kind = "object" if "properties" in schema else "array" if "items" in schema or "prefixItems" in schema else None
+    if kind == "object":
+        value = {}
+        properties = schema.get("properties") if isinstance(schema.get("properties"), dict) else {}
+        required = schema.get("required") if isinstance(schema.get("required"), list) else []
+        for name, each in properties.items():
+            if name in required or rng.randrange(6):
+                value[name] = fitting(rng, each, root, depth + 1)
+        if rng.randrange(4) == 0:
+            value[rng.choice(NAMES + ["extra", "x-9", "aid"])] = random_value(rng, 1)
+        return value
+    if kind == "array":
+        items = schema.get("prefixItems", schema.get("items"))
+        if isinstance(items, list):
+            return [fitting(rng, each, root, depth + 1) for each in items] + [random_value(rng, 0)] * rng.randrange(2)
+        return [fitting(rng, items, root, depth + 1) for _ in range(rng.randrange(4))]
+    if kind == "string":
+        return rng.choice(TEXTS + ["a1", "x-1", "id", "name"])
+    if kind == "integer":
+        return rng.choice([0, 1, 2, 3, 7, 10, 42, -5, 100])
+    if kind == "number":
+        return rng.choice([0, 1.5, 2.5, 10, -0.5, 3.0, 1e20])
+    if kind == "boolean":
+        return rng.choice([True, False])
+    if kind == "null":
+        return None
+    return random_value(rng, 1)
+
+
+def misfit(rng, value, depth=0):
+    """The value with the misfits that schema repair mends or rejects: numbers as text and text
+    as numbers, yes for true, a lone item for an array, a container as its JSON text, a missing
+    or misplaced property, an array for an object."""
+    change = rng.randrange(16 if depth == 0 else 26)
+    if isinstance(value, dict):
+        out = {key: misfit(rng, item, depth + 1) for key, item in value.items()}
+        if change == 0 and out:
+            del out[rng.choice(sorted(out))]
+        elif change == 1:
+            return json.dumps(out)
+        elif change == 2:
+            return list(out.values())
+        elif change == 3:
+            return [out]
+        return out
+    if isinstance(value, list):
+        out = [misfit(rng, item, depth + 1) for item in value]
+        if change == 0 and out:
+            return out[0]
+        if change == 1:
+            return json.dumps(out)
+        if change == 2:
+            return out + [rng.choice([None, "x", 1])]
+        return out
+    if change > 4:
+        return value
+    if isinstance(value, bool):
+        return rng.choice(["true", "yes", "No", "on", 1, 0, "0", "off", 1.0])
+    if isinstance(value, (int, float)):
+        return rng.choice([str(value), float(value), str(value) + ".0", [value], " " + str(value), "1e2"])
+    if isinstance(value, str):
+        return rng.choice([[value], 3, 2.5, None, True, value.upper()])
+    return rng.choice(["null", "", 0, []])
+
+
+def schema_case(rng, seeds):
+    """A text and the schema options to repair it with."""
+    defs = {}
+    if rng.randrange(3) == 0:
+        for name in rng.sample(["a", "item", "node"], rng.randrange(1, 3)):
+            defs[name] = random_schema(rng, 2, {})
+    schema = random_schema(rng, rng.randrange(1, 4), defs)
+    while rng.randrange(8) and not (isinstance(schema, dict) and {"properties", "items", "prefixItems", "anyOf", "oneOf",
+                                                                 "allOf"} & set(schema)):
+        # mostly an object or an array at the root, as a tool's arguments and a model's reply are
+        schema = random_schema(rng, rng.randrange(1, 4), defs)
+    if isinstance(schema, dict):
+        if defs:
+            schema["$defs"] = defs
+            if rng.randrange(6) == 0:
+                defs[rng.choice(sorted(defs))] = {"$ref": "#"}
+        if rng.randrange(8) == 0:
+            schema = {"$schema": rng.choice(DIALECTS), **schema}
+        if rng.randrange(25) == 0:
+            # what no metaschema allows: an invalid schema, which upstream reports before any repair
+            schema[rng.choice(["type", "required", "properties", "minItems", "pattern", "items", "enum"])] = rng.choice(
+                ["strin", 3, -1, "[", [1], None, {"a": 1}])
+    value = fitting(rng, schema, schema, 0)
+    pick = rng.randrange(10)
+    if pick < 5:
+        value = misfit(rng, value)
+    elif pick == 5:
+        value = random_value(rng, 2)
+    text = rendered(rng, value) if rng.randrange(4) else json.dumps(value)
+    if rng.randrange(3) == 0:
+        text = mutated(rng, text, seeds)
+    options = {"schema": schema}
+    mode = rng.randrange(20)
+    if mode < 7:
+        options["schema_repair_mode"] = "salvage"
+    elif mode == 7:
+        options["schema_repair_mode"] = "standard"
+    elif mode == 8:
+        options["schema_repair_mode"] = "quick"
+    return text, options
 
 
 def filler(rng, length):
@@ -240,13 +597,24 @@ def requests(seed, count, family, seeds):
     holds no surrogate code point, which the requests' JSON transport would not preserve."""
     rng = random.Random(f"{family}:{seed}")
     rows = []
+    if family == "schema":
+        for text, schema, modes in EXAMPLES:
+            for mode in modes:
+                for api, flags in (SCHEMA_FLAGS[2], SCHEMA_FLAGS[4]):
+                    rows.append({"id": len(rows), "api": api, "input": text,
+                                 "flags": {**flags, "schema": schema, "schema_repair_mode": mode}})
+        rows = rows[:count]
     while len(rows) < count:
-        text = GENERATORS[family](rng, seeds)
-        if len(text) > (400 if family == "mixed" else 2500) or any(0xD800 <= ord(char) <= 0xDFFF for char in text):
+        options = {}
+        if family == "schema":
+            text, options = schema_case(rng, seeds)
+        else:
+            text = GENERATORS[family](rng, seeds)
+        if len(text) > (400 if family in ("mixed", "schema") else 2500) or any(0xD800 <= ord(char) <= 0xDFFF for char in text):
             continue
-        for api, flags in rng.sample(FLAGS, 3):
+        for api, flags in rng.sample(SCHEMA_FLAGS if family == "schema" else FLAGS, 3):
             if len(rows) < count:
-                rows.append({"id": len(rows), "api": api, "input": text, "flags": flags})
+                rows.append({"id": len(rows), "api": api, "input": text, "flags": {**flags, **options}})
     return rows
 
 
@@ -291,6 +659,37 @@ def differing(oracle, other, count):
         if second.readline():
             raise ValueError(f"more than {count} outcomes")
     return bad, kept
+
+
+def sample(rows, oracle):
+    """The examples and, of the generated cases under 1,200 characters, the first of each kind of
+    error (its message without what it quotes of the case) and the first six of each kind of value
+    (its type, by API, options and mode). Each row carries upstream's raw outcome as "expected";
+    the outcomes that jsonschema's reference library words (an unresolvable reference) are left
+    out, as the port's wording of some is its own."""
+    kept = []
+    seen = {}
+    examples = sum(2 * len(modes) for _, _, modes in EXAMPLES)
+    with open(oracle) as lines:
+        for row, line in zip(rows, lines, strict=True):
+            expected = json.loads(line)
+            if expected.pop("id") != row["id"]:
+                raise ValueError(f"expected case {row['id']}'s outcome")
+            if "error" in expected:
+                if expected["error"] in ("_WrappedReferencingError", "PointerToNowhere", "Unresolvable", "NoSuchAnchor",
+                                         "RecursionError"):
+                    continue
+                words = re.sub(r"'[^']*'|\"[^\"]*\"|\[.*\]|\{.*\}|[-+.0-9e]+|\$\S*", "", expected["message"])
+                kind, most = expected["error"] + ":" + words[:40], 1
+            else:
+                flags = sorted(name for name in row["flags"] if name != "schema")
+                kind, most = f"value:{expected['value'][0]}:{row['api']}:{row['flags'].get('schema_repair_mode')}:{flags}", 6
+            if row["id"] >= examples and len(json.dumps(row)) > 1200:
+                continue
+            seen[kind] = seen.get(kind, 0) + 1
+            if row["id"] < examples or seen[kind] <= most:
+                kept.append(dict(row, id=len(kept), expected=expected))
+    return kept
 
 
 def check_upstream(upstream):
@@ -338,6 +737,10 @@ def main(argv=None):
                              "which takes seconds for a case with long output")
     parser.add_argument("--timeout", type=int, default=1800, help="seconds for each replay")
     parser.add_argument("--report", type=Path, help="write counts and the first differing cases as JSON")
+    parser.add_argument("--record", type=Path, metavar="FILE",
+                        help="write a sample of the schema family's cases with upstream's outcomes, by kind of "
+                             "outcome, as the JSON lines that "
+                             "tests/programs/apps/port_json_repair_schema.py reads; only where every replay matched")
     args = parser.parse_args(argv)
     tag = check_upstream(args.upstream.resolve())
     compiler = args.compiler.resolve()
@@ -355,11 +758,14 @@ def main(argv=None):
         if args.jit:
             runs.append(("native JIT", [str(compiler), "run", str(REPLAY)], native))
         oracle_env = hosted_env(args.upstream.resolve() / "src")
+        pinned = scratch / "pinned.py"
+        pinned.write_text(PINNED)
         for family in args.family or FAMILIES:
             rows = requests(args.seed, args.cases, family, seeds)
             inputs = scratch / f"{family}.jsonl"
             inputs.write_text("".join(json.dumps(row) + "\n" for row in rows))
-            oracle = replayed("upstream", [sys.executable, str(REPLAY)], oracle_env, inputs, args.timeout)
+            command = [sys.executable, str(pinned), str(REPLAY)] if family == "schema" else [sys.executable, str(REPLAY)]
+            oracle = replayed("upstream", command, oracle_env, inputs, args.timeout)
             entry = {"cases": len(rows), "texts": len({row["input"] for row in rows}),
                      "errors": checked(oracle, len(rows)), "differences": {}}
             report["families"][family] = entry
@@ -385,6 +791,8 @@ def main(argv=None):
                 print(f"{family}: {label}: {count - len(bad)}/{count} match upstream {tag}", flush=True)
                 for ident in bad[:5]:
                     print("  " + json.dumps(rows[ident], ensure_ascii=True))
+            if args.record and family == "schema" and not failed:
+                args.record.write_text("".join(json.dumps(row, ensure_ascii=True) + "\n" for row in sample(rows, oracle)))
             oracle.unlink()
     report["result"] = "fail" if failed else "pass"
     if args.report:

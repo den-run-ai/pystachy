@@ -39,6 +39,11 @@ are identical.
   million instructions against 0.696 million, 1.28 ms against 1.28 ms (the least of 3,000 runs
   each, twice), in an executable of 557 KB against 513 KB. It loads 34 modules where the
   rewrite loaded 24, and compiles in 0.59 s against 0.38 s.
+- [Schema-guided repair](../../ports/json_repair/PORT.md#what-schema-support-costs-a-program-without-a-schema),
+  added after these measurements, left repair itself as it was: 0.993 to 1.010 times the
+  instructions on these workloads (callgrind totals, one run each, not retained). A program
+  that passes no schema still carries the schema modules, the validator and `re`: it starts
+  in 723,491 instructions against 702,242 and is 1,243 KB against 567 KB.
 - Upstream's modules, compiled with only the changes the compiler needs, were about 2 to 8
   times slower than the rewrite on these workloads in informal checks while re-basing (three
   pairs, medians, not retained), started 18% slower and compiled in three times the time.
