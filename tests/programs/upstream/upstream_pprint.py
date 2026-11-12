@@ -7,9 +7,9 @@
 # Complete methods, with every input and assertion: test_sort_dict (its dict annotated),
 # test_nested_indentations (its list annotated, its dict a display), test_compact and
 # test_compact_width (its nested list written out). test_str_wrap keeps every literal
-# assertion, and test_bytes_wrap all but the two of a dict holding ints beside bytes (no union
-# holds bytes); their closing loops print each width's result, where upstream evaluates it
-# with eval().
+# assertion (its dict of an int and two str values annotated), and test_bytes_wrap all but the
+# two of a dict holding ints beside bytes (no union holds bytes); their closing loops print
+# each width's result, where upstream evaluates it with eval().
 # Partial methods keep the assertions named here and leave out inputs that have no static type
 # or no support: test_init (not the sixth positional argument, a compile-time error),
 # test_basic and test_same_as_repr (no complex, bytearray, Ellipsis, range, module, method or
@@ -264,7 +264,8 @@ def test_str_wrap() -> None:
 ('the quick brown '
  'fox jumped over '
  'a lazy dog')"""
-    assert pprint.pformat({'a': 1, 'b': fox, 'c': 2},
+    mixed: dict[str, int | str] = {'a': 1, 'b': fox, 'c': 2}
+    assert pprint.pformat(mixed,
                           width=25) == """\
 {'a': 1,
  'b': 'the quick brown '
