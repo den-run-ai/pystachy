@@ -2261,20 +2261,33 @@ class Generator:
                         methods[statement] = statement.args.args[0].arg
         return methods
 
-    @staticmethod
-    def raises_block(context, callee, arguments, keywords, target, number):
+    def raises_block(self, context, callee, arguments, keywords, target, number):
         """`with context [as target]: callee(*arguments)` for raises(E, callee, *arguments).
 
-        pytest evaluates the arguments before it calls the function, so one that calls
-        or computes something is bound first: only the call itself may raise E.
+        pytest looks the function up, then evaluates the arguments, and only then calls
+        it: only the call itself may raise E. So what may run code or be changed by a
+        later argument is bound first, in that order: a call or a computation, and an
+        attribute of an object, whose lookup may be a property that raises and whose
+        field an argument's call may replace. A name is read where it is called, as is
+        an attribute of a module or of a class that this file names (math.floor,
+        Path.cwd): reading those runs none of the test's code, and a class's method is
+        no value a native program can hold.
         """
         before = []
+        fixed = set(self.modules) | set(self.imported) | {
+            node.name for node in ast.walk(self.tree) if isinstance(node, ast.ClassDef)}
+
+        def static(node):
+            while isinstance(node, ast.Attribute):
+                node = node.value
+            return isinstance(node, ast.Name) and node.id in fixed
 
         def simple(node):
             return not any(isinstance(part, (ast.Call, ast.BinOp, ast.Subscript, ast.Await, ast.Yield, ast.YieldFrom,
                                              ast.NamedExpr, ast.ListComp, ast.SetComp, ast.DictComp,
                                              ast.GeneratorExp, ast.IfExp, ast.Compare, ast.BoolOp, ast.UnaryOp,
-                                             ast.JoinedStr)) for part in ast.walk(node))
+                                             ast.JoinedStr))
+                           or (isinstance(part, ast.Attribute) and not static(part)) for part in ast.walk(node))
 
         def bound(node):
             if isinstance(node, ast.Starred):
@@ -2993,8 +3006,12 @@ class Generator:
                     q + "except BaseException as _pyn_error:",
                     q + f"    _pyn_unit.raised(_pyn_error{', True' if expected else ''})"]
 
+        # (unittest expects a failure of the test method alone, a subtest's included.)
+        call = guarded(f"{callee}()", "    ", expecting)
+        if expecting:
+            call = ["    _pyn_unit.expecting(True)", *call, "    _pyn_unit.expecting(False)"]
         body = [*guarded(f"_pyn_instance = {test.owner.name}()", ""), "else:",
-                *guarded(f"{callee}()", "    ", expecting), *guarded("_pyn_instance.tearDown()", "    ")]
+                *call, *guarded("_pyn_instance.tearDown()", "    ")]
         always = next((mark for mark in skips if mark.condition is True), None)
         if always is not None:
             body = [f"_pyn_unit.skip({always.reason!r})"]

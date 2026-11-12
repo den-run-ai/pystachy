@@ -155,7 +155,8 @@ This hosted tool currently targets Linux and macOS.
   inherited tests in unittest's sorted order, `self.subTest()`, `skipTest`,
   `@unittest.skip`, `skipIf`, `skipUnless` and `expectedFailure`. As under pytest,
   `setUp`, the test and `tearDown` run in the call phase; a second failure is
-  reported as the teardown's, and each `subTest` block reports apart from its test.
+  reported as the teardown's, and each `subTest` block reports apart from its test;
+  an `expectedFailure` test ends at its first failing `subTest`, the failure it expects.
   `setUp` becomes `__init__` here too. Assertions: `assertEqual`, `NotEqual`,
   `True`, `False`, `Is`, `IsNot`, `IsNone`, `IsNotNone`, `In`, `NotIn`,
   `IsInstance`, `NotIsInstance`, `Greater`, `GreaterEqual`, `Less`, `LessEqual`,
@@ -218,8 +219,9 @@ This hosted tool currently targets Linux and macOS.
   `pytest.raises((A, B))` as a context manager, with `.value`, `.type`,
   `.typename` and `.match(regex)`. The callable form
   `pytest.raises(E, function, *arguments)` is written out as that block where it
-  is a statement of its own or assigned to a name; its arguments are evaluated
-  first, as pytest evaluates them. `check=` and compiled regexes are outside this
+  is a statement of its own or assigned to a name; the function is looked up on
+  its object and the arguments are evaluated first, in that order, as pytest
+  evaluates them. `check=` and compiled regexes are outside this
   subset. The context holds a `BaseException`, whose own
   fields compiled code cannot read. Where a function reads
   `info.value.attribute`, its `with pytest.raises(E) as info:` block is expanded

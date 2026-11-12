@@ -82,6 +82,20 @@ class Derived(Base):
     def test_unexpected(self):
         pass
 
+    @unittest.expectedFailure
+    def test_expected_in_subtest(self):
+        # unittest stops at the first failing subtest: the failure it expects.
+        for i in range(3):
+            with self.subTest(i=i):
+                self.assertLess(i, 1)
+        LOG.append("after expected subtests")
+
+    @unittest.expectedFailure
+    def test_unexpected_in_subtests(self):
+        for i in range(2):
+            with self.subTest(i=i):
+                self.assertLess(i, 2)
+
     def test_sub_pass(self):
         for i in range(3):
             with self.subTest(i=i):
@@ -195,6 +209,7 @@ def test_subtest_outside_a_case_does_not_hide_its_failure():
 
 def test_plain_last():
     assert "after subtests" in LOG
+    assert "after expected subtests" not in LOG
     assert "tearDown after failed setUp" not in LOG
     assert LOG[:4] == ["auto+", "setUp", "tearDown", "auto-"]
 '''
@@ -315,6 +330,7 @@ def test_module_metadata():
 
 MARKS = '''
 import sys
+from typing import Callable
 
 import pytest
 
@@ -373,6 +389,45 @@ def test_callable_arguments_run_before_the_call():
 
     # pytest evaluates the arguments first: their exception is the test's own.
     pytest.raises(Problem, explode, argument())
+
+
+def explode_one(code: int) -> None:
+    raise Problem(code)
+
+
+def quiet_one(code: int) -> None:
+    pass
+
+
+class Switch:
+    def __init__(self) -> None:
+        self.action: Callable[[int], None] = explode_one
+        self.code = 3
+
+    @property
+    def broken(self) -> Callable[[int], None]:
+        raise Problem(7)
+
+    def flip(self) -> int:
+        self.action = quiet_one
+        self.code = 5
+        return 1
+
+
+def test_callable_lookup_runs_before_the_context():
+    switch = Switch()
+    # The property raises where pytest evaluates raises()'s arguments: the test's own.
+    pytest.raises(Problem, switch.broken, 1)
+
+
+def test_callable_is_read_before_its_arguments():
+    switch = Switch()
+    # The field is read before flip() replaces it, so the call raises.
+    pytest.raises(Problem, switch.action, switch.flip())
+    again = Switch()
+    # An argument is read before a later one's call changes it.
+    info = pytest.raises(Problem, explode, again.code, again.flip())
+    assert "problem 3" in str(info.value)
 '''
 
 
@@ -788,7 +843,7 @@ class StyleParity(TemporarySuite):
     def test_suites_match_pytest(self):
         results, expected = self.suites("python")
         cases = expected["cases"]
-        self.assertEqual(len(cases), 108)
+        self.assertEqual(len(cases), 112)
         outcomes = self.outcomes(results)
         # unittest sorts a case's methods, inherited ones too, and runs setUp, the test
         # and tearDown in the call phase; a second failure is the teardown's.
@@ -807,13 +862,17 @@ class StyleParity(TemporarySuite):
         self.assertEqual(outcomes["test_unit.py::TearDownFails::test_skip", "call"], "skipped")
         subtests = [(event["nodeid"].rsplit("::", 1)[1], event["outcome"]) for result in results
                     for event in result.events if event["phase"] == "subtest"]
-        self.assertEqual(subtests, [("test_sub_fail", "passed"), ("test_sub_fail", "failed"),
-                                    ("test_sub_fail", "failed"), *[("test_sub_pass", "passed")] * 3])
+        self.assertEqual(subtests, [("test_expected_in_subtest", "passed"), ("test_sub_fail", "passed"),
+                                    ("test_sub_fail", "failed"), ("test_sub_fail", "failed"),
+                                    *[("test_sub_pass", "passed")] * 3, *[("test_unexpected_in_subtests", "passed")] * 2])
         # A failed subtest is reported apart: its test's own call passes.
         self.assertEqual(outcomes["test_unit.py::Derived::test_sub_fail", "call"], "passed")
+        # In an expectedFailure test it is the failure expected, which ends the test.
+        self.assertEqual(outcomes["test_unit.py::Derived::test_expected_in_subtest", "call"], "xfailed")
+        self.assertEqual(outcomes["test_unit.py::Derived::test_unexpected_in_subtests", "call"], "failed")
         self.assertEqual(outcomes["test_unit.py::test_subtest_outside_a_case_does_not_hide_its_failure", "call"],
                          "failed")
-        self.assertEqual(runner.outcome_counts(results)["subtests passed"], 4)
+        self.assertEqual(runner.outcome_counts(results)["subtests passed"], 7)
         # Computed tables: pytest's IDs for values, names and objects.
         for case in ("test_range[2]", "test_named_comprehension[6]", "test_product[2-b]", "test_items[two-2]",
                      "test_dict_keys[one]", "test_objects[point1]", "test_named_objects[point0]",
@@ -826,6 +885,9 @@ class StyleParity(TemporarySuite):
         self.assertEqual(outcomes["test_marks.py::TestSkippedByAttribute::test_never", "setup"], "skipped")
         self.assertEqual(outcomes["test_marks.py::test_callable_raises_misses", "call"], "failed")
         self.assertEqual(outcomes["test_marks.py::test_callable_arguments_run_before_the_call", "call"], "failed")
+        # The function is looked up, then the arguments are read, before the context is entered.
+        self.assertEqual(outcomes["test_marks.py::test_callable_lookup_runs_before_the_context", "call"], "failed")
+        self.assertEqual(outcomes["test_marks.py::test_callable_is_read_before_its_arguments", "call"], "passed")
         # A base class's tests come first; a helper class and the base itself are not collected.
         self.assertEqual([case.split("::", 1)[1] for case in cases if case.startswith("test_inherit.py::")], [
             "TestFirst::test_shared", "TestFirst::test_inherited_as_is", "TestFirst::test_own[1]",

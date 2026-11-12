@@ -312,6 +312,7 @@ def table_length(actual: int, expected: int, name: str) -> None:
 subtest_outcomes: list[str] = []
 subtest_details: list[str] = []
 unit_running = [False]
+unit_expecting = [False]  # the running test method is decorated with unittest.expectedFailure
 
 
 class SubTest:
@@ -333,6 +334,10 @@ class SubTest:
         if isinstance(value, Skipped):
             subtest_outcomes.append("skipped")
             subtest_details.append(str(value))
+        elif unit_expecting[0]:
+            # unittest stops an expectedFailure test at its first failing subtest, which is
+            # the failure it expects: the test method ends here with it (UnitRun.raised).
+            return False
         else:
             subtest_outcomes.append("failed")
             subtest_details.append(describe(value))
@@ -677,6 +682,11 @@ class UnitRun:
         self.expected = False
         self.expected_detail = ""
         unit_running[0] = True
+        unit_expecting[0] = False
+
+    def expecting(self, now: bool) -> None:
+        """Whether the test method of an expectedFailure case is running now."""
+        unit_expecting[0] = now
 
     def skip(self, reason: str) -> None:
         self.outcomes.append("skipped")
