@@ -2123,7 +2123,10 @@ def gen_as_list(self, v: Val, name: str) -> Val:
                 self.err(f"assigning a {typestr(v.t)} to a list slice is not supported: its items have different types")
             else:
                 self.err(f"{name}() of a {v.t} needs items of a single type")
-        r = self.rt("pys_list_new_atomic" if atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"])
+        # (the empty tuple's list is scanned: no item proves its array pointer-free, and its callers
+        # type it as the list they want, list(()) where a list[str] goes: an atomic array would hide
+        # that list's strs from the collector)
+        r = self.rt("pys_list_new_atomic" if len(ts) > 0 and atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"])
         for i in range(len(ts)):
             item = self.tget(v, i)
             if self.ctype("list", [et]) == "list[dyn]":
