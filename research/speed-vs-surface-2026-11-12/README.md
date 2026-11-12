@@ -54,7 +54,7 @@ JIT end to end on the small programs stayed near 0.1 s.
 ## What was measured
 
 Thirty-four commits on `main` between 7 October and 11 November 2026: an
-end-of-day commit for most days and every release tag (`commits.txt`). Each
+end-of-day commit for most days and eight of the fifteen release tags (`commits.txt`). Each
 was built in its own worktree by its own `make` bootstrap (CPython 3.13.18 for
 stage 1, LLVM 18.1.3) and reached its own fixed point. Every workload below is
 fixed: the same files are given to every commit.
@@ -85,6 +85,9 @@ every sample since the first one with ten working ports. `unpack_sequence` is
 excluded: AOT removes its timed loop.
 
 ## Files
+
+- `followup/`: the same measurements on main `8434a911` (12 November), the two
+  regressions reproduced with their mechanisms, blocker groups and the dynamic `Any` opt-in.
 
 - `export/`: the report for offline reading: `report.md` (renders on GitHub with its
   images), `report.html` (self-contained, works offline), `report.pdf`, one PNG per

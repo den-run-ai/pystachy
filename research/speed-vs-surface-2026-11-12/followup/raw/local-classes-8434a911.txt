@@ -1,0 +1,2 @@
+{'methods': 361, 'methods with a capturing local class': 80, 'local classes': 627, 'capturing local classes': 101, 'methods whose local classes capture nothing': 281, 'missing': 4}
+most captured names: [('.type_params', 15), ('__class__', 14), ('C', 14), ('x', 7), ('called', 6), ('c', 5), ('A', 5), ('__classdict__', 5), ('B', 3), ('a', 2)]

@@ -1,0 +1,4 @@
+# PYSTACHY_GC=stats for the AOT words executable (bench/words.py), pinned to CPU 3
+bis_6d4ed3d117 (first parent of #667): gc: 1 collections, 0.8 ms; heap peak 34.9 MiB; live 3.1 MiB at the last
+bis_a355c83ff7 (#667's merge):         gc: 2 collections, 5.2 ms; heap peak 57.7 MiB; live 19.5 MiB at the last
+1111-1943_8434a911 (main):             gc: 2 collections, 5.0 ms; heap peak 59.1 MiB; live 19.5 MiB at the last

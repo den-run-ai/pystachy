@@ -1,0 +1,160 @@
+### float-1110-2331_d02995cb
+350,329,568 (100.0%)  PROGRAM TOTALS
+97,008,378 (27.69%)  ???:main 
+91,540,900 (26.13%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__cos_fma 
+87,544,850 (24.99%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__sin_fma 
+15,176,673 ( 4.33%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+13,863,052 ( 3.96%)  ???:gc_slow 
+11,107,731 ( 3.17%)  ???:scan 
+ 9,999,970 ( 2.85%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__cos_fma
+ 9,999,970 ( 2.85%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__sin_fma
+ 8,100,851 ( 2.31%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+ 4,634,869 ( 1.32%)  ???:collect 
+
+### float-bis_c0ab00c0a6
+350,329,580 (100.0%)  PROGRAM TOTALS
+97,008,378 (27.69%)  ???:main 
+91,540,900 (26.13%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__cos_fma 
+87,544,850 (24.99%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__sin_fma 
+15,176,673 ( 4.33%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+13,863,052 ( 3.96%)  ???:gc_slow 
+11,107,731 ( 3.17%)  ???:scan 
+ 9,999,970 ( 2.85%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__cos_fma
+ 9,999,970 ( 2.85%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__sin_fma
+ 8,100,849 ( 2.31%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+ 4,634,869 ( 1.32%)  ???:collect 
+
+### float-bis_0ec827ac34
+350,329,562 (100.0%)  PROGRAM TOTALS
+97,008,378 (27.69%)  ???:main 
+91,540,900 (26.13%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__cos_fma 
+87,544,850 (24.99%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__sin_fma 
+15,176,673 ( 4.33%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+13,863,052 ( 3.96%)  ???:gc_slow 
+11,107,731 ( 3.17%)  ???:scan 
+ 9,999,970 ( 2.85%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__cos_fma
+ 9,999,970 ( 2.85%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__sin_fma
+ 8,100,851 ( 2.31%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+ 4,634,869 ( 1.32%)  ???:collect 
+
+### float-bis_b40ee875bf
+355,329,652 (100.0%)  PROGRAM TOTALS
+91,540,900 (25.76%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__cos_fma 
+87,544,850 (24.64%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__sin_fma 
+66,008,462 (18.58%)  ???:main 
+36,000,008 (10.13%)  ???:m.Point.__init__ 
+15,176,673 ( 4.27%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+13,863,052 ( 3.90%)  ???:gc_slow 
+11,107,671 ( 3.13%)  ???:scan 
+ 9,999,970 ( 2.81%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__cos_fma
+ 9,999,970 ( 2.81%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__sin_fma
+ 8,100,849 ( 2.28%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+ 4,634,869 ( 1.30%)  ???:collect 
+
+### float-1111-1528_b2182a4f
+355,329,622 (100.0%)  PROGRAM TOTALS
+91,540,900 (25.76%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__cos_fma 
+87,544,850 (24.64%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__sin_fma 
+66,008,462 (18.58%)  ???:main 
+36,000,008 (10.13%)  ???:m.Point.__init__ 
+15,176,673 ( 4.27%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+13,863,052 ( 3.90%)  ???:gc_slow 
+11,107,671 ( 3.13%)  ???:scan 
+ 9,999,970 ( 2.81%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__cos_fma
+ 9,999,970 ( 2.81%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__sin_fma
+ 8,100,853 ( 2.28%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+ 4,634,869 ( 1.30%)  ???:collect 
+
+### float_one_bis_0ec827ac34
+350,330,064 (100.0%)  PROGRAM TOTALS
+97,008,378 (27.69%)  ???:main 
+91,540,900 (26.13%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__cos_fma 
+87,544,850 (24.99%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__sin_fma 
+15,176,179 ( 4.33%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+13,863,611 ( 3.96%)  ???:gc_slow 
+11,107,731 ( 3.17%)  ???:scan 
+ 9,999,970 ( 2.85%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__cos_fma
+ 9,999,970 ( 2.85%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__sin_fma
+ 8,100,866 ( 2.31%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+ 4,634,869 ( 1.32%)  ???:collect 
+
+### float_two_bis_0ec827ac34
+361,330,008 (100.0%)  PROGRAM TOTALS
+91,540,900 (25.33%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__cos_fma 
+87,544,850 (24.23%)  ./math/../sysdeps/ieee754/dbl-64/s_sin.c:__sin_fma 
+72,008,392 (19.93%)  ???:main 
+36,000,008 ( 9.96%)  ???:m.Point.__init__ 
+15,176,179 ( 4.20%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+13,863,611 ( 3.84%)  ???:gc_slow 
+11,107,671 ( 3.07%)  ???:scan 
+ 9,999,970 ( 2.77%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__cos_fma
+ 9,999,970 ( 2.77%)  ./math/../sysdeps/x86/fpu/fenv_private.h:__sin_fma
+ 8,100,868 ( 2.24%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+ 4,634,869 ( 1.28%)  ???:collect 
+
+### words-bis_6d4ed3d117
+433,221,311 (100.0%)  PROGRAM TOTALS
+71,649,774 (16.54%)  ???:pys_str_split 
+50,739,757 (11.71%)  ???:dfindi 
+44,790,351 (10.34%)  ???:pys_str_slice 
+43,244,470 ( 9.98%)  ???:pys_str_upper 
+35,166,441 ( 8.12%)  ???:main 
+32,545,437 ( 7.51%)  ???:pys_dict_get 
+26,567,532 ( 6.13%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+23,127,440 ( 5.34%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+19,683,037 ( 4.54%)  ./string/../sysdeps/x86_64/multiarch/memcmp-avx2-movbe.S:__memcmp_avx2_movbe 
+17,433,739 ( 4.02%)  ???:gc_slow 
+15,200,049 ( 3.51%)  ???:pys_str_join 
+13,624,518 ( 3.14%)  ???:pys_dict_set 
+ 7,686,106 ( 1.77%)  ./stdio-common/./stdio-common/vfprintf-internal.c:__printf_buffer 
+
+### words-bis_a355c83ff7
+616,987,900 (100.0%)  PROGRAM TOTALS
+83,728,605 (13.57%)  ???:main 
+77,768,560 (12.60%)  ???:pys_text_startswith 
+71,649,774 (11.61%)  ???:pys_str_split 
+50,739,757 ( 8.22%)  ???:dfindi 
+45,587,485 ( 7.39%)  ???:pys_str_slice 
+44,443,630 ( 7.20%)  ???:pys_str_upper 
+37,951,184 ( 6.15%)  ???:scan 
+32,545,437 ( 5.27%)  ???:pys_dict_get 
+28,983,552 ( 4.70%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms 
+26,567,542 ( 4.31%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+20,219,748 ( 3.28%)  ./string/../sysdeps/x86_64/multiarch/memcmp-avx2-movbe.S:__memcmp_avx2_movbe 
+16,892,531 ( 2.74%)  ???:gc_slow 
+15,200,049 ( 2.46%)  ???:pys_str_join 
+
+### words-1111-1943_8434a911
+538,765,085 (100.0%)  PROGRAM TOTALS
+74,049,759 (13.74%)  ???:pys_str_split 
+47,987,485 ( 8.91%)  ???:pys_str_slice 
+45,918,669 ( 8.52%)  ???:dfinds 
+44,443,630 ( 8.25%)  ???:pys_str_upper 
+37,822,526 ( 7.02%)  ???:scan 
+37,745,428 ( 7.01%)  ???:pys_dict_get 
+30,414,722 ( 5.65%)  ???:main 
+28,312,892 ( 5.26%)  ???:pys_text_len 
+27,600,000 ( 5.12%)  ???:pys_text_startswith 
+26,569,747 ( 4.93%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms 
+20,810,918 ( 3.86%)  ???:pys_dict_set 
+20,219,748 ( 3.75%)  ./string/../sysdeps/x86_64/multiarch/memcmp-avx2-movbe.S:__memcmp_avx2_movbe 
+16,944,545 ( 3.15%)  ???:gc_slow 
+
+### callers in words-1111-1943_8434a911
+
+37,816,340 ( 7.02%)  < ???:collect (3,091x) 
+     6,403 ( 0.00%)  < ???:mark_roots (16x) 
+37,822,526 ( 7.02%)  *  ???:scan 
+--
+
+27,342,140 ( 5.07%)  < ???:pys_text_startswith (400,000x) 
+   970,752 ( 0.18%)  < ???:main (1x) 
+28,312,892 ( 5.26%)  *  ???:pys_text_len 
+
+64,142,140 (11.91%)  < ???:main (400,000x) 
+27,600,000 ( 5.12%)  *  ???:pys_text_startswith 
+### callers in words-bis_6d4ed3d117
+
+   803,751 ( 0.19%)  < ???:collect (1,025x) 
+     3,600 ( 0.00%)  < ???:mark_roots (8x) 
+   807,134 ( 0.19%)  *  ???:scan 

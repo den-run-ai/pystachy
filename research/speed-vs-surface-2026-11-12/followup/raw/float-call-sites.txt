@@ -1,0 +1,11 @@
+# float.py built by the compiler at 0ec827ac (first parent of #1268) and at b40ee875 (#1268's merge),
+# unchanged ("one") and with one never-executed second `Point(0)` call after the fill loop ("two"):
+#     if n < 0:  # never runs: a second call site of Point.__init__
+#         points[0] = Point(0)
+# Output identical to CPython's. 15 interleaved repetitions pinned to CPU 3; `seconds` line, argument 10.
+float_one_bis_0ec827ac34     median  34.06 ms  range 32.72-45.93
+float_two_bis_0ec827ac34     median  44.76 ms  range 42.23-54.34
+float_one_bis_b40ee875bf     median  44.18 ms  range 43.15-50.06
+float_two_bis_b40ee875bf     median  44.30 ms  range 43.46-52.32
+# callgrind (instructions): one@0ec827ac 350,330,064 with Point.__init__ inlined into main;
+# two@0ec827ac 361,330,008 with m.Point.__init__ out of line (36,000,008).
