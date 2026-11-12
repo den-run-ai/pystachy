@@ -382,7 +382,12 @@ See [coroutines](../coroutines.md).
   coroutine's `StopIteration` value (await it instead), `cr_*` attributes, and coroutines in
   containers that print or compare their items. An `async def` whose awaits yield values of
   incompatible types to the code that runs it, such as `int` and `str`.
-- **Library:** the `asyncio` module.
+- **Library:** `asyncio` beyond its event loop, tasks and primitives: sockets, streams,
+  subprocesses, threads, `contextvars`, `wait()`, `shield()`, `loop.create_future()` and
+  `gather()` of different result types ([limits](../../lib/compatibility.md#asyncio)). A
+  `TaskGroup` whose tasks fail raises the first failure's exception, not an `ExceptionGroup`
+  (`tests/deviations/lib_asyncio_taskgroup_error.py`), and a loop with nothing ready or
+  scheduled raises `RuntimeError` where CPython's would wait for I/O.
 
 ### Context managers
 
