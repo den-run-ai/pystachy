@@ -1,0 +1,38 @@
+('stdlib', 'platstdlib', 'purelib', 'platlib', 'include', 'scripts', 'data')
+['data', 'include', 'platinclude', 'platlib', 'platstdlib', 'purelib', 'scripts', 'stdlib']
+True True
+3.13 False
+py_version '3.13.16'
+py_version_short '3.13'
+py_version_nodot '313'
+py_version_nodot_plat ''
+abiflags ''
+abi_thread ''
+SIZEOF_SIZE_T 8
+SIZEOF_VOID_P 8
+Py_GIL_DISABLED 0
+no_such_variable None
+True True True False
+True 3.13
+True True True True
+SIZEOF_SIZE_T is the int 8; py_version is a str of 3 parts; no_such_variable is not set
+[True, True, True, True, True, True, True, True]
+[True, True, True, True, True, True, True]
+True True
+True True
+True True
+/B /B/bin
+/C/bin .
+{base} {base}/bin {base}/bin
+KeyError 'no_such_scheme'
+KeyError 'no_such_path'
+KeyError 'no_such_scheme'
+KeyError 'no_such_key'
+True 8
+AttributeError 'no_such_variable'
+AttributeError 'no_such_variable'
+AttributeError 'PATH'
+True True
+{base}/b/3.13
+True
+[exit 0]
