@@ -191,11 +191,11 @@ esac
     def selected(self, log):
         return [line.removeprefix("selected: ") for line in log.splitlines() if line.startswith("selected: ")]
 
-    def test_pr_native_modes_run_complete_disjoint_halves_with_exact_single_mode_counts(self):
-        halves = reference_shards(CASES, WEIGHTS, DEFAULTS, 2)[0]
+    def test_pr_native_modes_run_two_jit_halves_and_four_aot_quarters_with_exact_counts(self):
         pairs = []
-        for mode in ("jit", "aot"):
-            for index in range(2):
+        for mode, count in (("jit", 2), ("aot", 4)):
+            shards = reference_shards(CASES, WEIGHTS, DEFAULTS, count)[0]
+            for index in range(count):
                 group = f"native-{mode}-{index}"
                 name = f"tests-{group}"
                 with self.subTest(group=group):
@@ -205,13 +205,13 @@ esac
                     step = report["steps"][1]
                     self.assertEqual(step["modes"], [mode])
                     self.assertEqual(step["compiler"], "stage2")
-                    self.assertEqual((step["shard_index"], step["shard_count"]), (index, 2))
-                    self.assertEqual(step["selected_cases"], halves[index])
-                    self.assertEqual(self.selected(logs[name]), halves[index])
+                    self.assertEqual((step["shard_index"], step["shard_count"]), (index, count))
+                    self.assertEqual(step["selected_cases"], shards[index])
+                    self.assertEqual(self.selected(logs[name]), shards[index])
                     self.assertEqual((step["passed"], step["failed"], step["expected"]),
-                                     (checks(halves[index], mode), 0, checks(halves[index], mode)))
+                                     (checks(shards[index], mode), 0, checks(shards[index], mode)))
                     self.assertIn(f"/pystachy2 {mode}\n", logs[name])
-                    pairs.extend((case, mode) for case in halves[index])
+                    pairs.extend((case, mode) for case in shards[index])
                     for failure in ("suite-failure", "short-suite"):
                         failed, failed_report, _ = self.run_group(group, failure, profile="pr")
                         self.assertNotEqual(failed.returncode, 0)
