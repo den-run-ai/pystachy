@@ -1,0 +1,57 @@
+ok: same stdout and exit status as CPython 3.13.16; -: rejected at compile time
+main: 0b13a21; +stack: main + #1275 + #1280 + #1281 + #1282; +sets: that + the set-fields change
+probe                    main  +stack  +sets
+-- forms of Final and final
+cls_abc                  -     ok      ok
+cls_const                -     ok      ok
+cls_dict_names           -     ok      ok
+cls_enum                 -     -       ok
+cls_exc                  -     ok      ok
+cls_expr                 -     -       -
+cls_final_dec            -     -       -
+cls_generic              -     ok      ok
+cls_in_fn                -     -       -
+cls_list                 -     -       ok
+cls_method_use           -     -       ok
+cls_name                 -     -       -
+cls_nested               -     -       -
+cls_rebind               -     ok      ok
+cls_sub_noval            ok    ok      ok
+cls_sub_val              ok    ok      ok
+cls_subclass             -     ok      ok
+dc_bare                  ok    ok      ok
+dc_classvar_final        -     -       -
+dc_sub                   ok    ok      ok
+dec_final_attr           -     -       -
+dec_final_cls            -     ok      ok
+dec_final_fn             -     -       -
+fn_local                 ok    ok      ok
+mod_annotated            -     -       -
+mod_bare_call            ok    ok      ok
+mod_bare_const           ok    ok      ok
+mod_bare_list            ok    ok      ok
+mod_future               -     ok      ok
+mod_in_if                ok    ok      ok
+mod_noval                ok    ok      ok
+mod_qualified            ok    ok      ok
+mod_rebind               ok    ok      ok
+mod_str                  ok    ok      ok
+mod_sub                  ok    ok      ok
+mod_typing_extensions    ok    ok      ok
+param_final              -     -       -
+self_bare                ok    ok      ok
+self_other_method        -     -       -
+self_sub                 ok    ok      ok
+total                    17    26      29 of 40
+-- class-body shapes from packages (my_ mypy/mypyc, pk_ packaging, pt_ pytest, bl_ black, tr_ trio)
+bl_list                  -     -       -
+my_dict_ops              -     ok      ok
+my_dict_other_class      -     -       ok
+my_maketrans             -     -       -
+my_pow                   -     ok      ok
+my_set_strs              -     -       ok
+my_set_tuples            -     -       ok
+pk_dict_strs             -     ok      ok
+pt_name_attr             -     -       -
+tr_none                  -     -       -
+total                    0     3       6 of 10

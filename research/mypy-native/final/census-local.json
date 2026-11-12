@@ -1,0 +1,292 @@
+{
+ "coverage": {
+  "counts": {
+   "@final class": 0,
+   "@final function": 0,
+   "@final method": 0,
+   "class: X: Final = constant": 0,
+   "class: X: Final = other value": 0,
+   "class: X: Final[T]": 0,
+   "class: X: Final[T] = v": 4,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 0,
+   "method: self.x: Final[T] = v": 0,
+   "module: X: Final = v": 0,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 0,
+   "other Final": 0
+  },
+  "details": {},
+  "files": 44,
+  "files_using": 3,
+  "unparsed": 0
+ },
+ "mypy": {
+  "counts": {
+   "@final class": 1,
+   "@final function": 0,
+   "@final method": 0,
+   "class: X: Final = constant": 17,
+   "class: X: Final = other value": 7,
+   "class: X: Final[T]": 9,
+   "class: X: Final[T] = v": 2,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 19,
+   "method: self.x: Final[T] = v": 0,
+   "module: X: Final = v": 573,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 152,
+   "other Final": 0
+  },
+  "details": {
+   "class: X: Final = constant": {
+    "constant": 17
+   },
+   "class: X: Final = other value": {
+    "call": 1,
+    "expression": 1,
+    "list display": 1,
+    "set display": 3,
+    "tuple display": 1
+   },
+   "module: X: Final = v": {
+    "call": 226,
+    "comprehension": 9,
+    "constant": 189,
+    "dict display": 24,
+    "expression": 19,
+    "list display": 19,
+    "name": 10,
+    "set display": 34,
+    "tuple display": 43
+   },
+   "module: X: Final[T] = v": {
+    "call": 8,
+    "constant": 139,
+    "dict display": 5
+   }
+  },
+  "files": 143,
+  "files_using": 68,
+  "unparsed": 0
+ },
+ "mypyc": {
+  "counts": {
+   "@final class": 56,
+   "@final function": 0,
+   "@final method": 0,
+   "class: X: Final = constant": 41,
+   "class: X: Final = other value": 7,
+   "class: X: Final[T]": 0,
+   "class: X: Final[T] = v": 0,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 25,
+   "method: self.x: Final[T] = v": 0,
+   "module: X: Final = v": 128,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 9,
+   "other Final": 0
+  },
+  "details": {
+   "class: X: Final = constant": {
+    "constant": 41
+   },
+   "class: X: Final = other value": {
+    "dict display": 7
+   },
+   "module: X: Final = v": {
+    "call": 46,
+    "comprehension": 4,
+    "constant": 49,
+    "dict display": 7,
+    "expression": 13,
+    "list display": 1,
+    "name": 3,
+    "set display": 4,
+    "tuple display": 1
+   },
+   "module: X: Final[T] = v": {
+    "call": 1,
+    "dict display": 7,
+    "tuple display": 1
+   }
+  },
+  "files": 103,
+  "files_using": 26,
+  "unparsed": 0
+ },
+ "packaging": {
+  "counts": {
+   "@final class": 0,
+   "@final function": 0,
+   "@final method": 0,
+   "class: X: Final = constant": 0,
+   "class: X: Final = other value": 1,
+   "class: X: Final[T]": 0,
+   "class: X: Final[T] = v": 0,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 0,
+   "method: self.x: Final[T] = v": 0,
+   "module: X: Final = v": 0,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 6,
+   "other Final": 0
+  },
+  "details": {
+   "class: X: Final = other value": {
+    "dict display": 1
+   },
+   "module: X: Final[T] = v": {
+    "call": 5,
+    "tuple display": 1
+   }
+  },
+  "files": 22,
+  "files_using": 2,
+  "unparsed": 0
+ },
+ "pathspec": {
+  "counts": {
+   "@final class": 0,
+   "@final function": 0,
+   "@final method": 0,
+   "class: X: Final = constant": 0,
+   "class: X: Final = other value": 0,
+   "class: X: Final[T]": 0,
+   "class: X: Final[T] = v": 0,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 0,
+   "method: self.x: Final[T] = v": 0,
+   "module: X: Final = v": 0,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 0,
+   "other Final": 0
+  },
+  "details": {},
+  "files": 31,
+  "files_using": 0,
+  "unparsed": 0
+ },
+ "pluggy": {
+  "counts": {
+   "@final class": 7,
+   "@final function": 0,
+   "@final method": 0,
+   "class: X: Final = constant": 0,
+   "class: X: Final = other value": 0,
+   "class: X: Final[T]": 0,
+   "class: X: Final[T] = v": 0,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 17,
+   "method: self.x: Final[T] = v": 4,
+   "module: X: Final = v": 1,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 0,
+   "other Final": 0
+  },
+  "details": {
+   "module: X: Final = v": {
+    "call": 1
+   }
+  },
+  "files": 13,
+  "files_using": 6,
+  "unparsed": 0
+ },
+ "pygments": {
+  "counts": {
+   "@final class": 0,
+   "@final function": 0,
+   "@final method": 0,
+   "class: X: Final = constant": 0,
+   "class: X: Final = other value": 0,
+   "class: X: Final[T]": 0,
+   "class: X: Final[T] = v": 0,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 0,
+   "method: self.x: Final[T] = v": 0,
+   "module: X: Final = v": 0,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 0,
+   "other Final": 0
+  },
+  "details": {},
+  "files": 343,
+  "files_using": 0,
+  "unparsed": 0
+ },
+ "pytest": {
+  "counts": {
+   "@final class": 52,
+   "@final function": 0,
+   "@final method": 0,
+   "class: X: Final = constant": 4,
+   "class: X: Final = other value": 3,
+   "class: X: Final[T]": 0,
+   "class: X: Final[T] = v": 0,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 22,
+   "method: self.x: Final[T] = v": 8,
+   "module: X: Final = v": 2,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 0,
+   "other Final": 0
+  },
+  "details": {
+   "class: X: Final = constant": {
+    "constant": 4
+   },
+   "class: X: Final = other value": {
+    "name": 3
+   },
+   "module: X: Final = v": {
+    "constant": 1,
+    "name": 1
+   }
+  },
+  "files": 79,
+  "files_using": 24,
+  "unparsed": 0
+ },
+ "stdlib": {
+  "counts": {
+   "@final class": 7,
+   "@final function": 2,
+   "@final method": 4,
+   "class: X: Final = constant": 2,
+   "class: X: Final = other value": 0,
+   "class: X: Final[T]": 3,
+   "class: X: Final[T] = v": 0,
+   "function: x: Final = v": 0,
+   "function: x: Final[T] = v": 0,
+   "method: self.x: Final = v": 0,
+   "method: self.x: Final[T] = v": 0,
+   "module: X: Final = v": 1,
+   "module: X: Final[T]": 0,
+   "module: X: Final[T] = v": 1,
+   "other Final": 0
+  },
+  "details": {
+   "class: X: Final = constant": {
+    "constant": 2
+   },
+   "module: X: Final = v": {
+    "call": 1
+   },
+   "module: X: Final[T] = v": {
+    "constant": 1
+   }
+  },
+  "files": 1770,
+  "files_using": 4,
+  "unparsed": 4
+ }
+}
