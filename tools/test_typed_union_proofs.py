@@ -983,7 +983,7 @@ class UnionProofTests(unittest.TestCase):
         # members (W's) proves nothing. (X has no int member: an unseeded slot's int domain then
         # proves no branch by coinciding with one.)
         x = "union[float,str]"
-        for owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]", "tuple[" + x + ",int]", "vtuple[" + W + "]"):
+        for owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]", "opt[vtuple[" + x + "]]", "tuple[" + x + ",int]", "vtuple[" + W + "]"):
             for guarded in (True, False):
                 with self.subTest(owner=owner, guarded=guarded):
                     item = W if W in owner else x
@@ -1002,7 +1002,7 @@ class UnionProofTests(unittest.TestCase):
                     else:
                         c.payload(value=value, member="str", typ=item)
                         c.ret()
-                    valid = guarded and owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]")
+                    valid = guarded and owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]", "opt[vtuple[" + x + "]]")
                     with redirect_stderr(StringIO()):
                         if valid:
                             c.g.verify(c.fn, False)

@@ -315,8 +315,9 @@ provenance through slots, phis and selects; interpreting it requires the matchin
 and rebuilding a box requires its tag and payload to agree. A raw copy alone is valid.
 Domains come from definitions, parameter and storage declarations, not narrowed use-site
 annotations. A box read through an indexed machine slot of a tuple whose items are all of one
-union type (a loop over a `tuple[U, U]` or `tuple[U, ...]`) has that union's members, as a list
-item read has its list's declared element type: container typing is its own contract. Tests cover missing/wrong guards, different boxes, joins, loop backedges,
+union type (a loop over a `tuple[U, U]` or `tuple[U, ...]`, also one that may be `None`, where
+it is not) has that union's members, as a list item read has its list's declared element type:
+container typing is its own contract. Tests cover missing/wrong guards, different boxes, joins, loop backedges,
 nullable values, aliasing stores, calls and exception edges. Writes discard mutable storage
 facts; previously loaded immutable boxes retain their facts. Non-escaping local slots and
 provably disjoint fresh storage retain facts across unrelated writes.
