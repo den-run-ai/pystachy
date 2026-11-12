@@ -2417,11 +2417,11 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         b = self.guess(e.kids[1], f)
         if a.startswith("!") or b.startswith("!"):
             return a if a.startswith("!") else b
-        if a != "" and a == b:
-            return a
+        if a != "" and (a == b or (a == BIG and b == "int")):
+            return a  # (an int literal is a promoting int where ints promote: bigints.py)
         if e.s == "or" and is_opt(a):
             other = e.kids[1]
-            if unopt(a) == b or (len(other.kids) == 0 and ((other.kind == "list" and is_list(unopt(a))) or (other.kind == "dict" and is_dict(unopt(a))))):
+            if unopt(a) == b or (unopt(a) == BIG and b == "int") or (len(other.kids) == 0 and ((other.kind == "list" and is_list(unopt(a))) or (other.kind == "dict" and is_dict(unopt(a))))):
                 return unopt(a)
         return ""
     if k == "walrus":
