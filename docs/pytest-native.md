@@ -216,9 +216,10 @@ python3 tools/pytest_native_upstream.py --fetch --compiler ./pystachy \
 ```
 
 The [selection manifest](../tests/upstream/pytest/manifest.json) pins 3 fnmatch,
-6 textwrap, 2 statistics and all 5 upstream mypyc NameGenerator methods. It
-records complete inventories of 17, 66, 401 and 5 cases respectively; statistics
-includes its original doctests, which remain excluded from the selected methods.
+6 textwrap, 2 statistics, all 5 upstream mypyc NameGenerator methods and 3 of
+mypyc's 11 literal-encoder methods. It records complete inventories of 17, 66,
+401, 5 and 11 cases respectively; statistics includes its original doctests,
+which remain excluded from the selected methods.
 Sources and licenses are verified before copying them to a fresh import snapshot.
 No replacement `test.support` stubs are used. The exact methods, exclusions,
 original outcomes, source hashes and every generated phase appear in the JSON

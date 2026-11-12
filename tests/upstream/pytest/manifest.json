@@ -87,6 +87,18 @@
       "local": "tests/upstream/ports/cpython/Lib/textwrap.py",
       "sha256": "30f3d833950d53e168cc021961574b553f56aed84458712b2eb29c6495843d46",
       "upstream": "https://github.com/python/cpython/blob/cbc944f4bc59639a444dd971c737788ba2283a91/Lib/textwrap.py"
+    },
+    "mypy/mypyc/codegen/__init__.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypyc/codegen/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "mypy/mypyc/codegen/literals.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypyc/codegen/literals.py",
+      "sha256": "fcc5d72c8f014750d62eedcbb72b9b1420bf4bc3a14a8c2123a8df30c1ce0620"
+    },
+    "mypy/mypyc/test/test_literals.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypyc/test/test_literals.py",
+      "sha256": "a98f311a15059798dc744e6bafbe10f16aeaf7c97abd36c1566bc3ffc0ee0540"
     }
   },
   "suites": {
@@ -683,6 +695,45 @@
       "exclusion_reason": "Outside this bounded native pytest qualification; no claim of complete upstream suite coverage. Existing upstream checks remain independent.",
       "reference_modules": {
         "mypyc.namegen": "mypy/mypyc/namegen.py"
+      }
+    },
+    "mypyc-literals": {
+      "source": "mypy/mypyc/test/test_literals.py",
+      "files": [
+        "mypy/LICENSE",
+        "mypy/mypyc/__init__.py",
+        "mypy/mypyc/codegen/__init__.py",
+        "mypy/mypyc/codegen/literals.py",
+        "mypy/mypyc/test/__init__.py",
+        "mypy/mypyc/test/test_literals.py"
+      ],
+      "original_imports": [
+        "mypy"
+      ],
+      "adapted_imports": [
+        "mypy"
+      ],
+      "selected": [
+        "TestLiterals.test_encode_bytes_values",
+        "TestLiterals.test_encode_str_values",
+        "TestLiterals.test_format_str_literal"
+      ],
+      "inventory": [
+        "TestLiterals.test_encode_bytes_values",
+        "TestLiterals.test_encode_int_values",
+        "TestLiterals.test_encode_str_values",
+        "TestLiterals.test_format_str_literal",
+        "TestLiterals.test_frozenset_encoding_is_deterministic",
+        "TestLiterals.test_frozenset_literal_index_is_deterministic",
+        "TestLiterals.test_literal_sort_key_is_total_over_types",
+        "TestLiterals.test_literal_sort_key_with_frozenset",
+        "TestLiterals.test_nested_frozenset_literal_index_is_deterministic",
+        "TestLiterals.test_simple_literal_index",
+        "TestLiterals.test_tuple_literal"
+      ],
+      "exclusion_reason": "Observed native compilation gaps at the pinned compiler: bytes % int formatting and integers beyond 64 bits (test_encode_int_values); float, complex, object-tuple and frozenset dict keys in the Literals class (five methods); runtime-length tuples and lists of unrelated values in literal_sort_key (two methods). Original unittest passes all eleven.",
+      "reference_modules": {
+        "mypyc.codegen.literals": "mypy/mypyc/codegen/literals.py"
       }
     }
   }

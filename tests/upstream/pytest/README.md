@@ -30,6 +30,7 @@ files, the explicit selected methods, source hashes and known exclusions.
 | textwrap | 6 | 66 | CPython 3.13.16 `Lib/test/test_textwrap.py` |
 | statistics | 2 | 401 | CPython 3.13.16 `Lib/test/test_statistics.py` |
 | mypyc NameGenerator | 5 | 5 | mypy `mypyc/test/test_namegen.py` |
+| mypyc literal encoders | 3 | 11 | mypy `mypyc/test/test_literals.py` |
 
 The CPython pin is `cbc944f4bc59639a444dd971c737788ba2283a91`; the mypy pin is
 `1231cf158a9cab0c41f613f3d8070c1332632f29`. NameGenerator's implementation and all
@@ -55,6 +56,14 @@ source and full 401-case inventory remain pinned. Other unselected
 methods are explicitly listed in the report as outside this bounded
 qualification; this is not a claim that each one is unsupported.
 
+The literal-encoder suite runs `format_str_literal()`, `_encode_str_values()` and
+`_encode_bytes_values()` of the unchanged `mypyc/codegen/literals.py`, the encoders of the
+string and bytes tables in mypyc's generated C. Its other eight methods are observed
+exclusions: original unittest and adapted CPython pass them, and native compilation rejects
+`b"%d" % value` and the integers past 64 bits of `test_encode_int_values`, the `float`,
+`complex`, object-tuple and frozenset dictionary keys of the `Literals` class (five methods),
+and the runtime-length tuples of unrelated values that `literal_sort_key()` returns (two).
+
 ## Reproduce
 
 Use the pinned development interpreter/pytest and LLVM setup in
@@ -66,7 +75,7 @@ python3 tools/pytest_native_upstream.py --suite fnmatch --suite textwrap \
   --compiler ./pystachy --json build/pytest-upstream-bundled.json
 ```
 
-Fetch optional sources once, then qualify all four suites. `--fetch` only
+Fetch optional sources once, then qualify all five suites. `--fetch` only
 downloads missing files whose exact URLs and hashes are in the manifest; a
 mismatched existing file is an error. Real CPython `test.support` sources are
 included for statistics. No support stubs replace upstream code.
