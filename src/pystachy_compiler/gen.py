@@ -430,6 +430,7 @@ from src.pystachy_compiler.builtins import (
 )
 from src.pystachy_compiler.calls import (
     gen_adapter as calls_adapter,
+    gen_method_family as calls_method_family,
     gen_adapter_ret as calls_adapter_ret,
     gen_arity as calls_arity,
     gen_arity_error as calls_arity_error,
@@ -4728,6 +4729,9 @@ class Gen:
 
     def adapter(self, ft: str, t: str) -> str:
         return calls_adapter(self, ft, t)
+
+    def method_family(self, cls: str, method: str) -> str:
+        return calls_method_family(self, cls, method)
 
     def callable_pat(self, a: Node) -> str:
         return calls_callable_pat(self, a)

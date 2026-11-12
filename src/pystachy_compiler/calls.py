@@ -490,6 +490,18 @@ def gen_to_callable(self, v: Val, t: str) -> Val:
     self.nn[o] = True
     return Val(o, t)
 
+def gen_method_family(self, cls: str, method: str) -> str:
+    # the class whose method family a bound method of cls's method (a Callable's adapter) is of:
+    # the topmost class of cls's chain that has it, or a secondary base of that one that does
+    family = cls
+    while self.classes[family].base in self.classes and method in self.classes[self.classes[family].base].methods:
+        family = self.classes[family].base
+    for role in self.classes[family].roles:
+        if method in self.classes[role].methods:
+            family = role
+            break
+    return family
+
 def gen_adapter(self, ft: str, t: str) -> str:
     # the code of a Callable of type t (callable[R,A,B]) that holds function value type ft: a
     # function R(ptr env, A a0, B a1) whose body calls the function, def <callable>(f, a0, a1):
@@ -501,13 +513,13 @@ def gen_adapter(self, ft: str, t: str) -> str:
         cls = ft[5 : ft.rfind(".")]
         method = ft[ft.rfind(".") + 1 : -1]
         if cls in self.classes and self.classes[cls].tag != 0:
-            family = cls
-            while self.classes[family].base in self.classes and method in self.classes[self.classes[family].base].methods:
-                family = self.classes[family].base
-            for role in self.classes[family].roles:
-                if method in self.classes[role].methods:
-                    family = role
-                    break
+            family = self.method_family(cls, method)
+            for ci in self.classes.values():
+                for o in ci.overlaps if ci.tag != 0 and self.derives(ci.name, family) and method in ci.methods else []:
+                    if method in self.classes[o].methods and self.method_family(o, method) != family:
+                        # (a primary base's and a trait's own, which one object may be: their
+                        # adapters would differ, so its bound methods would not compare equal)
+                        self.err(f"converting method {short(cls)}.{method} to Callable is not supported where {short(family)} and {short(self.method_family(o, method))}, bases one object may have, define it apart (their shared base does not)")
             fits = True
             signature = targs(t)
             for ci in self.classes.values():
