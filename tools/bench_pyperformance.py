@@ -37,6 +37,7 @@ SDIST_DIR = "pyperformance-1.14.0/pyperformance/data-files/benchmarks/"
 # bench/pyperformance/NAME.py's main reads them; each starts with the number of loops.
 BENCHMARKS = {
     "async_generators": (["3"], ["1", "100"]),
+    "async_tree": (["1", "none"], ["1", "all", "gather", "2", "0.001"]),
     "barnes_hut": (["1"], ["1", "5", "50"]),
     "bpe_tokeniser": (["1"], ["1", "260", "smoke"]),
     "chaos": (["10"], ["1", "200"]),
@@ -202,6 +203,7 @@ CENSUS_CALLS = {
 # their seconds to a list TIMED, whose sum the main prints.
 TIMED_PART = {
     "async_generators": "bench_async_generators",
+    "async_tree": "run",
     "barnes_hut": ["bench_quadtree_nbody"],
     "bpe_tokeniser": ["bench_bpe_tokeniser"],
     "chaos": "create_image_chaos",

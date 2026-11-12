@@ -1,0 +1,17 @@
+[None, None] 2
+[None, None, None] None True True False 3 0
+True False [None, None] [None, None, None, None, None, None] [None, None, None, None, None, None]
+None [None, None]
+0 None
+1 None
+[None, None] [None, None] [None, None]
+[] False False
+[None, None] True
+True True True
+[None]
+[None] None
+TypeError '<' not supported between instances of 'NoneType' and 'NoneType'
+TypeError '>' not supported between instances of 'NoneType' and 'NoneType'
+TypeError '<' not supported between instances of 'NoneType' and 'NoneType'
+[None, None, None] []
+[exit 0]

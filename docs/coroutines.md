@@ -26,6 +26,8 @@ free-threaded CPython, and how the design compares with other implementations. T
 | `aiter(x)`, `anext(it)`, `anext(it, default)` | `x.__aiter__()`, the awaitable of the next item, and one that gives `default` where the iterator raises `StopAsyncIteration`, for async generators and objects of classes with `__aiter__` and `__anext__`, with CPython's `TypeError`s for other objects |
 | `[e async for x in it if c]`, `{...}`, `{k: v ...}` | Asynchronous comprehensions in an `async def`: `async for` clauses, first or later, mixed with `for` and `if` clauses, and `await` anywhere in them |
 | `(e async for x in it)`, `(await f(x) for x in xs)` | An asynchronous generator expression: an async generator, also outside an `async def`; its first iterable and that iterable's `__aiter__()` are evaluated where it is written |
+| Async methods overridden | A call through a base awaits whichever override the object's class has: their coroutines yield and return a joined type (a base that raises `NotImplementedError`, an override that returns an `int` and one that returns `None` make `int \| None`), so the overrides compile with that type from the start; results with no common type (an `int` and a `str`) stay an error, as for ordinary overrides |
+| `import asyncio` | `asyncio.run()`, tasks, `gather()`, `sleep()`, `TaskGroup`, `timeout()`, `Lock`, `Event`, `Queue` and the event loop's callbacks and timers, adapted from CPython's pure-Python modules ([below](#how-asyncio-runs-tasks), [limits](../lib/compatibility.md#asyncio)) |
 
 Nested `async def`s, `async def` methods and `@types.coroutine` generator functions compile
 too. A driver loop such as pyperformance's `coroutines` benchmark runs unchanged:
@@ -46,8 +48,10 @@ Not supported yet, each an error as the program compiles:
   synchronous consumers of an asynchronous generator expression (`list(x async for x in it)`);
 - `athrow(type, value, traceback)`, and an async generator's attributes (`ag_running`,
   `ag_frame`, `__name__`);
-- the `asyncio` module, which is not shipped (CPython can run a compiled
-  [extension](concurrency.md#process-pools-today) from its own event loop);
+- most of `asyncio` beyond its event loop, tasks and primitives: sockets, streams,
+  subprocesses, threads, `contextvars` and exception groups ([limits](../lib/compatibility.md#asyncio));
+  CPython can also run a compiled [extension](concurrency.md#process-pools-today) from its own
+  event loop;
 - `send()` of a value other than `None`, `await` of a generator held in a variable, and an
   `__await__` that returns an iterator object instead of yielding;
 - coroutines in containers that print or compare their items (`collections.deque` of
@@ -128,6 +132,69 @@ and 0.071 s in AOT, about 9 and 11 times faster; the `generators` port, whose tr
 with `yield from`, ran 1.5 and 1.7 times faster in the same measurement: CPython's step of an
 async generator costs much more than its resume of a generator. `--benchmarks async_generators` of
 [`tools/bench_pyperformance.py`](../tools/bench_pyperformance.py) measures the current tree.
+
+<a id="how-asyncio-runs-tasks"></a>
+
+## How asyncio runs tasks
+
+`lib/asyncio` is CPython 3.13.16's pure-Python event loop, `Future` and `Task` (`_PyFuture`,
+`_PyTask`), typed, with marked edits. A coroutine's yield type is one static type, so every
+awaitable of the module yields `None`, where CPython's `Future.__await__()` yields the future
+itself to the task: awaiting a pending future records it, the coroutine suspends, and the task's
+`__step()` takes the future recorded and waits on it with CPython's own logic (a done callback
+that wakes the task, cancellation of the future it waits on); a bare yield (`sleep(0)`)
+reschedules the task. `Future[T]` and `Task[T]` derive from a `_FutureBase` without `T`, which
+the loop, `gather()` and `TaskGroup` hold, so a program's tasks of different result types share
+one loop; that is what generic classes with a base, `None` as a type argument (a
+`Future[None]`, a `list[None]` from `gather()`) and a list unpacked into `*args`
+(`gather(*coros)`) were added for. A task runs a small coroutine that awaits the program's and
+keeps its result, since a coroutine's `StopIteration` carries no value here. When nothing is
+ready, the loop sleeps until its next timer.
+
+A task costs two coroutine frames (the program's and the one that keeps its result), a
+`Task` object with its result list, a `Handle` and a function of no arguments for each step
+scheduled, and a resume of each awaiting frame per step; awaits of coroutines that never
+suspend stay plain calls of their twins. pyperformance 1.14.0's `async_tree` gathers a tree of
+six levels of six branches (55,987 coroutines per run; 46,656 leaves) with `gather()` or task
+groups, with the eager task factory or not, where the leaves do nothing (`none`), sleep 50 ms
+(`io`), sleep unless memoized (`memoization`), or compute or sleep (`cpu_io_mixed`).
+[`bench/pyperformance/async_tree.py`](../bench/pyperformance/async_tree.py) runs each variant.
+The table gives the median timed region of five processes per mode, each running the variant
+once and printing what CPython prints: CPython 3.13.18 with its C `_asyncio`, CPython with
+`_asyncio` blocked, which leaves the pure-Python `Future` and `Task`, and Pystachy's JIT and AOT,
+on a shared 4-vCPU x86-64 host whose load average was 0.4 to 1.0. The
+[recorded samples](../bench/pyperformance/results/async-tree-2026-11-12.json) give the commit,
+commands and every sample:
+
+| Variant | Tasks | CPython | CPython, pure-Python `Task` | JIT | AOT | CPython / JIT | CPython / AOT |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `none` | `gather()` | 0.342 s | 0.650 s | 0.139 s | 0.117 s | 2.5x | 2.9x |
+| `none` | `TaskGroup` | 0.310 s | 0.676 s | 0.125 s | 0.123 s | 2.5x | 2.5x |
+| `io` | `gather()` | 0.881 s | 1.657 s | 0.258 s | 0.235 s | 3.4x | 3.7x |
+| `io` | `TaskGroup` | 0.860 s | 1.720 s | 0.233 s | 0.226 s | 3.7x | 3.8x |
+| `memoization` | `gather()` | 0.532 s | 0.877 s | 0.164 s | 0.164 s | 3.2x | 3.3x |
+| `memoization` | `TaskGroup` | 0.499 s | 0.819 s | 0.165 s | 0.158 s | 3.0x | 3.2x |
+| `cpu_io_mixed` | `gather()` | 1.463 s | 1.774 s | 0.270 s | 0.228 s | 5.4x | 6.4x |
+| `cpu_io_mixed` | `TaskGroup` | 1.510 s | 1.864 s | 0.278 s | 0.230 s | 5.4x | 6.6x |
+| `eager` | `gather()` | 0.095 s | 0.218 s | 0.076 s | 0.069 s | 1.2x | 1.4x |
+| `eager` | `TaskGroup` | 0.271 s | 0.462 s | 0.105 s | 0.095 s | 2.6x | 2.9x |
+| `eager_io` | `gather()` | 1.063 s | 1.770 s | 0.259 s | 0.232 s | 4.1x | 4.6x |
+| `eager_io` | `TaskGroup` | 0.982 s | 1.699 s | 0.259 s | 0.219 s | 3.8x | 4.5x |
+| `eager_memoization` | `gather()` | 0.241 s | 0.590 s | 0.143 s | 0.135 s | 1.7x | 1.8x |
+| `eager_memoization` | `TaskGroup` | 0.356 s | 0.776 s | 0.143 s | 0.156 s | 2.5x | 2.3x |
+| `eager_cpu_io_mixed` | `gather()` | 1.276 s | 1.462 s | 0.246 s | 0.216 s | 5.2x | 5.9x |
+| `eager_cpu_io_mixed` | `TaskGroup` | 1.387 s | 1.779 s | 0.259 s | 0.211 s | 5.4x | 6.6x |
+
+Without the eager task factory, the compiled tasks ran 2.5 to 3.8 times faster than CPython's C
+`Task` (5.4 to 6.6 times in the `cpu_io_mixed` variants, whose ported factorial is less work than
+CPython's big-int one, see the [adaptation notes](../bench/pyperformance/README.md)). The eager
+factory runs a new task's first step at once, so leaves that never suspend finish without being
+scheduled, and the gap narrows: 1.7 to 2.9 times in `eager_memoization` and in `eager` with task
+groups, and only 1.2 (JIT) and 1.4 (AOT) times in `eager` with `gather()`. Against CPython
+running the same pure-Python `Task`, the compiled code ran 4.1 to 8.4 times faster, and 2.9 to
+4.9 times in the `eager` variant. These are shared-host timings of one tree;
+[`tools/bench_pyperformance.py`](../tools/bench_pyperformance.py) `--benchmarks async_tree`
+measures its `none` variant on the current tree.
 
 ## Threads, parallelism and free-threading
 

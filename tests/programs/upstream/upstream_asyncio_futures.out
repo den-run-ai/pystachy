@@ -1,0 +1,43 @@
+assertFalse False
+assertFalse False
+assertTrue True
+assertIs True
+assertIs True
+assertIs True
+assertIs True
+assertTrue True
+assertEqual None None
+assertRaises asyncio.CancelledError
+assertEqual my message my message
+assertTrue True
+assertTrue True
+assertTrue True
+assertRaises asyncio.CancelledError
+assertRaises asyncio.CancelledError
+assertRaises asyncio.InvalidStateError
+assertRaises asyncio.InvalidStateError
+assertFalse False
+assertRaises asyncio.InvalidStateError
+assertFalse False
+assertTrue True
+assertEqual 42 42
+assertEqual None None
+assertRaises asyncio.InvalidStateError
+assertRaises asyncio.InvalidStateError
+assertFalse False
+assertRaises asyncio.InvalidStateError
+assertFalse False
+assertTrue True
+assertRaises RuntimeError
+assertEqual RuntimeError() RuntimeError()
+assertRaises asyncio.InvalidStateError
+assertRaises asyncio.InvalidStateError
+assertFalse False
+assertTrue True
+assertEqual [] True
+assertEqual [42, 17] [42, 17]
+assertEqual foo foo
+assertEqual [] True
+assertEqual [100] [100]
+assertEqual RuntimeError() RuntimeError()
+[exit 0]

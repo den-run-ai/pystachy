@@ -473,6 +473,8 @@ from src.pystachy_compiler.calls import (
     gen_nt_new as calls_nt_new,
     gen_star_call as calls_star_call,
     gen_star_who as calls_star_who,
+    gen_star_args as calls_star_args,
+    gen_star_pack as calls_star_pack,
     gen_static_callee as calls_static_callee,
     gen_tests as calls_tests,
     gen_to_callable as calls_to_callable,
@@ -620,6 +622,7 @@ from src.pystachy_compiler.declarations import (
     gen_join as declarations_join,
     gen_none_items as declarations_none_items,
     gen_nt_base as declarations_nt_base,
+    gen_generic_parent as declarations_generic_parent,
     gen_nt_class as declarations_nt_class,
     gen_nt_defaults as declarations_nt_defaults,
     gen_nt_dflt_display as declarations_nt_dflt_display,
@@ -650,6 +653,7 @@ from src.pystachy_compiler.declarations import (
     gen_unalias_all as declarations_unalias_all,
     gen_union_members as declarations_union_members,
     gen_unpack_ann as declarations_unpack_ann,
+    gen_tv_none as declarations_tv_none,
     gen_vtype as declarations_vtype,
     gen_widens as declarations_widens,
     gen_widens_items as declarations_widens_items,
@@ -1021,6 +1025,8 @@ from src.pystachy_compiler.coroutines import (
     gen_direct_await as coroutines_direct_await,
     gen_coro_declare as coroutines_coro_declare,
     gen_coro_hinted as coroutines_coro_hinted,
+    gen_coro_join as coroutines_coro_join,
+    gen_coro_rejoin as coroutines_coro_rejoin,
     gen_ret_widen as coroutines_ret_widen,
     gen_yield_change as coroutines_yield_change,
     gen_coro_deco as coroutines_coro_deco,
@@ -1129,6 +1135,7 @@ from src.pystachy_compiler.program import (
     gen_exc_base as program_exc_base,
     gen_hook as program_hook,
     gen_inherit as program_inherit,
+    gen_gbase_link as program_gbase_link,
     gen_accessor as program_accessor,
     gen_class_ref as program_class_ref,
     gen_dc_options as program_dc_options,
@@ -1226,6 +1233,9 @@ from src.pystachy_compiler.templates import (
     gen_match_items as templates_match_items,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
+    gen_gspec_link as templates_gspec_link,
+    gen_gspec_late as templates_gspec_late,
+    gen_gspec_replay as templates_gspec_replay,
     gen_literal_class as templates_literal_class,
     gen_literal_args as templates_literal_args,
     gen_lit_context as templates_lit_context,
@@ -1664,6 +1674,13 @@ class Gen:
         # which the arguments of the call that makes an object bind (see bind)
         self.tparams: dict[str, list[str]] = {}
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
+        # generic classes with a base (templates.py's gspec_link): the base each names, an ordinary
+        # class (class C(Base, Generic[T]), class C[T](Base)) or a generic class's C[T] of its own
+        # type variables (class Task(Future[T])); those and the generic classes they name, whose
+        # specializations are classes of a hierarchy (with a class tag, ntag counting them)
+        self.gbases: dict[str, Node] = {}
+        self.gtagged: dict[str, bool] = {}
+        self.ntag = 0
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
         self.taliases: dict[str, Node] = {}
@@ -2958,6 +2975,9 @@ class Gen:
     def ann_problem(self, n: Node, ret: bool) -> str:
         return declarations_ann_problem(self, n, ret)
 
+    def tv_none(self, n: Node) -> bool:
+        return declarations_tv_none(self, n)
+
     def vtype(self, n: Node) -> str:
         return declarations_vtype(self, n)
 
@@ -3588,6 +3608,12 @@ class Gen:
 
     def coro_hinted(self, g: FnInfo) -> None:
         return coroutines_coro_hinted(self, g)
+
+    def coro_join(self, a: str, b: str) -> str:
+        return coroutines_coro_join(self, a, b)
+
+    def coro_rejoin(self, f: FnInfo, base: str, t: str, vals: list[Val], insts: list[FnInfo | None]) -> None:
+        return coroutines_coro_rejoin(self, f, base, t, vals, insts)
 
     def ret_widen(self, f: FnInfo, t: str) -> bool:
         return coroutines_ret_widen(self, f, t)
@@ -4826,6 +4852,12 @@ class Gen:
     def star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
         return calls_star_call(self, n, want, resultsoft, typeargs)
 
+    def star_pack(self, f: Node) -> bool:
+        return calls_star_pack(self, f)
+
+    def star_args(self, f: FnInfo, a: Node, pos: int, vals: list[Val], extra: list[Val], args: list[Node]) -> int:
+        return calls_star_args(self, f, a, pos, vals, extra, args)
+
     def static_callee(self, f: Node) -> bool:
         return calls_static_callee(self, f)
 
@@ -4963,6 +4995,21 @@ class Gen:
 
     def tests(self, ns: list[Node], p: str) -> bool:
         return calls_tests(self, ns, p)
+
+    def gspec_link(self, s: ClassInfo, t: ClassInfo) -> None:
+        return templates_gspec_link(self, s, t)
+
+    def gspec_late(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node], doing: str) -> None:
+        return templates_gspec_late(self, c, ts, given, named, lits, doing)
+
+    def gspec_replay(self) -> None:
+        return templates_gspec_replay(self)
+
+    def gbase_link(self, name: str) -> None:
+        return program_gbase_link(self, name)
+
+    def generic_parent(self, n: Node) -> list[str]:
+        return declarations_generic_parent(self, n)
 
     def specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
         return templates_specialize(self, c, ts, given, named, lits)

@@ -45,6 +45,18 @@ observable contract.
 | `tomllib._parser` | `Lib/tomllib/_parser.py` | `82591be9349687b88926a7b1a28b0f892a132e4043cb249bd1bd1594bdd721e3` |
 | `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
+| `asyncio` | `Lib/asyncio/__init__.py` | `61102f2b5f8fb832f0558cb66391f227970b3dd34ea2a621455587b4295e89a1` |
+| `asyncio.base_events` | `Lib/asyncio/base_events.py` | `8bde9b41993d4d903675fd6b74593568aa0e0d695c62138ce26fe4a2fa32234e` |
+| `asyncio.base_futures` | `Lib/asyncio/base_futures.py` | `2f3798c4b82f5ac77647908b157c924f734f36871d98970e72849ea9a9a07856` |
+| `asyncio.events` | `Lib/asyncio/events.py` | `c017571fec58a3f291da00ad160cd015612f90b1bc76407ed7ac1e36dc7a3110` |
+| `asyncio.exceptions` | `Lib/asyncio/exceptions.py` | `a5971f88be14cd1417d59adf539ae48c5d818f95362a4e0eb00017e3690ab37b` |
+| `asyncio.futures` | `Lib/asyncio/futures.py` | `9ff946bcd5e008d89efca2140a400edc5ca808f7f4b89430e8222157e0118412` |
+| `asyncio.locks` | `Lib/asyncio/locks.py` | `c26af87d900bf8e7f8ac686a65cc547f205c2a8cc6ff895150f56b213059f420` |
+| `asyncio.queues` | `Lib/asyncio/queues.py` | `9ce87bf63f113509d479ea25fecd25a705766d750c304a180d1bff02a0fe6f6a` |
+| `asyncio.runners` | `Lib/asyncio/runners.py` | `6b95ce20871b9e39c260c95d51a5f21153bbf8ca8cfe2b53156b6261620652da` |
+| `asyncio.taskgroups` | `Lib/asyncio/taskgroups.py` | `393b513584475ef6607a62d6951730a36c641bc8020d62694494a6099a971368` |
+| `asyncio.tasks` | `Lib/asyncio/tasks.py` | `a3d11a934e769de1156d65bb84fc08d2b3113c7632a010b4c7db4bbdd32c65b6` |
+| `asyncio.timeouts` | `Lib/asyncio/timeouts.py` | `2ae184db5190da7a7dee453557f71a8d3eb3dc2b9f3b2fb57ee658216c3fe6e2` |
 
 `heapq` adapts its top-k routines, and its heap functions to those of `Modules/_heapqmodule.c`
 (SHA-256 `5072eb373c4963e8a19040010a86f341243708d0696907b0984b4a73db3d6bf1`), which CPython
@@ -62,7 +74,11 @@ test data of `tests/programs/upstream/upstream_tomllib_data.py` were taken from 
 `cfac63bddf956deafb1172ca131ae5dcaafd6f95056086e233fca205593ed427`).
 `threading` and `logging` were committed unchanged from the `Python-3.13.16` release first, so the
 diff of the next commit to each is its port's edits; both opt in to dynamic `Any` and carry the
-edits lib/compatibility.md lists.
+edits lib/compatibility.md lists. So were `asyncio`'s modules, fetched from the `v3.13.16` tag
+(the hashes above): its adaptation keeps the pure-Python `Future` and `Task` (`_PyFuture`,
+`_PyTask`) and the event loop proper, typed, without dynamic `Any`, and drops the I/O, threads
+and platform loops that lib/compatibility.md lists. Its upstream tests derive from
+`Lib/test/test_asyncio/` at the same tag; each test's header gives its file's SHA-256.
 `datetime` is `_pydatetime`, which CPython's `Lib/datetime.py` re-exports when its C
 accelerator is missing. Where CPython's accelerator behaves differently, the edits follow
 `Modules/_datetimemodule.c` (SHA-256
