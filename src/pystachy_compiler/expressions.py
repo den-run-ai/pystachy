@@ -4628,11 +4628,7 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     paired = item.t != a.t and self.ueq_type(item.t) and self.ueq_type(a.t) and not (self.isnum(item.t) and self.isnum(a.t))
     setpair = is_set(item.t) and is_set(a.t) and self.wider(selem(item.t), selem(a.t)) != ""
     nested = self.dyn_policy(self.line) and self.container_pair_type(item.t, a.t)
-    # A promoting int and a closed union: the union holds a 64-bit int (bigints.py), so they
-    # are equal where the promoting int fits 64 bits and equals what the union holds. They
-    # were taken for values of types that are never equal, and 1 in (1, "a") was False.
-    big_union = (item.t == BIG and is_union(unopt(self.rec_type(a.t)))) or (a.t == BIG and is_union(unopt(self.rec_type(item.t))))
-    if not paired and not nested and not setpair and not big_union and not self.comparable(item.t, a.t) and self.boxwider(item.t, a.t) == "":
+    if not paired and not nested and not setpair and not self.comparable(item.t, a.t) and self.boxwider(item.t, a.t) == "":
         # item == x of types whose values are never equal: CPython still calls the
         # item's __eq__(x), or where the item's class has none (a builtin type's
         # declines) x's __eq__(item); with neither, they are not equal
@@ -4644,11 +4640,7 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
             self.cbr(c.v, hit, nx)
             self.place(nx)
         return identity or c.t != ""
-    if big_union:
-        wide = item if item.t == BIG else a
-        fits = Val(self.big_fits([wide]), "bool")
-        c = Val(self.scalar("and", [fits, self.cmp2("==", self.big_lo(wide), a if item.t == BIG else item)]), "bool")
-    elif paired and item.t in ["str", "int", "float", "bool"] and is_union(unopt(self.rec_type(a.t))):
+    if paired and item.t in ["str", "int", "float", "bool"] and is_union(unopt(self.rec_type(a.t))):
         c = self.uequal_scalar("==", a, item)  # (the union's member of the item's kind: unions.py)
     elif paired and a.t in ["str", "int", "float", "bool"] and is_union(unopt(self.rec_type(item.t))):
         c = self.uequal_scalar("==", item, a)
