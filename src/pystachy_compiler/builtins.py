@@ -2038,6 +2038,9 @@ def gen_sum_object_item(self, r: Reduce, v: Val) -> None:
     # __add__ or __radd__ that records its operands sees CPython's, in CPython's order (#636)
     st = r.stt if r.stt != "" else "int"
     if st in ["int", "float", "bool", BIG] and v.t in self.classes and "__radd__" not in self.classes[v.t].methods:
+        if "__add__" not in self.classes[v.t].methods:
+            # (no class that adds: the call's own diagnostic, as before)
+            self.err(f"unsupported call sum(list[{v.t}]{',' + r.stt if r.stt != '' else ''})")
         self.err(f"unsupported call sum(list[{typestr(v.t)}]{',' + typestr(r.stt) if r.stt != '' else ''}): its first addition is {'0' if r.stt == '' else typestr(st)} + {typestr(v.t)}, which needs {tname(v.t)}.__radd__; or give it a start to add to, as in sum(items, start)")
     lfirst = self.label()
     lnext = self.label()
