@@ -26,10 +26,14 @@ TOTAL_WORDS = 700
 PRERELEASE = ("As a prerelease, this version does not move GitHub's latest release or "
               "Docker's `latest` tag.")
 
-FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+# Fences may be indented under a list item; treating any indented fence as code keeps it verbatim.
+# GitHub also renders $$ ... $$ blocks as display math.
+FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,}|\$\$)")
 HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]|$)")
 LIST_ITEM = re.compile(r"^ *(?:[-*+]|[0-9]{1,9}[.)])(?:[ \t]|$)")
 RULE = re.compile(r"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
+SETEXT = re.compile(r"^ {0,3}=+[ \t]*$")
+TABLE_DELIMITER = re.compile(r"^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)+\|?[ \t]*$")
 HTML = re.compile(r"^ {0,3}<(?:!--|/?[A-Za-z][A-Za-z0-9-]*(?:[\s/>]|$))")
 REFERENCE = re.compile(r"^ {0,3}\[[^\]]+\]:")
 INLINE_LINK = re.compile(r"!?\[((?:[^\[\]]|\[[^\]]*\])*)\]\(\s*<?([^)\s>]*)>?(?:\s+\"[^\"]*\")?\s*\)")
@@ -49,11 +53,12 @@ def blocks(text):
 
     Kinds: fence, blank, heading, table, rule, html, reference, code, text. A text block
     is one paragraph, list item or quote line together with its soft-wrapped continuations.
+    Tables may omit outer pipes, and setext underlines end their paragraph.
     """
     lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     fence = None
     previous = "blank"
-    in_list = False
+    in_list = in_table = False
     current = None
     for line in lines:
         if fence is not None:
@@ -66,9 +71,19 @@ def blocks(text):
                 current, previous = None, "fence"
             continue
         if current is not None and current[0] == "text":
+            if TABLE_DELIMITER.match(line) and "|" in current[1][-1]:
+                # The paragraph's last line is the header of a table without outer pipes.
+                header = current[1].pop()
+                if current[1]:
+                    yield current
+                yield ["table", [header]]
+                yield ["table", [line]]
+                current, previous, in_table, in_list = None, "table", True, False
+                continue
             continues = (line.strip() and not FENCE.match(line) and not HEADING.match(line)
                          and not LIST_ITEM.match(line) and not RULE.match(line)
-                         and not HTML.match(line) and not line.lstrip().startswith(("|", ">"))
+                         and not SETEXT.match(line) and not HTML.match(line)
+                         and not line.lstrip().startswith(("|", ">"))
                          and not _hard_break(current[1][-1]))
             if continues:
                 current[1].append(line)
@@ -82,16 +97,18 @@ def blocks(text):
             continue
         stripped = line.strip()
         if not stripped:
-            kind = "blank"
+            kind, in_table = "blank", False
+        elif in_table and "|" in stripped:
+            kind = "table"
         elif previous in ("blank", "code") and not in_list and line.startswith(("    ", "\t")):
             # An indented code block runs until a less indented line, even through lines
             # that look like list items or table rows.
             kind = "code"
         elif HEADING.match(line):
             kind, in_list = "heading", False
-        elif stripped.startswith("|"):
-            kind, in_list = "table", False
-        elif RULE.match(line):
+        elif stripped.startswith("|") or TABLE_DELIMITER.match(line):
+            kind, in_list, in_table = "table", False, True
+        elif RULE.match(line) or SETEXT.match(line):
             kind, in_list = "rule", False
         elif HTML.match(line):
             kind = "html"

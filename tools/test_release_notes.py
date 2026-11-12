@@ -89,6 +89,22 @@ class UnwrapTests(unittest.TestCase):
                 self.assertEqual(notes.unwrap(text), text)
                 self.assertEqual(notes.check_text(text), [])
 
+    def test_keeps_display_math_blocks(self):
+        text = "Summary.\n\n$$\nE = mc^2\n+ x\n$$\n"
+        self.assertEqual(notes.unwrap(text), text)
+
+    def test_keeps_fenced_code_nested_in_a_list_item(self):
+        text = "Summary.\n\n1. Run:\n\n    ```python\n    print(1)\n    print(2)\n    ```\n\n2. Done.\n"
+        self.assertEqual(notes.unwrap(text), text)
+        self.assertEqual(notes.check_text(text), [])
+
+    def test_keeps_setext_underlines_and_tables_without_outer_pipes(self):
+        text = ("Summary.\n\nTitle\n=====\n\nIntro line\nwraps.\na | b\n--- | ---\n1 | 2\n3 | 4\n\n"
+                "After\nwrap.\n")
+        self.assertEqual(notes.unwrap(text), "Summary.\n\nTitle\n=====\n\nIntro line wraps.\n"
+                                             "a | b\n--- | ---\n1 | 2\n3 | 4\n\nAfter wrap.\n")
+        self.assertEqual(notes.check_text(text), [])
+
     def test_indented_items_inside_lists_stay_nested_items(self):
         text = "- a\n  - b\n    - c\n      wraps\n\n    - d\n"
         self.assertEqual(notes.unwrap(text), "- a\n  - b\n    - c wraps\n\n    - d\n")
