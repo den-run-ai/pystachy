@@ -72,6 +72,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/local_versions.py',
     'src/pystachy_compiler/lower_module.py',
     'src/pystachy_compiler/lowering.py',
+    'src/pystachy_compiler/machine_ir.py',
     'src/pystachy_compiler/memory_ir.py',
     'src/pystachy_compiler/module.py',
     'src/pystachy_compiler/names.py',

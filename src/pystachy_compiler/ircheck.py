@@ -266,24 +266,10 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     if edges[l] == 2 and l in at and len(fn.blocks[at[l]].code) > 0 and fn.blocks[at[l]].code[0].op == "phi":
                         self.bad_ir(fn, b, f"a switch reaches {l}, which starts with a phi, by more than one edge")
 
-            if i.op == "mach.load" or i.op == "mach.store":
-                load = i.op == "mach.load"
-                if load and i.t == "int":
+            if i.op == "mach.load" or i.op == "mach.store" or i.op == "mach.addr":
+                if i.op == "mach.load" and i.t == "int":
                     machine_tags = True
-                if len(i.a) != (1 if load else 2) or i.x != "" or i.k != 0 or len(i.b) != 0:
-                    self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
-                if i.a[0].t != "%ptr":
-                    self.bad_ir(fn, b, f"{i.op} needs a machine pointer address")
-                t = i.t if load else i.a[1].t
-                if t == "" or t == "None" or (t.startswith("%") and t not in ["%ptr", "%byte", "%i32"]) or t.startswith("*") or t == "#" or ((t == "T" or t == "K" or t == "V" or t == "S") and t not in self.classes):
-                    self.bad_ir(fn, b, f"{i.op} needs a machine storage value type")
-                if (not load and i.t != "") or i.s not in ["", "length", "length.range", "bytes"] or (i.s == "length.range" and not load) or (i.s.startswith("length") and t != "int") or (i.s == "bytes" and t != "%byte"):
-                    self.bad_ir(fn, b, f"{i.op} has invalid value or memory metadata")
-            if i.op == "mach.addr":
-                if len(i.a) != 2 or i.t != "%ptr" or i.s not in ["int", "%ptr", "%byte"] or i.x != "" or i.k not in [0, 1] or len(i.b) != 0:
-                    self.bad_ir(fn, b, "mach.addr needs a machine element type and inbounds flag")
-                if i.a[0].t != "%ptr" or i.a[1].t != "int":
-                    self.bad_ir(fn, b, "mach.addr needs a machine pointer and int index")
+                self.verify_memory(fn, b, i, False)
             if i.op == "mem.load" or i.op == "mem.store":
                 if len(i.a) != (1 if i.op == "mem.load" else 2) or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0:
                     self.bad_ir(fn, b, f"{i.op} has invalid operands or extra metadata")
