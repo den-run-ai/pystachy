@@ -802,6 +802,19 @@ def gen_abc_class(self, c: str) -> bool:
         c = self.classes[c].base
     return False
 
+def tv_reads(st: Node) -> list[Node]:
+    # the names that TypeVar statement st's constraints and bound read, as qualified (Loader.qexpr)
+    out: list[Node] = []
+    todo = [a.kids[0] if a.kind == "kw" else a for a in st.kids[1].kids[2:] if a.kind != "kw" or a.s == "bound"]
+    while len(todo) > 0:
+        n = todo.pop()
+        if n.kind == "name":
+            out.append(n)
+        for k in n.kids:
+            todo.append(k)
+    return out
+
+
 def gen_program(self, mods: list[Mod]) -> str:
     started = timing_start()
     phase = "runtime" if self.rtmode else "program"
@@ -844,6 +857,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         self.eh = dynamic_program() or len([m for m in mods if (defines(m.body, "__iter__") and m.name != RANGES) or module_reads(m.body, "next")]) > 0
     for m in mods:
         self.generic_aliases(m.body.kids)
+    tvdefs: list[Node] = []  # (the TypeVar statements, whose arguments are checked below)
     for m in mods:
         m.body.kids = self.typing_forms(m, m.body.kids, False)
         for i in range(len(m.body.kids)):
@@ -868,6 +882,7 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.pep695[st.s] = True
             elif self.typevar_def(st):
                 self.typevars.append(st.kids[0].s)
+                tvdefs.append(st)
                 m.body.kids[i] = mk("pass", "", st.line, [])
             elif st.kind == "typealias" and st.s in self.taliases:
                 m.body.kids[i] = mk("pass", "", st.line, [])  # (a type alias, which only annotations name)
@@ -880,6 +895,18 @@ def gen_program(self, mods: list[Mod]) -> str:
         if why != "":
             self.line = self.taliases[q].line
             self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates this type alias's value when the assignment runs)")
+    for st in tvdefs:
+        # a TypeVar's constraints and bound are evaluated as an alias's value is, where a subscript
+        # with the wrong number of arguments raises CPython's TypeError (Callable[int], Box[int,
+        # str] of a Box(Generic[T])); what Pystachy could not compile in an alias is no error here,
+        # as these types bind nothing (typevar_def)
+        if self.imported_ref(st.kids[1].kids[0]) != "typing.TypeVar":
+            continue
+        for a in st.kids[1].kids[2:]:
+            why = self.alias_problem(a.kids[0] if a.kind == "kw" else a) if a.kind != "kw" or a.s == "bound" else ""
+            if why != "" and not why.startswith("!"):
+                self.line = st.line
+                self.err(f"{why} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
     if len(self.taliases) > 0:
         self.recursive_aliases()
         # an annotation that names a type alias is its value (unalias)
@@ -1072,6 +1099,15 @@ def gen_program(self, mods: list[Mod]) -> str:
         mcls[ci.mod].append(ci)
     for i in range(len(mods)):
         self.flow_program(tops[i], mods[i].name, mfns[mods[i].name], mcls[mods[i].name], i == 0)
+    for st in tvdefs:
+        # a class that a TypeVar's bound or constraints read through its module (a.Later), which
+        # that module may not have defined there, as during a circular import: CPython's
+        # AttributeError, which isinstance() would check (isinst_reads) but a TypeVar's
+        # arguments, which Pystachy does not evaluate, cannot
+        for rd in tv_reads(st):
+            if rd.chk and rd.s in self.gflag and rd.s in self.classes:
+                self.line = st.line
+                self.err(f"class '{shown(rd.s)}' may not be defined where this TypeVar reads it through its module (as during a circular import): not supported (CPython raises AttributeError if it is not)")
     for nm in self.gflag:
         if nm in self.funcs or nm in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")
