@@ -752,6 +752,8 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_value as exceptions_exc_value,
     gen_exc_value_of as exceptions_exc_value_of,
     gen_exit_ as exceptions_exit_,
+    gen_exit_ints as exceptions_exit_ints,
+    gen_exit_member as exceptions_exit_member,
     gen_exit_value as exceptions_exit_value,
     gen_global_reader as exceptions_global_reader,
     gen_landing as exceptions_landing,
@@ -4004,6 +4006,12 @@ class Gen:
 
     def no_code(self) -> Val:
         return exceptions_no_code(self)
+
+    def exit_ints(self, t: str) -> list[str]:
+        return exceptions_exit_ints(self, t)
+
+    def exit_member(self, v: Val) -> list[Val]:
+        return exceptions_exit_member(self, v)
 
     def exit_value(self, vals: list[Val]) -> Val:
         return exceptions_exit_value(self, vals)

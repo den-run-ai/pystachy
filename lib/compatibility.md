@@ -720,6 +720,9 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   ([test](../tests/errors/library/lib_enum_isinstance_base.py)), and a member as an `Any` value,
   whose `isinstance()` would find no `int` or `str`
   ([test](../tests/errors/library/lib_enum_any_strenum.py)): its `.value` can be one.
+- `sys.exit()` and `SystemExit` take the member of an `IntEnum` or `IntFlag` class, or of a class
+  of `int` and `Enum`, as CPython takes its `int`: the value is the exit status, and nothing is
+  written to stderr ([test](../tests/programs/exceptions/exit_enum_member_caught.py)).
 - An enum class of `str` and `Enum`, or of `int` and `Enum` (`class C(str, Enum)`), is made as a
   `StrEnum` or an `IntEnum` class with `Enum`'s `str()` and `format()` (`C.A`, where a
   `StrEnum` member's is its value), as CPython 3.12 gives a mixed-in class
