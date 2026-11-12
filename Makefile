@@ -490,6 +490,7 @@ check-lean-boundary:
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_null_access.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_effects.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_split.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_memory.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_fields.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_int.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
@@ -558,6 +559,7 @@ check-lean-guards:
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_null_access.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_effects.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_split.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_memory.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_fields.py
 	$(PY) tools/check_lean_guard_corpus.py $(LEAN_GUARD_FLAGS)
 

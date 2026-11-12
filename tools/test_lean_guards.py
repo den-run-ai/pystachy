@@ -208,10 +208,17 @@ class GuardTests(unittest.TestCase):
                     and b["operations"][0]["op"] == "phi" and b["operations"][0]["type"] == "bool")
         value = f"%t{join['operations'][0]['results'][0]}"
         successor = next(b for b in fn["blocks"] if b["label"] == join["operations"][1]["targets"][0])
-        successor["operations"].insert(0, instruction("select", "int", results=[100],
-                                                    operands=[(value, "bool"), ("1", "int"), ("0", "int")]))
-        # No per-edge phi assignment is modeled: keep this join and fail closed.
+        union, tag = "union[int,str]", str(snap["union_tags"]["int"])
+        # The join stays threaded, but its phi's other uses test it as an opaque condition: a union
+        # select on it may be either operand, so reading it as an int needs a guard.
+        successor["operations"][:0] = [
+            instruction("rt", "%ptr", "ubox", [100], [(tag, "int"), ("5", "*T")]),
+            instruction("mem.load", union, results=[99], operands=[("@g.unknown", "*" + union)]),
+            instruction("select", union, results=[101], operands=[(value, "bool"), ("%t100", union), ("%t99", union)]),
+            instruction("union.payload", "%slot", "int", [102, 103], [("%t101", union)])]
         self.assertFalse(self.lean(*guards.normalize(snap, fn)))
+        successor["operations"][2]["operands"][2] = {"value": "%t100", "type": union}
+        self.assertTrue(self.lean(*guards.normalize(snap, fn)))
 
     def test_union_address_rewrite_cannot_drop_inventory(self):
         from test_lean_boundary import instruction

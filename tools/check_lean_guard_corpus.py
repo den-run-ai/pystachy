@@ -99,8 +99,8 @@ def check_program(program, checker, timeout):
                 report = json.loads((output / "report.json").read_text())
                 return failed(program, report.get("diagnostics", []))
             snapshot, digest = boundary.read_snapshot(output / "typed-after.json", boundary.MAX_PROGRAM_BYTES)
-            report, _ = guards.check_all(snapshot, checker)
-            field_results, _ = fields.check_all(snapshot, checker)
+            field_results, contracts = fields.check_all(snapshot, checker)
+            report, _ = guards.check_all(snapshot, checker, field_results=(field_results, contracts))
             field_report = fields.program_report(field_results)
             status = max(report["status"], field_report["field_status"], key=boundary.SEVERITY.index)
             return dict(report, **field_report, status=status, program=program, inventory_complete=True,

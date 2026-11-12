@@ -13,6 +13,7 @@ from pathlib import Path
 
 import check_lean_access as access
 import check_lean_boundary as boundary
+import check_lean_fields as fields
 from check_lean_effects import RUNTIME, summaries, targs
 from src.pystachy_compiler.specs import BIG  # (check_lean_effects puts the checkout on sys.path)
 
@@ -26,13 +27,15 @@ REMOVAL_FACTS = frozenset({"eq", "ne", "cell", "absurd"})
 LIMITATIONS = (
     "Proves union guard safety in a normalized finite-tag model, across writes and calls only where "
     "no compiled code may write a union box (typed memory, the runtime ABI and complete inspection "
-    "trusted), that union payload bits are read, boxed and stored in split union locals only as their "
-    "box's member, and removed null checks redundant in the before-pass graph in the access model "
-    "(fields, tracked globals, closure cells and write effects) or the finite-tag model. The Python "
-    "adapters, inspection fidelity (split slot records included), declared parameter union domains, "
-    "IR operand and container item types, the classes table, runtime effect contracts and union "
-    "tag/layout ABI are trusted; union return domains are proved. Does not prove reconstruction "
-    "from other tag sources, memory/container provenance, GC, lifetime, pass equivalence or "
+    "trusted), that fields, globals, packed container words, parameters and results hold members of "
+    "their declared unions (each write proved, a greatest fixed point), that union payload bits are "
+    "read, boxed and stored in split union locals only as their box's member, and removed null checks "
+    "redundant in the before-pass graph in the access model (fields, tracked globals, closure cells "
+    "and write effects) or the finite-tag model. The Python adapters (their dominance and call-graph "
+    "analyses included), inspection fidelity (split slot records included), the field checker's "
+    "initialization proof, IR operand and container item types, runtime callbacks' arguments, the "
+    "classes table, runtime effect contracts and union tag/layout ABI are trusted. Does not prove "
+    "reconstruction from other tag sources, closure cells, GC, lifetime, pass equivalence or "
     "source/LLVM semantics. Unsupported forms fail closed."
 )
 
@@ -139,6 +142,338 @@ def snapshot_context(snapshot):
     if _CONTEXT[0] is not snapshot:
         _CONTEXT[:] = [snapshot, union_context(snapshot)]
     return _CONTEXT[1]
+
+
+_EFFECTS = [None, None]
+_KEYS = [None, None]
+
+
+def snapshot_effects(snapshot):
+    """check_lean_effects.summaries(snapshot), computed once for the snapshot last asked about."""
+    if _EFFECTS[0] is not snapshot:
+        _EFFECTS[:] = [snapshot, summaries(snapshot)]
+    return _EFFECTS[1]
+
+
+def direct_access(op):
+    """A load or store of a whole word at an address operand, as a global's (check_lean_access)."""
+    return op["op"] in ("mem.load", "mem.store") or (
+        op["op"] in ("mach.load", "mach.store") and op["text"] == ""
+        and len(op["operands"]) == (1 if op["op"] == "mach.load" else 2))
+
+
+def memory_key(context, producers, address):
+    """The typed union memory key (memory_keys) of a load or store address: a field word, by its
+    field address, or a module global or class variable, by its own; else None."""
+    if address.startswith("@"):
+        return ("global", address)
+    op = producers.get(address)
+    if (context is not None and op is not None and op["op"] == "field.addr" and len(op["operands"]) == 1
+            and op["operands"][0]["type"] in context["layouts"]):
+        return ("field", field_word(context["classes"], context["layouts"], op["operands"][0]["type"], op["immediate"]))
+    return None
+
+
+def class_relatives(context, cls):
+    """The classes an object of class cls may also be viewed as: its bases and subclasses, and the
+    classes it or they share objects with by a secondary role or an overlap (the classes table)."""
+    classes = (context or {}).get("classes") or {}
+    def line(name):
+        seen = []
+        while name and name not in seen:
+            seen.append(name)
+            name = (classes.get(name) or {}).get("base") or ""
+        return seen
+    related = set(line(cls)) | {name for name in classes if cls in line(name)}
+    for name in list(related):
+        info = classes.get(name) or {}
+        related |= {link for link in [info.get("role") or "", *(info.get("overlaps") or [])] if link}
+    return related
+
+
+DEFINED, UNDEFINED = "defined", "undefined"  # (what a definition flag witness location holds)
+_FLAGS = [None, None]
+
+
+def block_successors(fn):
+    """Each block's successors along branch, switch, invoke, check and handler edges."""
+    labels = {block["label"] for block in fn["blocks"]}
+    successors = {}
+    for block in fn["blocks"]:
+        targets = set()
+        for op in block["operations"]:
+            targets.update(op["targets"])
+            if op["op"] == "check":
+                targets.add(fn["check_targets"].get(op["descriptor"] or op["text"], ""))
+        if block["handler"]:
+            targets.add(block["handler"])
+        successors[block["label"]] = targets & labels
+    return successors
+
+
+def dominators(fn):
+    """Each block's dominators (the blocks every path from the entry to it passes through)."""
+    successors = block_successors(fn)
+    labels = [block["label"] for block in fn["blocks"]]
+    predecessors = {label: set() for label in labels}
+    for label, targets in successors.items():
+        for target in targets:
+            predecessors[target].add(label)
+    entry = labels[0]
+    dominated = {label: set(labels) for label in labels}
+    dominated[entry] = {entry}
+    changed = True
+    while changed:
+        changed = False
+        for label in labels[1:]:
+            incoming = [dominated[p] for p in predecessors[label]]
+            new = {label} | (set.intersection(*incoming) if incoming else set())
+            if new != dominated[label]:
+                dominated[label], changed = new, True
+    return dominated
+
+
+def def_flags(snapshot):
+    """Each "is defined" flag (a word @g.NAME.def, of a module global, function or class, which the
+    compiler checks before a use that may precede the definition: NameError) and the words each
+    store of true in it follows: in every function that sets it, a store of the word precedes each
+    such store in its block, or lies in a block that dominates its block and has no handler (an
+    exception there may skip the store). A flag stored anything but a literal follows nothing."""
+    if _FLAGS[0] is snapshot:
+        return _FLAGS[1]
+    covered, refused = {}, set()
+    for fn in snapshot["functions"]:
+        dominated = None
+        handlers = {block["handler"] for block in fn["blocks"] if block["handler"]}
+        reached = {}
+        def reach(label, fn=fn, reached=reached):
+            # (the blocks reachable from label, an exception's path from a block it covers)
+            if label not in reached:
+                successors = block_successors(fn)
+                seen, pending = {label}, [label]
+                while pending:
+                    for target in successors.get(pending.pop(), ()):
+                        if target not in seen:
+                            seen.add(target)
+                            pending.append(target)
+                reached[label] = seen
+            return reached[label]
+        stored = {}  # block -> [(offset, address)] of whole-word stores to a module or class word
+        for block in fn["blocks"]:
+            for offset, op in enumerate(block["operations"]):
+                if op["op"] in {"mem.store", "mach.store"} and len(op["operands"]) == 2 and direct_access(op):
+                    address = op["operands"][0]["value"]
+                    if address.startswith("@"):
+                        stored.setdefault(block["label"], []).append((offset, address))
+                elif any(a["value"].startswith("@g.") and a["value"].endswith(".def") for a in op["operands"][1:]):
+                    refused.update(a["value"] for a in op["operands"][1:] if a["value"].endswith(".def"))
+        for block in fn["blocks"]:
+            for offset, op in enumerate(block["operations"]):
+                if not (op["op"] in {"mem.store", "mach.store"} and len(op["operands"]) == 2 and direct_access(op)):
+                    continue
+                flag, value = op["operands"][0]["value"], op["operands"][1]["value"]
+                if not (flag.startswith("@g.") and flag.endswith(".def")):
+                    continue
+                if value not in {"true", "false"}:
+                    refused.add(flag)
+                if value != "true":
+                    continue
+                if dominated is None:
+                    dominated = dominators(fn)
+                before = {address for position, address in stored.get(block["label"], []) if position < offset}
+                if block["label"] not in handlers:
+                    for other in dominated[block["label"]] - {block["label"]}:
+                        handler = next(b for b in fn["blocks"] if b["label"] == other)["handler"]
+                        if not handler or block["label"] not in reach(handler):
+                            before.update(address for _, address in stored.get(other, []))
+                covered[flag] = covered[flag] & before if flag in covered else before
+    flags = {flag: frozenset(words) for flag, words in covered.items() if flag not in refused and words}
+    _FLAGS[:] = [snapshot, flags]
+    return flags
+
+
+_LATE = [None, None]
+
+
+def late_functions(snapshot):
+    """Each module global or class word @main.init stores (directly) and the functions that run
+    only after a store of it: none that an operation of @main.init a store does not precede may
+    call. A call reaches its callee, an `init` its module's initializer, and an operation that may
+    run user code (an indirect call, a runtime function with that effect, a generator operation)
+    any function whose address code takes, any method and any generator body; each reached
+    function reaches what it calls. A store precedes an operation later in its block, or in a block
+    its block dominates that an exception from its block cannot reach (def_flags's dominance)."""
+    if _LATE[0] is snapshot:
+        return _LATE[1]
+    functions = {fn["symbol"]: fn for fn in snapshot["functions"]}
+    main = functions.get("@main.init")
+    late = {}
+    if main is not None:
+        taken = memory_keys(snapshot)[2]
+        anything = {symbol for symbol, fn in functions.items()
+                    if symbol in taken or symbol.startswith("@m.")
+                    or any(op["op"] in {"gen.yield", "gen.ret"} for block in fn["blocks"] for op in block["operations"])}
+        def reaches(op):
+            kind = op["op"]
+            if kind == "call":
+                return {op["text"]}
+            if kind == "init":
+                return {"@init." + op["text"]}
+            if kind in {"icall", "gen.start", "gen.resume", "gen.drop", "gen.yield"} or (
+                    kind == "rt" and (access.runtime_effects(op["text"], op["descriptor"]) or {"U"}) & {"U"}):
+                return anything
+            return set()
+        callees = {symbol: set().union(*(reaches(op) for block in fn["blocks"] for op in block["operations"]))
+                   for symbol, fn in functions.items()}
+        dominated = dominators(main)
+        successors = block_successors(main)
+        def reach(label):
+            seen, pending = {label}, [label]
+            while pending:
+                for target in successors.get(pending.pop(), ()):
+                    if target not in seen:
+                        seen.add(target)
+                        pending.append(target)
+            return seen
+        handler_of = {block["label"]: block["handler"] for block in main["blocks"]}
+        stores = {}
+        for block in main["blocks"]:
+            for offset, op in enumerate(block["operations"]):
+                if op["op"] in {"mem.store", "mach.store"} and len(op["operands"]) == 2 and direct_access(op):
+                    address = op["operands"][0]["value"]
+                    if address.startswith("@"):
+                        stores.setdefault(address, []).append((block["label"], offset))
+        for address, sites in stores.items():
+            def after(label, offset, sites=sites):
+                for store_label, store_offset in sites:
+                    if label == store_label and offset > store_offset:
+                        return True
+                    handler = handler_of.get(store_label)
+                    if (label != store_label and store_label in dominated[label]
+                            and not (handler and label in reach(handler))):
+                        return True
+                return False
+            early = set()
+            for block in main["blocks"]:
+                for offset, op in enumerate(block["operations"]):
+                    if not after(block["label"], offset):
+                        early |= reaches(op)
+            pending = list(early)
+            while pending:
+                for callee in callees.get(pending.pop(), ()):
+                    if callee not in early:
+                        early.add(callee)
+                        pending.append(callee)
+            late[address] = frozenset(functions) - early - {"@main.init"}
+    _LATE[:] = [snapshot, late]
+    return late
+
+
+def initialized_classes(snapshot, field_results):
+    """The classes whose objects have every field their view reads unflagged assigned wherever code
+    reads it (check_lean_fields, given its (results, contracts)): each class no function that the
+    field checker does not accept may make, be given under construction or initialize, nor any
+    class related to one (class_relatives). Without class tables, none."""
+    context = snapshot_context(snapshot)
+    if context is None or field_results is None:
+        return frozenset()
+    results, contracts = field_results
+    symbols = {fn["symbol"]: fn for fn in snapshot["functions"]}
+    layouts = context["layouts"]
+    touched = set()
+    for record in results:
+        if record.get("status") == "accepted":
+            continue
+        fn = symbols.get(record.get("function"))
+        if fn is None:
+            return frozenset()
+        touched.add(fields.init_class(fn, layouts))
+        touched.update(op["type"] for block in fn["blocks"] for op in block["operations"] if op["op"] == "alloc.fixed")
+        touched.update(fields.param_class(fn, position, layouts) for symbol, position in contracts
+                       if symbol == fn["symbol"] and isinstance(position, int))
+        touched.update(cls for cls in record.get("objects", {}).values() if isinstance(cls, str))
+    excluded = set()
+    for cls in touched - {None}:
+        excluded |= class_relatives(context, cls)
+    return frozenset(cls for cls in layouts if cls not in excluded)
+
+
+def memory_keys(snapshot):
+    """Typed union memory (proved_domains): each key and its union domain, the keys each function
+    writes, and the functions whose address other code takes. A key is a field word (a field
+    address *U, keyed by field_word), a module global or class variable (a direct load or store of
+    a union), the words a slot.pack of a union U makes (("packed", U): every container item, tuple
+    item and generic word), a parameter, a function's result, or ("indirect",): the union arguments
+    of every indirect call. A key whose views disagree on its union is none."""
+    if _KEYS[0] is snapshot:
+        return _KEYS[1]
+    context = snapshot_context(snapshot)
+    symbols = {fn["symbol"] for fn in snapshot["functions"]}
+    keys, conflicts, writers, taken = {}, set(), {}, set()
+    def note(key, typ):
+        tags = union_members(typ or "")
+        if tags is None:
+            return
+        if keys.setdefault(key, tags) != tags:
+            conflicts.add(key)
+    for fn in snapshot["functions"]:
+        symbol = fn["symbol"]
+        written = writers.setdefault(symbol, set())
+        for index, parameter in enumerate(fn["parameters"]):
+            note(("param", symbol, index), parameter["representation"])
+        if union_members(fn.get("return_representation") or "") is not None:
+            note(("return", symbol), fn["return_representation"])
+            written.add(("return", symbol))
+        producers = {f"%t{n}": op for block in fn["blocks"] for op in block["operations"] for n in op["results"]}
+        for block in fn["blocks"]:
+            for op in block["operations"]:
+                kind, args = op["op"], op["operands"]
+                for position, a in enumerate(args):
+                    if a["value"] in symbols and not (kind == "call" and position == 0):
+                        taken.add(a["value"])
+                if kind != "call" and op["text"] in symbols:
+                    taken.add(op["text"])
+                if kind == "slot.pack" and args and union_members(args[0]["type"]) is not None:
+                    note(("packed", args[0]["type"]), args[0]["type"])
+                    written.add(("packed", args[0]["type"]))
+                elif kind == "slot.unpack" and union_members(op["type"]) is not None:
+                    note(("packed", op["type"]), op["type"])
+                elif kind == "field.addr" and op["type"].startswith("*") and union_members(op["type"][1:]) is not None:
+                    key = memory_key(context, producers, f"%t{op['results'][0]}")
+                    if key is not None:
+                        note(key, op["type"][1:])
+                elif kind == "call" and op["text"] in symbols:
+                    written.update(("param", op["text"], i) for i, a in enumerate(args))
+                elif kind == "icall" and any(union_members(a["type"]) is not None for a in args):
+                    written.add(("indirect",))
+                if kind in {"mem.store", "mach.store", "mem.load", "mach.load"} and args and direct_access(op):
+                    typ = args[1]["type"] if kind.endswith("store") and len(args) == 2 else op["type"]
+                    key = memory_key(context, producers, args[0]["value"])
+                    if key is not None and union_members(typ) is not None:
+                        note(key, typ)
+                    if kind.endswith("store") and key is not None:
+                        written.add(key)
+    # Memory written other than by a typed store is no key: a global or field word whose address
+    # an operation uses other than to load or store it whole, and the fields of a class family an
+    # object of which a raw access may write (union_provenance's raw accesses).
+    for fn in snapshot["functions"]:
+        producers = {f"%t{n}": op for block in fn["blocks"] for op in block["operations"] for n in op["results"]}
+        for block in fn["blocks"]:
+            for op in block["operations"]:
+                for position, a in enumerate(op["operands"]):
+                    key = memory_key(context, producers, a["value"]) if a["value"].startswith(("@", "%t")) else None
+                    if key is not None and key in keys and not (position == 0 and direct_access(op)):
+                        conflicts.add(key)
+                if op["op"] in {"mach.addr", "mach.store", "mem.store"} and op["operands"] and context is not None:
+                    cls = op["operands"][0]["type"]
+                    if cls in context["holders"]:
+                        family = class_relatives(context, cls)
+                        conflicts.update(key for key in keys if key[0] == "field" and key[1][0] in family)
+    for key in conflicts:
+        keys.pop(key, None)
+    keys[("indirect",)] = True
+    _KEYS[:] = [snapshot, (keys, writers, taken)]
+    return _KEYS[1]
 
 
 def union_items(typ):
@@ -588,19 +923,30 @@ def removed_checks(record):
 
 
 def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, returns=None,
-              obligate_returns=False):
+              obligate_returns=False, domains=None, obligate_writes=False, initialized=frozenset()):
     """Conservative CFG translation; all facts are checked by Lean afterwards.
 
     With immutable_boxes (box_writes found no compiled store that may write a union box),
     writes and calls cannot change a box's tag: they change only memory the graph does not
     track (escaped slots, fields, globals), whose loads are unknown values. returns maps
     functions to the union domains their results may be assumed in (check_all proves each:
-    obligate_returns makes every returned union value of fn the obligations, not its reads)."""
+    obligate_returns makes every returned union value of fn the obligations, not its reads).
+
+    domains (proved_domains: memory_keys's keys whose every write is proved) types union memory:
+    a key's loads, parameters and results are assumed in its domain, and a parameter whose key
+    is not there in none. obligate_writes makes fn's writes of those keys the obligations. A field
+    of an initialized class (initialized_classes) that its view reads unflagged is assigned where
+    loaded; another field or a global may be unassigned (null)."""
     null_mode = null_obligations is not None
     context = snapshot_context(snapshot)
-    read_inventory = set(inventory(fn, context)) if not null_mode and not obligate_returns else set()
+    boundary.require(not obligate_writes or (domains is not None and not null_mode and not obligate_returns),
+                     "write obligations need domains")
+    read_inventory = (set(inventory(fn, context)) if not null_mode and not obligate_returns and not obligate_writes
+                      else set())
     returns = returns or {}
     returned = union_members(fn.get("return_representation") or "") if obligate_returns else None
+    if obligate_writes:
+        returned = domains.get(("return", fn["symbol"]))
     boundary.require(not obligate_returns or (not null_mode and returned is not None),
                      "return obligations need a union-returning function")
     # Reuse structural validation, SSA dominance and opcode validation; discard its
@@ -668,6 +1014,86 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
             seen.add(value)
             value = aliases[value]
         return value
+    typed = domains is not None and not null_mode
+    keys = memory_keys(snapshot)[0] if typed else {}
+    views = fields.class_tables(snapshot)[1] if typed and initialized else {}
+    late = late_functions(snapshot) if typed else {}
+    # Module globals and class variables of union type that fn loads and stores only directly, at
+    # their own addresses: locations, which a store copies a value into and an operation that may
+    # write globals may change (into a value of their domain, each such write being proved).
+    tracked = {}
+    if typed:
+        uses = {}
+        for block in fn["blocks"]:
+            for op in block["operations"]:
+                for position, operand in enumerate(op["operands"]):
+                    if operand["value"].startswith("@"):
+                        uses.setdefault(operand["value"], []).append(position == 0 and direct_access(op))
+        tracked = {address: key for address, used in uses.items() if all(used)
+                   for key in [("global", address)] if key in keys}
+        effects = snapshot_effects(snapshot)
+    # Definition flags (def_flags): a load of one is a condition (condition, decide); a word it
+    # follows, loaded where a witness of a load of it is defined, is in its domain.
+    flag_words, flag_loads = {}, {}
+    if typed:
+        flag_words = def_flags(snapshot)
+        flag_loads = {f"%t{op['results'][0]}": op["operands"][0]["value"] for block in fn["blocks"]
+                      for op in block["operations"] if op["op"] in {"mem.load", "mach.load"} and op["results"]
+                      and op["operands"] and op["operands"][0]["value"] in flag_words and direct_access(op)}
+    def witnessed(address):
+        """The witness locations of loads of flags that address follows."""
+        return sorted(f"%def.{value}" for value, flag in flag_loads.items() if address in flag_words[flag])
+    def writes_globals(op):
+        kind = op["op"]
+        if kind == "call":
+            checked = getattr(effects, "identity_argument", None)
+            if checked is not None and not checked(op, fn["symbol"], set(slots)):
+                return True
+            return access.kills(effects.get(op["text"]))[2]
+        if kind == "rt":
+            return access.kills(access.runtime_effects(op["text"], op["descriptor"]))[2]
+        if kind in {"mem.store", "mach.store"}:
+            # (a store to a field, a slot or a tracked global writes no other global: typed memory)
+            address = op["operands"][0]["value"] if op["operands"] else ""
+            return not (address in slots or address in tracked or (producers.get(address) or {}).get("op") == "field.addr")
+        return kind in {"icall", "init", "gen.start", "gen.resume", "gen.drop", "gen.yield", "landing"}
+    def assumed(op, result):
+        """The domain a load, unpacked word, parameter or result of op is assumed in (domains), or
+        None. A field's or global's load may also find it unassigned (null)."""
+        if not typed:
+            return None
+        kind, args = op["op"], op["operands"]
+        if kind == "slot.unpack":
+            return domains.get(("packed", op["type"]))
+        if kind in {"mem.load", "mach.load"} and args:
+            key = memory_key(context, producers, args[0]["value"])
+            if key is not None and key in domains and union_members(op["type"]) is not None:
+                address = producers.get(args[0]["value"]) or {}
+                cls = address["operands"][0]["type"] if address.get("op") == "field.addr" else None
+                if cls in initialized and address["immediate"] in views.get(cls, ()):
+                    return domains[key]
+                if key[0] == "global" and fn["symbol"] in late.get(key[1], ()):
+                    return domains[key]
+                return sorted(set(domains[key]) | {NULL})
+        if kind == "call" and len(op["results"]) == 1 and ("return", op["text"]) in domains:
+            return domains[("return", op["text"])]
+        return None
+    def static_member(value, tags):
+        """What a value no union type tracks may be, as one of tags's members: null, or an object of
+        a class (or a file) its type names, if no other member is a class related to it."""
+        if value == "null":
+            return [NULL]
+        typ = types.get(value)
+        if typ is None:
+            return None
+        if typ.startswith("opt[") and typ.endswith("]"):
+            typ = typ[4:-1]
+        if "member:" + typ not in tags or (typ != "file" and typ not in (context or {}).get("classes", {})):
+            return None
+        related = class_relatives(context, typ)
+        if any(member[7:] in related for member in tags if member not in {NULL, "member:" + typ}):
+            return None
+        return sorted(["member:" + typ, NULL])
     # A split pair's tag and payload are written and read together (split_accesses): a pair load
     # gives its tag value a location, a copy of the virtual box (the tag slot's location), which
     # is what the tag tests on that value test and what its payload's bits hold.
@@ -804,6 +1230,10 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         if op is None:
             return answer
         args = op["operands"]
+        if value in flag_loads:
+            # (true where the definition flag it loaded was set: def_flags's words are stored)
+            conditions[value] = ("flag", value)
+            return conditions[value]
         if op["op"] == "ptr.cmp" and op["text"] in {"==", "!="} and len(args) == 2:
             vals = [a["value"] for a in args]
             if vals.count("null") == 1:
@@ -967,14 +1397,17 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     else:
         raise boundary.Unsupported("guard pairing exceeded iteration bound")
     uses = Counter(a["value"] for block in fn["blocks"] for op in block["operations"] for a in op["operands"])
-    joins = {}
+    # A boolean join (a block of a phi and a branch on it) is threaded whatever else uses its phi:
+    # a boolean has no location here, so another use only tests it as an opaque condition, but on
+    # a threaded path through a following join (edge's path), where it is the value it took.
+    joins, joined = {}, {}
     for block in fn["blocks"]:
         ops = block["operations"]
         if block["handler"] or len(ops) not in {2, 3} or ops[0]["op"] != "phi" or ops[-1]["op"] != "cbr":
             continue
         phi, branch = ops[0], ops[-1]
         value = f"%t{phi['results'][0]}"
-        if uses[value] != 1:
+        if uses[value] != 1 and not (len(ops) == 2 and phi["type"] == "bool" and value not in words):
             continue
         pointer = None
         if len(ops) == 2 and phi["type"] == "bool" and branch["operands"][0]["value"] == value:
@@ -993,6 +1426,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                          and len(set(phi["targets"])) == len(phi["targets"]), "malformed guard phi")
         joins[block["label"]] = (dict(zip(phi["targets"], (a["value"] for a in phi["operands"]), strict=True)),
                                   branch["targets"], pointer)
+        joined[block["label"]] = value
     # A union phi is its incoming operand on each edge: copies on every edge into its block keep
     # what is known of the operands (a join of boxes of one member keeps that member). One edge's
     # copies are parallel; where an operand is a phi of the same block, they havoc instead.
@@ -1027,7 +1461,8 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     nodes, labels, obligations = [], {}, 0
     origins = {}  # id of an obligation node -> its operation (label, offset, opcode)
     stop = ("node", {"op": "stop"})
-    payload_checks = not null_mode and not obligate_returns
+    payload_checks = not null_mode and not obligate_returns and not obligate_writes
+    write_of = {}  # id of a write obligation node -> its typed memory key
     def assign(dst, src, target):
         # dst gets src's value, then target: null's tag, an SSA value's tags or nothing known
         if src == "null":
@@ -1155,6 +1590,17 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     def decide(test, yes, no):
         if test[0] == "constant":
             return yes if test[1] else no
+        if test[0] == "flag":
+            # (an edge only a set flag takes: its witness location is defined there, and each word
+            # the flag follows, stored before it and only ever in its domain, is in that domain)
+            witness = f"%def.{test[1]}"
+            after = yes
+            for address in sorted(flag_words.get(flag_loads[test[1]], ())):
+                if address in tracked and tracked[address] in domains:
+                    after = ("node", {"op": "guard", "value": address, "tags": domains[tracked[address]],
+                                      "yes": after, "no": stop})
+            return ("node", {"op": "choice", "yes": ("node", {"op": "havoc", "dst": witness, "next": (
+                "node", {"op": "guard", "value": witness, "tags": [DEFINED], "yes": after, "no": stop})}), "no": no})
         if test[0] == "opaque":
             return ("node", {"op": "choice", "yes": yes, "no": no})
         if test[0] == "not":
@@ -1169,14 +1615,21 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
             yes_path = ("node", {"op": "guard", "value": slot, "tags": list(test[2]), "yes": yes_path, "no": stop})
             no_path = ("node", {"op": "guard", "value": slot, "tags": list(test[2]), "yes": stop, "no": no_path})
         return ("node", {"op": "guard", "value": test[1], "tags": list(test[2]), "yes": yes_path, "no": no_path})
-    def edge(source, target, known=None):
-        if target not in joins:
+    def edge(source, target, known=None, path=None):
+        """target from source, threading a join: each phi value a threaded path has passed
+        (path: a join's phi -> its value there) is the value it took on that path."""
+        path = path or {}
+        if target not in joins or joined[target] in path:
             return into(source, target)
         incoming, (yes, no), pointer = joins[target]
-        yes, no = into(target, yes), into(target, no)
         value = incoming.get(source)
         if value is None:
             raise boundary.Unsupported("guard phi has no incoming edge")
+        value = path.get(value, value)
+        if known is not None and value == known[0]:
+            value = "true" if known[1] else "false"  # (the branch that chose this edge decided it)
+        onward = dict(path, **{joined[target]: value})
+        yes, no = (edge(target, successor, path=onward) for successor in (yes, no))
         if pointer is not None:
             if value == "null":
                 return yes if pointer == "==" else no
@@ -1187,12 +1640,52 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     # Parameter declaration domains constrain only the execution environment, not
     # a read's operand annotation. Null proofs assume neither parameter nonnullness
     # nor the safety of any earlier dereference.
-    for value in list(types)[:len(fn["parameters"])]:
+    for index, value in enumerate(list(types)[:len(fn["parameters"])]):
         tags = domain(value)
-        if tags:
+        if tags and (not typed or ("param", fn["symbol"], index) in domains):
             assume(value, tags)
     if null_mode:
         assume("null", [NULL])
+    for address, key in tracked.items():
+        # (unassigned, or what a write proved in its domain stored; stored, where fn runs only
+        # after @main.init stores it: late_functions)
+        follow({"op": "havoc", "dst": address})
+        if key in domains:
+            assume(address, domains[key] if fn["symbol"] in late.get(address, ()) else sorted(set(domains[key]) | {NULL}))
+    for value in flag_loads:
+        follow({"op": "havoc", "dst": f"%def.{value}"})
+        assume(f"%def.{value}", [UNDEFINED])
+    def writes_of(op):
+        """fn's writes of typed union memory at op: (value, key, its domain) of each."""
+        kind, args = op["op"], op["operands"]
+        found = []
+        if kind == "slot.pack" and args and ("packed", args[0]["type"]) in domains:
+            found.append((args[0]["value"], ("packed", args[0]["type"]), domains[("packed", args[0]["type"])]))
+        elif kind in {"mem.store", "mach.store"} and len(args) == 2 and direct_access(op):
+            key = memory_key(context, producers, args[0]["value"])
+            if key in domains:
+                found.append((args[1]["value"], key, domains[key]))
+        elif kind == "call":
+            found.extend((a["value"], ("param", op["text"], i), domains[("param", op["text"], i)])
+                         for i, a in enumerate(args) if ("param", op["text"], i) in domains)
+        elif kind == "icall" and ("indirect",) in domains:
+            found.extend((a["value"], ("indirect",), union_members(a["type"]))
+                         for a in args if union_members(a["type"]) is not None)
+        return found
+    def obligate(value, tags, site, key):
+        """A payload obligation that value, written at site, is in tags (key's domain): a union
+        value's location, else a fresh one of what static_member knows of it."""
+        if value in types and domain(value) is not None:
+            location = canonical(value)
+        else:
+            location = f"%written.{site[0]}.{site[1]}.{len(origins)}"
+            follow({"op": "havoc", "dst": location})
+            kinds = static_member(value, tags)
+            if kinds is not None:
+                assume(location, kinds)
+        follow({"op": "payload", "value": location, "tags": tags})
+        origins[id(nodes[-1])] = site
+        write_of[id(nodes[-1])] = key
     for block in fn["blocks"]:
         label = block["label"]
         if label == "":
@@ -1242,6 +1735,16 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 follow({"op": "payload", "value": value, "tags": allowed})
                 origins[id(nodes[-1])] = (label, offset, kind)
                 obligations += 1
+            if obligate_writes:
+                for value, key, tags in writes_of(op):
+                    obligate(value, tags, (label, offset, "typed union write"), key)
+                    obligations += 1
+            if tracked and kind not in {"br", "cbr", "check", "switch", "ret", "ret.none", "unreachable"} and writes_globals(op):
+                for address, key in tracked.items():
+                    after = len(nodes) + 1
+                    changed = after if key not in domains else (
+                        "node", {"op": "guard", "value": address, "tags": domains[key], "yes": after, "no": stop})
+                    emit({"op": "choice", "yes": after, "no": ("node", {"op": "havoc", "dst": address, "next": changed})})
             if kind == "br":
                 emit({"op": "jump", "next": edge(label, op["targets"][0])})
             elif kind in {"cbr", "check"}:
@@ -1274,11 +1777,19 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                         value = "%returned"
                     follow({"op": "payload", "value": canonical(value), "tags": returned})
                     origins[id(nodes[-1])] = (label, offset, "returned union")
+                    if obligate_writes:
+                        write_of[id(nodes[-1])] = ("return", fn["symbol"])
                     obligations += 1
                 emit({"op": "stop"})
             else:
                 if kind == "mem.store" and args[0]["value"] in slots and args[0]["value"] not in escapes:
-                    follow({"op": "copy", "dst": args[0]["value"], "src": canonical(args[1]["value"])})
+                    if args[1]["value"] == "null" and not null_mode:
+                        # (an unbound or None local: the slot holds null, not an unknown value)
+                        emit({"op": "jump", "next": assign(args[0]["value"], "null", len(nodes) + 1)})
+                    else:
+                        follow({"op": "copy", "dst": args[0]["value"], "src": canonical(args[1]["value"])})
+                elif kind in {"mem.store", "mach.store"} and args and args[0]["value"] in tracked and direct_access(op):
+                    emit({"op": "jump", "next": assign(args[0]["value"], args[1]["value"], len(nodes) + 1)})
                 elif kind in {"mach.store", "landing"} and args and args[0]["value"] in slots:
                     follow({"op": "havoc", "dst": args[0]["value"]})
                 if kind == "select" and not null_mode and len(args) == 3 and domain(results[0]) is not None:
@@ -1307,6 +1818,25 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                         continue
                     if kind == "mem.load" and args[0]["value"] in slots and args[0]["value"] not in escapes:
                         follow({"op": "copy", "dst": result, "src": args[0]["value"]})
+                    elif kind in {"mem.load", "mach.load"} and args and args[0]["value"] in tracked and direct_access(op):
+                        follow({"op": "copy", "dst": result, "src": args[0]["value"]})
+                    elif (kind in {"mem.load", "mach.load"} and args and witnessed(args[0]["value"])
+                          and ("global", args[0]["value"]) in domains):
+                        # (stored where a witnessed flag was set: its domain; else maybe unassigned)
+                        follow({"op": "havoc", "dst": result})
+                        tags = domains[("global", args[0]["value"])]
+                        after = len(nodes) + 1
+                        target = ("node", {"op": "guard", "value": result, "tags": sorted(set(tags) | {NULL}),
+                                           "yes": after, "no": stop})
+                        for witness in witnessed(args[0]["value"]):
+                            target = ("node", {"op": "guard", "value": witness, "tags": [DEFINED], "yes": (
+                                "node", {"op": "guard", "value": result, "tags": tags, "yes": after, "no": stop}),
+                                "no": target})
+                        emit({"op": "jump", "next": target})
+                    elif assumed(op, result) is not None:
+                        # (typed union memory, a packed word or a result: each write proved there)
+                        follow({"op": "havoc", "dst": result})
+                        assume(result, assumed(op, result))
                     else:
                         follow({"op": "havoc", "dst": result})
                         # Result annotations do not prove construction: a phi,
@@ -1357,6 +1887,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 node[key] = indices[node[key]]
     payloads = sum(node["op"] == "payload" for node in nodes)
     located = {index: origins[id(node)] for index, node in enumerate(nodes) if id(node) in origins}
+    writes = {index: write_of[id(node)] for index, node in enumerate(nodes) if id(node) in write_of}
     checked_payloads = sum(site[2] in PAYLOAD_OBLIGATIONS for site in located.values())
     candidate = {"schema_version": 2, "program": {"entry": 0, "nodes": nodes},
                  "certificate": boundary.infer_certificate(nodes)}
@@ -1364,7 +1895,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                        "payloads": payloads, "payload_obligations": checked_payloads,
                        "omitted_unreachable_obligations": obligations + checked_payloads - payloads,
                        "scope": "removed null checks (before-pass redundancy)" if null_mode else "closed-union guards",
-                       "origins": located}
+                       "origins": located, "writes": writes}
 
 
 def explain(candidate, origins):
@@ -1406,6 +1937,63 @@ def proved_returns(snapshot, checker=boundary.DEFAULT_CHECKER):
         if proved.keys() == assumed.keys():
             return proved
         assumed = proved
+
+
+def uncovered(candidate, indices):
+    """The payload nodes among indices whose obligation the inferred certificate does not cover (a
+    Python mirror of Lean's check, which only chooses what to submit: Lean's verdict decides)."""
+    nodes, certificate = candidate["program"]["nodes"], candidate["certificate"]
+    return {index for index in indices
+            if not set(dict((value, tags) for value, tags in certificate[index]).get(nodes[index]["value"]) or [NULL, NONNULL, "?"])
+            <= set(nodes[index]["tags"])}
+
+
+def proved_domains(snapshot, checker=boundary.DEFAULT_CHECKER, initialized=frozenset()):
+    """The typed union memory keys (memory_keys) each write of which Lean proves in the key's
+    domain, every proof assuming the kept keys: a greatest fixed point. It starts from every key,
+    drops each key a write of which is not proved (or which a function this check does not support
+    may write: all a function may write, memory_keys's writers), and checks again. A parameter of a
+    function whose address other code takes is written by indirect calls too: it goes with
+    ("indirect",). By induction over the writes of a run, each kept key's memory, parameters,
+    results and packed words hold values of its domain (a field or global may be unassigned, but an
+    initialized class's field its view reads unflagged),
+    given union boxes are immutable (box_writes), the runtime passes compiled callbacks values of
+    their parameters' types and copies container words whole, and list.load reads below its list's
+    length (check_lean_access)."""
+    keys, writers, taken = memory_keys(snapshot)
+    domains = dict(keys)
+    functions = [fn for fn in snapshot["functions"] if writers.get(fn["symbol"])]
+    while True:
+        failing, candidates = set(), []
+        for fn in functions:
+            if not writers[fn["symbol"]] & set(domains):
+                continue
+            try:
+                candidate, meta = normalize(snapshot, fn, immutable_boxes=True, domains=domains, obligate_writes=True,
+                                            initialized=initialized)
+            except (boundary.Unsupported, ValueError, KeyError, RecursionError):
+                failing |= writers[fn["symbol"]]
+                continue
+            failing |= {meta["writes"][index] for index in uncovered(candidate, meta["writes"])}
+            candidates.append((fn, candidate, meta))
+        if ("indirect",) in failing:
+            failing |= {key for key in domains if key[0] == "param" and key[1] in taken}
+        failing &= set(domains)
+        if not failing:
+            # (the mirror covers every obligation: Lean decides, and a rejection drops what it wrote)
+            for fn, candidate, meta in candidates:
+                meta = dict(meta)
+                meta.pop("origins")
+                try:
+                    accepted = boundary.run_checker(checker, boundary.encode(candidate), meta)
+                except (ValueError, KeyError, OSError, subprocess.SubprocessError):
+                    accepted = False
+                if not accepted:
+                    failing |= writers[fn["symbol"]] & set(domains)
+            if not failing:
+                return domains
+        for key in failing:
+            domains.pop(key)
 
 
 def prove_removals(snapshot, fn, removed, effects_of, checker=boundary.DEFAULT_CHECKER,
@@ -1457,7 +2045,9 @@ def prove_removals(snapshot, fn, removed, effects_of, checker=boundary.DEFAULT_C
     return record
 
 
-def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.DEFAULT_CHECKER):
+def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.DEFAULT_CHECKER, field_results=None):
+    """field_results: check_lean_fields.check_all's (results, contracts) for the snapshot, or None to
+    compute it where a union field is loaded (initialized_classes)."""
     boundary.check_header(snapshot)
     boundary.require("nullcheck_evidence" in snapshot and "union_tags" in snapshot,
                      "guard inventory missing: inspect with --guard-evidence")
@@ -1474,7 +2064,16 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.
     # (without a classes table no field address is shown to lie outside boxes: every write
     # and call remains a possible box mutation, as box_writes reports none of it)
     writes = box_writes(snapshot) if isinstance(snapshot.get("classes"), dict) else None
-    returns = proved_returns(snapshot, checker) if writes == [] else {}
+    # (typed union memory, parameters and results proved in their domains; none where a compiled
+    # store may write a box)
+    if field_results is None and writes == [] and any(key[0] == "field" for key in memory_keys(snapshot)[0]):
+        try:
+            field_results = fields.check_all(snapshot, checker)
+        except (boundary.Unsupported, ValueError, KeyError, OSError, subprocess.SubprocessError, RecursionError):
+            field_results = None
+    initialized = initialized_classes(snapshot, field_results) if writes == [] else frozenset()
+    domains = proved_domains(snapshot, checker, initialized) if writes == [] else {}
+    returns = {key[1]: tags for key, tags in domains.items() if key[0] == "return"}
     effects_of = None
     for record in snapshot["nullcheck_evidence"]:
         try:
@@ -1492,8 +2091,10 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.
             codes.append(boundary.OUTCOMES[proved["status"]])
     for fn, removed in work:
         try:
-            candidate, meta = normalize(snapshot, fn, removed, immutable_boxes=writes == [], returns=returns)
+            candidate, meta = normalize(snapshot, fn, removed, immutable_boxes=writes == [], returns=returns,
+                                        domains=domains, initialized=initialized)
             origins = meta.pop("origins")
+            meta.pop("writes")
             encoded = boundary.encode(candidate)
             accepted = boundary.run_checker(checker, encoded, meta)
             code = 0 if accepted else 1

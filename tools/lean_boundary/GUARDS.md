@@ -254,14 +254,14 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI selection exercises twenty-nine inventoried union reads, fifty-two
-payload obligations, three proved union return domains, twenty-seven removed null checks
-and 141 field obligations in `examples/union_guards.py`, `examples/union_effects.py`,
-`examples/union_split.py`, `examples/null_guards.py`, `examples/null_reloads.py` and
-`examples/field_init.py`.
+The bounded CI selection exercises 58 inventoried union reads, 97 payload obligations, three
+proved union return domains, twenty-seven removed null checks and 148 field obligations in
+`examples/union_guards.py`, `examples/union_effects.py`, `examples/union_split.py`,
+`examples/union_memory.py`, `examples/union_defaults.py`, `examples/null_guards.py`,
+`examples/null_reloads.py` and `examples/field_init.py`.
 This small gate does not claim complete-corpus acceptance. Programs whose union values
-come from memory, containers or unproved callees remain investigation targets rather
-than qualifying examples until those representations are proved.
+come from closure cells or from library initializers' defaults remain investigation targets
+(Typed union memory, below, covers fields, globals, containers and callees).
 [`test_lean_union_effects.py`](../test_lean_union_effects.py) corrupts
 `union_effects.py`: each kind of possible box write, placed in the callee `bump`,
 restores the conservative rules; a return outside its declared
@@ -275,16 +275,65 @@ int payload formatted as a float are rejected; a split pair the inspection did n
 tag store without its payload store, a box made of a tag and bits of different sources and a
 lookup's presence set where it missed are refused.
 
-Union domain facts come only from parameter declarations, modeled private-slot copies,
-literal-tag `ubox`/`ubox_opt` construction, split locals' virtual boxes and boxes made
-again of one box's parts (above), joins of such values and proved return domains (below). Optional domains include null, as do reference union domains. Runtime
+Union domain facts come only from modeled private-slot copies (a store of `null` makes the
+slot null), literal-tag `ubox`/`ubox_opt` construction, split locals' virtual boxes and boxes
+made again of one box's parts (above), joins of such values and typed union memory (below).
+Optional domains include null, as do reference union domains. Runtime
 constructors' tag and null behavior remain ABI assumptions. A phi is its incoming value
 on each edge (edge copies; parallel, so where one phi feeds another of its block they
 havoc instead) and a select is either operand as its condition decides, whatever their
-annotations. Other producers, including other calls, loads from memory, casts and slot
-unpacking, have unknown tags: their destination annotations cannot discard null or an
-incoming union member. An unknown result may cause rejection even when the actual
-operation is safe; a rejection names the first read the inferred facts do not cover.
+annotations. Other producers, such as casts, have unknown tags: their destination
+annotations cannot discard null or an incoming union member. An unknown result may cause
+rejection even when the actual operation is safe; a rejection names the first read the
+inferred facts do not cover.
+
+A boolean join (a block of a phi and a branch on it, as `and` and `or` make) is threaded
+whatever else uses its phi: on each edge in, the branch follows the incoming condition, and a
+following join that the phi flows into is threaded with it, the phi taking its value on that
+path, a constant where the branch that chose the edge decided it. A boolean has no location
+here, so another use of such a phi tests it as an opaque condition.
+
+## Typed union memory
+
+`proved_domains` types union memory by its declaration and proves it. Its keys are a field
+word (by `class_layouts`, whose structs are prefixes of their subclasses', so every view of
+one object's word shares it), a module global or class variable that compiled code loads and
+stores only whole, the words `slot.pack` makes of a union (every container item, tuple item
+and generic word: `slot.unpack` is how each comes back), each parameter and result of a
+union, and the union arguments of indirect calls. Each write of a key is a Lean obligation in
+its writer: a store, a pack, a call's argument (an indirect call's against its operand
+types) and a return must be a member of the declared union, null only where the union has it.
+Each read assumes the key's domain: a load of the memory, an unpacked word, a parameter (of a
+function whose address code takes, only while indirect calls are proved) and a call's
+result. The keys start all assumed; a key a write of which Lean does not prove, or that a
+function this check does not support may write, is dropped and every function is checked
+again, a greatest fixed point. A word read under another view of its field, written through
+a raw access to its object, or whose address escapes is no key.
+
+Memory may be unassigned: a field or global read assumes null too, but where it is assigned.
+A field its class's view reads unflagged is assigned wherever read in a class
+`check_lean_fields.py` proves complete (`initialized_classes`: no function it does not
+accept makes, initializes or is given under construction an object of a related class). A
+module global or class word is assigned where a passed check of an "is defined" flag
+(`@g.NAME.def`, which the compiler tests to raise `NameError`) follows every store of true
+in it after the word's store (`def_flags`: dominance in the setting function, an exception
+handler's reach excluded): the check's edge sets a witness location, and Lean checks the
+word's loads where it is set. A word `@main.init` stores is assigned in each function that
+only runs after the store (`late_functions`: none that an operation not after the store may
+call, directly, through an `init` or as user code a runtime function or indirect call runs).
+Within a function, a global loaded and stored only directly is a location, which an
+operation that may write globals (`check_lean_effects`) may change to a value of its domain.
+
+This rests, by induction over the writes of a run, on immutable boxes (`box_writes`), on the
+runtime passing compiled callbacks values of their parameters' types and copying container
+words whole, on `list.load` reading below its list's length (`check_lean_access.py`), on the
+field checker's own trust and on the adapter's dominance and call-graph analyses.
+[`examples/union_memory.py`](examples/union_memory.py) and
+[`examples/union_defaults.py`](examples/union_defaults.py) (a dynamic program, which stores
+union defaults once) read fields, globals, list and tuple items, parameters, defaults and
+chained conditions; [`test_lean_union_memory.py`](../test_lean_union_memory.py) corrupts them:
+a field store, pack or argument outside its union, an uninitialized field, a default read
+before its class statement, and swapped branches of a chained join must each be rejected.
 
 Inventory follows union-derived operands through every result-producing
 operation, including opaque operations, and conservatively tracks raw memory,
@@ -336,12 +385,10 @@ nonprivate addresses; `possible_box_writes` counts what `box_writes` found.
 A function returning a union proves its returns: each returned value must be in its
 declared return domain, null included only where that domain has it (a dead block's
 return is unchecked). A direct call of such a function assumes that domain for its
-result. `proved_returns` takes a greatest fixed point: it assumes every declared domain,
-drops each function whose proof Lean rejects and proves the rest again, so each kept
-proof rests only on kept domains, and by induction over the returns of a run each kept
-function returns a value of its domain. Like every union proof, return proofs assume
-that parameters hold their declared domains; call sites, indirect calls and callbacks
-are not checked against them.
+result. Return domains are typed union memory keys (above); `proved_returns`, the earlier
+fixed point over returns alone that assumes every parameter's declared domain, remains for
+its tests. Call sites and indirect calls are checked against parameter domains; runtime
+callbacks are trusted to pass their parameters' types.
 
 In the finite-tag model, nullness has only two states, null and nonnull; no
 parameter is assumed nonnull.
