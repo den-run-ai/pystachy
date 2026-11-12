@@ -398,7 +398,7 @@ class UnionProof:
                             wanted["MU:" + i.a[0].v] = True
                     if (i.op == "mem.store" or i.op == "mach.store") and "MU:" + i.a[0].v in wanted:
                         wanted["U:" + i.a[1].v] = True
-                    if i.op == "mach.load" and i.t == "int" and "U:" + i.a[0].v in wanted:
+                    if i.op == "mach.load" and i.t == "int" and "U:" + i.a[0].v in wanted and not self.length_read(i.a[0].v):
                         self.tagvals[r] = True
                     self.transport_closure(i, self.raw, self.rawslots, True)
                     if i.op != "slot.pack":
@@ -540,6 +540,13 @@ class UnionProof:
         self.domains[t] = ts
         return ts
 
+    def length_read(self, v: str) -> bool:
+        # Is an integer machine load from v the length word of a tuple[T, ...] that may be None
+        # (a field's, read after its test): no union's tag, though None and the tuple make two
+        # members of v's domain. The compiler checks None before such a read where it must.
+        t = self.native.get(v, "")
+        return is_opt(t) and t[4:-1].startswith("vtuple[")
+
     def box(self, s: UnionState, v: str) -> str:
         k = "U:" + v
         if v == "null":
@@ -645,7 +652,7 @@ class UnionProof:
             return
         if (op == "mem.load" or op == "mach.load"):
             addr = a[0].v
-            if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d):
+            if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d) and not self.length_read(addr):
                 u = self.box(s, addr)
                 if checking and "None" in s.dom(u):
                     self.error(b, "mach.load needs a nonnull proof for " + addr)

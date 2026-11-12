@@ -1010,6 +1010,25 @@ class UnionProofTests(unittest.TestCase):
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
 
+    def test_optional_runtime_tuple_length_read_is_no_tag_read(self):
+        # The length word of a tuple[T, ...] | None, read without a null test in a function that
+        # also narrows a union, is no union tag read; an optional union's machine read (its tag)
+        # still needs a nonnull proof.
+        for source in ("opt[vtuple[str]]", "opt[" + U + "]"):
+            with self.subTest(source=source):
+                c = Case("optional_length", [U, source])
+                c.guard()
+                c.block("hit")
+                c.payload()
+                c.op("mach.load", "int", a=[("%a1", "%ptr")])
+                c.finish_pair()
+                with redirect_stderr(StringIO()):
+                    if source.startswith("opt[vtuple["):
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
     def test_numeric_parser_small_and_large_bounds_agree(self):
         numbers = ("", "0", "00", "01", "9", "10", "99999", "100000", "262143",
                    "262144", "262145", "999999", "1000000", "9999999",
