@@ -269,6 +269,7 @@ from src.pystachy_compiler.unions import (
     gen_utest as unions_utest,
     gen_to_union as unions_to_union,
     gen_narrow_val as unions_narrow_val,
+    gen_class_union as unions_class_union,
     gen_unarrowed as unions_unarrowed,
     gen_uisinst as unions_uisinst,
     gen_now_type as unions_now_type,
@@ -5204,6 +5205,9 @@ class Gen:
 
     def to_union(self, v: Val, t: str, what: str) -> Val:
         return unions_to_union(self, v, t, what)
+
+    def class_union(self, v: Val, nt: str) -> Val:
+        return unions_class_union(self, v, nt)
 
     def narrow_val(self, v: Val, nt: str) -> Val:
         return unions_narrow_val(self, v, nt)

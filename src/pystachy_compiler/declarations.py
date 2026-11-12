@@ -2706,6 +2706,10 @@ def gen_none_field_store(self, o: Val, name: str, v: Val) -> None:
     # value gives the variable its type
     if o.t not in self.classes or self.classes[o.t].ftypes.get(name, "") != NONEVAR or v.t == "None" or v.t == NONEVAR:
         return
+    if self.xtry.startswith("narrow:") and is_union(unopt(v.t)):
+        # (a union isinstance(x, (A, B)) narrowed x to would type the field for code outside
+        # the attempt: declined, the narrowing is not made, see narrows)
+        self.err(f"field '{name}' would take a union that a narrowing made")
     ci = self.classes[o.t]
     key = self.field_root(ci, name).name + "." + name
     if key in self.nonereads:
