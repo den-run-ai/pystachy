@@ -37,8 +37,12 @@ test-py:
 # examples' AOT build compile many programs: CI gives them its verified native compiler.
 # The examples' JIT run always uses the hosted compiler, the runner's default.
 PYTEST_NATIVE_COMPILER ?= $(PY) $(CURDIR)/pystachy.py
+# The runner's test modules are independent (each test works in a directory of its own), so
+# PYTEST_NATIVE_TEST_JOBS of them run at a time: one after another, they are this target's
+# longest step.
+PYTEST_NATIVE_TEST_JOBS ?= 4
 test-pytest-native:
-	PYSTACHY_PYTEST_NATIVE_COMPILER="$(PYTEST_NATIVE_COMPILER)" $(PY) -m unittest discover -s tools -p 'test_pytest_native*.py'
+	printf '%s\n' tools/test_pytest_native*.py | PYSTACHY_PYTEST_NATIVE_COMPILER="$(PYTEST_NATIVE_COMPILER)" xargs -n 1 -P $(PYTEST_NATIVE_TEST_JOBS) sh -c 'exec $(PY) -m unittest discover -s tools -p "$${1##*/}"' sh
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode jit --compare --json build/pytest-native/examples.json
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode aot --compare --compiler "$(PYTEST_NATIVE_COMPILER)" --work-dir build/pytest-native-aot --json build/pytest-native-aot/examples.json
 	$(PY) tools/pytest_native_controls.py --compiler "$(PYTEST_NATIVE_COMPILER)" --json build/pytest-controls.json

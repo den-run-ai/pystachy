@@ -434,7 +434,8 @@ contracts below; they do not replace those distinct observations.
 The x86-64 `hosted` job also runs `make test-pytest-native` with the pinned original
 pytest oracle. Its examples run in JIT with the hosted compiler; their AOT build and
 the runner's own tests, failure controls and bundled upstream methods use the job's
-verified compiler (`PYTEST_NATIVE_COMPILER`), which keeps the job within its bound.
+verified compiler (`PYTEST_NATIVE_COMPILER`), and the runner's test modules run four at a
+time (`PYTEST_NATIVE_TEST_JOBS`), which keeps the job within its bound.
 This covers collection, fixture lifecycle, unittest cases, package layouts,
 `conftest.py` hooks answered for by the comparison, `-k`/`-m` selection,
 JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
