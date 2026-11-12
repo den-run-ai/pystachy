@@ -334,6 +334,19 @@ static void budget_candidates(void) {
   if (!gc_stress && gc_n - before != 1) bad("a scanned candidate still uses the 32 MiB budget");
   scrub_collect();
 }
+/* Keep budget-only allocations out of the later cleared-list live-byte check.
+   The child inherits an empty heap and every budget assertion, while even a
+   conservatively retained candidate cannot enter the parent's measurement. */
+__attribute__((noinline)) static void budget_candidates_in_child(void) {
+  pid_t child = fork();
+  if (child < 0) bad("budget candidate fork");
+  if (!child) { budget_candidates(); _exit(0); }
+  int status;
+  pid_t waited;
+  do waited = waitpid(child, &status, 0); while (waited < 0 && errno == EINTR);
+  if (waited != child) bad("budget candidate wait");
+  if (!WIFEXITED(status) || WEXITSTATUS(status)) bad("budget candidate child failed");
+}
 /* pointer-free large objects start collections of their own where they are most of what is
    allocated: dropping 32 MiB of large float arrays while little is live runs one every 4 MiB
    of them (BIG_MIN), so the heap grows by about 4 MiB rather than 32; with 8 MiB of them
@@ -627,7 +640,7 @@ static void checked_boundary_rejection(void) {
 }
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 1);
-  budget_candidates();
+  budget_candidates_in_child();
   clear_many();
   scrub_collect();
   scrub_collect();
