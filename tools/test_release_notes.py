@@ -81,9 +81,17 @@ class UnwrapTests(unittest.TestCase):
                          "    indented code\n    stays\n")
 
     def test_keeps_every_line_of_an_indented_code_block(self):
-        text = "Run:\n\n    print(1)\n    print(2)\n    print(3)\n\n    print(4)\nAfter.\n"
-        self.assertEqual(notes.unwrap(text), text)
-        self.assertEqual(notes.check_text(text), [])
+        for text in ("Run:\n\n    print(1)\n    print(2)\n    print(3)\n\n    print(4)\nAfter.\n",
+                     "Run:\n\n    - item\n      continuation\n    next\n",
+                     "Run:\n\n    code\n    - item\n    more\n",
+                     "Run:\n\n    | a | b |\n    plain\n    more\n"):
+            with self.subTest(text=text):
+                self.assertEqual(notes.unwrap(text), text)
+                self.assertEqual(notes.check_text(text), [])
+
+    def test_indented_items_inside_lists_stay_nested_items(self):
+        text = "- a\n  - b\n    - c\n      wraps\n\n    - d\n"
+        self.assertEqual(notes.unwrap(text), "- a\n  - b\n    - c wraps\n\n    - d\n")
 
     def test_list_continuation_paragraph_is_not_code(self):
         text = "- Item\n\n    Its second paragraph\n    wraps.\n"

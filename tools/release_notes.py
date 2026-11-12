@@ -83,6 +83,10 @@ def blocks(text):
         stripped = line.strip()
         if not stripped:
             kind = "blank"
+        elif previous in ("blank", "code") and not in_list and line.startswith(("    ", "\t")):
+            # An indented code block runs until a less indented line, even through lines
+            # that look like list items or table rows.
+            kind = "code"
         elif HEADING.match(line):
             kind, in_list = "heading", False
         elif stripped.startswith("|"):
@@ -95,8 +99,6 @@ def blocks(text):
             kind = "reference"
         elif LIST_ITEM.match(line):
             kind, in_list = "text", True
-        elif previous in ("blank", "code") and not in_list and line.startswith(("    ", "\t")):
-            kind = "code"  # an indented code block runs until a less indented line
         else:
             kind = "text"
             if previous == "blank" and not line.startswith((" ", "\t")):
