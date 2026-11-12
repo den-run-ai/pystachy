@@ -108,7 +108,7 @@ statistics even if timed samples used `PYSTACHY_GC=off`. Last-live is not final 
 and can be zero when there was no collection. The runner does not measure process RSS.
 
 The JIT uses LLVM ORC with a precompiled runtime and limited program-function inlining.
-AOT optimizes the program and runtime together at `-O2`. First/hot differences can reflect
+AOT optimizes the program at `-O2` with the bodies of the runtime functions it may inline. First/hot differences can reflect
 cache, allocator and GC state; the JIT does not adaptively tier from an interpreter.
 
 ## Compare and investigate

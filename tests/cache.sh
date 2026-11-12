@@ -5,6 +5,11 @@
 # prints a message of runtime.py and one of runtime.c, which show what its runtime was built from.
 #   - The cache is used again while nothing it is built from changes, also through another path to
 #     the same tools, and by the AOT tier.
+#   - The AOT tier builds its precompiled runtime (the object, the interface and the late step's
+#     module, beside the runtime) at its first build and links it then; a new runtime removes the
+#     old one's; one that cannot be built (a failing opt) leaves only its .fail, which later builds
+#     do not try again, and the build links the runtime into the program, silently; a tool whose
+#     times have not settled builds and publishes none.
 #   - On Linux, the JIT tier's shared library is cached beside the .o, which lli loads, made again from
 #     the .o where it is missing (no runtime is built then), and replaced with its entry; a run that
 #     may not execute it (its file system mounted noexec since: here its mode) links the .o instead.
@@ -73,12 +78,15 @@ printf 'try:\n    print(b"abc".index(b"z"))\nexcept ValueError as e:\n    print(
 P0="subsection not found"; P1="subsection NOT found"
 C0="invalid literal for int() with base 10: 'x'"; C1="INVALID literal for int() with base 10: 'x'"
 : > "$T/built"
+: > "$T/aotbuilt"
 : > "$T/loaded"
 : > "$T/jbuilt"
 # The wrappers: llvm-as counts the builds; llvm-link fails (CACHE_FAIL) or runs edit.sh (CACHE_EDIT)
 # when it links the runtime (not a program: --only-needed); opt kills the compiler once it has written
 # the runtime's bitcode (CACHE_KILL), and the shell that ran opt, unless that shell exec'd it, or
-# removes the cached JIT runner once it has run (CACHE_RM_RUNNER: after the run's check of it); lli
+# removes the cached JIT runner once it has run (CACHE_RM_RUNNER: after the run's check of it), and
+# counts the precompiled runtime's builds (opt -S -passes=default<O2>,name-anon-globals, which only
+# those run) or fails them (CACHE_AOT_FAIL); lli
 # notes how it takes the runtime, as a library (so) or as machine code it links (o); clang counts the JIT
 # runner's builds (and $T/llvmj has them, with the real lli, whose libLLVM the runner links)
 for t in clang llvm-as llvm-link opt lli; do
@@ -86,7 +94,8 @@ for t in clang llvm-as llvm-link opt lli; do
   case $t in
     llvm-as) hook="echo >> '$T/built'" ;;
     llvm-link) hook="if [ \"\$1\" != --only-needed ]; then [ -z \"\$CACHE_FAIL\" ] || exit 1; [ -z \"\$CACHE_EDIT\" ] || sh '$T/edit.sh'; fi" ;;
-    opt) hook="if [ \"\$1\" = -O2 ] && [ -n \"\$CACHE_KILL\" ]; then '$real' \"\$@\"; p=\$PPID
+    opt) hook="if [ \"\$1 \$2\" = '-S -passes=default<O2>,name-anon-globals' ]; then echo >> '$T/aotbuilt'; [ -z \"\$CACHE_AOT_FAIL\" ] || exit 1; fi
+if [ \"\$1\" = -O2 ] && [ -n \"\$CACHE_KILL\" ]; then '$real' \"\$@\"; p=\$PPID
   case \$(ps -o comm= -p \$p) in sh | dash | bash) p=\"\$p \$(ps -o ppid= -p \$p)\" ;; esac; kill -9 \$p; exit 1; fi
 if [ -n \"\$CACHE_RM_RUNNER\" ]; then '$real' \"\$@\" || exit; rm -f '$B'/lljit-*-????????????????; exit 0; fi" ;;
     lli) hook="kind=o; for arg do case \"\$arg\" in -dlopen=/dev/fd/[0-9]*) kind=so ;; esac; done; echo \"\$kind\" >> '$T/loaded'" ;;
@@ -108,16 +117,21 @@ pass=0; fail=0
 ok() { pass=$((pass + 1)); echo "ok   $1"; }
 bad() { fail=$((fail + 1)); echo "FAIL $1"; }
 builds() { wc -l < "$T/built" | tr -d ' '; }
+aots() { wc -l < "$T/aotbuilt" | tr -d ' '; }
 # the cache's runtimes (inode and name: the bitcode, the machine code and, on Linux, the shared
 # library made from it), their number, its ext glue, and the other files but the hashes (partial ones)
 entries() { (cd "$B" && ls -i runtime-py-*-????????????????.bc runtime-py-*-????????????????.o runtime-py-*-????????????????.so 2> /dev/null); }
 pairs() { (cd "$B" && ls runtime-py-*-????????????????.bc 2> /dev/null) | wc -l | tr -d ' '; }
 glue() { (cd "$B" && ls -i runtime-py-*-????????????????.py*.bc 2> /dev/null); }
+# the AOT tier's precompiled runtimes (inode and name: their objects, interfaces and late modules)
+precompiled() { (cd "$B" && ls -i runtime-py-*-????????????????.aot?.o runtime-py-*-????????????????.aot?.bc runtime-py-*-????????????????.aot?.late.bc 2> /dev/null); }
+nprecompiled() { precompiled | wc -l | tr -d ' '; }
 libs() { (cd "$B" && ls runtime-py-*-????????????????.so 2> /dev/null) | wc -l | tr -d ' '; }
 others() {
   for f in "$B"/*; do
     case ${f##*/} in
       runtime-py-*-????????????????.bc | runtime-py-*-????????????????.o | runtime-py-*-????????????????.so | runtime-py-*-????????????????.target | runtime-py-*-????????????????.py*.bc | runtime-py.hashes) ;;
+      runtime-py-*-????????????????.aot?.o | runtime-py-*-????????????????.aot?.bc | runtime-py-*-????????????????.aot?.late.bc | runtime-py-*-????????????????.aot?.fail) ;;
       lljit-*-???????????????? | lljit-*-????????????????.llvm | lljit-*-????????????????.fail) ;;
       *) printf '%s ' "${f##*/}" ;;
     esac
@@ -169,10 +183,32 @@ E=$(entries)
 check "nothing changed: the cache is used" "$out" 0
 same "$E" "the same entry, not written again"
 if [ -s "$B/runtime-py.hashes" ]; then ok "the hashes of settled files are kept"; else bad "no runtime-py.hashes"; fi
-b=$(builds)
-if pys build prog.py -o "$T/prog" && [ "$("$T/prog")" = "$out" ] && [ "$(builds)" = "$b" ]; then ok "the AOT tier uses the cache"
-else bad "the AOT tier does not use the cache"; fi
-same "$E" "the AOT tier writes no entry"
+b=$(builds); a=$(aots)
+if pys build prog.py -o "$T/prog" && [ "$("$T/prog")" = "$out" ] && [ "$(builds)" = "$b" ] && [ "$(aots)" = $((a + 1)) ]; then
+  ok "the AOT tier uses the cache, and builds its precompiled runtime"
+else bad "the AOT tier: $(($(builds) - b)) builds of the runtime and $(($(aots) - a)) of its precompiled runtime, not 0 and 1"; fi
+same "$E" "the AOT tier writes no runtime entry"
+if [ "$(nprecompiled)" = 3 ]; then ok "the precompiled runtime is cached beside the runtime: object, interface, late module"
+else bad "the precompiled runtime's files: $(precompiled)"; fi
+A=$(precompiled)
+if pys build prog.py -o "$T/prog" && [ "$("$T/prog")" = "$out" ] && [ "$(aots)" = $((a + 1)) ] && [ "$(precompiled)" = "$A" ]; then
+  ok "the next AOT build links it, as it is"
+else bad "the next AOT build: $(($(aots) - a - 1)) more builds of the precompiled runtime"; precompiled; fi
+rm -f "$B"/runtime-py-*-????????????????.aot?.*
+a=$(aots)
+if (export CACHE_AOT_FAIL=1; pys build prog.py -o "$T/prog" 2> "$T/aot.err") && [ "$("$T/prog")" = "$out" ] && [ "$(nprecompiled)" = 0 ] && [ ! -s "$T/aot.err" ]; then
+  ok "a precompiled runtime that cannot be built: the build links the runtime into the program, silently"
+else bad "a precompiled runtime that cannot be built: $(precompiled) $(cat "$T/aot.err")"; fi
+fails() { (cd "$B" && ls runtime-py-*-????????????????.aot?.fail 2> /dev/null) | wc -l | tr -d ' '; }
+if [ "$(fails)" = 1 ]; then ok "and leaves its .fail beside the runtime"; else bad "$(fails) .fail files beside the runtime, not 1"; fi
+clean "and no partial or temporary file"
+if pys build prog.py -o "$T/prog" && [ "$("$T/prog")" = "$out" ] && [ "$(aots)" = $((a + 1)) ] && [ "$(nprecompiled)" = 0 ]; then
+  ok "later AOT builds do not try again, and link the runtime into the program"
+else bad "after a failed precompiled runtime, a later AOT build: $(($(aots) - a)) builds of it, $(precompiled)"; fi
+rm -f "$B"/runtime-py-*-????????????????.aot?.fail
+if pys build prog.py -o "$T/prog" && [ "$("$T/prog")" = "$out" ] && [ "$(nprecompiled)" = 3 ] && [ "$(fails)" = 0 ]; then ok "without its .fail, the next AOT build builds it"
+else bad "without the .fail, the next AOT build: $(precompiled)"; fi
+same "$E" "and writes no runtime entry"
 check "the same tools through another path (a symbolic link): the cache is used" "$out" 0 LLVM="$T/llvm2"
 same "$E" "the same entry"
 
@@ -182,6 +218,9 @@ if [ "$H/runtime.py" -nt "$T/ref" ] || [ "$H/runtime.py" -ot "$T/ref" ] || [ "$(
 out=$(printf '%s\n%s' "$P1" "$C0")
 check "an edit of runtime.py of the same size, its mtime set back: built again" "$out" 1
 npairs 1 "the new entry replaces the old"
+if [ "$(nprecompiled)" = 0 ]; then ok "and removes the old runtime's precompiled runtime"; else bad "the old precompiled runtime is left: $(precompiled)"; fi
+if pys build prog.py -o "$T/prog" && [ "$("$T/prog")" = "$out" ] && [ "$(nprecompiled)" = 3 ]; then ok "the next AOT build builds the new runtime's"
+else bad "the new runtime's precompiled runtime: $(precompiled)"; fi
 [ "$(uname)" != Linux ] || { if [ "$(libs)" = 1 ]; then ok "and its shared library the old one's"; else bad "$(libs) shared libraries in the cache, not 1"; fi; }
 cat "$T/INVALID.c" > "$H/runtime.c"
 check "an edit of runtime.c: built again" "$(printf '%s\n%s' "$P1" "$C1")" 1
@@ -331,6 +370,12 @@ fi
 touch -t 203001010000 "$T/llvm/opt"
 check "a tool not settled: a run builds a runtime of its own" "$out" 1
 same "$E" "and publishes nothing"
+clean "and leaves nothing"
+b=$(builds); a=$(aots); A=$(precompiled)
+if pys build prog.py -o "$T/prog" && [ "$("$T/prog")" = "$out" ] && [ "$(builds)" = $((b + 1)) ] && [ "$(aots)" = "$a" ] && [ "$(precompiled)" = "$A" ]; then
+  ok "an AOT build links a runtime of its own into the program, and builds no precompiled runtime"
+else bad "an AOT build with a tool not settled: $(($(builds) - b)) builds of the runtime, $(($(aots) - a)) of the precompiled runtime"; fi
+same "$E" "and publishes no runtime"
 clean "and leaves nothing"
 b=$(builds)
 if pys ext m2.py -o so/m2.abi3.so && [ -f "$T/so/m2.abi3.so" ] && [ $(($(builds) - b)) = 3 ]; then

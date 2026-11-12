@@ -108,13 +108,14 @@
 #                  shared/object runtime, -O0 code generation, embedding, cached and AOT launches;
 #                  tools/test_lljit.py: the runner is built and cached once, falls back to lli where
 #                  it cannot be, and keeps lli's contract on small C programs
-#   aot-dead-code  tools/aotprobe.py: an AOT build defines pys_plain; a program that opts in to
-#                  neither dynamic Any nor promoting ints keeps none of their runtime helpers, and
-#                  its list stores none of their companion code; direct and imported opt-ins
-#                  retain them; objects that never escape compile to no allocation and those a
-#                  list keeps do (allocelide), and holders of objects keep their allocations and
-#                  those objects through collections, with outputs matching CPython; and
-#                  PYSTACHY_GC_MIN sets the allocation window between collections
+#   aot-dead-code  tools/aotprobe.py: an AOT build links the precompiled runtime specialized
+#                  for pys_plain; a program that opts in to neither dynamic Any nor promoting ints
+#                  keeps none of their runtime helpers, and its list stores none of their companion
+#                  code; direct and imported opt-ins retain them; objects that never escape compile
+#                  to no allocation and those a list keeps do (allocelide), and holders of objects
+#                  keep their allocations and those objects through collections, with outputs
+#                  matching CPython; and PYSTACHY_GC_MIN sets the allocation window between
+#                  collections
 #   unicode-audit  tools/unicode_audit.py: optional byte-boundary checks in JIT/AOT, cache
 #                  reuse, ASCII/Unicode controls and GC-stress exception paths, both compilers;
 #                  unicodeprobe checks code-point cache/locality, mutation and GC invalidation
