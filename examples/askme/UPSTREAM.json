@@ -1,0 +1,162 @@
+{
+  "repository": "https://github.com/den-run-ai/askme",
+  "commit": "593017afa31bd50b940dfa2defe39fc9fe47f697",
+  "pull_request": "https://github.com/den-run-ai/askme/pull/130",
+  "files": [
+    {
+      "path": "UPSTREAM_LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "askme_native.py",
+      "source_path": "native/askme_native.py",
+      "sha256": "80833bc7be07da5f1eecc0e8ac2692234b503c8027a9dece870c8cb5bac9eaf7"
+    },
+    {
+      "path": "native_actions.py",
+      "source_path": "native/native_actions.py",
+      "sha256": "2d9a3c3e4e99e837ae9e39b942563cdf50d5d68f9894d27dbce16507911e63bc"
+    },
+    {
+      "path": "native_ffi_net.py",
+      "source_path": "native/native_ffi_net.py",
+      "sha256": "01e809e82deb0f37d6a5dad91a66db5b7950d18f421708c34e5845124c65081f"
+    },
+    {
+      "path": "native_ffi_tls.py",
+      "source_path": "native/native_ffi_tls.py",
+      "sha256": "48a471484c1e6e377693171925d8643254f8c82020af29fe9a8b0b23389a4d2f"
+    },
+    {
+      "path": "native_host.py",
+      "source_path": "native/native_host.py",
+      "sha256": "38b7355a23706800d63b547b73e5d5551ca227417c34146dc843ecfe07e74c11"
+    },
+    {
+      "path": "native_http.py",
+      "source_path": "native/native_http.py",
+      "sha256": "f489af27c628bcd105293389685f0c8935ade49567b0b26595fb1d104716634e"
+    },
+    {
+      "path": "native_json.py",
+      "source_path": "native/native_json.py",
+      "sha256": "3ff9ddcab53f5cb4910f101a6800365a88ca621ab2e95bb99d1d10341ae143fb"
+    },
+    {
+      "path": "native_llm.py",
+      "source_path": "native/native_llm.py",
+      "sha256": "40fdda1efc68817ed75a6c1e81b456edd77735ba4a5aff7a0bffeacb4a46753d"
+    },
+    {
+      "path": "native_loop.py",
+      "source_path": "native/native_loop.py",
+      "sha256": "c7113810f0e78cb71202f055a28cdbd2b713ec53c81cfb696aef281a68bb0651"
+    },
+    {
+      "path": "native_policies.py",
+      "source_path": "native/native_policies.py",
+      "sha256": "e9519decff4060a72d8d722a1e4f58bd8b580fac6995cd2bda575dd21c414110"
+    },
+    {
+      "path": "native_state.py",
+      "source_path": "native/native_state.py",
+      "sha256": "88d3ca4b102eb45015ffdd37b9394c57190c71b9158105a21be546125606221a"
+    },
+    {
+      "path": "native_std_net.py",
+      "source_path": "native/native_std_net.py",
+      "sha256": "92be714b3cc5986ae82bb22f5cedb6fb291cf27de9be7e4f85ba799d0b50e02b"
+    },
+    {
+      "path": "scenarios/compile_repair.json",
+      "source_path": "native/scenarios/compile_repair.json",
+      "sha256": "c614c617551fa2c802b8a8545d829a09ccfd28fc52c17cbc7ab017832e56107e"
+    },
+    {
+      "path": "scenarios/compile_repair_disabled.json",
+      "source_path": "native/scenarios/compile_repair_disabled.json",
+      "sha256": "40dc4b1cf47d1c8344b427dbbd64e0f1f50b6859492af6473c17bbbd6fea9268"
+    },
+    {
+      "path": "scenarios/duplicate_guards.json",
+      "source_path": "native/scenarios/duplicate_guards.json",
+      "sha256": "3ec107323c04dbc9403e45f6f688b8445e41c04f15934f489cbf420c96b26159"
+    },
+    {
+      "path": "scenarios/exhausted.json",
+      "source_path": "native/scenarios/exhausted.json",
+      "sha256": "09eb41dea1f58d751949d378099ef890912766321a47fe3ba175507128faaa73"
+    },
+    {
+      "path": "scenarios/hello.json",
+      "source_path": "native/scenarios/hello.json",
+      "sha256": "f80273e2f13968d293f6deb418bb1b91515773a5285783f3f8be41a258452a6e"
+    },
+    {
+      "path": "scenarios/lifecycle.json",
+      "source_path": "native/scenarios/lifecycle.json",
+      "sha256": "c204052b75ee95f2d09f07f8edd04165ef15394e4e9f683b8d1914ff5d3fa190"
+    },
+    {
+      "path": "scenarios/limits.json",
+      "source_path": "native/scenarios/limits.json",
+      "sha256": "5d4ecad8a9c6ee8cf2ac535b4d058535bcf0ef98f01757762f4826457f023e7d"
+    },
+    {
+      "path": "scenarios/navigate_and_edit.json",
+      "source_path": "native/scenarios/navigate_and_edit.json",
+      "sha256": "f8babba43d5d29e0597c7f23d13cbf2fd35f6e090a7f846f11ba6e1b283c1a3f"
+    },
+    {
+      "path": "scenarios/observe_tail_exhausted.json",
+      "source_path": "native/scenarios/observe_tail_exhausted.json",
+      "sha256": "430f89702a4b303dd8db2a0cbd71e021fbf02939721bbd2a6cad29a289216dbf"
+    },
+    {
+      "path": "scenarios/openrouter.json",
+      "source_path": "native/scenarios/openrouter.json",
+      "sha256": "ff4c14058f23956276166335168712cdf8c1a63157f350ff9b775ddfc3a67b69"
+    },
+    {
+      "path": "scenarios/read_pages.json",
+      "source_path": "native/scenarios/read_pages.json",
+      "sha256": "7c5c08e453174cb54a69cfb0a894bd261443849efd0b1872b6810e52962134cb"
+    },
+    {
+      "path": "scenarios/replan_after_failure.json",
+      "source_path": "native/scenarios/replan_after_failure.json",
+      "sha256": "38a0a085ebf6b125373ce0bdaac05072b6a4700b2e8048757a6487f69683659e"
+    },
+    {
+      "path": "scenarios/retries.json",
+      "source_path": "native/scenarios/retries.json",
+      "sha256": "ca225206810269d97e633193ab32010db6baebc2b4c5f7dea9c02fcd8b329e82"
+    },
+    {
+      "path": "scenarios/rewrite_loop.json",
+      "source_path": "native/scenarios/rewrite_loop.json",
+      "sha256": "42e44cb92e3a7a4cfbab0d3ac266a9c9a908541ecc0c68347ddd3f0abd429cdd"
+    },
+    {
+      "path": "scenarios/timeout_retry.json",
+      "source_path": "native/scenarios/timeout_retry.json",
+      "sha256": "18c064c58b96ae04b42bcfed0279a1cbf087d5e9c2b53cbd2a344760acb8d967"
+    },
+    {
+      "path": "scenarios/truncated_write.json",
+      "source_path": "native/scenarios/truncated_write.json",
+      "sha256": "69f6c3f66fdad6e29574a490da8a3fae61571c57bc575fa1db7a9996294ad199"
+    },
+    {
+      "path": "scenarios/validation_rejected.json",
+      "source_path": "native/scenarios/validation_rejected.json",
+      "sha256": "eb54c7a6a3e5515af5478477f0d33a9af715bf7a36a9c6f2bedf020a2d726975"
+    },
+    {
+      "path": "scenarios/write_pressure.json",
+      "source_path": "native/scenarios/write_pressure.json",
+      "sha256": "0b566607ad0d331e07445df460d6deffc4475e881d81306f872bf7a4ac4f91c0"
+    }
+  ]
+}

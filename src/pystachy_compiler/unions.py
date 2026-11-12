@@ -86,6 +86,9 @@ def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     # A tuple of promoting ints compares as its 64-bit ints, as a union holds them (bigints.py).
     a = self.big_tuple_narrow(a) if is_tuple(a.t) and BIG in a.t else a
     b = self.big_tuple_narrow(b) if is_tuple(b.t) and BIG in b.t else b
+    for u, s in [(a, b), (b, a)]:
+        if s.t in ["str", "int", "float", "bool"] and is_union(unopt(self.rec_type(u.t))) and self.ueq_type(u.t):
+            return self.uequal_scalar(op, u, s)
     t = self.union_type([a.t, b.t])
     if t.startswith("!") and self.ueq_type(a.t) and self.ueq_type(b.t):
         # A tuple need not become a union member just to compare with a union.
@@ -98,6 +101,38 @@ def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     b = self.coerce(b, t)
     r = self.rt("pys_eq", "i64", ["i64 " + self.to_slot(a), "i64 " + self.to_slot(b), f"ptr {self.sconst(self.desc(t, '=='))}"])
     return self.num_cmp('!=' if op == '==' else '==', Val(r, "int"), Val('0', "int"))
+
+def gen_uequal_scalar(self, op: str, u: Val, s: Val) -> Val:
+    # u == s (or !=) for a closed union u of builtin values, which may be None, and a str or
+    # number s that is not: among such values only a str equals a str, and only an int, float
+    # or bool a number. Test u's tag and compare that member natively; s is not boxed, and the
+    # runtime does not walk descriptors (pys_eq) to find that a dict is not "name".
+    ut = self.rec_type(u.t)
+    miss = "false" if op == "==" else "true"
+    family = ["str"] if s.t == "str" else ["int", "float", "bool"]
+    members = [m for m in umembers(unopt(ut)) if m in family]
+    if len(members) == 0:
+        return Val(miss, "bool")
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    if is_opt(ut):
+        some = self.label()
+        self.incoming(ph, miss, self.cur)
+        self.cbr(self.ptr_cmp('==', u, Val('null', 'None')).v, end, some)
+        self.place(some)
+    tag = self.mload('int', u.v)
+    for m in members:
+        arm = self.label()
+        nxt = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(m)), "int")).v, arm, nxt)
+        self.place(arm)
+        self.incoming(ph, self.cmp2(op, self.uget(Val(u.v, unopt(ut)), m), s).v, self.cur)
+        self.br(end)
+        self.place(nxt)
+    self.incoming(ph, miss, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
 
 def gen_umember_problem(self, t: str) -> str:
     # why a value of type t cannot be one of a union's (A | B), or ""

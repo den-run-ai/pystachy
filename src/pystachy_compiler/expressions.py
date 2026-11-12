@@ -4651,7 +4651,11 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
             self.cbr(c.v, hit, nx)
             self.place(nx)
         return identity or c.t != ""
-    if paired:
+    if paired and item.t in ["str", "int", "float", "bool"] and is_union(unopt(self.rec_type(a.t))):
+        c = self.uequal_scalar("==", a, item)  # (the union's member of the item's kind: unions.py)
+    elif paired and a.t in ["str", "int", "float", "bool"] and is_union(unopt(self.rec_type(item.t))):
+        c = self.uequal_scalar("==", item, a)
+    elif paired:
         r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(item), "i64 " + self.to_slot(a), f"ptr {self.sconst(self.desc(item.t, '=='))}", f"ptr {self.sconst(self.desc(a.t, '=='))}"])
         c = self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
     else:

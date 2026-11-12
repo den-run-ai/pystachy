@@ -1,0 +1,11 @@
+0 3 3
+0 2
+0 3
+2
+0 4
+none 5
+None 1
+{"bytes": 5, "keys": 1, "text": "hello", "sizes": [5, 1, 6]}
+[1, 2, 3, 'done']
+5
+[exit 0]

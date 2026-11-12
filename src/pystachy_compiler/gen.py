@@ -258,6 +258,7 @@ from src.pystachy_compiler.unions import (
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
+    gen_uequal_scalar as unions_uequal_scalar,
     gen_reference_union as unions_reference_union,
     gen_umethod as unions_umethod,
     gen_uboxes as unions_uboxes,
@@ -5168,6 +5169,9 @@ class Gen:
 
     def uequal(self, op: str, a: Val, b: Val) -> Val:
         return unions_uequal(self, op, a, b)
+
+    def uequal_scalar(self, op: str, u: Val, s: Val) -> Val:
+        return unions_uequal_scalar(self, op, u, s)
 
     def unumeric(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
         return union_arithmetic_unumeric(self, op, a, b, shown, unary)

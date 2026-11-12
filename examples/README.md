@@ -11,6 +11,7 @@ The extra requirements below are in addition to the compiler and its build toolc
 | Example | Purpose | Maintained checks | Extra requirements |
 |---|---|---|---|
 | [agent](agent/README.md) | Typed tool loop, JSON messages and recorded repair | [App corpus](../tests/programs/apps/example_agent.py); HTTP smoke in its guide | Linux and GNU coreutils; `curl` and a model server for live HTTP |
+| [askme](askme/README.md) | The complete AskMe harness: planner, executor, replans, policies and validation | [App corpus](../tests/programs/apps/example_askme.py); transcript comparison and runtime benchmark in its guide | Linux, `/bin/sh` and `timeout`; a model server for live use, with `libssl.so.3` or `curl` for `https://` |
 | [byte_bpe](byte_bpe/README.md) | Educational byte tokenizer training and Unicode encode/decode | [App corpus](../tests/programs/apps/byte_bpe.py); pyperformance smoke | None |
 | [column](column/README.md) | Table alignment with `io.StringIO` | [App corpus](../tests/programs/apps/example_column.py) | None |
 | [comm](comm/README.md) | Owned host buffers, bounded completions and local reference collectives | CPython/native comparison and C ownership probe in its guide | Linux and a C compiler |
