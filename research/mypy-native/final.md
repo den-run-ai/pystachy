@@ -74,8 +74,9 @@ three trees. "ok" means the same stdout and exit status.
   class-scope values read earlier constants. They clear mypy's two sites
   (`mypy/nodes.py:3863`, `mypyc/ir/ops.py:1461`). #1275 accepts `@final` on classes.
   Draft #1244 accepts `@final` and `@override` on functions and methods (#712).
-- **Set-fields change (this session):** fields and class attributes typed by set
-  displays and by another class's class attributes, enum members included. With the
+- **Set-fields change (this session, branch `claude/confident-einstein-ep3lh6-set-fields`,
+  `1d1493e3`):** fields and class attributes typed by set displays and by another
+  class's class attributes, enum members included. With the
   stack it clears `mypy/checker.py:3636`, `mypy/stubutil.py:583` and `:609`, and
   `mypyc/ir/pprint.py:82`.
 
