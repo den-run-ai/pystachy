@@ -346,7 +346,7 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | In-place operators | `__iadd__` and counterparts, otherwise the binary method |
 | Unary `-`, `+`, `~` | `__neg__`, `__pos__`, `__invert__` |
 | `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` |
-| `int(o)`, `float(o)` | `__int__` or `__float__`, otherwise `__index__`; the method's result type is checked when the call is compiled |
+| `int(o)`, `float(o)` | `__int__` or `__float__`, otherwise `__index__`, of the object's own class: a derived class's method is chosen through a base-typed reference, and a class with neither raises `TypeError`; the method's result type is checked when the call is compiled |
 | `round(o)`, `round(o, n)` | `__round__`, which may be a template: each call types its result |
 | `math.floor(o)`, `math.ceil(o)`, `math.trunc(o)` | `__floor__`, `__ceil__`, `__trunc__` |
 | A builtin number on the left, as in `2 * o` | `__radd__` and the other reflected arithmetic and bitwise methods |
