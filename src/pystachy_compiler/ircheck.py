@@ -1,16 +1,16 @@
 """Ircheck component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import fail, int_lists, int_program
+from src.pystachy_compiler.diagnostics import dynamic_program, fail, int_lists, int_program
 from src.pystachy_compiler.dynamic_proof import DynamicProof, DynTypes
 from src.pystachy_compiler.ir import Blk, IFn, Ins, NOLABELS, tmpname
 from src.pystachy_compiler.union_proof import UnionProof, simple_union_proof
 from src.pystachy_compiler.specs import BIG, FX, FXALL, FXBIT, ICMP, IROPS, LIST_READS, LIST_WRITES, NONEVAR, RAWR, RAWW, RUNTIME
-from src.pystachy_compiler.utils import is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_write_error, lt, same_kind, targs, tslots, umembers
+from src.pystachy_compiler.utils import elem, is_dict, is_gen, is_opt, is_set, is_tuple, is_union, is_vtuple, list_read_error, list_receiver_error, list_write_error, lt, same_kind, targs, tslots, umembers
 
 # Fixed SSA result counts printed by each lowering (gen_nums handles calls).
 RESULT_NUMBERS: dict[str, int] = {
     "scalar.bin": 1, "scalar.cast": 1, "scalar.cmp": 1, "field.addr": 1,
-    "mach.load": 1, "mach.addr": 1, "ovf": 3, "list.load": 4,
+    "mach.load": 1, "mach.addr": 1, "ovf": 3, "list.load": 4, "list.store": 3,
     "landing": 2, "exc.match": 2, "union.payload": 2, "union.raw": 2,
     "tuple.load": 2, "dyn.payload": 2, "dyn.raw": 2, "dyn.type": 1, "phi": 1,
     "select": 1, "list.len": 1, "slot.pack": 1, "slot.unpack": 1,
@@ -214,6 +214,17 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                     error = list_write_error(i, int_lists(), self.rtfns[i.s].sig)
                     if error != "":
                         self.bad_ir(fn, b, error)
+            if i.op == "list.store":
+                # an item assignment that listguard proved within the list's length, in a program
+                # whose lists hold no numeric identities (none opts in): no index check, and no
+                # identity companion to update, which list.set would
+                t = i.a[0].t if len(i.a) == 3 else ""
+                if len(i.a) != 3 or i.t != "" or i.s != "" or i.x != "" or i.k != 0 or len(i.b) != 0 or list_receiver_error(t) != "":
+                    self.bad_ir(fn, b, "list.store needs a list, an index and an item, and no metadata")
+                elif i.a[1].t != "int" or i.a[2].t != "*" + elem(t):
+                    self.bad_ir(fn, b, "list.store needs an int index and the list's packed item")
+                elif int_lists() or dynamic_program():
+                    self.bad_ir(fn, b, "list.store in a program whose lists may hold numeric identities")
             if i.op == "list.len" or i.op == "list.load" or (i.op == "rt" and i.s in LIST_READS):
                 error = list_read_error(i, self.rtfns[i.s].sig if i.op == "rt" else None)
                 if error != "":

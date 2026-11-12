@@ -82,7 +82,10 @@ Installing from GitHub requires Git and Python 3.11+. The installed command runs
 the compiler under Python. On Ubuntu 24.04 x86-64/ARM64 and macOS 15+
 Apple Silicon, the first compile downloads and verifies a pinned LLVM toolchain
 without administrator access. Ubuntu uses LLVM 18.1.3 from the Ubuntu
-snapshot archive (about 70 MB). macOS uses LLVM 20.1.8 from the LLVM release
+snapshot archive (about 70 MB), falling back to Ubuntu's architecture-specific
+archive on a transient network failure. Both endpoints must match the same pinned
+package SHA-256; three total attempts per package are shared across them. Checksum, certificate
+and local file errors stop immediately. macOS uses LLVM 20.1.8 from the LLVM release
 archive (about 1.45 GB). Ubuntu needs the host C toolchain (`build-essential`)
 and shared libraries (`libedit2`, `libffi8`, `libxml2`). macOS needs the Xcode
 Command Line Tools.
