@@ -19,6 +19,7 @@ from src.pystachy_compiler.specs import (
     LIST_READS,
     LIST_WRITES,
     METHODS,
+    OBJECTC,
     OPTS,
     OPAQUE,
     RUNTIME,
@@ -456,6 +457,12 @@ def is_vtuple(t: str) -> bool:
 def is_opt(t: str) -> bool:
     # opt[T]: T | None for T str, int, float, bool, list, dict or tuple (a class type includes None already)
     return t.startswith("opt[")
+
+
+def holds_no_object(t: str) -> bool:
+    # can no value of type t be an object() (lib's object class, OBJECTC): a known type that is
+    # not dynamic (Any's dyn, which holds any object) and does not include object
+    return t != "" and not t.startswith("!") and t != "dyn" and "dyn[" not in t and OBJECTC not in t and "object" != unopt(t)
 
 
 def unopt(t: str) -> str:

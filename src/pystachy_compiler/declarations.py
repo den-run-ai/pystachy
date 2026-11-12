@@ -45,6 +45,7 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
 from src.pystachy_compiler.utils import (
+    holds_no_object,
     opaque_class,
     lib_source,
     clone,
@@ -531,8 +532,7 @@ def gen_sentinel_param(self, p: Node) -> bool:
     # module's object() (sentinelglobals): then only that sentinel is an object() p can be given
     if p.kind != "param" or p.kids[0].kind == "noann" or p.kids[1].kind != "name" or p.kids[1].s not in self.sentinelglobals:
         return False
-    t = self.vtype(p.kids[0])
-    return t != "" and not t.startswith("!") and t != "dyn" and "dyn[" not in t and OBJECTC not in t and "object" != unopt(t)
+    return holds_no_object(self.vtype(p.kids[0]))
 
 def gen_alias_value(self, name: str) -> Node:
     # the value of type alias name: a type statement's, or that an assignment binds

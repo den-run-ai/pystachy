@@ -41,6 +41,7 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.syntax import Node, comp_names, made_var, mk, names_in
 from src.pystachy_compiler.union_arithmetic import unarith
 from src.pystachy_compiler.utils import (
+    holds_no_object,
     opaque_class,
     atomic_dict,
     atomic_list,
@@ -206,9 +207,12 @@ def gen_static(self, n: Node) -> int:
         return 1 if held else 0
     if k == "cmp" and (n.s == "is" or n.s == "is not") and n.kids[0].kind == "name" and n.kids[1].kind == "name" and n.kids[0].s in self.curfn.sentinels and self.curfn.sentinels[n.kids[0].s] == n.kids[1].s and n.kids[0].s not in self.compvars and self.static_type(n.kids[0]) != "":
         # p is S of a sentinel parameter (declare_fn): the sentinel itself in the specialization
-        # that took it, where p is an object() and no other object() reaches p; else a T
-        r = 1 if self.static_type(n.kids[0]) == OBJECTC else 0
-        return r if n.s == "is" else 1 - r
+        # that took it, where p is an object() and no other object() reaches p; a T that holds
+        # no object() is not it; but a value of Any's dyn type may be (dynamic Any): run time's
+        t = self.static_type(n.kids[0])
+        r = 1 if t == OBJECTC else 0 if holds_no_object(t) else -1
+        if r >= 0:
+            return r if n.s == "is" else 1 - r
     x = nonetest(n)
     if x >= 0 and (x == 1 or n.s == "==" or n.s == "!=") and not (self.curfn.inst and n.kids[x].kind == "name" and n.kids[x].s in self.curfn.params and n.kids[x].s not in self.compvars):
         x = -1

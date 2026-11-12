@@ -6,6 +6,7 @@ source names stay intact, preserving target-context and look-ahead inference.
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
 from src.pystachy_compiler.ir import FnInfo
+from src.pystachy_compiler.specs import OBJECTC
 from src.pystachy_compiler.syntax import Node
 from src.pystachy_compiler.utils import clone
 
@@ -71,5 +72,8 @@ def sentinel_test(f: FnInfo, n: Node) -> str:
         return ""
     t = n.kids[0]
     if t.kind == "cmp" and t.s == "is" and t.kids[0].kind == "name" and t.kids[1].kind == "name" and t.kids[0].s in f.sentinels and f.sentinels[t.kids[0].s] == t.kids[1].s:
-        return t.kids[0].s
+        # (only an instance whose p is the sentinel itself, where Gen.static decides the test:
+        # one of Any's dyn type tests it at run time, and its store is no straight-line code)
+        j = f.params.index(t.kids[0].s) if t.kids[0].s in f.params else -1
+        return t.kids[0].s if j >= 0 and j < len(f.ptypes) and f.ptypes[j] == OBJECTC else ""
     return ""
