@@ -467,6 +467,8 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_lean_null_access.py
 	$(PY) -m unittest discover -s tools -p test_lean_union_effects.py
 	$(PY) -m unittest discover -s tools -p test_lean_union_split.py
+	$(PY) -m unittest discover -s tools -p test_lean_union_memory.py
+	$(PY) -m unittest discover -s tools -p test_lean_gc.py
 	$(PY) -m unittest discover -s tools -p test_lean_fields.py
 	$(PY) -m unittest discover -s tools -p test_lean_int.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
