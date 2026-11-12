@@ -67,15 +67,15 @@ hold. Project a scalar first, for example `tuple(value for index, value in enume
 or `tuple(left + right for left, right in zip([1, 2], [3, 4]))`. This enables the existing `re.Match.groups()` implementation
 without rewriting its capture loop or knowing the pattern's capture count at compile time.
 
-Dict keys are `int`, `str`, objects of the program's classes, or tuples containing `int`,
-`bool`, `str`, `str | None`, objects and nested tuples of these. An object whose class defines
+Dict keys are `int`, `str`, objects of the program's classes, frozensets of supported elements,
+or tuples containing `int`, `bool`, `str`, `str | None`, objects and nested tuples of these. An object whose class defines
 neither `__eq__` nor `__hash__` hashes and compares by identity; one whose class defines
 `__hash__` uses it and `__eq__`, which run where CPython calls them (once per insertion or
 lookup, and for each key of the same hash). A class that defines `__eq__` without `__hash__` is
 unhashable, as in CPython: adding or looking up its object raises `TypeError: unhashable type`.
-An object key may be `None`. Floats, frozensets, NamedTuples and exception objects cannot be
-keys or set elements. `hash()` gives CPython's results for ints, floats, `None`, objects with
-`__hash__` and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
+An object key may be `None`. Floats, NamedTuples and exception objects cannot be keys or set
+elements. `hash()` gives CPython's results for ints, floats, `None`, objects with `__hash__`,
+frozensets and tuples and NamedTuples of these; a str's and an object's identity hash differ from CPython's,
 which change from run to run, but are equal for equal strs and for the same object.
 
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of

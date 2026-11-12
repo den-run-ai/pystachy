@@ -771,6 +771,8 @@ def gen_key_problem(self, t: str) -> str:
     t = narrow_type(t)  # (a promoting int, also a tuple's, is a key as a 64-bit int: bigints.py)
     if t == "dyn" or self.key_class(t) or (is_tuple(t) and self.key_items(t)):
         return ""
+    if is_fset(t) and self.elem_problem(selem(t)) == "":
+        return ""  # (hashed by runtime.c's hfset and compared as sets are, by its descriptor F)
     if t in self.nts:
         return key_problem(t) + " (a NamedTuple, which CPython hashes as the tuple of its fields)"
     if t in self.classes and self.classes[t].exc != "":
@@ -1225,10 +1227,13 @@ def gen_hash_value(self, v: Val) -> Val:
 
 def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
-    # object, a tuple of such items, or one of these that may be None
+    # object, a frozenset (runtime.c's hfset, of the hashes its table keeps) or a tuple of such
+    # items, or one of these that may be None
     u = unopt(t)
     if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
         return True
+    if is_fset(u):
+        return self.elem_problem(selem(u)) == ""
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
 def gen_repr(self, v: Val) -> Val:

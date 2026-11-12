@@ -1,0 +1,10 @@
+x none True 2
+2 z ['y', 'z']
+{frozenset({1, 2, 3}): 'z'}
+KeyError frozenset({9})
+2 True False
+[['a', 'c'], ['b']]
+1 False {frozenset({Key(2), Key(1)}): 1}
+2 True False
+[('ab', 2), ('abc', 2), ('x', 1)]
+[exit 0]
