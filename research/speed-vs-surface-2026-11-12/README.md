@@ -97,14 +97,18 @@ excluded: AOT removes its timed loop.
 - `commits.txt`: sampled commits (label, SHA).
 - `data/*.json`: the rows charted on the dashboard (`samples`, `speedups`,
   `history` for all 660 first-parent commits, `blockers_head`, `unlocks`, `census`).
-- `methods_matrix.csv.gz`: one row per qualified method, one status code per commit
+- `raw/methods_matrix.csv.gz`: one row per qualified method, one status code per commit
   (P pass, I pass with promoting ints, D compiled but differs, T timeout; rejected:
   L library, S syntax, Y typing, M dynamic, O other).
-- `methods_head_errors.csv.gz`: every method's status and first error at `b2182a4f`.
-- `timing.json`: every timed run. `builds.json`: build time, compiler IR lines, binary size.
+- `raw/methods_head_errors.csv.gz`: every method's status and first error at `b2182a4f`.
+- `raw/timing.json`: every timed run. `raw/builds.json`: build time, compiler IR lines, binary size.
 - `scripts/`: the harness (`build_one.sh`, `pipeline.sh`, `analyze_one.py`,
   `method_sweep.py`, `extract_qualify.py`, `timing.py`, `report.py`,
-  `datasets.py`, `classify.py`, `analysis.py`, `git_metrics.py`, `export_matrix.py`).
+  `datasets.py`, `classify.py`, `analysis.py`, `git_metrics.py`, `export_matrix.py`);
+  `assemble_research.sh` copied the first version of this folder from the scratch directory and
+  shows where each `raw/` file came from.
+- `page/`: the dashboard (`index.html`, `render.js`) and `export.js`, which wrote `export/`;
+  `interact.js`, `offline_check.js`, `section.js` and `sheet.js` are Playwright checks of the page.
 
 ## Reproduce
 
@@ -117,4 +121,12 @@ python3.13 -I scripts/timing.py commits.txt timing.json   # idle machine only
 python3 scripts/report.py commits.txt evolution.json timing.json
 python3 scripts/datasets.py evolution.json data
 python3 scripts/analysis.py data
+```
+
+To redraw the charts from the committed `data/` (`export.js` reads `page/data` and d3 from
+`page/node_modules`; it needs Playwright's Chromium). On 12 November this reproduced all 13 PNGs
+of `export/images` byte for byte:
+
+```sh
+cd page && ln -s ../data data && npm install d3@7.9.0 && node export.js OUTDIR
 ```
