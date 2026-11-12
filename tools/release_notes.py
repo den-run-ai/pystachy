@@ -23,6 +23,8 @@ SEMVER = re.compile(r"v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+
 ASSETS = "## Release assets"
 PARAGRAPH_WORDS = 80
 TOTAL_WORDS = 700
+PRERELEASE = ("As a prerelease, this version does not move GitHub's latest release or "
+              "Docker's `latest` tag.")
 
 FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
 HEADING = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]|$)")
@@ -213,8 +215,7 @@ def assets(version, commit, repository, image, prerelease):
         "",
     ]
     if prerelease:
-        lines += ["As a prerelease, this version does not move GitHub's latest release or "
-                  "Docker's `latest` tag.", ""]
+        lines += [PRERELEASE, ""]
     lines += [f"Source commit: [`{commit}`]({base}/commit/{commit}).", ""]
     return "\n".join(lines)
 
@@ -226,10 +227,11 @@ def render(notes, version, commit, repository, image, prerelease):
     return unwrap(notes).strip("\n") + "\n\n" + assets(version, commit, repository, image, prerelease)
 
 
-def refresh(current, notes=None):
+def refresh(current, notes=None, prerelease=False):
     """Replace the curated part of a published body, keeping its generated assets section.
 
-    Without notes, only unwrap the published text.
+    Curated notes no longer state prerelease status, so it joins the kept section when
+    missing. Without notes, only unwrap the published text.
     """
     current = current.replace("\r\n", "\n").replace("\r", "\n")
     match = re.search(r"^## Release assets[ \t]*$", current, re.M)
@@ -240,7 +242,10 @@ def refresh(current, notes=None):
         if errors:
             raise ValueError("release notes do not meet docs/writing.md:\n  " + "\n  ".join(errors))
     curated = current[:match.start()] if notes is None else notes
-    return unwrap(curated).strip("\n") + "\n\n" + unwrap(current[match.start():]).strip("\n") + "\n"
+    generated = unwrap(current[match.start():]).strip("\n")
+    if notes is not None and prerelease and "prerelease" not in generated.lower():
+        generated += "\n\n" + PRERELEASE
+    return unwrap(curated).strip("\n") + "\n\n" + generated + "\n"
 
 
 def write(text, output):
@@ -266,7 +271,7 @@ def main(argv=None):
     update = commands.add_parser("refresh", help="rewrite a published release body")
     update.add_argument("--version", required=True)
     update.add_argument("--current", required=True,
-                        help="JSON from: gh release view VERSION --json body,isDraft,tagName")
+                        help="JSON from: gh release view VERSION --json body,isDraft,isPrerelease,tagName")
     update.add_argument("--source", choices=("notes", "reflow"), default="notes",
                         help="curated notes from docs/releases, or the published text unwrapped")
     update.add_argument("--output")
@@ -298,7 +303,7 @@ def main(argv=None):
         notes = None
         if args.source == "notes":
             notes = (ROOT / "docs/releases" / f"{args.version}.md").read_text(encoding="utf-8")
-        body = refresh(current.get("body") or "", notes)
+        body = refresh(current.get("body") or "", notes, current.get("isPrerelease") is True)
         sys.stderr.writelines(difflib.unified_diff(
             (current.get("body") or "").replace("\r\n", "\n").splitlines(True), body.splitlines(True),
             "published", "refreshed"))

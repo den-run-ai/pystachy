@@ -170,6 +170,15 @@ class RefreshTests(unittest.TestCase):
         self.assertTrue(body.startswith("Old summary that was wrapped.\n\n## Release assets\n"))
         self.assertEqual(body.split(), self.PUBLISHED.split())
 
+    def test_prerelease_status_joins_the_kept_assets_only_with_new_notes(self):
+        body = notes.refresh(self.PUBLISHED, "Summary.\n", prerelease=True)
+        self.assertTrue(body.endswith("Source commit: `abc`.\n\n" + notes.PRERELEASE + "\n"))
+        self.assertEqual(notes.refresh(body, "Summary.\n", prerelease=True), body)
+        self.assertNotIn(notes.PRERELEASE, notes.refresh(self.PUBLISHED, "Summary.\n"))
+        self.assertNotIn(notes.PRERELEASE, notes.refresh(self.PUBLISHED, prerelease=True))
+        stated = self.PUBLISHED + "\nPrereleases do not update `latest`.\n"
+        self.assertNotIn(notes.PRERELEASE, notes.refresh(stated, "Summary.\n", prerelease=True))
+
     def test_refuses_bodies_without_assets_and_notes_that_fail_checks(self):
         with self.assertRaisesRegex(ValueError, "no '## Release assets'"):
             notes.refresh("Hand-written body.\n", "Summary.\n")
