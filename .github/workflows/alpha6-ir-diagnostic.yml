@@ -1,0 +1,253 @@
+name: Alpha6 retained IR diagnostic
+run-name: Retained IR comparison 6e02b36b to 0ed84b74
+
+on:
+  push:
+    branches: [codex/alpha6-ir-diagnostic]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: alpha6-ir-diagnostic-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  PYSTACHY_JOBS: '2'
+  PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+  LC_ALL: C
+
+jobs:
+  old:
+    name: Bootstrap old source
+    if: github.repository == 'den-run-ai/pystachy'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      artifact_id: ${{ steps.bundle.outputs.artifact-id }}
+      manifest_sha256: ${{ steps.seal.outputs.manifest_sha256 }}
+      compiler_sha256: ${{ steps.seal.outputs.compiler_sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 6e02b36b404cd295058967ea48860c2941ce59fc
+          path: old
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13.16'
+      - name: Check exact source
+        run: |
+          python3 harness/tools/alpha6_ir_audit.py check --side old --root "$GITHUB_WORKSPACE/old"
+      - name: LLVM 18 toolchain
+        working-directory: old
+        run: tools/setup.sh --minimal
+      - name: Verify compiler and runtime fixed points
+        working-directory: old
+        run: |
+          timeout --kill-after=10s 660s tests/verify.sh bootstrap 2>&1 | tee "$RUNNER_TEMP/bootstrap-old.log"
+      - name: Export with unchanged source validator
+        working-directory: old
+        run: |
+          python3 tools/verification_bootstrap.py export "$RUNNER_TEMP/alpha6-bootstrap-old/bundle"
+      - name: Bind source, run, attempt and payload
+        id: seal
+        run: |
+          python3 harness/tools/alpha6_ir_audit.py seal --side old --root "$GITHUB_WORKSPACE/old" \
+            --bundle "$RUNNER_TEMP/alpha6-bootstrap-old/bundle"
+      - name: Upload verified bootstrap
+        id: bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: alpha6-bootstrap-old-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/alpha6-bootstrap-old/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: false
+          compression-level: 1
+      - name: Retain bootstrap report even on failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: alpha6-bootstrap-old-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            old/build/verification.json
+            old/build/verify/bootstrap.log
+            ${{ runner.temp }}/bootstrap-old.log
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: false
+
+  new:
+    name: Bootstrap new source
+    needs: old
+    if: github.repository == 'den-run-ai/pystachy'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      artifact_id: ${{ steps.bundle.outputs.artifact-id }}
+      manifest_sha256: ${{ steps.seal.outputs.manifest_sha256 }}
+      compiler_sha256: ${{ steps.seal.outputs.compiler_sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0ed84b74431058b8ad063d1580d3a5782e1acc6e
+          path: new
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13.16'
+      - name: Check exact source
+        run: |
+          python3 harness/tools/alpha6_ir_audit.py check --side new --root "$GITHUB_WORKSPACE/new"
+      - name: LLVM 18 toolchain
+        working-directory: new
+        run: tools/setup.sh --minimal
+      - name: Verify compiler and runtime fixed points
+        working-directory: new
+        run: |
+          timeout --kill-after=10s 660s tests/verify.sh bootstrap 2>&1 | tee "$RUNNER_TEMP/bootstrap-new.log"
+      - name: Export with unchanged source validator
+        working-directory: new
+        run: |
+          python3 tools/verification_bootstrap.py export "$RUNNER_TEMP/alpha6-bootstrap-new/bundle"
+      - name: Bind source, run, attempt and payload
+        id: seal
+        run: |
+          python3 harness/tools/alpha6_ir_audit.py seal --side new --root "$GITHUB_WORKSPACE/new" \
+            --bundle "$RUNNER_TEMP/alpha6-bootstrap-new/bundle"
+      - name: Upload verified bootstrap
+        id: bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: alpha6-bootstrap-new-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/alpha6-bootstrap-new/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: false
+          compression-level: 1
+      - name: Retain bootstrap report even on failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: alpha6-bootstrap-new-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            new/build/verification.json
+            new/build/verify/bootstrap.log
+            ${{ runner.temp }}/bootstrap-new.log
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: false
+
+  compare:
+    name: Retain all 4451 IR comparisons
+    needs: [old, new]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Initialize evidence directory
+        run: mkdir -p "$RUNNER_TEMP/alpha6-ir-evidence"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 6e02b36b404cd295058967ea48860c2941ce59fc
+          path: old
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0ed84b74431058b8ad063d1580d3a5782e1acc6e
+          path: new
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.13.16'
+      - name: Check exact source checkouts
+        run: |
+          python3 harness/tools/alpha6_ir_audit.py check --side old --root "$GITHUB_WORKSPACE/old"
+          python3 harness/tools/alpha6_ir_audit.py check --side new --root "$GITHUB_WORKSPACE/new"
+      - name: LLVM 18 toolchain
+        working-directory: new
+        run: tools/setup.sh --minimal
+      - name: Harness subprocess controls
+        run: |
+          python3 -m py_compile harness/tools/alpha6_ir_audit.py
+          python3 harness/tools/alpha6_ir_audit.py self-test
+      # Artifact IDs come only from these producer jobs. No token, repository or run-id override.
+      - name: Download baseline bootstrap from this run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          artifact-ids: ${{ needs.old.outputs.artifact_id }}
+          path: ${{ runner.temp }}/alpha6-ir-bundles/old
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Download candidate bootstrap from this run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          artifact-ids: ${{ needs.new.outputs.artifact_id }}
+          path: ${{ runner.temp }}/alpha6-ir-bundles/new
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Validate and restore baseline using its own validator
+        env:
+          EXPECTED_MANIFEST: ${{ needs.old.outputs.manifest_sha256 }}
+          EXPECTED_COMPILER: ${{ needs.old.outputs.compiler_sha256 }}
+        run: |
+          python3 harness/tools/alpha6_ir_audit.py restore --side old --root "$GITHUB_WORKSPACE/old" \
+            --bundle "$RUNNER_TEMP/alpha6-ir-bundles/old/bundle" \
+            --manifest-sha256 "$EXPECTED_MANIFEST" --compiler-sha256 "$EXPECTED_COMPILER" \
+            2>&1 | tee "$RUNNER_TEMP/alpha6-ir-evidence/restore-old.log"
+      - name: Validate and restore candidate using its own validator
+        env:
+          EXPECTED_MANIFEST: ${{ needs.new.outputs.manifest_sha256 }}
+          EXPECTED_COMPILER: ${{ needs.new.outputs.compiler_sha256 }}
+        run: |
+          python3 harness/tools/alpha6_ir_audit.py restore --side new --root "$GITHUB_WORKSPACE/new" \
+            --bundle "$RUNNER_TEMP/alpha6-ir-bundles/new/bundle" \
+            --manifest-sha256 "$EXPECTED_MANIFEST" --compiler-sha256 "$EXPECTED_COMPILER" \
+            2>&1 | tee "$RUNNER_TEMP/alpha6-ir-evidence/restore-new.log"
+      - name: Compare with two workers and retain every result
+        run: |
+          timeout --kill-after=10s 660s python3 harness/tools/alpha6_ir_audit.py audit \
+            --old "$GITHUB_WORKSPACE/old" --new "$GITHUB_WORKSPACE/new" \
+            --bundles "$RUNNER_TEMP/alpha6-ir-bundles" \
+            --output "$RUNNER_TEMP/alpha6-ir-evidence/audit" \
+            2>&1 | tee "$RUNNER_TEMP/alpha6-ir-evidence/audit.log"
+      - name: Package complete or partial evidence
+        if: always()
+        run: |
+          timeout --kill-after=10s 90s python3 harness/tools/alpha6_ir_audit.py pack \
+            --directory "$RUNNER_TEMP/alpha6-ir-evidence" \
+            --archive "$RUNNER_TEMP/alpha6-ir-evidence.tar.gz" \
+            > "$RUNNER_TEMP/alpha6-ir-evidence.sha256"
+      - name: Upload complete or partial evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: alpha6-ir-audit-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/alpha6-ir-evidence.tar.gz
+            ${{ runner.temp }}/alpha6-ir-evidence.sha256
+            ${{ runner.temp }}/alpha6-ir-evidence/audit/summary.json
+            ${{ runner.temp }}/alpha6-ir-evidence/audit.log
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: false
+          compression-level: 0
