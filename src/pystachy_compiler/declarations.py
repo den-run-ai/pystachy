@@ -1636,6 +1636,11 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         xs = EXCFIELDS.split()
         for x in xs if exc_derives(ci.exc, "SystemExit") else xs[:3]:
             self.add_field(ci, " " + x[: x.find(":")], x[x.find(":") + 1 :])
+    if self.enum_intlike(ci.name) and " enum int" not in ci.ftypes:
+        # CPython's immutable int payload is distinct from the mutable _value_ attribute.
+        # Only enum_member and enum_new initialize this slot; exit_member reads it.
+        # It is absent from public field lookup, including literal reflection.
+        self.add_field(ci, " enum int", "int")
     dc = self.is_dc(ci.name) and ci.name not in self.nts
     kwmode = ci.kwonly  # (@dataclass(kw_only=True), or after _: KW_ONLY)
     kwseen = False
@@ -2749,7 +2754,7 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
         self.err(f"property '{name}' of '{short(o.t)}' is read-only")
     if store and ci.slotlimit and name not in ci.slots:
         self.err(f"field '{name}' is outside __slots__ of '{short(ci.name)}'")
-    if name not in ci.ftypes:
+    if name not in ci.ftypes or (name == " enum int" and self.enum_intlike(o.t)):
         if name in ci.methods:
             self.err(f"{shown(o.t)}.{name} is a method: call it, {name}(...) (methods are not values)")
         if ci.exc != "":
@@ -2889,6 +2894,31 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
                 box = self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr"))
                 self.dyn_id_read(v, box)
             return v
+    shadows = self.exc_shadows(ci, name) if name in ci.fflag and name not in ci.fsure else []
+    if len(shadows) > 0:
+        # an object of an exception class whose class variable shadows the field (exc_shadows)
+        # reads that class's value until it assigns the field itself: found, as for a tagged
+        # class's objects above, by the object's class, here the ExcClass it holds
+        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "*bool")).v
+        fv = self.mem_load(Val(p.v, "*" + p.t))
+        cls = self.mem_load(Val(self.fgep(o, ci.fpos[" cls"]), "*str")).v
+        cv = fv
+        cb = box
+        assigned = own
+        for x in shadows:
+            if x.ftypes[name] != p.t:
+                self.err(f"class variable {short(x.name)}.{name} ({typestr(x.ftypes[name])}) shadowing field '{name}' of {short(ci.name)} ({typestr(p.t)}) is not supported")
+            self.xcls[x.name] = True  # (its ExcClass, which its objects hold)
+            match = self.ptr_cmp('==', Val(cls, "str"), Val(f"@x.{x.name}", "str")).v
+            self.class_default(x, name)
+            cv = Val(self.select(match, self.mem_load(Val(x.fglob[name], "*" + p.t)), cv), p.t)
+            if box != "":
+                cb = self.select(match, Val(x.fglob[name] + ".box", "%ptr"), Val(cb, "%ptr"))
+            assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
+        bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
+        r = self.select(own, fv, cv)
+        if box != "":
+            box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
     if name in ci.fflag and name not in ci.fsure:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":

@@ -223,6 +223,14 @@ def gen_dflt_fn(self, f: FnInfo) -> FnInfo:
     o = self.classes[f.cls].origin if f.cls in self.classes else ""
     if o != "" and f.name in self.classes[o].methods and self.classes[o].methods[f.name].node is f.node:
         return self.classes[o].methods[f.name]
+    if f.clsuse and f.cls in self.classes:
+        # a class method that names cls is a function of its own in each class that inherits it
+        # (program.py's inherited methods), of the one def: that of the class that defines it,
+        # whose def statement stores the default values (no statement stores the others')
+        c = self.classes[f.cls].base
+        while c in self.classes and f.name in self.classes[c].methods and self.classes[c].methods[f.name].orig is f.orig:
+            f = self.classes[c].methods[f.name]
+            c = self.classes[c].base
     return f
 
 def gen_early_default(self, f: FnInfo, j: int) -> None:

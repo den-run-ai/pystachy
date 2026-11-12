@@ -1,0 +1,4 @@
+changed base
+AttributeError 'Base' object has no attribute 'label'
+AttributeError 'Plain' object has no attribute 'label'
+[exit 0]

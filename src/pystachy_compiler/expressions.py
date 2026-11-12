@@ -318,6 +318,8 @@ def gen_has(self, t: str, a: str) -> int:
         return -1 if r == 1 else 0  # (unless it is None)
     if t in self.classes:
         ci = self.classes[t]
+        if a == " enum int" and self.enum_intlike(t):
+            return 0  # (the compiler's immutable payload is no Python attribute)
         if "." in a:
             return 0  # (no attribute name: a key of a property's setter, x.setter, or a default_factory's)
         if a in ci.methods and ci.methods[a].prop:

@@ -58,7 +58,7 @@ NOT_RESET = {
 # source_lines accumulates metadata across module lowering, outside AST/dry traversal.
 PROGRAM = """
     classes tmpl compiling utags specdone funcs aliases imports fglobals mvars gtypes globs gcroots
-    consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll summaries xcls xvals
+    consts fieldnames bconsts tconsts tconstdata lconsts strs bstrs strvals vnodes cmexit rtfns opfxs out source_lines fns fll callsites summaries xcls xvals
     xmods xsigs xctors xtypes exctree eh opts reds lazy lazyat wake called gflag ocls ocmp hcls one
     xobj impg wide nokey nonereads noneglobalpending attrvals attrown hints newhints final xnot newx retseen
     template_instances template_retained retainers unsupported cnodes hooks chooks flagged unraised
