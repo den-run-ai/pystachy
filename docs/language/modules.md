@@ -111,7 +111,7 @@ Pystachy resolves these guards while compiling:
 | Guard | Treatment |
 |---|---|
 | `if __name__ == "__main__":` in an imported module | Drops the body. |
-| `if typing.TYPE_CHECKING:` or the imported `TYPE_CHECKING` | Drops the body, including the common optional `typing` import whose handler sets `TYPE_CHECKING = False`. |
+| `if typing.TYPE_CHECKING:` or the imported `TYPE_CHECKING` | Drops the body, including the common optional `typing` import whose handler sets `TYPE_CHECKING = False`. A quoted annotation may still name what a top-level block's from-import would bind ([annotations](typing.md#annotations)). |
 | Module-level `if False:` or `if 0:` | Drops the body outside functions and classes. |
 | Module-level `TYPE_CHECKING = False` followed by `if TYPE_CHECKING:` | Drops the body when that is the name's only binding; other assignments, deletion, imports, star imports or `global` declarations disable this rule. |
 | Tests of the platform: `sys.platform ==` or `!=` a literal string, `in` or `not in` a tuple or list of them, `sys.platform.startswith()` of one or a tuple of them, `os.name ==` or `!=` one, `sys.implementation.name ==` or `!=` one | Resolves them for the system Pystachy compiles for, the one it runs on, with the values its runtime reports: `sys.platform` is `"linux"`, `"darwin"` or `"freebsd"`, `os.name` is `"posix"` and `sys.implementation.name` is `"pystachy"`. This also holds in conditional expressions (`sep = "\\" if sys.platform == "win32" else "/"`), in functions, and in module code for a name that the module assigns such a test once, which nothing else binds, deletes or declares global (`_MS_WINDOWS = sys.platform == "win32"`, then `if _MS_WINDOWS:`); another module may assign that name only the value it holds. |
@@ -303,7 +303,8 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 `open()` supports text modes, `buffering=`, `newline=` translation and positions for `"+"`
 modes. Files provide `read`, `readline`, `readlines`, `write`, `writelines`, `flush`, `close`,
-`fileno`, iteration, and `closed`, `name` and `mode`. See
+`fileno`, `seekable`, iteration, `closed`, `name` and `mode`, and `__enter__()` and
+`__exit__()` as calls, as `contextlib.ExitStack` makes them. See
 [text encodings and positions](compatibility.md#text-and-file-positions) and
 [automatic closure](compatibility.md#memory-and-resource-lifetime).
 

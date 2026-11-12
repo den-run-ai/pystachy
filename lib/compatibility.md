@@ -1016,10 +1016,16 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
   exception).
 - A function that a manager decorates and that calls itself is rejected (the decorator's `inner()`
   calls itself before its return type is inferred): use the manager inside it instead.
-- `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
+- `ExitStack` enters managers of any classes, files and generator managers among them
+  (`enter_context()`), registers callbacks with their arguments (`callback()`) and the
+  `__exit__` of an object (`push()`), and has `pop_all()` and `close()`. Each is compiled for
+  the class it is given: what has no `__enter__` or `__exit__` is rejected as the program
+  compiles, where CPython raises `TypeError`. `push()` takes no plain function with
+  `__exit__`'s signature, a callback is given no traceback, and an exception that a callback
+  raises keeps the `__context__` it was raised with. The class derives from no class.
+- `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
   (`asynccontextmanager`, `aclosing`, `AsyncExitStack`, `AbstractAsyncContextManager`) are not
-  ported: the subset has no list of managers of different classes, no assignable `sys.stdout`,
-  no `os.getcwd()` and no `async def`.
+  ported: the subset has no assignable `sys.stdout`, no `os.getcwd()` and no `async def`.
 
 ## Numbers and randomness
 

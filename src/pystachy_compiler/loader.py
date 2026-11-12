@@ -1971,6 +1971,8 @@ class Loader:
                             elif imp.s.startswith("from.") and len(a.kids) == 2 and m.name != "" and (m.pdir != "" or "." in m.name):
                                 src = self.tc_relative(m, imp.s, a.kids[1].s)
                             attr = a.kids[0].s[a.kids[0].s.rfind(".") + 1 :] if len(a.kids) == 2 else ""
+                            if src in ["typing", "typing_extensions", "collections.abc"]:
+                                continue  # (typing's names, which annotations name as before: Gen.typing_ref)
                             m.tconly[a.s[: a.s.find(".")] if "." in a.s else a.s] = src + " " + attr if src != "" and attr != "" else ""
             run: list[Node] = []
             if self.static_if(m, st, scope, run) or self.optional(m, st, run, False) or (blk is m.body and self.unbound_try(m, st, out, blk.kids[i + 1 :], run)):

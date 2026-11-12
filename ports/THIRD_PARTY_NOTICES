@@ -1102,7 +1102,7 @@ SOFTWARE.
 json_repair port and parity inputs (ports/json_repair/, tests/upstream/json_repair/)
 ---------------------------------------------------------------------------------
 
-Adapted from json_repair v0.64.8, commit dc6d02b168656aa3dcaac6a119ecc47594d3526e:
+Adapted from json_repair v0.64.9, commit 36d7a6ed53e777b5a5b9017e33d35ea2af8b7c6e:
 https://github.com/mangiucugna/json_repair
 Copyright (c) 2023 Stefano Baccianella. MIT licensed; the full license is retained
 in ports/json_repair/LICENSE and tests/upstream/json_repair/LICENSE. The port guide

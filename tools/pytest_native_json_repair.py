@@ -5,7 +5,7 @@ The selected test functions (including decorators) are copied byte-for-byte into
 an explicit adapter. Public imports, an explicitly recorded helper annotation
 and the existing dynamic-Any opt-in are the only adaptations.
 Every original case ID and phase is compared with adapted pytest and generated
-Python/JIT/AOT. This is deliberately separate from the 943-call API replay.
+Python/JIT/AOT. This is deliberately separate from the 962-call API replay.
 """
 import argparse
 import ast

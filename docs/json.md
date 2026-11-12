@@ -111,6 +111,7 @@ them compare equal. See [numeric deviations](language/compatibility.md#numbers).
 |---|---|
 | `loads(s: str)` | Scalars, mixed arrays, nested objects; string keys; whitespace; last duplicate key wins |
 | `dumps(obj: JSONValue)` | Scalars and recursive lists/dicts; insertion-order objects; shared aliases; cycle detection |
+| `load(fp)`, `dump(obj, fp)` | `loads(fp.read())` and `fp.write(dumps(obj))` of a text file; `dump()` takes the encoder keywords and writes the document in one piece |
 | Encoder keywords | `ensure_ascii=True`, `allow_nan=True`, `sort_keys=False`, `separators=None` or a two-string tuple |
 | `JSONDecoder()` | Default `decode(s)` and `raw_decode(s, idx=0)`; the latter returns a value and character end offset, without skipping leading whitespace or rejecting trailing text |
 | `JSONDecodeError` | `ValueError` subclass with `msg`, `doc`, `pos`, `lineno`, `colno` and formatted error text |
@@ -147,7 +148,7 @@ Deliberate limits:
   accepts 9,998 containers on Linux at any recursion limit
   ([deviation](../tests/deviations/json_limits.py)). Circular serialization raises
   `ValueError: Circular reference detected`.
-- Input is `str`; bytes/bytearray input, `load()`/`dump()`, configured `JSONDecoder` constructors,
+- Input is `str`; bytes/bytearray input, configured `JSONDecoder` constructors,
   `JSONEncoder`, hooks, custom conversion functions, `default`, `skipkeys`,
   `check_circular`, `strict` and indentation are not implemented.
 - Object keys must be strings; tuple serialization and arbitrary user objects
@@ -175,6 +176,21 @@ except ImportError:
 
 This extension is for direct calls, like the `json.loads()` dynamic-storage route;
 passing the adapter as a callable value does not request dynamic result storage.
+
+Code written for CPython needs no adapter: `json.JSONDecoder().raw_decode(s, idx)`, called on
+a default decoder made in the same expression, decodes into `Any` containers where its result
+is expected to hold `Any` values, as `json.loads()` does. A return annotation gives that
+expectation, or the declared types of the names it is unpacked into:
+
+```python
+value: Any
+end: int
+value, end = json.JSONDecoder().raw_decode(text)
+```
+
+A decoder kept in a variable, and a result whose type nothing declares, stay typed
+(`tests/programs/inference/dynany_json_decoder_any.py`). `json.load()` and `json.dump()`
+follow `loads()` and `dumps()` (`tests/programs/inference/dynany_json_load_dump.py`).
 
 In a module that opts in to [dynamic `Any`](dynamic-any.md), `json.loads()` decodes into `Any`'s
 containers wherever its result becomes `Any` storage: an `Any` variable, argument or return value,

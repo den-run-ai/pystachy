@@ -1613,8 +1613,97 @@ def _setbits(charmap: list[int], ks: list[int]) -> bool:
     return True
 
 
+def _optimize_wide_charset(charset: list[Item]) -> _Charset:
+    # _optimize_charset() of a set that ignores no case and has a character past Latin-1, which
+    # CPython maps in 65,536 entries: the same items, made from the set's intervals alone (the
+    # map, its scans and the keys of its 256 chunks took milliseconds for each such set)
+    out: list[Item] = []
+    tail: list[Item] = []
+    spans: list[tuple[int, int]] = []  # [lo, hi) of the characters below 65536
+    for it in charset:
+        if it.op == LITERAL:
+            if it.arg < 65536:
+                spans.append((it.arg, it.arg + 1))
+            else:
+                t = Item(LITERAL, it.arg)
+                t.arg2 = it.arg2
+                tail.append(t)
+        elif it.op == RANGE:
+            if it.arg < 65536:
+                spans.append((it.arg, min(it.arg2 + 1, 65536)))
+            if it.arg2 >= 65536:
+                tail.append(_range(it.arg, it.arg2))  # (its BMP characters are in spans too)
+        elif it.op == NEGATE:
+            out.append(it)
+        else:
+            tail.append(it)
+    spans.sort()
+    runs: list[tuple[int, int]] = []  # the map's runs of characters: the spans, merged
+    for sp in spans:
+        if len(runs) > 0 and sp[0] <= runs[-1][1]:
+            if sp[1] > runs[-1][1]:
+                runs[-1] = (runs[-1][0], sp[1])
+        else:
+            runs.append(sp)
+    if len(runs) <= 2:
+        # use literal/range
+        for r in runs:
+            if r[1] - r[0] == 1:
+                out.append(Item(LITERAL, r[0]))
+            else:
+                out.append(_range(r[0], r[1] - 1))
+        for t in tail:
+            out.append(t)
+        # if the new representation is more compact
+        if len(out) < len(charset):
+            return _Charset(out, False)
+        # else original character set is good enough
+        return _Charset(charset, False)
+    # a big charset: as _optimize_charset makes it, a chunk's bits only where a run reaches it
+    comps: dict[str, int] = {}
+    mapping: list[int] = []
+    block = 0
+    chunks: list[int] = []
+    at = 0  # (the first run that may reach the chunk)
+    for i in range(0, 65536, 256):
+        while at < len(runs) and runs[at][1] <= i:
+            at += 1
+        bits: list[int] = []
+        key = ""
+        if at < len(runs) and runs[at][0] < i + 256:
+            bits = [0] * 256
+            k = at
+            while k < len(runs) and runs[k][0] < i + 256:
+                for j in range(max(runs[k][0], i), min(runs[k][1], i + 256)):
+                    bits[j - i] = 1
+                k += 1
+            key = "".join(["1" if b != 0 else "0" for b in bits])
+        if key in comps:
+            mapping.append(comps[key])
+        else:
+            comps[key] = block
+            mapping.append(block)
+            block += 1
+            chunks.extend(bits if len(bits) > 0 else [0] * 256)
+    data = [block]
+    for w in range(64):
+        data.append(mapping[4 * w] | (mapping[4 * w + 1] << 8) | (mapping[4 * w + 2] << 16) | (mapping[4 * w + 3] << 24))
+    for w in _mk_bitmap(chunks, 0, len(chunks)):
+        data.append(w)
+    big = Item(BIGCHARSET, 0)
+    big.codes = data
+    out.append(big)
+    for t in tail:
+        out.append(t)
+    return _Charset(out, False)
+
+
 def _optimize_charset(charset: list[Item], case: _Case) -> _Charset:
     # internal: optimize character set (case.on: IGNORECASE and not LOCALE, CPython's fixup)
+    if not case.on:
+        for it in charset:
+            if (it.op == LITERAL and it.arg >= 256) or (it.op == RANGE and it.arg2 >= 256):
+                return _optimize_wide_charset(charset)
     out: list[Item] = []
     tail: list[Item] = []
     charmap = [0] * 256

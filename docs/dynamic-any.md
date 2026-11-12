@@ -107,7 +107,12 @@ In an opt-in module, `Any` selects the internal type `dyn` in parameters, return
 locals, module variables, fields and container items. Examples include `list[Any]`,
 `dict[str, Any]`, `tuple[Any, ...]` and `Callable[[Any], Any]`. `Any | None`,
 `Optional[Any]` and any other union containing `Any` collapse to `Any`, which can
-already hold `None`. `Annotated[Any, ...]` also selects dynamic storage
+already hold `None`. So does a union of two or more members with a container of `Any`
+values among them, such as `dict[str, Any] | list[Any] | str | None`: the box holds each
+member as it is, and whatever else such loosely typed storage is given, where a closed union
+would reject a value outside its members (`dynany_union_any_containers.py`). `object` in a
+return or container annotation is `Any` too; a parameter annotated `object` alone remains a
+template's (`dynany_object_annotation.py`). `Annotated[Any, ...]` also selects dynamic storage
 (`tests/programs/inference/dynany_annotated.py`).
 
 Concrete annotations and unannotated code retain their static types, layouts and

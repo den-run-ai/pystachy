@@ -31,7 +31,7 @@ def bump(d: dict[str, int], k: Optional[str]) -> None:
 
 def bumpn(d: dict[int, int], k: Optional[int]) -> None:
     if k in d:
-        d[k] += 1  # (the has's test is a phi of k is not None: no fusion with it) entry, val, entry_set
+        d[k] += 1  # (the has's test is a phi of k is not None: no fusion with it) entry, val, entry_set; the test narrows k, so the subscript raises no KeyError for None
 
 
 def drop_opt(d: dict[str, int], k: Optional[str]) -> None:

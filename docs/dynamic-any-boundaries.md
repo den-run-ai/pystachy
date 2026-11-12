@@ -47,6 +47,8 @@ consumer only after preserving its aliases and the boundary to existing users.
 | `parser_parenthesized.py`, `parse_string_helpers/parse_boolean_or_null.py`, `parse_string_helpers/object_value_context.py`, `utils/json_context.py` | These helpers operate on inferred parser objects; they declare no `Any` annotation. | Their local pragmas are removable candidates, subject to mixed-display and inference checks. Context-stack state is known int/bool/None storage. Pragma deletion alone does not remove imported identity tracking. |
 | `__main__.py` | The CLI serializes the repair result; it declares no `Any` annotation. | Check encoder dispatch before removing its opt-in. A smaller pragma count is not a cost result. |
 | `__init__.py`, `utils/__init__.py`, `parse_string_helpers/__init__.py` | Re-exports or package documentation; no dynamic storage originates here. | Local opt-ins are hygiene candidates, with no independent performance claim. |
+| `schema_repair.py`, `parser_schema.py`, `utils/pattern_properties.py` | Upstream's schema interface: schemas are open JSON Schema mappings, booleans or models, and schema-guided values are the parser's dynamic results. | The port stands in for schema repair, which needs packages it does not have: a JSON Schema dict raises before any repair. Only boolean schemas reach these modules' dynamic paths. |
+| `utils/constants.py` | Declares `JSONReturnType`, a union with `dict[str, Any]` and `list[Any]` members, which is an `Any` value. | The alias is the port's one name for repaired values; its pragma makes the union's members dynamic where the alias is written. |
 
 ## Evidence required for a migration
 
