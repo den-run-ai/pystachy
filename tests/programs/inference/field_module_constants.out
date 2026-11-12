@@ -1,0 +1,4 @@
+True 8 16 box
+0.5 Capsule('librt.strings') ['a', 'b'] 3 8 24
+10 ['a', 'b', 'c']
+[exit 0]
