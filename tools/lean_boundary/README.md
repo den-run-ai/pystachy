@@ -121,6 +121,13 @@ form. A read in a block that nothing reaches cannot run; it counts as proved
 with its function. The snapshot must be a completed typed-after inspection even
 when no function reads a payload.
 
+`pystachy-boundary` and `pystachy-access` also take `--batch`: one candidate per
+input line and one result line per candidate, in order, until the input ends. Lean
+checks each line exactly as a run on that line alone checks it. The Python adapters
+keep one such process per thread and checker, replaced after a timeout or a
+malformed answer. A run's runtime start-up costs about 40 ms, where checking a
+typical candidate takes a few milliseconds.
+
 `tools/check_lean_corpus.py`, which `make check-lean-corpus` runs after building
 the checker, does that for the dynamic-`Any` corpus: each differential test
 program and deviation that opts in to dynamic `Any` (the compiler's own pragma

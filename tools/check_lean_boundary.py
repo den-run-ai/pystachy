@@ -8,14 +8,18 @@ It proves neither full typed-IR validity nor the correctness of LLVM lowering.
 from __future__ import annotations
 
 import argparse
+import atexit
 from collections import deque
 import hashlib
 import json
 import os
 from pathlib import Path
+import select
 import stat
 import subprocess
 import sys
+import threading
+import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -908,18 +912,87 @@ def encode(candidate):
     return encoded
 
 
+class Server:
+    """A Lean checker run with --batch: one encoded candidate per line in, one result line out,
+    in order. Lean checks each line as a separate run checks its whole input; the process only
+    shares the runtime's start-up, which costs a single run about 40 ms."""
+
+    def __init__(self, checker):
+        self.owner = os.getpid()
+        self.process = subprocess.Popen([checker, "--batch"], stdin=subprocess.PIPE,
+                                        stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+
+    def answer(self, encoded, timeout):
+        deadline = time.monotonic() + timeout
+        self.process.stdin.write(encoded.encode())
+        self.process.stdin.flush()
+        output, received = self.process.stdout.fileno(), b""
+        while not received.endswith(b"\n"):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or not select.select([output], [], [], remaining)[0]:
+                raise subprocess.TimeoutExpired(self.process.args, timeout)
+            chunk = os.read(output, 65536)
+            require(chunk, "checker exited without a result")
+            received += chunk
+        require(received.count(b"\n") == 1, "checker answered more than once")
+        return json.loads(received, object_pairs_hook=unique_object)
+
+    def close(self):
+        try:
+            self.process.stdin.close()
+        except OSError:
+            pass  # (a checker that already exited)
+        try:
+            self.process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self.process.kill()
+            self.process.wait()
+
+
+_servers = threading.local()
+_started = []
+_started_lock = threading.Lock()
+
+
+def checker_result(checker, encoded, timeout):
+    """The Lean checker's result for one encoded candidate (a line), from this thread's
+    long-lived process for that checker: started on first use and replaced after any failure,
+    so no candidate's result depends on another's."""
+    require(encoded.endswith("\n") and encoded.count("\n") == 1, "a candidate is one line")
+    path = str(Path(checker).resolve())
+    if getattr(_servers, "owner", None) != os.getpid():
+        _servers.owner, _servers.by_path = os.getpid(), {}
+    server = _servers.by_path.get(path)
+    if server is None:
+        server = _servers.by_path[path] = Server(path)
+        with _started_lock:
+            _started.append(server)
+    try:
+        return server.answer(encoded, timeout)
+    except BaseException:
+        del _servers.by_path[path]
+        server.process.kill()
+        server.close()
+        raise
+
+
+@atexit.register
+def _close_servers():
+    with _started_lock:
+        for server in _started:
+            if server.owner == os.getpid():
+                server.close()
+
+
 def run_checker(checker, encoded, metadata):
     """Whether the Lean checker accepts every proof obligation of one encoded candidate."""
-    completed = subprocess.run([str(Path(checker).resolve())], input=encoded, capture_output=True,
-                               text=True, timeout=10)
-    result = json.loads(completed.stdout, object_pairs_hook=unique_object)
+    result = checker_result(checker, encoded, timeout=10)
     require(isinstance(result, dict) and type(result.get("accepted")) is bool,
             "checker did not return an acceptance result")
-    require(result.get("nodes") == metadata["nodes"] and result.get("payloads") == metadata["payloads"],
+    require(set(result) == {"accepted", "nodes", "payloads"}, f"checker error: {result.get('error')}")
+    require(result["nodes"] == metadata["nodes"] and result["payloads"] == metadata["payloads"],
             "checker counts disagree with normalized input")
-    accepted = result["accepted"]
-    require(completed.returncode == (0 if accepted else 1), "checker result/exit status mismatch")
-    return accepted
+    return result["accepted"]
 
 
 def payload_functions(snapshot):
