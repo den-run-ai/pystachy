@@ -144,13 +144,101 @@ class FieldInitTests(unittest.TestCase):
                     return "@m.Memo.__init__"
             raise AssertionError("no field and flag stores")
 
+        def field_store(snapshot, symbol, cls, name):
+            """The store of a field of class cls in function symbol, removed."""
+            init = self.function(snapshot, symbol)
+            index = snapshot["class_layouts"][cls]["fields"].index(name)
+            addresses = {f"%t{op['results'][0]}" for b in init["blocks"] for op in b["operations"]
+                         if op["op"] == "field.addr" and op["immediate"] == index}
+            self.remove(init, lambda b, op: op["op"] == "mem.store" and op["operands"][0]["value"] in addresses)
+
+        def span(snapshot):
+            """Gauge.__init__'s def, and where it loads self from its cell."""
+            symbol = next(op["text"] for b in self.function(snapshot, "@m.Gauge.__init__")["blocks"]
+                          for op in b["operations"] if op["op"] == "call" and op["text"].startswith("@c."))
+            fn = self.function(snapshot, symbol)
+            block = fn["blocks"][0]
+            offset = next(i for i, op in enumerate(block["operations"]) if op["op"] == "mem.load" and op["type"] == "Gauge")
+            return block, offset
+
+        def closure_before_store(snapshot):  # span(), called by __init__, reads low before it is assigned
+            field_store(snapshot, "@m.Gauge.__init__", "Gauge", "low")
+            return "@m.Gauge.__init__"
+
+        def escapes_before_store(snapshot):  # the lambda escapes, into log, before self.name is assigned
+            field_store(snapshot, "@m.Watch.__init__", "Watch", "name")
+            return "@m.Watch.__init__"
+
+        def closure_rebinds_self(snapshot):  # span() assigns its cell: __init__'s later stores may miss self
+            block, offset = span(snapshot)
+            cell = block["operations"][offset]["operands"][0]["value"]
+            block["operations"].insert(offset + 1, {"op": "mem.store", "type": "", "text": "", "immediate": 0, "descriptor": "",
+                                                    "results": [], "targets": [], "operands": [
+                                                        {"value": cell, "type": "*Gauge"}, {"value": "null", "type": "Gauge"}]})
+            return "@main.init"
+
+        def closure_lets_self_escape(snapshot):  # span() passes self on before __init__ assigns width
+            block, offset = span(snapshot)
+            obj = f"%t{block['operations'][offset]['results'][0]}"
+            block["operations"].insert(offset + 1, {"op": "call", "type": "int", "text": "@m.Gauge.total", "immediate": 0,
+                                                    "descriptor": "", "results": [9001], "targets": [],
+                                                    "operands": [{"value": obj, "type": "Gauge"}]})
+            return "@m.Gauge.__init__"
+
+        def published_cell_store(snapshot):  # after the lambda escapes, its cell takes an object under construction
+            ops = self.function(snapshot, "@m.Watch.__init__")["blocks"][0]["operations"]
+            cell = next(op["operands"][0]["value"] for op in ops if op["op"] == "mem.store" and op["operands"][1]["value"] == "%a0")
+            ops[len(ops) - 1:len(ops) - 1] = [
+                {"op": "alloc.fixed", "type": "Watch", "text": "", "immediate": 0, "descriptor": "", "results": [9002],
+                 "operands": [], "targets": []},
+                {"op": "mem.store", "type": "", "text": "", "immediate": 0, "descriptor": "", "results": [], "targets": [],
+                 "operands": [{"value": cell, "type": "*Watch"}, {"value": "%t9002", "type": "Watch"}]}]
+            return "@m.Watch.__init__"
+
+        def callable_before_store(snapshot):  # the Callable lambda, called by __init__, reads code before it is assigned
+            field_store(snapshot, "@m.Ticket.__init__", "Ticket", "code")
+            return "@m.Ticket.__init__"
+
+        def adapter_does_more(snapshot):  # the lambda's adapter also uses the environment otherwise: not followed
+            adapter = next(op["operands"][1]["value"] for b in self.function(snapshot, "@m.Ticket.__init__")["blocks"]
+                           for op in b["operations"] if op["op"] == "mach.store"
+                           and op["operands"][1]["value"].startswith("@cv."))
+            ops = self.function(snapshot, adapter)["blocks"][0]["operations"]
+            offset = next(i for i, op in enumerate(ops) if op["op"] == "mem.load")
+            ops.insert(offset + 1, {"op": "ptr.cmp", "type": "bool", "text": "==", "immediate": 0, "descriptor": "",
+                                    "results": [9003], "targets": [], "operands": [
+                                        {"value": f"%t{ops[offset]['results'][0]}", "type": "%ptr"},
+                                        {"value": "null", "type": "None"}]})
+            return "@m.Ticket.__init__"
+
         for corruption in (no_store, no_init, no_default, no_class_tag, unflagged_base, chain_without_init,
-                           read_before_store, flag_before_field):
+                           read_before_store, flag_before_field, closure_before_store, escapes_before_store,
+                           closure_rebinds_self, closure_lets_self_escape, published_cell_store,
+                           callable_before_store, adapter_does_more):
             with self.subTest(corruption=corruption.__name__):
                 snapshot = self.sample()
                 name = corruption(snapshot)
                 results, _ = self.statuses(snapshot)
                 self.assertEqual(results[name]["status"], "rejected", results[name])
+
+    def test_each_call_meets_its_contract(self):
+        # (Python infers contracts; Lean checks every call against its callee's: a closure's
+        # pre-condition that also demands width, which __init__ assigns after the call)
+        original = fields.infer_contracts
+
+        def tampered(ctx, proved, refused=frozenset()):
+            contracts, wanted = original(ctx, proved, refused)
+            width = ctx.layouts["Gauge"]["fields"].index("width")
+            for (symbol, position), (pre, post, leaks) in list(contracts.items()):
+                if position == "env0" and ctx.position_class(ctx.functions[symbol], position) == "Gauge":
+                    contracts[(symbol, position)] = (pre | {width}, post, leaks)
+            return contracts, wanted
+        fields.infer_contracts = tampered
+        try:
+            results, _ = self.statuses(self.sample())
+        finally:
+            fields.infer_contracts = original
+        self.assertEqual(results["@m.Gauge.__init__"]["status"], "rejected", results["@m.Gauge.__init__"])
 
     def test_forms_beyond_the_model_are_refused(self):
         snapshot = self.sample()

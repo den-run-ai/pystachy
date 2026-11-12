@@ -119,14 +119,14 @@ one payload, a dictionary value whose member the IR does not name, and generator
 unsupported.
 
 Field initialization was swept over all 2,416 programs on 2026-11-12 (snapshots of the
-compiler at b27908f4): Lean proved 156,781 of 157,770 obligations (4,612 of
-4,639 unchecked reads, 115,679 of 116,538 escapes, 8,081 of 8,098 call pre-conditions,
-28,177 of 28,263 post-conditions and 232 of 232 flag stores) in 16,102 of
-16,693 functions. Each of the 86 rejected functions, in 24 programs, was traced to the
-model: 41 store an object under construction into a closure's cell (`weakref.ref`'s
-callback, which `logging` uses, and two tests of closures in `__init__`), an escape here,
-41 call an `__init__` so rejected, and four, `logging`'s `getLogger`, join in a handler a
-path where the new `Logger` is incomplete with one that returns it (facts are not relational).
+compiler at b27908f4): Lean proved 157,697 of 157,934 obligations (all 4,662 unchecked
+reads, 116,412 of 116,641 escapes, 8,118 of 8,126 call pre-conditions, all 28,273
+post-conditions and all 232 flag stores) in 16,187 of 16,696 functions. Before closure
+cells were modeled, 82 more functions were rejected: `weakref.ref`'s callback closure, which
+`logging` uses, its callers, and the tests of closures in `__init__`. The four rejected
+functions, `logging`'s `getLogger`, join in a `with` handler a path where `__init__` of the
+new `Logger` raised (no value holds it) with one that returns it complete; facts are not
+relational, and the IR assigns `rv` only once `__init__` returns, as CPython does.
 505 functions (53 distinct) are unsupported: beyond the boundary validator's bounds
 or the certificate's size, or a list store, generator or long type name it refuses.
 Designing these checks found the bug b27908f4 fixes (no corpus program had its shape),
@@ -194,21 +194,41 @@ its field (`setfield`), which each flag store of an object under construction mu
 Objects that compiled code did not make here (parameters, loads from memory, call results)
 are complete: the function that allocated each let it escape only once complete.
 
+A variable that a def or lambda takes lives in a cell, a word the function allocates as it
+begins, and each closure's environment holds the cells it takes. A cell is a private slot of
+its function until an environment holding it escapes (into a `Callable`, memory or a call):
+it is then published, so the objects it holds escape there, each object stored into it later
+escapes, and each load from it may also be another, complete object (a `nonlocal`
+assignment elsewhere). A direct call of a def, given an environment none of whose cells is
+published, is covered instead by a contract for each cell holding an object under
+construction, as is a call of a `Callable` the function made of a lambda, through its
+adapter (its code word), where the adapter only passes the environment on: the closure
+function, which loads the cell from its environment, is checked as if given that object;
+a contract that lets the object or its cell escape, or assigns the cell, publishes the cell
+in the caller and lets its content change.
+
 [`examples/field_init.py`](examples/field_init.py) has class attribute defaults, a field
 assigned on one path, a list built in a loop, an object join, a tagged hierarchy whose
 calls dispatch on the class word, `super().fmt(...)` before `super().__init__()`, a field
-that only `hasattr` tests, a dataclass factory and an exception subclass's class variable
-shadowing its base's field.
+that only `hasattr` tests, a dataclass factory, an exception subclass's class variable
+shadowing its base's field, a def and a `Callable` lambda called during `__init__`, a lambda
+that escapes once its object is complete, a `nonlocal` counter and a weak reference with a
+callback.
 [`test_lean_fields.py`](../test_lean_fields.py) corrupts its IR: an `__init__` that forgets
 a field, an object no `__init__` was given, a class default not stored, a class word not
 stored, a loop's object escaping into the next before its `__init__`, a read before the
-field's store, a flag set before its field and a base whose code reads the shadowed field
-unflagged must each be rejected.
+field's store, a flag set before its field, a base whose code reads the shadowed field
+unflagged, a def called before a field it reads is stored, a lambda escaping before one is
+stored, a def that assigns its cell (later stores may miss self), a def that passes self on
+early, an incomplete object stored into a published cell, a `Callable` lambda called before
+a field it reads is stored and an adapter that also uses its environment must each be
+rejected; so must a call that does not meet a tampered (stronger) contract.
 The class layouts, the classes table, the IR's operand views and typed memory are trusted, as
-are that only compiled allocations make objects of the program's classes and that complete
-objects' flags are set only after their fields; a closure that captures an object under
-construction and a raw access other than its class word count as escapes (conservatively),
-and functions beyond the boundary adapter's bounds are unsupported.
+are that only compiled allocations make objects of the program's classes, that complete
+objects' flags are set only after their fields and the closure layout (`functions.py`'s cells,
+`closure()`'s environments and `Callable`s); a raw access other than its class word counts as
+an escape (conservatively), and functions beyond the boundary adapter's bounds are
+unsupported.
 
 ## Run
 
@@ -235,8 +255,8 @@ rejection is an investigation target; it does not establish a compiler bug.
 ## Supported abstraction and boundaries
 
 The bounded CI selection exercises twenty-nine inventoried union reads, fifty-two
-payload obligations, three proved union return domains, twenty-five removed null checks
-and 111 field obligations in `examples/union_guards.py`, `examples/union_effects.py`,
+payload obligations, three proved union return domains, twenty-seven removed null checks
+and 141 field obligations in `examples/union_guards.py`, `examples/union_effects.py`,
 `examples/union_split.py`, `examples/null_guards.py`, `examples/null_reloads.py` and
 `examples/field_init.py`.
 This small gate does not claim complete-corpus acceptance. Programs whose union values

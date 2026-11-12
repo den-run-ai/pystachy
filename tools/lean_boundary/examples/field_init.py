@@ -1,6 +1,8 @@
 """Objects under construction: each field a class's code reads without an "is assigned" flag test
 is assigned before that code can see the object (fl_fields)."""
 from dataclasses import dataclass, field
+from typing import Callable
+import weakref
 
 
 class Point:
@@ -112,6 +114,67 @@ def bagged(n: int) -> int:
     return len(b.items)
 
 
+class Gauge:
+    def __init__(self, low: int, high: int) -> None:
+        # (a def that reads the object, called where the fields it reads are assigned: a contract
+        # covers the cell that holds self)
+        self.low = low
+
+        def span() -> int:
+            return self.high - self.low
+
+        self.high = high
+        self.width: int = span()
+        self.double = self.width * 2
+
+    def total(self) -> int:
+        return self.low + self.high + self.width + self.double
+
+
+class Watch:
+    def __init__(self, log: list[Callable[[], str]], name: str) -> None:
+        # (a lambda that escapes, into log, once the object is complete; a nonlocal count)
+        self.name = name
+        count = 0
+
+        def bump() -> None:
+            nonlocal count
+            count += 1
+
+        bump()
+        log.append(lambda: self.name.upper() + str(count))
+
+
+class Ticket:
+    def __init__(self, code: int) -> None:
+        # (a lambda stored as a Callable and called during __init__, through its adapter: a def
+        # would be called directly)
+        self.code = code
+        label: Callable[[], str] = lambda: "T" + str(self.code)  # noqa: E731
+        self.label: str = label()
+        self.size = len(self.label)
+
+
+def watched() -> str:
+    log: list[Callable[[], str]] = []
+    Watch(log, "a")
+    Watch(log, "b")
+    return "".join([f() for f in log])
+
+
+class Target:
+    def __init__(self, value: int) -> None:
+        self.value = value
+
+
+def referent() -> int:
+    # (ReferenceType.__init__'s callback closure takes self once its fields are assigned)
+    t = Target(5)
+    r = weakref.ref(t, lambda dead: None)
+    got = r()
+    return got.value if got is not None else -1
+
+
 Labeled.msg = "rebound"
 print(Point(1, 2, "q").show(), chain(4), either(True), either(False))
 print(Square(3).area(), areas([Square(2), Shape(5)]), bagged(3), Memo(4).get(4), Memo(2).get(3))
@@ -120,3 +183,4 @@ try:
 except AppError as e:
     print(e, e.msg)
 print(Labeled().msg, message(Labeled()), repr(str(Labeled())))
+print(Gauge(2, 7).total(), watched(), referent(), Ticket(4).size)

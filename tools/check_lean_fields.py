@@ -21,6 +21,14 @@ complete: the function that allocated it let it escape only once complete. Contr
 (a greatest fixed point of pre- and post-conditions over the call graph), then Lean checks every
 function separately with them; a function that Lean rejects gives its callers no contract, so its
 calls are escapes, and its callers are checked again (as proved_returns does).
+
+A closure's cells (closure_shapes) are private slots of the function that allocates them until
+an environment holding one escapes, where the cell is published: the objects it holds escape,
+so does each one stored into it later, and each later load may give another, complete object (a
+nonlocal assignment by other code). A direct call of a closure function, given an environment
+none of whose cells is published, is covered by a contract for each cell holding an object under
+construction, which the closure function, loading the cell from its environment, is checked with;
+so is an icall of a Callable the function made, through an adapter that only passes it on.
 """
 import argparse
 from collections import deque
@@ -41,8 +49,9 @@ LIMITATIONS = ("Proves, in a finite-tag model, that each field a class's code re
                "test is assigned before that code can see an object under construction; trusts the "
                "inspection's class layouts and classes table, that only compiled allocations make "
                "objects of the program's classes, that complete objects' flags are set only after their "
-               "fields, the IR's operand views and typed memory; a closure capturing, or a raw access "
-               "of, an object under construction counts as an escape")
+               "fields, the closure layout (cells, environments and Callables), the IR's operand views and "
+               "typed memory; a Callable that escapes lets its environment's objects escape, and a raw "
+               "access of an object under construction counts as an escape")
 
 
 def unchecked(layout):
@@ -84,6 +93,260 @@ def param_class(fn, position, layouts):
     params = fn.get("parameters") or []
     typ = params[position].get("representation") if position < len(params) else None
     return typ if typ in layouts else None
+
+
+def holder(position):
+    """The object a contract's position gives a function: a parameter's (arg<n>), or the one in the
+    cell at word i of a closure function's environment (env<i>)."""
+    return f"arg{position}" if isinstance(position, int) else position
+
+
+def private_slots(fn):
+    """The function's stack slots that only loads and stores use (never their address)."""
+    slots = set()
+    for op in fn["slots"]:
+        if op["immediate"] != 2:
+            number = op["results"][0]
+            slots.add(f"%{op['text']}.def.{number}" if op["immediate"] == 1 else f"%{op['text'] or 'h'}.{number}")
+    private = set(slots)
+    for block in fn["blocks"]:
+        for op in block["operations"]:
+            for pos, arg in enumerate(op["operands"]):
+                if arg["value"] in slots and not (pos == 0 and op["op"] in {"mem.load", "mem.store"}):
+                    private.discard(arg["value"])
+    return private
+
+
+def adapter_targets(functions):
+    """Each Callable adapter (the code word of a Callable made of a def or lambda: @cv.N) that gives
+    its environment, its first parameter, only to one call of a closure function, as that call's
+    environment -> the closure function."""
+    out = {}
+    for symbol, fn in functions.items():
+        params = fn.get("parameters") or []
+        if not params or not str(params[0].get("representation", "")).startswith("fn[c:"):
+            continue
+        private = private_slots(fn)
+        carried, changed = {"%a0"}, True
+        while changed:
+            changed = False
+            for block in fn["blocks"]:
+                for op in block["operations"]:
+                    args = [a["value"] for a in op["operands"]]
+                    if op["op"] == "mem.store" and args[0] in private and args[1] in carried and args[0] not in carried:
+                        carried.add(args[0])
+                        changed = True
+                    elif op["op"] == "mem.load" and args[0] in carried and op["results"] and f"%t{op['results'][0]}" not in carried:
+                        carried.add(f"%t{op['results'][0]}")
+                        changed = True
+        calls, ok = set(), True
+        for block in fn["blocks"]:
+            for op in block["operations"]:
+                for pos, arg in enumerate(op["operands"]):
+                    if arg["value"] not in carried:
+                        continue
+                    if op["op"] in {"mem.load", "mem.store"} and pos == 0 and arg["value"] in private:
+                        continue
+                    if op["op"] == "mem.store" and pos == 1 and op["operands"][0]["value"] in private:
+                        continue
+                    callee = functions.get(op["text"]) if op["op"] in {"call", "invoke"} and pos == 0 else None
+                    if callee is not None and (callee.get("parameters") or [{}])[0].get("representation") == "env":
+                        calls.add(op["text"])
+                        continue
+                    ok = False
+        if ok and len(calls) == 1:
+            out[symbol] = next(iter(calls))
+    return out
+
+
+def closure_shapes(fn, private, loops, adapters=None):
+    """A function's closure cells and environments, as gen_function_body and closure() make them.
+
+    A variable that a function's defs and lambdas take lives in a cell: a word the function
+    allocates as it begins (rt alloc; a second word, if any, holds a number's identity box), which
+    loads and stores at the cell itself read and write. A def or lambda's environment is an
+    allocation whose words hold the cells it takes (and default values); its closure function is
+    given it (its .env parameter) and loads each cell from its word. Returns a dict:
+
+    - cells: each cell pointer -> its content location: C:%tN for a cell the function allocates,
+      C:env<i> for the one it loads from word i of its own environment;
+    - envs: each environment the function allocates -> {word: content location of its cell};
+    - env_ops: (block, offset) -> [(operand, value, closure function or None)] for each other use
+      of a value that may be an environment of the function's (a closure call passes it as its
+      first operand; an icall of a Callable the function made, through its verified adapter);
+    - own_ops: (block, offset) -> the words whose cells' objects escape there, through any other
+      use of the function's own environment or of a cell loaded from it;
+    - loads: word -> the types the function loads from that word's cell.
+
+    An allocation used otherwise is no cell (an object stored into it escapes, as into any memory)."""
+    blocks = [b for b in fn["blocks"] if b["label"] != ""]
+    defs, uses, where = {}, {}, {}
+    for block in blocks:
+        for offset, op in enumerate(block["operations"]):
+            for r in op["results"]:
+                defs[f"%t{r}"] = (block["label"], op)
+            for pos, arg in enumerate(op["operands"]):
+                uses.setdefault(arg["value"], []).append((op, pos))
+            where[id(op)] = (block["label"], offset)
+    words = {}  # a mach.addr result -> (its base, word)
+    for value, (_, op) in defs.items():
+        if op["op"] == "mach.addr" and len(op["operands"]) == 2 and op["operands"][1]["value"].isdigit():
+            words[value] = (op["operands"][0]["value"], int(op["operands"][1]["value"]))
+    allocs = {v for v, (_, op) in defs.items() if op["op"] == "rt" and op["text"] == "alloc"}
+
+    def only(value, allowed):
+        return all((op["op"], pos) in allowed for op, pos in uses.get(value, []))
+
+    def carried(seeds):
+        """Each value -> the seeds it may be, through private slots, phis and selects."""
+        may = {seed: {seed} for seed in seeds}
+        changed = True
+        while changed:
+            changed = False
+            for block in blocks:
+                for op in block["operations"]:
+                    args = [a["value"] for a in op["operands"]]
+                    result = f"%t{op['results'][0]}" if op["results"] else ""
+                    flows = []
+                    if op["op"] == "mem.store" and args[0] in private:
+                        flows = [(args[0], args[1])]
+                    elif op["op"] == "mem.load" and args[0] in private:
+                        flows = [(result, args[0])]
+                    elif op["op"] == "phi":
+                        flows = [(result, a) for a in args]
+                    elif op["op"] == "select":
+                        flows = [(result, a) for a in args[1:]]
+                    for dst, src in flows:
+                        extra = may.get(src, set()) - may.get(dst, set())
+                        if extra:
+                            may.setdefault(dst, set()).update(extra)
+                            changed = True
+        return may
+    flow_uses = {("mem.store", 1), ("phi", 0), ("select", 1), ("select", 2)}
+
+    def flows_only(op, pos, value):
+        return ((op["op"], pos) in flow_uses and (op["op"] != "mem.store" or op["operands"][0]["value"] in private)) \
+            or (op["op"] == "phi" and value in [a["value"] for a in op["operands"]])
+    # A closure function's own environment, and the cells it loads from its words.
+    cells, own_ops, loads = {}, {}, {}
+    params = fn.get("parameters") or []
+    own = carried({"%a0"}) if params and params[0].get("representation") == "env" else {}
+    for value in own:
+        for op, pos in uses.get(value, []):
+            result = f"%t{op['results'][0]}" if op["results"] else ""
+            if flows_only(op, pos, value) or (value in private and op["op"] in {"mem.load", "mem.store"} and pos == 0):
+                continue
+            if op["op"] == "mach.addr" and pos == 0 and result in words and only(result, {("mach.load", 0)}):
+                for load, _ in uses.get(result, []):
+                    cells[f"%t{load['results'][0]}"] = f"C:env{words[result][1]}"
+                continue
+            # (the environment itself escapes: each cell in it)
+            own_ops.setdefault(where[id(op)], set()).add(None)
+    # A cell the function allocates: in its entry block, used only at the cell itself and where an
+    # allocation of the function's takes it (or its identity box's word).
+    entry = blocks[0]["label"] if blocks else ""
+    for value in sorted(allocs):
+        if defs[value][0] != entry or entry in loops:
+            continue
+        ok = True
+        for op, pos in uses.get(value, []):
+            result = f"%t{op['results'][0]}" if op["results"] else ""
+            if op["op"] in {"mem.load", "mem.store"} and pos == 0:
+                continue
+            if op["op"] == "mach.store" and pos == 1 and op["operands"][0]["value"] in words \
+                    and words[op["operands"][0]["value"]][0] in allocs - {value}:
+                continue
+            if op["op"] == "mach.addr" and pos == 0 and result in words and words[result][1] >= 1 \
+                    and only(result, {("mach.load", 0), ("mach.store", 0)}):
+                continue
+            ok = False
+        if ok:
+            cells[value] = f"C:{value}"
+    # The uses of a cell loaded from the own environment: other than at the cell itself, or where
+    # an allocation of the function's takes it, its object escapes (and the cell with it).
+    for value, location in cells.items():
+        if not location.startswith("C:env"):
+            continue
+        for op, pos in uses.get(value, []):
+            result = f"%t{op['results'][0]}" if op["results"] else ""
+            if op["op"] in {"mem.load", "mem.store"} and pos == 0:
+                if op["op"] == "mem.load":
+                    loads.setdefault(int(location[5:]), set()).add(op["type"])
+                continue
+            if op["op"] == "mach.store" and pos == 1 and op["operands"][0]["value"] in words \
+                    and words[op["operands"][0]["value"]][0] in allocs:
+                continue
+            if op["op"] == "mach.addr" and pos == 0 and result in words and words[result][1] >= 1 \
+                    and only(result, {("mach.load", 0), ("mach.store", 0)}):
+                continue
+            own_ops.setdefault(where[id(op)], set()).add(int(location[5:]))
+    # The environments the function allocates: whose words take its cells.
+    envs = {}
+    for value, location in cells.items():
+        for op, pos in uses.get(value, []):
+            if op["op"] == "mach.store" and pos == 1 and op["operands"][0]["value"] in words:
+                base, word = words[op["operands"][0]["value"]]
+                if base in allocs:
+                    envs.setdefault(base, {})[word] = location
+    env_may = carried(set(envs))
+    # A Callable the function makes of a def or lambda: a two-word allocation whose word 0 is an
+    # adapter (adapter_targets) and word 1 one of its environments; its icall, with the code and
+    # environment loaded from it, calls the adapter's closure function with that environment.
+    adapters = adapters or {}
+    structs = {}
+    for value in sorted(allocs - set(envs) - set(cells)):
+        code = [op["operands"][1]["value"] for op, pos in uses.get(value, []) if op["op"] == "mach.store" and pos == 0]
+        held = [store["operands"][1]["value"] for op, pos in uses.get(value, []) if op["op"] == "mach.addr" and pos == 0
+                and words.get(f"%t{op['results'][0]}") == (value, 1)
+                for store, at in uses.get(f"%t{op['results'][0]}", []) if store["op"] == "mach.store" and at == 0]
+        if len(code) == 1 and code[0] in adapters and len(held) == 1 and len(env_may.get(held[0], set())) == 1:
+            structs[value] = (adapters[code[0]], next(iter(env_may[held[0]])), held[0])
+    struct_may = carried(set(structs))
+    code_of, env_of = {}, {}  # a load of a Callable's code word or environment word -> the Callable
+    for value, sites in struct_may.items():
+        for op, pos in uses.get(value, []):
+            result = f"%t{op['results'][0]}" if op["results"] else ""
+            if op["op"] == "mach.load" and pos == 0 and len(sites) == 1:
+                code_of[result] = next(iter(sites))
+            elif op["op"] == "mach.addr" and pos == 0 and words.get(result) == (value, 1) and len(sites) == 1:
+                for load, at in uses.get(result, []):
+                    if load["op"] == "mach.load" and at == 0:
+                        env_of[f"%t{load['results'][0]}"] = next(iter(sites))
+    for value, struct in env_of.items():
+        env_may[value] = {structs[struct][1]}
+    env_ops = {}
+    for value, sites in env_may.items():
+        for op, pos in uses.get(value, []):
+            result = f"%t{op['results'][0]}" if op["results"] else ""
+            if flows_only(op, pos, value) or (value in private and op["op"] in {"mem.load", "mem.store"} and pos == 0):
+                continue
+            if op["op"] == "mach.addr" and pos == 0 and result in words and only(result, {("mach.store", 0)}) \
+                    and value in envs:
+                continue
+            if op["op"] == "mach.store" and pos == 1 and any(held == value and words.get(op["operands"][0]["value"]) == (struct, 1)
+                                                             for struct, (_, _, held) in structs.items()):
+                continue  # (into a Callable of the function's, whose uses are classified below)
+            callee = op["text"] if op["op"] in {"call", "invoke"} and pos == 0 else None
+            if op["op"] == "icall" and pos == 1 and value in env_of and code_of.get(op["operands"][0]["value"]) == env_of[value]:
+                callee = structs[env_of[value]][0]
+            env_ops.setdefault(where[id(op)], []).append((pos, value, callee))
+    # (any other use of a Callable lets its environment escape: its cells are published there)
+    for value, sites in struct_may.items():
+        for op, pos in uses.get(value, []):
+            result = f"%t{op['results'][0]}" if op["results"] else ""
+            if flows_only(op, pos, value) or (value in private and op["op"] in {"mem.load", "mem.store"} and pos == 0):
+                continue
+            if op["op"] == "mach.store" and pos == 0 and value in structs:
+                continue  # (its code word)
+            if op["op"] == "mach.load" and pos == 0 and only(result, {("icall", 0)}):
+                continue  # (its code, which only its icalls call)
+            if op["op"] == "mach.addr" and pos == 0 and words.get(result) == (value, 1) \
+                    and only(result, {("mach.load", 0)} | ({("mach.store", 0)} if value in structs else set())):
+                continue  # (its environment's word, which its icalls load)
+            for struct in sorted(sites):
+                env_ops.setdefault(where[id(op)], []).append((pos, structs[struct][1], None))
+    return {"cells": cells, "envs": envs, "env_may": env_may, "env_ops": env_ops,
+            "own_ops": own_ops, "loads": loads}
 
 
 def facts(nodes, keep=None):
@@ -212,7 +475,24 @@ class Context:
         self.snapshot = snapshot
         self.layouts, self.view = class_tables(snapshot)
         self.functions = {f["symbol"]: f for f in snapshot["functions"]}
-        self.validated, self.loops, self.graphs, self.callees = {}, {}, {}, {}
+        self.validated, self.loops, self.graphs, self.callees, self.closures = {}, {}, {}, {}, {}
+        self.adapters = adapter_targets(self.functions)
+
+    def shapes(self, fn):
+        if fn["symbol"] not in self.closures:
+            self.closures[fn["symbol"]] = closure_shapes(fn, private_slots(fn), self.loop(fn), self.adapters)
+        return self.closures[fn["symbol"]]
+
+    def position_class(self, fn, position):
+        """The class of the object a contract's position gives fn, or None: a parameter's, or the
+        one type fn loads from the cell at word i of its environment."""
+        if isinstance(position, int):
+            return param_class(fn, position, self.layouts)
+        params = fn.get("parameters") or []
+        if not params or params[0].get("representation") != "env":
+            return None
+        types = self.shapes(fn)["loads"].get(int(position[3:]), set())
+        return next(iter(types)) if len(types) == 1 and next(iter(types)) in self.layouts else None
 
     def validate(self, fn):
         symbol = fn["symbol"]
@@ -236,11 +516,14 @@ class Context:
     def graph(self, fn, contracts):
         symbol = fn["symbol"]
         if symbol not in self.callees:
+            # (whose contracts the graph uses: each call's callee, and each closure function an
+            # icall reaches through its Callable's adapter)
             self.callees[symbol] = {op["text"] for b in fn["blocks"] for op in b["operations"]
-                                    if op["op"] in {"call", "invoke"}}
+                                    if op["op"] in {"call", "invoke"}} | {
+                callee for uses in self.shapes(fn)["env_ops"].values() for _, _, callee in uses if callee}
         depends = self.callees[symbol] | {symbol}
-        key = (symbol, tuple(sorted((k, tuple(sorted(v[0])), tuple(sorted(v[1])), v[2])
-                                    for k, v in contracts.items() if k[0] in depends)))
+        key = (symbol, tuple(sorted(((k, tuple(sorted(v[0])), tuple(sorted(v[1])), v[2])
+                                     for k, v in contracts.items() if k[0] in depends), key=lambda c: (c[0][0], str(c[0][1])))))
         if key not in self.graphs:
             try:
                 self.graphs[key] = normalize(self, fn, contracts)
@@ -281,32 +564,28 @@ def emit(ctx, fn, contracts, known):
     blocks = [b for b in fn["blocks"] if b["label"] != ""]
     labels = {b["label"] for b in blocks}
     functions = ctx.functions
-    slots = set()
-    for op in fn["slots"]:
-        if op["immediate"] != 2:
-            number = op["results"][0]
-            slots.add(f"%{op['text']}.def.{number}" if op["immediate"] == 1 else f"%{op['text'] or 'h'}.{number}")
-    private = set(slots)
-    for block in blocks:
-        for op in block["operations"]:
-            for pos, arg in enumerate(op["operands"]):
-                if arg["value"] in slots and not (pos == 0 and op["op"] in {"mem.load", "mem.store"}):
-                    private.discard(arg["value"])
-    # The objects under construction: each allocation of a class, and each parameter a contract
-    # covers (an __init__'s self, or one a call passes an object under construction in).
+    private = private_slots(fn)
+    shapes = ctx.shapes(fn)
+    # where a load or store's pointer names a location of the graph: a private slot, or a cell's
+    # content (C:...); a cell is private until an environment that holds it escapes (published)
+    slot_of = {v: v for v in private} | shapes["cells"]
+    cells = sorted(set(shapes["cells"].values()))
+    # The objects under construction: each allocation of a class, and each position a contract
+    # covers (an __init__'s self, an argument a call passes an object under construction in, or
+    # the content of a cell in a closure function's environment that a closure call passes one in).
     objects, may = {}, {}
-    given = sorted(p for (s, p) in contracts if s == symbol)
-    params = {f"arg{p}": p for p in given}
+    given = sorted((p for (s, p) in contracts if s == symbol), key=str)
+    params = {holder(p): p for p in given}
     for p in given:
-        objects[f"arg{p}"] = param_class(fn, p, layouts)
-        may[f"%a{p}"] = {f"arg{p}"}
+        objects[holder(p)] = ctx.position_class(fn, p)
+        may[f"%a{p}" if isinstance(p, int) else f"C:{p}"] = {holder(p)}
     for block in blocks:
         for offset, op in enumerate(block["operations"]):
             if op["op"] == "alloc.fixed" and op["type"] in layouts:
                 site = f"{block['label']}.{offset}"
                 objects[site] = op["type"]
                 may[f"%t{op['results'][0]}"] = {site}
-    # may[v]: the objects a value or private slot may be (a flow-insensitive closure of copies).
+    # may[v]: the objects a value, private slot or cell may be (a flow-insensitive closure of copies).
     changed = bool(may)
     while changed:
         changed = False
@@ -314,10 +593,10 @@ def emit(ctx, fn, contracts, known):
             for op in block["operations"]:
                 args = [a["value"] for a in op["operands"]]
                 flows = []
-                if op["op"] == "mem.store" and args[0] in private:
-                    flows = [(args[0], args[1])]
-                elif op["op"] == "mem.load" and args[0] in private:
-                    flows = [(f"%t{op['results'][0]}", args[0])]
+                if op["op"] == "mem.store" and args[0] in slot_of:
+                    flows = [(slot_of[args[0]], args[1])]
+                elif op["op"] == "mem.load" and args[0] in slot_of:
+                    flows = [(f"%t{op['results'][0]}", slot_of[args[0]])]
                 elif op["op"] == "phi":
                     flows = [(f"%t{op['results'][0]}", a) for a in args]
                 elif op["op"] == "select":
@@ -427,7 +706,7 @@ def emit(ctx, fn, contracts, known):
                 g.when(value, "obj:" + o, body)
         if kind == "escapes":
             for p in given:
-                if f"arg{p}" in objs:
+                if holder(p) in objs:
                     leaks[p] = True
 
     def assign(value, indexes_of, key, strict=True):
@@ -452,6 +731,83 @@ def emit(ctx, fn, contracts, known):
         g.nodes[index]["no"] = stop
     for value in sorted(v for v in may if v in private):
         g.follow({"op": "copy", "dst": value, "src": const(OTHER)})
+    cells = [c for c in cells if c in may]  # (a cell no object under construction reaches needs no state)
+    for location in cells:
+        # (a cell the function allocates holds no object yet, one in its environment the contract's;
+        # neither is published yet)
+        g.follow({"op": "copy", "dst": location, "src": const(f"obj:{location[2:]}" if location[2:] in params else OTHER)})
+        g.follow({"op": "copy", "dst": "P:" + location, "src": const(UNSET)})
+
+    def published(location, site):
+        """Whether a cell may be published at a site, per the previous pass's facts, which Lean
+        checks here where it is not (the first pass assumes it is not)."""
+        key = (site[0], site[1], location, "published")
+        marks[key] = len(g.nodes)
+        keep.setdefault(len(g.nodes), set()).add("P:" + location)
+        if known is None:
+            return False
+        if SET in known.get(key, {}).get("P:" + location, frozenset()):
+            return True
+        index = g.follow({"op": "payload", "value": "P:" + location, "tags": [UNSET]})
+        g.origins[index] = (site[0], site[1], "unpublished cell", location, -1)
+        return False
+
+    def publish(location, site):
+        """A cell that other code may now reach (its environment escapes): the objects it holds
+        escape, and so does each one stored into it later; its content may change where that
+        code runs (a nonlocal assignment), which each later load allows for."""
+        require(location, relevant, site, "escapes")
+        g.follow({"op": "copy", "dst": "P:" + location, "src": const(SET)})
+        if location[2:] in params:
+            leaks[params[location[2:]]] = True
+
+    def overwritten(location):
+        """A cell's content after code that may assign it: as before, or another, complete object."""
+        choice = g.emit({"op": "choice", "yes": len(g.nodes) + 1, "no": None})
+        g.follow({"op": "copy", "dst": location, "src": const(OTHER)})
+        g.nodes[choice]["no"] = len(g.nodes)
+
+    def closure_call(symbol, value, site):
+        """A call of closure function symbol, given an environment of this function's whose cells
+        hold objects under construction: covered by a contract for each such cell (which the callee
+        reads and assigns as a parameter's), if none is published; else the environment escapes.
+        Returns the actions after the call (its post-conditions), or None where not covered."""
+        callee = functions.get(symbol)
+        sites = shapes["env_may"].get(value, set())
+        if callee is None or len(sites) != 1:
+            return None
+        holding = sorted((word, location) for word, location in shapes["envs"][next(iter(sites))].items() if location in cells)
+        covered = True
+        for word, location in holding:
+            position = f"env{word}"
+            if (symbol, position) not in contracts:
+                if ctx.position_class(callee, position) is not None:
+                    probes["wanted"].append((len(g.nodes), symbol, position, location))
+                    keep.setdefault(len(g.nodes), set()).update(
+                        {location} | {field(o, k) for o in may[location] for k in relevant(o)})
+                covered = False
+        if not covered or any([published(location, site) for _, location in holding]):
+            return None
+        actions = []
+        for word, location in holding:
+            position = f"env{word}"
+            pre, post, callee_leaks = contracts[(symbol, position)]
+            cls = ctx.position_class(callee, position)
+            probes["calls"].append((len(g.nodes), symbol, position, location))
+            keep.setdefault(len(g.nodes), set()).update(
+                {location} | {field(o, k) for o in may[location] for k in view[cls]})
+            require(location, lambda o, pre=pre, cls=cls, callee_leaks=callee_leaks: (pre & view[cls]) | (
+                (relevant(o) - view[cls]) if callee_leaks else set()), site, "calls")
+            if callee_leaks:
+                # (the callee lets the object or its cell escape, or assigns the cell: published)
+                for p in given:
+                    if holder(p) in may[location]:
+                        leaks[p] = True
+                g.follow({"op": "copy", "dst": "P:" + location, "src": const(SET)})
+                overwritten(location)
+            actions.append(lambda location=location, post=post, site=site, position=position: assign(
+                location, lambda o: post, (site[0], site[1], location, "post " + position)))
+        return actions
     for n in range(len(fn["parameters"])):
         if f"%a{n}" in may:
             g.follow({"op": "copy", "dst": f"%a{n}", "src": const(f"obj:arg{n}" if n in given else OTHER)})
@@ -480,6 +836,21 @@ def emit(ctx, fn, contracts, known):
             kind, args = op["op"], [a["value"] for a in op["operands"]]
             results = [f"%t{r}" for r in op["results"]]
             site = (label, offset)
+            # (first what the operation does with environments and cells, which an exception it
+            # raises, on the way to the handler, has done too)
+            after = []
+            for pos, value, callee in shapes["env_ops"].get(site, []):
+                actions = closure_call(callee, value, site) if callee is not None else None
+                if actions is None:
+                    for env in sorted(shapes["env_may"].get(value, set())):
+                        for location in sorted(set(shapes["envs"][env].values()) & set(cells)):
+                            publish(location, site)
+                else:
+                    after += actions
+            for word in sorted(shapes["own_ops"].get(site, set()), key=str):
+                for p in given:
+                    if not isinstance(p, int) and (word is None or p == f"env{word}"):
+                        publish("C:" + p, site)
             if handler:
                 g.emit({"op": "choice", "yes": len(g.nodes) + 1, "no": goto(handler, label)})
             if kind == "phi":
@@ -518,16 +889,25 @@ def emit(ctx, fn, contracts, known):
                 continue
             if kind == "field.addr" and results and results[0] in addresses:
                 continue
-            after = []
             if kind == "mem.load" and args[0] in addresses:
                 obj, k, cls = addresses[args[0]]
                 boundary.require(cls in layouts, "field read through an unknown class view")
                 if k in unchecked(layouts[cls]):
                     require(obj, lambda o, k=k: {k}, site, "reads")
                 uses = [u for u in uses if u[0] != 0]
-            elif kind == "mem.load" and args[0] in private:
+            elif kind == "mem.load" and args[0] in slot_of:
+                location = slot_of[args[0]]
                 if results[0] in may:
-                    g.follow({"op": "copy", "dst": results[0], "src": args[0]})
+                    choice = None
+                    if location in cells and published(location, site):
+                        # (other code may have assigned a published cell: as before, or another object)
+                        choice = g.emit({"op": "choice", "yes": len(g.nodes) + 1, "no": None})
+                    g.follow({"op": "copy", "dst": results[0], "src": location})
+                    if choice is not None:
+                        jump = g.emit({"op": "jump", "next": None})
+                        g.nodes[choice]["no"] = len(g.nodes)
+                        g.follow({"op": "copy", "dst": results[0], "src": const(OTHER)})
+                        g.nodes[jump]["next"] = len(g.nodes)
                 uses = []
             elif kind == "mem.store" and args[0] in addresses:
                 obj, k, cls = addresses[args[0]]
@@ -537,9 +917,18 @@ def emit(ctx, fn, contracts, known):
                     require(obj, lambda o, flagged=flagged: {flagged} & relevant(o), site, "flags")
                 after.append(lambda obj=obj, k=k, site=site: assign(obj, lambda o: {k}, (site[0], site[1], obj, "store")))
                 uses = [u for u in uses if u[0] != 0]
-            elif kind == "mem.store" and args[0] in private:
-                if args[0] in may:
-                    g.follow({"op": "copy", "dst": args[0], "src": src(args[1])})
+            elif kind == "mem.store" and args[0] in slot_of:
+                location = slot_of[args[0]]
+                if location in cells:
+                    caller = location[2:] in params
+                    if caller:
+                        # (a nonlocal assignment of the caller's cell, which the caller allows for)
+                        leaks[params[location[2:]]] = True
+                    if (caller or published(location, site)) and args[1] in may:
+                        # (what other code can load from the cell: complete)
+                        require(args[1], relevant, site, "escapes")
+                if location in may:
+                    g.follow({"op": "copy", "dst": location, "src": src(args[1])})
                 uses = []
             elif kind == "mach.store" and args and args[0] in may:
                 # (a raw store into the object; at offset 0 of a tagged class, its class tag)
@@ -585,7 +974,7 @@ def emit(ctx, fn, contracts, known):
                         (relevant(o) - view[cls]) if callee_leaks else set()), site, "calls")
                     if callee_leaks:
                         for p in given:
-                            if f"arg{p}" in may.get(value, set()):
+                            if holder(p) in may.get(value, set()):
                                 leaks[p] = True
                     after.append(lambda value=value, post=post, site=site, pos=pos: assign(
                         value, lambda o: post, (site[0], site[1], value, f"post{pos}")))
@@ -597,10 +986,10 @@ def emit(ctx, fn, contracts, known):
             if kind in {"ret", "ret.none"}:
                 for p in given:
                     probes["returns"].append((len(g.nodes), p))
-                    keep.setdefault(len(g.nodes), set()).update(field(f"arg{p}", k) for k in relevant(f"arg{p}"))
+                    keep.setdefault(len(g.nodes), set()).update(field(holder(p), k) for k in relevant(holder(p)))
                     for k in sorted(contracts[(symbol, p)][1]):
-                        index = g.follow({"op": "payload", "value": field(f"arg{p}", k), "tags": [SET]})
-                        g.origins[index] = (label, offset, "returns", f"arg{p}", k)
+                        index = g.follow({"op": "payload", "value": field(holder(p), k), "tags": [SET]})
+                        g.origins[index] = (label, offset, "returns", holder(p), k)
                         counts["returns"] += 1
             for result in results:
                 if result in may and kind not in {"mem.load", "select"}:
@@ -715,7 +1104,7 @@ def infer_contracts(ctx, proved, refused=frozenset()):
     keys = {(fn["symbol"], 0) for fn in snapshot["functions"] if init_class(fn, layouts) is not None}
     keys = {k for k in keys if k[0] in proved and supported(k[0])} - set(refused)
     for _ in range(64):
-        contracts = {k: (set(view[param_class(functions[k[0]], k[1], layouts)]),) * 2 + (False,) for k in keys}
+        contracts = {k: (set(view[ctx.position_class(functions[k[0]], k[1])]),) * 2 + (False,) for k in keys}
         for _ in range(64):
             pres = {k: set(contracts[k][0]) for k in contracts}
             posts = {k: set(contracts[k][1]) for k in contracts}
@@ -742,7 +1131,7 @@ def infer_contracts(ctx, proved, refused=frozenset()):
                             wanted.add((callee, pos))
                 for index, callee, pos, value in probes["calls"]:
                     known = state[index] or {}
-                    cls = param_class(functions[callee], pos, layouts)
+                    cls = ctx.position_class(functions[callee], pos)
                     for tag in known.get(value, ()):
                         if tag.startswith("obj:"):
                             o = tag[4:]
@@ -753,7 +1142,7 @@ def infer_contracts(ctx, proved, refused=frozenset()):
                     known = state[index]
                     if known is not None:
                         posts[(fn["symbol"], p)] &= {k for k in contracts[(fn["symbol"], p)][1]
-                                                     if known.get(f"F:arg{p}#{k}") == frozenset([SET])}
+                                                     if known.get(f"F:{holder(p)}#{k}") == frozenset([SET])}
             updated = {k: (pres[k], posts[k], leaks[k] or contracts[k][2]) for k in contracts}
             if updated == contracts:
                 break
@@ -862,7 +1251,7 @@ def main(argv=None):
     results, contracts = check_all(snapshot, Path(args.checker))
     report = {"limitations": LIMITATIONS, "functions": results,
               "contracts": [{"function": s, "parameter": p, "pre": sorted(a), "post": sorted(b), "leaks": c}
-                            for (s, p), (a, b, c) in sorted(contracts.items())]}
+                            for (s, p), (a, b, c) in sorted(contracts.items(), key=lambda item: (item[0][0], str(item[0][1])))]}
     print(json.dumps(report, indent=1, default=list))
     return boundary.OUTCOMES[program_report(results)["field_status"]]
 
