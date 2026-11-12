@@ -38,14 +38,23 @@ test-py:
 # The examples' JIT run always uses the hosted compiler, the runner's default.
 PYTEST_NATIVE_COMPILER ?= $(PY) $(CURDIR)/pystachy.py
 # The runner's test modules are independent (each test works in a directory of its own), so
-# PYTEST_NATIVE_TEST_JOBS of them run at a time: one after another, they are this target's
-# longest step.
+# PYTEST_NATIVE_TEST_JOBS of them run at a time. They run first and alone: one of them uses
+# the examples' default work directory, which a concurrent example run would hold locked.
+# The four parts after them each lock a work directory of their own, and run that many at a
+# time, each part's output kept together.
 PYTEST_NATIVE_TEST_JOBS ?= 4
+PYTEST_NATIVE_PARTS = pytest-native-examples-jit pytest-native-examples-aot pytest-native-controls pytest-native-upstream
+.PHONY: $(PYTEST_NATIVE_PARTS)
 test-pytest-native:
 	printf '%s\n' tools/test_pytest_native*.py | PYSTACHY_PYTEST_NATIVE_COMPILER="$(PYTEST_NATIVE_COMPILER)" xargs -n 1 -P $(PYTEST_NATIVE_TEST_JOBS) sh -c 'exec $(PY) -m unittest discover -s tools -p "$${1##*/}"' sh
+	$(MAKE) -j$(PYTEST_NATIVE_TEST_JOBS) --output-sync=target $(PYTEST_NATIVE_PARTS)
+pytest-native-examples-jit:
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode jit --compare --json build/pytest-native/examples.json
+pytest-native-examples-aot:
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode aot --compare --compiler "$(PYTEST_NATIVE_COMPILER)" --work-dir build/pytest-native-aot --json build/pytest-native-aot/examples.json
+pytest-native-controls:
 	$(PY) tools/pytest_native_controls.py --compiler "$(PYTEST_NATIVE_COMPILER)" --json build/pytest-controls.json
+pytest-native-upstream:
 	$(PY) tools/pytest_native_upstream.py --suite fnmatch --suite textwrap --compiler "$(PYTEST_NATIVE_COMPILER)" --json build/pytest-upstream-bundled.json
 
 # Complete optional upstream qualification uses only explicitly fetched pinned
