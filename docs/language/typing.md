@@ -1143,13 +1143,13 @@ combined hierarchy (but with traits, below), and secondary bases with fields, pr
 constructors or other special methods are outside this subset. Single inheritance from the
 combined class works, `super()` included.
 
-A secondary base may also be a trait, as mypyc compiles them: a subclass of a class on the
-primary base's chain that adds no fields (at most `__slots__ = ()`, no `__init__` and no stores
-to the instance), such as mypy's `Statement(Node)` in
+A secondary base may also be a trait, as mypyc compiles them: a direct subclass of a class on
+the primary base's chain that adds no fields (at most `__slots__ = ()`, no class attributes, no
+`__init__` and no stores to the instance), such as mypy's `Statement(Node)` in
 `class FuncDef(FuncItem, SymbolNode, Statement)`
 ([test](../../tests/programs/classes/inheritance_traits.py)). Objects of the combined class begin
 with the fields of the class they share, so a value of the trait's type reads them. A trait's
 methods may read the instance and be properties, class or static methods, abstract or not, but
 may not call `super()`. Methods resolve in CPython's order: the class's own, then the primary
-chain's own, then a trait's, which comes before what the primary base inherits from the class
-they share. `__slots__` in such a hierarchy needs every trait to declare `__slots__ = ()`.
+chain's own, then the first trait's, which comes before what the primary base inherits from the
+class they share. `__slots__` in such a hierarchy needs every trait to declare `__slots__ = ()`.
