@@ -1,0 +1,552 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "settings": {
+    "compiler": "/home/user/pystachy/pystachy",
+    "benchmarks": [
+      "coroutines",
+      "generators"
+    ],
+    "runs": 5,
+    "smoke": false,
+    "census": null,
+    "timeout": 300.0,
+    "json": "build/coroutines-measure.json"
+  },
+  "metadata": {
+    "created_utc": "2026-11-12T00:03:18Z",
+    "git_revision": "09941305cfed08503ca20d355a89555aeabab5e9",
+    "git_status": "",
+    "platform": "Linux-6.18.44-fc-v378-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpu_count": 4,
+    "load_average": [
+      0.283203125,
+      1.42578125,
+      1.28271484375
+    ],
+    "host_python": "3.13.18 (main, Oct 26 2026, 14:08:19) [Clang 23.1.3 ]",
+    "compiler_command": [
+      "/home/user/pystachy/pystachy"
+    ],
+    "compiler_binary_sha256": "86dd4dd7b8ab9d24d7f1d3c55dde652c7572e87b1a4573bfa689777c21a59ea9",
+    "environment": {
+      "PYSTACHY_PROGRAM_CACHE": "0",
+      "PYTHONHASHSEED": "0"
+    },
+    "sources_sha256": {
+      "bench/pyperformance/barnes_hut.py": "e68bffb93b84c4fb44d50dd0de057af886533efc969a5ea9424c1feff381ac3d",
+      "bench/pyperformance/bm_logging.py": "7483fcc7fcb36dd943f3790a324c997c50616ae0334e478c6aaec87a59d0ad00",
+      "bench/pyperformance/bpe_tokeniser.py": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+      "bench/pyperformance/chaos.py": "228afbb7b936034eb83a616fb8ef88a267653d55906af6bd2f0e117faa4fb702",
+      "bench/pyperformance/comprehensions.py": "77f56acb32f987707f6d75e4867d9aca0ccab8854b1d88f674318f1d53383862",
+      "bench/pyperformance/coroutines.py": "d0b5c94ad310deeed9220e99c6efc45d3a9e2b576762c51ef7aa224209f94a3b",
+      "bench/pyperformance/fannkuch.py": "42d906410ede9419d8f3eceda729b2027d78085f455a0fbb0445e081b53df2cf",
+      "bench/pyperformance/float.py": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+      "bench/pyperformance/generators.py": "4c5b29669136d4cf7d51f039253b0fd5a21f35d0dd068e2f35a06a889f8d997f",
+      "bench/pyperformance/go.py": "521cffbc4d15cdd93e0693230143aa274e4e190dd3e5f49cb45c9745565c5a13",
+      "bench/pyperformance/hexiom.py": "988d2adb90f8ab6a67180200436e93290fdb077e218b7339bb4ac7caf1cd2502",
+      "bench/pyperformance/json_dumps.py": "00d75868e820e56f2281e061583d418574b6dda96de180d3cf3adc76cff532c2",
+      "bench/pyperformance/json_loads.py": "51d23d4d8dcc3dea512988ae424988be6bf17d70e9e6d2a09d908799b3319c77",
+      "bench/pyperformance/meteor_contest.py": "876ffc333e293ab11d19298002da139b6ccf88dd50e3e92b9384d4485c3a7340",
+      "bench/pyperformance/nbody.py": "2ec9c9e9c36cf2e819dc1026debbb7f9f901410ae36032795d60057c9f447e30",
+      "bench/pyperformance/nqueens.py": "5ccc5d1f8724daf6550b870d8031120653eef6df0fa93bddeb7afaa5e28f4b53",
+      "bench/pyperformance/pidigits.py": "34bb25524dd905c804a8ad5179f649277eed24b59765bc68df5c8f4c93248c39",
+      "bench/pyperformance/raytrace.py": "e5f71075698d02ac3e91fe99bf43799905c03651be4a41ff574c99790f5d2213",
+      "bench/pyperformance/regex_dna.py": "8f02c6b44688f6c1e3a96bbd0155367f3bf9327e65f42be2967008891e1aa2aa",
+      "bench/pyperformance/regex_effbot.py": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+      "bench/pyperformance/regex_v8.py": "a2bf22b48133192c4931bef3a65f2385337b3f1b1e4359ff67ebebe96821b490",
+      "bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+      "bench/pyperformance/richards_super.py": "376e2407aaaf91f880d2e53b0853455272183130e157afc56d1539a5f259496f",
+      "bench/pyperformance/scimark.py": "dd34b452b124fb104750aed8c82082fca734695561e221de47147ec13bec7629",
+      "bench/pyperformance/spectral_norm.py": "1f55b1a0cb7931bbdec446be916b762c7fd60cc0e34a3b76cfd02ec4b10bba79",
+      "bench/pyperformance/unpack_sequence.py": "a4c67ad1e0fc2c7dcc102c98042c0b9e08bf1b46ac980b7e1916294e34997a67",
+      "tools/bench_pyperformance.py": "4baab0f6f293e6102f4072bc48d88faf80a90f0cf0a8808dff072c1807413f2e"
+    },
+    "load_average_end": [
+      0.44287109375,
+      1.404296875,
+      1.27685546875
+    ]
+  },
+  "benchmarks": [
+    {
+      "name": "coroutines",
+      "arguments": [
+        "50"
+      ],
+      "output": "coroutines 50 25 75025\n",
+      "aot_build_s": 1.3126190369998767,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.9507800359997418,
+          "cpu_s": 0.94341,
+          "loop_s": 0.9149423219996606,
+          "wall_spread": 0.08069628420313937,
+          "cpu_share_min": 0.9710992242390292
+        },
+        "jit": {
+          "wall_s": 0.10826039900030082,
+          "cpu_s": 0.10430899999999954,
+          "loop_s": 0.018141823999940243,
+          "wall_spread": 0.29678560486344835,
+          "cpu_share_min": 0.9496438460250595
+        },
+        "aot": {
+          "wall_s": 0.024327997000000323,
+          "cpu_s": 0.023785000000000167,
+          "loop_s": 0.02146351900000809,
+          "wall_spread": 0.4057940322935668,
+          "cpu_share_min": 0.9676586906129426
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.9225772340000731,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.8898368610002763\n",
+            "returncode": 0,
+            "cpu_s": 0.9145130000000001,
+            "loop_s": 0.8898368610002763
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.9987856809998448,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.9552585619999263\n",
+            "returncode": 0,
+            "cpu_s": 0.9699199999999997,
+            "loop_s": 0.9552585619999263
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.9507800359997418,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.9149423219996606\n",
+            "returncode": 0,
+            "cpu_s": 0.94341,
+            "loop_s": 0.9149423219996606
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.9535459660000924,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.918782901999748\n",
+            "returncode": 0,
+            "cpu_s": 0.9463179999999998,
+            "loop_s": 0.918782901999748
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.9220612650001385,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.8889551560000655\n",
+            "returncode": 0,
+            "cpu_s": 0.9179270000000002,
+            "loop_s": 0.8889551560000655
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.08882766200031256,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.01642308000009507\n",
+            "returncode": 0,
+            "cpu_s": 0.0867310000000002,
+            "loop_s": 0.01642308000009507
+          },
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.11122590899958595,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.022203687999990507\n",
+            "returncode": 0,
+            "cpu_s": 0.10562500000000008,
+            "loop_s": 0.022203687999990507
+          },
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.09975729100005992,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.018141823999940243\n",
+            "returncode": 0,
+            "cpu_s": 0.09745600000000007,
+            "loop_s": 0.018141823999940243
+          },
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.1209577900003751,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.026253484000335447\n",
+            "returncode": 0,
+            "cpu_s": 0.11919900000000025,
+            "loop_s": 0.026253484000335447
+          },
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/coroutines.py",
+              "50"
+            ],
+            "wall_s": 0.10826039900030082,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.017249438999897393\n",
+            "returncode": 0,
+            "cpu_s": 0.10430899999999954,
+            "loop_s": 0.017249438999897393
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/coroutines",
+              "50"
+            ],
+            "wall_s": 0.01672416900009921,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.014365498000188381\n",
+            "returncode": 0,
+            "cpu_s": 0.016218999999999983,
+            "loop_s": 0.014365498000188381
+          },
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/coroutines",
+              "50"
+            ],
+            "wall_s": 0.026522886999828188,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.023194508999949903\n",
+            "returncode": 0,
+            "cpu_s": 0.026032999999999973,
+            "loop_s": 0.023194508999949903
+          },
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/coroutines",
+              "50"
+            ],
+            "wall_s": 0.026596325000355137,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.0236433869999928\n",
+            "returncode": 0,
+            "cpu_s": 0.02601800000000054,
+            "loop_s": 0.0236433869999928
+          },
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/coroutines",
+              "50"
+            ],
+            "wall_s": 0.01980553699968368,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.017116097999860358\n",
+            "returncode": 0,
+            "cpu_s": 0.0191650000000001,
+            "loop_s": 0.017116097999860358
+          },
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/coroutines",
+              "50"
+            ],
+            "wall_s": 0.024327997000000323,
+            "stdout": "coroutines 50 25 75025\n",
+            "stderr": "seconds 0.02146351900000809\n",
+            "returncode": 0,
+            "cpu_s": 0.023785000000000167,
+            "loop_s": 0.02146351900000809
+          }
+        ]
+      }
+    },
+    {
+      "name": "generators",
+      "arguments": [
+        "10"
+      ],
+      "output": "generators 10 100000 4999950000\n",
+      "aot_build_s": 1.247281638000004,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.4101415810000617,
+          "cpu_s": 0.40213699999999886,
+          "loop_s": 0.29527871599975697,
+          "wall_spread": 0.17590083361937625,
+          "cpu_share_min": 0.9520040108872435
+        },
+        "jit": {
+          "wall_s": 0.323275867999655,
+          "cpu_s": 0.3172180000000013,
+          "loop_s": 0.17944323099982284,
+          "wall_spread": 0.3401125814918497,
+          "cpu_share_min": 0.9584253026905424
+        },
+        "aot": {
+          "wall_s": 0.19329244800019296,
+          "cpu_s": 0.1916330000000005,
+          "loop_s": 0.16154528099968957,
+          "wall_spread": 0.7974275694412865,
+          "cpu_share_min": 0.9647112371762511
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.4101415810000617,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.29527871599975697\n",
+            "returncode": 0,
+            "cpu_s": 0.40213699999999886,
+            "loop_s": 0.29527871599975697
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.3913697240000147,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.2766613179996966\n",
+            "returncode": 0,
+            "cpu_s": 0.38812200000000086,
+            "loop_s": 0.2766613179996966
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.40153367499988235,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.2817763860002742\n",
+            "returncode": 0,
+            "cpu_s": 0.39689399999999975,
+            "loop_s": 0.2817763860002742
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.45059158899994145,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.329318148999846\n",
+            "returncode": 0,
+            "cpu_s": 0.4289650000000006,
+            "loop_s": 0.329318148999846
+          },
+          {
+            "command": [
+              "/usr/local/bin/python3.13",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.46351396999989447,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.3420357919999333\n",
+            "returncode": 0,
+            "cpu_s": 0.4467310000000001,
+            "loop_s": 0.3420357919999333
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.323275867999655,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.17944323099982284\n",
+            "returncode": 0,
+            "cpu_s": 0.3172180000000013,
+            "loop_s": 0.17944323099982284
+          },
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.4110222569997859,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.2069749940001202\n",
+            "returncode": 0,
+            "cpu_s": 0.40667799999999943,
+            "loop_s": 0.2069749940001202
+          },
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.3498144290001619,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.18637710199982394\n",
+            "returncode": 0,
+            "cpu_s": 0.33527099999999943,
+            "loop_s": 0.18637710199982394
+          },
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.3010720670004048,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.17513894500007154\n",
+            "returncode": 0,
+            "cpu_s": 0.2982449999999991,
+            "loop_s": 0.17513894500007154
+          },
+          {
+            "command": [
+              "/home/user/pystachy/pystachy",
+              "run",
+              "/home/user/pystachy/bench/pyperformance/generators.py",
+              "10"
+            ],
+            "wall_s": 0.30615507400034403,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.17515807499967195\n",
+            "returncode": 0,
+            "cpu_s": 0.30367699999999964,
+            "loop_s": 0.17515807499967195
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/generators",
+              "10"
+            ],
+            "wall_s": 0.32920731900003375,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.27394332300036695\n",
+            "returncode": 0,
+            "cpu_s": 0.3175899999999993,
+            "loop_s": 0.27394332300036695
+          },
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/generators",
+              "10"
+            ],
+            "wall_s": 0.18438955000010537,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.15771344799986764\n",
+            "returncode": 0,
+            "cpu_s": 0.18368800000000007,
+            "loop_s": 0.15771344799986764
+          },
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/generators",
+              "10"
+            ],
+            "wall_s": 0.19329244800019296,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.16154528099968957\n",
+            "returncode": 0,
+            "cpu_s": 0.1916330000000005,
+            "loop_s": 0.16154528099968957
+          },
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/generators",
+              "10"
+            ],
+            "wall_s": 0.17507059199988362,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.14899604699985503\n",
+            "returncode": 0,
+            "cpu_s": 0.17364700000000066,
+            "loop_s": 0.14899604699985503
+          },
+          {
+            "command": [
+              "/tmp/pyperformance-nf0fvrqk/generators",
+              "10"
+            ],
+            "wall_s": 0.1985432739998032,
+            "stdout": "generators 10 100000 4999950000\n",
+            "stderr": "seconds 0.1698586800002886\n",
+            "returncode": 0,
+            "cpu_s": 0.19428100000000015,
+            "loop_s": 0.1698586800002886
+          }
+        ]
+      }
+    }
+  ],
+  "conditions": {
+    "wall_spread": {
+      "value": 0.7974275694412865,
+      "where": "generators aot"
+    },
+    "cpu_share_min": {
+      "value": 0.9496438460250595,
+      "where": "coroutines jit"
+    }
+  }
+}

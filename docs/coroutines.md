@@ -47,26 +47,24 @@ resumes the awaitable directly (no exception carries its result), so a chain of 
 resumes one frame per level, as CPython's does.
 
 Recursive coroutines often never suspend, as in pyperformance's `coroutines`: every await in
-them calls another such coroutine. Before compiling, Pystachy finds the module-level `async def`s whose awaits are all
-calls, by name, of such `async def`s, and compiles `await f(...)` of one as a plain call of
-`f`'s synchronous twin. No frame is allocated, nothing is resumed, and the result is what
+them calls another such coroutine. Before compiling, Pystachy finds the module-level
+`async def`s whose awaits are all calls, by name, of such `async def`s, and compiles
+`await f(...)` of one as a plain call of `f`'s synchronous twin. No frame is allocated, nothing is resumed, and the result is what
 running the coroutine would return, with the same exceptions; PEP 479's `RuntimeError` still
 replaces a `StopIteration` leaving the twin. A call of `f` used as a value still makes a
 coroutine. This is a static form of the fast paths that C#'s `ValueTask` and CPython 3.12's
 eager tasks take at run time for work that completes without suspending.
 
-pyperformance 1.14.0's `coroutines` (`fibonacci(25)`, 242,785 coroutine calls), median of
-five, one shared 4-core x86-64 host, CPython 3.13.18:
-
-| Run | ms per `fibonacci(25)` |
-|---|---|
-| CPython | 18.3 |
-| Pystachy, every await through a coroutine frame (JIT / AOT) | 14.4 / 10.1 |
-| Pystachy, never-suspending twins (JIT / AOT) | 0.46 / 0.32 |
-| Plain recursive `def fib()` (Pystachy JIT / AOT) | 0.35 / 0.31 |
-
-Timings are advisory; [`tools/bench_pyperformance.py`](../tools/bench_pyperformance.py)
-`--benchmarks coroutines` measures the current tree.
+pyperformance 1.14.0's `coroutines` runs `fibonacci(25)`, 242,785 coroutine calls, each of which
+never suspends. In this [snapshot](benchmarks/pyperformance-coroutines-2026-11-12-0994130.json)
+(`0994130`, five processes per mode on a shared 4-vCPU x86-64 host, CPython 3.13.18), the
+median timed region of 50 calls took 0.915 s in CPython, 0.018 s in the JIT and 0.022 s in AOT,
+about 40 to 50 times faster; its `generators` port, for comparison, ran 1.6 to 1.8 times faster.
+A coroutine that does suspend pays a frame allocation for each call, and a resume of each
+awaiting frame for each value it yields up the chain; there the twins do not apply. These are
+noisy shared-host timings (the five AOT runs took 0.014 s to 0.024 s);
+[`tools/bench_pyperformance.py`](../tools/bench_pyperformance.py) `--benchmarks coroutines`
+measures the current tree.
 
 ## Threads, parallelism and free-threading
 
