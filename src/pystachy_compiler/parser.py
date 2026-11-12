@@ -3,6 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import CPYSTACK, MAXNEST, TOODEEP, fail
 from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, big_key, debug_text, string_end, utf8
 from src.pystachy_compiler.scope import Symtable
+from src.pystachy_compiler.patterns import lower_matches
 from src.pystachy_compiler.syntax import (
     AUGOPS,
     BINOPS,
@@ -316,7 +317,9 @@ class Parser:
         st.tparams = self.tparams
         st.tpx = self.tpx
         st.check(body, doc)
-        return mk("block", "doc" if doc else "", 1, body)  # (with its docstring: Loader.docstring())
+        module = mk("block", "doc" if doc else "", 1, body)
+        lower_matches(module, [0])
+        return module  # (with its docstring: Loader.docstring())
 
     def private_types(self, line: int, cls: str, only: list[str]) -> None:
         # Detached bounds, defaults and annotations belong to the same lexical context as the
@@ -394,6 +397,8 @@ class Parser:
                 self.private_names(child, cls, only)
             return
         elif (k == "name" and not n.made) or k == "attr" or k == "param" or k == "starparam" or k == "dstarparam" or k == "except" or k == "walrus":
+            n.s = private_name(n.s, cls, only)
+        elif k == "pas" or k == "pstar" or k == "pmap":
             n.s = private_name(n.s, cls, only)
         elif k == "typeparams" or k == "noann" or k == "pattern":
             n.s = " ".join([private_name(t, cls, only) for t in n.s.split()])
@@ -589,8 +594,8 @@ class Parser:
                 out.append(mk("async", "", line, inner))
         elif k == "id" and self.toks[self.p].text == "match" and self.soft_match():
             # match subject: case pattern [if guard]: ... -- kept as a "match" node: the subject, then
-            # per case a "pattern" node (s: the names the pattern's captures bind; kids: the guard,
-            # then the names, dotted names and f-strings that the pattern reads) and the block
+            # per case a "pattern" node (s: capture names; kids: guard or True,
+            # the reads used by symbol-table checks, then the retained pattern tree) and block
             self.p += 1
             n = mk("match", "", line, [self.exprlist(True)])
             if n.kids[0].kind == "starred":
@@ -611,10 +616,13 @@ class Parser:
                 guards.append(self.eat("if"))
                 if guards[-1]:
                     pat.kids.append(self.named())
+                else:
+                    pat.kids.append(mk("True", "", pat.line, []))
                 self.expect(":")
                 caps: list[str] = []
                 self.pnames(tree, caps, pat.kids)
                 pat.s = " ".join(caps)
+                pat.kids.append(tree)
                 trees.append(tree)
                 n.kids.append(pat)
                 n.kids.append(self.block())

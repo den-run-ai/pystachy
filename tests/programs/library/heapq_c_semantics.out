@@ -1,0 +1,35 @@
+push clear 0 RuntimeError: list changed size during iteration []
+pop clear 0 RuntimeError: list changed size during iteration []
+heapify clear 0 RuntimeError: list changed size during iteration []
+pushpop clear 0 IndexError: index out of range []
+push clear 1 RuntimeError: list changed size during iteration []
+pop clear 1 RuntimeError: list changed size during iteration []
+heapify clear 1 RuntimeError: list changed size during iteration []
+pushpop clear 1 RuntimeError: list changed size during iteration []
+push append 0 RuntimeError: list changed size during iteration [1, 3, 2, 7, 5, 4, 6, 0, 99]
+pop append 0 RuntimeError: list changed size during iteration [6, 3, 2, 7, 5, 4, 99]
+heapify append 0 RuntimeError: list changed size during iteration [9, 3, 8, 1, 5, 2, 6, 99]
+1
+pushpop append 0 [2, 3, 4, 7, 5, 4, 6, 99]
+push append 1 RuntimeError: list changed size during iteration [1, 3, 2, 0, 5, 4, 6, 7, 99]
+pop append 1 RuntimeError: list changed size during iteration [2, 3, 4, 7, 5, 6, 99]
+heapify append 1 RuntimeError: list changed size during iteration [9, 3, 2, 1, 5, 8, 6, 99]
+pushpop append 1 RuntimeError: list changed size during iteration [4, 3, 2, 7, 5, 4, 6, 99]
+push replace 0 [0, 50, 2, 3, 5, 4, 6, 7]
+1
+pop replace 0 [2, 3, 4, 7, 5, 50]
+heapify replace 0 [1, 3, 2, 50, 5, 8, 6]
+50
+pushpop replace 0 [2, 3, 4, 7, 5, 4, 6]
+push replace 1 [0, 50, 2, 3, 5, 4, 6, 7]
+1
+pop replace 1 [50, 3, 4, 7, 5, 6]
+heapify replace 1 [1, 3, 2, 50, 5, 8, 6]
+1
+pushpop replace 1 [2, 3, 4, 7, 5, 50, 6]
+heappop IndexError: index out of range
+heapreplace IndexError: index out of range
+5
+heapify 3001 441048824 [0, 0, 1, 3, 1, 1, 4, 4]
+0 0 587370912
+[exit 0]
