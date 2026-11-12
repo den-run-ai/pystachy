@@ -50,15 +50,20 @@ assert loads("/* comment */ " * 400 + "[1]", skip_json_loads=True) == [1]
 assert loads('{a: [1, {b: "ok"}]}') == {"a": [1, {"b": "ok"}]}
 print("wide and sequential repairs preserved")
 
-# Comments separated by ignored prose or numbers formerly grew the native call
-# stack without entering a guarded container/string parse. They are sequential
-# input, so consume them iteratively instead of imposing the nesting budget.
+# Comments separated by ignored prose or numbers recurse once for each alternation, as upstream
+# does: a few repair, and many exceed the recursion limit with upstream's ValueError.
 for prefix in ["/* c */ ignored ", "/* c */ 1 ", "// c\n ignored "]:
-    assert loads(prefix * 2000 + "{}", skip_json_loads=True) == {}
-print("alternating comments and prose stay iterative")
+    assert loads(prefix * 40 + "{}", skip_json_loads=True) == {}
+    try:
+        loads(prefix * 2000 + "{}", skip_json_loads=True)
+    except ValueError as exc:
+        assert str(exc) == "Input nesting exceeds the supported parser recursion depth."
+    else:
+        raise AssertionError("alternating comments and prose did not reach the recursion limit")
+print("alternating comments and prose follow the recursion limit")
 
 # Retain comment log order and the found-value flag, including empty containers.
-parser = JSONParser("/* first */ ignored // second\n 123 # third\n {}", True)
+parser = JSONParser("/* first */ ignored // second\n 123 # third\n {}", None, True)
 assert parser.parse_json(record_top_level_value=True) == {}
 assert parser._last_parse_found_value
 assert [entry["text"] for entry in parser.logger] == [
@@ -67,16 +72,16 @@ assert [entry["text"] for entry in parser.logger] == [
     "Found line comment: # third, ignoring",
 ]
 for suffix in ["ignored", "123", '"key": 1}']:
-    parser = JSONParser("/* comment */ " + suffix, False)
+    parser = JSONParser("/* comment */ " + suffix, None, False)
     assert parser.parse_json(record_top_level_value=True) == ""
     assert not parser._last_parse_found_value
-parser = JSONParser("/* comment */ []", False)
+parser = JSONParser("/* comment */ []", None, False)
 assert parser.parse_json(record_top_level_value=True) == []
 assert parser._last_parse_found_value
 print("comment logs and top-level flags preserved")
 
 # A parser stays usable after the recursion limit or a strict error unwinds it.
-parser = JSONParser("[" * depth + "0", False)
+parser = JSONParser("[" * depth + "0", None, False)
 try:
     parser.parse()
 except RecursionError:
@@ -87,7 +92,7 @@ parser.json_str = "[7]"
 parser.index = 0
 assert parser.parse() == [7]
 
-parser = JSONParser('{"":1}', False, strict=True)
+parser = JSONParser('{"":1}', None, False, strict=True)
 try:
     parser.parse()
 except ValueError:

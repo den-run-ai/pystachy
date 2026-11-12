@@ -1,8 +1,13 @@
 # pystachy: dynamic-any
+from typing import TYPE_CHECKING
 
 from .utils.constants import STRING_DELIMITERS
 
-def parenthesized_is_explicit_tuple(parser) -> bool:
+if TYPE_CHECKING:
+    from .json_parser import JSONParser
+
+
+def parenthesized_is_explicit_tuple(parser: "JSONParser") -> bool:
     """
     Return True when the current '(' starts an explicit Python tuple literal.
 
@@ -75,7 +80,7 @@ def parenthesized_is_explicit_tuple(parser) -> bool:
     return not saw_top_level_content
 
 
-def top_level_parenthesized_can_start_value(parser) -> bool:
+def top_level_parenthesized_can_start_value(parser: "JSONParser") -> bool:
     """
     Return True when a top-level '(' looks like a standalone value rather than inline prose.
 
@@ -96,7 +101,7 @@ def top_level_parenthesized_can_start_value(parser) -> bool:
     if first_inner_char is None:
         return False
 
-    inner_text = parser.json_str[parser.index + idx :].lower()
+    inner_text = parser.json_str[parser.index + idx : parser.index + idx + 5].lower()
     if (
         first_inner_char not in [")", "{", "[", "(", *STRING_DELIMITERS]
         and not first_inner_char.isdigit()

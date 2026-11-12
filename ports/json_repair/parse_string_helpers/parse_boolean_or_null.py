@@ -1,4 +1,9 @@
 # pystachy: dynamic-any
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..json_parser import JSONParser  # noqa: TID252
+
 
 LITERAL_VALUES: dict[str, bool | None] = {
     "true": True,
@@ -8,7 +13,7 @@ LITERAL_VALUES: dict[str, bool | None] = {
 }
 
 
-def parse_boolean_or_null(parser) -> tuple[bool, bool | None]:
+def parse_boolean_or_null(parser: "JSONParser") -> tuple[bool, bool | None]:
     """Return whether an unquoted complete literal was found and its value."""
     char = (parser.get_char_at() or "").lower()
     starting_index = parser.index

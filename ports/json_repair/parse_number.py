@@ -1,15 +1,18 @@
 # pystachy: dynamic-any
 # pystachy: python-int
-# Pystachy port: annotate recursive JSON values directly with dynamic Any.
-# Number values promote; the parser's cursor fields retain their declared integer bounds.
-from typing import Any
+from typing import TYPE_CHECKING
 
+from .utils.constants import JSONReturnType
 from .utils.json_context import ContextValues
 
 NUMBER_CHARS: set[str] = set("0123456789-.eE/,_")
 
 
-def parse_number(self) -> Any:
+if TYPE_CHECKING:
+    from .json_parser import JSONParser
+
+
+def parse_number(self: "JSONParser") -> JSONReturnType:
     # <number> is a valid real number expressed in one of a number of given formats
     number_start_index = self.index
     number_str = ""

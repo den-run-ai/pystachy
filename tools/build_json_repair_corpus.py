@@ -15,8 +15,8 @@ import subprocess
 ROOT = Path(__file__).resolve().parent
 UPSTREAM = ROOT / "upstream"
 # The pinned upstream release whose tests and pristine sources define the oracle.
-TAG = "v0.64.8"
-COMMIT = "dc6d02b168656aa3dcaac6a119ecc47594d3526e"
+TAG = "v0.64.9"
+COMMIT = "36d7a6ed53e777b5a5b9017e33d35ea2af8b7c6e"
 
 FILES = ["test_json_repair.py", "test_parse_array.py", "test_parse_comment.py",
          "test_parse_number.py", "test_parse_object.py", "test_parse_string.py",

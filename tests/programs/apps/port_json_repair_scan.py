@@ -5,7 +5,7 @@ from json_repair.json_parser import JSONParser
 # for the string-search path, including scans starting inside escape runs.
 checks = 0
 for text in ["", 'a"b', 'a\\"b"', 'a\\\\"b"', 'a\\\\\\"b"', 'a”b\\”c”', 'é😀"z']:
-    parser = JSONParser(text, False)
+    parser = JSONParser(text, None, False)
     for target in ['"', '”', '\\', '', 'ab']:
         for index in range(len(text) + 1):
             parser.index = index
