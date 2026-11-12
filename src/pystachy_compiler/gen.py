@@ -1172,6 +1172,7 @@ from src.pystachy_compiler.templates import (
     gen_fn_sig as templates_fn_sig,
     gen_instance as templates_instance,
     gen_generic_ann as templates_generic_ann,
+    gen_mapping_ann as templates_mapping_ann,
     gen_generic_hint as templates_generic_hint,
     gen_named_param as templates_named_param,
     gen_named_params as templates_named_params,
@@ -4837,6 +4838,9 @@ class Gen:
 
     def generic_ann(self, c: str, a: Node) -> str:
         return templates_generic_ann(self, c, a)
+
+    def mapping_ann(self, t: str, v: Node) -> str:
+        return templates_mapping_ann(self, t, v)
 
     def named_params(self, c: str, init: Node) -> list[str]:
         return templates_named_params(self, c, init)

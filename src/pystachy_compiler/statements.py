@@ -703,6 +703,8 @@ def gen_stmt_main(self, n: Node) -> None:
         if n.s != "" and self.ann_problem(n.kids[1], False) != "":
             self.err(n.s)  # (the declaration of a local that only dropped code binds: Loader.dropped_locals())
         t = self.vtype(n.kids[1])
+        if len(n.kids) == 3:
+            t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)
         if n.kids[0].kind == "name":
             self.declare(n.kids[0].s, t)
         if len(n.kids) == 3:

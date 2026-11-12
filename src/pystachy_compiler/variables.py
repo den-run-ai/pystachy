@@ -866,7 +866,7 @@ def gen_ahead(self, name: str) -> str:
     copying = self.copying
     self.copying = st.s == "from" and self.foreign(e.s)  # (see copying)
     if st.kind == "annassign" and st.kids[0].kind == "name":
-        self.new_global(name, self.vtype(st.kids[1]))
+        self.new_global(name, self.mapping_ann(self.vtype(st.kids[1]), st.kids[2]) if len(st.kids) == 3 else self.vtype(st.kids[1]))
     elif st.kind == "assign" and assigns(st, name) and self.empty_of(e) != "":
         self.new_global(name, "dict[?,?]" if e.kind == "dict" else f"{self.empty_of(e)}[?]")
         self.lookahead(name, True)
