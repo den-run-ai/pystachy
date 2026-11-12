@@ -158,9 +158,9 @@ CPython does not evaluate annotations in a module that imports `annotations` fro
 `type` statements' values. Other annotations are evaluated where their statement runs, and
 reading such a name there is rejected (`NameError` in CPython). An annotation that names a
 class of a module the program never imports is rejected with an explanation. A name that
-`typing` offers too, such as `Callable` or `Type`, keeps `typing`'s meaning in annotations
-even where such an import binds it, as without the import; to name a class of that name,
-import it under another (`from model import Type as ModelType`).
+`typing` or the builtins offer too, such as `Callable`, `Type` or `int`, keeps that meaning in
+annotations even where such an import binds it, as without the import; to name a class of
+that name, import it under another (`from model import Type as ModelType`).
 
 ## Optional imports
 

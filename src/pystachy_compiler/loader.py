@@ -2097,8 +2097,8 @@ class Loader:
         for m in self.order:
             for st in m.tcimports:
                 for a in st.kids:
-                    if a.s == "" or a.s == "*" or a.s in m.kinds or a.s in m.tkinds or a.s in TYPING:
-                        continue
+                    if a.s == "" or a.s == "*" or a.s in m.kinds or a.s in m.tkinds or a.s in TYPING or a.s in PYBUILTINS:
+                        continue  # (typing's names and the builtins keep their meaning, as without the import)
                     path = a.kids[1].s
                     if st.s.startswith("from."):
                         path = self.rel_path(m, st.s, path)
@@ -2106,10 +2106,9 @@ class Loader:
                         continue  # (typing's names: Gen's own fallback; builtin modules: none of their classes)
                     why = f"'{a.s}' is imported only under if TYPE_CHECKING:, from module '{path}', which the program does not import, so an annotation cannot name it"
                     if st.s == "":
-                        # import a.b binds the package a, import a.b as x the module a.b
-                        tgt = a.kids[0].s
-                        top = tgt[: tgt.find(".")] if "." in tgt else tgt
-                        mod = top if a.s == top else tgt
+                        # import a.b binds the package a, import a.b as x (also as a) the module a.b,
+                        # which the parser names: a, or a.b
+                        mod = a.kids[0].s
                         m.tkinds[a.s] = "m:" + mod if mod in self.mods else "x:" + why
                         continue
                     x = a.kids[0].s[a.kids[0].s.rfind(".") + 1 :]
