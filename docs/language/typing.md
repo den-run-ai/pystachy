@@ -178,6 +178,10 @@ arguments, an assigned generic alias keeps its type variables, which make a func
 annotated with it a template; a `type` statement's alias needs its arguments. Type
 arguments for a `TypeVarTuple` or `ParamSpec` parameter are unsupported.
 
+An alias whose whole value is `mypy_extensions`' `FlexibleAlias[T, X]` stands for `X`, as mypy
+expands it: mypy's `Bogus = FlexibleAlias[T, T]` makes `Bogus[list[int]]` a `list[int]`.
+`FlexibleAlias` takes exactly two type arguments there.
+
 Other code can use an alias of `int`, `float`, `str` or `bool` (`Pos = int`) as that class,
 to call it or pass it to `isinstance()`; using another alias as a value (`print(Row)`,
 `Row.__value__`, `isinstance(x, Num)`) is rejected.

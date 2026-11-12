@@ -1,0 +1,5 @@
+mods: init mods
+mods.shapes: init mods.shapes
+6 N ('b', 'a') [3.0, 4.0, 1.0]
+x 5.5
+[exit 0]

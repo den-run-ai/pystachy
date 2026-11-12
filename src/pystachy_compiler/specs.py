@@ -564,6 +564,9 @@ INERT_DECOS: dict[str, str] = {"typing.overload": "f", "typing.final": "fco", "t
 # Pystachy does not set), and lib/mypy_extensions.py's trait and mypyc_attr ("()": called with
 # constant arguments, mypyc's options, for a function that returns the identity)
 IDENTITY_DECOS: dict[str, str] = {"typing.final": "", "mypy_extensions$trait": "", "mypy_extensions$mypyc_attr": "()"}
+# lib/mypy_extensions.py's FlexibleAlias, a generic class (as typeshed's stub declares it): a type
+# alias whose value is FlexibleAlias[T, X] is X, as mypy expands it (Gen.unalias(), flexible_value())
+FLEXIBLE_ALIAS = "mypy_extensions$FlexibleAlias"
 # node kinds that evaluate without effects
 INERT: dict[str, bool] = {}
 for _k in "int float str bytes complex None True False ellipsis noann omit".split():
