@@ -1008,7 +1008,7 @@ def gen_exit_member(self, v: Val) -> list[Val]:
     if len(ks) == 0:
         return [Val("false", "bool"), Val("0", "int")]
     if self.enum_intlike(v.t):
-        return [Val("true", "bool"), self.getfield(v, self.field(v, " enum int"), " enum int")]
+        return [Val("true", "bool"), self.mem_load(Val(self.fgep(v, self.classes[v.t].fpos[" enum int"]), "*int"))]
     end = self.label()
     isint = Ins("phi", "bool", "")
     status = Ins("phi", "int", "")
@@ -1019,7 +1019,7 @@ def gen_exit_member(self, v: Val) -> list[Val]:
         self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.classes[k].tag), "int")).v, hit, miss)
         self.place(hit)
         member = Val(v.v, k)
-        st = self.getfield(member, self.field(member, " enum int"), " enum int")
+        st = self.mem_load(Val(self.fgep(member, self.classes[k].fpos[" enum int"]), "*int"))
         self.incoming(isint, "true", self.cur)
         self.incoming(status, st.v, self.cur)
         self.br(end)
