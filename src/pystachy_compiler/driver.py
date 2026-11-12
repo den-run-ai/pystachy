@@ -51,6 +51,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/cache_toolchain.py',
     'src/pystachy_compiler/containers.py',
     'src/pystachy_compiler/conversions.py',
+    'src/pystachy_compiler/dataflow.py',
     'src/pystachy_compiler/declarations.py',
     'src/pystachy_compiler/diagnostics.py',
     'src/pystachy_compiler/driver.py',

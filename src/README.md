@@ -27,6 +27,7 @@ remain valid Python and compile together through Pystachy's existing loader.
 | Callback specialization | [callbacks](pystachy_compiler/callbacks.py): bounded precompiled loop variants with callable identity guards and an unchanged fallback. |
 | Union proofs | [union_proof](pystachy_compiler/union_proof.py), [union_state](pystachy_compiler/union_state.py): control-flow tag proofs and raw payload provenance for closed unions under `PYSTACHY_IRCHECK=1`. |
 | Dynamic guards | [dynamic_proof](pystachy_compiler/dynamic_proof.py): payload-tag proofs of every dynamic payload read, against the program's `DynType` constants, over the real control-flow graph under `PYSTACHY_IRCHECK=1`. |
+| Proof dataflow | [dataflow](pystachy_compiler/dataflow.py): the control-flow edges, value liveness and forward worklist that the union and dynamic proofs share. |
 | Shared support | [specs](pystachy_compiler/specs.py), [diagnostics](pystachy_compiler/diagnostics.py), [names](pystachy_compiler/names.py), [utils](pystachy_compiler/utils.py): operation tables, source locations, names and type helpers. |
 | CLI | [driver](pystachy_compiler/driver.py): JIT (the [JIT runner](../docs/internals.md#the-jit-runner), `lljit.c`, or `lli`), AOT, extensions, LLVM tools and runtime caching. |
 
