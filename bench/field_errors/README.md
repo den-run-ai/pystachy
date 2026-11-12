@@ -22,8 +22,7 @@ from LLVM work avoided by the smaller emitted module.
 The global table contains all positively tagged classes in a module. If a module
 has many unrelated hierarchies but very few missing-field reads, their additional
 names and table entries can outweigh a short former select chain. The `sparse-read`
-control exposes this density tradeoff. The prototype does not promise that every
-program's raw IR, static data or executable becomes smaller.
+control exposes this density tradeoff.
 
 Positive tags are assigned before function discovery and are never reused.
 Excluded imported classes can lose a tag, leaving an unused slot; later template
@@ -46,7 +45,7 @@ and LLVM 18.1.3 on this Linux x86-64 host. Each input is frozen and reused by bo
 compilers, with CPU affinity 0. There are five interleaved fresh-process frontend
 samples and three interleaved warm-runtime native builds per revision/input.
 Compiler preparation is excluded. Other local heavy work was scheduled separately,
-but the machine is shared; these are bounded observations, not universal speedups.
+but the machine is shared.
 
 | Derived classes | Source bytes | Raw IR bytes, baseline → candidate | Total `select` instructions | Frontend median, baseline → candidate | Native-build median, baseline → candidate |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -57,11 +56,13 @@ but the machine is shared; these are bounded observations, not universal speedup
 At 128 derived classes, raw IR is 83.2% smaller, the observed frontend median is
 50.2% lower, and the native-build median is 64.4% lower (2.81×). The frontend ranges
 are 73.732–79.141 ms and 37.142–41.696 ms; the build ranges are 1.6919–1.7912 s and
-0.6006–0.6303 s. The native executable shrinks from 331,144 to 85,384 bytes. Median
-frontend maximum process RSS is 56,940 → 38,380 KiB; native-build maximum process
-RSS is 112,284 → 100,808 KiB. These memory values include the launched process's
-inherited resident high-water mark and are not an aggregate process-tree measure.
-CPU tracks wall time closely because every measurement is pinned to one CPU.
+0.6006–0.6303 s. CPU tracks wall time closely because every measurement is pinned to
+one CPU. The native executable shrinks from 331,144 to 85,384 bytes.
+
+Median frontend maximum process RSS is 56,940 → 38,380 KiB; native-build maximum
+process RSS is 112,284 → 100,808 KiB. These memory values include the launched
+process's inherited resident high-water mark and are not an aggregate process-tree
+measure.
 
 The controls qualify that result:
 
@@ -72,12 +73,11 @@ The controls qualify that result:
 | One small hierarchy's read, 128 unrelated class pairs | 16,405 → 52,381 | 8.102 [7.706–10.832] → 8.461 [8.042–11.392] ms | 0.3584 [0.3514–0.3606] → 0.3676 [0.3627–0.3836] s |
 
 The sparse control adds 35,976 raw IR bytes and its three observed candidate builds
-take slightly longer; both final executables remain 47,088 bytes. The no-read
-control has identical raw IR yet visibly scattered frontend samples and a higher
-candidate median. That rules out claiming a general compiler speedup from this
-small cohort. The substantive result is removal of the repeated error-name IR
-expansion. Remaining hierarchy scans, generated-program throughput, broader
-applications and repeated complete self-build performance are not measured here.
+take slightly longer; both final executables remain 47,088 bytes. The no-read control
+has identical raw IR yet visibly scattered frontend samples and a higher candidate
+median, which rules out claiming a general compiler speedup from this small cohort.
+Remaining hierarchy scans, generated-program throughput, broader applications and
+repeated complete self-build performance are not measured here.
 
 All 60 frontend outputs are deterministic within their revision/input; both
 unchanged-path controls also match across revisions. All 36 native builds reproduce
@@ -106,21 +106,20 @@ is retained unchanged, and the two cohorts are not pooled.
 | 128-class hierarchy, no field read | 34.162 → 46.751 ms | 32.965 → 33.716 ms | 31.631–46.551 → 31.938–51.269 ms |
 | Sparse read | 8.102 → 8.461 ms | 8.702 → 8.949 ms | 7.813–17.726 → 7.955–17.429 ms |
 
-The no-read median increase is 2.28% in the confirmation, with a 3.23% median
-paired ratio and a slower candidate in 14 of 20 pairs. CPU medians are 32.541 →
-33.328 ms; RSS medians are 34,816 → 34,804 KiB. Nineteen baseline and sixteen
-candidate samples fall below 40 ms, the gap between the original timing bands.
-Thus the original 36.9% increase does not recur at that size, while a smaller
-control regression and more frequent slow samples remain possible. This is not
-evidence of zero overhead. The large-hierarchy improvement persists in all twenty
-pairs. No further confirmation runs were selected or discarded.
+The original 36.9% increase does not recur in the 20-sample confirmation, but a
+smaller control regression and more frequent slow samples remain possible. The
+no-read median increase is 2.28%, with a 3.23% median paired ratio and a slower
+candidate in 14 of 20 pairs. CPU medians are 32.541 → 33.328 ms; RSS medians are
+34,816 → 34,804 KiB. Nineteen baseline and sixteen candidate samples fall below
+40 ms, the gap between the original timing bands. The large-hierarchy improvement
+persists in all twenty pairs. No further confirmation runs were selected or
+discarded.
 
 The [raw confirmation](results/2026-11-07/control-confirmation.json) and
 [separate-cohort comparison](results/2026-11-07/control-comparison.json) preserve
 every sample and paired ratio. All confirmation IR is deterministic, both
 unchanged-path controls match between revisions, and compiler/source/input hashes
-remain unchanged. The sparse static-data tradeoff and all earlier limitations
-still apply.
+remain unchanged.
 
 ## Correctness evidence
 
@@ -155,13 +154,15 @@ The local typed-IR suite passed 190 tests, the frame ownership suite passed 18,
 mypy checked 49 source files, and changed Python files passed Ruff.
 
 The corpus explicitly shares a baseline runtime/library home after all 105
-runtime/library inputs were hashed equal between checkouts, before and after.
-A focused `.path` fixture shows why: independent homes embed different source-path
-strings, while a shared home produces exact IR. The first attempt omitted that
-fixture's import-path setup and stopped before the corpus; its failure report is
-retained. The corrected attempt uses `tests/prepare_path.sh` and keeps the strict
-comparison unchanged. Complete raw IR is retained in the validation scratch
-capture; all 143 full textual diffs are included in the compressed evidence.
+runtime/library inputs were hashed equal between checkouts, before and after. A
+focused `.path` fixture shows why: independent homes embed different source-path
+strings, while a shared home produces exact IR.
+
+The first attempt omitted that fixture's import-path setup and stopped before the
+corpus; its failure report is retained. The corrected attempt uses
+`tests/prepare_path.sh` and keeps the strict comparison unchanged. Complete raw IR is
+retained in the validation scratch capture; all 143 full textual diffs are included
+in the compressed evidence.
 
 Full `make verify`, macOS execution and integration with concurrent PR stacks are
 unrun. No runtime C code, ABI or successful-field access policy changes in this
@@ -186,23 +187,26 @@ frontends under the invoking CPython instead of the native compilers; it must be
 reported as a separate cohort. Omit `--builds` to measure only the frontend.
 
 The harness freezes each generated source once and alternates baseline/candidate
-order. It records command, source and executable identities, affinity, compiler and
-LLVM versions, every timing, LLVM IR bytes/lines/select count, and native executable
-size. Frontend measurements include process startup and IR writing. Compiler
-preparation is excluded. Native-build measurements include the frontend, LLVM and
-linking with separate prewarmed runtime caches. CPU time and maximum RSS come from
-`wait4`; RSS is the maximum individual-process value including waited children,
-not aggregate concurrent memory (macOS byte values are converted to KiB). Compiler
-commands must succeed with empty stdout
-and stderr; failed or interrupted commands retain logs, metrics and an incomplete
-report. Timeout cleanup terminates the command's owned process group.
+order. It records command, source and executable identities, affinity, compiler
+and LLVM versions, every timing, LLVM IR bytes/lines/select count, and native
+executable size.
 
-Every native build must reproduce CPython's exact stdout and exit status. The two
-negative controls are an exact single class and a large hierarchy without field
-reads. Their IR should remain unchanged. The sparse-read control measures one small
-hierarchy's read with many unrelated tagged classes. These inputs establish a pathological
-scaling improvement, not a speedup for arbitrary compiler workloads. The execution
-checks are correctness witnesses; they do not measure generated-program throughput.
+Frontend measurements include process startup and IR writing but exclude compiler
+preparation. Native-build measurements include the frontend, LLVM and linking with
+separate prewarmed runtime caches. CPU time and maximum RSS come from `wait4`; RSS is
+the maximum individual-process value including waited children, not aggregate
+concurrent memory (macOS byte values are converted to KiB).
+
+Compiler commands must succeed with empty stdout and stderr; failed or interrupted
+commands retain logs, metrics and an incomplete report. Timeout cleanup terminates
+the command's owned process group.
+
+Every native build must reproduce CPython's exact stdout and exit status; these
+execution checks are correctness witnesses. The two negative controls are an exact
+single class and a large hierarchy without field reads; their IR should remain
+unchanged. The sparse-read control measures one small hierarchy's read with many
+unrelated tagged classes. These inputs establish a pathological scaling improvement,
+not a speedup for arbitrary compiler workloads.
 
 The focused regression fixture separately checks initialized and uninitialized
 fields, inherited method reads, post-assignment reads, unrelated hierarchies, and

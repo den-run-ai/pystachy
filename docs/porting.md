@@ -22,8 +22,7 @@ suite is never a count of passing compiled upstream cases.
 
 ## Prototype checks
 
-The acceptance manifest covers **fnmatch and textwrap only**. It does not inventory
-the whole CPython suite or certify every module in `lib/`.
+The acceptance manifest covers **fnmatch and textwrap only**.
 
 ```sh
 make port-check

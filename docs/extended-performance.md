@@ -70,11 +70,11 @@ PYTHONPATH=ports pypy3 bench/extended/json_scan.py suite no-direct-control 4096 
 `all` runs 18 cases; `no-direct-control` omits only the direct malformed-control
 case. PyPy 8.0.1 reports that control one character earlier than CPython 3.13.16,
 so that comparison fails the exact diagnostic oracle. The oracle remains strict.
-Long strings use N/2N/4N. Other cases use size 8192, except fixed small short/mixed
-inputs. Batch counts are 2000 for long strings, 200000 short, 40000 mixed, 3000
-sparse escapes, 300 dense escapes, 300 Unicode, 300 direct-control and 100
-repair-control, multiplied by the fourth argument. The last arguments select
-warmup and measured batches. A single case uses
+
+Long strings use N/2N/4N. Other cases use size 8192, except fixed small short/mixed inputs.
+Batch counts are 2000 for long strings, 200000 short, 40000 mixed, 3000 sparse escapes, 300
+dense escapes, 300 Unicode, 300 direct-control and 100 repair-control, multiplied by the
+fourth argument. The last arguments select warmup and measured batches. A single case uses
 `direct|repair CASE SIZE CALLS WARMUPS SAMPLES`.
 
 Use interleaved independent processes pinned to one CPU, compare medians of
@@ -143,8 +143,8 @@ or `-all` can test a hypothesis before deeper profiling.
 
 This suite complements `bench/run.sh`, `tools/scaling.py` and the deterministic container
 probes described in [testing](testing.md). Checksums do not replace differential tests.
-The kernels are original implementations. Adapted upstream benchmarks, with pinned sources,
-licenses and documented adaptations, are measured separately in [pyperformance results](../bench/pyperformance/README.md#recorded-results).
+Adapted upstream benchmarks, with pinned sources, licenses and documented adaptations, are
+measured separately in [pyperformance results](../bench/pyperformance/README.md#recorded-results).
 
 <a id="measured-observations"></a>
 

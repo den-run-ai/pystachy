@@ -40,15 +40,17 @@ raises only after the whole expression is evaluated
 
 `str` uses UTF-8 storage. Length, indexing, slicing, iteration, search offsets,
 replacement, padding, formatting and text `read(n)` count **code points**, not
-visible characters: combining marks count separately. `chr()`, escapes, `ord()`
-and `repr()` use the same code points. Whitespace stripping/splitting, `splitlines()`
-and `isspace()` recognize CPython's Unicode whitespace and line breaks.
-`isalpha()`, `isalnum()`, `isdecimal()`, `isdigit()` and `isnumeric()` use Unicode
-15.1.0 properties, matching the pinned CPython. Decimal digits, digits and numeric
-characters are distinct: `"²".isdigit()` is true and `"²".isdecimal()` is false;
-`"Ⅳ".isnumeric()` is true and `"Ⅳ".isdigit()` is false. Combining marks are not
-letters, so `"e\u0301".isalpha()` is false. Bytes character tests remain ASCII-only.
-See [storage and indexing costs](../internals.md#values-and-runtime).
+visible characters: combining marks count separately. `chr()`, escapes, `ord()` and
+`repr()` use the same code points. See [storage and indexing
+costs](../internals.md#values-and-runtime).
+
+Whitespace stripping/splitting, `splitlines()` and `isspace()` recognize CPython's
+Unicode whitespace and line breaks. `isalpha()`, `isalnum()`, `isdecimal()`,
+`isdigit()` and `isnumeric()` use Unicode 15.1.0 properties, matching the pinned
+CPython. Decimal digits, digits and numeric characters are distinct: `"²".isdigit()`
+is true and `"²".isdecimal()` is false; `"Ⅳ".isnumeric()` is true and
+`"Ⅳ".isdigit()` is false. Combining marks are not letters, so `"e\u0301".isalpha()`
+is false. Bytes character tests remain ASCII-only.
 
 - **Case mapping and case tests:** `upper()`, `lower()`, `swapcase()`,
   `capitalize()`, `title()`, `casefold()`, `isupper()`, `islower()` and `istitle()`
@@ -79,7 +81,6 @@ See [storage and indexing costs](../internals.md#values-and-runtime).
   read-ahead across a write, so its next read can return pre-write text
   ([large read](../../tests/deviations/io_rplus_big_read.py),
   [iteration](../../tests/deviations/io_iter_write_read.py)).
-
 - **Binary files:** `open()` supports literal binary modes. A computed binary mode
   raises `NotImplementedError` at runtime. See [binary file limits](../../lib/compatibility.md#binary-files)
   for argument/type restrictions and append buffering differences.
@@ -186,8 +187,8 @@ no effect. The shared runtime cache is independent of this setting.
 
 #### Recursion
 
-`sys.setrecursionlimit()` enforces a default limit of 1,000 in JIT and AOT, raising
-catchable `RecursionError` with normal cleanup. Nonpositive limits raise
+JIT and AOT enforce the limit that `sys.setrecursionlimit()` sets, 1,000 by default,
+raising catchable `RecursionError` with normal cleanup. Nonpositive limits raise
 `ValueError`, values outside C `int` raise `OverflowError`, and lowering to/below
 active native depth raises `RecursionError` without changing the limit.
 
@@ -200,17 +201,19 @@ CPython counts every Python frame, so bounded recursion can fail at a different
 call; exact depths and messages differ
 ([deviation](../../tests/deviations/recursion_uncounted_frames.py)).
 
-Counted entries also check the native stack. A raised recursion limit can still
-produce `RecursionError` where CPython completes, because native frames use stack
-space ([deviation](../../tests/deviations/recursion_native_stack.py)). This is not
-protection for foreign code, exhausted guard margins, unknown/switched stacks, custom Linux
+Counted entries also check the native stack. A raised recursion limit can still produce
+`RecursionError` where CPython completes, because native frames use stack space
+([deviation](../../tests/deviations/recursion_native_stack.py)). The check does not
+cover foreign code, exhausted guard margins, unknown/switched stacks, custom Linux
 kernel guard gaps, or mappings and stack-limit changes after initialization. On Linux,
-extensions and glibc's bounds fallback inspect mappings once and allow the default 256-page
-guard gap above an accessible predecessor; failed `/proc/self/maps` inspection retains the
-platform bounds. Extensions use the importing thread's bounds. See [native recursion depth](../internals.md#native-recursion-depth)
-for margins, platform limits and implementation details. Recursive aliases retain
-a separate budget; JSON retains its 2,000-container cap (roughly 500 decoded or
-1,000 encoded containers at the default recursion limit).
+extensions and glibc's bounds fallback inspect mappings once and allow the default
+256-page guard gap above an accessible predecessor; failed `/proc/self/maps` inspection
+retains the platform bounds. Extensions use the importing thread's bounds. See [native
+recursion depth](../internals.md#native-recursion-depth) for margins, platform limits
+and implementation details.
+
+Recursive aliases retain a separate budget; JSON retains its 2,000-container cap
+(roughly 500 decoded or 1,000 encoded containers at the default recursion limit).
 
 #### Exception contents
 
@@ -297,16 +300,17 @@ or generator/async initializers retain eager formatting
 
 ### Dynamic `Any` (opt-in prototype)
 
-`# pystachy: dynamic-any` enables runtime-typed boxes. Concrete annotations and
-native storage still impose checks: incompatible values raise `TypeError`, while
-CPython ignores annotations. A native `list[int]` can share its object and storage
-with `Any`; dynamic writes reject incompatible items before storing them. `extend`
-and `+=` retain a successful prefix, while slice replacement checks all its items
-before writing. The native descriptor also enforces the integer-container policy. Existing
-boxed lists stay unrestricted, and `isinstance(value, list)` does not prove their
-item layout. See the [native-list deviation](../../tests/deviations/dynany_native_int_list_store.py).
-Unsupported selected comparison bodies also raise
-`TypeError`; they do not silently fall back to identity or a lower-priority method.
+`# pystachy: dynamic-any` enables runtime-typed boxes. Concrete annotations and native
+storage still impose checks: incompatible values raise `TypeError`, while CPython
+ignores annotations. Unsupported selected comparison bodies also raise `TypeError`; they
+do not silently fall back to identity or a lower-priority method.
+
+A native `list[int]` can share its object and storage with `Any`; dynamic writes reject
+incompatible items before storing them. `extend` and `+=` retain a successful prefix,
+while slice replacement checks all its items before writing. The native descriptor also
+enforces the integer-container policy. Existing boxed lists stay unrestricted, and
+`isinstance(value, list)` does not prove their item layout. See the [native-list
+deviation](../../tests/deviations/dynany_native_int_list_store.py).
 
 Runtime argument packs support fixed user callables and prepared constructors.
 Variadic targets, erased callable signatures, custom mappings, builtin methods,

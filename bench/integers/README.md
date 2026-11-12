@@ -30,9 +30,10 @@ print different checksums, and records each child's peak RSS. A small C launcher
 program and reads its peak: Linux's `ru_maxrss` keeps the larger of a process's RSS before and
 after its `exec`, so a child forked from the Python runner itself would report at least the
 runner's own memory.
+
 `tools/test_bench_integers.py` (Lint CI) runs every variant at a small size under CPython,
-with `tools/rt_cpython/mpz_oracle.py` as the mpz module, and checks that they agree, and that
-a child's peak RSS leaves out the memory the runner holds.
+with `tools/rt_cpython/mpz_oracle.py` as the mpz module, and checks that the variants agree
+and that a child's peak RSS excludes the runner's memory.
 
 ## Results
 
@@ -59,8 +60,6 @@ CPython is in parentheses.
 
 Peak RSS: CPython 11–12 MiB (58 MiB on `containers`), PyPy 57–222 MiB, the mpz binaries 35–37 MiB
 (99 MiB on `containers`) and the int64 ones 2 MiB, as they allocate nothing.
-
-What this shows, and does not:
 
 - **int64** loops are where Pystachy's checked ints stand today: 157× and 19× CPython, beside
   PyPy's JIT at 90× and 22×. The roadmap's budget is to keep this speed for promoting ints.

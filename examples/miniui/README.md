@@ -46,15 +46,17 @@ AOT executable named `demo`.
 
 For deployment, keep `run.sh`, `libminiui.so` and `demo` together and invoke `run.sh`
 by path, including after moving the directory. No source checkout is needed by
-that AOT bundle. The FFI uses the literal library name `libminiui.so`; launching
-without the wrapper requires configuring the loader search path yourself. This
-is not a single-file executable: dynamic raylib builds also need their matching
-raylib shared library and its dependencies available. Nothing is downloaded,
-vendored or linked into ordinary Pystachy programs by this example.
-The AOT design does not embed CPython. Linux is the intended first platform;
-the Darwin build switch is experimental, not a macOS validation claim. Windows
-packaging is not implemented. This is a single, fixed-size window, on the main
-thread; close it with its titlebar. Always close it in `finally`.
+that AOT bundle, and the AOT design does not embed CPython. The FFI uses the
+literal library name `libminiui.so`; launching without the wrapper requires
+configuring the loader search path yourself. This is not a single-file
+executable: dynamic raylib builds also need their matching raylib shared library
+and its dependencies available. Nothing is downloaded, vendored or linked into
+ordinary Pystachy programs by this example.
+
+Linux is the intended first platform; the Darwin build switch is experimental and
+unvalidated on macOS. Windows packaging is not implemented. This is a single,
+fixed-size window, on the main thread; close it with its titlebar. Always close it
+in `finally`.
 
 The same demo can use the repository's CPython FFI twin:
 
@@ -91,14 +93,15 @@ Use unique, nonempty string IDs for interactive controls, independent of visible
 labels or call order. Buttons activate on release inside after a press inside;
 sliders retain capture while dragging outside. Removed, disabled or completely
 clipped controls lose capture and focus. Partially visible controls remain
-focusable and accept pointer hits only inside their visible intersection. Tab
-uses the preceding frame's enabled, visible control order (so the first displayed
-frame establishes it). A stale target that becomes hidden this frame loses focus
-before consuming input. Enter/Space activate a focused button or checkbox;
-arrows/Home/End adjust sliders. Escape and window blur cancel focus, capture and
-all input for that frame, including a simultaneous click. Labels and progress bars
-do not take keyboard focus. Duplicate IDs are checked with a set; Tab order is
-stored separately.
+focusable and accept pointer hits only inside their visible intersection.
+
+Tab uses the preceding frame's enabled, visible control order (so the first
+displayed frame establishes it). A stale target that becomes hidden this frame
+loses focus before consuming input. Enter/Space activate a focused button or
+checkbox; arrows/Home/End adjust sliders. Escape and window blur cancel focus,
+capture and all input for that frame, including a simultaneous click. Labels and
+progress bars do not take keyboard focus. Duplicate IDs are checked with a set;
+Tab order is stored separately.
 
 Text editing supports insertion, Left/Right/Home/End, Backspace/Delete and Enter
 to leave editing. Clicking a textbox places the cursor at its end. Limits and
@@ -112,7 +115,7 @@ clips text and scrolls it horizontally to keep the caret visible.
 priority over a mouse press, which takes priority over Tab navigation. Textboxes
 apply cursor movement, deletion, queued text, then Enter. Raylib's public key and
 character queues do not preserve mixed event ordering; richer editing needs a
-backend that supplies ordered events. This prototype does not claim that fidelity.
+backend that supplies ordered events.
 
 `panel` is a section heading, NOT a nested layout or native window. No scrolling,
 menus, resize/DPI handling or multiwindow support is included. Custom rectangles
@@ -167,13 +170,14 @@ python3 examples/miniui/check_backend.py --compiler ./pystachy
 The second command also compares native JIT, AOT and program-only GC-stress
 execution. The stressed AOT run must report a positive collection count; a label
 or matching output alone is insufficient. A missing compiler does not count as a
-native pass. The fake backend
-checks scalar widths, UTF-8 input, unsigned RGBA, retained title ownership, clip
-batching, draw order, text/caret bounds and cleanup after empty or failed frames.
-It also launches a relocated adapter through `run.sh` from an unrelated working
-directory, including paths containing spaces. It does NOT validate real raylib
-headers, display creation, fonts or rendering. Run the real demo separately on
-each supported platform.
+native pass.
+
+The fake backend checks scalar widths, UTF-8 input, unsigned RGBA, retained title
+ownership, clip batching, draw order, text/caret bounds and cleanup after empty or
+failed frames. It also launches a relocated adapter through `run.sh` from an
+unrelated working directory, including paths containing spaces. It does NOT
+validate real raylib headers, display creation, fonts or rendering. Run the real
+demo separately on each supported platform.
 
 Local validation uses Linux x86-64, pinned CPython 3.13.16 and LLVM 18.1.3:
 

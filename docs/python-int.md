@@ -273,9 +273,6 @@ values all fit also retain identity when passed into fixed-width storage.
 
 ## Representation
 
-These details describe compiler/runtime storage. Programs use ordinary `int`
-annotations and the opt-in comment.
-
 ### Scalars and inline paths
 
 A scalar is an LLVM `{i64, ptr}`, held in registers as two words:
@@ -415,9 +412,9 @@ paths, both were 3.6–3.7× slower than checked int64. `cross64`, which repeate
 crosses the limit, was 2.4× faster than allocating an `mpz` for every value.
 
 Large-value workloads ranged from 0.83–1.31× CPython's speed; `mpz` ranged from
-0.86–1.21×. The stack representation of small operands avoids allocations in
-workloads such as `arith128`. Ratios on this shared VM varied by up to 0.15
-between runs. Promoting-int peak RSS was 34–37 MiB on large-value workloads,
+0.86–1.21×. Ratios on this shared VM varied by up to 0.15 between runs. The stack
+representation of small operands avoids allocations in workloads such as
+`arith128`. Promoting-int peak RSS was 34–37 MiB on large-value workloads,
 similar to `mpz`, and 2 MiB on `lcg32` and `collatz`.
 
 Separate runs used the same sampling settings:
@@ -462,13 +459,14 @@ test family. Use these entry points for specific contracts:
 compares JIT and AOT output with fresh pinned-CPython recordings. The reviewed
 manifest permits only exact compiler rejections linked to known limitations.
 Crashes, runtime errors, changed output or diagnostics, and obsolete exceptions
-fail. Full verification uses three disjoint shards; PR verification uses a
+fail. Passing establishes the supported experimental surface, not compatibility
+for programs the manifest still rejects.
+
+Full verification uses three disjoint shards; PR verification uses a
 deterministic sample in its `opt-in` worker. The report gate checks the selected
 cases, both modes and compiler identity. See the
 [gate contract](testing.md#make-verify) and
 [baseline review](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/python-int-compatibility-2026-10-28.md).
-Passing establishes the supported experimental surface, not compatibility for
-programs the manifest still rejects.
 
 `make python-int-optin` is the exploratory sweep and can compare an earlier
 report. Its report is not CI evidence. `tools/test_python_int*.py` and the

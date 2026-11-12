@@ -21,11 +21,13 @@ trace unset for ordinary execution. `PYSTACHY_PROGRAM_CACHE=0` disables the
 program cache. Unset, empty and `1` enable it where supported.
 
 The cache supports **Linux, a native compiler invoked by its path, the standard
-Clang/GNU linker toolchain, and the default ORC JIT configuration**. It bypasses the cache for hosted compilation,
-`-O0` JIT code generation, custom C flags or build environments, compiler diagnostics, CPython
-embedding and external native libraries. `build`, `ext`, `ir`, `check` and `rt`
-retain their existing behavior. Unsupported or uninspectable toolchain layouts,
-custom Clang configuration files and undeclared shell wrappers also bypass it.
+Clang/GNU linker toolchain, and the default ORC JIT configuration**. Hosted
+compilation, `-O0` JIT code generation, custom C flags or build environments,
+compiler diagnostics, CPython embedding, external native libraries, unsupported or
+uninspectable toolchain layouts, custom Clang configuration files and undeclared
+shell wrappers bypass it. Tool wrappers must declare all additional inputs with
+`PYSTACHY_PROGRAM_CACHE_INPUTS`; the compiler cannot infer arbitrary wrapper
+behavior. `build`, `ext`, `ir`, `check` and `rt` retain their existing behavior.
 
 ## What is reused
 
@@ -57,6 +59,7 @@ changes ctime; source checks independently read the contents.
 
 The checked toolchain identity also keys the runtime object. A changed header or
 search candidate cannot create a new program entry backed by an older runtime.
+
 Large static files use the optional `/usr/bin/sha256sum` fast path; an unavailable
 helper falls back to the bounded in-process hash. Native executable checksums
 stream bytes directly through the same checksum algorithm. Source contents are always read.
@@ -66,6 +69,7 @@ executables are checksummed, and complete artifacts are published before their
 manifests using atomic renames. Missing, incomplete, corrupt or unusable entries
 fall back to compilation. Hashes detect accidental damage; this is not a shared
 cache or a defense against someone who can modify the user's compiler and files.
+Cross-user and remote caches are outside this contract.
 
 ## Settings
 
@@ -108,10 +112,6 @@ the program independently after opening its validated executable. Native lock
 acquisition stays in the current process; the kernel closes the lock descriptor
 when it executes the already opened program.
 
-The cache is local and private. Tool wrappers must declare all additional inputs
-with `PYSTACHY_PROGRAM_CACHE_INPUTS`; the compiler cannot infer arbitrary wrapper
-behavior. Cross-user and remote caches are outside this contract.
-
 To clear the cache, first stop Pystachy commands using it, then remove its subtree:
 
 ```sh
@@ -135,11 +135,12 @@ The correctness probe leaves the enable setting unset and checks skipped
 frontend/LLVM work, invalidation, setting keys, effects, failure recovery and
 concurrent launches. CI runs it after the PR contracts checks, or in each
 architecture's runtime-cache job on full runs; manifest, lifecycle, hashing and
-toolchain unit tests also run in Lint. The benchmark
-checks output before reporting uncached launches, cold program entries, hits and
-prebuilt AOT execution. Cold program samples retain the warmed runtime/tool
-metadata; first-use toolchain hashing is a separate cost. There are no timing
-thresholds in CI. First fills add executable construction and input discovery;
-cache validation also costs time. Report those costs separately from hits and
-prebuilt AOT execution. Existing compiler/JIT benchmark runners explicitly disable
-this cache to keep their compilation measurements comparable.
+toolchain unit tests also run in Lint.
+
+The benchmark checks output before reporting uncached launches, cold program
+entries, hits and prebuilt AOT execution. Cold program samples retain the warmed
+runtime/tool metadata; first-use toolchain hashing is a separate cost. There are
+no timing thresholds in CI. First fills add executable construction and input
+discovery; cache validation also costs time. Report those costs separately from
+hits and prebuilt AOT execution. Existing compiler/JIT benchmark runners
+explicitly disable this cache to keep their compilation measurements comparable.

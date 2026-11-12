@@ -31,23 +31,27 @@ file records, a subprogram for each Python specialization, and instruction
 locations. Imported and nested functions keep their own file and function
 identity. Generated entry points and wrappers use line zero, so LLVM can preserve
 Python locations when inlining into those callers. Newly synthesized bookkeeping
-also uses line zero. Columns, lexical variables, source checksums, and a complete
-Python inline-call stack are outside this prototype. A front-end expansion can
-retain its originating file and line without becoming a distinct inline frame.
+also uses line zero.
 
-LLVM is free to merge, eliminate, inline, or move optimized instructions. These
-are optimized line tables, not an assertion that every Python line has a unique
-address. Perf/Callgrind can attribute instructions to Python lines that survive
-optimization. The metadata contains the compilation directory; repeating a build
-in the same source context is deterministic, while moving the checkout changes
-that directory. A future path-remapping option would be needed for byte-identical
-debug artifacts across checkout locations.
+Columns, lexical variables, source checksums, and a complete Python inline-call
+stack are outside this prototype. A front-end expansion can retain its
+originating file and line without becoming a distinct inline frame.
+
+LLVM may merge, eliminate, inline, or move optimized instructions, so these
+optimized line tables do not give every Python line a unique address.
+Perf/Callgrind can attribute instructions to Python lines that survive
+optimization.
+
+The metadata contains the compilation directory: repeating a build in the same
+source context is deterministic, while moving the checkout changes that
+directory. Byte-identical debug artifacts across checkout locations would need a
+future path-remapping option.
 
 Debug-node IDs use a numeric offset after the existing metadata IDs. If the
 highest existing ID leaves insufficient room in LLVM's unsigned 32-bit range,
 the emitter finds a free contiguous gap. Existing metadata, quoted strings and
 comments remain unchanged. This repairs the earlier decimal-prefix overflow;
-the historical measurements below predate that repair. Sparse IDs and an
+the historical [measurements](results/README.md) predate that repair. Sparse IDs and an
 existing maximum ID are covered by LLVM assembly regression tests.
 
 The default LLVM 18 Linux ORC JIT was tested with its actual GDB registration
@@ -55,10 +59,10 @@ interface. A native callback reads the running process's `__jit_debug_descriptor
 writes a registered ELF object, and verifies the object's Python line table with
 `llvm-dwarfdump`; the disabled-mode control registers no such Python table. This
 uses LLVM's existing listener and makes no JIT linker changes. It establishes
-registration on that tested toolchain, not compatibility with every debugger,
-JIT mode, or operating system. In particular, Pystachy's `PYSTACHY_JIT_CODEGEN=0` mode,
-whose program object `llc` compiles, and macOS debug registration are not covered by this
-experiment.
+registration only on that tested toolchain, not compatibility with every
+debugger, JIT mode, or operating system: Pystachy's `PYSTACHY_JIT_CODEGEN=0`
+mode, whose program object `llc` compiles, and macOS debug registration are not
+covered.
 
 ## Optional data counters
 
@@ -71,10 +75,10 @@ PYSTACHY_DEBUG_LINES=1 PYSTACHY_CFLAGS=-DPYSTACHY_PROFILE_DATA \
 A counted runtime emits one `pystachy-data: {...}` JSON object on stderr from
 `pys_finish`. The schema is version 1. CFLAGS already participates in runtime-cache
 identity; ordinary builds compile the counters out. Relaxed atomic increments
-avoid introducing counter races in native callbacks. Totals are cumulative over
-the process, including initialization and user exit callbacks, ending before
-final runtime stream cleanup. The counters are aggregate totals, not per-line
-allocation attribution.
+avoid introducing counter races in native callbacks. Totals are aggregate and
+cumulative over the process, including initialization and user exit callbacks,
+ending before final runtime stream cleanup; they are not per-line allocation
+attribution.
 
 | Field | Exact scope |
 | --- | --- |
@@ -85,26 +89,26 @@ allocation attribution.
 | `gc_collections` | The existing runtime GC collection counter. |
 | `gc_peak_heap_bytes` | The existing runtime GC peak managed-heap counter; it is distinct from process peak RSS. |
 
-Allocation requests from foreign allocators and libc are excluded. Copy counts
-exclude generated LLVM and `runtime.py` copy intrinsics, ordinary scalar stores,
-compiler-generated copies, and copies inside libc or foreign code. Requested
-bytes are not physical memory traffic, and may count a request whose actual
-movement is optimized away. The JIT's generated fast allocator bypasses C
-allocation helpers; use AOT for the reported allocation measurements. These
-counters should not be described as a general allocation or copy profiler.
+These counters are not a general allocation or copy profiler. Allocation requests
+from foreign allocators and libc are excluded. Copy counts exclude generated LLVM
+and `runtime.py` copy intrinsics, ordinary scalar stores, compiler-generated
+copies, and copies inside libc or foreign code. Requested bytes are not physical
+memory traffic, and may count a request whose actual movement is optimized away.
+The JIT's generated fast allocator bypasses C allocation helpers; use AOT for the
+reported allocation measurements.
 
-Instrumentation changes execution cost. The runner measures three separately
+Instrumentation changes execution cost, so the runner measures three separately
 built variants: ordinary, line tables only, and line tables plus counters. It
 collects Callgrind instruction profiles from the line-table variant without
-counters. The native timing comparison with the counted variant makes the
-instrumentation cost visible rather than treating it as normal performance.
+counters. Comparing native timings with the counted variant exposes the
+instrumentation cost instead of treating it as normal performance.
 
 ## Reproduce the experiment
 
 Use a clean, bootstrapped native compiler and an independently verified compiler
 from the base commit. Required tools are Python, LLVM, GNU time and Valgrind with
 Callgrind. The runner is a CPython analysis utility, not part of the self-hosted
-compiler. Run from the repository root. Keep other builds and benchmarks stopped.
+compiler. Run from the repository root with other builds and benchmarks stopped.
 
 ```sh
 PYSTACHY_JOBS=2 make PY=python3
@@ -134,9 +138,11 @@ alternate rounds. It records wall time, user/system time, peak RSS, executable
 sizes and hashes, source/input hashes, tool versions and CPU information. The
 compiler workload compares emitted IR hashes in addition to stdout. Smaller
 profile inputs keep instrumentation bounded, and their witnesses are checked
-again. Callgrind totals include process startup and shutdown. The parser sums
-exclusive `Ir` costs, skips inclusive call-edge cost rows, and requires the sum
-to equal Callgrind's summary.
+again.
+
+Callgrind totals include process startup and shutdown. The parser sums exclusive
+`Ir` costs, skips inclusive call-edge cost rows, and requires the sum to equal
+Callgrind's summary.
 
 | Workload | Native timing input | Counter/Callgrind input |
 | --- | --- | --- |
@@ -148,9 +154,11 @@ to equal Callgrind's summary.
 A separate frontend comparison runs the base compiler, the new compiler with
 locations disabled, and the new compiler with locations enabled against the same
 current compiler source. This detects overhead from storing the extra IR field
-even when program debug information is disabled. Performance is advisory: there
-are no timing thresholds, and CPU affinity does not isolate the host from other
-activity. The committed results document the particular execution environment.
+even when program debug information is disabled.
+
+Performance is advisory: there are no timing thresholds, and CPU affinity does
+not isolate the host from other activity. The committed results document the
+particular execution environment.
 
 ## Validation and primary references
 

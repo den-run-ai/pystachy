@@ -1,8 +1,8 @@
 # Top-PyPI inventory
 
-Resolve a dated ranking once. Keep the ranking, release manifest, source profiles and
-comparison JSON together. Resolving the ranking again selects the then-current releases.
-A manifest pins each eligible wheel's filename, size, URL and SHA-256.
+Resolve a dated ranking once: resolving it again selects the then-current releases. A
+manifest pins each eligible wheel's filename, size, URL and SHA-256. Keep the ranking,
+release manifest, source profiles and comparison JSON together.
 
 ```sh
 mkdir -p build/pypi
@@ -17,12 +17,14 @@ python tools/pypi_inventory.py compare build/pypi/profiles.json build/pypi/compa
 
 Use pinned CPython. The default cutoff for `resolve` and `scan` is rank 10,000.
 The scan accepts a manifest subset for selected ranks and `--wheel-dir` for a local
-wheel cache. It verifies bytes before parsing. Non-yanked Python 3 pure wheels
-up to 50 MB qualify. `no-eligible-pure-wheel` means the release has a non-yanked
-wheel, but none carries both a `py3*` interpreter tag and the `none-any` tags.
-It includes platform-specific wheels and Python 2 pure wheels. Separate statuses
-cover sdist-only releases, missing projects, oversized files and failed fetches
-or integrity checks. The manifest retains `requires_python` for interpreter checks.
+wheel cache. It verifies bytes before parsing.
+
+Non-yanked Python 3 pure wheels up to 50 MB qualify. `no-eligible-pure-wheel` means
+the release has a non-yanked wheel, but none carries both a `py3*` interpreter tag
+and the `none-any` tags. It includes platform-specific wheels and Python 2 pure
+wheels. Separate statuses cover sdist-only releases, missing projects, oversized
+files and failed fetches or integrity checks. The manifest retains `requires_python`
+for interpreter checks.
 
 The recovered probe scans module-level imports across the wheel's Python sources.
 It skips tests, optional import fallbacks, type-checking suites, local functions

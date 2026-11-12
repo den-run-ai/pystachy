@@ -4,12 +4,13 @@
 container) prints the fewest digits that read back as the same float, and of those the closest to
 it, as CPython's `dtoa` (mode 0) gives them. runtime.c's `pys_str_float` gets those digits from
 [Ryu](https://github.com/ulfjack/ryu)'s `d2s_buffered_n()`, which this directory holds, and lays
-them out as CPython does (where the point goes, when an exponent is written). runtime.c includes
-`d2s.c`, so it is compiled wherever runtime.c is: the runtime of `pystachy run` and
-`pystachy build`, the extension modules of `pystachy ext`, and the probes in `tools/`. The
-driver's cached runtime is built from these files' bytes as from runtime.c's, and keyed by them
-(`RTPARTS` in pystachy.py lists them; [docs/runtime-in-subset.md](../docs/runtime-in-subset.md)
-§1.4).
+them out as CPython does (where the point goes, when an exponent is written).
+
+runtime.c includes `d2s.c`, so it is compiled wherever runtime.c is: the runtime of
+`pystachy run` and `pystachy build`, the extension modules of `pystachy ext`, and the probes in
+`tools/`. The driver's cached runtime is built from these files' bytes as from runtime.c's, and
+keyed by them (`RTPARTS` in pystachy.py lists them;
+[docs/runtime-in-subset.md](../docs/runtime-in-subset.md) §1.4).
 
 | file | lines | from upstream |
 |---|---:|---|
@@ -32,9 +33,9 @@ runtime.c defines `RYU_OPTIMIZE_SIZE`, so `d2s_full_table.h` is not needed (its 
 and the other conversions (`f2s`, `d2fixed`, `s2d`) are not used.
 
 runtime.c declares `d2s_buffered_n`, `d2s_buffered` and `d2s` static before it includes `d2s.c`,
-so that no symbol of Ryu leaves the runtime (the two it does not call are dropped), and includes
-it with `NDEBUG` defined, as a release build would: Ryu's asserts check its own invariants, and
-would make float repr call the C library's `__assert_fail`, a use of state (I) to
+so that no symbol of Ryu leaves the runtime (the two it does not call are dropped). It includes
+`d2s.c` with `NDEBUG` defined, as a release build would: Ryu's asserts check its own invariants,
+and would make float repr call the C library's `__assert_fail`, a use of state (I) to
 `tools/check_runtime.py`, which `pys_str_float`'s RUNTIME entry does not have.
 
 ## License
@@ -48,9 +49,12 @@ lists them too.
 
 ## Updating
 
-Copy the six files from upstream's `ryu/` directory at the new commit, make their includes relative
-(`sed -i 's|^#include "ryu/\([a-z0-9_]*\.h\)"|#include "\1"|' ryu/*.c ryu/*.h`), and name the
-commit here, in THIRD_PARTY_NOTICES and in the comment above runtime.c's `#include "ryu/d2s.c"`.
-A file that the new `d2s.c` includes and these do not has to join them in `RTPARTS`, or the
-driver's build of the runtime will not find it. `tests/programs/numbers/float_repr.py` checks the digits against
-CPython's.
+1. Copy the six files from upstream's `ryu/` directory at the new commit.
+2. Make their includes relative
+   (`sed -i 's|^#include "ryu/\([a-z0-9_]*\.h\)"|#include "\1"|' ryu/*.c ryu/*.h`).
+3. Name the commit here, in THIRD_PARTY_NOTICES and in the comment above runtime.c's
+   `#include "ryu/d2s.c"`.
+4. Add to `RTPARTS` any file that the new `d2s.c` includes and these do not, or the driver's
+   build of the runtime will not find it.
+
+`tests/programs/numbers/float_repr.py` checks the digits against CPython's.

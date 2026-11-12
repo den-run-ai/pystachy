@@ -10,7 +10,7 @@ The consumer is an original, deliberately small C-ABI client. It replaces
 llvmlite's dynamic Python loader/object layer with explicit ctypes declarations
 and deterministic `try`/`finally` ownership. It does **not** demonstrate unmodified
 `import llvmlite.binding`, the full upstream test suite, JIT compilation of the
-input IR, or Numba compatibility. No speedup is claimed.
+input IR, or Numba compatibility.
 
 ## Run
 
@@ -43,8 +43,8 @@ must match llvmlite's unmodified `create_context`, `parse_assembly`, `verify` an
 module stringification APIs. The default modes are CPython ctypes, Pystachy JIT
 and AOT, then both native modes with collection at every allocation.
 
-Repetition and GC-stressed correctness exercise cleanup paths; they are not a
-proof that no native memory leaks exist. Foreign pointers are freed with
+Repetition and GC-stressed correctness exercise cleanup paths; they do not prove
+the absence of native memory leaks. Foreign pointers are freed with
 llvmlite's matching functions after their contents have been copied.
 
 ## ABI and provenance

@@ -42,10 +42,11 @@ backend; it is not an independent interpreter of LLVM semantics.
 
 Integer results and non-NaN double bits must match exactly, including the sign of
 zero. NaNs compare by `isnan`, without a payload/sign promise. Missing functions,
-missing result rows, subprocess failures and timeouts fail the check. A valid
-module with a deliberately wrong mask must produce native mismatches; a malformed
-return type must be rejected by LLVM. These controls guard against empty or
-nonexecuted checks passing.
+missing result rows, subprocess failures and timeouts fail the check.
+
+A valid module with a deliberately wrong mask must produce native mismatches; a
+malformed return type must be rejected by LLVM. These controls guard against
+empty or nonexecuted checks passing.
 
 ## Optional Alive2
 

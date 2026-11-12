@@ -30,9 +30,11 @@ profile summaries. Four alternating process rounds each contain a first call,
 three untimed warmups and five timed samples: **20 warmed samples per cell**.
 Every received fragment is checked before accepting a timing. Socket creation,
 registration and process startup are outside transfer timings; complete process
-durations are recorded separately. These are advisory measurements on a shared
-Linux x86-64 host (AMD EPYC 9V74), pinned to logical CPU 0. Median absolute
-deviations were 1.4–3.1% for baseline and 1.4–4.5% for revised samples.
+durations are recorded separately.
+
+These are advisory measurements on a shared Linux x86-64 host (AMD EPYC 9V74),
+pinned to logical CPU 0. Median absolute deviations were 1.4–3.1% for baseline
+and 1.4–4.5% for revised samples.
 
 Separate cProfile runs of the sparse workload record 736,216 versus 538,457
 total calls. `Signature.bind` and `BoundArguments.apply_defaults` fall from

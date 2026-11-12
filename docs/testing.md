@@ -45,13 +45,13 @@ Run these from the repository root:
 | `make blas-check` | Check the optional `cblas_dgemm` adapter (`examples/ndarray`) against NumPy and nanoGPT's BLAS backend against its scalar one, under CPython, JIT, AOT and GC stress; needs an LP64 `libblas.so.3` and NumPy. `LD_LIBRARY_PATH` selects the provider; CI checks OpenBLAS and the reference BLAS. |
 
 For quick local feedback, activate the environment with the dependencies from
-`tools/requirements-dev.txt` and run `make check-fast`. It runs Ruff, the existing
-mypy gate, compiler effect-summary tests (`tools/test_function_summaries.py`), and
-all typed-IR unit tests (`tools/test_typed*.py`) under the interpreter selected by `PY`. It builds no native
-compiler and needs no LLVM tools. This is a hosted subset; use the full verification
-plan for bootstrap, JIT/AOT, GC and runtime evidence. `make check-fast lint` also
-runs ShellCheck and Clang warnings, sharing the Ruff prerequisite. Ruff also rejects
-obsolete `# noqa` suppressions with `RUF100`.
+`tools/requirements-dev.txt` and run `make check-fast`. It runs Ruff, the mypy gate,
+compiler effect-summary tests (`tools/test_function_summaries.py`) and all typed-IR unit
+tests (`tools/test_typed*.py`) under the interpreter selected by `PY`. This hosted subset
+builds no native compiler and needs no LLVM tools; use the full verification plan for
+bootstrap, JIT/AOT, GC and runtime evidence. `make check-fast lint` also runs ShellCheck and
+Clang warnings, sharing the Ruff prerequisite. Ruff rejects obsolete `# noqa` suppressions
+with `RUF100`.
 
 For a focused edit, select the affected cases:
 
@@ -99,17 +99,17 @@ fails `make check-recordings` and a whole-corpus `tests/run.sh` instead of being
 An AOT build's diagnostics are kept separate from the program's stderr and must be empty.
 The runner enables `PYSTACHY_IRCHECK=1` unless explicitly overridden.
 
-Rejections `tests/errors/AREA/*.py` must fail with status 1 and one source diagnostic on stderr:
-`FILE:LINE: error: MESSAGE`, containing the expected message from the source's first line. A
-`NAME.path` beside a rejection is its `PYSTACHY_PATH`.
-A traceback containing that message does not pass. Syntax cases also exercise the parse-only
-`pystachy check` command; runtime-mode cases use `pystachy rt`.
+Rejections `tests/errors/AREA/*.py` must fail with status 1 and one source diagnostic on
+stderr: `FILE:LINE: error: MESSAGE`, containing the expected message from the source's first
+line. A traceback containing that message does not pass. A `NAME.path` beside a rejection is
+its `PYSTACHY_PATH`. Syntax cases also exercise the parse-only `pystachy check` command;
+runtime-mode cases use `pystachy rt`.
 
 `tests/deviations/*.py` use hand-written expectations for the
-[documented differences](language/compatibility.md#deviations-from-cpython). They are kept apart
-from CPython-recorded outputs. The suite covers language behavior, compiler diagnostics,
-library APIs, upstream-derived cases, files, exceptions and collector stress. Exact current
-counts come from the files and the verification report, rather than a fixed number in this guide.
+[documented differences](language/compatibility.md#deviations-from-cpython), kept apart from
+CPython-recorded outputs. The suite covers language behavior, compiler diagnostics, library
+APIs, upstream-derived cases, files, exceptions and collector stress; the files and the
+verification report give its current counts.
 
 ### Recording expected output
 
@@ -148,29 +148,35 @@ architecture-specific recording.
 | Benchmarks | CPython-equivalent output plus advisory timings. |
 
 The implementation and exact budgets live in `tests/verify.sh` and its named `tools/` probes.
-Useful individual checks include `make re-fuzz`, `make re-probe`, `make re-specialize-check`
-(matchers generated for random patterns, against CPython's `re`), `make dynany-fuzz`
-(seeded programs on [dynamic `Any`](dynamic-any.md) values against CPython, with identity and
-containment invariants, plus 30 strict typed/Any parity cases per program, including evaluation
-order and first-error traces. The `contracts` group runs three seeds with 150 random cases each,
-using the verified native compiler in JIT and AOT, both normally and with program GC stress at
-every allocation. `--aot --gc-stress` selects the same configurations locally; the aggregate gate
-requires all four modes, 540 cases including 90 parity cases and zero mismatches. This bounded
-check complements the full opt-in corpus sweep, `make dynany-optin`), `make dictprobe`,
-`make listprobe`, `make eqprobe`, `make fileprobe`, `make streamprobe`, `make jitprobe` and
-`make aotprobe` (the runtime's opt-in code that AOT executables keep, by symbol and in a list
-store's `-O2` code, plain or not, the allocations `allocelide` lets `-O2` delete and those it
-keeps, with the objects they hold, and the allocation window between collections that
-`PYSTACHY_GC_MIN` sets).
-`make jitprobe` also checks the [JIT runner](internals.md#the-jit-runner) on small C programs
-(`tools/test_lljit.py`: its first-use build, cache and `lli` fallback, constructors, `argv`,
-status, libraries, objects, archives, errors and signal dispositions; `PYSTACHY_TEST_LLJIT_LLVMS`
-adds toolchains of other LLVM versions), and compares JIT launches with CPython under the runner
-and under `lli`: inherited descriptors, the program's and its child's whole descriptor tables,
-closed standard streams, inherited SIGINT dispositions (sent once the program waits),
-shared/object runtime inputs, `-O0` code generation (the runner's, and `llc`'s objects for
-`lli`), embedding, temporary cleanup, failed exec and native program-cache miss/hit and AOT
-launches.
+Useful individual checks include:
+
+- `make re-fuzz`, `make re-probe` and `make re-specialize-check` (matchers generated for
+  random patterns, against CPython's `re`).
+- `make dynany-fuzz`: seeded programs on [dynamic `Any`](dynamic-any.md) values against
+  CPython, with identity and containment invariants, plus 30 strict typed/Any parity cases
+  per program, including evaluation order and first-error traces. The `contracts` group runs
+  three seeds with 150 random cases each, using the verified native compiler in JIT and AOT,
+  both normally and with program GC stress at every allocation. `--aot --gc-stress` selects
+  the same configurations locally; the aggregate gate requires all four modes, 540 cases
+  including 90 parity cases and zero mismatches. This bounded check complements the full
+  opt-in corpus sweep, `make dynany-optin`.
+- `make dictprobe`, `make listprobe`, `make eqprobe`, `make fileprobe` and
+  `make streamprobe`.
+- `make jitprobe`, which also checks the [JIT runner](internals.md#the-jit-runner) on small
+  C programs (`tools/test_lljit.py`: its first-use build, cache and `lli` fallback,
+  constructors, `argv`, status, libraries, objects, archives, errors and signal
+  dispositions; `PYSTACHY_TEST_LLJIT_LLVMS` adds toolchains of other LLVM versions). It
+  compares JIT launches with CPython under the runner and under `lli`: inherited
+  descriptors, the program's and its child's whole descriptor tables, closed standard
+  streams, inherited SIGINT dispositions (sent once the program waits), shared/object
+  runtime inputs, `-O0` code generation (the runner's, and `llc`'s objects for `lli`),
+  embedding, temporary cleanup, failed exec and native program-cache miss/hit and AOT
+  launches.
+- `make aotprobe`: the runtime's opt-in code that AOT executables keep, by symbol and in a
+  list store's `-O2` code, plain or not; the allocations `allocelide` lets `-O2` delete and
+  those it keeps, with the objects they hold; and the allocation window between collections
+  that `PYSTACHY_GC_MIN` sets.
+
 They use deterministic operation or allocation limits where possible; shared CI runners do
 not gate on benchmark speed.
 
@@ -201,10 +207,12 @@ run concurrent groups in separate checkouts because they share `build/verify` an
 
 ## IR identity for refactors
 
-`make irsame REF=<commit>` builds and caches the reference compiler in `build/ref/`, then
-compares it with `./pystachy`. `make irsame-py REF=<commit>` compares the hosted compilers.
-Use `FILES="..."` to select cases; otherwise the corpus includes the compiler, runtime,
-differential tests, deviations, benchmarks and compile-only IR probes.
+Use `make irsame REF=<commit>` when a refactor should preserve code generation; an
+intentional optimization can change IR and needs behavioral tests instead. It builds and
+caches the reference compiler in `build/ref/`, then compares it with `./pystachy`.
+`make irsame-py REF=<commit>` compares the hosted compilers. `FILES="..."` selects cases;
+otherwise the corpus includes the compiler, runtime, differential tests, deviations,
+benchmarks and compile-only IR probes.
 
 The oracle compares emitted IR byte for byte, rejection messages and exit statuses.
 It normalizes each compiler's own library prefix to `lib/` in diagnostic source locations;
@@ -213,8 +221,6 @@ still reads its own library and runtime inputs. Direct executables and Python sc
 commands have their homes recognized; unfamiliar wrappers keep raw comparisons.
 Messages with quoted library paths or ambiguous quoting also stay raw so normalization
 cannot hide a change to diagnostic prose.
-Use it when a refactor should preserve code generation. An intentional optimization can
-change IR and needs behavioral tests instead.
 
 `make check-ir` verifies typed-IR structure, LLVM acceptance, and the effect summaries,
 runtime calls, function attributes or field TBAA tags recorded for `tests/ir/*.py` (`NAME.fx`,
@@ -320,9 +326,6 @@ coverage, a failed test fails the run and no percentage does.
 
 The instrumented runtime's machine code differs from the normal build's, and so do the stack
 words and registers that the conservative collector scans; the corpus must pass all the same.
-Running it so found that `open()` could keep alive the unreachable writer that it collects to
-close, where register allocation left that writer in a callee-saved register across the
-collection.
 
 ## Reading coverage
 
@@ -333,13 +336,12 @@ code that only runs outside these suites, which the per-suite figures and the re
 help tell apart. Coverage is advisory: no check requires it and no change has to raise it, while a
 fix still needs a regression test that fails without it ([contributor guide](../CONTRIBUTING.md#validation)).
 
-What a change adds is reviewed where it is: with `COVERAGE_BASE=REF` (for example
-`make coverage COVERAGE_BASE=origin/main`), either summary also lists the code changed since the
-merge base of `REF` and `HEAD`, uncommitted changes included, that no suite ran: its statements or
-lines not run and its branches not taken. Review those before any threshold on the total. The
-Coverage workflow lists them for a manual run on a branch
-(its `base` input, `origin/main` by default). A selection (`FILES=...`) runs less of the suites, so
-it lists more.
+With `COVERAGE_BASE=REF` (for example `make coverage COVERAGE_BASE=origin/main`), either
+summary also lists the code changed since the merge base of `REF` and `HEAD`, uncommitted
+changes included, that no suite ran: its statements or lines not run and its branches not
+taken. Review those before any threshold on the total. The Coverage workflow lists them for
+a manual run on a branch (its `base` input, `origin/main` by default). A selection
+(`FILES=...`) runs less of the suites, so it lists more.
 
 The [Coverage workflow](../.github/workflows/coverage.yml) runs both measurements daily and on
 demand, and on pushes to `main` that change its setup or the suites' runners. PRs do not launch
@@ -348,10 +350,11 @@ The compiler's coverage runs in ten parallel jobs (the corpus in eight shards, t
 suites in one, the runtime-cache and unit suites in another) and the runtime's in seven (the
 corpus in six shards, each after building the native compiler, and the FFI suite); a report job
 for each combines its parts. As for CI's groups, each job targets under ten minutes of work
-within a 15-minute limit. Job summaries show the summaries, and the reports are workflow
-artifacts. After each run on `main`, a separate job, which runs no
-tests, commits the summaries and badges of the reports that passed to the `badges` branch, which
-the README's badges read:
+within a 15-minute limit.
+
+Job summaries show the summaries, and the reports are workflow artifacts. After each run on
+`main`, a separate job, which runs no tests, commits the summaries and badges of the reports
+that passed to the `badges` branch, which the README's badges read:
 [`coverage.md`](https://github.com/den-run-ai/pystachy/blob/badges/coverage.md) and
 `coverage.json`,
 [`runtime-coverage.md`](https://github.com/den-run-ai/pystachy/blob/badges/runtime-coverage.md)
@@ -367,40 +370,44 @@ and AOT, in configurations that `make verify` does not test and that must change
 | `opt-1` … `opt-6` | `PYSTACHY_OPT` turning off the IR passes that each row of a covering array of their pairs leaves off. Verification runs every pass on and all of them off (`-all`); with these six rows, every two passes run in each of their four on/off combinations. A pass added to `OPTS` gets a column of its own; the rows have room for fifteen passes (`tools/variants.sh`). |
 | `cflags-O0` | `PYSTACHY_CFLAGS=-O0`: the runtime unoptimized, and with it an AOT program's whole module, whose IR then runs as the compiler emitted it. The runtime's frames keep every local in memory, which changes the dead words that the conservative collector scans as roots. Its JIT runs in `lli` (`PYSTACHY_JIT_LAUNCHER=lli`), the fallback of the [JIT runner](internals.md#the-jit-runner) that verification and the other variants use. |
 
-`make runtime-coverage` is another variant: clang's instrumentation changes the runtime's register
-allocation, and only that build showed `open()` keeping alive the writer it collected to close
-(`tests/programs/runtime/rt_list_vacated.py`). With the fix reverted, the runtime built at `-O0`, `-O1`, `-O3`,
-`-Os` or `-Oz`, or with LLVM's basic or PBQP register allocator, still passes.
+`make runtime-coverage` is another variant: clang's instrumentation changes the runtime's
+register allocation, and only that build showed `open()` keeping alive the unreachable
+writer it collected to close, which register allocation had left in a callee-saved register
+across the collection (`tests/programs/runtime/rt_list_vacated.py`). With the fix reverted,
+the runtime built at `-O0`, `-O1`, `-O3`, `-Os` or `-Oz`, or with LLVM's basic or PBQP
+register allocator, still passes.
 
 `VARIANTS="opt-1 cflags-O0"` selects variants, `FILES=...` cases, `VARIANTS_SHARD=I/N` a shard of
 the corpus (`tools/shard_cases.sh`) and `MODES=jit` one tier. The script drops the caller's
 settings that verification drops, builds each variant's runtime in a cache of its own and writes
 the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
-long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
-four shards (24 jobs) daily, on demand and on relevant `main` pushes. The lighter `opt-1`
-and `cflags-O0` rows share one build per shard; the slower optimizer rows run separately
-within the 15-minute job limit. PRs run the seven
-configurations on representative and changed cases in **two workers**, reusing the verified
-bootstrap. Each worker runs three or four configurations with private runtime caches and records its
-exact cases and results. The PR aggregate requires both workers to pass.
+long as `make test`.
+
+The [Variants workflow](../.github/workflows/variants.yml) runs each one in four shards
+(24 jobs) daily, on demand and on relevant `main` pushes. The lighter `opt-1` and
+`cflags-O0` rows share one build per shard; the slower optimizer rows run separately within
+the 15-minute job limit. PRs run the seven configurations on representative and changed
+cases in **two workers**, reusing the verified bootstrap. Each worker runs three or four
+configurations with private runtime caches and records its exact cases and results. The PR
+aggregate requires both workers to pass.
 
 ## Continuous integration
 
-The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks), pushes
-to `main` and manual dispatch. Pull requests test the branch merged with the then-current
+The [CI workflow](../.github/workflows/ci.yml) runs on pull requests (including forks),
+pushes to `main` and manual dispatch, using Ubuntu 24.04, LLVM 18 and the CPython version
+pinned in `.python-version`. Pull requests test the branch merged with the then-current
 `main`. A newer PR push cancels its previous run; commits on `main` run to completion.
+Pushes to `main` and manual CI runs retain complete verification for the release gate.
+
 Markdown/docs-only PRs run Lint and submission format checks plus a lightweight
-`Verification` check. The legacy DCO job always skips pending branch settings. Both bootstrap workers classify the tested
-merge commit's changes against its base. When both select the documentation plan,
-they skip toolchain setup and builds, and CI skips the verification, variant and
-distribution jobs. Renaming a source file into `docs/` still selects code verification.
-Classification verifies the immutable event merge SHA and its PR-head parent. If
-GitHub generated that merge against a newer base than the event payload records,
-CI requires code verification and uses the validated merge's first parent for changed-case
-selection. A wrong checkout, wrong PR head or non-merge commit fails classification.
-Other PRs use the compact profile below. Pushes to `main` and manual CI runs retain
-complete verification for the release gate.
-The toolchain is Ubuntu 24.04, LLVM 18 and the CPython version pinned in `.python-version`.
+`Verification` check. Both bootstrap workers classify the tested merge commit's changes
+against its base. When both select the documentation plan, they skip toolchain setup and
+builds, and CI skips the verification, variant and distribution jobs. Renaming a source file
+into `docs/` still selects code verification. Classification verifies the immutable event
+merge SHA and its PR-head parent. If GitHub generated that merge against a newer base than
+the event payload records, CI requires code verification and uses the validated merge's
+first parent for changed-case selection. A wrong checkout, wrong PR head or non-merge commit
+fails classification. Other PRs use the compact profile below.
 
 The top-level `bench/*.py` step requires successful CPython, JIT and AOT runs with
 identical stdout and stderr. AOT builds must succeed silently and produce a fresh
@@ -411,9 +418,10 @@ phases; these are evidence checks, with no speed threshold.
 The `benchmarks` group also runs `make bench-pyperformance-check` with that run's verified
 native compiler. Every delivered adaptation must match CPython stdout in JIT and AOT on
 bounded smoke inputs; a mismatch or failed build fails the group and aggregate gate.
-It also runs the shared pytest API assertions for all 25 delivered workloads.
-The group's artifact includes `pyperformance-smoke.json` and `pytest-pyperformance.json`. This is correctness coverage,
-with no timing thresholds or claim to run the upstream pyperf harness.
+It also runs the shared pytest API assertions for all 25 delivered workloads. The group's
+artifact includes `pyperformance-smoke.json` and `pytest-pyperformance.json`. This is
+correctness coverage, with no timing thresholds; it does not run the upstream pyperf
+harness.
 
 The same group runs `make bench-match-check`: six workload/distribution combinations
 validate literal, tuple and dataclass patterns against equivalent handwritten branches
@@ -427,18 +435,17 @@ The `hosted` CI job runs 20 independent example API suites through
 verified compiler. Splitting these checks between existing jobs leaves more room
 within the 15-minute budget without adding workers. `pytest-workloads.json` records every
 original-pytest comparison.
-Missing modules/results, empty suites, skips, xfails and failed builds fail this
-check. These tests supplement the exact CLI, FFI, upstream-reference and timing
-contracts below; they do not replace those distinct observations.
+Missing modules/results, empty suites, skips, xfails and failed builds fail this check.
+These tests supplement, and do not replace, the exact CLI, FFI, upstream-reference and
+timing contracts below.
 
 The x86-64 `hosted` job also runs `make test-pytest-native` with the hosted compiler
 and pinned original pytest oracle. This covers collection, fixture lifecycle,
 JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
-methods. The existing job runs once on code PRs, main pushes and manual runs;
-documentation-only PRs retain their lightweight plan. Its artifact includes both
-example-mode reports, `pytest-controls.json` and `pytest-upstream-bundled.json`.
-Keeping this check outside Lint preserves the same coverage within the existing
-job, worker and 15-minute limits.
+methods. The job runs once on code PRs, main pushes and manual runs; documentation-only PRs
+retain their lightweight plan. Its artifact includes both example-mode reports,
+`pytest-controls.json` and `pytest-upstream-bundled.json`. Keeping this check outside Lint
+preserves its coverage within the job, worker and 15-minute limits.
 
 The `example-cli` verification step runs in the `benchmarks` group: on x86-64 in
 PR CI and on both architectures in full CI. `tools/check_example_cli.py` runs 24 tiny cases through
@@ -449,7 +456,7 @@ oracle in JIT and AOT. The input fixtures must remain unchanged. Options that pr
 elapsed time are excluded, apart from the router's empty in-memory batch with its
 defined zero-time report.
 
-The step also invokes the existing `tests/upstream/json_repair/cli.py` checks (20
+The step also invokes the `tests/upstream/json_repair/cli.py` checks (20
 process cases, including output-file effects, compared with CPython in JIT and AOT),
 replays the 943 recorded calls of the [JSON repair corpus](../tests/upstream/json_repair/README.md)
 through native JIT and AOT builds of the port, each checked by `tools/json_repair_parity.py`
@@ -458,6 +465,7 @@ against the recorded CPython outcomes, and runs
 validates five requests against a local HTTP server, the response transcript and
 the resulting workspace repair; it needs `curl` but no model service or credentials.
 This is deterministic transport and execution coverage, with no performance threshold.
+
 Each command has a timeout that terminates its process group, including children.
 Failures identify the case, execution phase, command, timeout, exit status and both
 output streams. `build/verify/example-cli.json` records completed case identities
@@ -475,7 +483,7 @@ the same events (excluding documentation-only PRs). One job measures eleven smal
 scalar autograd, dense projection/softmax, fnmatch, mixed JSON parsing, repair-style scanning,
 integer/float copies and mutable-global reads in a dynamic-Any opt-in module without observed identity,
 heterogeneous cyclic graph deep-copy/checksum processing, and the
-existing adapted pyperformance `regex_effbot`. The [kernel notes](../bench/smoke/README.md)
+adapted pyperformance `regex_effbot`. The [kernel notes](../bench/smoke/README.md)
 map each case to its coverage and limits. It builds each revision's
 native compiler once, then compares the PR merge against its base, or a main push against
 its previous SHA, on one CPU with separate warmed caches and identical head workload sources.
@@ -490,6 +498,7 @@ triggers three more pairs. Both batches must meet the threshold with disjoint sa
 to emit an advisory Actions warning; other threshold crossings are `unconfirmed`.
 Correctness, setup and measurement errors fail the job. Timing warnings do not gate merging.
 Peak RSS and retained-memory costs remain separate measurements; this suite records timing.
+
 The step summary and 30-day `perf-smoke` JSON artifacts retain revisions, toolchain, source
 hashes, raw samples and same-run CPython controls. The job allows 15 minutes for both
 compiler builds, warmups and any confirmation batches. Atomic JSON checkpoints preserve
@@ -507,14 +516,14 @@ on the same runner each time; ratios therefore include cumulative changes since 
 These separate runs retain `perf-reference` raw JSON artifacts for 90 days, providing a bounded
 history without adding work to PR or push runs. Download them from the workflow's run pages.
 Compare a series only with matching reference, workload sources/arguments, measurement code
-(including imported helpers), Python/LLVM and CPU/platform; do not gate on old absolute times.
+(including imported helpers), Python/LLVM and CPU/platform.
 Changing the reference or measurement inputs starts a new series. Keep the pin explicit rather
-than automatically advancing it after a slowdown. This does not add a permanent history store.
+than automatically advancing it after a slowdown.
 
 Historical absolute times are unsuitable as gates: in the retained
 [October 16 snapshot](benchmarks/pyperformance-2026-10-16-a74faae.json), 16 of 17 usable
 AOT workloads had over 20% within-revision wall-time spread (excluding removed `deltablue`
-and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
+and optimized-away `unpack_sequence`). This small monitor does not cover full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
 ### PR budget
@@ -551,36 +560,41 @@ The two variant workers and Linux distribution job reuse the same verified boots
 verification groups. Every consumer checks source bytes, commit, architecture, toolchain,
 workflow run and artifact hashes. Runtime caches stay private; Python-free and sanitized builds
 remain independent. Pip downloads are cached by the pinned dependency files.
+
 The x86-64 bootstrap job then runs `python3 tools/check_bootstrap_tier.py build/ci-bootstrap`.
 It forces the production Make recipe to rebuild with an O1 temporary compiler and an O2 final
 compiler, using the same checkout and a private runtime cache. All three compiler and all three
 runtime witnesses must match the standard bundle byte for byte; no path normalization is used.
 The check revalidates source, toolchain and run identity after the build and requires the standard
-bundle and verification report to remain unchanged. Consumers continue using the standard O2
+bundle and verification report to remain unchanged. Consumers still use the standard O2
 bundle. The separate `build/bootstrap-tier/report.json` and `make.log` are uploaded with the
-bootstrap report. Build durations and final executable hashes are diagnostic; performance remains
-inconclusive until controlled measurements. Lint separately executes scalar and allocating native
-programs at O0, O1 and O2, both normally and with program GC stress. These checks preserve the
-existing job/worker/time limits and do not qualify lower tiers for general application use.
-PR native work uses two JIT halves and two AOT halves, each with one execution mode.
-Both modes retain every corpus case; the inexpensive rejection and parser checks repeat.
-The aggregate requires every exact case/mode pair once and the producer's bootstrap identity,
-including the native baselines deferred by opt-in checks. The JIT workers upload their native
-reports before running their existing sampled configurations in sequence. This keeps the same
-16 CI jobs and 20 total PR jobs while separating costly AOT compilation from JIT execution.
+bootstrap report. Build durations and final executable hashes are diagnostic; performance
+remains inconclusive until controlled measurements. Lint separately executes scalar and
+allocating native programs at O0, O1 and O2, both normally and with program GC stress. These
+checks preserve the existing job/worker/time limits and do not qualify lower tiers for
+general application use.
+
+PR native work uses two JIT halves and two AOT halves, each with one execution mode. Both
+modes retain every corpus case; the inexpensive rejection and parser checks repeat. The
+aggregate requires every exact case/mode pair once and the producer's bootstrap identity,
+including the native baselines deferred by opt-in checks. The JIT workers upload their
+native reports before running their sampled configurations in sequence. This separates
+costly AOT compilation from JIT execution within the 16 CI jobs and 20 total PR jobs.
+
 The compact cache/GC group finishes both parallel cache checks before starting its
-collector-stressed self-compilation, preserving the latter's ten-minute bound without
-three competing compiler processes.
-Native program-cache checks run last in the first JIT worker, with the stage-2 compiler
-its corpus half restored: on EPYC 7763 runners the JIT workers took about 3.5 minutes,
-the contracts and cache/GC groups up to 13.5 (#1178).
+collector-stressed self-compilation, preserving the latter's ten-minute bound without three
+competing compiler processes. Native program-cache checks run last in the first JIT worker,
+with the stage-2 compiler that its corpus half restored: on EPYC 7763 runners the JIT
+workers took about 3.5 minutes, the contracts and cache/GC groups up to 13.5 (#1178).
 
 ### Full verification
 
 Pushes to `main` and manual runs execute all thirty-two verification groups on both Linux
-architectures. They provide the exact-commit evidence required for releases. Local groups build
-their own bootstrap; CI builds it once per architecture. Large upstream regex runs alongside
-benchmark correctness, and Lint checks CPython port preservation. The full groups are:
+architectures. They provide the exact-commit evidence required for releases. Local groups
+build their own bootstrap; CI builds it once per architecture. A failed producer blocks its
+consumers and fails the final gate; there is no fallback to an older compiler. Large
+upstream regex runs alongside benchmark correctness, and Lint checks CPython port
+preservation. The full groups are:
 
 | Group | Work after bootstrap |
 |---|---|
@@ -600,22 +614,12 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `benchmarks` | Benchmark correctness/timings, real example CLI parity, JSON repair process cases and agent loopback HTTP; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |
 
-GC identity and JIT execution have separate job budgets. The aggregate still requires
-both identity halves and every execution shard; case selection and stress intervals
-are unchanged. The PR matrix retains its existing groups and budget.
 A failed group leaves the others running. The aggregate checks are
 `make verify (Linux x86-64, LLVM 18, Python 3.13)` and
-`make verify (Linux ARM64, LLVM 18, Python 3.13)`. For pull requests, maintainers
-verify `Verification` and `make lint (ruff, shellcheck, clang -Wall -Wextra)` on the
-current revision before merging. Branch protection requires both checks, including
-for administrators. Remove the retired DCO check in GitHub settings; until then it
-remains as an always-skipped compatibility job.
-[Issue #766](https://github.com/den-run-ai/pystachy/issues/766) records the enforcement
-work; [CONTRIBUTING.md](../CONTRIBUTING.md#ai-assistance-and-review) describes the
-review and submission requirements.
-Each report gate requires every group to succeed. It rejects missing or unexpected stages,
-inconsistent source revisions or toolchains, different bootstrap IR, and missing or
-inconsistent bootstrap provenance.
+`make verify (Linux ARM64, LLVM 18, Python 3.13)`. Each report gate requires every group to
+succeed. It rejects missing or unexpected stages, inconsistent source revisions or
+toolchains, different bootstrap IR, and missing or inconsistent bootstrap provenance.
+
 Bootstrap and report artifact names include `x86_64` or `aarch64`; the final report
 merger checks that every input names the expected native machine. An x86 report renamed
 to look like an ARM artifact is rejected. Combined reports are `x86_64-verification` and
@@ -626,22 +630,32 @@ x86-64 aggregate, with ARM64 platform smoke checks in the ARM64 bootstrap job. T
 the PR aggregate, use `--profile pr --machine x86_64` and the same `CI_BASE_SHA` as the
 workflow run. Its combined report is labelled `pr` and requires every compact group. Lint
 checks that each profile's group list matches the workflow matrix.
-Reports and logs are uploaded as workflow artifacts, together with the generated dynamic-`Any`
-fuzzer programs. The gate requires its complete 3-program/540-case budget, including 90 typed/Any
-parity cases, all four execution modes, program GC interval 1 and zero mismatches.
+Reports and logs are uploaded as workflow artifacts, together with the generated
+dynamic-`Any` fuzzer programs.
+
+For pull requests, maintainers verify `Verification` and
+`make lint (ruff, shellcheck, clang -Wall -Wextra)` on the current revision before merging.
+Branch protection requires both checks, including for administrators.
+[Issue #766](https://github.com/den-run-ai/pystachy/issues/766) records the enforcement
+work; [CONTRIBUTING.md](../CONTRIBUTING.md#ai-assistance-and-review) describes the review
+and submission requirements.
+
 `python3 tools/annotation_widening.py --report widening.json` discovers directly called,
 undecorated module functions with one return and concrete scalar signatures in dynamic-`Any`
 entries. It widens only the parameter and return annotations. It also recognizes the
 `list[int] -> Any` boundary and widens its parameter. Imported support modules, declaration
 markers, generic and generator signatures, decorated functions and indirect calls keep their
-annotations. Each pair must first produce the same successful output with empty stderr under
-pinned CPython. Both forms then run against their own recordings in JIT and AOT with the
-entry's integer policy. Both profiles require the native-list alias fixture and run it
-and the scalar identity fixtures again with collection at every program allocation.
-The opt-in worker runs `--profile pr` for focused checks and the full profile on main and release.
-Reports give exclusion counts and every qualified function and native result. Expected compiler
+annotations.
+
+Each pair must first produce the same successful output with empty stderr under pinned
+CPython. Both forms then run against their own recordings in JIT and AOT with the entry's
+integer policy. The opt-in worker runs `--profile pr` for focused checks and the full
+profile on main and release. Both profiles require the native-list alias fixture and run it
+and the scalar identity fixtures again with collection at every program allocation. Reports
+give exclusion counts and every qualified function and native result. Expected compiler
 rejections require the exact case, mode, diagnostic, streams and status in
-`tools/annotation_widening_exceptions.json`. Local shards use `--shard-index` and `--shard-count`.
+`tools/annotation_widening_exceptions.json`. Local shards use `--shard-index` and
+`--shard-count`.
 
 The dynamic-`Any` opt-in sweep copies the test fixtures into an isolated directory, adds the
 opt-in pragma to each selected program and records CPython's output on that same source.
@@ -653,6 +667,7 @@ case/mode result and complete oracle/check counts. Generated copies and failure 
 the workflow artifacts. Run locally with `make dynany-optin`, or select a shard with
 `DYNANY_OPTIN="--shard-index 0 --shard-count 3"`. This sweep covers normal JIT/AOT execution;
 program GC stress remains covered by the separate generated parity checks and existing corpus.
+
 Both sweeps run a program on every CPU; AOT builds are about 80% of their time. In CI, and in
 `tests/verify.sh all`, they pass `--native-suite`: the same run's `tests-native` steps execute
 every unchanged program with the same compiler, JIT and AOT, so the sweeps leave to them only the
@@ -663,19 +678,19 @@ aggregate rejects such reports without a complete stage-2 JIT/AOT `tests-native`
 list only checks that neither passed nor were left to `tests-native`; the summary line counts the
 latter. `tests-native` never runs with GC stress, so `python_int_gate.py` refuses
 `--native-suite` with `--gc-stress`.
+
 The promoting-int sweep uses the same isolated-source and CPython-recording contract. Its
 report is checked against the current corpus, reviewed manifest and consumed source hashes,
 and binds the executed native compiler by its SHA-256. The aggregate rejects missing shards,
 duplicate case/mode pairs and inconsistent compiler identities. Promotion regressions added
-with their explicit pragma are also included in the existing full GC JIT/AOT suites, which
-collect at every program allocation; the normal opt-in sweep does not claim GC-stressed
-execution. Artifacts retain each shard's report and reproduced sources for diagnosis.
-A failed producer blocks its consumers
-and fails the final gate; there is no fallback to an older compiler.
+with their explicit pragma also run in the full GC JIT/AOT suites, which collect at every
+program allocation; the normal opt-in sweep runs without GC stress. Artifacts retain each
+shard's report and reproduced sources for diagnosis.
 
 The combined report's duration is bootstrap work plus the longest consumer group's verification work;
 `ci.runner_seconds` measures aggregate work. Queueing, setup and other steps add to elapsed
-workflow time. The 15-minute limit applies to each verification job.
+workflow time. The 15-minute limit applies to each verification job. The final report job
+allows ten minutes for artifact downloads and validation.
 
 GC artifacts retain per-case wall times in `verify/gc-ir-N-times.log` (both compiler
 invocations and their comparison), with runtime and syntax checks in separate
@@ -695,50 +710,59 @@ execution partition, order and sample unchanged. Each partition covers the full
 corpus; the aggregate requires both identity halves and every execution shard.
 The PR profile retains its sparse selection. Weight changes affect placement and
 order, never coverage or stress intervals.
+
 A GC table `reserve W0 W1` row would supply initial weights before balancing identity
 cases, in the table's weight units; a missing table or reserve row means zero reserve.
 The current table has none. Its header names the commit and CI run whose x86-64 and
 ARM64 `gc-ir-N-times.log` files it was refreshed from: each case's wall time for both
-compilations and their comparison, scaled to the median corpus program. JIT samples
-also enable the IR checker through `tests/run.sh`'s default.
+compilations and their comparison, scaled to the median corpus program.
+
 Refresh GC weights with `tools/case_weights.py -o tests/gc_case_weights.txt` and
 both halves' `gc-ir-N-times.log` files from one completed run; runtime, syntax and
 execution timings describe different work and should not be mixed into that table.
 `tools/case_weights.py` writes case weights only, so it does not carry a reserve into
-potentially different units. Identity now has its own jobs; do not reserve JIT work
-when refreshing its weights. Check identity balance and each independent job's time
-before adopting the refresh.
+potentially different units. Identity has its own jobs, so do not reserve JIT work when
+refreshing its weights. Check identity balance and each independent job's time before
+adopting the refresh.
 
 GC self-compilation collects every 5,000 allocations and has a separate ten-minute bound.
 At the former interval of 1,000, it spent 23 minutes on 15,543 full-heap collections;
 the wider interval still exercises thousands of collections without dominating CI.
+
 The compiler collecting every 1,000 allocations is checked by identity, once a run: `gc-ir-0`
 and `gc-ir-1` run independently of JIT and compile the cases of two disjoint halves of the
 corpus (`gc_shard_cases`, balanced as above) with it and with stage 2 unstressed, through
 `tools/irsame.sh` (`rt` for `rtmode_*` cases, with the IR check on), and require the same IR byte
 for byte, the same messages and the same exit status for every case, the same IR of `runtime.py`,
-and the same `check` output and status for every `syntax_*` case (`tools/irsame.sh --check`). The
-GC suites then collect at **every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`) and run
-every case of the corpus once in each mode, rejection and syntax checks included, compiled by
-stage 2 unstressed: JIT in two halves balanced for execution, AOT in three thirds. Each suite used to
-compile every case with the stressed compiler, in each mode; where the IR is the same, the LLVM tools
-build the same program from it, so the second compilation only repeated what one identity check
-shows, at about twelve times the unstressed frontend's cost (on one case in ten of the corpus, on
-one core, the stressed frontend took 62% of a GC JIT run and 28% of a GC AOT run). One case in 16
-of each job's shard still runs end to end with the compiler stressed too: the cases at positions
-4 (JIT) or 12 (AOT) modulo 16 of the shard in weight order, heaviest first. Drawn from
-the job's own shard, the sample stays in it when the execution weights change and is
-the same on every runner. Its positions do not guarantee a proportional share of
-work; the per-case timing logs show its actual cost. Offset 0 would put each shard's
-heaviest case in every sample, and the two modes' offsets
-differ, so that they stress different cases where their shards' orders agree. The sample runs
-first, in a runtime cache of the GC steps' own (`build/verify/gc-cache`, which each run starts
-empty), so the stressed compiler builds the runtime that the job's GC tests use, and the driver's
-cache, `opt`/`lli` and `clang`/link paths after the IR run under stress; the program-stressed run
-takes the shard's other cases. AOT keeps three jobs: projected from the same measurements, two
-would each take about 11.2 minutes of work, over the ten-minute target, and three take about 7.7.
+and the same `check` output and status for every `syntax_*` case (`tools/irsame.sh --check`).
+
+The GC suites then collect at **every program allocation** (`PYSTACHY_GC_STRESS_PROGRAM=1`)
+and run every case of the corpus once in each mode, rejection and syntax checks included,
+compiled by stage 2 unstressed: JIT in two halves balanced for execution, AOT in three
+thirds. Each suite used to compile every case with the stressed compiler, in each mode;
+where the IR is the same, the LLVM tools build the same program from it, so the second
+compilation only repeated what one identity check shows, at about twelve times the
+unstressed frontend's cost (on one case in ten of the corpus, on one core, the stressed
+frontend took 62% of a GC JIT run and 28% of a GC AOT run).
+
+One case in 16 of each job's shard still runs end to end with the compiler stressed too: the
+cases at positions 4 (JIT) or 12 (AOT) modulo 16 of the shard in weight order, heaviest
+first. Drawn from the job's own shard, the sample stays in it when the execution weights
+change and is the same on every runner. Its positions do not guarantee a proportional share
+of work; the per-case timing logs show its actual cost. Offset 0 would put each shard's
+heaviest case in every sample, and the two modes' offsets differ, so that they stress
+different cases where their shards' orders agree. The sample runs first, in a runtime cache
+of the GC steps' own (`build/verify/gc-cache`, which each run starts empty), so the stressed
+compiler builds the runtime that the job's GC tests use, and the driver's cache, `opt`/`lli`
+and `clang`/link paths after the IR run under stress; the program-stressed run takes the
+shard's other cases. JIT samples also enable the IR checker through `tests/run.sh`'s
+default.
+
+AOT keeps three jobs: projected from the same measurements, two would each take about
+11.2 minutes of work, over the ten-minute target, and three take about 7.7.
 Self-compilation, both identity halves and the five execution suites use separate runners
 and report their own durations.
+
 The final gate requires all eight groups, both execution modes, the intervals (1,000 for `gc-ir`
 and the samples' compiler, 0 for the program-stressed runs' compiler, 1 for every program),
 distinct shard identities, each sample's identity (its period and its mode's offset, as many
@@ -751,6 +775,7 @@ with no difference. It rejects GC suites without both `gc-ir` halves, even in a 
 omits them. `tests/verify.sh gc-stress` still runs all GC checks locally with one bootstrap;
 `gc-ir` runs the two identity halves, `gc-jit` those and the two JIT halves, and `gc-aot` the
 three AOT thirds.
+
 The native, opt-off and python-free suites run in thirds, and the UBSan suite in quarters
 (`tests/verify.sh`'s `shard_cases`). The gate requires each
 shard's identity and complete count, and that the shards together make as many checks as an
@@ -789,7 +814,8 @@ The runners vary far more: in that run a `znver3` runner took 1.2-1.4 times as l
 runner it lands on. Since a half took 10.0-10.4 minutes on `znver3` runners in that run, native
 and opt-off run in thirds. UBSan thirds took 10.85 and 10.87 minutes in CI run 40764559484,
 so UBSan now runs in four quarters with an independent sanitized rebuild in each CI job. The
-four-way split still needs CI timing evidence; the 15-minute job limit is unchanged.
+four-way split still needs CI timing evidence.
+
 The CPython-hosted compiler is checked by identity rather than by executing its output again:
 `hosted` requires its IR (`rt` for `rtmode_*` cases, with the IR check on), every message and the
 exit status to equal stage 2's for every case (`sources.corpus_cases`), and its `check` results
@@ -797,16 +823,18 @@ for every `syntax_*` case (`sources.syntax_cases`; both counted in `tests/corpus
 comparison in a worker per CPU. The LLVM tools build the same program from the
 same IR, and the `native-*` groups run every case's stage-2 output in JIT and AOT, so executing
 the hosted compiler's identical output again added no coverage; it replaced three jobs, whose
-Verify steps took 24.3 minutes together in run 40719438561 (a historical measurement). A sample
-still runs end to end with the hosted compiler, so its driver's `run`, `build` and `check` paths
-execute in this job too, as they do in `runtime-cache`, `jit-dead-code`, `unicode-audit`,
-`compile-limits` and `scaling`: shard 0 of 64, and the first program in C order of each kind whose
-run takes the hosted driver past the IR along a path of its own (`tests/verify.sh`'s
-`hosted_strata`): one that sends itself SIGINT, one with `NAME.full`, one with `NAME.in`, one with
-`NAME.path`, and one that imports a module named `ffi`. The step reports the sample and the
-program of each kind, and fails if a kind has none; the gate requires every kind, each a program
-of the checkout's corpus of that kind and in the sample. The maintainer accepted this identity
-check with its stratified end-to-end sample on 2026-10-28.
+Verify steps took 24.3 minutes together in run 40719438561 (a historical measurement).
+
+A sample still runs end to end with the hosted compiler, so its driver's `run`, `build` and
+`check` paths execute in this job too, as they do in `runtime-cache`, `jit-dead-code`,
+`unicode-audit`, `compile-limits` and `scaling`: shard 0 of 64, and the first program in C
+order of each kind whose run takes the hosted driver past the IR along a path of its own
+(`tests/verify.sh`'s `hosted_strata`): one that sends itself SIGINT, one with `NAME.full`,
+one with `NAME.in`, one with `NAME.path`, and one that imports a module named `ffi`. The
+step reports the sample and the program of each kind, and fails if a kind has none; the gate
+requires every kind, each a program of the checkout's corpus of that kind and in the sample.
+The maintainer accepted this identity check with its stratified end-to-end sample on
+2026-10-28.
 
 The `unicode-audit` contract also runs `tools/bytescanprobe.c` normally and with GC
 stress. Its independent scalar oracle covers all byte values, alignments, tails,
@@ -817,12 +845,14 @@ The same contract runs `tools/floatprobe.c` in both modes: six deterministic
 allocation checks and 64 exact-terminator guard-page spans. Suitable ASCII
 float strings need no parser temporary; trailing whitespace and underscores
 retain bounded copies. Run it independently with `make floatprobe`.
+
 The compiler-scaling check is split by shapes: `scaling-0` checks those of `SCALING_0`, about
 half of the lines the CPython-hosted compiler executes, and `scaling-1` every other shape of
 `tools/scaling.py` (its `-x`), so a new shape is checked as well; the gate requires the two to
 check every shape once. Both run in the `scaling` group with `tools/scaling.py -j`, one shape per
 CPU (`PYSTACHY_JOBS` if set): `--check` compares counts, which do not depend on the load, so its
 seconds there are informational; measure timings with `-j 1`.
+
 The `contracts` group runs its steps in three phases (`tests/verify.sh`'s `contracts_*` lanes), after
 one runtime build per compiler so that each step finds the warm cache it found when the steps ran
 one after another: `check-ir` and `rt-abi`, which use every CPU; `compile-limits` beside one lane
@@ -833,13 +863,13 @@ shell's background job starts with SIGINT and SIGQUIT ignored, so the steps whos
 SIGINT (`ffi`, `select-io`) are in the shell's own lane, `contracts_fg`. Each lane keeps its
 steps' records and the shell appends them in the plan's order; a lane that ends before a step
 reports fails that step (`lane_ended`). `tools/test_verify_contracts.py` checks the order, the
-overlap, what runs beside `compile-limits`, the SIGINT disposition and both failures. `runtime-cache` runs `tests/cache.sh` for
-the two compilers at once: each run has its own home, LLVM wrappers and temporary directory.
-On TERM, or SIGINT as Ctrl-C sends it, `tests/verify.sh` ends every process its background jobs
-started (the lanes and the background `tests/cache.sh` run, `stop_jobs`), not their shells alone,
-whose programs would run on into `build/verify`; `tools/test_verify_contracts.py` checks that none
-survives.
-The final report job allows ten minutes for artifact downloads and validation.
+overlap, what runs beside `compile-limits`, the SIGINT disposition and both failures.
+
+`runtime-cache` runs `tests/cache.sh` for the two compilers at once: each run has its own
+home, LLVM wrappers and temporary directory. On TERM, or SIGINT as Ctrl-C sends it,
+`tests/verify.sh` ends every process its background jobs started (the lanes and the
+background `tests/cache.sh` run, `stop_jobs`), not their shells alone, whose programs would
+run on into `build/verify`; `tools/test_verify_contracts.py` checks that none survives.
 
 The compiler state controls (`python3 -m unittest discover -s tools -p
 'test_compiler_state*.py'`) run in Lint. They check declared Frame mappings,
@@ -863,29 +893,31 @@ make a subsequent ordinary program import the internal `_rt` module.
 `tools/compiler_state_globals.py`, also tested by that Lint pattern, inventories
 module-level containers under the compiler's declaration conventions. Every
 container is classified as a reviewed lookup table, restart-rewound state,
-load-reset state, or currently retained state. It rejects unclassified containers and new writers,
-including direct writes, imported names, simple local and default-argument aliases,
-assignment expressions and nested subscripts. Module subscript aliases retain possible
-source owners for later mutation checks without declaring scalar-capable reads as
-new containers. Import and alias propagation can retain multiple possible owners
-across rebindings; reports require review. Explicit re-export chains preserve those
-original owners; qualified
-exports expand only to attribute-path depths referenced in the scanned source, so
-module-object import cycles remain finite. Container annotations include explicit
-builtin/typing import aliases, quoted forms, unions, `Optional` and `Annotated`
-wrappers; metadata is not treated as a type. Direct bound and builtin unbound
-mutator calls include in-place dunders and reinitialization, with explicit import
-resolution and lexical builtin-name shadows. Callable alias/effect inference remains
-outside the check. Loop, context, exception and pattern targets, plus named
-definitions, participate in global-rebinding and local-shadow checks without
-inferring aliases from arbitrary iterators or context managers. The four rewind
-classifications are tied to the executable restart controls; removing a rewind must
-still fail those controls. `Loader.program()` rebuilds `FILES` and `DYNFILES` together
-before parsing each program, including runtime loads and compilation restarts. Hosted
-sequence tests cover both dynamic-Any opt-in directions, successful and failed calls,
-imports, runtime interleaving and removal of either reset. The main source diagnostic
-name remains caller-owned (`diagnostics.SRC`); imported diagnostics use the current
-file table. These process-global tables do not provide concurrent compilation isolation.
+load-reset state, or currently retained state. It rejects unclassified containers and new
+writers, including direct writes, imported names, simple local and default-argument aliases,
+assignment expressions and nested subscripts.
+
+Module subscript aliases retain possible source owners for later mutation checks without
+declaring scalar-capable reads as new containers. Import and alias propagation can retain
+multiple possible owners across rebindings; reports require review. Explicit re-export
+chains preserve those original owners; qualified exports expand only to attribute-path
+depths referenced in the scanned source, so module-object import cycles remain finite.
+Container annotations include explicit builtin/typing import aliases, quoted forms, unions,
+`Optional` and `Annotated` wrappers; metadata is not treated as a type. Direct bound and
+builtin unbound mutator calls include in-place dunders and reinitialization, with explicit
+import resolution and lexical builtin-name shadows. Callable alias/effect inference remains
+outside the check. Loop, context, exception and pattern targets, plus named definitions,
+participate in global-rebinding and local-shadow checks without inferring aliases from
+arbitrary iterators or context managers.
+
+The four rewind classifications are tied to the executable restart controls; removing a
+rewind must still fail those controls. `Loader.program()` rebuilds `FILES` and `DYNFILES`
+together before parsing each program, including runtime loads and compilation restarts.
+Hosted sequence tests cover both dynamic-Any opt-in directions, successful and failed calls,
+imports, runtime interleaving and removal of either reset. The main source diagnostic name
+remains caller-owned (`diagnostics.SRC`); imported diagnostics use the current file table.
+These process-global tables do not provide concurrent compilation isolation.
+
 `diagnostics.CAPTURED` is separately observer-owned retained state: capture is off by
 default, and `diagnostics.fail()` is its only compiler writer, appending a terminal
 diagnostic after any retry guards. The [inspection tool](compiler-inspection.md)
@@ -896,6 +928,7 @@ compiler-source inventory, and does not establish safe in-process session reuse.
 The capture tests preserve legacy rejection output, and inspection tests exercise a
 failed request followed by a repaired import in another worker. Inventory controls
 reject an added capture writer or a stale declaration of the existing writer.
+
 `program_cache` owns state for a CLI cache attempt, retained across inference retries.
 `start()` clears its source, import-probe, static input and toolchain-layout snapshots, resets validity
 and enables tracking; `stop()` only disables tracking. A conflicting snapshot stays
@@ -905,6 +938,7 @@ published to the private disk memo. The inventory checks direct resets and flag/
 writers. Snapshot insertion through `_record(table, ...)` is a parameter-mediated
 effect outside this scanner; the cache tests cover capture, conflicting retries and
 publication. This state does not provide concurrent in-process compilation isolation.
+
 `GLUE` and `SPECSHOW` currently retain discoveries across restarts; the inventory records
 that behavior without certifying its safety. This is a hosted drift check, not a
 whole-program effect analysis: arbitrary helper calls, object-attribute aliases,
@@ -922,34 +956,34 @@ The [Lint workflow](../.github/workflows/lint.yml) runs alongside CI: `make chec
 report-gate tests and recording checks use the pinned CPython and require no compiler bootstrap.
 When Lean validation is selected, Lint builds and audits the pinned checker first;
 `make check-fast` then runs all boundary test groups once with missing checkers treated as
-errors. Ordinary local `make check-fast` retains its existing optional Lean behavior.
+errors. Ordinary local `make check-fast` keeps Lean optional.
 The verification-harness and compiler-state control suites overlap as two isolated
 unittest processes. Lint waits for both, prints their logs separately and fails if
 either suite fails; the same coverage runs for documentation PRs, main and manual runs.
 The coordinator preserves normal SIGINT handling, cancels both process groups and
 reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
 
-Generated-user and generated-runtime ASan controls run in the existing x86-64
+Generated-user and generated-runtime ASan controls run in the x86-64
 `contracts` job on code PRs, main pushes and manual runs, using LLVM 18 and its
 compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;
 every other `test_runtime_*.py` file runs in the second native JIT/variant worker on PRs
-and the x86-64 `gc-jit-0` job on full runs. Those controls retain real-driver C-cache
+and the x86-64 `gc-jit-0` job on full runs. Those controls include real-driver C-cache
 integration, sanitizer setup, and both positive and negative CPU-buffer ownership probes.
-They run after each worker's existing checks, with at most the C-cache test's two
-concurrent producers. This preserves code verification coverage with the same jobs,
-workers and 15-minute timeouts while keeping native controls out of Lint's budget.
-Each controls step is required by its job's result and the aggregate gate;
-documentation-only PRs use the existing plan that skips native verification.
+They run after each worker's other checks, with at most the C-cache test's two concurrent
+producers. This keeps native controls out of Lint's budget without adding jobs or workers or
+raising the 15-minute timeouts. Each controls step is required by its job's result and the
+aggregate gate; documentation-only PRs use the plan that skips native verification.
 
 `make check-repository`, included in `check-fast`, rejects root `research` paths in
 the Git index and tests the gate against temporary repositories. It checks tracked
 files even when ignored; local untracked experiments are outside the merge gate.
 Review still checks for research dumps, transient handoffs and unapplied patches
 in other directories; curated reports and maintained tests are allowed.
-It also validates every GitHub Actions workflow with actionlint 1.7.12, installed
-from its SHA-256-verified release archive. To run the same check locally, install
-that [upstream version](https://github.com/rhysd/actionlint/releases/tag/v1.7.12)
-and run `actionlint -pyflakes=` from the repository root.
+
+`make check-repository` also validates every GitHub Actions workflow with actionlint 1.7.12,
+installed from its SHA-256-verified release archive. To run the same check locally, install
+that [upstream version](https://github.com/rhysd/actionlint/releases/tag/v1.7.12) and run
+`actionlint -pyflakes=` from the repository root.
 Embedded shell checks remain enabled, using the pinned `shellcheck-py` executable;
 Pyflakes integration is disabled, so embedded Python snippets are not linted here.
 Ruff checks the repository's Python files separately.
@@ -961,8 +995,9 @@ the prototype, compiler, inspection exporter, boundary tests, Makefile, Lint wor
 Python/development dependency pins. Missing merge history runs the check;
 documentation-only PRs skip it. The selector has temporary-Git-history controls.
 It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
-`make check-lean-boundary`; no extra PR job is added. The x86_64 verification
-group `opt-in` on PRs, and `gc-jit-1` on main and manual runs, run
+`make check-lean-boundary`; no extra PR job is added.
+
+The x86_64 verification group `opt-in` on PRs, and `gc-jit-1` on main and manual runs, run
 `make check-lean-corpus` with the same archive: the corpus tool's tests
 (`tools/test_lean_corpus.py`), then each dynamic-`Any` test program compiled by
 the hosted compiler, failing unless Lean proves every dynamic payload read guarded
@@ -979,6 +1014,7 @@ The x86 `contracts` group runs `make check-lean-guards` on the explicit
 coverage; the strict full-corpus guard command remains an investigation tool with
 unsupported forms, not a passing whole-corpus gate. Arithmetic reports separately
 count actual checked overflow reconstructions and other observed arithmetic.
+
 All sweeps use two workers within existing jobs and their 15-minute limits.
 On full runs, the corpus and integer proofs start after `gc-jit-1` finishes;
 runtime-cache and program-cache probes retain their own job. This keeps those
@@ -1019,20 +1055,23 @@ UBSan and leak detection. These Linux checks run in distribution/Installation
 rather than Lint so Lint retains its 15-minute bound. Netio probe steps have a
 five-minute limit and retain JSON reports for seven days, including failed or
 incomplete runs; only reports with `result: pass` and all expected modes
-establish successful validation. The three primary platforms also install the
-compiler with pip and uv from the exact GitHub commit and verify JIT/AOT outside the checkout
-(`tools/compiler_install_smoke.py`). PR distribution checks exercise pip and uv against the
-checked-out source. The [Packages workflow](../.github/workflows/packages.yml) builds the example and ports source wheels and runs them under CPython, JIT and AOT
-(`tools/package_smoke.py`) on `main` and manual dispatch. PRs run these checks, release unit
-tests and one native archive smoke in the Linux distribution job. The
-[Release workflow](../.github/workflows/release.yml) reserves its full archive/container matrix
-for tags and release dispatch; publishing requires CI, Installation, Lint and Packages on the exact release commit
+establish successful validation.
+
+The three primary platforms also install the compiler with pip and uv from the exact GitHub
+commit and verify JIT/AOT outside the checkout (`tools/compiler_install_smoke.py`). PR
+distribution checks exercise pip and uv against the checked-out source. The
+[Packages workflow](../.github/workflows/packages.yml) builds the example and ports source
+wheels and runs them under CPython, JIT and AOT (`tools/package_smoke.py`) on `main` and
+manual dispatch. PRs run these checks, release unit tests and one native archive smoke in
+the Linux distribution job. The [Release workflow](../.github/workflows/release.yml)
+reserves its full archive/container matrix for tags and release dispatch; publishing
+requires CI, Installation, Lint and Packages on the exact release commit
 ([releases](releasing.md)).
 
-The [Coverage workflow](../.github/workflows/coverage.yml) runs apart from PR CI, daily, manually
-and on relevant `main` pushes; no check requires it; [reading coverage](#reading-coverage) describes it. So
-does the [Variants workflow](../.github/workflows/variants.yml), which
-[configuration variants](#configuration-variants) describes.
+The [Coverage workflow](../.github/workflows/coverage.yml) and the
+[Variants workflow](../.github/workflows/variants.yml) run apart from PR CI;
+[reading coverage](#reading-coverage) and [configuration variants](#configuration-variants)
+describe them.
 
 Every job, including release jobs, has a time limit of at most 15 minutes. Release preparation
 waits at most ten minutes for its exact-commit CI evidence. Expensive new checks must fit the
@@ -1042,7 +1081,7 @@ Lint also runs the optional [communication buffer/completion probe](../examples/
 with the hosted compiler, JIT/AOT, GC stress and a sanitized standalone C probe.
 
 Contributions use the [contribution-rights policy](../CONTRIBUTING.md#contribution-rights)
-without DCO certification. The existing submission bot sends a one-time,
+without DCO certification. The submission bot sends a one-time,
 non-blocking rights/guidelines/AI acknowledgment reminder on new PRs. The legacy
 DCO workflow always skips; remove it after deleting its required status in
 GitHub branch protection settings.

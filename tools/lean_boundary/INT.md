@@ -56,14 +56,16 @@ claims, in 36 functions, and Lean proved them all, in 12.5 s with four workers.
 
 [`check_lean_inline.py`](../check_lean_inline.py), run by the same arithmetic gate,
 inventories `ovf` result words feeding promoting-integer reconstructions and
-checks every use of those words against the actual matching overflow flag. A separately checked control-flow certificate
-requires the false-overflow edge before each use, including phi inputs. Repeated
-loop definitions reset their flag; call/exception edges remain possible. Unknown
-conditions retain both successors, so they cannot establish a fit fact. A second
-inventory rejects null-digit reconstructions from unchecked `add`, `sub` or `mul`
-of promoting low words, including through scalar casts, masks, selects and phis.
-This catches replacing the entire checked operation, in
-addition to weakening or swapping its branch.
+checks every use of those words against the actual matching overflow flag. A
+separately checked control-flow certificate requires the false-overflow edge
+before each use, including phi inputs. Repeated loop definitions reset their flag;
+call/exception edges remain possible. Unknown conditions retain both successors,
+so they cannot establish a fit fact.
+
+A second inventory rejects null-digit reconstructions from unchecked `add`, `sub`
+or `mul` of promoting low words, including through scalar casts, masks, selects
+and phis. This catches replacing the entire checked operation, in addition to
+weakening or swapping its branch.
 
 [`PystachyInline.lean`](PystachyInline.lean) proves that such accepted uses compute
 exact unbounded addition, subtraction or multiplication of the signed input
@@ -74,14 +76,13 @@ intrinsics must implement the modeled `BitVec` operations.
 Observed checked operations outside promoting reconstructions are counted
 separately; ordinary induction counters and modular arithmetic need different
 proofs. This inventory does not prove arbitrary transformed arithmetic provenance.
-Inline floor-division and shift conditions still lack extracted-IR proofs.
 
 ## Not proved
 
 - The representation: a digit pointer is null exactly where the value fits, and the word is
   then the value. Every result demotes (`docs/python-int.md`), but no proof shows it.
 - That the runtime's `pys_big_op`, `pys_mod`, `pys_shr` and `pys_floordiv`, and LLVM's checked
-  arithmetic and bitwise operations, compute these operators, and that inline floor-division and shift paths
-  test what `gen_big_arith` says; the tests compare the results with CPython's.
+  arithmetic and bitwise operations, compute these operators; the tests compare the results with
+  CPython's.
 - Only checked `+`, `-`, `*` overflow tests are read from inline IR; the floor-division and
   shift theorems state what those paths must establish without checking their actual guards.

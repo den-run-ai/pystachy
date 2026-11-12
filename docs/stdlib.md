@@ -124,9 +124,9 @@ Unannotated functions and constructors can specialize for the types of their cal
 Recognized import-time guards select supported platform and fallback branches. These features
 reduce port edits, but they do not make arbitrary dynamic code statically typable.
 
-An adapted file passing upstream tests under CPython verifies the adaptation's Python behavior.
-It does not prove that the compiled implementation passes those same tests. Record these
-results separately, and use [differential tests](testing.md#differential-tests) for compiled APIs.
+Upstream tests that an adapted file passes under CPython verify its Python behavior, not its
+compiled implementation. Record these results separately, and use [differential
+tests](testing.md#differential-tests) for compiled APIs.
 
 Third-party adaptations live in [ports/](../ports/). Each port's `PORT.md` describes its supported
 surface and changes. Application examples show these libraries in use; the
@@ -137,22 +137,24 @@ surface and changes. Application examples show these libraries in use; the
 
 ## Remaining limits
 
-Language features limit library coverage most: general multiple inheritance and subclasses of generic
-(template) classes, arbitrary recursive value types, `bytearray` and `memoryview`, dynamic
-reflection and unrestricted argument expansion. Runtime-typed values exist only in modules that
-opt in to the [dynamic `Any` prototype](dynamic-any.md); its [operations](dynamic-any.md#operations)
-and [iteration](dynamic-any.md#iteration) contracts list what such ports can rely on.
-Its bounded [class-value prototype](dynamic-any.md#class-values-and-type-keyed-registries)
-supports exact-type callback registries and `factory(*args, **kwargs)` reconstruction through existing boxed
-instance adapters and compiled initializers, plus factory-only construction of
-isolated classes with a fixed annotated initializer and supported fields.
-Differential consumers exercise the
-selected `copyreg` registration functions and reduction tuples; full `copyreg` and `pickle` remain unsupported.
-Generator functions, resumable generator objects, bytes, bounded unions and per-call
-function/constructor specialization already work; their remaining restrictions depend on the
-operation and the concrete types involved. CPython extensions and import graphs through
-unavailable modules can block otherwise suitable pure-Python functions. The
-[compatibility reference](language/compatibility.md) lists the detailed restrictions.
+Language features limit library coverage most: general multiple inheritance and subclasses of
+generic (template) classes, arbitrary recursive value types, `bytearray` and `memoryview`,
+dynamic reflection and unrestricted argument expansion. Generator functions, resumable
+generator objects, bytes, bounded unions and per-call function/constructor specialization
+already work; their remaining restrictions depend on the operation and the concrete types
+involved. CPython extensions and import graphs through unavailable modules can block otherwise
+suitable pure-Python functions. The [compatibility reference](language/compatibility.md) lists
+the detailed restrictions.
+
+Runtime-typed values exist only in modules that opt in to the [dynamic `Any`
+prototype](dynamic-any.md); its [operations](dynamic-any.md#operations) and
+[iteration](dynamic-any.md#iteration) contracts list what such ports can rely on. Its bounded
+[class-value prototype](dynamic-any.md#class-values-and-type-keyed-registries) supports
+exact-type callback registries and `factory(*args, **kwargs)` reconstruction through existing
+boxed instance adapters and compiled initializers, plus factory-only construction of isolated
+classes with a fixed annotated initializer and supported fields. Differential consumers
+exercise the selected `copyreg` registration functions and reduction tuples; full `copyreg`
+and `pickle` remain unsupported.
 
 Prioritize a small port when it offers a useful application without requiring a broad dynamic
 feature. Broader inference, generic typing, library coverage and optimizations remain areas of
@@ -164,8 +166,6 @@ have their own [FFI guide](ffi.md).
 <a id="7-reproducing"></a>
 
 ## Measuring coverage
-
-These tools answer different questions:
 
 | Check | What its result means |
 |---|---|
@@ -188,8 +188,10 @@ make port-check
 
 Adjust the CPython source path for your installation. The overlay excludes names provided by
 Pystachy's `lib/`, so CPython's own `re`, `functools` and other files do not hide the ports.
+
 Source-feature counts cannot establish compiler coverage: functions with the same syntax
 may specialize for different types, and unused imported functions may not be compiled.
+
 The sweep reports excluded modules separately. Preserve the compiler revision, CPython version
 and overlay policy with any result; compare sweeps only when their denominators agree.
 Use `--metadata build/import-sweep-meta.json` on a sweep to retain its compiler-file hash,
@@ -198,12 +200,12 @@ the unchanged module-to-result JSON. The source revision describes the checkout;
 compiler hash identifies the executable and does not prove which sources built it.
 
 A plain sweep reports each module's first error, so a module built into CPython that Pystachy
-lacks hides the errors behind it. `--stubs` stands a stub in for each such module that some
-module imports without an `ImportError` fallback, with the names the running CPython's module
-has (its functions raise `NotImplementedError`), and compiles with this checkout's
-CPython-hosted compiler. Its report counts, for each stub, the modules that import with it and
-those that need no other stub: these would import once Pystachy had that module, as far as
-their imports go. `--only NAME,...` stubs just those modules.
+lacks hides the errors behind it. `--stubs` substitutes a stub for each such module that some
+module imports without an `ImportError` fallback. A stub has the names of the running
+CPython's module, and its functions raise `NotImplementedError`; the stubbed sweep compiles
+with this checkout's CPython-hosted compiler. Its report counts, for each stub, the modules
+that import with it and those that need no other stub: these would import once Pystachy had
+that module, as far as their imports go. `--only NAME,...` stubs just those modules.
 
 Earlier sweeps are dated snapshots; rerun them after compiler or library changes. The
 [2026-10-17 compatibility audit](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-2026-10-17.md)
@@ -212,9 +214,9 @@ remaining blockers, and later checkpoints are in the
 [rolling log](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/compatibility-updates.md).
 The [October 22 core sweep](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/reports/stdlib-expansion-2026-10-22.md)
 separates selected import results from executed APIs and lists the remaining blockers and
-exclusions. Its [CPython-derived regression guide](../tests/upstream/core-sweep.md) records the
-new heterogeneous JSON, dictionary, deque and context-diff cases; these are selected adapted
-tests, not execution of CPython's complete test suite.
+exclusions. Its [CPython-derived regression guide](../tests/upstream/core-sweep.md) records
+the heterogeneous JSON, dictionary, deque and context-diff cases it adapted from selected
+CPython tests.
 
 The [development tools index](../tools/README.md) lists maintained checks and measurement
 entry points. Historical surveys and superseded tool implementations remain in Git history.

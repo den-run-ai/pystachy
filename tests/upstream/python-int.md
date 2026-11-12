@@ -17,10 +17,11 @@ ignores the comment and records the expected output with its own `int`.
 
 These are selected adapted assertions, not the unchanged upstream module or a run of CPython's
 suite: floats, bytes and buffers, subclasses, C-API behavior, indexable bases and giant base
-values are excluded. The case and
-[python_int_reflection.py](../programs/numbers/python_int_reflection.py) (original `type()` and
-`__class__` reflection) come from the source-rewriting prototype of #901, recorded again with
-the pinned interpreter.
+values are excluded.
+
+This case and [python_int_reflection.py](../programs/numbers/python_int_reflection.py) (original
+`type()` and `__class__` reflection) come from the source-rewriting prototype of #901, recorded
+again with the pinned interpreter.
 
 [python_int_cpython_long.py](../programs/numbers/python_int_cpython_long.py) comes from #901's head
 `9c81341a` too, unchanged, with the recording it made with the pinned interpreter. It

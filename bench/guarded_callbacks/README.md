@@ -44,10 +44,12 @@ build.
 
 These measurements target repeated callbacks over typed lists. They do not
 establish a 2x improvement for an existing application, heterogeneous storage or
-construction-heavy processing. The compiler transformation uses a bounded set of
-precompiled variants; it does not learn a runtime profile or compile new code on
-a miss. Fallback behavior must preserve captured environments, callback effects,
-exceptions, mutation order and floating-point accumulation order.
+construction-heavy processing.
+
+The compiler transformation uses a bounded set of precompiled variants; it does
+not learn a runtime profile or compile new code on a miss. Fallback behavior must
+preserve captured environments, callback effects, exceptions, mutation order and
+floating-point accumulation order.
 
 ## Compiler implementation results
 
@@ -73,12 +75,12 @@ Short-batch AOT ratios span 0.55-1.31x, so their median is not a reliable small
 speedup claim. Compilation and startup can outweigh the kernel gain in short JIT
 commands. These are shared-host observations, not performance gates.
 
-The linked executable's text grows from 71,822 to 72,238 bytes (**416 bytes**).
+The linked executable's text grows from 71,822 to 72,238 bytes (416 bytes).
 Both executable files are 95,792 bytes. Disassembly retains the generic indirect
 call and exposes subtraction/multiplication or absolute-value arithmetic in the
-two guarded loops. The squared-error GC probes report the same **2.0 MiB** heap
+two guarded loops. The squared-error GC probes report the same 2.0 MiB heap
 peak and zero collections; this is not a process-RSS measurement. Three paired
-AOT builds show a median **5.2%** build-time increase.
+AOT builds show a median 5.2% build-time increase.
 
 [Raw measurements](results/llvm18-compiler-2026-11-06.json) include all samples,
 input/compiler/source hashes, tool identities, build costs and GC probes.
@@ -96,8 +98,6 @@ no new diagnostics or exit-status changes after removing checkout-path noise by
 using verified identical library/runtime inputs. Full local `make verify` was
 not run; the PR remains draft pending the required CI matrix.
 
-The historical manual-guard data below is separate evidence.
-
 ## Historical experiment
 
 The original manually guarded prototype demonstrated the opportunity before the
@@ -105,8 +105,7 @@ compiler transformation existed. Its source, explanation and measurements are
 preserved at [commit `16d90a5`](https://github.com/den-run-ai/pystachy/blob/16d90a566000b6aaedd372824d8f47d158ccb744/examples/guarded_score/README.md).
 Its approximately 4x AOT result applies only to that historical source and setup.
 
-The original JSON artifacts have moved unchanged into
+The original JSON artifacts are retained unchanged, for provenance, in
 [`results/manual-guards-2026-11-06`](results/manual-guards-2026-11-06/). Their source
 paths and validation records describe the old commit, including its two manually
-written APIs. They are retained for provenance; current measurements belong in
-separate files alongside them.
+written APIs. Current measurements belong in separate files alongside them.

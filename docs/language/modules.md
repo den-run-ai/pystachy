@@ -20,6 +20,7 @@ the `.py` suffix, is not a module.
 Builtin modules such as `sys`, `os` and `math` are handled by the compiler. A program's own
 `ffi.py` takes precedence over the builtin `ffi` module. A file named like a module built into
 CPython, such as `_weakref.py` or `itertools.py`, is never imported, as CPython imports its own.
+
 For `binascii`, `_codecs`, `atexit`, `_struct`, `_thread`, `unicodedata` and `itertools`,
 Pystachy loads its ports of those C modules, `lib/_pystachy_binascii.py`,
 `lib/_pystachy_codecs.py`, `lib/_pystachy_atexit.py`, `lib/_pystachy_struct.py`,
@@ -35,6 +36,7 @@ has no attributes of its own, so its class's fields are the module's.
 this one ([weakref](../../lib/compatibility.md#_weakref-prototype)).
 `_io` loads `lib/_pystachy__io.py`, which gives `io`'s classes and functions under the C module's
 names ([io](../../lib/compatibility.md#io)); `FileIO` and the other binary-file classes are not there.
+
 `_imp`, `_ast`, `_opcode` and `opcode` are unavailable. Their former adapters
 were removed because they did not provide runtime importing, source parsing or
 CPython bytecode execution; see [library scope](../stdlib.md#library-scope).
@@ -50,7 +52,7 @@ CPython 3.13 cleans it, or `None`. A module may bind its own `__doc__`, as `date
 until it does, its code reads the docstring. Without a docstring, it reads `None` only where
 the first statement that names `__doc__` is module-level code; where that statement is a `def`
 or `class`, a read before the module binds `__doc__` raises `NameError`. Deleting a module's
-`__doc__`, assigning another module's, and reading `__doc__` in a class body (but in its
+`__doc__`, assigning another module's, and reading `__doc__` in a class body (except in its
 lambdas and comprehensions) are not supported. Some `lib/` modules' docstrings differ from
 CPython's (see the [library reference](../../lib/compatibility.md)).
 `__file__`, `__spec__` and CPython's other module metadata are unsupported.
@@ -60,16 +62,17 @@ An imported module cannot bind `__name__`.
 
 A module sees its own names and the builtins. Names in the main program do not change
 another module's bindings: defining `len` in the program does not change `bisect`'s `len`.
+
 An import of a Python module inside a function binds its names in that function only.
 Where the function reads such a name and the import may not have run (it is in a branch or a
 loop, or comes after the read), the read checks whether it has: if not, it raises CPython's
-`UnboundLocalError`, and a lambda's read, which checks when the lambda runs, its `NameError`
-for a free variable. A nested `def`'s defaults and decorators are read where the `def` runs,
-so they check it there; its annotations do not. Nested functions resolve enclosing
-Python-module imports and from-imported functions or classes. An import that a nested `def`'s
-body reads must have surely run before the `def`; enclosing imports that may remain unbound
-are rejected, also where a generator expression reads them. Builtin import aliases are not
-supported as closure values.
+`UnboundLocalError`. A lambda's read checks when the lambda runs and, if the import has not
+run, raises CPython's `NameError` for a free variable. A nested `def`'s defaults and
+decorators are read where the `def` runs, so they check it there; its annotations do not.
+Nested functions resolve enclosing Python-module imports and from-imported functions or
+classes. An import that a nested `def`'s body reads must have surely run before the `def`;
+enclosing imports that may remain unbound are rejected, also where a generator expression
+reads them. Builtin import aliases are not supported as closure values.
 Builtin-module imports have a [documented scope deviation](../language.md#deviations-from-cpython).
 
 | Import or binding | Behavior |
@@ -80,7 +83,7 @@ Builtin-module imports have a [documented scope deviation](../language.md#deviat
 | `from m import *` | Uses `__all__` when present; otherwise takes public names bound when the module's code ends. `__all__` may be extended with `+=`, `append()` and `extend()`. |
 | A package's own binding, such as `from .parse import parse` | Takes precedence over a submodule with the same name. |
 | A module-level alias, `name = function` | Names that function, including a from-imported function or class, for later from-imports and star imports. Its assignment checks the source binding, then marks the alias initialized. Reads from functions or through module attributes raise `NameError` or `AttributeError` until that assignment runs, including during import cycles. The check precedes call arguments; postponed annotations do not read the runtime binding. |
-| A module-level alias of a class through a module's attribute, `name = m.C` (after `import m`, `import m as n` or `import a.b`, as `a.b.C`) | Names that class, as `name = C` after `from m import C` does, where nothing else binds `name`, for a class whose bases are only `object` or such classes, named directly or through a module's attribute (`class D(m.B)`). The statement still reads `m.C` where it stands, as CPython's assignment does. An exception class's name holds its class object, as before; a class with other bases, or with a decorator (which may bind its name to something else, as `@object.__new__` binds an instance), is not aliased yet. Nor is a class read where the module that `m.C` reads imports the alias's module back, itself or through others: through a package's submodule attribute (`a.b.C` after `import a.b`), as CPython attaches the submodule to its package only once its code has run, or as that module's own alias (`m.C` after `C = K` in `m`), which `m` binds only where that statement runs. Nor is it made where code may read `name` before the statement binds it, where CPython raises `NameError` or `AttributeError`: a statement before it that names `name`, also in a function, class or lambda it defines (which a call could run then), or that imports, at the top level, itself or through other modules, a module whose code imports the alias's module back (in that import cycle, that code runs first and may read `m.name`). Reads through an import in a function use the same runtime binding check. |
+| A module-level alias of a class through a module's attribute, `name = m.C` (after `import m`, `import m as n` or `import a.b`, as `a.b.C`) | Names that class, as `name = C` after `from m import C` does, where nothing else binds `name`, for a class whose bases are only `object` or such classes, named directly or through a module's attribute (`class D(m.B)`). The statement still reads `m.C` where it stands, as CPython's assignment does. An exception class's name holds its class object; a class with other bases, or with a decorator (which may bind its name to something else, as `@object.__new__` binds an instance), is not aliased yet. Nor is a class read where the module that `m.C` reads imports the alias's module back, itself or through others: through a package's submodule attribute (`a.b.C` after `import a.b`), as CPython attaches the submodule to its package only once its code has run, or as that module's own alias (`m.C` after `C = K` in `m`), which `m` binds only where that statement runs. Nor is it made where code may read `name` before the statement binds it, where CPython raises `NameError` or `AttributeError`: a statement before it that names `name`, also in a function, class or lambda it defines (which a call could run then), or that imports, at the top level, itself or through other modules, a module whose code imports the alias's module back (in that import cycle, that code runs first and may read `m.name`). Reads through an import in a function use the same runtime binding check. |
 | A class rebound to its instance, `class C: ...` directly followed by `C = C()` at module level (a sentinel, as `enum._not_given`) | `C` is the class in that call and the instance from then on, also in functions and other modules; the class keeps its name (`type(C).__name__`, `__qualname__`, reprs and messages). The class may have no base but `object`, and no decorator, `__init__` or `__new__`, so that the call runs none of the program's code, which could read `C` before it is bound. |
 | `from builtins import RuntimeError as error` at module level | Names that builtin exception class, also as `m.error` and through from-imports, in `except` clauses, `raise`, calls and `isinstance()`, as `_thread.error` names `RuntimeError`. |
 | A module-level [type alias](typing.md#type-aliases), `Row = list[str]` or `type Row = ...` | Names that type in the annotations of modules that import it, as `m.Row` or by a from-import or star import. |
@@ -96,6 +99,7 @@ by that code. The runtime binding check still applies.
 
 `import pkg.util as u` binds `u` to `pkg.util`, as CPython does. Usually this is the submodule;
 it can instead be a value the package binds after importing that submodule.
+
 `import collections.abc` binds `collections` to the `lib/` package and runs its code, although
 `collections.abc` itself is builtin; the package binds `abc` to that module, as CPython's does.
 `_collections_abc` is that builtin module too, as in CPython, whose `collections` binds
@@ -120,11 +124,11 @@ Pystachy resolves these guards while compiling:
 | A module-level `try:` without `finally` whose statements only read builtins or assign them to names, such as `try: text_type = str`, which nothing else binds | Runs its body and `else` block; its handlers never run. |
 
 These tests work inside `not`, `and` and `or`, while preserving the other operands' evaluation
-order. The branch that does not run is not compiled at all, as CPython never runs it: its
-imports are not resolved and its code is not checked, so `import nt` under
-`if sys.platform == "win32":` compiles. For example, `effect()` still runs in `if effect() and os.name == "nt":`.
-They apply only when a name still refers to the imported module or constant; a parameter,
-local, loop variable or another import can shadow it.
+order: `effect()` still runs in `if effect() and os.name == "nt":`. The branch that does not
+run is not compiled at all, as CPython never runs it: its imports are not resolved and its
+code is not checked, so `import nt` under `if sys.platform == "win32":` compiles. The tests
+apply only when a name still refers to the imported module or constant; a parameter, local,
+loop variable or another import can shadow it.
 
 Discarding a branch does not change Python scoping. A binding in discarded code still makes
 a function's name local, including bindings from `:=`, `match` captures and `type` statements.
@@ -163,10 +167,10 @@ when the program first needs them, with the module and the reason, for example:
 m.total() is not supported: parameter 'xs': unsupported type annotation
 ```
 
-This permits a module to keep unsupported generator forms (such as `async` generators), unsupported annotations or classes with unsupported
-inheritance beside functions that compile. An unsupported special method, such as an
-unannotated `__len__`, is rejected when an operation needs it, including implicit use by
-printing, sorting or container comparisons.
+A module can therefore keep unsupported generator forms (such as `async` generators),
+unsupported annotations or classes with unsupported inheritance beside functions that
+compile. An unsupported special method, such as an unannotated `__len__`, is rejected when
+an operation needs it, including implicit use by printing, sorting or container comparisons.
 
 The `def` or `class` statement still executes when module code reaches it. Function defaults,
 the compilable items of otherwise unsupported default displays, and supported function
@@ -209,7 +213,7 @@ and C components to the subset; `functools`, `io` and `csv` have implementations
 Pystachy. The [library reference](../../lib/README.md) records provenance, available APIs,
 restrictions and tests for each module.
 
-The adapted sources remain valid Python, but that does not imply every upstream API compiles.
+The adapted sources remain valid Python, but not every upstream API in them compiles.
 Common limitations include unsupported generator forms, ASCII-only case mapping, lack of
 `bytearray`, and homogeneous container types. Check the module's reference before choosing an
 API; [binary files](../../lib/compatibility.md#binary-files) have their own supported calls and
@@ -265,9 +269,10 @@ The common `str`, `list`, `dict` and `tuple` methods are implemented, including:
 - `str.format()` and `str.format_map()` of a string literal (see
   [formatting](semantics.md#literals-and-formatting)).
 
-`a | b` of two dicts of one type is a new dict, and `a |= b` updates `a` as `a.update(b)` does.
-`dict()` takes a dict, a list or tuple of key/value tuples, or the pairs of a generator
-expression, list comprehension, `zip()`, `enumerate()`, `reversed()`, `map()` or `filter()`.
+`a | b` of two dicts of one type is a new dict, and `a |= b` updates `a` as `a.update(b)` does;
+`a | b` of dicts of different types is unsupported. `dict()` takes a dict, a list or tuple of
+key/value tuples, or the pairs of a generator expression, list comprehension, `zip()`,
+`enumerate()`, `reversed()`, `map()` or `filter()`, but not keyword arguments.
 Of tuples of another length, the first item raises CPython's `ValueError` (an iterator is taken
 only up to it) and none makes an empty dict, of the expected dict type or else `dict[int, int]`.
 Where a dict type is expected, such tuples are a type error at compile time when `map()`,
@@ -280,8 +285,7 @@ an empty `()` or `{}` takes the expected dict's key type.
 
 A dict display with `**` merges dicts of one type into a new dict, or `**kwargs` records
 (with string keys) into a record that prints as a dict and can be forwarded.
-Unsupported operations include `a | b` of dicts of different types and `dict()` with keyword
-arguments. Supported iteration contexts and other restrictions are in the
+Supported iteration contexts and other restrictions are in the
 [language guide](../language.md#expressions).
 
 ## Builtin modules and files

@@ -18,11 +18,12 @@ The [router example](../examples/route/README.md) shows an application result ca
 The regex front caches reference entries in their larger caches; they do not compile extra
 patterns or templates. Repeated front hits only read the cache, and `re.purge()` clears both levels.
 
-Class tables are built lazily. They handle ASCII characters directly. For non-ASCII characters,
-they handle classes whose members form one range, match no code points or match every code
-point directly; other classes use an evaluator and cache its recent answers. Textwrap skips unnecessary tab expansion and uses literal
-replacements for its default whitespace table, while preserving custom tables and mutation
-behavior. These optimizations reduce uncached work; a result-cache hit skips it altogether.
+Class tables are built lazily. They handle ASCII characters directly. For non-ASCII
+characters, they handle classes whose members form one range, match no code points or match
+every code point directly; other classes use an evaluator and cache its recent answers.
+Textwrap skips unnecessary tab expansion and uses literal replacements for its default
+whitespace table, while preserving custom tables and mutation behavior. These optimizations
+reduce uncached work; a result-cache hit skips it altogether.
 
 ## An application cache
 
@@ -86,6 +87,6 @@ this advantage. [#360](https://github.com/den-run-ai/pystachy/pull/360) has sepa
 of `shorten`, `dedent`, `indent`, a cached `fill` hit and `fnmatchcase`, taken with another
 protocol at a revision it did not record.
 
-A cached `fill` result hit skips wrapping entirely. Measure cache hits and misses separately
-when deciding whether a cache helps your application. `make re-probe` checks deterministic
-matcher work; `make re-fuzz` checks bytecode and results against CPython.
+Measure cache hits and misses separately when deciding whether a cache helps your
+application. `make re-probe` checks deterministic matcher work; `make re-fuzz` checks
+bytecode and results against CPython.

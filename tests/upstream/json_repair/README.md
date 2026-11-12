@@ -7,17 +7,18 @@ test modules and one shared case module used to extract inputs.
 
 The **943 distinct input/API/option combinations** comprise 544 extracted
 upstream schema-free calls and 399 task-focused cases, 192 of which cover
-multilingual repair. This is an API replay
-corpus, **not execution of the complete upstream test suite**. The extractor
-resolves literal calls, simple string construction, local literal assignments
-and loops, literal conditions and string interpolation, literal tables whose items
-may interpolate strings, literal `pytest.mark.parametrize` decorators (including
-tables they import from upstream's `tests/utils` case module), and the upstream
-`_assert_object_repairs` helper. It parses but never executes or imports test source
-to discover inputs. The manifest lists the unresolved calls: two resource-dependent
-calls (Python's configurable integer conversion limit and a runtime recursion
-depth search) and five that pass a schema. Schema, file, CLI and internal-parser
-tests are outside its scope.
+multilingual repair. This is an API replay corpus, **not execution of the complete
+upstream test suite**; schema, file, CLI and internal-parser tests are outside its
+scope.
+
+The extractor resolves literal calls, simple string construction, local literal
+assignments and loops, literal conditions and string interpolation, literal tables
+whose items may interpolate strings, literal `pytest.mark.parametrize` decorators
+(including tables they import from upstream's `tests/utils` case module), and the
+upstream `_assert_object_repairs` helper. It parses but never executes or imports
+test source to discover inputs. The manifest lists the unresolved calls: two
+resource-dependent calls (Python's configurable integer conversion limit and a
+runtime recursion depth search) and five that pass a schema.
 
 Extracted calls retain their API, serialization defaults, parsing options,
 `ensure_ascii=False` and repair logging. Unsupported keywords are reported rather
@@ -96,5 +97,5 @@ python3.13 tools/json_repair_parity.py /tmp/json_repair_pristine.out
 
 The builder verifies the pinned commit and rejects tracked source modifications.
 Upstream and adapted runs must be separate processes so Python's module cache
-cannot select the wrong package. See the port guide for validation scope and
-native limitations.
+cannot select the wrong package. See the
+[port guide](../../../ports/json_repair/PORT.md) for validation scope and native limitations.

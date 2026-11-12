@@ -2,19 +2,19 @@
 
 `netio` is a small networking/I/O prototype that runs under CPython and native
 Pystachy. A separate C bridge supplies IPv4 TCP, local socket pairs, binary pipe
-reads and persistent **epoll on Linux / kqueue on macOS**. It does not change the
-compiler, runtime or the normal program's dependencies. The same test program
-also runs against CPython's unmodified `socket`, `selectors` and `os` APIs.
+reads and persistent **epoll on Linux / kqueue on macOS**. The same test program
+also runs against CPython's unmodified `socket`, `selectors` and `os` APIs. The
+module is optional: it does not change the compiler, runtime or the normal
+program's dependencies, and it does not make `import socket`, `import selectors`
+or `asyncio` compile.
 
 The original committed execution and timing records use **Linux x86-64**, with
-CPython 3.13.16. Current compiler and platform qualification, including
-exact-commit results, is tracked in
-[#1216](https://github.com/den-run-ai/pystachy/pull/1216).
-[CI](../../.github/workflows/ci.yml) and
+CPython 3.13.16. [CI](../../.github/workflows/ci.yml) and
 [Installation](../../.github/workflows/install.yml) include Linux epoll, pipe and
 ownership checks and macOS ARM64 kqueue/pipe checks, retaining source-identified
-reports. Windows is unsupported. This optional module does not make
-`import socket`, `import selectors` or `asyncio` compile.
+reports. Windows is unsupported. Current compiler and platform qualification,
+including exact-commit results, is tracked in
+[#1216](https://github.com/den-run-ai/pystachy/pull/1216).
 
 ## Run the comparison
 
@@ -39,8 +39,7 @@ and library hashes and rejects source changes during validation.
 The scenarios cover binary NUL/non-UTF-8 payloads, partial sends and backpressure,
 EOF and half-close, would-block, refused connection completion, selector keys
 and metadata, modification/unregistration, descriptor reuse, finite deadlines,
-explicit cleanup and a readable pipe at descriptor **2048**. Output agreement is
-correctness evidence; no throughput, latency or memory-speedup claim is made.
+explicit cleanup and a readable pipe at descriptor **2048**.
 
 ## Supported surface
 
@@ -63,13 +62,13 @@ or wait indefinitely with `None`. Positive socket timeouts are deliberately
 unsupported: use nonblocking sockets and a selector with a monotonic deadline.
 NaN/infinite selector timeouts and unsupported event masks are outside the
 contract and explicitly rejected. Error classes and errno follow the operating
-system; diagnostic wording is not a complete stdlib compatibility promise.
+system; diagnostic wording may differ from the stdlib's.
 
-DNS, IPv6, UDP, TLS, file-like socket wrappers, flags/buffer variants, arbitrary
-metadata and general asynchronous Python execution are outside this prototype.
-Socketpair address-query operations are also outside the supported surface.
-The `SelectorKey` attribute API is tested; tuple indexing/unpacking of the key
-itself is not provided. Use this module from one owner thread.
+DNS, IPv6, UDP, TLS, file-like socket wrappers, flags/buffer variants, socketpair
+address queries, arbitrary metadata and general asynchronous Python execution are
+outside this prototype. The `SelectorKey` attribute API is tested; tuple
+indexing/unpacking of the key itself is not provided. Use this module from one
+owner thread.
 
 ### Dynamic file-object boundary
 
@@ -116,12 +115,13 @@ Write readiness after a nonblocking connect must be followed by
 [`drain.py`](drain.py) demonstrates readiness-driven collection of multiple
 inherited worker-output pipes. It enforces an overall deadline and a per-pipe
 output bound, emits completed streams as EOF is observed, and closes all its
-descriptors on exit. The launcher still owns spawning, exit-status collection and
-termination of workers. Native process lifecycle integration is separate from
-this pipe consumer. Deadlines are checked before waiting, before each ready event,
+descriptors on exit. Deadlines are checked before waiting, before each ready event,
 and after preparing an EOF message, so a late readiness result cannot be accepted
-as a successful completion. The launcher still bounds a child that stalls while
-writing its completion output.
+as a successful completion.
+
+The launcher still owns spawning, exit-status collection and termination of
+workers, and it bounds a child that stalls while writing its completion output.
+Native process lifecycle integration is separate from this pipe consumer.
 
 The consumer retains fragments in batches of 256, joining each completed batch
 once and joining the blocks at EOF. For that single final result, each byte is
@@ -145,6 +145,7 @@ and diagnostics** from three existing corpus programs: a small successful
 program, a container program, and a deliberate syntax error. The same worker
 compiler runs in every collector mode. Every stdout/stderr byte and exit status
 must match an independent serial capture from the CPython-hosted compiler.
+
 The host owns subprocesses; the consumer owns only its inherited descriptors.
 The launcher duplicates those descriptors to 64 and above and records the
 mapping for comparison with the recorded measurements. That policy originated
@@ -180,9 +181,8 @@ python -m pyperf show build/netio-pyperf.json
 
 Select a CPU in the current affinity mask, or omit `--cpu` where affinity is
 unavailable. Missing explicitly requested runtimes or failed extension builds
-fail the run; they are never silently reported as successful comparisons.
-The optional pyperf file exports the verified samples; it does not imply use
-of pyperf's calibration or worker controller.
+fail the run. The optional pyperf file exports the verified samples, which were
+not collected with pyperf's calibration or worker controller.
 
 Pystachy compiles the consumer **and** native wrapper. CPython/PyPy baselines use
 unmodified `socket`/`selectors`. mypyc and Cython compile the unchanged consumer
@@ -197,11 +197,11 @@ private runtime cache already populated by the preceding AOT build. cProfile
 examines Python wrapper costs; optional `strace -c` counts native syscalls after
 checking tracer availability. Profiling runs are excluded from timings.
 
-All timings are advisory. These local socket pairs do not establish TCP/WAN
-throughput. Compiler dogfood includes actual compilation, buffering and hex
-encoding; hex output doubles the payload size. Its bounded small-corpus results are not a compiler speedup
-claim or a production scheduler integration. No timing threshold is added to CI.
-The [recorded Linux results](results/README.md) include all runtime comparisons,
+All timings are advisory, and CI has no timing threshold. These local socket pairs
+do not establish TCP/WAN throughput. Compiler dogfood includes actual
+compilation, buffering and hex encoding (hex output doubles the payload size); it
+is not a production scheduler integration. The
+[recorded Linux results](results/README.md) include all runtime comparisons,
 profiles, native GC smoke and the real compiler collection witnesses.
 
 ## Drain accumulation comparison
@@ -231,10 +231,10 @@ budget without a timing threshold; the original consumer fails that control.
 The [drain results](results/2026-11-08-drain.md) preserve the measurements,
 negative controls and limits.
 
-The extra native receive-buffer-to-managed-bytes copy remains. The current
+The extra native receive-buffer-to-managed-bytes copy remains: the current
 [FFI contract](../../docs/ffi.md#c-types-and-conversions) forbids modifying borrowed
-`bytes`, and Pystachy has no mutable byte-buffer type. This consumer change adds
-no buffer-ownership API and makes no claim to fix the bulk socket timing gap.
+`bytes`, and Pystachy has no mutable byte-buffer type. The batched consumer adds no
+buffer-ownership API and does not address the bulk socket timing gap.
 
 ## Standalone native ownership check
 
@@ -249,12 +249,12 @@ cc -std=c11 -O1 -g -Wall -Wextra -Werror -Wpedantic \
 ASAN_OPTIONS=detect_leaks=1 build/netio/ownership
 ```
 
-The original local ASan/UBSan checks used `detect_leaks=0` because that executor's
-ptrace setup prevented LeakSanitizer from running; descriptor-count checks passed.
-The later
+The
 [Linux distribution job](https://github.com/den-run-ai/pystachy/actions/runs/42846109042/job/129940533272)
 at `37a9db95` passed the 300-cycle ASan/UBSan ownership probe with
-`ASAN_OPTIONS=detect_leaks=1`. This is Linux evidence; current compiler and macOS
+`ASAN_OPTIONS=detect_leaks=1`. Earlier local ASan/UBSan checks used `detect_leaks=0`
+because that executor's ptrace setup prevented LeakSanitizer from running; their
+descriptor-count checks passed. This is Linux evidence; current compiler and macOS
 qualification results are tracked in
 [#1216](https://github.com/den-run-ai/pystachy/pull/1216).
 

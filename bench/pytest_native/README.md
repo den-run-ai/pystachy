@@ -15,10 +15,10 @@ cycle.
 | `numeric` | 4 | 20 × 20,000 integer checksum steps per case, with different seeds |
 
 These are original benchmark tests of the maintained APIs. They supplement the
-[upstream parity qualification](../../docs/pytest-native.md), and are not a claim
-that the complete upstream pytest, JSON repair or CPython suite compiles. Both
-CPython and native runs use Pystachy's maintained JSON repair port, preserving the
-same application source while comparing runner/runtime costs.
+[upstream parity qualification](../../docs/pytest-native.md) and do not show that
+the complete upstream pytest, JSON repair or CPython suite compiles. Both CPython
+and native runs use Pystachy's maintained JSON repair port, preserving the same
+application source while comparing runner/runtime costs.
 
 ## Historical alpha.3 Linux run: 11 November 2026 (UTC)
 
@@ -29,16 +29,18 @@ measurements. All 84 comparative samples and 36 full lifecycle commands passed
 their exact inventories and checksums. The measured source was the clean tree at
 [`7e33fb336a6429caf089aff3bd5c684528202c26`](https://github.com/den-run-ai/pystachy/commit/7e33fb336a6429caf089aff3bd5c684528202c26).
 
-These are historical alpha.3 measurements, not measurements of alpha.4, alpha.5
-or the updated harness. The unchanged schema 2 JSON retains full lifecycle phase
-events, but the harness validated and then discarded the comparative generated
-samples' and JIT warmups' phase events. Their retained stdout checksums and
-completion status remain independently inspectable. It also omits a source hash
-for `lljit.c` and fingerprints for `llvm-as`, `llvm-link`, `lli` and the selected
-`libLLVM`; its native provenance is therefore incomplete. Those missing records
-have not been reconstructed or backfilled. The current schema 3 harness retains
-the phase events and expanded native provenance for future runs. New performance
-claims about the released code require a fresh run with a matching compiler.
+These are historical alpha.3 measurements, not measurements of alpha.4, alpha.5 or
+the updated harness. New performance claims about the released code require a
+fresh run with a matching compiler.
+
+The unchanged schema 2 JSON retains full lifecycle phase events, but the harness
+validated and then discarded the phase events of the comparative generated samples
+and JIT warmups; their stdout checksums and completion status remain independently
+inspectable. The JSON also omits a source hash for `lljit.c` and fingerprints for
+`llvm-as`, `llvm-link`, `lli` and the selected `libLLVM`, so its native provenance
+is incomplete. Those missing records have not been reconstructed or backfilled.
+The current schema 3 harness retains the phase events and expanded native
+provenance for future runs.
 
 Preparation alone reduced the median CPython time by 5.76× for fixtures, 1.37×
 for JSON repair and 2.00× for the numeric workload. Reusing a prebuilt AOT
@@ -71,16 +73,18 @@ command's memory, as well as execution peaks.
 | Invoke the full qualified CLI on every run | No observed saving | No observed saving | No observed saving |
 
 The second row is an inference from the recorded full first AOT command and the
-prebuilt execution distribution, assuming equivalent unchanged generated code
-and per-run performance. The full CLI and standalone preparation produce
+prebuilt execution distribution, assuming equivalent unchanged generated code and
+per-run performance. The full CLI and standalone preparation produce
 byte-identical test modules with different entry drivers; this row estimates
 comparable direct execution. Its calculation is
 `ceil((first_aot - median_aot) / (median_pytest - median_aot))`: the first command
 includes preparation, compilation, execution and its CPython oracle; later runs
-reuse the executable directly. The first command and build costs are single
-observations, while execution medians use seven samples. These estimates need
-confirmation on the intended development machine, especially when edits are
-frequent. The actual full AOT CLI rebuilds on every invocation.
+reuse the executable directly, whereas the actual full AOT CLI rebuilds on every
+invocation.
+
+The first command and build costs are single observations, while execution medians
+use seven samples. These estimates need confirmation on the intended development
+machine, especially when edits are frequent.
 
 ### Recorded compiler and replay
 
@@ -194,12 +198,12 @@ on an otherwise idle host before presenting small differences.
   command that warms the temporary copy at that path before the edit. AOT mode
   rebuilds on each CLI invocation.
 
-All measured commands use the same tiny native measurement launcher. It forks
-the target after its own exec, removing the Python controller's inherited RSS
-floor from target memory accounting. Elapsed times include launcher startup,
-fork and reporting overhead; its one-time compilation is outside the timings.
-The JSON pins its C source, executable, compilation command and compiler. This
-overhead matters proportionally most for the tiny AOT suite and is not subtracted.
+All measured commands use the same tiny native measurement launcher. It forks the
+target after its own exec, removing the Python controller's inherited RSS floor
+from target memory accounting. Elapsed times include launcher startup, fork and
+reporting overhead, which is not subtracted and matters proportionally most for
+the tiny AOT suite; the launcher's one-time compilation is outside the timings.
+The JSON pins its C source, executable, compilation command and compiler.
 
 Each sample must exit successfully, execute the exact checksum inventory, and
 report the exact passed count. Generated execution also validates all three
@@ -208,14 +212,15 @@ the benchmark. All three full commands compare original pytest outcomes before
 any interleaved timings begin. These qualification calls are not included in the
 ordinary-pytest timing headline; their total elapsed times are retained.
 
-The sampled variants are shuffled within each round using a recorded seed.
-Report medians, p10–p90, min/max and sample counts; no combined average is useful
-across these workloads. The native launcher's `wait4` supplies the target's peak
-individual-process RSS, including waited-for descendants. This is not peak
-simultaneous process-tree memory. The outer launcher's RSS is retained separately.
-Preparation/build and all full-command lifecycle peaks are reported too. A cold
-cache means an empty private Pystachy cache; OS page caches and installed Python
-bytecode caches are not flushed.
+The sampled variants are shuffled within each round using a recorded seed. Report
+medians, p10–p90, min/max and sample counts; no combined average is useful across
+these workloads. A cold cache means an empty private Pystachy cache; OS page
+caches and installed Python bytecode caches are not flushed.
+
+The native launcher's `wait4` supplies the target's peak individual-process RSS,
+including waited-for descendants, not peak simultaneous process-tree memory. The
+outer launcher's RSS is retained separately. Preparation/build and all
+full-command lifecycle peaks are reported too.
 
 Retained-executable break-even amortizes preparation/build over direct AOT
 executions. It does not describe repeatedly invoking the full runner CLI, which

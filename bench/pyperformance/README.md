@@ -22,19 +22,21 @@ python3 bench/pyperformance/richards.py 10
 
 Each benchmark's main takes the number of loops as its first argument; some also take input
 sizes. It prints its results to standard output and the seconds of the part that pyperf would
-time to standard error. The check runs small inputs once and compares CPython, JIT and AOT
-output, without timings. `make bench-pyperformance` runs five processes per mode and writes
-`build/pyperformance.json`. Both targets accept `BENCH_COMPILER`; `BENCH_ARGS` adds options to
-the measured run. `--compiler "python3 -m pystachy"` uses the CPython-hosted compiler.
-`PYSTACHY_*` settings apply to the compiled runs: `PYSTACHY_OPT=-all` disables the typed-IR
-passes, and `PYSTACHY_GC_STRESS_PROGRAM=1` collects at every allocation in JIT and AOT runs, as
-in `tests/run.sh`.
+time to standard error.
 
-The separate [correctness controls](../../tests/programs/apps/pyperformance_controls.py)
-exercise Fannkuch sizes 2–7, SOR with nonuniform inputs and sparse multiplication with
-signed coefficients and an empty row. These run in the differential corpus. The SOR and
-sparse timing workloads retain upstream's zero-filled inputs; their zero checksums alone
-cannot validate the kernels.
+`make bench-pyperformance-check` runs small inputs once and compares CPython, JIT and AOT
+output, without timings. `make bench-pyperformance` runs five processes per mode and writes
+`build/pyperformance.json`. Both targets accept `BENCH_COMPILER`; `BENCH_ARGS` adds options
+to the measured run. The runner's `--compiler "python3 -m pystachy"` uses the CPython-hosted
+compiler. `PYSTACHY_*` settings apply to the compiled runs: `PYSTACHY_OPT=-all` disables the
+typed-IR passes, and `PYSTACHY_GC_STRESS_PROGRAM=1` collects at every allocation in JIT and
+AOT runs, as in `tests/run.sh`.
+
+The SOR and sparse timing workloads retain upstream's zero-filled inputs, so their zero
+checksums alone cannot validate the kernels. Separate
+[correctness controls](../../tests/programs/apps/pyperformance_controls.py) in the
+differential corpus exercise Fannkuch sizes 2–7, SOR with nonuniform inputs and sparse
+multiplication with signed coefficients and an empty row.
 
 ## Shared pytest correctness suite
 
@@ -48,10 +50,10 @@ python3 tools/pytest_native_suites.py --group pyperformance --mode jit
 python3 tools/pytest_native_suites.py --group pyperformance --mode aot
 ```
 
-The registry preserves all 39 cases in five independent categories, each with
-its own original-pytest oracle. This bounds native build memory and separates
-the JSON opt-in from typed workloads. `make bench-pyperformance-check` includes
-both native modes in addition to its existing process/timing/provenance checks.
+The registry splits all 39 cases into five independent categories, each with its
+own original-pytest oracle, to bound native build memory and keep the JSON opt-in
+apart from typed workloads. `make bench-pyperformance-check` runs both native modes
+in addition to its process/timing/provenance checks.
 
 These original tests check full discrete results where available, finite numeric
 reference values with explicit tolerances, complete generator order, nonuniform
@@ -60,17 +62,18 @@ values were checked with pinned CPython 3.13.16. The JSON tests retain the workl
 existing dynamic `Any` contract; the other tests use concrete types. They do not
 require importing pyperf or changing any timed workload source.
 
-Keep `bench-pyperformance-check`, the corpus controls and controller unit tests:
-they also verify subprocess behavior, exact CLI output, timed regions, negative
-controls and upstream provenance. Pytest results are correctness evidence, not
-benchmark measurements. Use the timing controller above for comparable timings;
-the native pytest invocation's compilation/startup cost is a separate measurement.
+Pytest results are correctness evidence, not benchmark measurements. Use the timing
+controller above for comparable timings; the native pytest invocation's
+compilation/startup cost is a separate measurement. Keep
+`bench-pyperformance-check`, the corpus controls and controller unit tests: they
+also verify subprocess behavior, exact CLI output, timed regions, negative controls
+and upstream provenance.
 
 ## Byte BPE
 
 `bpe_tokeniser.py` provides the reusable `SimpleBytePairEncoding`, `bpe_train`,
 `bpe_encode` and `BPE_PATTERN` API. The default benchmark uses the complete bundled
-31,206-byte Frankenstein excerpt and vocabulary size 1,024. The existing suite's
+31,206-byte Frankenstein excerpt and vocabulary size 1,024. The suite's
 `--smoke` run uses a tiny in-memory corpus and vocabulary size 260:
 
 ```sh
@@ -79,15 +82,17 @@ python3 bench/pyperformance/bpe_tokeniser.py 1 260 smoke
 python3 bench/pyperformance/bpe_tokeniser.py 1 1024 bench/pyperformance/data/frankenstein_intro.txt
 ```
 
-The CLI takes loops, then optional vocabulary size and corpus path. Run from the
+The CLI takes loops, then optional vocabulary size and corpus path; run it from the
 repository root or pass an explicit corpus path. Its timer preserves upstream's
-`train()` loop, including the `hello world` round-trip check and corpus encoding.
-An independent untimed training pass prints every ordered rank, corpus token ID and
-decoded byte for comparison across modes. Process wall time therefore includes this
-correctness pass. Separate training, encoding and decoding measurements against
-pristine upstream CPython are in the [byte-BPE showcase](../../examples/byte_bpe/README.md).
+`train()` loop, including the `hello world` round-trip check and corpus encoding. An
+independent untimed training pass prints every ordered rank, corpus token ID and
+decoded byte for comparison across modes, so process wall time includes this
+correctness pass.
+
 This educational tokenizer preserves its upstream splitting pattern and quadratic
-encoder; it is not a throughput comparison with production Rust tiktoken.
+encoder; it is not a throughput comparison with production Rust tiktoken. The
+[byte-BPE showcase](../../examples/byte_bpe/README.md) measures training, encoding and
+decoding separately against pristine upstream CPython.
 
 ## Provenance
 
@@ -124,19 +129,21 @@ record the source, corpus and pyperformance license files used by the showcase.
 
 ## License
 
-pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTHORS](AUTHORS)
-are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
-header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
+pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and
+[AUTHORS](AUTHORS) are its `COPYING` and `AUTHORS` files. Each port keeps its upstream
+header. `regex_v8.py`'s header carries the V8 project's BSD license, and `raytrace.py`'s
+states the MIT License. `fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`,
+`regex_dna.py` and `spectral_norm.py` say they come from The Computer Language Benchmarks
+Game, whose programs are published under the 3-clause BSD License. `richards.py` and
+`richards_super.py` credit a Java version "Copyright (C) 1995 Sun Microsystems, Inc.", and
+`chaos.py` says "Copyright (C) 2005 Carl Friedrich Bolz". pyperformance distributes all of
+these files under its MIT License; their origins are listed so that a license review can
+confirm that this suffices. See [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES). Byte BPE
+credits Shantanu Jain and tiktoken; those notices also retain tiktoken's MIT copyright and
+permission text.
+
 `deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 25 benchmarks remain included.
-`fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`, `regex_dna.py` and `spectral_norm.py` say they
-come from The Computer Language Benchmarks Game, whose programs are published under the
-3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
-"Copyright (C) 1995 Sun Microsystems, Inc.", and `chaos.py` says "Copyright (C) 2005 Carl
-Friedrich Bolz". pyperformance distributes all of these files under its MIT License; their
-origins are listed so that a license review can confirm that this suffices. See
-[THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES). Byte BPE credits Shantanu Jain and
-tiktoken; those notices also retain tiktoken's MIT copyright and permission text.
+says the JavaScript original was GPL-licensed.
 
 ## Adaptations
 
@@ -199,9 +206,7 @@ Results within a benchmark are checked against CPython, not against upstream pyp
 
 These are recorded probes, last updated for `3aa7265a` on 2026-11-03; they are not
 rerun automatically when the compiler changes. Use the [census command](#provenance)
-with the pinned upstream sources to check today's first errors. The full byte-BPE
-port above covers training, encoding and decoding; the earlier fixed-rank sample
-below did not.
+with the pinned upstream sources to check today's first errors.
 
 The same 52 upstream files were compiled on `8444af96` (before the stdlib additions)
 and `3aa7265a` (with the argparse adapter). With only the runner replaced, both
@@ -223,11 +228,11 @@ executed in JIT. A separate pyperf 2.10.0 worker with psutil 7.2.2 ran under
 CPython 3.13.16. Compiling that worker with Pystachy stopped at the missing
 `sysconfig` import in pyperf.
 
-The adapted suite uses CPython's output as the oracle in JIT and AOT. Three extra
-samples also matched in both modes: BPE encoding with fixed ranks and materialized
-`zip` pairs, deepcopy of the benchmark dataclass with a `list[int]` field, and
-pathlib's eight-file setup followed by glob, binary reads and cleanup. These
-samples exclude BPE training, copy reduction hooks and `Path.stat()`, respectively.
+Three extra samples matched CPython's output in JIT and AOT: BPE encoding with fixed
+ranks and materialized `zip` pairs, deepcopy of the benchmark dataclass with a
+`list[int]` field, and pathlib's eight-file setup followed by glob, binary reads and
+cleanup. These samples exclude BPE training, copy reduction hooks and `Path.stat()`,
+respectively; the full byte-BPE port above covers training, encoding and decoding.
 
 <a id="sources-without-a-delivered-port"></a>
 <a id="scope-and-remaining-candidates"></a>
@@ -351,7 +356,7 @@ The table gives **millions of whole-process instructions**, sorted by change.
 Positive values mean more instructions; negative values mean fewer. `pidigits`
 needed alpha.4's [promoting ints](../../docs/python-int.md); alpha.3 raised
 `OverflowError`, so it has no comparable row. `logging` joined the suite after
-this measurement. The table therefore does not cover the current 24-port suite.
+this measurement. The table therefore does not cover the whole current suite.
 
 | Benchmark | alpha.3 | alpha.4 | Change |
 |---|---:|---:|---:|
@@ -393,8 +398,6 @@ The record also includes a separate pre-merge
 [#1033](https://github.com/den-run-ai/pystachy/pull/1033) experiment: `generators`
 was +13.3% and fib +24.1% relative to alpha.3. That PR subsequently
 [merged on 2026-11-03](https://github.com/den-run-ai/pystachy/commit/5624ca0eb9db62fb9d1974d8ff154722b1201f6f).
-Those figures describe the recorded experiment; the table above remains the
-alpha.4 comparison, not a measurement of current `main`.
 
 Allocation removal reduced `chaos`'s count by deleting unread objects containing
 only numbers ([#1020](https://github.com/den-run-ai/pystachy/pull/1020),
@@ -430,5 +433,4 @@ retains attribution, paired wall-time samples and additional reproduction detail
 The 2026-10-16 CPython wall-time comparison and October regex reruns remain in the
 [commit-pinned results page](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/docs/pyperformance.md).
 Their raw samples remain in [`docs/benchmarks/`](../../docs/benchmarks/). These older
-measurements use the sources and inputs recorded there; for current CPython, JIT
-and AOT timings, run `make bench-pyperformance` as described [above](#run).
+measurements use the sources and inputs recorded there.

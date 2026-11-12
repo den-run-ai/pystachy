@@ -72,8 +72,8 @@ subclass support.
 An `mpz` is not a builtin `int` and does not provide the general integer index
 protocol. Use `to_int()` for fixed-width native or index arguments when the value
 fits. JSON does not treat it as an integer automatically. The separate
-[dynamic JSON path](json.md#in-modules-that-opt-in-to-dynamic-any) can already preserve wide builtin
-integers without an `mpz` wrapper or a caller `python-int` pragma.
+[dynamic JSON path](json.md#in-modules-that-opt-in-to-dynamic-any) can preserve wide
+builtin integers without an `mpz` wrapper or a caller `python-int` pragma.
 
 ## Implementation
 

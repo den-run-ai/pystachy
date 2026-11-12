@@ -2,8 +2,8 @@
 
 This reference describes compiled behavior. The adapted sources may expose more
 APIs when CPython runs them, because optional imports select CPython's C modules
-and dynamic features. Differential cases live in `tests/programs/library/lib_*.py`; deliberate
-differences live in `tests/deviations/`, and rejected inputs in `tests/errors/`.
+and dynamic features. Differential cases live in `tests/programs/library/lib_*.py`,
+deliberate differences in `tests/deviations/` and rejected inputs in `tests/errors/`.
 
 For shared numeric, container, Unicode and resource-lifetime limits, see
 [language compatibility](../docs/language/compatibility.md).
@@ -32,11 +32,11 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 ### CPython-only code
 
 Ports keep code that only CPython can run, as CPython's sources have it, under
-`if sys.implementation.name == "cpython":`. Pystachy decides that test at compile time, as its
-`sys.implementation.name` is `"pystachy"`, and drops the block (see
-[compile-time branches](../docs/language/modules.md#compile-time-branches)): `urllib.parse`'s
-imports of `warnings` and `ipaddress`, its docstrings of the result fields and its
-byte tables, and `statistics`' import of `random` and table of kernels.
+`if sys.implementation.name == "cpython":`. Pystachy's `sys.implementation.name` is
+`"pystachy"`, so it decides that test at compile time and drops the block (see
+[compile-time branches](../docs/language/modules.md#compile-time-branches)). Such blocks hold
+`urllib.parse`'s imports of `warnings` and `ipaddress`, its docstrings of the result fields and
+its byte tables, and `statistics`' import of `random` and table of kernels.
 
 ### Pure-Python accelerators
 
@@ -61,29 +61,29 @@ Pystachy: `collections`, `curses`, `functools` and `io` have docstrings of their
 ### `textwrap`
 
 `TextWrapper` and `wrap`, `fill`, `shorten`, `dedent`, `indent` support upstream
-options, mutable wrapper options and overridable class attributes. Regex work
-uses `lib/re`.
+options, mutable wrapper options and overridable class attributes, but not `TextWrapper`
+subclasses. Regex work uses `lib/re`.
 
 Widths, long-word splitting and tab expansion count Unicode code points.
-`unicode_whitespace_trans` must map ints to ints,
-with no string or `None` replacements; custom tables are looked up by code point. Mutated and
-custom tables retain their semantics when whitespace fast paths do not apply.
-`TextWrapper` subclasses are unsupported.
+`unicode_whitespace_trans` must map ints to ints, with no string or `None` replacements;
+custom tables are looked up by code point. Mutated and custom tables retain their semantics
+when whitespace fast paths do not apply.
 
 ### `unicodedata`
 
 `unicodedata` is `_pystachy_unicodedata`, a port of CPython's C module `unicodedata`
-(`Modules/unicodedata.c`) that Pystachy loads for `import unicodedata`, on CPython 3.13.16's
-tables of Unicode 15.1.0, which `tools/unicodedata_tables.py` takes from CPython's module and
-writes into `_pystachy_unicodedata_db.py` and `_pystachy_unicodedata_names.py`. Every function
-works as CPython's does, with its errors and messages: `category()`, `bidirectional()`,
-`combining()`, `mirrored()`, `east_asian_width()`, `decomposition()`, `decimal()`, `digit()` and
-`numeric()` (with or without a default), `name()`, `lookup()`, which also takes the aliases,
-named sequences and derived names (Hangul syllables, CJK and Tangut ideographs) in any case,
-`normalize()` and `is_normalized()` in the four forms, and `ucd_3_2_0`, the database of
-Unicode 3.2.0 that `stringprep` and the IDNA codec read. A function's character is the one code
-point that its `str` argument's UTF-8 encodes, and its results use the same UTF-8 storage.
-String lengths and iteration count code points (see the [language
+(`Modules/unicodedata.c`) that Pystachy loads for `import unicodedata`. Its tables are
+CPython 3.13.16's, of Unicode 15.1.0: `tools/unicodedata_tables.py` takes them from CPython's
+module and writes them into `_pystachy_unicodedata_db.py` and `_pystachy_unicodedata_names.py`.
+
+Every function works as CPython's does, with its errors and messages: `category()`,
+`bidirectional()`, `combining()`, `mirrored()`, `east_asian_width()`, `decomposition()`,
+`decimal()`, `digit()` and `numeric()` (with or without a default), `name()`, `lookup()`, which
+also takes the aliases, named sequences and derived names (Hangul syllables, CJK and Tangut
+ideographs) in any case, `normalize()` and `is_normalized()` in the four forms, and `ucd_3_2_0`,
+the database of Unicode 3.2.0 that `stringprep` and the IDNA codec read. A function's character
+is the one code point that its `str` argument's UTF-8 encodes, and its results use the same
+UTF-8 storage. String lengths and iteration count code points (see the [language
 reference](../docs/language/compatibility.md#text-and-file-positions)).
 
 - `lookup()` takes a `str`; `bytes`, which CPython's also takes, is a compile-time error.
@@ -103,7 +103,7 @@ Files are read eagerly. Pushed files are closed on push rather than on source
 pop; constructor files remain the caller's responsibility. Iteration and `next()` read
 one token at a time from a shared position. `punctuation_chars` is writable;
 its constructor accepts bools or strings, while lists fail compilation. Lexer
-subclasses and arbitrary stream types are outside the compiled surface.
+subclasses and arbitrary stream types are not supported.
 
 ### `keyword`
 
@@ -130,53 +130,59 @@ Template subclasses are unsupported. Keyword values of different types, as in
 
 `Formatter` supports `format`, `vformat`, `parse`, `get_field`, `get_value`,
 `check_unused_args`, `format_field` and `convert_field`, and subclasses that
-override them. `lib/_pystachy_string.py` implements the parsers of CPython's
-`_string`, with its errors; `parse()` returns a list, so a malformed format string
-raises before its first field is looked up. Automatic and manual numbering,
-conversions, nested format specs and recursion limits follow CPython.
-Positional arguments may have different types (as may keyword ones): a field's
-value has their union type, which formats as its value does, also where a call has
-both: `format("{0} {x}", 1, x="s")` gives `'1 s'`.
-`vformat` takes a tuple and a dict, or a `**kwargs` record; type an empty dict.
+override them. Automatic and manual numbering, conversions, nested format specs and
+recursion limits follow CPython. `lib/_pystachy_string.py` implements the parsers of
+CPython's `_string`, with its errors; `parse()` returns a list, so a malformed format
+string raises before its first field is looked up.
 
-Field names with attributes or indexes (`{0.x}`, `{0[1]}`) raise `ValueError`, but
-`Formatter().format()` of the base class with a constant template whose fields read
-attributes, and positional arguments only, formats as `str.format()` of that template does,
-which reads the attributes ([reflection](../docs/language/semantics.md#reflection)); a
-loop over a constant list of such templates unrolls. `check_unused_args` receives the keys used as a list in first-use order
-rather than a set. Overrides compile for every call's argument types in the
-program; an override, like other functions, must return one type for each.
-Only ASCII digits make positional field names; the field parser does not recognize
-Unicode decimal digits.
+Positional arguments, like keyword ones, may have different types: a field's value has
+their union type, which formats as its value does, also where a call has both:
+`format("{0} {x}", 1, x="s")` gives `'1 s'`. `vformat` takes a tuple and a dict, or a
+`**kwargs` record; type an empty dict.
+
+Field names with attributes or indexes (`{0.x}`, `{0[1]}`) raise `ValueError`. The
+exception is `Formatter().format()` of the base class with a constant template whose
+fields read attributes, and positional arguments only: it formats as `str.format()` of
+that template does, which reads the attributes
+([reflection](../docs/language/semantics.md#reflection)), and a loop over a constant list
+of such templates unrolls.
+
+`check_unused_args` receives the keys used as a list in first-use order rather than a set.
+Overrides compile for every call's argument types in the program; an override, like other
+functions, must return one type for each. Only ASCII digits make positional field names;
+the field parser does not recognize Unicode decimal digits.
 
 ### `difflib`
 
 `SequenceMatcher` accepts strings or lists of strings, including `isjunk` and
-`autojunk`. It provides sequence setters, longest-match and matching-block
-queries, opcodes, and the three ratio methods. `get_close_matches`, `Match`,
-`IS_CHARACTER_JUNK` and `IS_LINE_JUNK` also work.
+`autojunk`; items of other types are rejected. It provides sequence setters,
+longest-match and matching-block queries, opcodes, and the three ratio methods.
+`get_close_matches`, `Match`, `IS_CHARACTER_JUNK` and `IS_LINE_JUNK` also work.
 
-Items of other types are rejected. The generators `get_grouped_opcodes()`, `unified_diff()`,
-`context_diff()` (with file names, dates, `n` and `lineterm`) and `restore()` work.
-`context_diff()` uses a dictionary literal for its fixed prefix table instead of `dict()`
-keyword arguments; the upstream generator and grouping algorithm are unchanged.
+The generators `get_grouped_opcodes()`, `unified_diff()`, `context_diff()` (with file
+names, dates, `n` and `lineterm`) and `restore()` work. `context_diff()` uses a dictionary
+literal for its fixed prefix table instead of `dict()` keyword arguments; the upstream
+generator and grouping algorithm are unchanged.
 `tests/programs/upstream/upstream_difflib_context.py` checks selected CPython output-format
 assertions and empty, insertion, deletion, replacement, grouping and Unicode cases.
-`ndiff()` and `Differ.compare()` still fail because their recursive `_fancy_helper()`
-generator yields a type the compiler cannot infer; `HtmlDiff`'s class attribute types
-also remain unsupported.
+
+`ndiff()` and `Differ.compare()` fail because their recursive `_fancy_helper()` generator
+yields a type the compiler cannot infer, and `HtmlDiff`'s class attribute types are
+unsupported.
 
 ### `gettext`
 
-CPython's `gettext`, with marked edits. Its table of the plural forms' operators is the dict that
-CPython makes of a tuple bound to the same name first, as a module global has one type here. Its default locale directory
-is made of `sys.base_prefix` (the Pystachy home, see
-[sys](../docs/language/compatibility.md#modules-and-libraries)). `NullTranslations` and its
-methods `gettext()`, `pgettext()`, `add_fallback()`, `info()` and `charset()`, `textdomain()` and
-`bindtextdomain()` work. `optparse` still stops here, as it calls `gettext()` while it is imported.
+CPython's `gettext`, with marked edits. `NullTranslations` and its methods `gettext()`,
+`pgettext()`, `add_fallback()`, `info()` and `charset()`, `textdomain()` and
+`bindtextdomain()` work. `optparse` still stops here, as it calls `gettext()` while it is
+imported.
 
-Its other edits are annotations: the types of `NullTranslations`' fields, which it fills none of,
-and the return types of its methods that a fallback's own call answers.
+Its table of the plural forms' operators is the dict that CPython makes of a tuple bound to
+the same name first, as a module global has one type here. Its default locale directory is
+made of `sys.base_prefix` (the Pystachy home, see
+[sys](../docs/language/compatibility.md#modules-and-libraries)). Its other edits are
+annotations: the types of `NullTranslations`' fields, which it fills none of, and the return
+types of its methods that a fallback's own call answers.
 
 Not supported, as compile-time errors:
 - The functions that look up a catalog: `gettext()`, `dgettext()`, `ngettext()`, `translation()`,
@@ -221,17 +227,18 @@ patterns and matches, as CPython's generic `_sre` types do
   strings. Bytes patterns, warnings, `DEBUG` output, `Scanner` and `__index__`
   group numbers are unavailable.
 
-`purge` clears pattern, replacement-template and last-input decoding caches.
 An input whose every byte is a code point (ASCII, or raw bytes) is read in place, as
 CPython's `_sre` reads a 1-byte string: it is not decoded or cached. Another input's
-decoded code points stay cached for the next call on it, but
-`findall`, `finditer`, `split`, `sub` and `subn` drop a decoding they made of an
-input longer than 1,048,576 code points once they return. Bounded `findall` and `finditer` calls
-whose `endpos` precedes the input's end keep it, as do caches that `match` or
-`search` made, so loops over advancing windows reuse their decoded prefixes.
-Active operations retain their decoded input, so callbacks can safely purge;
-existing patterns and matches remain usable. Character-class tables and search
-strategies belong to their pattern and preserve scoped case folding and Unicode fallback.
+decoded code points stay cached for the next call on it, but `findall`, `finditer`,
+`split`, `sub` and `subn` drop a decoding they made of an input longer than 1,048,576
+code points once they return. Bounded `findall` and `finditer` calls whose `endpos`
+precedes the input's end keep it, as do caches that `match` or `search` made, so loops
+over advancing windows reuse their decoded prefixes.
+
+`purge` clears pattern, replacement-template and last-input decoding caches. Active
+operations retain their decoded input, so callbacks can safely purge; existing patterns
+and matches remain usable. Character-class tables and search strategies belong to their
+pattern and preserve scoped case folding and Unicode fallback.
 
 ### `fnmatch`
 
@@ -257,11 +264,12 @@ lone surrogates, last-key-wins duplicate keys and CPython's default nonfinite
 float forms (`NaN`, `Infinity`, `-Infinity`). `allow_nan=False` rejects those
 values when encoding. `JSONDecodeError` derives from `ValueError` and exposes
 `msg`, `doc`, `pos`, `lineno` and `colno`; positions count Unicode characters.
+
 Narrowing parsed lists/dicts preserves identity and shared mutation. Encoding
 checks active ancestors for cycles and raises `ValueError` for them; repeated
-references without a cycle serialize normally.
-The existing unboxed-NaN identity deviation also applies: separately decoded
-`[NaN]` lists compare unequal, whereas CPython's cached NaN can make them equal.
+references without a cycle serialize normally. The unboxed-NaN identity deviation
+applies: separately decoded `[NaN]` lists compare unequal, whereas CPython's cached NaN
+can make them equal.
 
 The typed `JSONValue` path and public `JSONDecoder` methods reject integer tokens
 outside signed 64-bit range with `OverflowError`. Dynamic `Any` decoding promotes
@@ -269,18 +277,20 @@ larger tokens, with a 4,300-digit conversion limit that raises `ValueError`. Nes
 containers count against `sys.setrecursionlimit()` and stop at 2,000 under a raised limit,
 beyond which the codec raises `RecursionError`; CPython's C codec accepts 9,998 at any limit
 ([deviation](../tests/deviations/json_limits.py)).
+
 Text that Pystachy reads from a file, `input()` or `sys.argv` can hold bytes that
 are not UTF-8, which CPython rejects or escapes as it reads them. `loads()` counts
 each byte that starts no UTF-8 sequence as one character, as `str` does, in values
 and error positions ([deviation](../tests/deviations/json_invalid_utf8.py)).
+
 The default `JSONDecoder.decode()` and `raw_decode()` are supported with typed
 `JSONValue` storage. Bytes input, file APIs, configured decoder constructors,
-encoder classes, hooks, `strict` and indentation remain unsupported. Typed
+encoder classes, hooks, `strict` and indentation are unsupported. Typed
 `JSONValue` excludes non-string object keys, tuples, `default`, `skipkeys` and
-`check_circular`; the dynamic `Any` encoder supports those. Existing typed containers are not implicitly converted to
-recursive mutable storage. `ensure_ascii=False` returns non-ASCII and surrogate
-characters unchanged; writing that string follows the runtime's text-encoding
-rules. See the [native JSON API and representation](../docs/json.md).
+`check_circular`; the dynamic `Any` encoder supports those. Existing typed containers
+are not implicitly converted to recursive mutable storage. `ensure_ascii=False` returns
+non-ASCII and surrogate characters unchanged; writing that string follows the runtime's
+text-encoding rules. See the [native JSON API and representation](../docs/json.md).
 
 ### `tomllib`
 
@@ -291,12 +301,13 @@ arrays are lists, and strings, ints, floats, bools and `datetime`, `date` and `t
 their types. A program that does not opt in reads them as such values: indexing, iteration,
 comparisons, arithmetic and printing work, and `isinstance()` or an annotation
 (`name: str = doc["project"]["name"]`) gives typed code a concrete value
-([test](../tests/programs/library/lib_tomllib.py)). `TOMLDecodeError` has CPython's messages, and an
-uncaught one's line names it `tomllib.TOMLDecodeError`
-([test](../tests/programs/library/lib_tomllib_uncaught.py)). The 62 documents of CPython's
-`Lib/test/test_tomllib/data`, and the assertions of its `test_error.py` and `test_misc.py` that
-need no binary file, `decimal`, `copy` or `test.support`, are in the differential suite
-([data](../tests/programs/upstream/upstream_tomllib_data.py),
+([test](../tests/programs/library/lib_tomllib.py)).
+
+`TOMLDecodeError` has CPython's messages, and an uncaught one's line names it
+`tomllib.TOMLDecodeError` ([test](../tests/programs/library/lib_tomllib_uncaught.py)). The 62
+documents of CPython's `Lib/test/test_tomllib/data`, and the assertions of its `test_error.py`
+and `test_misc.py` that need no binary file, `decimal`, `copy` or `test.support`, are in the
+differential suite ([data](../tests/programs/upstream/upstream_tomllib_data.py),
 [errors and limits](../tests/programs/upstream/upstream_tomllib_misc.py)).
 
 - `load(fp)` reads a binary file, whose `BinaryIO` annotation is a compile-time error (a
@@ -309,25 +320,28 @@ need no binary file, `decimal`, `copy` or `test.support`, are in the differentia
   `dict` or `list` is a compile-time error (a typed container cannot become an `Any` value); one
   that returns an `Any` dict or list raises CPython's `ValueError`.
 
-The edits: the three modules that use `Any` hold the comment `# pystachy: dynamic-any`.
-`_parser.py` annotates tables `dict[Any, Any]` where CPython writes `dict[str, Any]`, and makes an
-empty table with a function, `_new_table()`, where CPython writes `{}`, as a typed or empty dict
-does not become an `Any` value yet ([#777](https://github.com/den-run-ai/pystachy/issues/777));
-keeps `Flags`'s private tree in typed `_FlagEntry` nodes with `set[int]` flags and
-`dict[str, _FlagEntry]` children, instead of dynamic dictionaries with known field names.
-Pending flags remain in a list, as a set's tuples do not hold a runtime-length tuple yet
-([#783](https://github.com/den-run-ai/pystachy/issues/783)); and declares the variable that
-`parse_basic_str()` gives one of two functions,
-`Callable[[str, Pos], tuple[Pos, str]]`, as each function is a type of its own. `_re.py` asserts that
-an offset's hour and minute groups matched, which its pattern ensures, and passes
-`str(match.group())` to `parse_float`, as a group is a `str | None`.
+The edits:
+
+- The three modules that use `Any` hold the comment `# pystachy: dynamic-any`.
+- `_parser.py` annotates tables `dict[Any, Any]` where CPython writes `dict[str, Any]`, and
+  makes an empty table with a function, `_new_table()`, where CPython writes `{}`, as a typed
+  or empty dict does not become an `Any` value yet
+  ([#777](https://github.com/den-run-ai/pystachy/issues/777)).
+- `_parser.py` keeps `Flags`'s private tree in typed `_FlagEntry` nodes with `set[int]` flags
+  and `dict[str, _FlagEntry]` children, instead of dynamic dictionaries with known field
+  names. Pending flags remain in a list, as a set's tuples do not hold a runtime-length tuple
+  yet ([#783](https://github.com/den-run-ai/pystachy/issues/783)).
+- `_parser.py` declares the variable that `parse_basic_str()` gives one of two functions,
+  `Callable[[str, Pos], tuple[Pos, str]]`, as each function is a type of its own.
+- `_re.py` asserts that an offset's hour and minute groups matched, which its pattern ensures,
+  and passes `str(match.group())` to `parse_float`, as a group is a `str | None`.
 
 The typed flag tree preserves recursive freezing, duplicate pending flags and
 array-of-tables subtree resets. It changes private storage, not returned tables
 or callback values. The [public flags regression](../tests/programs/library/lib_tomllib_flags.py)
 and [callback/alias regression](../tests/programs/library/lib_tomllib_boundary.py)
 cover those boundaries. Module-wide numeric identity tracking still follows the
-existing import policy; typed state alone does not make the parser identity-free.
+existing import policy, so the parser is not identity-free.
 
 ### `csv`
 
@@ -360,11 +374,12 @@ converted with `str`. A tuple row may mix types; a list row must be homogeneous.
   settings instead of dialect subclasses. Dialect fields are writable: writers
   snapshot settings at construction; readers use settings when each record starts.
   `dialect=` accepts a registered name, `Dialect`, or `None`.
-- Uncaught errors name `csv.Error`, rather than `_csv.Error`. A missing `write`,
-  a format parameter of a user class, an unsupported iterable row type, or a
-  NamedTuple row fails compilation. Integers, floats, bools and `None` passed
-  as rows instead raise `csv.Error`. For `QUOTE_NONNUMERIC`, user objects are
-  nonnumeric even if they define numeric conversion methods.
+- Uncaught errors name `csv.Error`, rather than `_csv.Error`.
+- A missing `write`, a format parameter of a user class, an unsupported iterable
+  row type, or a NamedTuple row fails compilation. Integers, floats, bools and
+  `None` passed as rows instead raise `csv.Error`.
+- For `QUOTE_NONNUMERIC`, user objects are nonnumeric even if they define numeric
+  conversion methods.
 
 Dialect characters may be non-ASCII. Parsing decodes characters where required,
 and `field_size_limit` counts characters, as CPython does.
@@ -386,16 +401,16 @@ ordinary single inheritance. Typed subclasses can override the start/end tag,
 data, comment, declaration, processing-instruction and reference callbacks.
 `feed`, `close`, `reset`, `getpos`, `get_starttag_text`, `convert_charrefs` and
 `scripting` are exercised by the probe tests, including RAWTEXT and RCDATA.
-Attribute records use `list[tuple[str, str | None]]`; missing values remain None.
+Attribute records use `list[tuple[str, str | None]]`; missing values are `None`.
 
 Column offsets count Unicode code points. Tag/attribute name case conversion uses
 ASCII-only `str.lower`, so non-ASCII uppercase names can differ from CPython. User subclass
 constructors and callback signatures need compatible annotations. Multiple inheritance
-and dynamic attributes remain unavailable.
+and dynamic attributes are unavailable.
 
-`_markupbase` is an internal implementation detail. Its abstract-construction
-guard is omitted and its field layout is declared in `__init__`. Its legacy SGML
-helpers remain in the source but are outside the compiled surface tested here.
+The internal `_markupbase` omits its abstract-construction guard and declares its field
+layout in `__init__`. Its legacy SGML helpers remain in the source, outside the compiled
+surface tested here.
 See [the probe record](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/html-parser-probe.md) for provenance and commands.
 
 ### `urllib.parse`
@@ -425,7 +440,7 @@ CPython error for `None`.
   byte; Latin-1/ASCII treat a byte that begins no character as its numeric value.
 - `urlsplit` uses the upstream 128-entry typed LRU cache, including default and
   keyword calls, `cache_info` and `cache_clear`. `clear_cache` also clears the
-  adapted string-quote tables. Byte APIs remain unavailable.
+  adapted string-quote tables.
 - Result properties `username`, `password`, `hostname`, `port`, and `encode`
   are unavailable. Bytes inputs/results, `quote_from_bytes` and
   `unquote_to_bytes` are unsupported.
@@ -444,26 +459,27 @@ program compiles: a literal (a `str` or a `bytes`), a module's global bound once
 literal, as `zipfile`'s `structCentralDir` is, or the format of a `Struct` made of a literal. A
 call of `pack()`, `unpack()`, `unpack_from()`, `iter_unpack()` or `calcsize()` with such a
 format, by its name (`struct.pack(...)`, `pack(...)` after `from struct import pack`) or through a
-`Struct`'s method, packs or unpacks each item with the port's functions. Every code of the native
-and standard tables works, with the byte orders `@`, `=`, `<`, `>` and `!`, repeat counts,
-whitespace, pad bytes and native alignment, and the values have the items' types: `int` for the
-integer codes, `float` for `e`, `f` and `d`, `bool` for `?` and `bytes` for `c`, `s` and `p`. The
-bytes, the values and the errors are the C module's on x86-64 Linux: `struct.error` with its
-messages for a value out of its code's range, a buffer of the wrong size or an offset out of its
-range, and `OverflowError` for a float too large for `e` or `f`. `calcsize()` and `Struct()`
-also take a `str` the program makes as it runs, raising CPython's `struct.error` for an invalid
-format.
+`Struct`'s method, packs or unpacks each item with the port's functions.
+
+Every code of the native and standard tables works, with the byte orders `@`, `=`, `<`, `>` and
+`!`, repeat counts, whitespace, pad bytes and native alignment, and the values have the items'
+types: `int` for the integer codes, `float` for `e`, `f` and `d`, `bool` for `?` and `bytes` for
+`c`, `s` and `p`. The bytes, the values and the errors are the C module's on x86-64 Linux:
+`struct.error` with its messages for a value out of its code's range, a buffer of the wrong size
+or an offset out of its range, and `OverflowError` for a float too large for `e` or `f`.
+`calcsize()` and `Struct()` also take a `str` the program makes as it runs, raising CPython's
+`struct.error` for an invalid format.
 
 - `pack()`, `unpack()`, `unpack_from()` and `iter_unpack()` of a format not known as the program
   compiles are compile-time errors ([error test](../tests/errors/library/lib_struct_dynamic.py)), and so
   are the methods of a `Struct` made of one, and `Struct()` of a `bytes` format.
-- What CPython checks as `pack()` runs, the number of values for the format and the type of a
-  value for its code (a `str` for `s`, a `float` for an integer code), is checked as the program
-  compiles, with CPython's message ([error test](../tests/errors/library/lib_struct_arity.py),
-  [another](../tests/errors/library/lib_struct_str.py)), and a value that may be `None` is a compile-time
-  error but for `?`. So is a format CPython rejects in `unpack()`, `unpack_from()` and
-  `iter_unpack()`; `pack()` and `calcsize()` of one raise CPython's `struct.error` as the
-  program runs.
+- The compiler checks what CPython checks as `pack()` runs, the number of values for the format
+  and the type of a value for its code (a `str` for `s`, a `float` for an integer code), with
+  CPython's message ([error test](../tests/errors/library/lib_struct_arity.py),
+  [another](../tests/errors/library/lib_struct_str.py)). A value that may be `None` is a
+  compile-time error but for `?`, and so is a format CPython rejects in `unpack()`,
+  `unpack_from()` and `iter_unpack()`; `pack()` and `calcsize()` of one raise CPython's
+  `struct.error` as the program runs.
 - `iter_unpack()` gives a list of the tuples, where CPython gives an iterator of them
   ([deviation](../tests/deviations/lib_struct_iter_unpack.py)); a `for` loop and `list()` see the
   same tuples.
@@ -545,15 +561,15 @@ runs, is left out.
 ### `collections`
 
 The shipped module provides `deque`, `defaultdict`, `OrderedDict` and `Counter`, and
-`namedtuple()` (below). Each of the four is a generic class whose item types (`deque[T]`, `Counter[T]`,
-`defaultdict[K, V]`, `OrderedDict[K, V]`) come from supported constructor
-arguments, an annotation (`q: deque[int] = deque()`,
-`d: defaultdict[str, list[int]] = defaultdict(list)`) or an explicit constructor
-(`Counter[str]()`). Parameters, returns and fields can name them. The compiled
-types are fixed; a deque's items may be an explicitly supported union such as
+`namedtuple()` (below); `ChainMap`, the `User*` classes and pickling are unavailable. Each of
+the four is a generic class whose item types (`deque[T]`, `Counter[T]`, `defaultdict[K, V]`,
+`OrderedDict[K, V]`) come from supported constructor arguments, an annotation
+(`q: deque[int] = deque()`, `d: defaultdict[str, list[int]] = defaultdict(list)`) or an
+explicit constructor (`Counter[str]()`). Parameters, returns and fields can name them. The
+compiled types are fixed; a deque's items may be an explicitly supported union such as
 `int | str`, and mapping keys are the supported dict key types. The package binds `abc` to
-the builtin `collections.abc`, as CPython's binds it to `_collections_abc`, which is that builtin
-module too, and its `__doc__` is its own docstring.
+the builtin `collections.abc`, as CPython's binds it to `_collections_abc`, which is that
+builtin module too.
 
 `deque` supports both ends, optional `maxlen`, extension, rotation,
 insertion/removal, indexing, containment/search, copies, comparisons, repetition
@@ -562,6 +578,10 @@ and `reversed()`. Iteration reads live items and rejects endpoint mutations, whi
 snapshots when item comparison callbacks mutate a queue. Searches (`count`, `index`,
 containment and `remove`) read live items and detect structural mutations with
 CPython's operation-specific errors; same-size replacements are preserved.
+
+A deque compares with deques: `==` with `None` is false and `<` raises CPython's
+`TypeError`. Its reflected multiplication and comparisons with other containers are
+unavailable. A `deque` is not a `collections.abc.Sequence` to `isinstance`.
 
 The mappings hold dicts rather than derive from `dict`, so `isinstance(x, dict)`
 and `isinstance(x, collections.abc.Mapping)` are false. They support indexing,
@@ -572,6 +592,7 @@ dict on the right; any other operand, such as `None`, is unequal, as CPython's
 identity fallback finds. An empty display operand (`d == {}`) has no type: test
 `not d`. Views are lists, as a dict's are here, and iteration is a snapshot
 rather than CPython's iterator that raises when the mapping changes size.
+
 Constructors and `update` take a dict, a list, tuple or set of pairs, or another
 of these mappings (a `Counter` types only the keys of an `OrderedDict` or
 `defaultdict`: the `int` values need an annotation); other iterable objects of
@@ -606,11 +627,6 @@ the counts; a `defaultdict`'s also replaces `default_factory`).
   comparisons, which raise CPython's `TypeError` for a `None` operand.
   `elements()` returns a list rather than an iterator, and an empty `Counter()`
   operand on the left of an operator needs its type.
-
-A deque compares with deques: `==` with `None` is false and `<` raises CPython's
-`TypeError`. Its reflected multiplication and comparisons with other containers,
-pickling, `ChainMap` and the `User*` classes are unavailable. A `deque` is
-not a `collections.abc.Sequence` to `isinstance`.
 
 `namedtuple()` is carried out by the compiler: a module's top-level
 `NAME = namedtuple(typename, field_names, *, rename=False, defaults=None, module=None)` with
@@ -743,19 +759,19 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   ([test](../tests/programs/library/lib_enum_flag.py)). Lookup also accepts a non-int value
   equal to a declared member's value, or an already cached pseudo-member's value, as CPython's
   value map does; class containment tests declared values for non-ints
-  ([test](../tests/programs/library/lib_enum_flag_numeric_lookup.py)). An `IntFlag` member has `int`'s
-  operations, `str()` and `format()`, as an `IntEnum` member does, and `|`, `&` and `^` with an
-  int keep its class, whose boundary `KEEP` keeps the bits no member has (`<I: 12>`,
-  `<I.A|12: 13>`); its members follow the int-like members' rules above, and `isinstance()` of
-  one and `ReprEnum`, which CPython's `IntFlag` derives from, is a compile-time error too
-  ([test](../tests/programs/library/lib_enum_intflag.py)). Bits that occur only in composite
-  members are supported when the single-bit members are declared in increasing value order.
-  Iteration looks up each bit as it advances: an unnamed bit yields `None` until a lookup of
-  that value has created a pseudo-member ([test](../tests/programs/library/lib_enum_flag_bits.py)).
-  Such bits with out-of-order single-bit members or a custom (including inherited)
-  `_iter_member_()` remain a compile-time error, as do a
-  `boundary=` keyword, a flag class's own `_missing_()`, and an int on the left of a flag's `|`, `&` or `^`, as reflected operator methods are not
-  supported.
+  ([test](../tests/programs/library/lib_enum_flag_numeric_lookup.py)).
+- An `IntFlag` member has `int`'s operations, `str()` and `format()`, as an `IntEnum` member
+  does, and `|`, `&` and `^` with an int keep its class, whose boundary `KEEP` keeps the bits
+  no member has (`<I: 12>`, `<I.A|12: 13>`); its members follow the int-like members' rules
+  above, and `isinstance()` of one and `ReprEnum`, which CPython's `IntFlag` derives from, is a
+  compile-time error too ([test](../tests/programs/library/lib_enum_intflag.py)).
+- Bits that occur only in composite members are supported when the single-bit members are
+  declared in increasing value order. Iteration looks up each bit as it advances: an unnamed
+  bit yields `None` until a lookup of that value has created a pseudo-member
+  ([test](../tests/programs/library/lib_enum_flag_bits.py)). Such bits with out-of-order
+  single-bit members or a custom (including inherited) `_iter_member_()` are a compile-time
+  error, as are a `boundary=` keyword, a flag class's own `_missing_()`, and an int on the
+  left of a flag's `|`, `&` or `^`, as reflected operator methods are not supported.
 - These are compile-time errors: `ReprEnum` as a base; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
   and private names; `__new__`, `__init__` and `_generate_next_value_`; an enum
@@ -772,14 +788,14 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
 Heap operations, including `_max` variants, and `nlargest`/`nsmallest` work.
 The top-k functions accept lists and supported iterables: tuples, strings,
 dicts, sets, `dict.items()`, and objects with `__iter__`, with or without
-`__len__`. `key=` accepts supported functions, builtins and bound methods.
-Ties preserve input order.
+`__len__`. Pass `file.readlines()` rather than an open file directly, and materialize a
+generator expression with a supported consumer before passing it to a top-k function.
+`key=` accepts supported functions, builtins and bound methods. Ties preserve input order.
 
-Lists are read in place. Other inputs are first materialized by a comprehension;
-therefore a key/comparison that changes a dict or set being read does not raise
-CPython's iterator-mutation `RuntimeError`. A `__len__` that raises `TypeError`
-is handled as in CPython. The algorithm preserves comparison and key-call order
-for list inputs.
+Lists are read in place. Other inputs are first materialized by a comprehension, so a
+key/comparison that changes a dict or set being read does not raise CPython's
+iterator-mutation `RuntimeError`. A `__len__` that raises `TypeError` is handled as in
+CPython. The algorithm preserves comparison and key-call order for list inputs.
 
 The heap functions and their `_max` variants follow `Modules/_heapqmodule.c` of
 CPython 3.13.16, which CPython imports over `heapq.py`'s: a sifted item trades
@@ -790,9 +806,7 @@ range`, and `heapify()` of more than 2,500 items compares in the C module's
 cache-friendly order.
 
 `merge` does not compile: its heap entries are lists that mix an item, an int and the
-iterator's `__next__` method, and a list's items share one type. Pass `file.readlines()`
-rather than an open file directly. Materialize a generator expression with a supported
-consumer before passing it to a top-k function.
+iterator's `__next__` method, and a list's items share one type.
 
 ### `itertools`
 
@@ -801,23 +815,25 @@ imports its C module (`Modules/itertoolsmodule.c`). It has all of the module's f
 `count`, `cycle`, `repeat`, `accumulate` (with `func` and `initial`), `batched` (with `strict`),
 `chain` and `chain.from_iterable`, `compress`, `dropwhile`, `filterfalse`, `groupby`, `islice`,
 `pairwise`, `starmap`, `takewhile`, `tee`, `zip_longest`, `product` (with `repeat`),
-`permutations`, `combinations` and `combinations_with_replacement`. Each iterates as the
-pure-Python equivalent that CPython's documentation gives for it (`Doc/library/itertools.rst`),
-on generators, with the C module's argument checks and messages when it is called and the C
-types' order of reads: an iterator reads its input one item at a time, as it is iterated, so
-infinite inputs (`count()`, `cycle()`, generators) end where `islice()`, `zip()`, `takewhile()`
-or `break` stop reading, and `islice()` reads no item past its stop. As in CPython, `cycle()`
-keeps the items it has read, `tee()` keeps the items its slowest iterator has not read (in
-shared links of 57), and `product()`, `permutations()`, `combinations()` and
-`combinations_with_replacement()` read the whole of their iterables when they are called. The
-functions are templates: each call's argument types make its code
-([tests](../tests/programs/library/lib_itertools_terminating.py), [ranges](../tests/programs/library/lib_itertools_range.py),
+`permutations`, `combinations` and `combinations_with_replacement`.
+
+Each iterates as the pure-Python equivalent that CPython's documentation gives for it
+(`Doc/library/itertools.rst`), on generators, with the C module's argument checks and messages
+when it is called and the C types' order of reads: an iterator reads its input one item at a
+time, as it is iterated, so infinite inputs (`count()`, `cycle()`, generators) end where
+`islice()`, `zip()`, `takewhile()` or `break` stop reading, and `islice()` reads no item past its
+stop. As in CPython, `cycle()` keeps the items it has read, `tee()` keeps the items its slowest
+iterator has not read (in shared links of 57), and `product()`, `permutations()`,
+`combinations()` and `combinations_with_replacement()` read the whole of their iterables when
+they are called. The functions are templates: each call's argument types make its code
+([tests](../tests/programs/library/lib_itertools_terminating.py),
+[ranges](../tests/programs/library/lib_itertools_range.py),
 [generators](../tests/programs/library/lib_itertools_generators.py),
 [upstream](../tests/programs/upstream/upstream_itertools.py)).
 
 - The iterators are generators (`Generator[T]`), which yield items of one type: `chain()` of
-  iterables of different item types ([error test](../tests/errors/library/lib_itertools_chain_mixed.py)),
-  an `accumulate()` function that returns another type than the items'
+  iterables of different item types ([error test](../tests/errors/library/lib_itertools_chain_mixed.py))
+  and an `accumulate()` function that returns another type than the items'
   ([error test](../tests/errors/library/lib_itertools_accumulate_type.py)) are compile-time
   errors, as is an `accumulate()` `initial` of another type than its sums, such as `initial=0`
   of floats, where CPython yields the int `0` and then floats (`initial=0.0` is not an error)
@@ -902,7 +918,7 @@ and keyword arguments bind against the original signature, evaluate arguments
 in source order, and retain defaults evaluated when the function was defined,
 including closure defaults. Functions with nine parameters are supported.
 
-Call spelling remains significant, as in CPython: `f(1)`, `f(1, 2)`, `f(1, b=2)`,
+Call spelling is significant, as in CPython: `f(1)`, `f(1, 2)`, `f(1, b=2)`,
 `f(a=1, b=2)` and `f(b=2, a=1)` use distinct entries. Full positional calls use
 tuple keys; other forms also record positional count and ordered keyword names.
 They share one LRU, capacity, statistics and clearing. Aliases and bound
@@ -957,7 +973,7 @@ a wrapped function's names must be known as it compiles, so a wrapped `Callable`
 the wrapper's names a compile-time error to read, and a wrapped object without them (a
 callable object, a `partial`) leaves the wrapper its own, as in CPython. `__wrapped__`,
 `__doc__`, `__module__` and `__dict__` are not a function's attributes in Pystachy, and
-`wraps(f)` as a value, not a decorator, is a compile-time error. `total_ordering` remains
+`wraps(f)` as a value, not a decorator, is a compile-time error. `total_ordering` is
 unsupported: class decorators are not compiled.
 
 ### `operator`
@@ -1088,12 +1104,12 @@ CPython's `math.sumprod` algorithm; unsupported iterators are materialized first
   that starts as floats, where CPython's starts as ints and holds the same float ranks.
 
 Unsupported APIs are `mean`, `harmonic_mean`, variance/stdev and their population
-variants, `kde`, `kde_random` and `NormalDist`. These depend on exact fractions, decimal/long integers,
-iterators, properties or other features beyond the port's compiled paths. Only
-CPython runs the module's import of `random`, which `kde_random` and
+variants, `kde`, `kde_random` and `NormalDist`. These depend on exact fractions,
+decimal/long integers, iterators, properties or other features beyond the port's compiled
+paths. Only CPython runs the module's import of `random`, which `kde_random` and
 `NormalDist.samples` use ([CPython-only code](#cpython-only-code)). Bounded pattern
-matching now lowers `kde`'s kernel selection, but its distinct lambda values cannot
-share one inferred native function slot; function `__doc__` writes also remain unsupported.
+matching lowers `kde`'s kernel selection, but its distinct lambda values cannot share one
+inferred native function slot, and function `__doc__` writes are unsupported.
 
 ### `mpz`
 
@@ -1204,9 +1220,9 @@ What it supports:
   and `name` attributes, `repr()`, and the `readable`, `writable`, `seekable`, `isatty` and
   `fileno` queries.
 
-It reads and writes the buffer as CPython's does: the same calls, in chunks of 8192 bytes. It has
-CPython's universal-newline decoding, newline translation and line buffering, and its codec
-errors. It raises CPython's errors for a closed stream or an unsupported operation.
+It reads and writes the buffer as CPython's does: the same calls, in chunks of 8192 bytes. It
+has CPython's universal-newline decoding, newline translation, line buffering and codec errors,
+and raises CPython's errors for a closed stream or an unsupported operation.
 `io.UnsupportedOperation` is caught as `OSError` or `ValueError`: a program cannot name it.
 `read(n)`, `readline(n)`, `readlines(hint)` and `write()`'s result count characters, as in
 CPython.
@@ -1245,18 +1261,21 @@ never warns. `open` and `BlockingIOError` are the builtins, and `DEFAULT_BUFFER_
   where CPython's is a tuple of them, as `TextIOWrapper`'s does
   ([deviation](../tests/deviations/lib_io_newline_decoder_tuple.py)).
 
-`_io` is `_pystachy__io`, which Pystachy loads for `import _io`, where CPython imports the C module
-that its `io` is a layer over. It has CPython's docstring and `io`'s `StringIO`, `BytesIO`,
-`TextIOWrapper`, `IncrementalNewlineDecoder`, `text_encoding()`, `open`, `BlockingIOError` and
-`DEFAULT_BUFFER_SIZE` ([test](../tests/programs/library/lib_io_cmodule.py)). Its classes are `io`'s, and their module
+`_io` is `_pystachy__io`, which Pystachy loads for `import _io`, where CPython imports the C
+module that its `io` is a layer over. It has CPython's docstring and `io`'s `StringIO`,
+`BytesIO`, `TextIOWrapper`, `IncrementalNewlineDecoder`, `text_encoding()`, `open`,
+`BlockingIOError` and `DEFAULT_BUFFER_SIZE`
+([test](../tests/programs/library/lib_io_cmodule.py)). Its classes are `io`'s, and their module
 is `_io`, as CPython's are, through either module: `type(x).__module__` and an object's default
-`repr()` name `_io` ([test](../tests/programs/library/lib_io_type_module.py)). `FileIO`, the `Buffered*` classes and
-`open_code()` are not names of either: the [binary files](#binary-files) that `open()` makes are of
-classes of their own, which are not constructed by name; the `_IOBase` classes, from which
-`io`'s do not derive, and `UnsupportedOperation` are not there either. A use of any is a
-compile-time error ([error test](../tests/errors/library/lib_io_open_code.py),
-[another](../tests/errors/library/lib_io_fileio.py)). With `_io`, `importlib` stops next at the missing
-`_warnings`, and then needs `marshal` and CPython's runtime import machinery.
+`repr()` name `_io` ([test](../tests/programs/library/lib_io_type_module.py)).
+
+`FileIO`, the `Buffered*` classes and `open_code()` are not names of either: the
+[binary files](#binary-files) that `open()` makes are of classes of their own, which are not
+constructed by name; the `_IOBase` classes, from which `io`'s do not derive, and
+`UnsupportedOperation` are not there either. A use of any is a compile-time error
+([error test](../tests/errors/library/lib_io_open_code.py),
+[another](../tests/errors/library/lib_io_fileio.py)). With `_io`, `importlib` stops next at
+the missing `_warnings`, and then needs `marshal` and CPython's runtime import machinery.
 
 ### Binary files
 
@@ -1296,17 +1315,22 @@ decoding or newline translation:
 - Every binary file has one type, of a class the four derive from, so that one name holds files
   of different modes, as in CPython.
 
-These are compile-time errors: `open()` of a binary mode in a module where `open` is bound
-otherwise (a parameter, a `def`, an import or an assignment of that name), or called as
-`io.open()` ([test](../tests/errors/io/bfile_open_bound.py)); `buffering=1`, for which CPython
-warns that line buffering isn't supported in binary mode, and a `buffering=` that is not a
-literal int, since the class depends on it ([test](../tests/errors/io/bfile_buffering_var.py));
-`closefd=` and `opener=` (these where the program reaches them: in code that is never compiled, such
-as an `if False:` block, they compile, [test](../tests/programs/io/bfile_open_dead.py)); a `str`
-for `write()`, which CPython rejects with `TypeError`
-([test](../tests/errors/io/bfile_write_str.py)), and other buffer objects; `read1()`, `peek()`,
-`readinto()`, `detach()` and `raw`; and the classes as names (`io.FileIO`, `io.BufferedReader`)
-and `typing.BinaryIO`. Deviations:
+These are compile-time errors:
+
+- `open()` of a binary mode in a module where `open` is bound otherwise (a parameter, a `def`,
+  an import or an assignment of that name), or called as `io.open()`
+  ([test](../tests/errors/io/bfile_open_bound.py)).
+- `buffering=1`, for which CPython warns that line buffering isn't supported in binary mode,
+  and a `buffering=` that is not a literal int, since the class depends on it
+  ([test](../tests/errors/io/bfile_buffering_var.py)).
+- `closefd=` and `opener=`, where the program reaches them: in code that is never compiled,
+  such as an `if False:` block, they compile ([test](../tests/programs/io/bfile_open_dead.py)).
+- A `str` for `write()`, which CPython rejects with `TypeError`
+  ([test](../tests/errors/io/bfile_write_str.py)), and other buffer objects.
+- `read1()`, `peek()`, `readinto()`, `detach()` and `raw`.
+- The classes as names (`io.FileIO`, `io.BufferedReader`) and `typing.BinaryIO`.
+
+Deviations:
 
 - `open()` of a binary mode that the program computes (`open(p, mode)`) makes a text file here,
   whose open raises `NotImplementedError`, as the file's class must be known as the program
@@ -1322,7 +1346,7 @@ and `typing.BinaryIO`. Deviations:
 `splitext`, `splitdrive`, `splitroot`, `basename`, `dirname` and `normpath`.
 `genericpath` supplies their helpers. `abspath`, `relpath`, `commonpath`,
 `commonprefix`, `expanduser`, `expandvars`, `realpath` and filesystem tests are
-outside this supported API set. Builtin `os.path` has its
+not supported. Builtin `os.path` has its
 [own documented APIs](../docs/language/modules.md#builtin-modules-and-files), which
 include `abspath`, `relpath`, `expanduser` and `commonprefix`.
 
@@ -1380,13 +1404,16 @@ raises `NotImplementedError`, and `translate()` is not provided.
 ([test](../tests/programs/library/lib_shutil.py)). `copyfile()` copies a file's bytes through
 the runtime; it opens and checks the source before it truncates the destination, as CPython does
 ([test](../tests/programs/library/lib_shutil_copyfile_dir.py)).
+
 `rmtree()` is CPython 3.13's Linux `_rmtree_safe_fd`, in the runtime: it walks the tree through
 directory descriptors, and finds each directory by the device and inode that `lstat()` found,
 so a directory replaced by a link during the walk is not followed. Its steps, their order and
 its errors are CPython's, a link's included (`OSError: [Errno None] None: 'path'`), and
 `ignore_errors` passes over each ([test](../tests/programs/library/lib_shutil_rmtree.py)).
-`rmtree.avoids_symlink_attacks` is not provided. `rmtree()`'s `onerror`, `onexc` and `dir_fd`,
-and `copyfile()` of a link with `follow_symlinks=False`, raise `NotImplementedError`
+`rmtree.avoids_symlink_attacks` is not provided.
+
+`rmtree()`'s `onerror`, `onexc` and `dir_fd`, and `copyfile()` of a link with
+`follow_symlinks=False`, raise `NotImplementedError`
 ([deviation](../tests/deviations/lib_shutil_unsupported.py)). `move()` of a file to another
 file system copies it with `copy()` (CPython uses `copy2()`, which also copies its times), and
 of a directory raises the rename's `OSError`. `copytree()`, `copy2()`, `copystat()`, `which()`,
@@ -1426,9 +1453,8 @@ reflected comparison. Distinct results sharing a NaN field can compare unequal
 under the native float identity rules.
 
 Code can raise and catch `argparse.ArgumentTypeError` when validating values.
-Parser declarations must stay in their owning scope. Runtime-defined schemas,
-groups, subparsers and custom actions or converters are outside this subset.
-The [JSON repair command](../ports/json_repair/PORT.md#file-and-pipe-command)
+Runtime-defined schemas, groups, subparsers and custom actions or converters are
+not supported. The [JSON repair command](../ports/json_repair/PORT.md#file-and-pipe-command)
 uses an optional filename, boolean switches and a named output file.
 
 ### `getopt`
@@ -1448,17 +1474,19 @@ untranslated. Error messages and parsing otherwise follow the upstream code.
 
 `_thread` is `_pystachy_thread`, a port of the C module `_thread` (`Modules/_threadmodule.c`)
 that Pystachy loads for `import _thread`, for the one thread that a Pystachy program runs, as
-CPython's builds without threads had `_dummy_thread` until 3.8. Locks (`allocate_lock()` and
-`LockType`, also through the obsolete `allocate()`, `acquire_lock()`, `release_lock()` and
-`locked_lock()`) and reentrant locks (`RLock`, with the `_is_owned()`, `_recursion_count()`,
-`_release_save()` and `_acquire_restore()` of `threading.Condition`) work as CPython's do in one
-thread: `acquire()` of an unlocked lock takes it, `acquire(False)` of a locked one gives `False`,
-and an `acquire()` with a timeout gives `False` once the timeout has passed. `acquire()` checks
-its arguments as CPython's does, with its `ValueError` and `OverflowError`, and `release()` of a
-lock that is not held raises CPython's `RuntimeError`. `_count()`, `stack_size()`,
-`interrupt_main()`, whose SIGINT raises `KeyboardInterrupt`, `exit()`, `daemon_threads_allowed()`,
-`TIMEOUT_MAX` and `error`, which is `RuntimeError`, work as in CPython, and `_local` is a base
-class whose subclasses' `__init__` binds their fields.
+CPython's builds without threads had `_dummy_thread` until 3.8.
+
+Locks (`allocate_lock()` and `LockType`, also through the obsolete `allocate()`,
+`acquire_lock()`, `release_lock()` and `locked_lock()`) and reentrant locks (`RLock`, with the
+`_is_owned()`, `_recursion_count()`, `_release_save()` and `_acquire_restore()` of
+`threading.Condition`) work as CPython's do in one thread: `acquire()` of an unlocked lock takes
+it, `acquire(False)` of a locked one gives `False`, and an `acquire()` with a timeout gives
+`False` once the timeout has passed. `acquire()` checks its arguments as CPython's does, with its
+`ValueError` and `OverflowError`, and `release()` of a lock that is not held raises CPython's
+`RuntimeError`. `_count()`, `stack_size()`, `interrupt_main()`, whose SIGINT raises
+`KeyboardInterrupt`, `exit()`, `daemon_threads_allowed()`, `TIMEOUT_MAX` and `error`, which is
+`RuntimeError`, work as in CPython, and `_local` is a base class whose subclasses' `__init__`
+binds their fields.
 
 - `start_new_thread()`, the obsolete `start_new()` and `start_joinable_thread()` raise
   `NotImplementedError` ([deviation](../tests/deviations/lib_thread_start.py)).
@@ -1546,31 +1574,41 @@ implementation for abstract methods 'a', 'b'`. Abstract methods can have bodies,
 
 `types` is Pystachy's own module for CPython's `Lib/types.py`, of which it has `TracebackType`,
 the class of the object a `with` statement passes to `__exit__()` (see [Contextlib](#contextlib)),
-`MappingProxyType` and `GenericAlias`. `GenericAlias` is for CPython's idiom for a generic class:
+`MappingProxyType` and `GenericAlias`. The module's other names, CPython's (`SimpleNamespace`,
+`FunctionType`, `MethodType`, `ModuleType`, `NoneType`, `new_class()`, `coroutine()`, ...),
+import as in CPython, also in an optional import, but any use of one is a compile-time error
+([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such
+objects, or none that behave exactly as CPython's.
+
+`GenericAlias` is for CPython's idiom for a generic class:
 `__class_getitem__ = classmethod(GenericAlias)` (or `classmethod(types.GenericAlias)`) in a class
 body defines nothing in Pystachy, so the class compiles as it does without it
-([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in annotations, evaluated or
-not, name the class, as CPython does not check their arguments: types, or number, `None`,
-`True`, `False` and `...` constants (`C[1]`, `C[int, ...]`). A string argument is a forward
-reference, as elsewhere in an annotation, and any other argument must still be an annotation
-([test](../tests/programs/reflection/types_generic_alias_subscripts.py),
-[constants](../tests/programs/reflection/types_generic_alias_constants.py)); `re.Pattern` and `re.Match` follow
-the idiom, as CPython's `_sre` types are generic. At run time, where CPython makes them
-`types.GenericAlias` objects, they are a compile-time error
-([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
+([test](../tests/programs/reflection/types_generic_alias.py)). Its subscripts in annotations,
+evaluated or not, name the class, as CPython does not check their arguments: types, or number,
+`None`, `True`, `False` and `...` constants (`C[1]`, `C[int, ...]`). A string argument is a
+forward reference, as elsewhere in an annotation, and any other argument must still be an
+annotation ([test](../tests/programs/reflection/types_generic_alias_subscripts.py),
+[constants](../tests/programs/reflection/types_generic_alias_constants.py)); `re.Pattern` and
+`re.Match` follow the idiom, as CPython's `_sre` types are generic. At run time, where CPython
+makes them `types.GenericAlias` objects, they are a compile-time error
+([error test](../tests/errors/reflection/types_generic_alias_subscript.py)), and so is any other
+use of `GenericAlias`, such as calling it
+([error test](../tests/errors/reflection/types_generic_alias_call.py)).
 
 `MappingProxyType(d)` is a read-only view of dict `d`, CPython's `mappingproxy`
 (`lib/_pystachy_mappingproxy.py`): indexing, `in`, `len()`, iteration (which fails as the dict's
 iterator does where the dict changes size), `reversed()`, `get()`, `keys()`, `values()`, `items()`,
 `copy()`, `==` and `!=` with a dict or another view, `|` (a new dict), `str()` and `repr()` give
 CPython's results, from the dict's items as they are when the view is read; `|=` and `hash()` raise
-CPython's `TypeError` ([test](../tests/programs/library/lib_types_mappingproxy.py)). Item assignment and
-deletion are compile-time errors, where CPython raises `TypeError`
+CPython's `TypeError` ([test](../tests/programs/library/lib_types_mappingproxy.py)).
+
+Item assignment and deletion are compile-time errors, where CPython raises `TypeError`
 ([error test](../tests/errors/library/lib_types_mappingproxy_setitem.py)). A view has no
 attributes of its own, as CPython's has none, so code given only the view cannot reach its dict:
 `hasattr()` of its fields or of `__dict__` is false, `__init__` leaves it viewing its dict, and
-`type(view).__module__` is `builtins` ([test](../tests/programs/library/lib_types_mappingproxy_opaque.py));
-reading or assigning a field is a compile-time error, where CPython raises `AttributeError`
+`type(view).__module__` is `builtins`
+([test](../tests/programs/library/lib_types_mappingproxy_opaque.py)); reading or assigning a
+field is a compile-time error, where CPython raises `AttributeError`
 ([error test](../tests/errors/library/lib_types_mappingproxy_field.py)).
 
 - It takes a dict, whose key and value types are the view's (`MappingProxyType[str, int]`);
@@ -1584,25 +1622,17 @@ reading or assigning a field is a compile-time error, where CPython raises `Attr
   `keys()`, `values()` and `items()`, typed lists, are compile-time errors (dynamic `Any`'s
   [deviations](../docs/dynamic-any.md#deviations)).
 
-- Any other use of `GenericAlias`, such as calling it, is a compile-time error
-  ([error test](../tests/errors/reflection/types_generic_alias_call.py)).
-- The module's other names, CPython's (`SimpleNamespace`, `FunctionType`,
-  `MethodType`, `ModuleType`, `NoneType`, `new_class()`, `coroutine()`, ...), import as in
-  CPython, also in an optional import, but any use of one is a compile-time error
-  ([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such objects, or
-  none that behave exactly as CPython's.
-
 ### `warnings`
 
-CPython's `warnings.py`, with marked edits, which decide as CPython's C module `_warnings` does
-(`Python/_warnings.c`), as CPython runs that one: the registries, `warn()`'s checks of its
-arguments and the types of `warn_explicit()`'s file and line. `warn()` and `warn_explicit()` of a
-`str` or of a warning (also of a class of the program), the filters (`simplefilter()`,
-`filterwarnings()` by message, category, module and line, `resetwarnings()` and
-`sys.warnoptions`, read as the module is imported) and their actions, `catch_warnings()` (also
-`record=True` and `action=...`), `formatwarning()`, `showwarning()` to a file and `_deprecated()`
-work. The module imports `re`, which its default filters need, and `string`'s `Formatter`, which
-formats `_deprecated()`'s message.
+CPython's `warnings.py`, with marked edits. `warn()` and `warn_explicit()` of a `str` or of a
+warning (also of a class of the program), the filters (`simplefilter()`, `filterwarnings()` by
+message, category, module and line, `resetwarnings()` and `sys.warnoptions`, read as the module
+is imported) and their actions, `catch_warnings()` (also `record=True` and `action=...`),
+`formatwarning()`, `showwarning()` to a file and `_deprecated()` work. The edits make the
+registries, `warn()`'s checks of its arguments and the types of `warn_explicit()`'s file and
+line follow CPython's C module `_warnings` (`Python/_warnings.c`), since CPython runs that
+module. The module imports `re`, which its default filters need, and `string`'s `Formatter`,
+which formats `_deprecated()`'s message.
 
 - `warn()` shows a warning at `<sys>`, line 0, as Pystachy has no frames (`sys._getframe()`):
   CPython gives that location where the stack is shallower than `stacklevel`, and otherwise the
@@ -1643,8 +1673,6 @@ Not supported, as compile-time errors:
   ([test](../tests/programs/library/lib_warnings_skip_prefixes.py)).
 - `deprecated`, which sets the attribute `__deprecated__` of the function it decorates and wraps
   it with `functools.wraps()` ([error test](../tests/errors/library/lib_warnings_deprecated.py)).
-
-<a id="_weakref-prototype"></a>
 
 ### `logging`
 
@@ -1723,6 +1751,8 @@ are the lines whose last one an uncaught exception's report shows.
 - The legacy form with a value of `None` (`print_exception(ValueError, None, None)`) raises
   `TypeError`, where CPython shows `NoneType: None`.
 
+<a id="_weakref-prototype"></a>
+
 ### `weakref` and `_weakref` (prototype)
 
 The [weak-reference contract](../docs/weakref.md) covers `ref` and
@@ -1732,18 +1762,21 @@ referents live, `==`, `!=` and `hash()` are the referents'; a dead reference
 equals only itself and keeps a hash computed before. Referents die when the
 collector finds them unreachable, not when CPython's last counted reference
 goes, so a reference to a temporary still compares by its referent until a
-collection clears it. `repr()` is CPython's, without the ` (NAME)` suffix CPython
-adds for a referent whose class defines `__name__`. A reference has no attributes
-of its own: reading, assigning, reflecting over or `hasattr()` of its fields,
-which are the module's, is rejected or false, and `r.__init__(obj)` leaves it
-unchanged. A callback, `ref(obj, callback)`, runs once with the reference after
-the collection that finds the referent dead, where the program next makes or
-calls a reference, rather than when CPython's last counted reference goes: a
-referent's callbacks newest reference first, none of a reference that is itself
-dead, and an exception one raises reported as CPython reports one it ignores. A
-callback must be a function or `None`. `__callback__`, proxies,
-`getweakrefcount()`, `getweakrefs()`, weak containers and the reuse of one
-reference per referent (`ref(x) is ref(x)`) are absent.
+collection clears it.
+
+`repr()` is CPython's, without the ` (NAME)` suffix CPython adds for a referent
+whose class defines `__name__`. A reference has no attributes of its own: reading,
+assigning, reflecting over or `hasattr()` of its fields, which are the module's, is
+rejected or false, and `r.__init__(obj)` leaves it unchanged.
+
+A callback, `ref(obj, callback)`, runs once with the reference after the
+collection that finds the referent dead, where the program next makes or calls a
+reference, rather than when CPython's last counted reference goes: a referent's
+callbacks newest reference first, none of a reference that is itself dead, and an
+exception one raises reported as CPython reports one it ignores. A callback must
+be a function or `None`. `__callback__`, proxies, `getweakrefcount()`,
+`getweakrefs()`, weak containers and the reuse of one reference per referent
+(`ref(x) is ref(x)`) are absent.
 
 `weakref` is CPython's module, adapted ([test](../tests/programs/library/lib_weakref_module.py)): its `ref`
 and `ReferenceType` are `_weakref`'s, also through from-imports and `import *`.
@@ -1793,5 +1826,4 @@ These modules were shipped earlier and have been removed; see the
   parsing or AST compilation through these APIs.
 - `opcode`, `_opcode` and their CPython bytecode tables. Pystachy compiles native code and
   does not execute CPython bytecode or expose code objects; `dis` remains unavailable. This is
-  an intentional compatibility reduction, not a claim that the former table operations were
-  incorrect.
+  an intentional compatibility reduction.

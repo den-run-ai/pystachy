@@ -1,12 +1,12 @@
 # Dynamic library boundaries
 
-Apply the [admission rule](dynamic-any.md#admission-and-containment) to each
-storage or operation boundary, not to a whole library name. An opted-in module
-can contain mostly concrete code. This inventory covers the shipped `lib/` and
-maintained `ports/json_repair/` opt-ins, rather than tests that intentionally
-exercise dynamic behavior. An ordinary generic helper can also specialize to a
-dynamic argument type supplied by its caller; this is a local opt-in inventory,
-not a complete value-flow graph.
+This inventory covers the shipped `lib/` and maintained `ports/json_repair/`
+opt-ins, rather than tests that intentionally exercise dynamic behavior. Apply the
+[admission rule](dynamic-any.md#admission-and-containment) to each storage or
+operation boundary, not to a whole library name: an opted-in module can contain
+mostly concrete code. This is a local opt-in inventory, not a complete value-flow
+graph; an ordinary generic helper can also specialize to a dynamic argument type
+supplied by its caller.
 
 `make check-fast` runs the
 [inventory test](../tools/test_dynamic_any_inventory.py). Using the compiler's
@@ -64,6 +64,7 @@ The [ordinary typed-callback consumer](../tests/programs/library/lib_tomllib_typ
 also observes the identity of the imported helper's result without opting in to
 dynamic `Any`. A generic `int | T` replacement currently rejects its `is` comparison
 when `T` is `float`; this is closed-union operation debt, not failed generic inference.
+
 The [consumer benchmark](../bench/toml_boundary/README.md) separates raw and
 optimized program IR, hosted compilation, JIT/AOT execution, AOT allocation
 requests and conservative post-collection live bytes.

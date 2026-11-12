@@ -16,10 +16,10 @@ retry creates a fresh `IFn`; `dry()` may retain the syntax-only summary because 
 contains no inferred types, flow decisions, generated instructions, or diagnostics.
 Functions that need no binding query create no dictionary. The index is built
 after inherited-method materialization and local-version rewriting.
-Each `IFn` still gains one optional field. A lone legacy query can also stop at an
-early ordinary binding, while the first indexed query walks the whole scope.
-Neither case is evidence of an ordinary compiler speedup or memory reduction;
-the controls and any noisy/regressing timings must remain visible.
+
+The index has two costs: each `IFn` still gains one optional field, and a lone legacy
+query can stop at an early ordinary binding, while the first indexed query walks the
+whole scope.
 
 The scope and binding rules are those of `analysis.binds_other`, including imports,
 assignment expressions and nested-definition headers, with nested function/class
@@ -51,19 +51,19 @@ python3.13 bench/exception_bindings/run.py \
 ```
 
 Choose a CPU in the process's allowed affinity. Run timing alone, apart from other
-builds and tests. Omit both native arguments for a hosted-only comparison. The
-runner alternates the baseline/candidate order each round, starts a fresh process
-for every observation, and gives both variants the same generated source file.
-It records source and executable hashes, all raw timings, child CPU, affinity and
-host load. Every timed output must have identical LLVM IR, diagnostic text and exit
-status, and generated programs must print their independent CPython oracle (`1`
-for handler shapes, `N + 20` for the no-handler control).
+builds and tests. Omit both native arguments for a hosted-only comparison. Start
+with a small calibration run before choosing the larger timing sizes; the original
+scanner's quadratic work can dominate an instrumented run.
+
+The runner alternates the baseline/candidate order each round, starts a fresh
+process for every observation, and gives both variants the same generated source
+file. It records source and executable hashes, all raw timings, child CPU, affinity
+and host load, but not RSS. Every timed output must have identical LLVM IR,
+diagnostic text and exit status, and generated programs must print their independent
+CPython oracle (`1` for handler shapes, `N + 20` for the no-handler control).
 Outputs are removed before each compile, so failed compilation cannot reuse one.
 Each frontend process has a 180-second limit. A timeout or other failed comparison
-leaves an incomplete report with the failed observation and error. Start with a
-small calibration run before choosing the larger timing sizes; the original
-scanner's quadratic work can dominate an instrumented run.
-RSS is not measured by this runner.
+leaves an incomplete report with the failed observation and error.
 
 With `--counts`, separate instrumented hosted processes count actual statement
 visits in `binds_other` and `other_bindings`. These runs must reproduce the same
@@ -72,10 +72,9 @@ linear work and exercise the original scanner as a negative control. `--ops` in
 the maintained scaling harness independently checks total compiler line execution,
 flow work and copied/scanned collection items, avoiding a timing-based CI gate.
 
-The generated shapes isolate repeated binding lookups; they do not establish an
-ordinary self-build speedup. Native execution of the CPython-recorded cleanup and
-scope fixtures, full corpus IR/diagnostic parity, and self-hosting are separate
-correctness checks.
+The generated shapes isolate repeated binding lookups. Native execution of the
+CPython-recorded cleanup and scope fixtures, full corpus IR/diagnostic parity, and
+self-hosting are separate correctness checks.
 
 ## Native validation
 
@@ -99,10 +98,12 @@ normalization was changed. A [second, explicit shared-home comparison](results/s
 hashed all 104 library/runtime files equal across the two checkouts before and
 after execution, then passed [4,240 exact IR, diagnostic and exit-status comparisons](results/scope-validation-shared-home/corpus.log).
 The compiler binaries remained distinct; only the identical library/runtime home
-was shared to control those path literals. Lint and repository checks passed in
-the same replay. The 12 focused unit tests, 18 frame tests, 16 state-contract tests,
-and the 424-test fast suite also passed. Full local `make verify`, the broader
-compiler GC-self group, and macOS validation have not been run for this prototype.
+was shared to control those path literals.
+
+Lint and repository checks passed in the same replay. The 12 focused unit tests, 18
+frame tests, 16 state-contract tests, and the 424-test fast suite also passed. Full
+local `make verify`, the broader compiler GC-self group, and macOS validation have
+not been run for this prototype.
 
 ## Counter and timing results
 
@@ -161,8 +162,8 @@ hosted ranges were 5,688.30–6,134.83 ms and 573.17–607.50 ms. These measurem
 establish a gain on the generated many-handler frontend workload, not an ordinary
 self-build or general compiler speedup.
 
-Controls must remain visible. Each cell below gives baseline → indexed median
-milliseconds, then the indexed time change:
+Each control cell below gives baseline → indexed median milliseconds, then the
+indexed time change:
 
 | Control | N | Hosted frontend | Native frontend |
 |---|---:|---:|---:|
@@ -173,12 +174,13 @@ milliseconds, then the indexed time change:
 | No handlers | 1,000 | 593.86 → 538.62 (-9.3%) | 121.03 → 95.00 (-21.5%) |
 | No handlers | 2,000 | 1,208.26 → 1,199.25 (-0.7%) | 211.98 → 223.83 (+5.6%) |
 
-Every control's before/after ranges overlap. The N=1,000 native no-handler ranges
+This cohort neither establishes a control speedup nor rules out a small regression:
+every control's before/after ranges overlap. The N=1,000 native no-handler ranges
 were 93.72–140.54 ms and 91.57–140.03 ms; N=2,000 ranges were 208.45–266.40 ms and
-219.59–229.81 ms. Thus the observed 5.6% slower N=2,000 median is retained alongside
-the inconsistent smaller-size results. This cohort does not establish a control
-speedup or rule out a small regression. The [derived summary](results/scope-timing/summary.json)
-includes all medians, ranges, CPU medians and raw-report hashes.
+219.59–229.81 ms. The observed 5.6% slower N=2,000 median is reported alongside the
+inconsistent smaller-size results. The
+[derived summary](results/scope-timing/summary.json) includes all medians, ranges,
+CPU medians and raw-report hashes.
 
 The [bounded controller](results/scope-timing/controller.py) preserved the small
 counter cohort, a separate N=500 [calibration](results/scope-timing/calibration.json),

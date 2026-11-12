@@ -5,9 +5,8 @@ use CPython to start separate processes, each importing an
 [extension module](ffi.md#extension-modules) built with `pystachy ext`.
 The [process-pool example](#process-pools-today) below shows this arrangement.
 
-This page describes current behavior and the probes that check it. Native
-parallel loops, shared-heap threads and `async def` remain unsupported; their
-proposals are linked under [design history](#design-history).
+Native parallel loops, shared-heap threads and `async def` remain unsupported;
+their proposals are linked under [design history](#design-history).
 
 ## Capabilities
 
@@ -186,5 +185,4 @@ The proposed worker, memory-visibility, atomic and LLVM-backend requirements rem
 in the [earlier design](https://github.com/den-run-ai/pystachy/blob/f7103067545b43cdcd8ce20dc66b1571425b3a8d/docs/concurrency.md),
 with sequential-equivalence and effect-safety work in
 [#409](https://github.com/den-run-ai/pystachy/issues/409) and
-[#702](https://github.com/den-run-ai/pystachy/issues/702). These proposals do not
-add capabilities to the current table.
+[#702](https://github.com/den-run-ai/pystachy/issues/702).

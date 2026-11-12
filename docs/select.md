@@ -32,24 +32,27 @@ readable, writable, exceptional = select.select(read_fds, write_fds, error_fds, 
 
 Unsupported forms are compile-time errors, not successful no-op calls: arbitrary
 iterables, `fileno()` objects, dynamically optional timeout values, keyword
-arguments, `select.error`, `PIPE_BUF`, `poll`, `epoll`, `devpoll`, `kqueue` and their
-constants. The implementation targets the Linux/macOS POSIX runtime; it does
-not implement Windows socket-only select semantics. No descriptor creation API
-is added to `os`; applications can use existing C FFI for their native handles.
-A file's `fileno()`, also of `sys.stdin`, `sys.stdout` and `sys.stderr`, is its
-descriptor, so `select([f.fileno()], [], [], 0)` waits on an open file; a closed
-file's raises CPython's `ValueError: I/O operation on closed file`. The file
-objects themselves are not accepted in the lists.
-`select.error` remains explicitly unsupported: an honest alias needs consistent
-import, construction, exception-handler and class-base handling in the compiler.
+arguments, `select.error`, `PIPE_BUF`, `poll`, `epoll`, `devpoll`, `kqueue` and
+their constants. `select.error` stays unsupported because an honest alias needs
+consistent import, construction, exception-handler and class-base handling in the
+compiler.
+
+The implementation targets the Linux/macOS POSIX runtime; it does not implement
+Windows socket-only select semantics. No descriptor creation API is added to `os`;
+applications can use existing C FFI for their native handles. A file's `fileno()`,
+also of `sys.stdin`, `sys.stdout` and `sys.stderr`, is its descriptor, so
+`select([f.fileno()], [], [], 0)` waits on an open file; a closed file's raises
+CPython's `ValueError: I/O operation on closed file`. The file objects themselves
+are not accepted in the lists.
+
 Promoting integers outside signed 64-bit range are rejected with `OverflowError`
-when the descriptor lists cross into the runtime, before timeout validation.
-For representable descriptors and accepted numeric timeout values, runtime validation
-checks timeout first, then read, write and exceptional descriptors. Within each list, descriptor conversion
-and range checks precede the count guard at the first excess item; later items
-are not examined. Differential tests cover the competing errors against CPython
-3.13.16. Unsupported static types are compile-time errors, so their error ordering
-is outside this contract.
+when the descriptor lists cross into the runtime, before timeout validation. For
+representable descriptors and accepted numeric timeout values, runtime validation
+checks timeout first, then read, write and exceptional descriptors. Within each
+list, descriptor conversion and range checks precede the count guard at the first
+excess item; later items are not examined. Differential tests cover the competing
+errors against CPython 3.13.16. Unsupported static types are compile-time errors, so
+their error ordering is outside this contract.
 
 ## Implementation
 
@@ -88,4 +91,4 @@ CI group. Timing is used
 only to verify that a wait is not shortened; there is no throughput threshold.
 
 The API retains `FD_SETSIZE` bounds and scans up to the highest descriptor;
-these are scalability limits. There is no large-server throughput claim.
+these are scalability limits.

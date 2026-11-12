@@ -16,15 +16,14 @@ closures and class fields are described in [typing](typing.md); imports and buil
 | Deletion | `del` of a local, list item, dict key or supported object's item |
 | Other | Imports, docstrings, `pass` and `...` |
 
-`+=` on a list extends it in place. Object in-place operators use `__iadd__` and the
-corresponding methods when supported. Deleting a variable makes later reads raise
-`NameError` or `UnboundLocalError`; deleting a global from a function is unsupported.
+`+=` on a list extends it in place. Deleting a variable makes later reads raise `NameError` or
+`UnboundLocalError`; deleting a global from a function is unsupported.
 
 A starred target, as in `head, *body, tail = xs`, gets a new list of the items the other targets
 leave. It takes what a `for` loop iterates, and `range()`, `enumerate()`, `zip()`, `map()`,
 `filter()` and generator expressions; every item is taken before the first target is assigned.
-Too few items raise CPython's `ValueError`. Of a tuple, the starred list holds its items'
-common type; items of types no one type holds need an annotation (`body: list[int | str]`).
+Too few items raise CPython's `ValueError`. When unpacking a tuple, the starred list holds its
+items' common type; items without a common type need an annotation (`body: list[int | str]`).
 
 Loops can consume ranges, lists, strings, dictionaries, sets, files, homogeneous tuples and
 NamedTuples, supported objects, and dictionary `items()`, `keys()` and `values()`.
@@ -39,13 +38,14 @@ Restrictions on nested iterator-like expressions, snapshots and mutation are lis
 ### Structural patterns
 
 `match` supports literal values (`None`, booleans, integers, floats, strings and bytes),
-wildcards, captures, `as`, alternatives (`|`), guards, fixed tuple patterns and plain fields
-of statically known dataclasses. The subject is evaluated once. Cases and alternatives run
-in source order. Captured values are staged until the whole pattern succeeds, then bound
-before its guard runs. A failed later subpattern leaves existing user bindings unchanged;
-a successful pattern followed by a false guard keeps its captures. A capture that never
-executes retains ordinary unbound-local behavior. Closures capture these variables as
-they do assignments.
+wildcards, captures, `as`, alternatives (`|`), guards, fixed tuple patterns and plain fields of
+statically known dataclasses.
+
+The subject is evaluated once. Cases and alternatives run in source order. Captured values are
+staged until the whole pattern succeeds, then bound before its guard runs. A failed later
+subpattern leaves existing user bindings unchanged; a successful pattern followed by a false
+guard keeps its captures. A capture that never executes retains ordinary unbound-local
+behavior. Closures capture these variables as they do assignments.
 
 ```python
 def classify(point: tuple[int, int]) -> str:
@@ -65,18 +65,18 @@ uses ordinary assignments and branches, without a runtime pattern matcher. Where
 test is true its captures are bound, so its guard and body read them without an
 unbound-local check.
 
-Mapping patterns, starred sequence patterns, list or other general sequence subjects,
-complex literals, arbitrary class patterns, dataclass hierarchies, custom `__match_args__`
-and attribute hooks remain unsupported; the error names the statement's first such pattern.
-A class body rejects a `match` statement as it rejects an `if` statement there. Dataclass
-patterns require a concrete subject type; dynamic `Any` and union subjects are rejected
-rather than treated as mismatches.
-Sequence patterns require a concrete fixed tuple; known scalar subjects, including
-promoting integers, fall through. Optional, union and dynamic sequence subjects need
-explicit narrowing before matching.
-Literal and capture patterns can still consume dynamic `Any`. Boolean singleton patterns require concrete
-`bool` or dynamic `Any` when the subject could hold more than one scalar type. Existing
-equality and inference restrictions apply to value patterns and capture joins.
+Mapping patterns, starred sequence patterns, list or other general sequence subjects, complex
+literals, arbitrary class patterns, dataclass hierarchies, custom `__match_args__` and
+attribute hooks are unsupported; the error names the statement's first such pattern. A class
+body rejects a `match` statement as it rejects an `if` statement there.
+
+Dataclass patterns require a concrete subject type; dynamic `Any` and union subjects are
+rejected rather than treated as mismatches. Sequence patterns require a concrete fixed tuple;
+known scalar subjects, including promoting integers, fall through. Optional, union and dynamic
+sequence subjects need explicit narrowing before matching. Literal and capture patterns can
+still consume dynamic `Any`. Boolean singleton patterns require concrete `bool` or dynamic
+`Any` when the subject could hold more than one scalar type. Existing equality and inference
+restrictions apply to value patterns and capture joins.
 
 ## Literals and formatting
 
@@ -92,11 +92,12 @@ reuse the f-string's quote, nest f-strings, and hold backslashes, newlines and c
 assignment binds to one (`FMT = "%8.3f"`, also `Final`) where nothing else in the program, not
 even a function's local, binds its name. It supports `s r a d i u x X o e E f F g G c`, flags,
 widths and precisions, but not named substitutions, `*` widths or precisions, or integer
-precisions. A variable format string such as `fmt % value` is rejected. A literal format of
-only `%s`, `%r` and `%a` conversions, whose widths and precisions have at most two digits,
-applied to a tuple display with one item for each, is evaluated as CPython 3.11+ compiles it,
-as an f-string: each item just before its conversion. Any other `%` evaluates all its
-arguments first.
+precisions. A variable format string such as `fmt % value` is rejected.
+
+A literal format of only `%s`, `%r` and `%a` conversions, whose widths and precisions have at
+most two digits, applied to a tuple display with one item for each, is evaluated as CPython
+3.11+ compiles it, as an f-string: each item just before its conversion. Any other `%`
+evaluates all its arguments first.
 
 `str.format()` and `str.format_map()` (also `str.format(FMT, ...)`) also require a literal format
 string or such a module global, compiled like an f-string: automatic and manual numbering, keyword
@@ -122,6 +123,10 @@ comprehensions; and tuple concatenation or repetition by a constant. Set and fro
 operations support union, intersection, difference, symmetric difference, subset ordering
 and in-place forms.
 
+A starred item in a list or tuple display, `[a, *xs, *range(n)]`, takes the iterable's items
+where it stands. A tuple display whose starred items are tuples is a tuple of their items;
+with another iterable, it is a runtime-length tuple.
+
 A comprehension or generator expression may have several `for` and `if` clauses. As in
 CPython, its first iterable is evaluated once in the enclosing scope; each later iterable and
 condition is evaluated for every item of the clauses before it, and the clauses' variables
@@ -130,20 +135,21 @@ binds the same variable. A dict comprehension evaluates each key before its valu
 key keeps its first position and takes the last value. A clause or `for` target that reads a
 variable which only its own or a later `for` clause binds is rejected (CPython raises
 `UnboundLocalError`), as is a rebinding to another type that a clause between the two can read.
-A starred item in a list or tuple display, `[a, *xs, *range(n)]`, takes the iterable's items
-where it stands. A tuple display whose starred items are tuples is a tuple of their items;
-with another iterable, it is a runtime-length tuple.
 
 An assignment expression, `x := v`, assigns `v` to `x` as `x = v` would, in the function or
-module code around it, also from a comprehension or generator expression (PEP 572); its value is
-`v`. Tests such as `if (m := pattern.match(s)) is not None:` narrow `x` as a test of the name
-does. Where the expression may not have run (after `and` or `or`, in one arm of a conditional
+module code around it, also from a comprehension or generator expression (PEP 572); its value
+is `v`. Tests such as `if (m := pattern.match(s)) is not None:` narrow `m` as a test of the
+name does.
+
+Where the expression may not have run (after `and` or `or`, in one arm of a conditional
 expression, in a comprehension over nothing), a later read of `x` raises `UnboundLocalError` or
 `NameError`. This also covers assignment expressions in lambda defaults: the defaults run when
 the lambda is created. Where an `if` statement's test is true, each operand of its `and` has
 run, so the branch reads what they bound without that check. A comprehension's filters run
-before its element. An unannotated template parameter specialized to `None` cannot be rebound by
-a conditional assignment expression; annotate that parameter as `T | None` to allow both values.
+before its element.
+
+An unannotated template parameter specialized to `None` cannot be rebound by a conditional
+assignment expression; annotate that parameter as `T | None` to allow both values.
 
 `is` and `is not` are supported for identity-bearing values, not numbers.
 Booleans use their two fixed values, so `flag is True` behaves as equality. A number or bool is
@@ -174,45 +180,52 @@ Some consumers materialize input before processing it; see the
 
 ## Range objects
 
-`range()` anywhere else is a range object, CPython's: a value to assign, pass, return or store
-(`r: range` annotates one), as in `codecs.make_identity_dict(range(256))`. It is an object of the
-class in [`lib/_pystachy_range.py`](../../lib/_pystachy_range.py), which the compiler loads for a
-program that may use one: one that reads the builtin `range` other than as a `range(...)` it steps
-through itself, as above. A `for` loop or comprehension over a range object, and the consumers
-above, step through its numbers as through `range(...)` itself; `enumerate()`, `zip()` and
-generator expressions take them one at a time, and `range()` may be nested in `enumerate()` and
-`zip()`. `len()`, `bool()`, `x in r` of an int (an `int | None` that is None is in no range),
-`r[i]` with negative indices, slices (ranges), `r.start`, `r.stop` and `r.step`, `==` and `!=`
-(as sequences: `range(0) == range(5, 5)`, and never equal to a value of another builtin type),
-`hash()`, `r.index(x)`, `r.count(x)`, `reversed(r)` where `reversed()` is supported, `iter(r)`,
-`repr()` and `str()`, `isinstance(r, range)`, `type(r).__name__` and `type(r) is range` behave
-as in CPython. A range of 2**63 numbers or more is held, but `len()` of it raises CPython's
-`OverflowError`, and an item or slice bound beyond 64 bits raises Pystachy's
-([integers](compatibility.md#numbers)). The compiler rejects the operations that CPython would
-reject at run time (ordering comparisons, assigning an attribute), `in` of other than an int or a
-bool, `r[i]`, `index()` and `count()` of other than an int (also of a bool), `==` with a value
-that may be `None` but is not a range, `type(r)` as a value, and the reflection of `dir()` and
-`vars()`.
+Anywhere else, `range()` makes a range object, as CPython's does: a value to assign, pass,
+return or store (`r: range` annotates one), such as the argument of
+`codecs.make_identity_dict(range(256))`. It is an object of the class in
+[`lib/_pystachy_range.py`](../../lib/_pystachy_range.py), which the compiler loads for a
+program that reads the builtin `range` other than as a `range(...)` that a loop or consumer
+above steps through directly. A `for` loop or comprehension over a range object, and the
+consumers above, step through its numbers as through `range(...)` itself; `enumerate()`,
+`zip()` and generator expressions take them one at a time, and `range()` may be nested in
+`enumerate()` and `zip()`.
+
+These operations behave as in CPython: `len()`, `bool()`, `x in r` of an int (an `int | None`
+that is None is in no range), `r[i]` with negative indices, slices (ranges), `r.start`,
+`r.stop` and `r.step`, `==` and `!=` (as sequences: `range(0) == range(5, 5)`, and never equal
+to a value of another builtin type), `hash()`, `r.index(x)`, `r.count(x)`, `reversed(r)` where
+`reversed()` is supported, `iter(r)`, `repr()` and `str()`, `isinstance(r, range)`,
+`type(r).__name__` and `type(r) is range`. A range of 2**63 numbers or more is held, but
+`len()` of it raises CPython's `OverflowError`, and an item or slice bound beyond 64 bits
+raises Pystachy's ([integers](compatibility.md#numbers)).
+
+The compiler rejects the operations that CPython would reject at run time (ordering
+comparisons, assigning an attribute), `in` of other than an int or a bool, `r[i]`, `index()`
+and `count()` of other than an int (also of a bool), `==` with a value that may be `None` but
+is not a range, `type(r)` as a value, and the reflection of `dir()` and `vars()`.
 
 ## Sentinels
 
-`object()` makes a new object of the builtins' `object` type at each call, as a sentinel is made
-(`_MISSING = object()`, a parameter's default tested with `x is _MISSING`). It is an object of the
-class in [`lib/_pystachy_object.py`](../../lib/_pystachy_object.py), which the compiler loads for a
-program that may call `object()`. `is`, `is not`, `==` and `!=` compare identities (a value of a
-builtin type, such as an int, a str, a list, a range, a generator or a function, is never equal to
-one), `hash()`, dict keys and set elements use the identity, `bool()` is true, `repr()` and `str()`
-give `<object object at 0x...>` with Pystachy's address, `type(x).__name__` is `object` and
-`type(x).__module__` is `builtins`, and `isinstance(x, object)` and `type(x) is object` are true.
-The compiler rejects `object()` with arguments (CPython's `TypeError`), assigning an attribute of
-such an object, `==` and `!=` between such an object and an object of a class or an exception
-(whose `__eq__` CPython may call), and a variable, return value or `dict.get()` default that would
-hold either such an object or a value of another type, as no union holds one yet
-([#251](https://github.com/den-run-ai/pystachy/issues/251)). It loads the class for a program one of
-whose modules calls the name `object`, so in a program none of whose modules calls `object()` it
-also rejects a call by another name (`builtins.object()`, or an alias that an import or an
-assignment binds, `obj = object`) and `type(x) is object`; in any other program such a call makes a
-sentinel too.
+`object()` makes a new object of the builtins' `object` type at each call, as a sentinel is
+made (`_MISSING = object()`, a parameter's default tested with `x is _MISSING`). It is an
+object of the class in [`lib/_pystachy_object.py`](../../lib/_pystachy_object.py). `is`,
+`is not`, `==` and `!=` compare identities (a value of a builtin type, such as an int, a str, a
+list, a range, a generator or a function, is never equal to one), `hash()`, dict keys and set
+elements use the identity, `bool()` is true, `repr()` and `str()` give
+`<object object at 0x...>` with Pystachy's address, `type(x).__name__` is `object` and
+`type(x).__module__` is `builtins`, and `isinstance(x, object)` and `type(x) is object` are
+true.
+
+The compiler rejects `object()` with arguments (CPython's `TypeError`), assigning an attribute
+of such an object, `==` and `!=` between such an object and an object of a class or an
+exception (whose `__eq__` CPython may call), and a variable, return value or `dict.get()`
+default that would hold either such an object or a value of another type, as no union holds one
+yet ([#251](https://github.com/den-run-ai/pystachy/issues/251)).
+
+The compiler loads the class when some module of the program calls the name `object`. Otherwise
+it also rejects a call by another name (`builtins.object()`, or an alias that an import or an
+assignment binds, `obj = object`) and `type(x) is object`; when the class is loaded, such a
+call makes a sentinel too.
 
 ## Iterators
 
@@ -246,16 +259,18 @@ has its value's type. A `Generic[T]` class's `Iterable[T]` parameter binds `T` t
 
 A function or method whose body contains `yield` or `yield from` is a generator function.
 Calling one runs none of its body: it makes a generator object, which runs to its next `yield`
-each time a consumer asks for an item. Generator functions that yield one type and take one
-type from `send()` share one static type (`Generator[T]` in messages, `Generator[T, S]` where
-the send type `S` is not `None`). A generator function's return annotation is `Iterator[T]`,
-`Iterable[T]` or `Generator[Y, S, R]`, from `typing` or `collections.abc`; elsewhere
-`Iterator[T]` and `Iterable[T]` type nothing (see [iterators](#iterators)), so a parameter
-annotated so takes generators as well as iterator objects, and `Generator[T, None, None]` names
-a generator's type (`holder: list[Generator[int, None, None]] = []`). A generator that takes `S`
-is also one that takes `None`. An unannotated generator function is a template: its first
-`yield` gives the type for each call's argument types, and its send type is `None`. An
-`__iter__` or `__reversed__` that yields makes the generator that iterates its object.
+each time a consumer asks for an item. An `__iter__` or `__reversed__` that yields makes the
+generator that iterates its object.
+
+Generator functions that yield one type and take one type from `send()` share one static type
+(`Generator[T]` in messages, `Generator[T, S]` where the send type `S` is not `None`). A
+generator function's return annotation is `Iterator[T]`, `Iterable[T]` or `Generator[Y, S, R]`,
+from `typing` or `collections.abc`; elsewhere `Iterator[T]` and `Iterable[T]` type nothing (see
+[iterators](#iterators)), so a parameter annotated so takes generators as well as iterator
+objects, and `Generator[T, None, None]` names a generator's type
+(`holder: list[Generator[int, None, None]] = []`). A generator that takes `S` is also one that
+takes `None`. An unannotated generator function is a template: its first `yield` gives the type
+for each call's argument types, and its send type is `None`.
 
 | Use | Behavior |
 |---|---|
@@ -280,15 +295,18 @@ then.
 
 A `for` loop over a generator that its iterable expression has just made (a call of a generator
 function, or of an `__iter__` or `__reversed__` that yields, also inside `enumerate()`, `zip()`
-or `reversed()`) closes the generator when the loop is left by its
-end, `break`, `return` or an exception, before the code after the loop runs. Closing raises
-`GeneratorExit` at the suspended `yield`, so `finally` blocks, `with` blocks and
-`except GeneratorExit` run, as in CPython. What the close raises, and a `yield` after
-`GeneratorExit`, are reported on stderr as CPython reports exceptions it ignores, and the loop's
-exit goes on. Exceptions raised in a loop's body never enter the generator. An exception that
-leaves a generator's body finishes the generator; a `StopIteration` becomes
-`RuntimeError: generator raised StopIteration` (PEP 479). A generator that resumes itself raises
-`ValueError: generator already executing`.
+or `reversed()`) closes the generator when the loop is left by its end, `break`, `return` or an
+exception, before the code after the loop runs. Closing raises `GeneratorExit` at the suspended
+`yield`, so `finally` blocks, `with` blocks and `except GeneratorExit` run, as in CPython. What
+the close raises, and a `yield` after `GeneratorExit`, are reported on stderr as CPython
+reports exceptions it ignores, and the loop's exit goes on. Exceptions raised in a loop's body
+never enter the generator.
+
+An exception that leaves a generator's body finishes the generator; a `StopIteration` becomes
+`RuntimeError: generator raised StopIteration` (PEP 479), except one that escapes a helper
+call in a program without `try` or `with`
+([deviation](compatibility.md#memory-and-resource-lifetime)). A generator that resumes itself
+raises `ValueError: generator already executing`.
 
 A generator suspended inside a `with` block keeps its context manager: closing it, or throwing
 into it, runs the manager's `__exit__` as CPython does, and `contextlib.contextmanager` drives a
@@ -353,19 +371,20 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | Membership and iteration | `__contains__`, or supported `__iter__` |
 | `reversed()` | Supported `__reversed__` |
 
-Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
-Reflected arithmetic methods such as `__radd__`, `__rdivmod__` and `__rpow__` remain
-unsupported. Power dispatch with an object exponent, optional numeric exponent, or the
-three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
-modulus parameter; two-argument power leaves it at its default. Returning `NotImplemented`
-from an operator remains unsupported.
-Power methods require a positional `self`; following arguments may use `*args`.
-For `**=`, a base-typed receiver whose subclass introduces an `__ipow__` that the base
-lacks must be narrowed to the concrete receiver type; otherwise compilation rejects the
-operation rather than skipping the subclass method.
-Objects in containers compare, sort and print through their methods.
-Lists and tuples test items with equality before ordering them, then compare length if all
-common items are equal. Sorting and `min()` use `<`; `max()` uses `>`.
+Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`. Reflected arithmetic
+methods such as `__radd__`, `__rdivmod__` and `__rpow__` are unsupported, and so is returning
+`NotImplemented` from an operator.
+
+Power dispatch with an object exponent, optional numeric exponent, or the three-argument
+`pow(o, n, modulus)` is unsupported. Power methods require a positional `self`; following
+arguments may use `*args`. A power method may declare an optional modulus parameter;
+two-argument power leaves it at its default. For `**=`, a base-typed receiver whose subclass
+introduces an `__ipow__` that the base lacks must be narrowed to the concrete receiver type;
+otherwise compilation rejects the operation rather than skipping the subclass method.
+
+Objects in containers compare, sort and print through their methods. Lists and tuples test
+items with equality before ordering them, then compare length if all common items are equal.
+Sorting and `min()` use `<`; `max()` uses `>`.
 
 Object calls accept the keyword and default arguments of `__call__`.
 For `o[k] += value`, both indexing and assignment methods are used.
@@ -378,6 +397,7 @@ An `__iter__` returns an iterator object: its own object or another class's obje
 comprehensions, unpacking, `x in o`, `math.dist()` and the consumers above call `__next__`
 until it raises `StopIteration` or a subclass, also from a nested `next()`; any other
 exception propagates.
+
 `__iter__` runs once before the loop, and `__next__` once per item. A comprehension also calls
 the iterator's own `__iter__`, as CPython 3.13 does. `any()`, `all()`, `sum()`, `min()`,
 `max()` and `in` take items as they come; `list()`, `tuple()`, `sorted()`, `str.join()` and
@@ -404,14 +424,14 @@ An object that is `None` when the operation executes raises the corresponding ru
 Reflection works on values whose possible classes the compiler knows: one class, an ordinary
 hierarchy (the object's class tag selects its class), or a reference union (its member tag,
 then the class tag). The program's own classes and dataclasses are supported, and so are the
-builtin types where noted; exception objects, NamedTuples and file objects are not.
+builtin types where noted; exception objects, NamedTuples and file objects are not. What
+Pystachy cannot match is a compile-time error that names the missing feature: a value whose
+type only the run time knows (#487) or names that need per-object storage (#489). The
+compiler's side is described in [internals](../internals.md#reflection).
+
 An identifier `__x` written inside class `C` uses the spelling `_C__x`, including in its
-methods. Reflection strings remain literal, so `getattr(c, "_C__x")` names
-that attribute and `getattr(c, "__x")` does not. What Pystachy cannot
-match is a compile-time error that names the missing feature: a value whose type only the run
-time knows (#487) or names that need per-object storage (#489). Opted-in modules
-also support [class values and type-keyed registries](../dynamic-any.md#class-values-and-type-keyed-registries).
-The compiler's side is described in [internals](../internals.md#reflection).
+methods. Reflection strings remain literal, so `getattr(c, "_C__x")` names that attribute and
+`getattr(c, "__x")` does not.
 
 ### Types and their names
 
@@ -436,9 +456,8 @@ first, as CPython evaluates its arguments, and then assigns through a property's
 evaluates the default first, then gives the attribute where the object's exact class has it
 (a field that `__init__` may leave unassigned: where its flag says it is set) and the default
 where it has not; a property's getter that raises `AttributeError` gives the default, as
-CPython catches it. `hasattr()` of a property runs its getter likewise, and `hasattr()` of a value
-that may be an object of one of several classes (a union of classes) answers for its class. On a
-hierarchy's base,
+CPython catches it. `hasattr()` of a property runs its getter likewise, and `hasattr()` of a
+value of a union of classes answers for the object's class. On a hierarchy's base,
 `getattr(o, "name")` of an attribute only a subclass has reads it where the object has it and
 raises CPython's `AttributeError` elsewhere.
 
@@ -468,12 +487,14 @@ in it. Iteration reads each attribute as its turn comes, as CPython's iterator o
 `__dict__` does: where the body assigns a field that was unassigned as the loop began, the next
 step raises `RuntimeError: dictionary changed size during iteration`. Its values (where the loop
 binds them, and in a copy) have the join of the fields' types; a loop over the names alone takes
-fields of any types. A `__dict__` kept as a value, an order that depends on the run (two
+fields of any types.
+
+The compiler rejects a `__dict__` kept as a value, an order that depends on the run (two
 attributes first assigned in one branch, or a field `__init__` may leave unassigned that other
 code may assign, which CPython then inserts last, unless it is last anyway), an attribute
 `__post_init__` adds, a class with `__slots__` (CPython raises) and a class attribute that the
-program may also assign through an object are rejected. `hasattr(x, "__dict__")` and `"__weakref__"` are false for a class whose
-names `__slots__` closes.
+program may also assign through an object. `hasattr(x, "__dict__")` and `"__weakref__"` are
+false for a class whose names `__slots__` closes.
 
 `dir(x)` makes a new sorted list of the names CPython lists for the object: its fields and
 slots, the methods, properties and class attributes of its class and bases, the attributes
@@ -593,10 +614,11 @@ and its subclasses. The supported pairs use two of `ArithmeticError`, `FloatingP
 `OverflowError`, `ZeroDivisionError`, `AssertionError`, `BufferError`, `EOFError`,
 `LookupError`, `IndexError`, `ReferenceError`, `RuntimeError`, `NotImplementedError`,
 `RecursionError`, `TypeError` and `ValueError`; neither may derive from the other.
-Pairs involving e.g. `OSError` (additional fields) or `KeyError` (special string
-conversion) are not supported. Exception classes support fields, constructors, class-body defaults,
-methods, docstrings and custom `__str__` / `__repr__`.
+Pairs involving e.g. `OSError` (additional fields) or `KeyError` (special string conversion)
+are not supported.
 
+Exception classes support fields, constructors, class-body defaults, methods, docstrings and
+custom `__str__` / `__repr__`.
 A subclass inherits fields and methods and can override `__init__`, `__str__` and
 `__repr__`. String conversion, comparisons and uncaught error output use the object's actual
 class: `x == y` of `E`-typed values runs `__eq__` of a subclass that defines it. Where that

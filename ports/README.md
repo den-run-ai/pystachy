@@ -49,7 +49,7 @@ PYSTACHY_PATH=build/deps ./pystachy build program.py -o build/program
 
 `pystachy-ports` bundles these adapted packages with their existing import names,
 licenses and port notes. Use a dedicated target to avoid overlapping upstream
-installations. It does not include `lib/` or claim unchanged upstream compatibility.
+installations. It does not include `lib/`.
 See the [tiny dependent package](../examples/package/README.md) and
 [locked installs](../docs/packages.md#lock-an-apps-dependencies).
 

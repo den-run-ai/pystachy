@@ -39,11 +39,12 @@ Layout checks happen after NumPy consumes the capsule. A rejected layout can
 therefore still consume a one-shot producer; request a fresh capsule for another
 import. The adapter accepts trusted in-process producers under their DLPack
 ownership contract. It inherits `Buffer`'s size limits, explicit/deferred release rules,
-GIL behavior and extension owner-thread restriction. GPU memory, asynchronous
-work, cross-process sharing, multidimensional arrays, writable imports, Arrow,
-and exporting a Pystachy buffer as DLPack are outside this prototype. Derived
-Pystachy views may use the existing checked positive/negative strides after a
-contiguous root has been acquired.
+GIL behavior and extension owner-thread restriction.
+
+GPU memory, asynchronous work, cross-process sharing, multidimensional arrays,
+writable imports, Arrow, and exporting a Pystachy buffer as DLPack are outside
+this prototype. Derived Pystachy views may use the existing checked
+positive/negative strides after a contiguous root has been acquired.
 
 ## Reproduce
 
@@ -64,13 +65,14 @@ build/dlpack-venv/bin/python examples/cpu_dlpack/check.py --compiler ./pystachy
 
 The protocol unit tests run under Lint's existing `test_runtime_*.py` discovery.
 Without NumPy, the two dependency/device tests run and the eight NumPy tests
-explicitly skip. The optional native runner must be invoked separately: it checks
-the CPython twin and native JIT, AOT and abi3 extension, each native mode with
-normal GC and collection at every allocation. It verifies scoring before/after
-alias mutation, owner survival after all host batch references disappear,
-derived-view survival after the parent handle closes, and owner finalization
-exactly once after repeated explicit release. These are correctness checks;
-there is no performance claim or timing threshold.
+explicitly skip.
+
+The optional native runner must be invoked separately: it checks the CPython twin
+and native JIT, AOT and abi3 extension, each native mode with normal GC and
+collection at every allocation. It verifies scoring before/after alias mutation,
+owner survival after all host batch references disappear, derived-view survival
+after the parent handle closes, and owner finalization exactly once after
+repeated explicit release. These correctness checks have no timing threshold.
 
 ## Protocol references
 

@@ -93,11 +93,12 @@ both report Python type `int`; converting an exact `Any` int with `int()` keeps 
 The combined opt-in also keeps wide values in typed integer lists, dictionaries and sets.
 
 Integer policy belongs to the module containing an operation. With both comments, arithmetic
-on two in-range `Any` ints promotes on overflow. A dynamic-only module can receive and operate
-on an already wide int, but arithmetic on two in-range ints there retains checked 64-bit
-overflow. Its concrete `int` annotations are also checked 64-bit boundaries. This does not
-change the default integer policy or remove the remaining [typed storage limits](python-int.md#64-bit-boundaries)
-and [numeric identity gaps](#deviations).
+on two in-range `Any` ints promotes on overflow. A dynamic-only module can receive and
+operate on an already wide int, but arithmetic on two in-range ints there retains checked
+64-bit overflow. Its concrete `int` annotations are also checked 64-bit boundaries. The
+default integer policy is unchanged, and the remaining
+[typed storage limits](python-int.md#64-bit-boundaries) and
+[numeric identity gaps](#deviations) still apply.
 
 ## Selecting dynamic storage
 
@@ -372,6 +373,7 @@ The constructor reuses its compiled initializer, including an existing
 class-specific specialization for inherited `__init__`. Explicit positional and
 keyword arguments and supported static unpacking use the ordinary binder.
 Runtime-sized `factory(*args, **kwargs)` uses the binding contract below.
+
 For supplied arguments, parameter layouts containing user classes require
 existing boxed adapters for those classes, including optional, union and tuple
 members. Omitted defaults reuse an already prepared value or a compatible
@@ -466,7 +468,6 @@ unsupported body raises `NotImplementedError` only when selected; unrelated
 stored callbacks remain usable. See the
 [boundary cases](../tests/deviations/dyn_star_reducer_boundaries.py) and
 [unsupported adapter](../tests/deviations/dyn_star_reducer_unsupported_body.py).
-These calls do not establish full `copyreg` or `pickle` support.
 
 ## Iteration
 
@@ -598,11 +599,11 @@ raises before considering a right operand's reflected operator, as CPython does 
 ### Runtime dispatch
 
 `runtime.c`'s generic helpers implement the builtin types' operations. The program's classes
-take part through **dispatchers**: functions the compiler writes once every class whose objects
-are boxed is known, recompiling them while compiling them boxes more classes. Each tests the
-box's DynType against each boxed class that supports the operation, calls that class's own code
-(its dunder, field, property or method), and otherwise falls back to the builtin types' helper
-or CPython's `AttributeError`/`TypeError`:
+take part through **dispatchers**: functions the compiler writes once it knows every class
+whose objects are boxed, and recompiles as long as compiling them boxes more classes. Each
+tests the box's DynType against each boxed class that supports the operation, calls that
+class's own code (its dunder, field, property or method), and otherwise falls back to the
+builtin types' helper or CPython's `AttributeError`/`TypeError`:
 
 | Dispatcher | Operation |
 | --- | --- |
@@ -619,8 +620,10 @@ Arithmetic first tries an in-place dunder when applicable. Otherwise, a strict
 right-hand subclass's own reflected method has priority over the left operand's
 method; if that does not supply the operation, the reflected method of another
 right-hand type is considered, then builtin helpers. `str % x` uses formatting
-instead of that reflected path. An object's dynamic slice still raises `TypeError`
-because its `__getitem__` would need a slice object, which Pystachy does not have.
+instead of that reflected path. This is CPython's order
+(`tests/programs/inference/dynany_reflected.py`); typed code rejects reflected
+arithmetic. No method can return `NotImplemented`, so the first one that runs gives
+the result.
 
 A call shape records the positional count and keyword names: `2-sep-end` means two
 positional arguments followed by `sep=` and `end=`. Method and callable-field
@@ -636,46 +639,43 @@ and keywords; argument errors use the function's qualified name.
 
 ### Object comparisons
 
-Each case calls the class's operation with `Any` arguments: a method whose parameters are
-unannotated or `Any` takes them as they are (a template is instantiated for `Any` once), and
-one annotated with a concrete type unboxes them as above.
+Each dispatcher case calls the class's operation with `Any` arguments: a method whose
+parameters are unannotated or `Any` takes them as they are (a template is instantiated for
+`Any` once), and one annotated with a concrete type unboxes them as above.
 
-`==` and ordering between objects of
-one class (or of a class and its subclass) run the class's `__eq__`, `__lt__` and so on through
-the existing `pys_obj_eq`/`pys_obj_cmp`, as typed code compares them: a subclass's `__eq__`
-or reflected ordering method first, also where the base class has none, and `x == x` runs
-`__eq__` too, while a container's search and a dict's lookup find an object as itself first.
-`!=` runs `__ne__` the same way where the class or a subclass defines it (`pys_dyn_ne`), and
-otherwise inverts `==` (`tests/programs/inference/dynany_subclass_eq.py`, `tests/programs/inference/dynany_subclass_cmp.py`,
-`tests/programs/inference/dynany_ne.py`).
+`==` and ordering between objects of one class (or of a class and its subclass) run the class's
+`__eq__`, `__lt__` and so on through the existing `pys_obj_eq`/`pys_obj_cmp`, as typed code
+compares them. A subclass's `__eq__` or reflected ordering method runs first, also where the
+base class has none. `x == x` runs `__eq__` too, while a container's search and a dict's lookup
+find an object as itself first. `!=` runs `__ne__` the same way where the class or a subclass
+defines it (`pys_dyn_ne`), and otherwise inverts `==`
+(`tests/programs/inference/dynany_subclass_eq.py`,
+`tests/programs/inference/dynany_subclass_cmp.py`, `tests/programs/inference/dynany_ne.py`).
+A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`.
 
-An object and a value of another type, an object of an
-unrelated class among them, compare as CPython's rich comparison runs them: the left operand's
-method, else the right operand's reflected one (a builtin type's own method declines an object),
-else identity for `==` and `!=` and `TypeError` for an ordering; `!=` without `__ne__` is not
-`__eq__`. The program's `@o.x.<class>` helper runs the class's method with the other value as an
-`Any` argument (`tests/programs/inference/dynany_eq_other.py`). A comparison method whose parameter is
-`Any` takes any operand, also between typed objects of its class
-(`tests/programs/inference/dynany_eq_any_param.py`).
+An object and a value of another type, an object of an unrelated class among them, compare as
+CPython's rich comparison runs them: the left operand's method, else the right operand's
+reflected one (a builtin type's own method declines an object), else identity for `==` and `!=`
+and `TypeError` for an ordering; `!=` without `__ne__` is not `__eq__`. The program's
+`@o.x.<class>` helper runs the class's method with the other value as an `Any` argument
+(`tests/programs/inference/dynany_eq_other.py`).
 
-One whose parameter has no annotation, or
-`object`, is compiled for an `Any` operand there; where its body does not compile for one (a typed
-list compared with an `Any` value's field), the compiler also tries the body against the
-concrete classes of boxed operands, behind exact `DynType` guards.
+A comparison method whose parameter is `Any` takes any operand, also between typed objects of
+its class (`tests/programs/inference/dynany_eq_any_param.py`). One whose parameter has no
+annotation, or `object`, is compiled for an `Any` operand there; where its body does not
+compile for one (a typed list compared with an `Any` value's field), the compiler also tries
+the body against the concrete classes of boxed operands, behind exact `DynType` guards.
 
-The adapter proves
-field uses and known helper/alias flows before specializing: the receiver and operand retain
-their actual layouts, including captured references and supported rebinding. The proof does
-not replace the emitted helper calls or getter bodies, so their effects and exceptions keep
-their execution order. A canonical body is checked once; unsupported
-shapes are filtered before trying each boxed class. Failed concrete attempts have separate
-retry keys and cannot remove a working typed call.
+This guarded adapter proves field uses and known helper/alias flows before specializing: the
+receiver and operand retain their actual layouts, including captured references and supported
+rebinding. The proof does not replace the emitted helper calls or getter bodies, so their
+effects and exceptions keep their execution order. A canonical body is checked once;
+unsupported shapes are filtered before trying each boxed class.
 
 ### Supported comparison bodies
 
 When an unannotated or `object` comparison parameter cannot compile dynamically,
-the guarded adapter supports the following proven cases. This is narrower than
-arbitrary Python method bodies:
+the guarded adapter supports only the following proven cases:
 
 | Comparison-body operation | Supported boundary and regression |
 | --- | --- |
@@ -701,6 +701,7 @@ inferred by this proof. New helper-result aliases within a protected `try` body 
 when handlers, cleanup and following statements do not read those aliases, and the protected
 body does not rebind an existing alias, receiver or operand. More general branch/exception
 alias merges remain outside this proof. Source containers retain storage and aliases.
+
 Mixed-list `+` in an opt-in module allocates a fresh `list[Any]` only when the two layouts
 cannot use the existing native concatenation path and every item can be boxed safely.
 Numeric item identity and mutable item aliases survive; typed nested containers and typed
@@ -737,23 +738,24 @@ Statically named writes can introduce fields absent even from the comparison's o
 the compiler records the actual RHS type, including computed results and successive values
 of different native layouts (`dynany_cmp_missing_write_computed.py`). Specialized generic
 peer classes reserve the same fields before their layouts are fixed, and constructor calls
-sharing one original layout share their reservation hints (`dynany_cmp_missing_write_template.py`).
+sharing one original layout share their reservation hints
+(`dynany_cmp_missing_write_template.py`). Peer classes imported from ordinary typed
+modules are eligible when a dynamic caller boxes them; their existing fields and methods
+keep their types (`dynany_cmp_missing_write_import.py`).
 
 An outside typed read of a wholly undeclared computed field can still be rejected before
 the comparison body discovers it; declare the field for typed consumers, or read a boxable
 value through `Any`. This is an explicit rejection, not a comparison fallback.
 
 `vars()` and `__dict__` keep their original order and value types while all reserved
-fields are unassigned. Peer classes imported from ordinary typed modules are eligible
-when a dynamic caller boxes them; their existing fields and methods keep their types
-(`dynany_cmp_missing_write_import.py`). After one of these fields is created, these dictionary consumers
+fields are unassigned. After one of these fields is created, these dictionary consumers
 raise an explicit `TypeError` until runtime insertion order is supported (#486), including
 deferred text conversion; `hasattr` and `dir` use the normal assignment flags. Iteration
 already in progress retains its dictionary-size mutation check. This boundary is recorded
 in `tests/deviations/dynany_cmp_field_reflection.py`.
-Custom `__getattr__`/`__getattribute__` methods remain explicit compile-time rejections,
-not new supported lookup paths. This matrix does not establish a complete comparison
-contract or implement the broader operation-table design in #803.
+
+Custom `__getattr__`/`__getattribute__` methods remain explicit compile-time rejections.
+The broader operation-table design in #803 remains future work.
 
 ### Comparison selection and failures
 
@@ -791,10 +793,6 @@ lookup and catches only `AttributeError`, including from a property getter. Comp
 bodies using it execute normally; a missing field is not a reason to skip the method
 (`tests/programs/inference/dynany_cmp_getattr_default.py`).
 
-A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
-methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
-rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
-
 ## Deviations
 
 ### Concrete storage and comparison boundaries
@@ -804,14 +802,12 @@ rejects: no method can return `NotImplemented`, so the first one that runs gives
   so that a typed variable never prints another value than CPython's. So does the storage that
   [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
 
-- The newly supported native `list[int]`/`Any` boundary checks dynamic writes against
-  native storage. CPython accepts a str, float or bool in the annotated list; this
-  prototype raises `TypeError`, preserving aliases and the existing storage. `extend`
-  and `+=` may already have appended a compatible prefix; rejected slice replacements
-  leave target slots unchanged. An annotation cannot reinterpret native slots or constrain
-  an existing unrestricted boxed list (`tests/deviations/dynany_native_int_list_store.py`).
-  This is the bounded checked-store policy for these newly accepted crossings; other
-  concrete mutable layouts remain unsupported.
+- The native `list[int]`/`Any` boundary checks dynamic writes against native storage.
+  CPython accepts a str, float or bool in the annotated list; this prototype raises
+  `TypeError`, preserving aliases and the existing storage. `extend` and `+=` may already
+  have appended a compatible prefix; rejected slice replacements leave target slots
+  unchanged. An annotation cannot reinterpret native slots or constrain an existing
+  unrestricted boxed list (`tests/deviations/dynany_native_int_list_store.py`).
 
 - A comparison operand rebound across control flow keeps either object's native field
   storage. An executed store of `list[int]` into the original operand's `list[str]`
@@ -823,15 +819,12 @@ rejects: no method can return `NotImplemented`, so the first one that runs gives
 
 - A cross-type comparison method whose body cannot compile for an `Any` operand and falls
   outside the supported guarded concrete adapter raises an explicit unsupported-comparison
-  `TypeError` when selected. CPython runs the method, whose body may give a result or raise another error
-  (the comparison acceptance matrix above defines the proven cases). Supported helper calls,
-  escapes and returned aliases, native operand rebinding, inferred getters, nested container
-  callbacks and finite literal missing-field writes are covered by that matrix. Unknown
-  helper/alias origins and unsupported native body or layout pairs still need further work,
-  and a proof past its size bound raises in the same way
-  (`tests/deviations/dynany_cmp_proof_bound.py`). Concrete operand annotations alone no
-  longer suppress normal cross-type instance comparison methods. Unsupported bodies remain
-  a compatibility limit tracked by #803; these cross-type calls cannot silently succeed
+  `TypeError` when selected. CPython runs the method, whose body may give a result or
+  raise another error (the comparison acceptance matrix above defines the proven cases).
+  Unknown helper/alias origins and unsupported native body or layout pairs still need
+  further work, and a proof past its size bound raises in the same way
+  (`tests/deviations/dynany_cmp_proof_bound.py`). Unsupported bodies remain a
+  compatibility limit tracked by #803; these cross-type calls cannot silently succeed
   (`tests/deviations/dynany_cmp_uncompiled_body.py`).
 
 - Same-hierarchy dynamic comparisons use typed helpers, so an incompatible concrete operand
@@ -1296,17 +1289,18 @@ for escaping storage. Identity comparisons use `dyn.raw` for opaque bits, which
 the verifier permits only in direct integer equality comparisons. See the
 [IR contracts](typed-ir.md) for the exact scope and remaining assumptions.
 
-The optional
-[Lean checker](../tools/lean_boundary/README.md) checks the guards of payload
-reads of every builtin, class, function and generator type, including int/bool
-sharing and class inheritance, in normalized functions exported from actual
+The optional [Lean checker](../tools/lean_boundary/README.md) checks the guards of
+payload reads of every builtin, class, function and generator type, including
+int/bool sharing and class inheritance, in normalized functions exported from actual
 typed IR; CI requires it to accept every such read of the dynamic-`Any` test
-programs. It rejects unsupported forms and does not establish adapter
-fidelity, the descriptor table, payload layouts, identity/GC preservation or
-LLVM correctness. It is separate from the built-in closed-union proof and does not
-justify removing `Any` or identity bookkeeping. These box reads are effect-free because boxes are
-immutable. Runtime calls with an `A` descriptor receive every effect, as `O` calls
-do: the box may contain an object whose equality, hashing or repr runs program code.
+programs. It rejects unsupported forms and does not establish adapter fidelity, the
+descriptor table, payload layouts, identity/GC preservation or LLVM correctness. It
+is separate from the built-in closed-union proof and does not justify removing `Any`
+or identity bookkeeping.
+
+Box reads are effect-free because boxes are immutable. Runtime calls with an `A`
+descriptor receive every effect, as `O` calls do: the box may contain an object
+whose equality, hashing or repr runs program code.
 
 ## Identity scope
 
@@ -1321,19 +1315,23 @@ no box slots, take no snapshots and allocate no boxes for their calls. Typically
 is the main program that does not opt in but imports `tomllib` or the json_repair port.
 
 Values cross from that code into tracking code only where they cannot carry a number's
-identity: it may pass strings, bools, `None`, `Any` values (which keep their boxes), and
-containers and `Callable` values of these, make `Any` values of these and of numeric
-literals, receive these and plain numbers, and read numbers from the variables and objects
-of tracking modules.
+identity. That code may:
 
-Any other crossing compiles the program again from the start with every module tracking identity, which
-gives the same IR as before this split: one of its numbers or objects made an `Any` value, a
-call of a tracking module's function, constructor or method that takes or gives back anything
-else, or a store into a tracking module's variable, class attribute or object.
+- pass strings, bools, `None`, `Any` values (which keep their boxes), and containers and
+  `Callable` values of these;
+- make `Any` values of these and of numeric literals;
+- receive these and plain numbers;
+- read numbers from the variables and objects of tracking modules.
 
-Without an identity-inert hint, a program whose main module opts in, or whose every
-module a module that opts in imports, is unaffected; one
-that falls back compiles its modules twice, the first time up to the crossing
+Any other crossing compiles the program again from the start with every module tracking
+identity: one of its numbers or objects made an `Any` value, a call of a tracking module's
+function, constructor or method that takes or gives back anything else, or a store into a
+tracking module's variable, class attribute or object. That compilation gives the same IR as
+before this split.
+
+Without an identity-inert hint, a program whose main module opts in, or whose every module
+is imported by a module that opts in, is unaffected; one that falls back compiles its
+modules twice, the first time up to the crossing
 (`tests/programs/inference/dynany_identity_scope.py`, `dynany_identity_scope_fields.py`,
 `dynany_identity_scope_numbers.py`, `tests/ir/dynany_identity_scope.py`,
 `tools/test_identity_scope.py`).
@@ -1358,26 +1356,31 @@ use the same checked boundaries.
 
 The first unsafe operation restarts compilation with hints disabled and the ordinary dependency
 policy above. If that policy also finds an unsafe crossing, its existing full-tracking restart
-still applies. No new runtime error or rejected program is introduced. The shipped `json`
-module uses this hint: the dynamic decoder calls scanner methods without borrowing its numeric
-cursor fields. Direct access to those fields remains accepted and restores tracking. The
-regressions in `tools/test_identity_scope.py` pin the parser layout, test independent synthetic
-modules and require unsafe cases to produce the same IR as compiling with hints disabled.
+still applies. No new runtime error or rejected program is introduced.
+
+The shipped `json` module uses this hint: the dynamic decoder calls scanner methods without
+borrowing its numeric cursor fields. Direct access to those fields remains accepted and
+restores tracking. The regressions in `tools/test_identity_scope.py` pin the parser layout,
+test independent synthetic modules and require unsafe cases to produce the same IR as compiling
+with hints disabled.
 
 ## Policy and programs that do not opt in
 
 The comment is per module: a program can mix modules that opt in with modules that do not, and
 values cross between them as above. Programs without an opt-in retain their existing
-behavior. The original prototype comparison against main `8990e417` recorded the same IR,
-messages and exit status for each of the 3,323 programs of `make irsame`'s 3,358-program corpus that did not opt in,
-after normalizing the reference compiler's own paths: the
-`build/ref/` library paths that some messages name, the installation prefix that `sys.prefix`
-holds, and the lengths of the strings that hold them. The 35 that opt in differ, as they should.
+behavior.
+
+The original prototype comparison against main `8990e417` recorded the same IR, messages and
+exit status for each of the 3,323 programs of `make irsame`'s 3,358-program corpus that did not
+opt in, after normalizing the reference compiler's own paths: the `build/ref/` library paths
+that some messages name, the installation prefix that `sys.prefix` holds, and the lengths of
+the strings that hold them. The 35 that opt in differ, as they should.
 
 ## What works
 
 The tests are `tests/programs/inference/dynany_*.py` (differential, JIT and AOT, also with a collection at every
 allocation), `tests/errors/inference/dynany_*.py` and `tests/deviations/dynany_*.py`.
+
 `tests/programs/inference/dynany_graph.py` is the acceptance workload: a deepcopy-style copy of a heterogeneous
 object graph. One memo, keyed by `id()`, holds lists, dicts, tuples, scalars and objects of six
 unrelated classes; the graph has repeated references (a shared list in three places), cycles

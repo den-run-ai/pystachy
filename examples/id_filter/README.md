@@ -21,7 +21,9 @@ build/id-filter-search
 languages, and subtracts blocked documents from each language's eligible mask
 once. Repeated tag counts use `intersection_count()` without building a result
 mask. Fetching matches materializes the intersection and visits its IDs in batch
-order. The sample's English Python results are `Native Python arrays`,
+order.
+
+The sample's English Python results are `Native Python arrays`,
 `Compiler internals` and `Python graph tools`; a blocked draft and a French
 record are excluded. Duplicate tags do not duplicate results. Unknown tags or
 languages return an empty result. Rebuild the index when documents or visibility
@@ -83,7 +85,7 @@ sparse sets, sorted ID lists or an independently evaluated compressed format.
 
 ## Correctness and measurement
 
-The existing differential corpus includes
+The differential corpus includes
 [`example_id_filter.py`](../../tests/programs/apps/example_id_filter.py) and its
 CPython-recorded output. It checks independent set and document-scan oracles,
 empty and full words, capacities around 63-bit boundaries, duplicates, signed
@@ -97,8 +99,8 @@ make test FILES=tests/programs/apps/example_id_filter.py
 ```
 
 The first two use the CPython-hosted compiler to execute native JIT and AOT
-programs; the last uses the self-hosted compiler. Tests join the existing app
-corpus and its CI groups. No timing threshold is a correctness gate.
+programs; the last uses the self-hosted compiler. The case runs in the app
+corpus's CI groups. No timing threshold is a correctness gate.
 
 ```sh
 python3 examples/id_filter/bench.py --compiler ./pystachy --samples 5 --repeats 200 \
@@ -118,10 +120,9 @@ update, and all three report the same answer.
 
 The worker measures container construction separately from repeated **update
 plus count** operations. Input generation, final sorting and witness printing
-are outside these timers. Report medians and raw samples; short/empty timings
-can be dominated by dispatch and timer noise. AOT compilation is measured
-separately when the harness builds the worker. `--executable PATH` reuses a
-prebuilt worker and records its digest instead. Shared-host timing is evidence
+are outside these timers. Report medians and raw samples. AOT compilation is
+measured separately when the harness builds the worker. `--executable PATH`
+reuses a prebuilt worker and records its digest instead. Shared-host timing is evidence
 for these cases, not a promise about other workloads or a general set replacement.
 
 ## Recorded experiment
@@ -182,7 +183,8 @@ The two set columns run the same construction in separate samples. Differences
 between them expose ordinary measurement noise. Input shuffling is excluded
 from these costs, and query counts alone do not include construction. Large
 native bitmap query samples ranged from about 1.985 to 2.270 microseconds;
-the raw report retains all samples rather than hiding shared-host variability.
+the raw report retains all samples.
+
 Use a fixed batch with repeated queries to amortize construction. For sparse
 IDs or frequently rebuilt data, keep a sparse representation and measure the
 whole application before adopting this layer.

@@ -19,8 +19,8 @@ python3 tools/pytest_native.py path/to/tests --mode aot --compare --json build/t
 Oracle comparison is enabled by default; `--compare` also selects it explicitly.
 It runs the **original** files in real CPython pytest, independently of
 the transformed programs. It compares collected test IDs/order and every
-setup/call/teardown outcome. It does not claim exact traceback, warning, failure
-message or captured-output parity. Both executions must have equivalent external
+setup/call/teardown outcome, but not exact tracebacks, warnings, failure
+messages or captured output. Both executions must have equivalent external
 inputs; tests which modify persistent external state need their own isolation.
 
 Use `--no-compare` only for repeated runs of previously qualified, unchanged inputs.
@@ -28,7 +28,7 @@ The CLI prints `UNVERIFIED` and records `"qualification": "unverified"` in JSON
 when the oracle is disabled. Static collection cannot identify pytest behavior
 hidden in imported objects, such as an imported autouse fixture. Default comparison
 turns these omissions into errors; disabling it removes that check. The direct
-execution timings below and in the benchmark are measured **after** oracle
+execution timings in the benchmark are measured **after** oracle
 qualification, without repeating comparison inside every timed execution.
 
 `--mode python` runs generated code under CPython and is useful for distinguishing
@@ -47,7 +47,7 @@ modules are imported too: an import failure cannot disappear from the result.
 Generated sources, executables and phase reports live in `--work-dir` (default
 `build/pytest-native`). The CLI locks that directory against concurrent runs;
 parallel independent suites need different work directories. Stable generated
-paths permit Pystachy's existing JIT program cache to reuse valid programs.
+paths permit Pystachy's JIT program cache to reuse valid programs.
 AOT mode builds once for the selected suite per invocation. JSON timing/output
 fields on the first module describe the whole suite, not that module alone.
 This hosted tool currently targets Linux and macOS.
@@ -113,7 +113,7 @@ PYTHONPATH=ports PYSTACHY_PATH=ports python3 tools/pytest_native.py \
 
 The target checks original pytest outcomes, negative controls, fixture lifecycle,
 shared module state, native JIT/AOT, GC stress and a mixed `Any` fixture. It runs
-inside the existing x86-64 `hosted` CI job on code PRs, main pushes and manual runs.
+inside the x86-64 `hosted` CI job on code PRs, main pushes and manual runs.
 The examples exercise current stdlib APIs and the
 iniconfig/jdcal/json_repair ports. The 35 cases include 16 JSON-repair cases for
 malformed/Unicode input, result objects, logs, fixture aliases and strict errors. These are
@@ -130,7 +130,7 @@ python3 tools/pytest_native_suites.py --suite byte_bpe --mode python
 make test-pytest-workloads
 ```
 
-The registry runs 19 example suites and the 25 delivered pyperformance workloads
+The registry runs 20 example suites and the 25 delivered pyperformance workloads
 as independent suites, each using the same source under original CPython pytest
 and generated native execution. Each suite keeps its sibling imports; shared
 fixtures across directories are not implied. Every registered case must execute

@@ -5,7 +5,6 @@ and recursive JSON values through the JIT/AOT pipeline. It supports data
 whose nesting and scalar alternatives are chosen by input text, without a
 CPython interpreter or a user-visible node wrapper.
 
-This establishes a generic representation for one useful closed set of types.
 `Any` remains inference-only in its supported positions, except in modules that opt in to
 [dynamic `Any`](dynamic-any.md). There is no runtime profiling, online compilation or automatic
 skew-based specialization.
@@ -75,17 +74,13 @@ an existing `list[int]` is not reinterpreted or implicitly copied into
 `list[JSONValue]`. Construct recursive storage explicitly or obtain it from
 `loads()`. Existing restrictions on narrowing mutable globals remain in force.
 
-Recursive values support the existing truth, representation and builtin-value
-equality paths, including numeric cross-type comparison. Comparisons retain
-separate descriptors for both operands. Shared container identity is recognized;
-distinct cyclic structures eventually raise `RecursionError`. `repr()` uses
-cycle markers. Runtime representation and comparison follow at most 512
-recursive alias edges before raising `RecursionError`; the edges are counted
-independently of the JSON codec's bound on nesting, and other reprs (a
-class's own `__repr__`, say) remain limited by the recursion limit and the native stack's floor. Ordering
-requires narrowing, and so does `==` on a union that holds a
-recursive alias beside members holding objects or sets. These are bounded
-builtin-value operations, not general user-defined dynamic dispatch.
+Recursive values support the existing truth, representation and builtin-value equality
+paths, including numeric cross-type comparison. Comparisons retain separate
+descriptors for both operands. Shared container identity is recognized; distinct
+cyclic structures eventually raise `RecursionError`. `repr()` uses cycle markers.
+Ordering requires narrowing, and so does `==` on a union that holds a recursive alias
+beside members holding objects or sets. These are bounded builtin-value operations,
+not general user-defined dynamic dispatch.
 
 Recursive aliases are nominal: two aliases with the same members are different
 types, so a program's own JSON alias does not exchange values with
@@ -93,6 +88,11 @@ types, so a program's own JSON alias does not exchange values with
 value (`list(d.items())` for `d: dict[str, JSONValue]`) can also spell its type
 differently from an annotation; both are rejected at compile time, not
 miscompiled.
+
+Runtime representation and comparison follow at most 512 recursive alias edges before
+raising `RecursionError`. The edges are counted independently of the JSON codec's
+bound on nesting, and other reprs (a class's own `__repr__`, say) remain limited by
+the recursion limit and the native stack's floor.
 
 Only a recursive alias's edge lets a value nest without bound, so only a
 descriptor that holds one can reach those depth guards. The runtime operations
@@ -115,16 +115,17 @@ them compare equal. See [numeric deviations](language/compatibility.md#numbers).
 | `JSONDecoder()` | Default `decode(s)` and `raw_decode(s, idx=0)`; the latter returns a value and character end offset, without skipping leading whitespace or rejecting trailing text |
 | `JSONDecodeError` | `ValueError` subclass with `msg`, `doc`, `pos`, `lineno`, `colno` and formatted error text |
 
-Strings support JSON escapes, Unicode code points, surrogate-pair decoding and
-lone surrogates, as CPython's JSON codec does. Error positions count characters.
-`JSONDecoder.decode()` calls a subclass's `raw_decode()` override after skipping leading
-JSON whitespace and preserves its effects, result and exceptions. Dispatch through
-a base-annotated decoder follows the compiler's common override-return contract;
-use the quoted annotation `"tuple[json.JSONValue, int]"` for that path. Concrete
-subclass calls can retain a narrower return annotation.
-`ensure_ascii=True` escapes non-ASCII text; `False` retains it in the returned
-string. Writing lone surrogates remains subject to the runtime's separate
+Strings support JSON escapes, Unicode code points, surrogate-pair decoding and lone
+surrogates, as CPython's JSON codec does. Error positions count characters.
+`ensure_ascii=True` escapes non-ASCII text; `False` retains it in the returned string.
+Writing lone surrogates remains subject to the runtime's separate
 [text encoding rules](language/compatibility.md#text-and-file-positions).
+
+`JSONDecoder.decode()` calls a subclass's `raw_decode()` override after skipping
+leading JSON whitespace and preserves its effects, result and exceptions. Dispatch
+through a base-annotated decoder follows the compiler's common override-return
+contract; use the quoted annotation `"tuple[json.JSONValue, int]"` for that path.
+Concrete subclass calls can retain a narrower return annotation.
 
 As with CPython's defaults, the decoder accepts `NaN`, `Infinity` and
 `-Infinity`; the encoder emits them unless `allow_nan=False`, which raises
@@ -156,6 +157,19 @@ Deliberate limits:
 
 ## In modules that opt in to dynamic `Any`
 
+In a module that opts in to [dynamic `Any`](dynamic-any.md), `json.loads()` decodes into `Any`'s
+containers wherever its result becomes `Any` storage: an `Any` variable, argument or return value,
+or a `list[Any]`, `dict[str, Any]` or `list[dict[str, Any]]`, which have `Any`'s layout there.
+`json.dumps()` encodes a value that holds `Any` values, and a display or comprehension passed to
+it, by walking `Any` values. Both are lib's `_pystachy_json_any.py`, which the compiler calls for
+`json`'s functions in such a module (#779). The document is then one set of objects that typed
+code (`dict[str, Any]`, `list[dict[str, Any]]`) and `Any` code share, with no copy: a change made
+through either shows through the other (`tests/programs/inference/dynany_json.py`,
+`tests/programs/inference/dynany_json_app.py`).
+
+Elsewhere, including where the result has a typed or no annotation (`doc = json.loads(s)`),
+`json`'s own functions and `JSONValue` storage stay as they are.
+
 The public `JSONDecoder` keeps recursive `JSONValue` storage and its ordinary class
 identity. A native-only `_raw_decode(s, idx=0)` adapter decodes into `Any` containers
 when called directly from an opt-in module. Ports can retain CPython execution with
@@ -175,16 +189,6 @@ except ImportError:
 
 This extension is for direct calls, like the `json.loads()` dynamic-storage route;
 passing the adapter as a callable value does not request dynamic result storage.
-
-In a module that opts in to [dynamic `Any`](dynamic-any.md), `json.loads()` decodes into `Any`'s
-containers wherever its result becomes `Any` storage: an `Any` variable, argument or return value,
-or a `list[Any]`, `dict[str, Any]` or `list[dict[str, Any]]`, which have `Any`'s layout there.
-`json.dumps()` encodes a value that holds `Any` values, and a display or comprehension passed to
-it, by walking `Any` values. Both are lib's `_pystachy_json_any.py`, which the compiler calls for
-`json`'s functions in such a module (#779). The document is then one set of objects that typed
-code (`dict[str, Any]`, `list[dict[str, Any]]`) and `Any` code share, with no copy: a change made
-through either shows through the other (`tests/programs/inference/dynany_json.py`,
-`tests/programs/inference/dynany_json_app.py`).
 
 The dynamic `loads()` and `_raw_decode()` paths preserve integer tokens beyond signed
 64-bit range as Python `int` values. The scanner retains its small-integer fast path and
@@ -207,8 +211,6 @@ dictionary storage. See the [typed/dynamic contract](dynamic-any.md#the-typeddyn
 Without `sort_keys`, callbacks that delete and reinsert keys or clear and repopulate the dict
 can change output order or entries compared with CPython's live dict-table traversal (the
 [dynamic `Any` deviation](dynamic-any.md#selecting-dynamic-storage)).
-Elsewhere, including where the result has a typed or no annotation (`doc = json.loads(s)`),
-`json`'s own functions and `JSONValue` storage stay as they are.
 
 ## Decoder
 
@@ -416,13 +418,15 @@ checks deep values, cycles and reuse after exception unwinding.
 [`tests/programs/library/json_scanner.py`](../tests/programs/library/json_scanner.py) covers the byte scanner's
 boundaries: positions after multibyte text, documents holding lone surrogates,
 repeated and colliding object keys, and integers around 18 digits.
-[`tools/json_check.py`](../tools/json_check.py) generates
-deterministic nested values and malformed text, compares encoder options and
-exact decoder diagnostics, then runs the same input corpus through native JIT/AOT.
-A second generator adds raw non-ASCII and lone-surrogate documents, malformed
-Unicode text and colliding object keys. Native runs receive each source as
-decimal code points, since a JSON-escaped pair of lone surrogates would arrive
-as the one character it encodes. `--seed`, `--cases`, `--invalid` and
-`--unicode-invalid` reproduce or resize its corpus. Compiler and
-runtime changes still require the full verification matrix before merge; these
-focused checks do not replace bootstrap, IR/effect contracts or broader GC tests.
+
+[`tools/json_check.py`](../tools/json_check.py) generates deterministic nested values
+and malformed text, compares encoder options and exact decoder diagnostics, then runs
+the same input corpus through native JIT/AOT. A second generator adds raw non-ASCII
+and lone-surrogate documents, malformed Unicode text and colliding object keys. Native
+runs receive each source as decimal code points, since a JSON-escaped pair of lone
+surrogates would arrive as the one character it encodes. `--seed`, `--cases`,
+`--invalid` and `--unicode-invalid` reproduce or resize its corpus.
+
+Compiler and runtime changes still require the full verification matrix before merge;
+these focused checks do not replace bootstrap, IR/effect contracts or broader GC
+tests.

@@ -99,7 +99,7 @@ an experimental C interface, not a stable ABI or a registered backend system.
 | Worker/task systems | Scheduling, bounded task queues, process ownership and failure handling independently of these data buffers. |
 
 Completion grants **local** buffer reuse after ack. It does not establish peer
-delivery, a global barrier or completion of another rank. This follows the useful
+delivery, a global barrier or completion of another rank. This follows the
 distinction in the [MPI nonblocking collective contract](https://www.mpi-forum.org/docs/mpi-5.0/mpi50-report/node147.htm).
 The local backend's immediate cancellation must not be assumed for future
 collective/transport adapters. A future wait timeout must leave requests and leases
@@ -109,8 +109,8 @@ Python's [buffer protocol](https://docs.python.org/3/c-api/buffer.html) can supp
 future retained exporter adapter. The existing synchronous `pyobj.Buffer` and
 DLPack examples are not accepted here: async export retention, mutation discipline,
 device synchronization, general strides and zero-copy Python imports are unimplemented.
-There is no network, GPU, MPI, persistent-collective, thread-safe or distributed
-failure handling claim. Linux x86-64 is the locally validated platform.
+Network, GPU, MPI, persistent-collective, thread-safe and distributed failure
+handling are outside this example. Linux x86-64 is the locally validated platform.
 
 ## Validation
 
@@ -128,6 +128,5 @@ C ownership probe runs under ASan/UBSan; `--leak-check` adds LeakSanitizer where
 supported. Each run hashes consumed inputs and fails if they change mid-run.
 `--report PATH` records the compiler hash, source hashes and executed modes.
 
-The existing Lint job runs the harness with the CPython-hosted compiler plus its
-unit tests. No CI jobs or dependencies are added. Full repository verification
-remains a separate merge gate.
+The Lint job runs the harness with the CPython-hosted compiler plus its unit
+tests. Full repository verification remains a separate merge gate.

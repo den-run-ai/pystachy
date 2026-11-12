@@ -31,14 +31,15 @@ control-flow model to low-word uses, tuple digit slots and representation
 crossings. Its storage model and trust boundary are separate from the dynamic
 payload-tag obligations described here.
 
-This optional developer tool checks the guards of `dyn.payload` operations in
-one selected function, or in every function, of a completed Pystachy typed-IR
-snapshot; `make check-lean-corpus` checks every such read of the dynamic-`Any`
-test programs. It does not change compilation, dynamic-`Any` opt-ins, library
-behavior or runtime checks.
-
 [INT.md](INT.md) describes the proofs of promoting ints' fit claims and
 `make check-lean-int`, which checks each such claim of the programs that opt in.
+
+The payload-guard checker described in the rest of this file is an optional
+developer tool. It checks the guards of `dyn.payload` operations in one selected
+function, or in every function, of a completed Pystachy typed-IR snapshot;
+`make check-lean-corpus` checks every such read of the dynamic-`Any` test
+programs. It does not change compilation, dynamic-`Any` opt-ins, library
+behavior or runtime checks.
 
 ## Provenance and license
 
@@ -70,8 +71,7 @@ or adapted third-party code must retain its actual license and provenance.
 ## Build and run
 
 Install the Lean toolchain named by `lean-toolchain` (Lean 4.35.0), with `lake`
-available on `PATH`. This project has no external Lean package dependencies.
-From the repository root:
+available on `PATH`. From the repository root:
 
 ```sh
 make check-lean-boundary PY=python3.13
@@ -104,6 +104,7 @@ survives rebinding, and a loop that rechecks its tag after each reassignment.
 `classes_and_ints.py` reads a class's payload after `isinstance` (its subclass
 passes the test too), an int's after `isinstance(x, int)` (a bool passes too), and
 each class's in the dispatcher that a method call on an `Any` value compiles to.
+
 The checker reports the selected symbol, payload and node counts, exact
 snapshot/candidate SHA-256 hashes, its scope, and its remaining trust
 assumptions. Selection is by exact function name or symbol; ambiguous
@@ -125,6 +126,7 @@ the program's search path as the compiler gives it (its directory, its
 `NAME.path` directories, then `lib/`), each regular package's `__init__.py` on
 the way, namespace packages (directories without one) included, and every import
 of a file, wherever it is, so the selection over-approximates.
+
 Each program is compiled by the hosted compiler under
 `tools/inspect_compiler.py --typed-after-only`, which records only the final
 snapshot, and the run fails unless Lean accepts every function that reads a
@@ -249,9 +251,8 @@ redirected loop backedge, a rebinding or a store between a test and its branch,
 the None exclusion of a class test, a subclass read after a base-class test, an
 int read whose test admits a float, swapped or misread class-dispatch cases, a
 renumbered class, and each edge form leading to an unguarded payload. `json`'s
-shipped dynamic key writer is accepted only with both of its guards. These are
-checks of the trusted Python bridge in addition to the kernel-checked model
-examples; they do not prove its fidelity.
+shipped dynamic key writer is accepted only with both of its guards. These tests
+check the trusted Python bridge, in addition to the kernel-checked model examples.
 
 Generator functions, stores into boxes or descriptors and unknown operations
 are explicitly refused. No selected function is silently skipped. The Python
@@ -266,8 +267,8 @@ On 2026-11-11, `make check-lean-corpus` checked the 480 programs it selects
 from this checkout: 1,153 functions read a dynamic payload, 2,579 times. Lean
 accepted every function, so every one of those reads is proved to be guarded.
 The same run proved all 7,500 of their [unchecked accesses](ACCESS.md), in about
-250 seconds with two workers. An earlier sweep found the two forms
-this needed: slice bounds of an `Any` value and `sum()` of `Any` values read int
+250 seconds with two workers. An earlier sweep found two forms that needed fixes
+first: slice bounds of an `Any` value and `sum()` of `Any` values read int
 payloads that no tag test guarded (their compiler guards are
 [#1227](https://github.com/den-run-ai/pystachy/pull/1227)), and two length-hint
 and iterator helpers kept the names of landing blocks that lowering dropped.
@@ -301,27 +302,28 @@ not proved by this version:
 - Termination or a performance improvement.
 
 The CLI runs compiled Lean code, so its result also trusts the Lean compiler,
-runtime and JSON/IO front end. The theorem's proof and axiom audit use the kernel;
-the model-to-implementation relationship remains a separate obligation. Hashes
-identify the checked artifacts and do not prove that relationship. Continue the
-ordinary CPython differential, JIT/AOT and GC validation when changing behavior.
+runtime and JSON/IO front end; the theorem's proof and axiom audit use the kernel.
+Hashes identify the checked artifacts; they do not prove that the implementation
+matches the model. Continue the ordinary CPython differential, JIT/AOT and GC
+validation when changing behavior.
 
 `make check-fast` runs the Python bridge tests and runs executable checks when a
 built checker is present. `make check-lean-boundary` builds and audits the proofs
-and requires every executable check. The existing Lint job runs that target for
-PR changes to the prototype, its tests, the compiler, the inspection exporter,
-build/workflow files or development tool pins; it also runs on every main push
-and manual dispatch. PR selection uses the cumulative merge diff and runs
-conservatively if its history is missing. Five workflow tests exercise the
-actual selector against temporary Git histories. `make check-lean-corpus` runs in
-the x86_64 verification group `opt-in` of every PR that changes code, and in
-`runtime-cache` on main and manual runs; a sixth test keeps both jobs on one
-Lean archive; that target first runs the corpus tool's own tests
-(`tools/test_lean_corpus.py`). Both jobs download the pinned, SHA-256-checked
-Linux Lean release; no PR job is added. Lean is not a compiler, runtime or
+and requires every executable check. The Lint job runs that target for PR
+changes to the prototype, its tests, the compiler, the inspection exporter,
+build/workflow files or development tool pins, and on every main push and manual
+dispatch. PR selection uses the cumulative merge diff and runs conservatively if
+its history is missing; five workflow tests exercise the actual selector against
+temporary Git histories.
+
+`make check-lean-corpus` first runs the corpus tool's own tests
+(`tools/test_lean_corpus.py`). It runs in the x86_64 verification group `opt-in`
+of every PR that changes code, and in `gc-jit-1` on main and manual runs; a
+sixth workflow test keeps both jobs on one Lean archive. Both jobs download the
+pinned, SHA-256-checked Linux Lean release. Lean is not a compiler, runtime or
 installation dependency.
 
-This is a verification building block for
+This checker is a verification building block for
 [#1210](https://github.com/den-run-ai/pystachy/issues/1210). The compiler already
 has a separate [closed-union proof](../../docs/typed-ir.md) from
 [#840](https://github.com/den-run-ai/pystachy/pull/840). With
@@ -329,7 +331,8 @@ has a separate [closed-union proof](../../docs/typed-ir.md) from
 payload read, including class, container and function reads, over its actual
 control-flow graph. That compiler analysis is not proved here; this optional
 checker is an independent check of the same obligation. Runtime layout, lifetime,
-identity, GC and LLVM obligations remain outside both checks. Neither satisfies
-#1210's acceptance requirement of reducing a consumer's dynamic footprint; the
-typed TOML namespace state in
+identity, GC and LLVM obligations remain outside both checks.
+
+Neither check satisfies #1210's acceptance requirement of reducing a consumer's
+dynamic footprint; the typed TOML namespace state in
 [#1211](https://github.com/den-run-ai/pystachy/pull/1211) is separate containment work.

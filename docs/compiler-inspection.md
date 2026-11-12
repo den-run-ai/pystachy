@@ -1,7 +1,7 @@
 # Inspecting a compilation
 
 `tools/inspect_compiler.py` is an experimental, CPython-hosted inspection tool for
-Pystachy's existing compiler. It records typed IR before and after the function
+Pystachy's compiler. It records typed IR before and after the function
 passes, pass changes, final LLVM IR and structured diagnostics in one directory.
 Use it to inspect an optimization or locate a rejected specialization without
 adding logging to the compiler.
@@ -43,10 +43,10 @@ compiler is resolving imports.
 | `program-passes/NNNN-name.diff` | Typed instruction changes across the union of selected before/after functions |
 | `compiler.stderr`, `compiler.stdout` | The ordinary compiler's captured text streams |
 
-The snapshots are serialized from the live IR in the same compilation. They do
-not come from separate compilations with different optimization settings.
-Failed compilations may stop before any typed IR or LLVM output is available;
-read `report.json` first.
+The snapshots are serialized from the live IR in the same compilation, not from
+separate compilations with different optimization settings. Failed compilations
+may stop before any typed IR or LLVM output is available; read `report.json`
+first.
 
 `--typed-after-only` records only `typed-after.json`, `llvm.ll` and the report:
 no `typed-before.json`, pass records or diffs, with `"captures": "typed-after"`
@@ -58,6 +58,7 @@ consumes a completed `typed-after.json` and checks one selected function, or eve
 function that reads a dynamic payload. Its theorem establishes guard safety in a small normalized model;
 the inspection export, normalization and native execution remain separate trust
 obligations. Unsupported instructions are reported rather than skipped.
+
 A `check` op's error block is not among its targets, so each function snapshot
 also maps the op's key (its descriptor, else its text) to that block's label in
 `check_targets`. `typed-after.json` also lists, in `dynamic_types`, every
@@ -93,12 +94,12 @@ lookup. `lookup_after_update` calls a helper that deletes the key between the
 test and the read; its checked lookup must remain. CPython prints `7` and `-1`.
 Compare the pass records and the retained `call`/`dict.getitem` operations.
 
-A pass record's `rule` explains the pass's general safety contract. A zero
-`reported_rewrites` count is not, by itself, an exact explanation of a missed
-optimization. The retained operations, effect summaries and source provide the
-evidence for this example's mutation barrier.
+A pass record's `rule` explains the pass's general safety contract; a zero
+`reported_rewrites` count alone does not explain a missed optimization. The
+retained operations, effect summaries and source show this example's mutation
+barrier.
 
-`report.json` also includes the compiler's four registered `pass_contracts`,
+`report.json` also includes the compiler's registered `pass_contracts`,
 with their required and preserved facts, local analyses, invalidations and
 checks to rerun after a rewrite.
 
@@ -164,12 +165,13 @@ artifact contains before/after `functions` maps keyed by LLVM symbol, explicit f
 order, and immutable full `selected_snapshots`. The record separates added, removed and
 changed symbols; changes include metadata as well as instructions. A snapshot hash
 detects same-count changes outside the function filter without retaining every
-unselected function's complete IR. Before the pass, every source function has only
-its entry-depth snapshot (`recursion.depth`); after it, a counted function's entry is
-`recursion.enter` and each return restores the caller's depth, and an uncounted one
-keeps the snapshot only when a handler restores it. A function of closed recursion
-(`recursion.closed` in the after map) keeps its entry without restorations: lowering
-passes its depth as an argument.
+unselected function's complete IR.
+
+Before the pass, every source function has only its entry-depth snapshot
+(`recursion.depth`); after it, a counted function's entry is `recursion.enter` and each
+return restores the caller's depth, and an uncounted one keeps the snapshot only when a
+handler restores it. A function of closed recursion (`recursion.closed` in the after
+map) keeps its entry without restorations: lowering passes its depth as an argument.
 
 Global totals remain separate from selected-function totals. Both count block
 operations and frame slots separately, and report the five typed runtime operations
@@ -178,9 +180,9 @@ operations and frame slots separately, and report the five typed runtime operati
 observed state, not an independently rerun proof or an LLVM instruction count.
 
 The raw integer the pass returns, `reported_transformations`, is the number of
-counted source functions. It is not an instruction count. A zero result does not
-identify a refusal reason; the observer does not rerun the call-graph analysis to
-invent explanations. LLVM helper attributes remain available in `llvm.ll`.
+counted source functions, not an instruction count. A zero result does not
+identify a refusal reason; the observer does not rerun the call-graph analysis
+to invent explanations. LLVM helper attributes remain available in `llvm.ll`.
 
 ### Dynamic boundaries and numeric identity
 
@@ -225,7 +227,7 @@ Diagnostic codes are deliberately coarse in this prototype:
 | `PYS9002` | Worker timeout |
 | `PYS9003` | Source changed during compilation; provenance is inconsistent |
 
-An ordinary rejection is not automatically a compiler defect. The existing text
+An ordinary rejection is not automatically a compiler defect. The text
 message and specialization notes remain the explanation; the code provides a
 stable category, not one unique identifier for every language restriction. The
 tool stops at the compiler's first terminal diagnostic and adds no error recovery.

@@ -36,11 +36,13 @@ was unchanged. This is a locally built standalone interpreter, not the official
 LLVM 23 `llubi` executable. The older LLVM 18 toolchain used by Pystachy stayed
 selected throughout generation and native checks.
 
-To reproduce, build that revision against a compatible LLVM development package,
-apply the recorded API changes if using the recorded LLVM 23 package, and select
-the interpreter explicitly. Its build flags and shared-library search path are
-recorded so they can be adapted to the local installation. Then use the pinned
-Python and LLVM 18 environment from [development setup](../../docs/install.md):
+To reproduce:
+
+1. Build that revision against a compatible LLVM development package, applying the
+   recorded API changes when using the recorded LLVM 23 package. Adapt the recorded
+   build flags and shared-library search path to the local installation.
+2. Use the pinned Python and LLVM 18 environment from
+   [development setup](../../docs/install.md), and select the interpreter explicitly:
 
 ```sh
 python3 tools/llvm_validation.py --out /tmp/pystachy-llvm-interpreted \
@@ -49,15 +51,15 @@ python3 -m unittest discover -s tools -p test_llvm_verification.py
 ```
 
 The output directory must be new. Put the interpreter on `PATH` to include the
-optional real-interpreter unit test; otherwise it skips explicitly. The recorded
-focused run passed all 16 tests, including that interpreter test. `make lint` and
-`make check-repository` also passed. Full compiler/runtime verification and an
-actual Alive2 invocation were not run for this tooling-only prototype.
+optional real-interpreter unit test; otherwise it skips explicitly.
 
-A separate optional aggregate discovery (`test_*verif*.py`) showed nine failure
-markers before interruption, without a final traceback summary. It is incomplete
-and is **not** claimed as a passing suite; the focused 16-test result above is the
-completed local evidence. Applicable CI remains a separate publication gate.
+The recorded focused run passed all 16 tests, including that interpreter test,
+and `make lint` and `make check-repository` also passed. Full compiler/runtime
+verification and an actual Alive2 invocation were not run for this tooling-only
+prototype. A separate optional aggregate discovery (`test_*verif*.py`) showed
+nine failure markers before interruption, without a final traceback summary; this
+incomplete run is **not** a passing suite. Applicable CI remains a separate
+publication gate.
 
 A passing interpreter run applies to these inputs and the UB classes implemented
 by this particular interpreter. It does not establish all-input equivalence or

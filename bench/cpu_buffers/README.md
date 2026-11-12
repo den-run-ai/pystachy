@@ -37,9 +37,7 @@ metadata is then `null`.
 
 The benchmark records compiler and extension SHA-256, LLVM version, build
 configuration, Python version, host CPU, source hashes, all timing samples,
-preparation time, logical copy bytes, and element-extraction counts. Cold/warm
-build measurements are for the whole extension containing all four paths. They
-are not an estimate of this feature's incremental binary or compilation cost.
+preparation time, logical copy bytes, and element-extraction counts.
 
 ## Workload and controls
 
@@ -58,22 +56,27 @@ samples. The small-input cases include the zero-length call floor.
 | `copy_each_call` | Copy the data array, acquire the copy, run the same dot kernel against retained weights, then close it. |
 | `boxed_elements` | Look up both arrays and extract two Python float objects per element through `pyobj`; accumulate in compiled code. Limited to 1,024 elements. |
 
-The copy control copies only changing data, keeping weights retained just like
-an application with fixed model weights. Its host copy helper counts `8 * n`
-payload bytes per call. The other paths account for zero payload copies. The
-boxing count describes `2 * n` element-extraction API operations; it is not a
-measurement of total allocations, GC time or bytes. Metadata, wrappers and return
-values still allocate. All bulk paths use the same scalar sequential binary64
-kernel with floating-point contraction disabled; this experiment isolates data
-access and ownership costs, not alternative numerical kernels.
+The copy control copies only changing data, keeping weights retained as an
+application with fixed model weights would. Its host copy helper counts `8 * n`
+payload bytes per call; the other paths account for zero payload copies. The
+boxing count describes `2 * n` element-extraction API operations, not total
+allocations, GC time or bytes; metadata, wrappers and return values still
+allocate.
+
+All bulk paths use the same scalar sequential binary64 kernel with floating-point
+contraction disabled, so this experiment isolates data access and ownership
+costs, not alternative numerical kernels.
 
 ## Results
 
 The committed [Linux x86-64 measurements](results/linux-x86_64.json) use base
 `f7103067545b43cdcd8ce20dc66b1571425b3a8d` and record exact source hashes. The
 source-identical, verified baseline native compiler is reused with this checkout's
-library and rebuilt C embedding glue. The benchmark environment is one shared
-container, so these are local prototype measurements, not release thresholds.
+library and rebuilt C embedding glue. The toolchain was Ubuntu clang version
+18.1.3 (1ubuntu1), CPython 3.13.16, on an AMD EPYC 9V74 80-Core Processor
+(CPU 0). The default driver used `-O2`, without extra C flags or disabled
+Pystachy optimizations. The benchmark environment is one shared container, so
+these are local prototype measurements, not release thresholds.
 
 | Elements | Retained | Open per call | Copy per call | Boxed elements |
 |---:|---:|---:|---:|---:|
@@ -96,16 +99,14 @@ copying at 1,048,576 elements (1.31×). Its original source hashes are preserved
 The refactor produced a **byte-identical extension**: both reports record SHA-256
 `9cd978ef6201afbf28e7677a96aa6ecda62068e0da956fe1df24271ba0891b67`.
 The final run above is the primary result; the spread between runs shows that
-absolute timings on this shared host are sensitive to host conditions. The
-observed copy/retained ratios were 1.31× and 1.44×, not a stable release guarantee.
+absolute timings on this shared host are sensitive to host conditions, and the
+1.31× and 1.44× copy/retained ratios are not a stable release guarantee.
 
-The full extension is 163,616 bytes. One empty-cache build took
-20.680 s and one build reusing the runtime/glue cache took 5.275 s;
+The full extension, containing all four paths, is 163,616 bytes. One empty-cache
+build took 20.680 s and one build reusing the runtime/glue cache took 5.275 s;
 these single build observations were pinned to the same CPU as the benchmark.
-The toolchain was Ubuntu clang version 18.1.3 (1ubuntu1), CPython 3.13.16, on an
-AMD EPYC 9V74 80-Core Processor (CPU 0). The default driver used `-O2`,
-without extra C flags or disabled Pystachy optimizations. See the JSON for samples
-and source/artifact identities.
+These whole-extension figures are not an estimate of this feature's incremental
+binary or compilation cost.
 
 ## Ownership and verification
 
@@ -151,8 +152,8 @@ Local validation with the pinned CPython 3.13.16 and LLVM 18.1.3 passed:
   retained lifetime and explicit release; five private API/constructor diagnostics.
 - The isolated malformed-export/arithmetic/allocation-failure probe, its deliberate
   missing-release negative control, and the probe under ASan plus UBSan.
-- Full FFI suite: **159 passed, 0 failed**; its JSON-repair comparison reported
-  **645/645 matches**. This full run preceded the final movement of an internal
+- Full FFI suite: 159 passed, 0 failed; its JSON-repair comparison reported
+  645/645 matches. This full run preceded the final movement of an internal
   metadata helper from a class method to a private module function; the focused
   JIT/AOT, extension, diagnostic and sanitizer checks above were rerun afterward.
 - `make lint check-recordings check-repository`: 2,142 recordings, 122 documented
@@ -167,7 +168,7 @@ draft; required CI and review remain prerequisites for any promotion.
 
 This prototype has no multidimensional imports, foreign/device-memory ownership,
 async completion, shared-memory IPC, exporter-side DLPack or Arrow support. The
-root export's span is tracked for pressure, capped at 1 GiB per handle; multiple
-views overcount shared storage. It is not physical memory accounting. Acquisition
-uses `PyBUF_FULL_RO` like `memoryview`; writable permission is checked from the
-returned export rather than requested through `PyBUF_WRITABLE`.
+root export's span is tracked for pressure, not as physical memory accounting,
+and is capped at 1 GiB per handle; multiple views overcount shared storage.
+Acquisition uses `PyBUF_FULL_RO` like `memoryview`; writable permission is
+checked from the returned export rather than requested through `PyBUF_WRITABLE`.

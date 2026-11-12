@@ -2,7 +2,7 @@
 
 The self-hosting compiler lives in `pystachy_compiler/`. The root
 [`pystachy.py`](../pystachy.py) is its compatibility entry point. These modules
-remain valid Python and compile together through Pystachy's existing loader.
+remain valid Python and compile together through Pystachy's own loader.
 
 ## Component map
 
@@ -37,8 +37,8 @@ produce ASTs; import qualification supplies module records. `Gen.program` gather
 declarations and runs flow analysis. Its AST walk resolves and types operations
 while building function IR. Verification, effect analysis and optimization feed
 LLVM lowering; the driver then selects JIT execution, AOT linking or extension
-output. Typing and emission still share this walk; splitting files does not add a
-separate type-checking pass.
+output. Typing and emission still share this walk; there is no separate type-checking
+pass.
 
 `Gen` owns shared compilation state and exposes forwarding methods. Their bodies
 live in the operation modules as generic `gen_*` functions taking an explicit

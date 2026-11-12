@@ -50,22 +50,24 @@ existing tuple unchanged unless an annotation requests a representation conversi
 including `()`, and a tuple display with a starred list makes one (`(*xs, 0)`). Supported
 operations are `len`, truth tests, integer indexing, slicing, iteration (also `enumerate`,
 `zip`, and `reversed`), unpacking, `list(t)`, representation and same-element-type equality
-and ordering. Bounds errors raise `IndexError` at runtime.
+and ordering. Bounds errors raise `IndexError` at runtime. Runtime-length tuples do not
+support repetition, membership, dictionary keys or set elements yet.
 Optional scalar elements use boxes when needed; widening an immutable tuple to
 optional elements copies its slots rather than reinterpreting numeric bits as pointers.
 
 Runtime-length tuples concatenate (`a + b`, `a += b`) with each other and with fixed tuples
 into a new tuple of one item type, or return the other operand itself where one is empty, as
 CPython does; items of a type and items that are `None`, or of that type or `None`, make a tuple
-of that type or `None` (`nums + (None,)`). They do not
-support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
-from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
-expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
-`bool`, `str` or optional versions of those types, the objects of iterator classes and
-generators. Direct `enumerate` and `zip` produce tuple-valued items, which runtime-length tuples cannot
-hold. Project a scalar first, for example `tuple(value for index, value in enumerate("ab"))`
-or `tuple(left + right for left, right in zip([1, 2], [3, 4]))`. This enables the existing `re.Match.groups()` implementation
-without rewriting its capture loop or knowing the pattern's capture count at compile time.
+of that type or `None` (`nums + (None,)`). Their annotation is distinct from the fixed shape
+used by `*args`.
+
+`tuple()` takes a list, string, tuple, generator expression or
+`range`/`map`/`filter`/`reversed` call whose items are `int`, `float`, `bool`, `str` or
+optional versions of those types, and the objects of iterator classes and generators. Direct
+`enumerate` and `zip` produce tuple-valued items, which runtime-length tuples cannot hold;
+project a scalar first, for example `tuple(value for index, value in enumerate("ab"))` or
+`tuple(left + right for left, right in zip([1, 2], [3, 4]))`. `re.Match.groups()` returns a
+runtime-length tuple, so the pattern's capture count need not be known at compile time.
 
 Dict keys are `int`, `str`, objects of the program's classes, or tuples containing `int`,
 `bool`, `str`, `str | None`, objects and nested tuples of these. An object whose class defines
@@ -79,13 +81,12 @@ keys or set elements. `hash()` gives CPython's results for ints, floats, `None`,
 which change from run to run, but are equal for equal strs and for the same object.
 
 `Optional[T]`, `None | T` and `Union[T, None]` are equivalent. Repeated members of
-`Union[...]` collapse: `Union[T, T, None]` is optional and `Union[T]` is `T`.
-Explicit closed scalar unions such as `int | str` are supported, including `None`.
-Bounded native reference unions are also supported. `typing.Any` can annotate supported
-function/method signatures, constructor parameters and initialized module/local variables,
-which use concrete [inference](#function-and-method-templates), as does a module-level name that
-`x: Any` declares without a value (it binds nothing); there is no dynamic `Any` value,
-but in a module that opts in to the [dynamic `Any` prototype](../dynamic-any.md).
+`Union[...]` collapse: `Union[T, T, None]` is optional and `Union[T]` is `T`. `typing.Any`
+can annotate supported function/method signatures, constructor parameters and initialized
+module/local variables, which use concrete [inference](#function-and-method-templates), as
+does a module-level name that `x: Any` declares without a value (it binds nothing); there is
+no dynamic `Any` value, except in a module that opts in to the
+[dynamic `Any` prototype](../dynamic-any.md).
 `None` alone can annotate a return, but cannot be a container's entire element type.
 
 `List`, `Dict`, `Set`, `FrozenSet`, `Tuple`, `Optional`, `Union`, `Callable`, `TextIO`
@@ -116,8 +117,9 @@ its `None` result type; an explicit `-> None` still rejects returning a value.
 Unannotated `__str__` and `__repr__` use their required `str` result type and `__bool__`
 uses `bool`; their bodies are checked against those contracts. An unannotated `__len__` or
 `__hash__` infers `int` or `bool`. Constructors keep their `None` result contract.
-There is no implicit `int` to `float`
-conversion in an assignment, argument or return: write `1.0`, or convert explicitly.
+
+There is no implicit `int` to `float` conversion in an assignment, argument or return:
+write `1.0`, or convert explicitly.
 Arithmetic and numeric list searches may mix integers and floats. Equality also compares
 closed builtin value trees with different layouts: numbers, strings, `None`, and lists, dicts
 or tuples of these, including optional and union members. Each operand keeps its own layout;
@@ -125,8 +127,8 @@ empty containers can compare equal despite different item types, while numeric l
 exactly. Membership supports matching list, dict and tuple shapes with different numeric item
 types, including nested containers. These operations do not widen stored types; ordering
 between containers with different numeric item types remains unsupported. Unboxed numeric
-items retain the existing [NaN identity limitation](compatibility.md#numbers). Fixed-to-variable
-length tuple conversions retain their existing item-type restrictions.
+items are still subject to the [NaN identity limitation](compatibility.md#numbers), and
+fixed-to-variable length tuple conversions keep their item-type restrictions.
 
 Parameter, return, class-body and module-level annotations follow CPython 3.13's evaluation
 timing. They are checked even in unused imported definitions. A name must be bound when its
@@ -137,15 +139,17 @@ Evaluated annotations may name classes, supported typing forms, builtin generics
 type variables and [type aliases](#type-aliases). Aliases of supported classes can name
 those classes. Generic class subscriptions such as `Box[int]` are supported
 when they use the standard `typing.Generic` hook. Calls, other operators, custom class
-subscripting, and expressions that could execute user code are rejected. CPython's idiom for a
-generic class, `__class_getitem__ = classmethod(types.GenericAlias)` in its body, defines
-nothing: the class's subscripts at run time, generic aliases in CPython, are rejected, and its
-subscripts in annotations, evaluated or not, name the class, as CPython does not check their
-arguments: types, or number, `None`, `True`, `False` and `...` constants (`C[int]`, `C[1]`,
-`C[int, ...]`). A string argument is a forward reference, as elsewhere in an annotation, and any
-other argument must still be an annotation. `re.Pattern[str]` and `re.Match[str]` are such
-annotations. `os.PathLike` and the supported `collections.abc` names are exceptions to the
-restriction on builtin module attributes.
+subscripting, and expressions that could execute user code are rejected. `os.PathLike` and
+the supported `collections.abc` names are exceptions to the restriction on builtin module
+attributes.
+
+CPython's idiom for a generic class, `__class_getitem__ = classmethod(types.GenericAlias)` in
+its body, defines nothing. The class's subscripts at run time, generic aliases in CPython, are
+rejected. Its subscripts in annotations, evaluated or not, name the class, as CPython does not
+check their arguments: types, or number, `None`, `True`, `False` and `...` constants
+(`C[int]`, `C[1]`, `C[int, ...]`). A string argument is a forward reference, as elsewhere in
+an annotation, and any other argument must still be an annotation. `re.Pattern[str]` and
+`re.Match[str]` are such annotations.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
 value's type; a class-body value must be a constant. `x: Final` alone binds nothing.
@@ -199,17 +203,15 @@ Members may be `None`, `bool`, `int`, `float`, `str`, `list[Self]` and
 recursive container member. `type Tree = int | list[Tree]` is also supported.
 Bare `list[Self]`, `None | list[Self]`, mutual recursion, generic recursive aliases
 and other recursive shapes remain unsupported. Qualified imports and ordinary
-aliases of an accepted alias retain the same named graph.
+aliases of an accepted alias denote the same type.
 
-Recursive container slots hold existing tagged union boxes. `isinstance()` narrows
-locals and parameters to the original list/dict pointer, preserving shared mutation;
+Recursive container slots hold the tagged union boxes that other unions use. `isinstance()`
+narrows locals and parameters to the original list/dict pointer, preserving shared mutation;
 existing mutable containers remain invariant. The type graph is finite and does
 not prescribe a fixed data depth. Runtime traversal has recursion guards, and the
 native JSON codec has its own depth/int64 limits. Unlike other aliases, a recursive
 alias is nominal: another alias with the same members is a different type. See the
 [JSON prototype](../json.md) for representation, operations and API scope.
-`Any` remains inference-only here (but in a module that opts in to
-[dynamic `Any`](../dynamic-any.md)); this adds no runtime compilation.
 
 ## Variables and empty containers
 
@@ -217,9 +219,8 @@ An unannotated local or parameter can change type at a simple assignment at the 
 level of a function body. The compiler gives the new binding its own native slot;
 the right-hand side still reads the previous binding. Expressions that need a
 target type retain the previous context: for example, `items = [1]` followed by
-`items = ["x"]` is still rejected. The new slot is created only after the RHS has
-a concrete type. This works in ordinary AOT
-and JIT compilation without a flag, runtime profiling, or a dynamic value box.
+`items = ["x"]` is still rejected. The new slot is created only after the right-hand side
+has a concrete type. This works in AOT and JIT compilation without a flag.
 
 ```python
 def parse_count(value):
@@ -234,16 +235,15 @@ An explicit local or parameter annotation remains a contract for every assignmen
 Stores inside branches and loops, augmented assignments, tuple/chained assignments,
 globals and object fields keep one type, which a value of another scalar type widens to
 their union ([inferred unions](#inferred-unions)). A simple
-assignment after a branch or loop can start a new binding when the existing
+assignment after a branch or loop can start a new binding when the
 unbound-variable analysis proves the name safe.
 
-This bounded pass leaves a function unchanged when it contains nested functions or
-lambdas, comprehensions, exception handlers, context managers, imports, `global`,
-`nonlocal`, assignment expressions, generators, async constructs, or pattern
-matching. Closures and variadic functions retain the existing rules. `None` and
-initially untyped empty bindings retain the existing inference machinery. A name
-that is deleted or may be read before assignment is not retyped. Python's scoping
-rules and the compiler's existing unbound-variable checks continue to apply.
+Locals are not retyped in closures, variadic functions, or functions that contain nested
+functions or lambdas, comprehensions, exception handlers, context managers, imports,
+`global`, `nonlocal`, assignment expressions, generators, async constructs, or pattern
+matching. `None` and initially untyped empty bindings keep the inference described below.
+A name that is deleted or may be read before assignment is not retyped. Python's scoping
+rules and the compiler's unbound-variable checks still apply.
 
 Empty `[]` and `{}` take their types from an annotated variable, parameter, field or return
 context. Otherwise their first useful operation determines the type: `append`, `insert`,
@@ -278,17 +278,19 @@ A local assigned only `None` reads as `None`.
 Module globals and fields work the same way. A global first assigned `None` becomes `T | None`
 at the first other value that module code or a function gives it, and a field that `__init__`
 sets to `None` (also through a parameter whose argument is `None`) at the first other value
-any code stores to it. A read that needs the type before that store is compiled looks for it:
-in the code being compiled and in the module-level code compiled so far; for a global, in an
-arm of a value that reads the global itself (`n = 1 if n is None else n + 1`); for a field, in
-the class's `self.x = v` assignments, typed as `__init__`'s are. Otherwise a function or method
-that assigns it, unless it is a template (a parameter without an annotation), is compiled
-first; `self.x = v` in a method of an unrelated class assigns that class's own field, not this
-one. A comparison with `None` by `is` needs no type. A global or field that no code gives
-another value reads as `None`. If a later compiled store reveals a global's type, inference
-revisits its earlier reads and copies, including across calls to template setters. This
-inference does not override an explicit annotation. Where none of this finds a type in time, annotate it:
-`last: str | None = None`, `self.next: Node | None = None`.
+any code stores to it. A global or field that no code gives another value reads as `None`.
+This inference does not override an explicit annotation.
+
+A read that needs the type before that store is compiled looks for it: in the code being
+compiled and in the module-level code compiled so far; for a global, in an arm of a value that
+reads the global itself (`n = 1 if n is None else n + 1`); for a field, in the class's
+`self.x = v` assignments, typed as `__init__`'s are. Otherwise a function or method that
+assigns it, unless it is a template (a parameter without an annotation), is compiled first;
+`self.x = v` in a method of an unrelated class assigns that class's own field, not this one.
+A comparison with `None` by `is` needs no type. If a later compiled store reveals a global's
+type, inference revisits its earlier reads and copies, including across calls to template
+setters. Where none of this finds a type in time, annotate it: `last: str | None = None`,
+`self.next: Node | None = None`.
 
 Class types already permit `None`: `C` and `C | None` use the same nullable type. Builtin
 exception annotations such as `Exception | None` are unsupported; objects of the program's
@@ -364,13 +366,12 @@ only when every incoming path agrees.
 Globals, fields and cells assigned by a `nonlocal` closure are not narrowed across
 calls. Copy their value to an ordinary local before testing it. The copy remains
 valid when the original storage is changed because the tagged box is immutable.
-Container types stay invariant: `list[int]` cannot become `list[int | str]`.
 
 Truth tests, `bool()`, `str()`, `repr()`, printing, plain f-strings and `==`/`!=`
 operate on scalar unions without narrowing. Lists, dictionaries and tuples containing
 scalar-union values support printing and equality; lists also support membership, `count`,
 `index` and `remove`. Search queries may name another scalar type: `True` and `1.0`
-find an integer `1`. Numeric equality uses the existing exact int/float comparison,
+find an integer `1`. Numeric equality uses exact int/float comparison,
 including integers above the exact range of a float. `None` equals only `None`.
 
 Lists of numeric unions (`int`, `float` and `bool` members) also order. Two such lists
@@ -381,10 +382,10 @@ first float, then floats with CPython's compensated sum, and later ints as float
 is an `int`, a `float`, or an `int | float` where both are possible. `math.fsum()` and
 `math.dist()` take each item's float. A union with `str` still needs narrowing for these.
 
-These operations select the existing native operation by the tag. A concrete value
+These operations select the native operation by the tag. A concrete value
 keeps its native representation until it enters a union; widening a union reuses
 its box. A concrete equality/search operand may allocate a temporary box. The boxes
-do not create Python numeric object identity: the existing [NaN identity
+do not create Python numeric object identity: the [NaN identity
 deviation](compatibility.md#deviations-from-cpython) also applies to union payloads.
 A local of a union of numbers keeps its tag and payload in two slots instead of a box
 where that makes no more boxes (the `unionslots` [IR pass](../typed-ir.md#optimizations)):
@@ -410,12 +411,8 @@ Ordering comparisons (`<`, `<=`, `>`, `>=`) of numeric unions, and calls of buil
 functions with a scalar-union argument (`abs()`, `round()`, `int()`, `float()`, `min()` and
 `max()` of values, `math` functions and others), use each member's native operation, chosen by
 the tag. Each operand and argument is evaluated once, in CPython's order. Narrow before other
-arithmetic, ordering and member methods; lists of numeric union items also order and sum, as
-described above. Recursive JSON-shaped types use the
-[bounded recursive alias form](#recursive-value-aliases-prototype). Arbitrary `Any`,
-runtime compilation and speculative type assumptions are out of scope.
-Boxing may allocate; this feature expands supported programs and makes no performance
-claim.
+arithmetic, ordering and member methods. Arbitrary `Any`, runtime compilation and speculative
+type assumptions are out of scope.
 
 ### Inferred unions
 
@@ -453,7 +450,7 @@ needs a return annotation.
 
 The compiler finds a join where a value does not fit the type a location has so far, and
 then compiles the program again with the union as that location's annotation, up to eight
-times. A program without joins compiles once, as before. A template's function or class
+times. A program without joins compiles once. A template's function or class
 specialization joins its own locations: `mean([1, 2])` keeps an `int` total, and only the
 specialization for a `list[float]` holds a union. Annotated variables, parameters, constants
 and locations of other types do not join: a value of a list type and a `str`, or objects of
@@ -490,8 +487,8 @@ print(count([1, "event"]))
 
 The tagged box holds the original container pointer. Narrowing returns that same
 list or dictionary, so identity, aliases and mutations are preserved. The collector
-traces the box and its container using existing allocation rules. Concrete values
-keep their ordinary native representation; boxing occurs at a union boundary.
+traces the box and its container. Concrete values keep their ordinary native
+representation; boxing occurs at a union boundary.
 
 A fresh list/dict display or list/dict comprehension uses the expected union's single
 matching container member, including empty displays. Existing mutable containers
@@ -504,14 +501,13 @@ These ordinary unions describe finite-depth JSON-shaped data. The
 [recursive alias prototype](#recursive-value-aliases-prototype) additionally supports
 `type Value = None | int | str | list[Value] | dict[str, Value]` with data depth
 chosen at runtime. General `Any` is a [prototype](../dynamic-any.md) that a module opts in to.
-Native class/file members
-retain the separate reference-union restrictions below.
+Native class/file members follow the separate reference-union restrictions below.
 
 Truth tests, `bool()`, `str()`, `repr()`, printing and f-strings support these mixed
 unions without narrowing, including nested containers and different list/dict
 member types. Each operation dispatches to the original native value; truth tests
-observe its current length, and formatting preserves the existing recursive
-container representation guards. `format()` accepts an empty specification for
+observe its current length, and formatting keeps the representation guards for
+recursive containers. `format()` accepts an empty specification for
 containers; a nonempty one raises the selected container's `TypeError`. A string
 member uses string formatting, and a numeric member uses numeric formatting.
 
@@ -533,9 +529,9 @@ Container members are not [inferred](#inferred-unions).
 
 ## Native reference unions
 
-Explicit unions can also hold up to four native class or `TextIO` types. This lets an
-ordinary AOT/JIT-compiled function accept either a file or `io.StringIO`, or objects
-from unrelated classes that implement the same method:
+Explicit unions can also hold up to four native class or `TextIO` types. This lets a
+function accept either a file or `io.StringIO`, or objects from unrelated classes that
+implement the same method:
 
 ```python
 from io import StringIO
@@ -562,18 +558,18 @@ whose type holds its objects: `Base | Child` and `datetime | date` are the base 
 a whole declared member is supported, while narrowing a base member to a subclass is not yet
 implemented.
 
-Reference unions cannot mix with scalar or container members or exception types.
-Callable fields, bound-method extraction and unpacked method arguments
-are unsupported. Use a typed local for an empty-container argument that needs an
-expected type. Field and property reads and stores dispatch on the member. A read of
+Reference unions cannot mix with scalar or container members or exception types, and no
+reference union is [inferred](#inferred-unions). Callable fields, bound-method extraction and
+unpacked method arguments are unsupported. Use a typed local for an empty-container argument
+that needs an expected type.
+
+Field and property reads and stores dispatch on the member. A read of
 an attribute a member lacks raises CPython's `AttributeError`; a store that would add
 an attribute to a member's object is rejected, since a native layout has no instance
 dictionary. `None`, frozen dataclasses and classes with only `__slots__` raise CPython's
 errors. `is` and `is not` compare the objects themselves, `None` included. Narrow a local
-to a member before equality comparison, truth testing or formatting. Containers remain
-invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
-native execution, without profiles, an interpreter, runtime compilation or speculative
-assumptions; boxing and dispatch have costs, so no performance improvement is claimed.
+to a member before equality comparison, truth testing or formatting. Boxing and dispatch
+have costs.
 
 ## Function and method templates
 
@@ -582,14 +578,6 @@ each argument type combination that calls it. Annotated parameters keep their de
 types; the first value-returning statement determines an inferred return type. An
 `Iterator[T]` or `Iterable[T]` annotation counts as none, an iterator's type being its class
 ([iterators](semantics.md#iterators)).
-An ordinary function or method with fully annotated parameters, including one with no
-arguments, uses the same inference when it has no return annotation and returns a value.
-Its recursive calls can retain the existing `None` signature; value-returning recursion
-before a result type is known requires an explicit return annotation.
-This also applies to `-> Any`: it requests inference, not a dynamic return value (but in a
-module that opts in to [dynamic `Any`](../dynamic-any.md)).
-For example, `return 1 if n <= 1 else n * fact(n - 1)` needs `-> int`, or a
-separate base-case `return 1` before the recursive return.
 Unsupported code becomes an error when that specialization needs it; syntax errors are
 checked regardless of use.
 
@@ -600,6 +588,13 @@ def double(value):
 print(double(7))
 print(double("hi"))
 ```
+
+An ordinary function or method with fully annotated parameters, including one with no
+arguments, uses the same inference when it has no return annotation and returns a value.
+Its recursive calls can retain the existing `None` signature; value-returning recursion
+before a result type is known requires an explicit return annotation. For example,
+`return 1 if n <= 1 else n * fact(n - 1)` needs `-> int`, or a separate base-case `return 1`
+before the recursive return.
 
 Type-dependent tests such as `isinstance(x, T)`, `hasattr(x, "name")`, tests against `None`,
 and comparisons of fixed tuple or `**kwargs` length with an integer constant can eliminate
@@ -623,15 +618,17 @@ its caller.
 Ordinary methods with unannotated parameters, `*args` or `**kwargs` also specialize, excluding
 `self` or `cls`. A parameter annotated `object` is such a parameter too, as in
 `def __eq__(self, other: object) -> bool`, which `isinstance()` narrows; a class template's
-`__init__` can take one too. Other non-template methods cannot. The supported binary operator, comparison, `__call__`,
-`__getitem__`, `__setitem__`, `__delitem__` and `__contains__` methods can be templates.
-`__iter__` and `__next__` also infer omitted return annotations; other special methods require
-concrete annotations. `__init__` is handled by class specialization below. A template method cannot change a field's
-established type, and comparison methods must return `bool`.
+`__init__` can take one too. Other non-template methods cannot. The supported binary
+operator, comparison, `__call__`, `__getitem__`, `__setitem__`, `__delitem__` and
+`__contains__` methods can be templates. `__iter__` and `__next__` also infer omitted return
+annotations; other special methods require concrete annotations. `__init__` is handled by
+class specialization below. A template method cannot change a field's established type, and
+comparison methods must return `bool`.
 
 Function annotations mentioning a module-level `TypeVar` or `TypeVarTuple` (also one
 from-imported from another module), or a PEP 695 function type parameter
-(`def identity[T](value: T) -> T`), make those parts of the signature inferred. Generic classes bind their type variables differently, as described below.
+(`def identity[T](value: T) -> T`), make those parts of the signature inferred. Generic
+classes bind their type variables differently, as described below.
 A PEP 695 function's `**P` and `*Ts` are such type parameters too, also in its nested defs:
 `def logged[**P, R](fn: Callable[P, R]) -> Callable[P, R]` may return a nested
 `def wrapper(*args: P.args, **kwargs: P.kwargs) -> R` that forwards them (also with
@@ -639,21 +636,25 @@ A PEP 695 function's `**P` and `*Ts` are such type parameters too, also in its n
 
 `typing.Any` in a parameter or return annotation, also inside another type such as `list[Any]`,
 `Mapping[str, Any]`, `Callable[..., Any]` or `Any | None`, makes that part of the signature
-inferred in the same way. This applies to functions, nested functions and methods that may be
-templates, also under `from __future__ import annotations`. A parameter takes its argument's
-type, and `*args: Any` or `**kwargs: Any` those of each call's arguments; a return is inferred
-as an unannotated one is. Values keep their concrete types and are not boxed: a `list[Any]`
-parameter given a `list[int]` cannot append a `str`, and a function annotated `-> Any` returns
-one type for each specialization. An initialized module or local variable whose annotation
-mentions `Any` is inferred as if unannotated: `x: Any = 5`, `xs: list[Any] = []` followed by
-`xs.append(1)`, and `b: Box[Any] = Box(1)` use the existing assignment inference. This erases
+inferred in the same way, except in a module that opts in to
+[dynamic `Any`](../dynamic-any.md). This applies to functions, nested functions and methods
+that may be templates, also under `from __future__ import annotations`. A parameter takes its
+argument's type, and `*args: Any` or `**kwargs: Any` those of each call's arguments; a return
+is inferred as an unannotated one is. Values keep their concrete types and are not boxed: a
+`list[Any]` parameter given a `list[int]` cannot append a `str`, and a function annotated
+`-> Any` returns one type for each specialization.
+
+An initialized module or local variable whose annotation mentions `Any` is inferred as if
+unannotated: `x: Any = 5`, `xs: list[Any] = []` followed by `xs.append(1)`, and
+`b: Box[Any] = Box(1)` use the ordinary assignment inference. This erases
 the whole annotation, including any concrete parts. The same straight-line local retyping
 and branch, loop and global type restrictions apply as for unannotated variables. A variable
-declared without an initializer still needs a concrete annotation. A class template's
-`__init__` parameters can also mention `Any`, with its fields inferred from the constructor's
-arguments as described below. Non-generator `__iter__` and `__next__` methods also infer
-returns annotated with `Any`, including `Iterator[Any]`; the iterator and its items still
-have concrete types. `Any` remains unsupported in field annotations, `__init__` returns,
+declared without an initializer still needs a concrete annotation.
+
+A class template's `__init__` parameters can also mention `Any`, with its fields inferred from
+the constructor's arguments as described below. Non-generator `__iter__` and `__next__` methods
+also infer returns annotated with `Any`, including `Iterator[Any]`; the iterator and its items
+still have concrete types. `Any` remains unsupported in field annotations, `__init__` returns,
 properties and special-method signatures outside these supported cases.
 
 For a generator function, `Any` in `Generator[Y, S, R]`'s yield type `Y` or return type `R`
@@ -701,17 +702,19 @@ arguments, then keyword arguments. Multiple positional groups expand in order; a
 
 An empty list, dict or set returned by a template can get its type from a later fill or return,
 or from its caller's annotation, argument type or other expected context. If none supplies a
-type, the fallback is `list[int]`, `dict[int, int]` or `set[int]`. A resulting type error identifies the
-guess; annotate the receiving value to provide the intended type.
+type, the fallback is `list[int]`, `dict[int, int]` or `set[int]`. A resulting type error
+identifies the guess; annotate the receiving value to provide the intended type.
 This also applies to direct `return []`, `return {}` and `return set()` results. Direct list
 and dict empties can share an open-result specialization across caller container types.
 Direct forwarding wrappers (`return empty(n)`) retain that result context, including through
 multiple wrappers. When a forwarded empty result joins `None`, its caller context or the
-same fallback supplies the optional container's layout. A recursive call may consume an
-empty result before later inference only when that inference preserves the consumed layout.
-A function in the cycle that returns such a call's result unchanged (`b` with `return a(n)`)
-keeps it open: a use of what `b` returns consumes `a`'s layout in the same way, and once `a`
-has its type, `b` returns that type.
+same fallback supplies the optional container's layout.
+
+A recursive call may consume an empty result before later inference only when that inference
+preserves the consumed layout. A function in the cycle that returns such a call's result
+unchanged (`b` with `return a(n)`) keeps it open: a use of what `b` returns consumes `a`'s
+layout in the same way, and once `a` has its type, `b` returns that type.
+
 A caller can also type fresh returned list, dict, set and tuple displays,
 including homogeneous or nested displays and calls inside their items:
 
@@ -727,29 +730,19 @@ Such contextual results specialize for both argument types and result context; s
 retain their original types. Fresh return branches can use the same explicitly named element
 union; returns of other scalar types [join](#inferred-unions). Stored mutable containers and
 declared function results are never widened. Context follows direct displays and calls;
-other operations retain their existing inference. A comparison's context is a hint: an
+other operations infer as usual. A comparison's context is a hint: an
 incompatible fresh display keeps its own element types, preserving exact integer comparisons.
 
 A template consisting of simple local assignments and a final return may assign a fresh
 display or call to a local and return it, with up to 32 single-assignment aliases. Each alias
 may only be read by the next alias or the final return. Mutations, escapes, captures,
-reassignments, annotated locals and control flow retain their existing inference rules;
-stored parameters, fields and globals are never widened.
-User method calls, bound method values and callable fields retain the same expected result context.
-A union context supplies a list or dict result's type when exactly one member has the same
-container kind; ambiguous contexts retain the fallback above.
-
-A mixed scalar list display has the [union](#inferred-unions) of its items' types, as the
-annotation `xs: list[int | float] = [1, 2.5]` gives it, also within tuple fields:
-`[("a", 1), ("b", 2.5)]` is a `list[tuple[str, int | float]]`.
-The values keep their types; integers are not converted to floats.
+reassignments, annotated locals and control flow follow the ordinary inference rules;
+stored parameters, fields and globals are never widened. User method calls, bound method
+values and callable fields get the same expected result context. A union context supplies a
+list or dict result's type when exactly one member has the same container kind; ambiguous
+contexts use the fallback above.
 
 ## Class templates and generic classes
-
-In modules opting in to [dynamic `Any`](../dynamic-any.md), a stored class can
-also serve as an [annotated factory](../dynamic-any.md#class-values-and-type-keyed-registries)
-without an earlier instance. This bounded path uses concrete field and initializer
-annotations; it does not infer a new class-template specialization from runtime arguments.
 
 A class specializes when its `__init__` has an unannotated parameter, a parameter annotated
 `object` or mentioning `Any` (also `list[Any]`, quoted or imported annotations), variadic parameters,
@@ -778,6 +771,11 @@ with the same signature share a specialization. This also works for
 `Callable[[A, B], Result]` where `Result` is a class template: the actual returned specialization
 determines the callable's result type.
 
+In modules opting in to [dynamic `Any`](../dynamic-any.md), a stored class can
+also serve as an [annotated factory](../dynamic-any.md#class-values-and-type-keyed-registries)
+without an earlier instance. This bounded path uses concrete field and initializer
+annotations; it does not infer a new class-template specialization from runtime arguments.
+
 ### Explicit generic classes
 
 `Generic[T]` and `Generic[*Ts, R]` support `TypeVar` and at most one unpacked `TypeVarTuple`.
@@ -796,7 +794,7 @@ print(Box(7).value)
 ```
 
 PEP 695 syntax declares the same class: `class Box[T]:` is `class Box(Generic[T]):` with
-type variables of its own, which hide a module-level name `T` (but where a method's `global T`
+type variables of its own, which hide a module-level name `T` (except where a method's `global T`
 names it), and `class Row[*Ts, R]:` is `Generic[*Ts, R]`. A bound, constraints or a default
 (`class Num[T: (int, float)]`) is not checked: the arguments' types bind the variable, as for
 a `TypeVar`. A PEP 695 function's type parameters hide a module-level or an enclosing
@@ -813,11 +811,12 @@ supported list, set, dict, string or homogeneous tuple, or of an object's iterat
 `Iterable[...]` members last; a named specialization types such a parameter as its first
 member. A direct `None` argument binds no type variable on its own. Repeated bindings must
 preserve the values' types: mixed `int` and `bool` constructor arguments can use the
-direct-scalar union fallback below, but do not implicitly join to `int`. Callable matching
-uses annotated positional parameters and returns, or an existing `Callable` signature. A
-lambda, a builtin such as `int` or `list`, or an unannotated function binds nothing; where
-the other arguments or the context bind its `Callable`'s type variables, it is passed as that
-`Callable`, also to a field that `__init__` assigns it to unannotated.
+direct-scalar union fallback below, but do not implicitly join to `int`.
+
+Callable matching uses annotated positional parameters and returns, or an existing `Callable`
+signature. A lambda, a builtin such as `int` or `list`, or an unannotated function binds
+nothing; where the other arguments or the context bind its `Callable`'s type variables, it is
+passed as that `Callable`, also to a field that `__init__` assigns it to unannotated.
 
 The resulting fields and methods use those bindings, including `tuple[*Ts]`,
 `Callable[[*Ts], R]` and `*args: *Ts`. This supports the function wrappers used by
@@ -835,10 +834,10 @@ Recursive member annotations such as `self.next: Node[T] | None` share the
 specialization used by `Node(value)` when their constructor layouts agree. This also
 covers mutually referring members and members of another generic class. Completed
 declarations prepare their class attributes before specialization. Early self-signatures
-and recursive class attributes keep their provisional behavior. Equal type arguments can still have
-different layouts: storing an `Iterable[T]` argument directly can retain a list or a
-tuple. Recursive constructor parameter signatures remain on the existing inference
-path and can still reject otherwise compatible annotations.
+and recursive class attributes keep their provisional behavior. Equal type arguments can
+still have different layouts: storing an `Iterable[T]` argument directly can retain a list
+or a tuple. Recursive constructor parameter signatures can still reject otherwise compatible
+annotations.
 
 Constructor arguments bind first; the named specialization or surrounding annotation fills
 variables the arguments leave unbound. Thus `q: Stack[int] = Stack()` and
@@ -857,18 +856,18 @@ When ordinary argument matching cannot bind the type variables consistently,
 fitting named union or optional parameter types resolve the conflict:
 `Pair[int | float](1, 2.5)`, `Pair[int | None](1, None)` and
 `p: Pair[int | float] = Pair(1, 2.5)` bind both parameters annotated `T` to
-their named type. Existing conversions preserve each value's representation,
+their named type. Conversions preserve each value's representation,
 including integer precision, and handle defaults and unpacked arguments too.
+
 An enclosing generic annotation requires its named storage even for homogeneous
 arguments: `p: Pair[int | float] = Pair(1, 2)` stores union-valued fields that can
 later accept a float. This also works for annotated parameters, returns and fields,
 including calls with explicit type arguments. A constructor subscription alone remains
 a hint: `Box[int | str]("x")` still stores a concrete `str`, and
 `Pair[int | float](1, 2)` still makes `Pair[int]`, whose field a later store of a float
-[joins](#inferred-unions) to `int | float`. Use `p: Pair[int | float] = Pair(1, 2)` for
-union fields from the start.
-Existing objects stay invariant, and container members must fit exactly: neither `Box[int]` nor `list[int]`
-can be reinterpreted with wider mutable contents.
+[joins](#inferred-unions) to `int | float`. Existing objects stay invariant, and container
+members must fit exactly: neither `Box[int]` nor `list[int]` can be reinterpreted with wider
+mutable contents.
 
 Without a named specialization or surrounding generic annotation, conflicting direct
 scalar `T` arguments can infer a closed union: `Pair(1, 2.5)` and `Pair(1, "x")`
@@ -876,9 +875,8 @@ retain both Python value types. This fallback supports `int`, `float`, `bool`, `
 and `None`, including existing scalar unions. Ordinary consistent inference still wins.
 Every constructor annotation that mentions a type variable must be a direct type
 variable; nested forms such as `list[T]`, variadic bindings, and non-scalar conflicts
-still need annotations. This does not add container covariance; displays and returns
-of mixed scalars [join](#inferred-unions). Nested generic parameter forms still require their
-arguments' container types to match; this does not infer wider mutable contents.
+still need annotations. Nested generic parameter forms still require their arguments'
+container types to match; displays and returns of mixed scalars [join](#inferred-unions).
 
 A method's `-> T` promises the same bound type as its fields. With
 `Pair(True, 2.5)`, that type is `bool | float`; a method adding its two `T` fields
@@ -886,9 +884,8 @@ can also produce `int` (from `bool + bool`), so `-> T` is rejected. Annotate thi
 numeric result as `-> int | float`, or use an enclosing
 `Pair[bool | int | float]` annotation when the fields and result need all three
 members. The compiler does not track correlations between individual union fields.
-The inferred union uses the existing tagged boxes; per-argument unboxed generic
-fields are separate work, and operations outside the supported union surface
-still require narrowing.
+The inferred union uses tagged boxes; per-argument unboxed generic fields are separate work,
+and operations outside the supported union surface still require narrowing.
 
 `Generic[...]` must be the class's only base, and a PEP 695 class has no base; its type
 parameters cannot be a `ParamSpec` (`**P`) or more than one `TypeVarTuple`. Use the bare
@@ -935,17 +932,20 @@ decorators, including `@final` and `@override`, are unsupported when the class i
 A property getter takes only `self` and needs a return annotation. Reading `obj.value`
 calls the getter each time; inherited getters, property overrides and `super().value`
 use the ordinary method dispatch. A callable-valued property can be called as `obj.value(args)`.
+`hasattr(obj, "value")` on a property runs the getter, and is false where it raises
+`AttributeError`, as in CPython.
 A setter, defined after the getter under the same name, takes `self` and the value;
 `obj.value = v` and `obj.value += v` call it, and `del obj.value` calls the deleter. Without
 one, they raise CPython's `AttributeError` (`property 'value' of 'C' object has no setter`).
 `self.value = v` in `__init__` calls the setter, and the fields it assigns (also through
 another property's setter, and typed per specialization in a generic class) are fields of the
-class. In a subclass, `@property def value` starts a new property without the base's setter
-and deleter, while `@Base.value.setter` keeps the base's getter and deleter; a base-typed
-receiver calls the methods of its object's class. `@value.getter`, `property(fget, fset)`,
-property objects read through the class, `super().value = v`, and replacing a property with a
-field or method are unsupported. `hasattr(obj, "value")` on a property runs the getter, and is
-false where it raises `AttributeError`, as in CPython.
+class.
+
+In a subclass, `@property def value` starts a new property without the base's setter and
+deleter, while `@Base.value.setter` keeps the base's getter and deleter; a base-typed receiver
+calls the methods of its object's class. `@value.getter`, `property(fget, fset)`, property
+objects read through the class, `super().value = v`, and replacing a property with a field or
+method are unsupported.
 
 ## Fields, dataclasses and NamedTuples
 
@@ -953,12 +953,13 @@ Fields come from class-body annotations or assignments to `self` in `__init__`. 
 can be inferred from parameters, literals, constructors, declared function or method results,
 function values, and supported container displays and operations. A field that `__init__`
 sets to `None` takes `T | None` from the first other value the program gives it, or holds
-only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
-template, a field can also use an ordinary generic function's inferred return type if its
-positional arguments and omitted defaults have known types. This uses normal function
-specialization and does not execute the helper or its defaults during inference. Keyword or
-unpacked arguments, local call targets, and helpers whose return is needed before class
-specialization still require an explicit field annotation.
+only `None` (see [optional values](#optional-values-and-narrowing)).
+
+When specializing a class template, a field can also use an ordinary generic function's
+inferred return type if its positional arguments and omitted defaults have known types. This
+uses normal function specialization and does not execute the helper or its defaults during
+inference. Keyword or unpacked arguments, local call targets, and helpers whose return is
+needed before class specialization still require an explicit field annotation.
 
 Construction requires `__init__` to return `None`. A different result raises a catchable
 `TypeError` after the initializer runs, including for inherited initializers, exception
@@ -986,13 +987,15 @@ of its fields. Its options are `init`, `repr`, `eq`, `order`, `unsafe_hash`, `fr
 `compare`, `hash` and `kw_only`; a factory is a function, a class or a lambda without
 parameters, called for each object that is not given the field (after the call's arguments,
 in field order, also for `init=False` fields). `_: KW_ONLY` makes the
-following fields keyword-only. `frozen=True` objects raise `dataclasses.FrozenInstanceError`
-(an `AttributeError`) when a field or property is assigned or deleted outside the `__init__`
-that `@dataclass` writes. `dataclasses.replace(obj, **changes)` makes a new object through
-`__init__`. `dataclasses.fields()`, `asdict()`, `astuple()` and `is_dataclass()` are made for
-each class (see [reflection](semantics.md#reflection)). A mutable default (an unhashable value: a list, dict or set, or an object whose
-class defines `__eq__` without `__hash__`, as a dataclass with `eq=True` does unless it is
-frozen or has `unsafe_hash=True`) is rejected with CPython's message.
+following fields keyword-only. A mutable default (an unhashable value: a list, dict or set, or
+an object whose class defines `__eq__` without `__hash__`, as a dataclass with `eq=True` does
+unless it is frozen or has `unsafe_hash=True`) is rejected with CPython's message.
+
+`frozen=True` objects raise `dataclasses.FrozenInstanceError` (an `AttributeError`) when a
+field or property is assigned or deleted outside the `__init__` that `@dataclass` writes.
+`dataclasses.replace(obj, **changes)` makes a new object through `__init__`.
+`dataclasses.fields()`, `asdict()`, `astuple()` and `is_dataclass()` are made for each class
+(see [reflection](semantics.md#reflection)).
 
 An annotated `NamedTuple` class supports defaults, methods, unpacking, constant indexing,
 iteration, length, comparisons with tuples, `hash()` (its fields' tuple's), `_make()` (of an
@@ -1020,22 +1023,23 @@ for dataclass options and further restrictions.
 
 Literal `__slots__` strings, tuples and lists restrict instance field writes when every
 base also declares slots. A subclass without slots, or with an unslotted base, may add
-fields. Dynamic slots, private slot names, `__dict__` and `__weakref__` slots are
-unsupported. The `__slots__` class attribute remains readable through the class or an
-instance; changing its value does not change the declared slots. Instance rebinding
-of `__slots__` is unsupported, as are base-typed reads when subclasses use different
-metadata types, or when an exception subclass overrides the metadata (read through
-the concrete class instead). Slot violations are compile errors rather than catchable
-exceptions. Repeated slot declarations and class variables or methods shadowing inherited
-slots are also unsupported, as are new slots shadowing inherited methods, properties or
-class variables.
+fields. The `__slots__` class attribute remains readable through the class or an
+instance; changing its value does not change the declared slots. Slot violations are
+compile errors rather than catchable exceptions.
+
+Dynamic slots, private slot names, `__dict__` and `__weakref__` slots are unsupported, as
+are instance rebinding of `__slots__`, repeated slot declarations, class variables or methods
+shadowing inherited slots, and new slots shadowing inherited methods, properties or class
+variables. Base-typed reads of `__slots__` are unsupported when subclasses use different
+metadata types, or when an exception subclass overrides the metadata (read through the
+concrete class instead).
 
 ## Single inheritance
 
 An ordinary class may derive from one previously declared ordinary class, including an
 imported class. Annotate its `__init__` parameters; constructor-inferred class templates and
 `Generic` classes cannot participate in a hierarchy. Fields retain their declared or inferred
-types, and the existing field-inference rules still apply.
+types, and the field-inference rules still apply.
 
 Subclasses inherit fields, class attributes, methods and `__init__` when they do not define
 their own. Instance methods can override inherited methods. Calls through a base annotation
@@ -1049,15 +1053,16 @@ across base and derived views of the same receiver.
 `super().method(...)` starts at the base of the class defining the method, even when a further
 subclass inherits that method. `super(C, self)` may name that class or one of its ancestors;
 `Base.method(obj, ...)` explicitly selects the named base's implementation. These forms keep
-the concrete receiver for further method calls. Runtime `isinstance(obj, Derived)` checks the
-hierarchy and narrows a base-typed local or parameter on the matching path, exposing derived
-fields and methods. This also works after `assert isinstance(obj, Derived)` and a guard such
-as `if not isinstance(obj, Derived): return`. The reference and its native representation stay
-unchanged; calls still select the actual subclass's override. Reassignment and control-flow
-joins discard refinements that no longer hold. Globals, fields and locals assigned by a
-`nonlocal` closure are not refined; copy a reference to a stable local and test that local.
-Only a single named derived class refines a base type; tuple/union tests and exception-class
-narrowing retain their existing restrictions.
+the concrete receiver for further method calls.
+
+Runtime `isinstance(obj, Derived)` checks the hierarchy and narrows a base-typed local or
+parameter on the matching path, exposing derived fields and methods. This also works after
+`assert isinstance(obj, Derived)` and a guard such as `if not isinstance(obj, Derived): return`.
+The reference and its native representation stay unchanged; calls still select the actual
+subclass's override. Reassignment and control-flow joins discard refinements that no longer
+hold. Globals, fields and locals assigned by a `nonlocal` closure are not refined; copy a
+reference to a stable local and test that local. Only a single named derived class refines a
+base type; tuple/union tests and exception-class narrowing retain their own restrictions.
 
 A class that derives from `abc.ABC`, or whose statement passes `metaclass=abc.ABCMeta`, has
 abstract methods: those decorated with `@abstractmethod` (also under `@property`,
