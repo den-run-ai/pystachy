@@ -138,11 +138,23 @@ This hosted tool currently targets Linux and macOS.
   Declarations inside a class are evaluated before its body: they cannot use the
   class's own attributes, and a `skipif` expression there is limited to names,
   attributes, literals and comparisons.
-- One base class per test class, defined in the module or imported from a module
-  beside the tests. The class runs the tests and fixtures it inherits, a base's
-  tests first, as pytest orders them; marks of a base class apply too. A base that
-  is not named `Test*` is not collected itself. An imported base's test methods must
-  be undecorated.
+- One base class per test class, defined in the module or imported: from a module
+  beside the tests, or from the source tree where `--root` or a configured
+  `pythonpath` directory makes it importable (`from package.testing import Base`).
+  It may be named `Base` or `module.Base`. The class runs the tests and fixtures it
+  inherits, a base's tests first, as pytest orders them; marks of a base class apply
+  too. A base that is not named `Test*` is not collected itself. An imported base's
+  test methods must be undecorated. `Generic[T]`, `abc.ABC` and `object` beside the
+  base only type the class.
+- pytest collects no `Test*` class that has a constructor, and neither does the
+  runner where the constructor is inherited, a `Protocol`'s included. A `Test*`
+  class that defines `__init__` itself is rejected.
+- An imported class named `Test*` that has no constructor is collected in the
+  importing module, under the name bound there, as an imported `unittest.TestCase`
+  is under any name. An imported module, a class with a constructor and a function
+  named `Test*` are not tests. An imported name that begins `test` or `Test` and
+  that the collector cannot read, such as a test function or a class of an
+  installed package, is rejected.
 - `setup_method` and `teardown_method`, with or without their `method` argument
   (which may only be passed to `super()`). They run where pytest runs them: after
   wider fixtures and the module's and `conftest.py`'s autouse fixtures, before the
@@ -211,13 +223,31 @@ This hosted tool currently targets Linux and macOS.
   never read it. Other uses of `request`, parametrized wider scopes (pytest reorders
   tests around them) and `indirect=` are rejected.
 - Built-in `tmp_path` (a new empty `pathlib.Path` directory per test, named as
-  pytest names it and removed after the run), `monkeypatch` with `setenv`, `delenv`
-  and `undo`, and `recwarn` (the warnings raised since its setup: `len()`, indexing,
-  iteration, `.list`, `.pop(Class)` and `.clear()`). Other `monkeypatch` methods
-  patch objects at run time, which compiled calls do not observe, and are rejected.
-  `capsys` and `capfd` are unsupported: a compiled program cannot replace
-  `sys.stdout`, and the runtime has no `os.dup2` to redirect its descriptor.
-  `caplog` and the remaining built-in fixtures are unsupported too.
+  pytest names it and removed after the run), `tmp_path_factory` (`mktemp()`,
+  numbered as pytest numbers it, and `getbasetemp()`), and `tmpdir` with the part
+  of `py.path.local` that tests of temporary files use: `join`, `mkdir`, `ensure`,
+  `write`, `read`, `check`, `exists`, `isdir`, `isfile`, `listdir`, `remove`,
+  `basename`, `dirname`, `strpath`, `/` and `str()`.
+- `recwarn`: the warnings raised since its setup, with `len()`, indexing,
+  iteration, `.list`, `.pop(Class)` and `.clear()`.
+- `caplog`: `records`, `record_tuples`, `messages`, `text`, `clear()`,
+  `set_level()` and `at_level()`, through one handler on the root logger. It
+  records from the fixture's setup to its teardown, where pytest starts a new list
+  for each phase of a test.
+- `capsys` and `capfd`: `readouterr()`, as a pair or by `.out` and `.err`, and
+  `disabled()`. Both redirect descriptors 1 and 2 to files, as pytest's `capfd`
+  does: a compiled `print()` writes to descriptor 1 whatever `sys.stdout` names.
+  They need a compiler that has `os.dup`, `os.dup2` and `os.close`; on an older
+  one a test that requests them fails to compile.
+- `monkeypatch`: `setenv`, `delenv`, `undo`, `context()`, and `setattr(target,
+  "name", value)`, `setitem(mapping, key, value)`, `delitem(mapping, key)` and
+  `chdir(path)` as statements of their own. The last four are written out where the
+  test calls them, typed by their arguments. They patch data: a field of an
+  object, a variable of a module, an item of a dict. A compiled call reaches the
+  function it names, so replacing a function or a method is a compile error, as is
+  an attribute the object does not have. `setattr` with a dotted name or
+  `raising=False`, `delattr` and `syspath_prepend` are rejected.
+  `chdir` needs a compiler that has `os.chdir`.
 - `pytest.raises(ExceptionClass, match="regex")` and a literal tuple
   `pytest.raises((A, B))` as a context manager, with `.value`, `.type`,
   `.typename` and `.match(regex)`. The callable form
@@ -284,6 +314,10 @@ This hosted tool currently targets Linux and macOS.
   verified as usual. With `--no-compare` nothing would answer for them, and such a
   `conftest.py` is rejected. Other hooks (`pytest_generate_tests`,
   `pytest_runtest_*`, `pytest_collect_file` and the rest) are always rejected.
+- In a `conftest.py`, under the same comparison: a fixture that takes
+  `doctest_namespace`, which serves doctests the program does not run, and a
+  `sys.path.insert(0, ".")` or `sys.path.append()` statement of literals, because
+  the program's imports are resolved when it is built.
 - `if TYPE_CHECKING:` imports of pytest's names, `from pytest import MonkeyPatch`
   and `from _pytest.fixtures import SubRequest` and the like, where the names only
   annotate parameters and returns: the runner removes those annotations, and a
@@ -299,11 +333,20 @@ class- and module-level xunit hooks, `conftest.py` hooks other than those above,
 tests in `conftest.py`, a class fixture named as a module one, pytest
 configuration it cannot honor, custom decorators (including `unittest.mock.patch` and hypothesis),
 plugins, dynamic test creation and unsupported pytest APIs such as
-`pytest.importorskip`, `capsys` and `monkeypatch.setattr`. It also rejects
+`pytest.importorskip`, `pytester` and `request.node`. It also rejects
 namespace inspection/mutation and assignment to module metadata. A name the
 collector read a table, an ID or a mark from must be bound once and not changed by
 module-level statements; a change it cannot see is caught by the table-length check
 or reported by the pytest comparison as a differing ID.
+
+Some of these are limits of a compiled program, not work left to do:
+
+- `unittest.mock` and patches that replace functions. A mock answers any attribute
+  and any call, and a patch redirects calls that the compiler has already bound.
+- hypothesis, and other decorators that build a test's arguments while it runs.
+- Plugins, `pytest_generate_tests` and the `pytest_runtest_*` hooks: they receive
+  pytest's own objects, which the program does not have.
+- Namespace inspection: `globals()`, `vars(module)` and `getattr()` by a computed name.
 
 ### Modules beside the tests
 
@@ -315,6 +358,10 @@ module's are, pytest decorators are removed, and `__file__` is its original path
 so data files beside it are found. Its fixtures and tests are not collected.
 Other modules are used as written. The compiler reports adapted modules by their
 generated lines.
+
+A module of the source tree that a test class takes its base class from is treated
+the same way, with the rest of its package: the program imports the copies, where
+`import unittest` names the runner's replacement.
 
 Tests still obey Pystachy's [language compatibility](language/compatibility.md)
 and [dynamic boundary contract](dynamic-any.md). There are no blanket `Any`
