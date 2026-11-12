@@ -79,7 +79,10 @@ def gen_index_of(self, v: Val, none: str) -> Val:
     # operator.index() of an object, where CPython asks a subscript, a slice bound, a
     # repetition count or an argument of range(), hex(), oct(), bin() and %x for an integer:
     # its class's __index__(), which must return an int. Every operand is evaluated before it
-    # is called, and None raises none ("Kind: text"). Numbers pass unchanged.
+    # is called, and None raises none ("Kind: text"). Numbers pass unchanged. An Any value is
+    # asked as the program runs (dyn_index)
+    if v.t == "dyn":
+        return self.dyn_index(v, none)
     if v.t not in self.classes or "__index__" not in self.classes[v.t].methods:
         return v
     self.notnone(v, none)

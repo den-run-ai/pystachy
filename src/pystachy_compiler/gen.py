@@ -117,6 +117,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_bind as dynamic_dyn_bind,
     gen_dyn_body as dynamic_dyn_body,
     gen_dyn_bound as dynamic_dyn_bound,
+    gen_dyn_index as dynamic_dyn_index,
     gen_dyn_box as dynamic_dyn_box,
     gen_dyn_id_box as dynamic_dyn_id_box,
     gen_dyn_boxable as dynamic_dyn_boxable,
@@ -2259,6 +2260,9 @@ class Gen:
 
     def dyn_bound(self, v: Val, bound: bool) -> str:
         return dynamic_dyn_bound(self, v, bound)
+
+    def dyn_index(self, v: Val, none: str) -> Val:
+        return dynamic_dyn_index(self, v, none)
 
     def dyn_slice(self, o: Val, bs: list[Node]) -> Val:
         return dynamic_dyn_slice(self, o, bs)

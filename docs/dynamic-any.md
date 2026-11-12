@@ -566,7 +566,10 @@ before use, and exceptions propagate without trying the fallback.
 Builtin list, tuple and
 str indexing and slice bounds call a boxed index object's `__index__`; list assignment and
 deletion do too. Dictionary keys and user-defined `__getitem__` arguments retain the original
-object. Slicing accepts dynamic bounds: after evaluating every bound and validating
+object. A typed list, str, tuple or bytes takes an `Any` index by the same protocol, and so
+does `range()`: an `int`, a `bool` or an object's `__index__()`, with CPython's `TypeError`
+for any other value (`tests/programs/inference/dynany_index_typed_sequences.py`). No
+annotation is checked there, unlike at a typed parameter. Slicing accepts dynamic bounds: after evaluating every bound and validating
 the receiver, it converts step, start and stop in that order. A dict hashes a slice
 key before raising its `KeyError`. Slice conversion preserves these rules
 (`tests/programs/inference/dynany_numeric_protocols.py`,

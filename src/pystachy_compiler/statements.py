@@ -1320,7 +1320,7 @@ def gen_augassign(self, n: Node) -> None:
         if is_list(unopt(o.t)):
             et = elem(unopt(o.t))
             ix = self.expr(t.kids[1], "int")
-            indexed = ix.t in self.classes and "__index__" in self.classes[ix.t].methods
+            indexed = ix.t == "dyn" or (ix.t in self.classes and "__index__" in self.classes[ix.t].methods)
             noindex = "TypeError: list indices must be integers or slices, not NoneType"
             if indexed:
                 o = self.unwrap(o, sub)
@@ -1782,10 +1782,12 @@ def gen_ival(self, n: Node, none: str = "", index: bool = True, recv: Val | None
     v = self.expr(n, "int")
     if is_sopt(v.t) and none != "":
         v = self.unwrap(v, none)
-    if index and v.t in self.classes and "__index__" in self.classes[v.t].methods:
+    if index and (v.t == "dyn" or (v.t in self.classes and "__index__" in self.classes[v.t].methods)):
         if recv is not None and is_opt(recv.t):
             self.guard(self.ptr_cmp("==", recv, Val("null", "None")).v, recvnone)
-        v = self.index_of(v, none if none != "" else "TypeError: 'NoneType' object cannot be interpreted as an integer")
+        # (an Any value that is no index raises the sequence's TypeError, which names its type)
+        listed = v.t == "dyn" and recv is not None and is_list(unopt(recv.t))
+        v = self.index_of(v, none if none != "" else "TypeError: list indices must be integers or slices, not NoneType" if listed else "TypeError: 'NoneType' object cannot be interpreted as an integer")
     return self.coerce(self.as_int(v), "int")
 
 def gen_range_args(self, args: list[Node]) -> list[str]:
