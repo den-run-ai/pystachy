@@ -220,7 +220,8 @@ the sentinel itself where a call leaves it out or passes it. Each call is compil
 is, which decides `items is _MISSING`: only the branch that runs is compiled, in
 `x if items is _MISSING else items` and in `if items is _MISSING: items = ...`. Another `object()`
 as the argument is an error, and a `T` that can hold an `object()` (such as `object`) keeps the
-test for run time ([test](../../tests/programs/classes/object_sentinel_params.py)).
+test for run time ([test](../../tests/programs/classes/object_sentinel_params.py)), as does a
+parameter that a nested function assigns (`nonlocal items`).
 
 ## Iterators
 

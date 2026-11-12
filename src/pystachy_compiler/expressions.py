@@ -205,10 +205,11 @@ def gen_static(self, n: Node) -> int:
         # (a test of the constants of a class that specializes on literals)
         held = c.kind == "True" or (c.kind == "tuple" and len(c.kids) > 0) or (c.kind == "str" and c.s != "") or (c.kind == "int" and c.s != "0") or c.kind == "unary"
         return 1 if held else 0
-    if k == "cmp" and (n.s == "is" or n.s == "is not") and n.kids[0].kind == "name" and n.kids[1].kind == "name" and n.kids[0].s in self.curfn.sentinels and self.curfn.sentinels[n.kids[0].s] == n.kids[1].s and n.kids[0].s not in self.compvars and self.static_type(n.kids[0]) != "":
+    if k == "cmp" and (n.s == "is" or n.s == "is not") and n.kids[0].kind == "name" and n.kids[1].kind == "name" and n.kids[0].s in self.curfn.sentinels and self.curfn.sentinels[n.kids[0].s] == n.kids[1].s and n.kids[0].s not in self.compvars and n.kids[0].s not in self.nlw and self.static_type(n.kids[0]) != "":
         # p is S of a sentinel parameter (declare_fn): the sentinel itself in the specialization
         # that took it, where p is an object() and no other object() reaches p; a T that holds
-        # no object() is not it; but a value of Any's dyn type may be (dynamic Any): run time's
+        # no object() is not it; but a value of Any's dyn type may be (dynamic Any), and one that
+        # a closure assigns (nonlocal p: nlw) may be another object(): run time's
         t = self.static_type(n.kids[0])
         r = 1 if t == OBJECTC else 0 if holds_no_object(t) else -1
         if r >= 0:
