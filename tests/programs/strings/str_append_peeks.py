@@ -105,7 +105,8 @@ def own_arguments(n: int) -> list[int]:
         out.append(s.count(s[-1]) + s.find(s[1:]))
         if s.endswith(s):
             out.append(len(s))
-        out.append(s.count((t := s + "x")) + len(t))
+        found = s.count((t := s + "x"))
+        out.append(found + len(t))
         s += "z"
         out.append(len(t) - len(s))
     return out
