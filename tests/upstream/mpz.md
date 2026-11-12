@@ -1,8 +1,8 @@
 # Explicit mpz compatibility cases
 
-The `mpz` fixtures run through Pystachy's ordinary differential corpus in JIT
-and AOT, including its GC-stressed and sanitizer configurations. They exercise
-an explicit arbitrary-precision class. Their ordinary `int` calculations use
+The `mpz` fixtures exercise an explicit arbitrary-precision class. They run
+through Pystachy's ordinary differential corpus in JIT and AOT, including its
+GC-stressed and sanitizer configurations. Their ordinary `int` calculations use
 checked signed 64-bit storage; the separate [promoting-int cases](python-int.md)
 cover the opt-in integer policy. These fixtures do not establish full CPython
 `int` or C-API compatibility.
@@ -79,7 +79,7 @@ or C-API/refcount internals, and exhaustive/random huge-memory fixtures.
   dictionary keys after further allocations.
 - [mpz_shadow.py](../programs/imports/mpz_shadow.py) checks a user-defined module
   named `mpz` retains ordinary mutable field and initialization semantics.
-  The `tests/errors/library/mpz_*` cases enforce private-handle/intrinsic,
+- The `tests/errors/library/mpz_*` cases enforce private-handle/intrinsic,
   subclass, native-int-left arithmetic and unbound-initializer boundaries.
 
 ## Reproduce

@@ -40,17 +40,20 @@ Output paths must be new. Evidence capture is opt-in; ordinary inspection and
 compilation do not pay for pass snapshots. The corpus command uses **every**
 differential test program and deviation, including imported code, without an
 annotation or source-text selector. Explicit program arguments restrict the run.
-Every program, function result, unsupported obligation and failure remains in the
-report. An inspection failure has explicitly unknown counts and makes inventory
+
+Every program, function result, unsupported obligation and failure remains in
+the report, and counts distinguish inventoried reads/removals from proved ones.
+An inspection failure has explicitly unknown counts and makes inventory
 completeness false; a zero-obligation program is labeled vacuous. Empty default
-inventories fail, and accepted records must prove their complete counted inventory. Counts distinguish inventoried reads/removals from proved ones. A
-rejection is an investigation target; it does not establish a compiler bug.
+inventories fail, and accepted records must prove their complete counted
+inventory. A rejection is an investigation target; it does not establish a
+compiler bug.
 
 ## Supported abstraction and boundaries
 
 The bounded CI selection exercises seven inventoried union reads and six removed
 null checks in `examples/union_guards.py` and `examples/null_guards.py`. This small
-gate does not claim complete-corpus acceptance. Existing programs with calls,
+gate does not claim complete-corpus acceptance: existing programs with calls,
 storage writes and container-result domains remain investigation targets rather
 than qualifying examples until those effects and representations are proved.
 
@@ -64,10 +67,10 @@ even when the actual operation is safe.
 
 Inventory follows union-derived operands through every result-producing
 operation, including opaque operations, and conservatively tracks raw memory,
-tuple storage and address transports. Unrecognized derived machine reads stay
-in the denominator and fail unsupported; they cannot disappear when their
-address loses its union annotation. This overapproximation can also inventory
-reads that would need additional analysis to distinguish from union reads.
+tuple storage and address transports. Unrecognized derived machine reads stay in
+the denominator even when their address loses its union annotation. This
+overapproximation can also inventory reads that would need additional analysis
+to distinguish from union reads.
 
 Union member proofs require stable box contents. Any write through a derived
 box address, or through an address that is not a declared local storage slot,
@@ -106,7 +109,7 @@ unknown results; a loop cannot keep facts from a previous SSA definition.
 
 The checker does **not** prove raw union transport, matching payload unpacking,
 reconstruction from a dynamic tag, generator suspension, general memory aliases,
-GC roots/lifetime, source semantics, LLVM lowering or whole-pass equivalence.
+GC roots/lifetime, source semantics or LLVM lowering.
 The Python adapter, complete inspection evidence, runtime representation and
 operation semantics remain trusted. Export manifest consistency detects accidental
 omissions; an exporter that forges both evidence and manifest remains trusted.

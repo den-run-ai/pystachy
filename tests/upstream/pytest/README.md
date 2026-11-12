@@ -42,20 +42,21 @@ The statistics inventory includes doctests added by its real `load_tests`
 hook. The tool records those IDs and excludes them from its explicit method
 selection. The exporter accepts that hook only through the explicit
 `selected_methods_only=True` API; its usual CLI still rejects custom collection.
-Module/class setup and teardown restrictions are unchanged. Subtests retain
-their assertions but become ordinary statements after extraction, so a failed
-adapted subtest stops that method. Exact subtest IDs, failure aggregation,
-messages and traceback formatting are outside this contract.
+Module/class setup and teardown restrictions still apply.
 
-`TestFMean.test_weights` now runs with its original local exception-class alias
-(`StatisticsError = statistics.StatisticsError`) in an `except` clause, following
-support for validated exception class values. `TestLinearRegression.test_proportional`
-was another exclusion until the
-`linear_regression` port stopped rebinding its parameters to other types; it and
-`test_constant_input_error` now run with their original integer inputs. The original
-source and full 401-case inventory remain pinned. Other unselected
-methods are explicitly listed in the report as outside this bounded
-qualification; this is not a claim that each one is unsupported.
+Subtests retain their assertions but become ordinary statements after
+extraction, so a failed adapted subtest stops that method. Exact subtest IDs,
+failure aggregation, messages and traceback formatting are outside this
+contract.
+
+`TestFMean.test_weights` runs with its original local exception-class alias
+(`StatisticsError = statistics.StatisticsError`) in an `except` clause, relying
+on support for validated exception class values.
+`TestLinearRegression.test_proportional` and `test_constant_input_error` run
+with their original integer inputs, because the `linear_regression` port does
+not rebind its parameters to other types. Unselected methods are explicitly
+listed in the report as outside this bounded qualification; this is not a claim
+that each one is unsupported.
 
 The literal-encoder suite runs `format_str_literal()`, `_encode_str_values()` and
 `_encode_bytes_values()` of the unchanged `mypyc/codegen/literals.py`, the encoders of the
@@ -97,9 +98,10 @@ selects another verified cache. Each run imports a fresh snapshot containing
 only pinned files, so extra `.py`, bytecode and extension modules in the cache
 cannot shadow them. It also verifies the loaded original library module's path
 and source hash; a preloaded or installed copy cannot stand in for the pin.
-`--mode python` checks original, adapted and generated
-CPython without native execution. Repeating `--mode` selects JIT/AOT; generated
-CPython always runs first. No compilation or timing fallback is permitted.
+
+`--mode python` checks original, adapted and generated CPython without native
+execution. Repeating `--mode` selects JIT/AOT; generated CPython always runs
+first. No compilation or timing fallback is permitted.
 
 Reports retain original outcomes and subtest counts, the full source inventory,
 every excluded case, source hashes, adapted-source hashes and all runner phase

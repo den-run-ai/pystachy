@@ -7,8 +7,10 @@ integer tests at commit
 (2026-10-26). Each is unchanged after a four-line header, whose first line opts it in to
 [promoting ints](../../docs/python-int.md) (`# pystachy: python-int`). The pinned interpreter
 ignores the header and records the expected output, as for every differential case: MicroPython's
-own `.exp` files are not used. They are under the MIT License, Copyright (c) 2013-2026 Damien P.
-George, reproduced in [MICROPYTHON-LICENSE.txt](MICROPYTHON-LICENSE.txt) and referenced in
+own `.exp` files are not used.
+
+These tests are under the MIT License, Copyright (c) 2013-2026 Damien P. George, reproduced in
+[MICROPYTHON-LICENSE.txt](MICROPYTHON-LICENSE.txt) and referenced in
 [THIRD_PARTY_NOTICES](../../THIRD_PARTY_NOTICES). [`mpz/`](../../mpz/README.md) adapts the same
 project's arbitrary-precision core.
 

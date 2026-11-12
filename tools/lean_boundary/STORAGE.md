@@ -23,9 +23,9 @@ For optional tuples, a fit fact means either the tuple is absent or its item
 fits. A null branch may establish the absent case, while every present branch
 must justify the item checks. This does not prove null-dereference safety.
 
-The distinction between a storage representation and a declared type matters.
-A promoting view can refer to a shorter plain tuple when its words exclude the
-marker. A marker guard alone cannot establish that the trailing slot exists.
+A storage representation can differ from the declared type: a promoting view can
+refer to a shorter plain tuple when its words exclude the marker. A marker guard
+alone cannot establish that the trailing slot exists.
 
 `tools/inspect_compiler.py` exports `representation_metadata` on each function:
 the original definitions and parameter contracts, constant tuple contents, and
@@ -61,12 +61,14 @@ their correspondence to the compiler or LLVM. Runtime integer canonicalization,
 container read contracts, pointer lifetime and the implementation of integer
 operations also remain trusted. Tuple construction must finish on fresh storage
 before the tuple escapes; the adapter does not prove allocation freshness or
-general heap aliasing. Arithmetic fit claims use the separate
-[integer proofs](INT.md); they are not inferred from the mere presence of a
-`select` that discards digits. These are bounded compiler checks, not a proof
-of Python equivalence or memory safety for the entire compiler.
-Index bounds for tuple iteration are also a separate obligation; the storage
-check concerns the marker and layout of its trailing digit read.
+general heap aliasing. These are bounded compiler checks, not a proof of Python
+equivalence or memory safety for the entire compiler.
+
+Arithmetic fit claims use the separate [integer proofs](INT.md); they are not
+inferred from the mere presence of a `select` that discards digits. Index bounds
+for tuple iteration are also a separate obligation; the storage check concerns
+the marker and layout of its trailing digit read.
+
 Stack tuple escape copies are a separate transport case. The adapter accepts
 only a contiguous, complete copy of every word at the same index into a fresh
 allocation, with identical source-slot and destination representations and no
@@ -77,6 +79,7 @@ specialization layout. A promoting read view alone does not establish that
 extent. The stack-copy theorem proves bounds and unchanged copied words under
 this explicit premise; it does not authorize ordinary digit decoding without
 a marker guard. Reports count these transport reads and obligations separately.
+
 Speculative operations are restricted to total machine operations and the
 recognized read-only `range.has` and boolean-list search forms; their runtime
 contracts are trusted. Calls that can raise or run user code are not treated
@@ -96,17 +99,18 @@ python3.13 tools/check_lean_storage_corpus.py --list
 The report path must be new. Selection follows imports and `.path` files with
 the compiler's `python-int` pragma recognizer. It includes programs that only
 import an opted-in module, including a typed caller of such a module.
-Each selected program is compiled afresh by the hosted compiler. Reports retain
-snapshot and candidate hashes, per-function outcomes, proof batches and obligation counts. Unsupported
-forms and failed inspections fail the gate, and an empty corpus or vanished
-obligation inventory cannot pass. Corpus coverage is limited to the existing
-differential programs and deviations, not examples, benchmarks or arbitrary
-user programs.
-Raw low-word uses and trailing reads are reported separately from deduplicated
-normalized proof obligations. An incomplete normalization increments
+Each selected program is compiled afresh by the hosted compiler. Corpus coverage
+is limited to the differential programs and deviations, not examples, benchmarks
+or arbitrary user programs.
+
+Reports retain snapshot and candidate hashes, per-function outcomes, proof
+batches and obligation counts. Raw low-word uses and trailing reads are reported
+separately from deduplicated normalized proof obligations. Unsupported forms and
+failed inspections fail the gate, and an empty corpus or vanished obligation
+inventory cannot pass. An incomplete normalization increments
 `unclassified_functions`; a successful run must report zero.
 
 CI reuses the pinned Lean archive and existing verification jobs, with two
 workers and a separate `lean-storage.json` artifact: PR `opt-in` and full-run
 x86 `scaling`. This keeps the full dynamic-`Any` job within its existing time
-budget. No extra CI job is added.
+budget.

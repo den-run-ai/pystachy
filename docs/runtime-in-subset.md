@@ -19,13 +19,13 @@ used by `runtime.py`. Ordinary programs cannot use that interface.
 | `runtime.c` | Collector, object and container memory layouts, I/O, signals, native library calls and float conversion. |
 | [The compiler](../src/README.md) | Runtime compilation, checked primitives, runtime signatures and linking. |
 
-Moving a function into the subset keeps its C symbol and signature. Programs
-continue calling the same runtime entry points. LLVM can inline across the two
-parts after their bitcode is linked.
+Moving a function into the subset keeps its C symbol and signature, so programs
+call the same runtime entry points. LLVM can inline across the two parts after
+their bitcode is linked.
 
 Numeric migrations preserve native scalar and list representations: the scalar,
 range, power and compensated-sum helpers allocate nothing on successful paths.
-Range length retains its existing unsigned count encoded in an `i64`; callers
+Range length remains an unsigned count encoded in an `i64`; callers
 check whether that count fits the operation they perform. Float summation keeps
 CPython's distinct first-item handling for an integer start, and applies a finite,
 nonzero correction only after traversal.
@@ -80,6 +80,7 @@ and `isnumeric`, and decodes other UTF-8 code points with `uchar`. A pure C help
 `pys_unicode_flags`, binary-searches a 6,944-byte constant transition table in
 `runtime.c`; it allocates nothing and has no locale or mutable state. Its distinct
 alpha, digit, decimal and numeric flags preserve CPython's overlapping properties.
+
 `tools/unicode_classification_tables.py --write` regenerates the table from the
 pinned CPython and `--check` compares it with all 1,114,112 code points. The table
 check runs in `tools/rtcheck.py`; `tools/unicode_audit.py` compares each native
@@ -126,8 +127,8 @@ List headers remain scanned so their backing arrays stay reachable. The backing 
 `list[int]`, `list[float]` or `list[bool]` is pointer-free (allocated atomic, never scanned):
 `list(range(...))` makes one, and the compiler makes every other list of those types with
 `pys_list_new_atomic`. That covers displays, comprehensions, `list()` of a tuple, and empty
-lists whose type a later use decides, once it has decided it. The list layout and mutation
-interface are unchanged.
+lists whose type a later use decides, once it has decided it. Pointer-free and scanned
+backings share the list layout and mutation interface.
 
 Growth, copies, slices (stepped too), `+` and `*` allocate a new backing of the kind of the
 backing they copy, which the page map records (`atomic_items`). A list that is emptied keeps
@@ -155,25 +156,24 @@ of int keys are atomic. `tests/programs/runtime/gc_dict_values.py` and `make dic
 The driver reads and compiles a source snapshot of `runtime.c`, its `ryu/` and `mpz/` includes
 and `runtime.py`, links the bitcode with `llvm-link`, then runs `opt -O2`. The C
 part is built with `-fexceptions` so exceptions can unwind through runtime frames.
+On Linux, JIT normally loads a shared library built from the cached runtime object;
+other platforms and failed or unavailable shared-library loads use the object path.
+AOT links the runtime bitcode into the program. See the
+[JIT/AOT pipeline](internals.md#jit-aot-and-runtime-caching) for the fallback rules.
+
 When `PYSTACHY_CFLAGS` enables AddressSanitizer, generated subset definitions
 are marked `sanitize_address` and compiled to bitcode through Clang's ASan
 pipeline first. This supplies the selected target/layout and honors sanitizer
 options without rerunning ASan on the already-instrumented C module. The subset's
 ASan constructors use no COMDAT groups, so linking another sanitized C object
 cannot discard a group that still has a renamed initializer referring to it.
-Raw `rt` output and ordinary builds retain their existing IR.
-On Linux, JIT normally loads a shared library built from the cached runtime object;
-other platforms and failed or unavailable shared-library loads use the object path.
-AOT links the runtime bitcode into the program. See the
-[JIT/AOT pipeline](internals.md#jit-aot-and-runtime-caching) for the fallback rules.
+Raw `rt` output and ordinary builds are unaffected.
 
-Cache names have the form `build/runtime-py-<L>-<K>.bc`, `.o`, `.so` and `.target`;
-the shared library is used on Linux.
+Cache names have the form `build/runtime-py-<L>-<K>.bc`, `.o`, `.so` and `.target`.
 The small `.target` file preserves the runtime's target triple and data layout;
 JIT optimization applies them before folding object sizes and field offsets.
-The content key
-includes runtime and compiler bytes, C flags, disabled `PYSTACHY_OPT` passes and
-LLVM tool identities. Host CPU information is included for flags such as
+The content key includes runtime and compiler bytes, C flags, disabled `PYSTACHY_OPT`
+passes and LLVM tool identities. Host CPU information is included for flags such as
 `-march=native`. The path/flag group `L` separates compiler and tool configurations.
 When a new runtime is published, old entries in its group are removed.
 

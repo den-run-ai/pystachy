@@ -64,6 +64,7 @@ stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is 
 loop's test, `stop <= len(xs) + 1`, adds to a length, which with at most 2^62 items cannot wrap.
 Where the stop is a constant, the loop's test bounds `i` above, the test before it bounds the
 length below, and the first must lie under the second.
+
 Certificate inference retains the finite positive lower bounds requested by initial
 constants and negative offsets. Thus a loop starting at 1 and advancing by 2 keeps
 `i >= 1` at the join of its initial and later iterations. Each proposed weakening
@@ -152,13 +153,15 @@ function but one, proving 85,988 accesses. The earlier sweep at
 [`12cca46d`](https://github.com/den-run-ai/pystachy/commit/12cca46dcffd8ee9290d9cf362ba3f4bafb34511),
 before those corrections, proved 84,730 of 84,731 accesses in 2,407 programs; selected-corpus
 qualification after the corrections is recorded in
-[#1241](https://github.com/den-run-ai/pystachy/pull/1241). The exception in both sweeps is
-`fib_memo`'s `fib` in [`closures.py`](../../tests/programs/language/closures.py): it loads its
-captured dict from the closure's cell for `k in memo` and again for `memo[k]`, and the adapter
-does not track cells, so it cannot tell that the second load gives the dict whose entry the
-first lookup found. The current adapter recognizes those closure cells and proves the
-previously unproved access; a focused replay of `closures.py` proves all eight inventoried
-accesses. The whole-program numbers above remain historical until that sweep is rerun.
+[#1241](https://github.com/den-run-ai/pystachy/pull/1241).
+
+The exception in both sweeps is `fib_memo`'s `fib` in
+[`closures.py`](../../tests/programs/language/closures.py): it loads its captured dict from the
+closure's cell for `k in memo` and again for `memo[k]`, and the adapter does not track cells, so
+it cannot tell that the second load gives the dict whose entry the first lookup found. The
+current adapter recognizes those closure cells and proves the previously unproved access; a
+focused replay of `closures.py` proves all eight inventoried accesses. The whole-program numbers
+above remain historical until that sweep is rerun.
 
 The checker's first sweep found a `dictfuse` miscompile: a lookup whose dynamic key may run
 user code did not end the lookups before it, so `if k in d2: [d1[k], d2[k]]` reused `d2`'s

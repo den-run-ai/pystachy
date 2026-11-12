@@ -73,12 +73,11 @@ tables (see [reflection](internals.md#reflection)). `lower_module.py` alone sele
 GC root tables and entry points. It also owns native C ABI adapters, CPython extension
 wrappers and object dispatch tables; these backend stubs do not enter the optimization
 IR as opaque instructions. `llvm_abi.py` contains declaration and byte-escaping
-serializers shared with runtime ABI checks. The runtime signatures and concrete
-C layouts are unchanged.
+serializers shared with runtime ABI checks.
 
 Static folding and template instantiation remain frontend responsibilities: an unselected
 static branch need not be type-checked. The [typing](language/typing.md) and
-[module](language/modules.md) references cover those semantics; the IR does not replace them.
+[module](language/modules.md) references cover those semantics.
 
 <a id="3-the-ir"></a>
 <a id="31-data-structures"></a>
@@ -102,33 +101,27 @@ static branch need not be type-checked. The [typing](language/typing.md) and
 
 Types are canonical strings, such as `list[int]`, `dict[str,int]`, `opt[str]` and
 `union[int,str]`; `exc` is an exception, `exctype` its class (the exception itself, as a
-context manager's `__exit__` takes it), and `opt[exc]` and `opt[exctype]` use null for `None`. A closed union is an immutable pointer to a program-wide
-type tag and an eight-byte payload slot; `opt[union[...]]` uses null for `None`.
-Mixed scalar/list/dict unions store the original container pointer in that slot;
-unboxing never copies a container or changes its element storage type.
-Truth and string conversion select a typed member operation. Runtime `U` descriptors
-describe mixed members for representation/formatting and builtin-value equality.
-Equality resolves both operands' descriptors independently, including optional boxes
-and nested union payloads; it never guesses container element storage from the first
-descriptor character. Original container identity shortcuts shared descendants.
-User callbacks are excluded from this paired-descriptor equality path.
-Native reference unions keep the original object/file pointer in that payload;
-their method calls dispatch by member tag. Narrowing checks the tag before reading
-the concrete payload.
+context manager's `__exit__` takes it), and `opt[exc]` and `opt[exctype]` use null for `None`.
+
+A closed union is an immutable pointer to a program-wide type tag and an eight-byte payload
+slot; `opt[union[...]]` uses null for `None`. Mixed scalar/list/dict unions store the
+original container pointer in that slot; unboxing never copies a container or changes its
+element storage type. Truth and string conversion select a typed member operation. Runtime
+`U` descriptors describe mixed members for representation/formatting and builtin-value
+equality. Equality resolves both operands' descriptors independently, including optional
+boxes and nested union payloads; it never guesses container element storage from the first
+descriptor character. Original container identity shortcuts shared descendants. User
+callbacks are excluded from this paired-descriptor equality path. Native reference unions
+keep the original object/file pointer in that payload; their method calls dispatch by
+member tag. Narrowing checks the tag before reading the concrete payload.
+
 In a module that opts in to [dynamic `Any`](dynamic-any.md), `dyn` is a pointer to an immutable
 box of a `DynType` pointer and an eight-byte payload, which is a number's bits or a reference's
 own pointer. `dyn.type` reads the `DynType` (type `dyntype`), and `dyn.payload` reads the payload
-as the static type its `s` names. With `PYSTACHY_IRCHECK=1`, the stock verifier
-additionally requires every reachable payload read to find only tags whose boxes
-have that type's payload layout: for an `int` read, an `int` or `bool` tag (a
-bool's payload is its int value, while a wide int's box and None's hold none); for
-a class read, the tag of the class, of a subclass or of a class that takes it as
-its role; for any other, the `DynType` of the type's boxes. It reads the tags from
-the program's `DynType` constants and rejects a read of a type no `DynType` holds.
-Neither instruction has a memory effect, since a box never changes. A box in a container slot
-is descriptor `A`, which runtime walks follow
-through the box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor
-holds an `A` have every effect, as an `O` does.
+as the static type its `s` names. Neither instruction has a memory effect, since a box never
+changes. A box in a container slot is descriptor `A`, which runtime walks follow through the
+box's own `DynType`, and a boxed function is `Z`; runtime calls whose descriptor holds an `A`
+have every effect, as an `O` does.
 
 Identity comparisons use a separate pure `dyn.raw` operation: its empty `s` claims no
 Python type, and its `%slot` result is only opaque payload bits. With
@@ -138,6 +131,13 @@ them, and the operation's internal address cannot escape. This distinguishes a
 float's or reference's identity bits from a typed integer extraction while keeping
 the same LLVM loads. A live, non-null box remains a frontend obligation. The result
 does not establish that its source has any particular dynamic type.
+
+With `PYSTACHY_IRCHECK=1`, the stock verifier additionally requires every reachable payload
+read to find only tags whose boxes have that type's payload layout: for an `int` read, an
+`int` or `bool` tag (a bool's payload is its int value, while a wide int's box and None's
+hold none); for a class read, the tag of the class, of a subclass or of a class that takes
+it as its role; for any other, the `DynType` of the type's boxes. It reads the tags from the
+program's `DynType` constants and rejects a read of a type no `DynType` holds.
 
 The builtin guard proof uses the actual typed-IR control-flow graph. A function's
 tags are the `DynType`s its tests and reads name, with an open unknown-tag case for
@@ -163,6 +163,20 @@ interpreter. [A test](../tools/test_typed_dynamic_tables.py) checks the runtime 
 it copies (DynType kinds and flags, builtin DynTypes, the class number word and
 constant boxes) against runtime.c, as it does the Lean bridge's.
 
+The optional [Lean payload-guard checker](../tools/lean_boundary/README.md)
+checks a selected function or every payload-reading function in a completed
+inspection snapshot; the corpus gate checks test programs that opt in to dynamic
+`Any` or import a module that does. Its theorem establishes tag safety for
+accepted normalized programs, including copies, rebinding, joins and loops.
+Supported descriptor sets cover scalar, integer/bool, class/subclass and container
+payloads. The adapter gives other operations' dynamic results unknown tags,
+follows exception and check edges, and refuses generators, unlisted payload types
+and stores into boxes. Tests use actual emitted guards plus corrupted snapshots
+and certificates. This is separate from the built-in dynamic guard and
+closed-union verifiers: it neither runs during ordinary compilation nor proves
+snapshot fidelity, the Python adapter, descriptor correspondence, payload layout,
+identity, GC or LLVM lowering.
+
 In a module that opts in to [promoting ints](python-int.md), an `int` value is `int+`, an LLVM
 `{i64, ptr}`: the 64-bit value and a null pointer where it fits, else 0 and the value's immutable
 digits. `big.make` builds one from an `int` and a `%ptr`, and `big.lo` and `big.hi` read its two
@@ -173,6 +187,7 @@ past the `n` items: a `tuple.load` or `tuple.store` whose `k` is that slot and w
 `int+` reaches it (`tslots`, `hislot`), and a read of it is guarded by its item's slot
 (`big_item`). Descriptors give such an item as `i`: such a tuple reaches the runtime narrowed
 (`to_slot`), and its `repr()`, comparisons and `hash()` are compiled item by item.
+
 An `Ins` uses only the fields its operation needs:
 
 | Field | Meaning |
@@ -223,101 +238,86 @@ The exact operation table is `IROPS`; its current groups are:
 
 The operation registry is closed: unknown operations, including `raw`, are rejected.
 Operations carry typed operands and finite operators, predicates, flags and metadata;
-they never carry an LLVM instruction string. Entry slots lower to `alloca`; LLVM's
-`mem2reg` later builds SSA form. A local's "is assigned" flag (`k` 1) and numeric
-identity companions share its slot number, so analyses name each slot by its text
-and kind as lowering does (`slot_register`), never by number alone. A stack tuple
-(`k` 2) is a tuple value.
+they never carry an LLVM instruction string.
+
+Entry slots lower to `alloca`; LLVM's `mem2reg` later builds SSA form. A local's "is
+assigned" flag (`k` 1) and numeric identity companions share its slot number, so analyses
+name each slot by its text and kind as lowering does (`slot_register`), never by number
+alone. A stack tuple (`k` 2) is a tuple value.
 
 `mem.load` and `mem.store` keep a native value type on both sides of a typed
 address (`*int`, `*Box`, and so on). The verifier checks operand counts, matching
 address/value/result types, result numbers and absence of unused metadata; runtime
-pseudo-types and nested address types are rejected. Lowering selects the existing
-native LLVM type (`None` payloads use a null pointer). Variable and parameter slots,
-globals, assignment/import flags and native values held in closure cells use these
-operations. Internal closure and runtime storage use the machine operations below.
-No LLVM instruction text is parsed to construct these operations.
+pseudo-types and nested address types are rejected. Lowering selects the native LLVM
+type (`None` payloads use a null pointer). Variable and parameter slots, globals,
+assignment/import flags and native values held in closure cells use these operations.
+Internal closure and runtime storage use the machine operations below.
 
-Effects retain the existing address classification: local slots have none, globals
-use `rG`/`wG`, known field addresses use `rO`/`wO`, and other addresses conservatively
-read/write lists, dictionaries and objects. Canonicalization follows reaching loads
-and stores across native and machine operations, including the existing alias and
-call barriers, so the representation change preserves dictionary lookup fusion.
+Effects classify addresses: local slots have none, globals use `rG`/`wG`, known field
+addresses use `rO`/`wO`, and other addresses conservatively read/write lists,
+dictionaries and objects. Canonicalization follows reaching loads and stores across
+native and machine operations, including the alias and call barriers, so dictionary
+lookup fusion works through them.
 
 `alloc.fixed` allocates a declared class (including specialized classes and custom
 exceptions) or a fixed tuple. Its result retains the native type; LLVM lowering alone
 chooses the class layout's byte size or the tuple's eight-byte slot count. It uses the
-existing zeroed, GC-scanned `pys_alloc` allocation and keeps its `A` effect. Object
-initialization, field and tuple stores, stack tuple promotion, and the runtime ABI
-retain their existing behavior. The verifier checks the layout type, one result,
-runtime declaration and absence of unused operands or metadata. Variable-sized
-allocations and closure/cell layouts still use runtime calls.
+zeroed, GC-scanned `pys_alloc` allocation and keeps its `A` effect. The verifier checks
+the layout type, one result, runtime declaration and absence of unused operands or
+metadata. Variable-sized allocations and closure/cell layouts use runtime calls.
 
 `vtuple.make` constructs the final runtime-length tuple from already evaluated,
 coerced homogeneous elements. Its result is `vtuple[T]` and every operand has native
 type `T`; it owns one semantic result and an allocation effect. A fresh tuple display
 can use it directly, while conversion from an existing fixed tuple first reads that
-tuple without changing its storage. Literal constant displays keep their existing
-constant path. Lowering allocates the existing scanned layout (length followed by
-eight-byte elements), retaining native references across that allocation; address
-and bool-widening temporaries are local to the emitter. This removes intermediate
-fixed tuples and the copy through `vtuple.from` without a new runtime API, allocator
-attributes, or specialization on runtime lengths. The verifier checks the supported
-element representations, operand agreement, result count and allocation declaration.
+tuple without changing its storage. Literal constant displays keep their constant
+path. Lowering allocates the scanned layout (length followed by eight-byte elements),
+retaining native references across that allocation; address and bool-widening
+temporaries are local to the emitter. This avoids intermediate fixed tuples and the
+copy through `vtuple.from` without a new runtime API, allocator attributes, or
+specialization on runtime lengths. The verifier checks the supported element
+representations, operand agreement, result count and allocation declaration.
 
 `tuple.load` and `tuple.store` retain a fixed tuple's type, constant item index and
 declared item type while transferring an opaque `%slot`. The verifier checks that the
 index selects that member and that load results and store operands are slots. Native
-packing and unpacking remain separate typed operations. These instructions replace raw
-LLVM in fixed tuple reads and heap/stack construction, preserving the existing layout,
-conservative memory effects and dictionary-key canonicalization. Variable-length tuple
-reads, tuple traversal and stack-to-heap copies keep their existing paths.
+packing and unpacking remain separate typed operations. Fixed tuple reads and heap/stack
+construction use these instructions, which keep the tuple layout, conservative memory
+effects and dictionary-key canonicalization. Variable-length tuple reads, tuple
+traversal and stack-to-heap copies do not use them.
 
 `field.addr` retains a declared class layout, member index and typed address result.
 It addresses both fields and assignment flags, including flags inherited inside a
 derived layout. The verifier checks the class, index and declared member type.
-Field reads and writes use `mem.load`/`mem.store`; existing frontend null and
-assignment guards still establish when those accesses are safe. LLVM lowering
-alone emits the class GEP. Address canonicalization keeps its existing spelling
-and inheritance-aware alias rules; memory effects and emitted LLVM are unchanged.
+Field reads and writes use `mem.load`/`mem.store`; frontend null and assignment guards
+establish when those accesses are safe. LLVM lowering alone emits the class GEP.
+Address canonicalization applies its inheritance-aware alias rules to these addresses.
 
 `slot.pack` preserves a native value's bits in an opaque `%slot` (eight bytes), and
 `slot.unpack` recovers the declared native type. Their operands retain that type through
 IR passes; only LLVM lowering chooses float bitcasts, boolean extension/truncation or
-pointer conversion. Integer slots need no instruction. These pure operations replace
-LLVM text in the shared container/optional/union conversion helpers, preserving the
-existing representation and allocation behavior. The verifier checks their operand,
+pointer conversion. Integer slots need no instruction. The shared container, optional and
+union conversion helpers use these pure operations. The verifier checks their operand,
 result and metadata contracts. Closed-union payloads additionally carry the tag proofs
 described below; ordinary container element typing remains a frontend contract.
-
-The optional [Lean payload-guard checker](../tools/lean_boundary/README.md)
-checks a selected function or every payload-reading function in a completed
-inspection snapshot; the corpus gate checks test programs that opt in to dynamic
-`Any` or import a module that does. Its theorem establishes tag safety for
-accepted normalized programs, including copies, rebinding, joins and loops.
-Supported descriptor sets cover scalar, integer/bool, class/subclass and container
-payloads. The adapter gives other operations' dynamic results unknown tags,
-follows exception and check edges, and refuses generators, unlisted payload types
-and stores into boxes. Tests use actual emitted guards plus corrupted snapshots
-and certificates. This is separate from the built-in dynamic guard and
-closed-union verifiers: it neither runs during ordinary compilation nor proves
-snapshot fidelity, the Python adapter, descriptor correspondence, payload layout,
-identity, GC or LLVM lowering.
 
 `union.tag` reads a nonoptional closed union's integer tag. `union.payload` records the
 declared member type and reads its opaque `%slot`; `slot.unpack` then recovers the native
 value. With `PYSTACHY_IRCHECK=1`, a control-flow proof requires that the box is non-null
 and holds that member on every incoming path. `union.raw` copies the opaque payload bits
-without declaring a member; `unionslots`
-uses it to carry a box's tag and bits together through split storage or reconstruct the box.
+without declaring a member; `unionslots` uses it to carry a box's tag and bits together
+through split storage or reconstruct the box. These operations lower to LLVM loads and
+have conservative `rL rD rO` effects. Canonicalization treats repeated reads of the same
+immutable union payload as equivalent, so narrowing a dictionary key permits lookup fusion.
+
 A raw copy does not establish a type for interpreting the bits. The verifier follows its
 provenance through slots, phis and selects; interpreting it requires the matching member,
 and rebuilding a box requires its tag and payload to agree. A raw copy alone is valid.
 Domains come from definitions, parameter and storage declarations, not narrowed use-site
-annotations. Tests cover missing/wrong guards, different boxes, joins, loop backedges,
-nullable values, aliasing stores, calls and exception edges. Writes discard mutable storage
-facts; previously loaded immutable boxes retain their facts. Non-escaping local slots and
-provably disjoint fresh storage retain facts across unrelated writes.
+annotations. Writes discard mutable storage facts; previously loaded immutable boxes
+retain their facts. Non-escaping local slots and provably disjoint fresh storage retain
+facts across unrelated writes. Tests cover missing/wrong guards, different boxes, joins,
+loop backedges, nullable values, aliasing stores, calls and exception edges.
 
 Standalone tag reads and box construction also require these proofs. An integer
 machine load whose defined source is a union is checked as a tag read, including its
@@ -331,11 +331,6 @@ product or an iteration cutoff. Conditional facts survive boolean phis and short
 expressions and are dropped after their last possible use. Type-name domains have no
 machine-word tag limit. The proof modules are `union_proof.py` and `union_state.py`;
 `tools/test_typed_union_proofs.py` checks malformed IR without lowering or executing it.
-These operations preserve the previous LLVM loads and conservative `rL rD rO` effects.
-Canonicalization retains the equivalence of repeated reads of the same immutable union
-payload, so narrowing a dictionary key still permits the existing lookup fusion. This
-extends the representation of existing scalar unions, without adding language support
-or runtime specialization.
 
 `num.cast` represents numeric promotion: `bool` to `int` or `float`, and `int` to
 `float`. This changes the numeric representation, unlike bit-preserving `slot.pack`.
@@ -344,26 +339,26 @@ and returns `bool`; floating `!=` remains true for NaN. The verifier checks the 
 operand/result combinations. Both operations are pure and retain typed operands for
 canonicalization, including repeated numeric dictionary keys. Numeric truth and the
 shared promotion/comparison helpers use these operations, so numeric-union dispatch
-can reuse them without new IR or runtime machinery. Exact mixed integer/float comparison
-still uses its existing frontend/runtime path; float-to-int checks, overflow checks,
-and arithmetic use the scalar operations below.
+can reuse them. Exact mixed integer/float comparison uses its own frontend/runtime
+path; float-to-int checks, overflow checks, and arithmetic use the scalar operations
+below.
 
 Loop tests, native integer truth tests and union/class tag dispatch also use `num.cmp`.
 `int.ucmp` keeps unsigned `<`, `<=`, `>` and `>=` explicit for bounds checks over native
 integer bits; a negative index still fails an unsigned length check. Runtime string
 primitives and the exact mixed integer/float result tests share these typed operations.
-Both lower to the existing LLVM predicates. Dictionary lookup fusion reads membership
+Both lower to LLVM comparison predicates. Dictionary lookup fusion reads membership
 conditions from typed operands, preserving its branch facts and mutation barriers.
 
 `ptr.cmp` retains the native reference operands of identity and null tests, including
 boxed optional scalars, optional unions, classes and callables. It permits only `==`
 and `!=`, returns `bool` and has no effects. The verifier rejects native scalars and
-runtime pseudo-types; lowering selects the existing pointer equality predicate.
+runtime pseudo-types; lowering selects the pointer equality predicate.
 Internal closure code/environment pointers and runtime interior pointers use
 `scalar.cmp` with the explicit machine pointer type `%ptr`.
 
 `scalar.bin` records integer/boolean arithmetic and bitwise operations, floating
-arithmetic and negation, and the existing finite overflow flags. `scalar.cast` records
+arithmetic and negation, and finite overflow flags. `scalar.cast` records
 checked frontend-selected machine conversions; `scalar.cmp` covers machine integer,
 floating and pointer predicates. Verifiers reject mismatched operands, unsupported
 operators/conversions and extra metadata. These operations are pure; frontend guards
@@ -375,16 +370,17 @@ that have no Python value type: closure code/environment pointers, loop/reductio
 temporaries, variable tuple traversal, string headers and bytes. Storage retains native value
 types or one of the finite machine types (`%ptr`, `%byte`, `%i32`); addresses carry
 explicit operands and indices. String alias/range metadata and in-bounds addressing are finite
-choices checked before lowering. These operations preserve the existing effects,
-layout and guard order; they do not introduce unchecked Python operations.
+choices checked before lowering. These operations preserve effects, layout and guard
+order; they do not introduce unchecked Python operations.
 
 The generator operations mark an LLVM switched-resume coroutine's structure (see
 [generators](internals.md#generators)). `gen.start` ends the entry block of a generator function
-(`IFn.coro`, printed `presplitcoroutine`) and holds its name; `gen.yield` (a `%slot` value and a
+(`IFn.coro`, printed `presplitcoroutine`) and holds its name. `gen.yield` (a `%slot` value and a
 flag: whether closing the generator there runs its code) and `gen.ret` (an optional `%slot`)
-end blocks where it suspends (lowering alone sizes the promise, five words or seven with `send()`
-and `throw()` in the program, and gives a generator that has not started its state); `gen.promise` without an operand is its own promise's address,
-and with a generator operand that generator's. `gen.resume` runs a generator to its next
+end blocks where it suspends. Lowering alone sizes the promise, five words or seven with
+`send()` and `throw()` in the program, and gives a generator that has not started its state.
+`gen.promise` without an operand is its own promise's address, and with a generator operand
+that generator's. `gen.resume` runs a generator to its next
 suspend and has every effect (user code); the exception passes make it an `invoke` like a
 call. `gen.drop` closes and destroys a generator a loop owns and never raises. The verifier
 checks their places, operands and metadata; lowering alone emits the `llvm.coro.*` calls.
@@ -411,9 +407,8 @@ The solver deduplicates direct call edges and propagates effects through a rever
 worklist. Each summary bit is added at most once per affected function, bounding propagation
 by the number of effect bits times the affected reverse edges. On a later analysis, changed
 local effects or dependencies invalidate their caller closure; resetting that closure also
-removes obsolete effects from cycles. Unaffected summaries are reused. These are compiler
-analysis facts for already compiled functions, not runtime type profiles or new language
-support. `tools/test_function_summaries.py` compares incremental updates against a full
+removes obsolete effects from cycles. Unaffected summaries are reused.
+`tools/test_function_summaries.py` compares incremental updates against a full
 fixed-point oracle; `tests/programs/language/summary_worklist.py` also executes the solver natively.
 
 | Letter | Meaning |
@@ -430,8 +425,8 @@ fixed-point oracle; `tests/programs/language/summary_worklist.py` also executes 
 | `rF`, `wF` | Read/write files |
 
 `mem.load`/`mem.store` and `mach.load`/`mach.store` classify their addresses directly,
-using known field addresses where needed. Effect analysis never parses LLVM text.
-Effects describe observable behavior for optimization, not an ownership or alias type system.
+using known field addresses where needed; effect analysis never parses LLVM text. Effects
+describe observable behavior for optimization, not an ownership or alias type system.
 `U?` applies only when a static descriptor can contain user classes or custom exceptions;
 a dict or set operation carries its keys' descriptor in `Ins.x` for this, where an object
 hashed by its class (`H<id>`) runs `__hash__` and `__eq__`, and one hashed by identity
@@ -454,9 +449,9 @@ signatures and effects remain in `RUNTIME`; `list_write_error` supplies the same
 operand, result and metadata checks to `Gen.list_write` and the IR verifier.
 These `rt` instructions retain the receiver's list type and the packed item's type
 (`*int`, `*dyn`, etc.). Equal LLVM pointer or slot widths do not establish compatible
-storage. Existing inference holes, including the None-only `list[opt[?]]`, still
-belong to frontend refinement; this validator checks retained type agreement,
-not canonical type resolution. Other runtime families use their existing builders.
+storage. Inference holes, including the None-only `list[opt[?]]`, belong to frontend
+refinement; this validator checks retained type agreement, not canonical type
+resolution. Other runtime families use their own builders.
 
 `LIST_READS` selects the indexed-read adapters. `Gen.list_get` and the verifier
 share `list_read_error`: `list.get` and inline `list.load` retain a concrete list
@@ -464,7 +459,7 @@ receiver, native integer index and encoded result `*element`. The identity adapt
 returns `dyn` and requires the receiver's numeric identity kind. Decoding the
 packed slot and reading a promoting integer's companion remain separate operations;
 the encoded result is not an address or an unpacked Python value. Union payload
-provenance continues to use the receiver definition's element type. `list.store`, which only
+provenance uses the receiver definition's element type. `list.store`, which only
 `listguard` emits, writes an encoded `*element` item of a concrete list receiver at a native
 integer index proved within the length; the verifier rejects it in a program whose lists may
 hold numeric identities, which an inline store would not update.
@@ -473,16 +468,16 @@ hold numeric identities, which an inline store would not update.
 `len`, sequence-loop bounds and unpacking. The value index records this operation
 so `listget` can connect a captured range stop to its owner without reconstructing
 list header pointer arithmetic. No length is cached across a mutation: each semantic
-operation still lowers to the same single LLVM load, and the bounds pass retains
-its conservative invalidation rules. Runtime signatures and lowering are unchanged.
+operation lowers to a single LLVM load, and the bounds pass keeps its conservative
+invalidation rules.
 
 `ListLayout` records the outer list's semantic element and packed slot, scalar
 promoting-integer capability, numeric identity capability, payload-array GC policy
 and supported dynamic-layout descriptor. It takes the program's promoting-integer policy explicitly: `list[int]`
 alone cannot establish whether its bigint companion is available. `atomic`
 describes only the payload array; bigint and identity companions remain scanned.
-Nested held-value layouts and the types returned by reads remain with the existing
-conversion helpers.
+Nested held-value layouts and the types returned by reads remain with the conversion
+helpers.
 
 | Store adapter | Required representation |
 |---|---|
@@ -492,8 +487,8 @@ conversion helpers.
 
 The caller evaluates and coerces operands before construction. Identity stores keep
 the original value's box; they never reconstruct identity from packed bits.
-`Val.identity()` remains the representation-only identity transfer API.
-Native write symbols, mutation order, exceptions and LLVM lowering are unchanged.
+`Val.identity()` is the representation-only identity transfer API.
+
 Dynamic boxing, unboxing and layout tests also consume `ListLayout.dynamic_type`:
 boxed `list[Any]`, checked `list[int]` and promoting `list[int]` have different
 descriptors. A Python `list` tag does not establish any of these storage layouts.
@@ -579,14 +574,13 @@ entry index, and an immediate `dict.val_or_zero` payload snapshot. A negative
 index produces zero without reading dictionary storage; absence is carried by
 the separate presence slot. Lookup callbacks, exceptions and evaluation order
 remain on the original call, before the payload snapshot. Dynamic-`Any` and
-promoting-int programs retain the existing representation.
+promoting-int programs keep the boxed representation.
 
 An optional parameter or other call result, an optional copy, a phi-produced
 lookup, a non-`None` default, an escaping or identity-sensitive pointer use, and a
 generator frame retain their boxes. Numeric identity companions remain unchanged.
-This uses the existing typed slot/phi operations. The dictionary path adds the
-internal runtime entry `pys_dict_val_or_zero(Dict *, I)` and changes no object
-layout or public ABI.
+The dictionary path adds the internal runtime entry `pys_dict_val_or_zero(Dict *, I)`
+and changes no object layout or public ABI.
 `PYSTACHY_OPT=-unionslots` disables both scalar-union and optional-local splitting.
 
 Disable one with `PYSTACHY_OPT=-dictfuse`, several with a comma-separated list, or all with
@@ -608,7 +602,9 @@ with constants `start >= 0` and `step > 0`, such as `t += a[i] * b[i]`,
 `b[i] = (a[i - 1] + a[i] + a[i + 1]) / 3` or `zi[j] += xik * yk[j]`. No op of the loop may change
 a list's length (`wL`, except an item assignment) or run user code (`U`); a coroutine, a loop
 that a `try` statement covers, one holding another loop and one of more than 400 ops keep
-their checks. In the copy, each read or assignment of an item of a list that the loop does not
+their checks.
+
+In the copy, each read or assignment of an item of a list that the loop does not
 rebind (a value it does not define, or a local slot it never stores), at the index plus a
 constant `c` with `start + c >= 0`, is unchecked: a `list.load`, or a `list.store`, which stores
 the item inline as `list.set` does where no module opts in to promoting ints or dynamic `Any`
@@ -617,6 +613,7 @@ before the loop run the copy where every such list has `stop <= len(xs) - c` for
 `c`, which keeps `0 <= i + c < len(xs)` for every `i` the loop takes; a list that a local not yet
 assigned would hold, and any shorter list, run the loop as compiled, which raises `IndexError`
 (or `UnboundLocalError`) after the same iterations as CPython. The copy doubles the loop's code.
+
 With `listguard`, inline list reads and stores carry TBAA tags under `fieldtbaa`'s root, of a
 list's items pointer and of an item, so that LLVM keeps a loop's items pointers in registers
 across its item stores and can vectorize the copy.
@@ -671,9 +668,9 @@ immutable `Data("listdata")` slots and one `list.from_const` operation. The norm
 item typing and coercion runs first. The runtime helper always allocates a fresh
 scanned header and pointer-free item array, then copies the exact eight-byte
 slots; float signed zeros and other bit patterns are not converted. The frontend
-emits one copy operation regardless of the item count. The helper remains
-eligible for LLVM inlining, preserving small-constant simplifications; LLVM
-controls the eventual copy expansion and optimized code size.
+emits one copy operation regardless of the item count. LLVM can inline the helper,
+preserving small-constant simplifications, and controls the eventual copy expansion
+and optimized code size.
 Small, mixed, pointer-bearing, tuple and computed displays retain ordinary
 construction, as do all dynamic-Any and promoting-int program graphs. The data
 pool is module state like string constants: function save/restore and dry typing
@@ -690,8 +687,10 @@ tags hang from a root of their own, so LLVM never sets them apart from the acces
 told apart from each other. Tuple slots, union payloads, container slots and runtime calls carry
 no tag. `tests/programs/classes/field_alias.py` checks the orders that a wrong tag would change, and
 `tests/ir/field_tbaa.tbaa` pins the tags (`tools/check_ir.sh`).
-Dictionary fusion is deliberately bounded; it does not promise to combine every equivalent
-lookup. Calls that may mutate containers, joins and exception handlers limit reuse.
+
+Dictionary fusion is deliberately bounded and does not combine every equivalent lookup:
+calls that may mutate containers, joins and exception handlers limit reuse.
+
 Unpacking a list (`a, b = xs`, `a, *b, c = xs`) reads its items with `list.load` whatever
 the switches: its length check has passed, and no code that could shorten it runs before
 the reads. Reads interleave with stores only when every target is a plain name; any other
@@ -712,8 +711,8 @@ a function that needs no remaining landing pad gets no personality function. The
 verifier checks unwind edges and rejects leftover unprotected may-raise calls in covered blocks.
 
 The runtime uses table-driven native unwinding, rather than the error-flag scheme considered
-in the original design. `finally` and `with` cleanup are part of the shipped implementation;
-see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
+in the original design. `finally` and `with` cleanup are implemented; see
+[architecture](internals.md#errors-and-cleanup) for the runtime overview.
 
 <a id="13-defects-found-on-the-way"></a>
 <a id="6-migration-plan"></a>
@@ -733,8 +732,7 @@ see [architecture](internals.md#errors-and-cleanup) for the runtime overview.
 - Bootstrap validation compares the CPython-hosted and native compilers; differential tests
   run supported programs against CPython through JIT and AOT.
 
-See the [testing guide](testing.md) for the full workflow. Historical corpus sizes and
-self-compile timings in the design log are not current test totals or performance claims.
+See the [testing guide](testing.md) for the full workflow.
 
 <a id="73-a-webassembly-gc-backend"></a>
 <a id="74-the-cpython-extension-mode-4-4"></a>
@@ -745,14 +743,14 @@ self-compile timings in the design log are not current test totals or performanc
 
 ## Remaining work
 
-Typed instruction coverage is complete for the LLVM backend. Further backend neutrality
-needs shared compiler/runtime layout definitions and a clearer separation of frontend
-elaboration from machine contracts. WebAssembly GC, more general check elimination and a
-Python-object representation backend are design possibilities, not supported modes.
+Further backend neutrality needs shared compiler/runtime layout definitions and a clearer
+separation of frontend elaboration from machine contracts. WebAssembly GC, more general
+check elimination and a Python-object representation backend are design possibilities,
+not supported modes.
 
-CPython extension modules **are supported** through `pystachy ext` and boundary wrappers.
+CPython extension modules are supported through `pystachy ext` and boundary wrappers.
 They do not implement the historical proposal to represent all compiled containers as
-CPython objects. See the [FFI guide](ffi.md) for the actual boundary contract and limitations.
+CPython objects. See the [FFI guide](ffi.md) for the boundary contract and limitations.
 Explicit [closed scalar unions](language/typing.md#closed-scalar-unions) are supported.
 [Bounded native reference unions](language/typing.md#native-reference-unions) also
 support explicitly declared class/file alternatives. Experimental [dynamic `Any`](dynamic-any.md)
@@ -782,7 +780,8 @@ form remain unsupported. Runtime traversals have recursion guards; the
 
 The [archived design](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md) preserves the original goals, migration
 sequence, prototype measurements, prior-art links and implementation-departure log.
-Its [exception and optional-value analysis](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md#appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs)
+Its corpus sizes and self-compile timings are historical, not current test totals or
+performance claims. Its [exception and optional-value analysis](https://github.com/den-run-ai/pystachy/blob/06e3ad5d08514ba31fb231fe4636a962fe6578e3/docs/archive/typed-ir-design.md#appendix-b-prior-art-and-the-measurements-behind-the-exception-and-none-designs)
 explains rejected alternatives. The historical [prototype diff](https://github.com/den-run-ai/pystachy/blob/30b51d9169d802563380216b6352df561b7d8fc8/docs/typed-ir-prototype.diff) applies to
 `bd4cd6a`, not current source. Proposed operations and unsupported feature sketches there
 must not be read as executable examples for today's compiler.
