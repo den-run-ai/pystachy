@@ -703,7 +703,11 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   alias before its object is dropped, as `EnumType` calls it, and what it returns is dropped; a
   parameter without an annotation takes the type of its item, or of its default value where no
   item reaches it ([test](../tests/programs/library/lib_enum_init.py),
-  [test](../tests/programs/library/lib_enum_init_forms.py)).
+  [test](../tests/programs/library/lib_enum_init_forms.py)). A member is initialized where the
+  class body binds it, not once the body has run: a default value that a member's value leaves
+  out is a literal where the members precede the `def` statement
+  ([test](../tests/programs/library/lib_enum_init_defaults.py)); another default is a
+  compile-time error there, and is evaluated by the `def` statement where `__init__` comes first.
 - A `__new__` of the class, in the form CPython's documentation gives one, makes the members of
   their values' items: it makes the member with `object.__new__(cls)` (`int.__new__(cls, v)` in
   an `IntEnum`, `str.__new__(cls, v)` in a `StrEnum`), may assign `_value_` and attributes, and

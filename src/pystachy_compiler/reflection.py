@@ -9,13 +9,14 @@ internal constant global (Data "classrec", lowered in lower_module.py) emitted o
 that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop otherwise.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import dynamic_program, int_program, shown
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    is_const,
     lib_file,
     lib_source,
     opaque_class,
@@ -3071,8 +3072,22 @@ def gen_enum_init(self, o: Val, v: Node, count: list[Node]) -> None:
     # which the _value_ may differ from, after the number of names before it (count) where its
     # body asks for that. It is a call of the method, whose result is dropped: no constructor
     # checks that it is None
+    f = self.classes[o.t].methods["__init__"]
     items = count + (v.kids if v.kind == "tuple" else [v])
-    self.call_fn(self.classes[o.t].methods["__init__"], [o], items, direct=True)
+    args = [x for x in items]
+    if f.node.line // LINES == v.line // LINES and f.node.line > v.line:
+        # EnumType calls __init__ once the class body has run. Here the member is initialized
+        # where the body binds it, before the def statement below it has evaluated its
+        # defaults: a parameter that the value's items leave out is given its default value,
+        # a literal, with the call (not one of a base class in another module, whose def ran)
+        for j in range(len(items) + 1, len(f.params)):
+            d = f.defaults[j]
+            if j == f.vararg or j == f.kwarg or d.kind == "noann":
+                continue
+            if not is_const(d):
+                self.err(f"enum class {short(o.t)}'s __init__(): the default value of parameter '{f.params[j]}' is not supported where the members precede the def statement, which evaluates it after they are initialized here: use a literal, or define __init__ first")
+            args.append(clone_node(d) if j < f.npos else mk("kw", f.params[j], v.line, [clone_node(d)]))
+    self.call_fn(f, [o], args, direct=True)
 
 
 def gen_enum_alias(self, n: Node, want: str) -> Val:
