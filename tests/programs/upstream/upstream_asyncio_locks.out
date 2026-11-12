@@ -1,0 +1,44 @@
+assertTrue True
+assertEqual []
+assertEqual [1] [1]
+assertEqual [1] [1]
+assertEqual [1, 2] [1, 2]
+assertEqual [1, 2, 3] [1, 2, 3]
+assertTrue True
+assertTrue True
+assertTrue True
+assertTrue True
+assertTrue True
+assertTrue True
+assertTrue True
+assertRaises asyncio.CancelledError
+assertFalse False
+assertRaises RuntimeError
+assertTrue True
+assertFalse False
+assertFalse False
+assertTrue True
+assertFalse False
+assertFalse False
+assertEqual []
+assertEqual [3, 1, 2] [3, 1, 2]
+assertTrue True
+assertIsNone None
+assertTrue True
+assertIsNone None
+assertTrue True
+assertIsNone None
+assertTrue True
+assertRaises asyncio.CancelledError
+assertFalse False
+assertFalse False
+assertTrue True
+assertFalse False
+assertEqual []
+assertFalse False
+assertEqual 1 1
+assertEqual [1] [1]
+assertEqual 0 0
+assertTrue True
+assertTrue True
+[exit 0]

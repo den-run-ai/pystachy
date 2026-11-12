@@ -1,0 +1,13 @@
+assertEqual 42 42
+assertEqual 11 11
+assertEqual 42 42
+assertEqual 11 11
+assertTrue True
+assertEqual 11 11
+assertFalse False
+assertRaises asyncio.CancelledError
+assertEqual 5 5
+assertRaisesRegex RuntimeError True
+assertRaisesRegex RuntimeError True
+assertRaisesRegex RuntimeError True
+[exit 0]
