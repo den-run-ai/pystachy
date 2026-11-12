@@ -31,6 +31,7 @@ files, the explicit selected methods, source hashes and known exclusions.
 | statistics | 2 | 401 | CPython 3.13.16 `Lib/test/test_statistics.py` |
 | mypyc NameGenerator | 5 | 5 | mypy `mypyc/test/test_namegen.py` |
 | mypyc literal encoders | 3 | 11 | mypy `mypyc/test/test_literals.py` |
+| mypy stub packages | 2 | 2 | mypy `mypy/test/teststubinfo.py` |
 
 The CPython pin is `cbc944f4bc59639a444dd971c737788ba2283a91`; the mypy pin is
 `1231cf158a9cab0c41f613f3d8070c1332632f29`. NameGenerator's implementation and all
@@ -64,6 +65,10 @@ exclusions: original unittest and adapted CPython pass them, and native compilat
 `complex`, object-tuple and frozenset dictionary keys of the `Literals` class (five methods),
 and the runtime-length tuples of unrelated values that `literal_sort_key()` returns (two).
 
+The stub-package suite runs both methods of `mypy/test/teststubinfo.py` on the unchanged
+`mypy/stubinfo.py`, mypy's table of the stub distributions of third-party packages: the
+first module of mypy itself, rather than of mypyc, that is qualified here.
+
 ## Reproduce
 
 Use the pinned development interpreter/pytest and LLVM setup in
@@ -75,7 +80,7 @@ python3 tools/pytest_native_upstream.py --suite fnmatch --suite textwrap \
   --compiler ./pystachy --json build/pytest-upstream-bundled.json
 ```
 
-Fetch optional sources once, then qualify all five suites. `--fetch` only
+Fetch optional sources once, then qualify all six suites. `--fetch` only
 downloads missing files whose exact URLs and hashes are in the manifest; a
 mismatched existing file is an error. Real CPython `test.support` sources are
 included for statistics. No support stubs replace upstream code.

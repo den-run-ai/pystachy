@@ -267,7 +267,8 @@ class ManifestTests(unittest.TestCase):
                     if "local" in entry:
                         self.assertEqual(upstream.sha256(upstream.ROOT / entry["local"]), entry["sha256"])
         self.assertEqual({name: len(spec["inventory"]) for name, spec in manifest["suites"].items()},
-                         {"fnmatch": 17, "textwrap": 66, "statistics": 401, "mypyc-namegen": 5, "mypyc-literals": 11})
+                         {"fnmatch": 17, "textwrap": 66, "statistics": 401, "mypyc-namegen": 5, "mypyc-literals": 11,
+                          "mypy-stubinfo": 2})
 
 
 if __name__ == "__main__":

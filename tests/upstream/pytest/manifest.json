@@ -99,6 +99,22 @@
     "mypy/mypyc/test/test_literals.py": {
       "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypyc/test/test_literals.py",
       "sha256": "a98f311a15059798dc744e6bafbe10f16aeaf7c97abd36c1566bc3ffc0ee0540"
+    },
+    "mypy/mypy/__init__.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypy/__init__.py",
+      "sha256": "e32a78dea340659d15881a559f9e8173b300e07d943177b459354f7643833fa9"
+    },
+    "mypy/mypy/stubinfo.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypy/stubinfo.py",
+      "sha256": "3f43e35d240c0b81ca6e136650078d559b71b311d1577b97e54b627c36c7eceb"
+    },
+    "mypy/mypy/test/__init__.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypy/test/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "mypy/mypy/test/teststubinfo.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypy/test/teststubinfo.py",
+      "sha256": "85ecbe5ad94f321d44601729d9efd950b3ca4688a34ff2a9419546b93f956b25"
     }
   },
   "suites": {
@@ -734,6 +750,34 @@
       "exclusion_reason": "Observed native compilation gaps at the pinned compiler: bytes % int formatting and integers beyond 64 bits (test_encode_int_values); float, complex, object-tuple and frozenset dict keys in the Literals class (five methods); runtime-length tuples and lists of unrelated values in literal_sort_key (two methods). Original unittest passes all eleven.",
       "reference_modules": {
         "mypyc.codegen.literals": "mypy/mypyc/codegen/literals.py"
+      }
+    },
+    "mypy-stubinfo": {
+      "source": "mypy/mypy/test/teststubinfo.py",
+      "files": [
+        "mypy/LICENSE",
+        "mypy/mypy/__init__.py",
+        "mypy/mypy/stubinfo.py",
+        "mypy/mypy/test/__init__.py",
+        "mypy/mypy/test/teststubinfo.py"
+      ],
+      "original_imports": [
+        "mypy"
+      ],
+      "adapted_imports": [
+        "mypy"
+      ],
+      "selected": [
+        "TestStubInfo.test_period_in_top_level",
+        "TestStubInfo.test_stub_distribution_name"
+      ],
+      "inventory": [
+        "TestStubInfo.test_period_in_top_level",
+        "TestStubInfo.test_stub_distribution_name"
+      ],
+      "exclusion_reason": "Outside this bounded native pytest qualification; no claim of complete upstream suite coverage. Existing upstream checks remain independent.",
+      "reference_modules": {
+        "mypy.stubinfo": "mypy/mypy/stubinfo.py"
       }
     }
   }
