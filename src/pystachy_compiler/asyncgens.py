@@ -605,3 +605,17 @@ def gen_agen_adapter(self, it: Val) -> Val:
     g.mod = f.mod
     g.home = self.fn_home(f)
     return self.call_fn(g, [], [self.vnode(it)])
+
+
+def gen_agen_param(self, n: Node) -> bool:
+    # is annotation n AsyncIterator[T], AsyncIterable[T] or AsyncGenerator[T, S] (typing's or
+    # collections.abc's, also quoted): a template's parameter so annotated takes each call's
+    # argument's type (declare_fn), as no annotation names what an async generator's awaits yield
+    if n.kind == "str":
+        if "[" not in n.s:
+            return False
+        n = self.parse_expr(n.s)
+    if n.kind != "index":
+        return False
+    base = self.typing_ref(n.kids[0])
+    return base == "AsyncIterator" or base == "AsyncIterable" or base == "AsyncGenerator"

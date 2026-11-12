@@ -1211,6 +1211,11 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
+        # x: AsyncIterator[T] (AsyncIterable[T], AsyncGenerator[T, S]): likewise, so that an
+        # async generator whose awaits yield what no annotation names, or an object of a class
+        # with __aiter__, is its argument (asyncgens.py)
+        if ps[i].kind == "param" and self.agen_param(ps[i].kids[0]) and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
+            ps[i].kids[0] = mk("noann", "", d.line, [])
     if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
