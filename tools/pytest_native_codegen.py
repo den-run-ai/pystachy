@@ -2261,6 +2261,27 @@ class Generator:
                         methods[statement] = statement.args.args[0].arg
         return methods
 
+    def plain_read(self, node):
+        """Whether evaluating node runs none of the test's code and cannot be changed by a call.
+
+        A constant, a name, and an attribute of a module or of a class that this file
+        names (math.pi, Color.RED). A call, a computation, a subscript and an attribute
+        of an object, whose lookup may be a property, are not.
+        """
+        fixed = set(self.modules) | set(self.imported) | {
+            item.name for item in ast.walk(self.tree) if isinstance(item, ast.ClassDef)}
+
+        def static(part):
+            while isinstance(part, ast.Attribute):
+                part = part.value
+            return isinstance(part, ast.Name) and part.id in fixed
+
+        return not any(isinstance(part, (ast.Call, ast.BinOp, ast.Subscript, ast.Await, ast.Yield, ast.YieldFrom,
+                                         ast.NamedExpr, ast.ListComp, ast.SetComp, ast.DictComp,
+                                         ast.GeneratorExp, ast.IfExp, ast.Compare, ast.BoolOp, ast.UnaryOp,
+                                         ast.JoinedStr))
+                       or (isinstance(part, ast.Attribute) and not static(part)) for part in ast.walk(node))
+
     def raises_block(self, context, callee, arguments, keywords, target, number):
         """`with context [as target]: callee(*arguments)` for raises(E, callee, *arguments).
 
@@ -2274,20 +2295,7 @@ class Generator:
         no value a native program can hold.
         """
         before = []
-        fixed = set(self.modules) | set(self.imported) | {
-            node.name for node in ast.walk(self.tree) if isinstance(node, ast.ClassDef)}
-
-        def static(node):
-            while isinstance(node, ast.Attribute):
-                node = node.value
-            return isinstance(node, ast.Name) and node.id in fixed
-
-        def simple(node):
-            return not any(isinstance(part, (ast.Call, ast.BinOp, ast.Subscript, ast.Await, ast.Yield, ast.YieldFrom,
-                                             ast.NamedExpr, ast.ListComp, ast.SetComp, ast.DictComp,
-                                             ast.GeneratorExp, ast.IfExp, ast.Compare, ast.BoolOp, ast.UnaryOp,
-                                             ast.JoinedStr))
-                           or (isinstance(part, ast.Attribute) and not static(part)) for part in ast.walk(node))
+        simple = self.plain_read
 
         def bound(node):
             if isinstance(node, ast.Starred):
@@ -2670,7 +2678,19 @@ class Generator:
                     return [self.generic_visit(ast.fix_missing_locations(ast.copy_location(block, node))),
                             self.generic_visit(ast.fix_missing_locations(ast.copy_location(check(), node)))]
                 expansion = self.raises[-1][0].get(node) if self.raises and self.scopes[-1] == "function" else None
+                labels = []
+                entered = node.items[0].context_expr
+                if (len(node.items) == 1 and isinstance(entered, ast.Call) and isinstance(entered.func, ast.Attribute)
+                        and entered.func.attr == "subTest" and self.receiver(entered.func.value)):
+                    # subTest's message and parameters only label its report, and the native
+                    # context takes none (visit_Call). What may run code, such as a property,
+                    # is still evaluated where the block is entered, in order.
+                    labels = [ast.Expr(value) for value in [*entered.args, *[kw.value for kw in entered.keywords]]
+                              if not isinstance(value, ast.Starred) and not generator.plain_read(value)]
                 node = self.generic_visit(node)
+                if labels:
+                    visited = [self.visit(ast.fix_missing_locations(ast.copy_location(label, node))) for label in labels]
+                    return [*visited, node]
                 if expansion is None:
                     return node
                 number, expected, matched = expansion

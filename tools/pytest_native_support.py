@@ -93,7 +93,7 @@ def _search(pattern: str, message: str) -> None:
 class Raises:
     """The supported raises context: exception classes and an optional string regex."""
 
-    def __init__(self, expected: list[type[BaseException]], match: str | None) -> None:
+    def __init__(self, expected: list[type[BaseException]], match: str | None, unit: bool = False) -> None:
         for kind in expected:
             if not isinstance(kind, type):
                 unsupported("raises requires an exception class or a literal tuple of classes")
@@ -108,6 +108,7 @@ class Raises:
                 fail("Invalid regex pattern provided to 'match': " + str(error))
         self.expected = expected
         self._pattern = match
+        self._unit = unit  # unittest's assertRaises: a missing exception is an AssertionError
         self._value: BaseException | None = None
         self._type: type[BaseException] | None = None
 
@@ -124,7 +125,11 @@ class Raises:
     def __exit__(self, kind: type[BaseException] | None,
                  value: BaseException | None, traceback: TracebackType | None) -> bool:
         if kind is None:
-            fail("DID NOT RAISE " + " or ".join([expected.__name__ for expected in self.expected]))
+            names = " or ".join([expected.__name__ for expected in self.expected])
+            if self._unit:
+                # unittest's failureException, which an enclosing assertRaises(AssertionError) catches.
+                raise AssertionError(names + " not raised")
+            fail("DID NOT RAISE " + names)
         matched = False
         for expected in self.expected:
             if issubclass(kind, expected):
@@ -313,21 +318,27 @@ subtest_outcomes: list[str] = []
 subtest_details: list[str] = []
 unit_running = [False]
 unit_expecting = [False]  # the running test method is decorated with unittest.expectedFailure
+subtest_open: list[bool] = []  # each subTest block being run: whether none nested in it failed or skipped
 
 
 class SubTest:
     """`with self.subTest():` a block whose failure is reported while its test goes on."""
 
     def __enter__(self) -> "SubTest":
+        subtest_open.append(True)
         return self
 
     def __exit__(self, kind: type[BaseException] | None,
                  value: BaseException | None, traceback: TracebackType | None) -> bool:
+        clean = subtest_open.pop() if subtest_open else True
         if value is None:
-            if unit_running[0]:
+            # (unittest reports a success only where no subtest nested in this one failed or skipped.)
+            if unit_running[0] and clean:
                 subtest_outcomes.append("passed")
                 subtest_details.append("")
             return False
+        for index in range(len(subtest_open)):
+            subtest_open[index] = False
         if isinstance(value, (KeyboardInterrupt, UnsupportedOperation)) or not unit_running[0]:
             # (Outside a case the runner drives, nothing would report what the block raised.)
             return False
@@ -504,16 +515,16 @@ class TestCase:
             self._failure("Element counts were not equal: " + saferepr(first) + " != " + saferepr(second), msg)
 
     def assertRaises(self, expected: type[BaseException]) -> Raises:
-        return Raises([expected], None)
+        return Raises([expected], None, True)
 
     def assertRaisesRegex(self, expected: type[BaseException], expected_regex: str) -> Raises:
-        return Raises([expected], expected_regex)
+        return Raises([expected], expected_regex, True)
 
     def assertRaisesAny(self, expected: list[type[BaseException]]) -> Raises:
-        return Raises(expected, None)
+        return Raises(expected, None, True)
 
     def assertRaisesRegexAny(self, expected: list[type[BaseException]], expected_regex: str) -> Raises:
-        return Raises(expected, expected_regex)
+        return Raises(expected, expected_regex, True)
 
 
 def _quote(text: str) -> str:
@@ -683,6 +694,7 @@ class UnitRun:
         self.expected_detail = ""
         unit_running[0] = True
         unit_expecting[0] = False
+        subtest_open.clear()
 
     def expecting(self, now: bool) -> None:
         """Whether the test method of an expectedFailure case is running now."""

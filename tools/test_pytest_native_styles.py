@@ -31,6 +31,12 @@ class Base(unittest.TestCase):
         LOG.append("setUp")
         self.value = 3
         self.names = ["a", "b"]
+        self.count = 0
+
+    @property
+    def label(self) -> str:
+        self.count += 1
+        return "label"
 
     def tearDown(self):
         LOG.append("tearDown")
@@ -95,6 +101,33 @@ class Derived(Base):
         for i in range(2):
             with self.subTest(i=i):
                 self.assertLess(i, 2)
+
+    def test_sub_arguments_run(self):
+        # A parameter is evaluated where the block is entered: a property runs.
+        with self.subTest(x=self.label):
+            self.assertEqual(self.count, 1)
+        with self.subTest(self.label, y=self.names[0]):
+            self.assertEqual(self.count, 2)
+
+    def test_sub_nested(self):
+        # A subtest whose nested subtest failed reports no success of its own.
+        with self.subTest(outer=1):
+            with self.subTest(inner=1):
+                self.assertEqual(1, 2)
+            LOG.append("after nested failure")
+        with self.subTest(outer=2):
+            with self.subTest(inner=2):
+                self.assertEqual(1, 1)
+
+    def test_raises_fails_as_an_assertion(self):
+        with self.assertRaises(AssertionError):
+            with self.assertRaises(ValueError):
+                pass
+        with self.assertRaises(AssertionError):
+            self.assertRaises(ValueError, int, "3")
+        with self.assertRaises(AssertionError):
+            with self.assertRaisesRegex(ValueError, "never"):
+                int("x")
 
     def test_sub_pass(self):
         for i in range(3):
@@ -210,6 +243,7 @@ def test_subtest_outside_a_case_does_not_hide_its_failure():
 def test_plain_last():
     assert "after subtests" in LOG
     assert "after expected subtests" not in LOG
+    assert "after nested failure" in LOG
     assert "tearDown after failed setUp" not in LOG
     assert LOG[:4] == ["auto+", "setUp", "tearDown", "auto-"]
 '''
@@ -843,7 +877,7 @@ class StyleParity(TemporarySuite):
     def test_suites_match_pytest(self):
         results, expected = self.suites("python")
         cases = expected["cases"]
-        self.assertEqual(len(cases), 112)
+        self.assertEqual(len(cases), 115)
         outcomes = self.outcomes(results)
         # unittest sorts a case's methods, inherited ones too, and runs setUp, the test
         # and tearDown in the call phase; a second failure is the teardown's.
@@ -862,17 +896,21 @@ class StyleParity(TemporarySuite):
         self.assertEqual(outcomes["test_unit.py::TearDownFails::test_skip", "call"], "skipped")
         subtests = [(event["nodeid"].rsplit("::", 1)[1], event["outcome"]) for result in results
                     for event in result.events if event["phase"] == "subtest"]
-        self.assertEqual(subtests, [("test_expected_in_subtest", "passed"), ("test_sub_fail", "passed"),
-                                    ("test_sub_fail", "failed"), ("test_sub_fail", "failed"),
+        self.assertEqual(subtests, [("test_expected_in_subtest", "passed"), *[("test_sub_arguments_run", "passed")] * 2,
+                                    ("test_sub_fail", "passed"), ("test_sub_fail", "failed"), ("test_sub_fail", "failed"),
+                                    # A failed subtest's enclosing one reports nothing; the next pair passes.
+                                    ("test_sub_nested", "failed"), *[("test_sub_nested", "passed")] * 2,
                                     *[("test_sub_pass", "passed")] * 3, *[("test_unexpected_in_subtests", "passed")] * 2])
         # A failed subtest is reported apart: its test's own call passes.
         self.assertEqual(outcomes["test_unit.py::Derived::test_sub_fail", "call"], "passed")
         # In an expectedFailure test it is the failure expected, which ends the test.
         self.assertEqual(outcomes["test_unit.py::Derived::test_expected_in_subtest", "call"], "xfailed")
         self.assertEqual(outcomes["test_unit.py::Derived::test_unexpected_in_subtests", "call"], "failed")
+        # A missing exception fails assertRaises with an AssertionError, which an outer one expects.
+        self.assertEqual(outcomes["test_unit.py::Derived::test_raises_fails_as_an_assertion", "call"], "passed")
         self.assertEqual(outcomes["test_unit.py::test_subtest_outside_a_case_does_not_hide_its_failure", "call"],
                          "failed")
-        self.assertEqual(runner.outcome_counts(results)["subtests passed"], 7)
+        self.assertEqual(runner.outcome_counts(results)["subtests passed"], 11)
         # Computed tables: pytest's IDs for values, names and objects.
         for case in ("test_range[2]", "test_named_comprehension[6]", "test_product[2-b]", "test_items[two-2]",
                      "test_dict_keys[one]", "test_objects[point1]", "test_named_objects[point0]",

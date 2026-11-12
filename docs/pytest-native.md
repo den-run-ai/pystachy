@@ -157,6 +157,9 @@ This hosted tool currently targets Linux and macOS.
   `setUp`, the test and `tearDown` run in the call phase; a second failure is
   reported as the teardown's, and each `subTest` block reports apart from its test;
   an `expectedFailure` test ends at its first failing `subTest`, the failure it expects.
+  A `subTest`'s message and parameters only label its report, but are evaluated where
+  the block is entered; a block whose nested `subTest` failed reports no success.
+  `assertRaises` without the exception fails with an `AssertionError`, as unittest's does.
   `setUp` becomes `__init__` here too. Assertions: `assertEqual`, `NotEqual`,
   `True`, `False`, `Is`, `IsNot`, `IsNone`, `IsNotNone`, `In`, `NotIn`,
   `IsInstance`, `NotIsInstance`, `Greater`, `GreaterEqual`, `Less`, `LessEqual`,
