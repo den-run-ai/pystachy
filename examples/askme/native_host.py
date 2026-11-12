@@ -423,31 +423,37 @@ class Host:
         return self._timeout_tool
 
     def signal_reset(self) -> str:
-        """A command prefix that gives the command the default SIGPIPE, or ``""``.
+        """A command prefix that restores default signal actions, or ``""``.
 
         Every runtime here ignores SIGPIPE and ``os.system`` passes that on, so
         ``producer | head`` would report "Broken pipe" where ``askme.py``'s
-        ``subprocess`` child stops quietly. A shell cannot undo an inherited
-        ignore; GNU ``env`` or ``perl`` can.
+        ``subprocess`` child stops quietly. The wrapper's background job also
+        starts with SIGINT and SIGQUIT ignored. A shell cannot undo an
+        inherited ignore; GNU ``env`` or ``perl`` can.
         """
         if not self._signal_checked:
             self._signal_checked = True
             override = os.environ.get("ASKME_NATIVE_SIGNAL_RESET", "")
             if override == "none":
                 self._signal_reset = ""
-            elif run_command("env --default-signal=PIPE true 2>/dev/null") == 0:
-                self._signal_reset = "env --default-signal=PIPE "
+            elif run_command("env --default-signal=PIPE,INT,QUIT true 2>/dev/null") == 0:
+                self._signal_reset = "env --default-signal=PIPE,INT,QUIT "
             elif find_on_path("perl"):
-                self._signal_reset = "perl -e '$SIG{PIPE}=\"DEFAULT\";exec @ARGV;exit 127' "
+                self._signal_reset = (
+                    "perl -e '$SIG{PIPE}=$SIG{INT}=$SIG{QUIT}=\"DEFAULT\";exec @ARGV;exit 127' "
+                )
         return self._signal_reset
 
     def run_shell(self, command: str, timeout: int, cwd: str) -> CapturedProcess:
         """Run ``/bin/sh -c command`` in ``cwd`` with captured output and a deadline.
 
         With ``timeout`` the command gets its own process group; at the
-        deadline the group receives TERM, then KILL after a short grace period.
-        Descendants that leave the group can outlive it, as with ``askme.py``'s
-        session-based cleanup. The sh fallback signals the command's shell only.
+        deadline the group receives TERM and, after a short grace period, KILL.
+        The KILL reaches the group even when the command's shell has already
+        exited, so a descendant that ignores TERM cannot keep changing the
+        workspace. Descendants that leave the group can outlive it, as with
+        ``askme.py``'s session-based cleanup. The sh fallback signals the
+        command's shell only.
         """
         out_path = self._file("stdout")
         err_path = self._file("stderr")
@@ -463,9 +469,11 @@ class Host:
         tool = self.timeout_tool()
         reset = self.signal_reset()
         if tool:
+            # timeout leads a new process group and signals it, but sends its
+            # KILL only while its own child lives. The wrapper finishes the
+            # job: after a timeout it kills whatever is left of the group.
             script = (
                 prefix
-                + "exec "
                 + reset
                 + shell_quote(tool)
                 + " -k "
@@ -474,6 +482,10 @@ class Host:
                 + str(timeout)
                 + " /bin/sh -c "
                 + shell_quote(command)
+                + " <&0 & group=$!; wait $group; status=$?; "
+                + "case $status in 124|137) if kill -s 0 -- -$group 2>/dev/null; then sleep "
+                + PROCESS_TERMINATION_GRACE
+                + "; kill -s KILL -- -$group 2>/dev/null; fi;; esac; exit $status"
             )
         else:
             # No timeout utility: a plain sh watchdog signals the command's own

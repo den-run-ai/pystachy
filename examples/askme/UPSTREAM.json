@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/den-run-ai/askme",
-  "commit": "2373cf8235e91507faf4e089cd99a8d8dfdfbac2",
+  "commit": "593017afa31bd50b940dfa2defe39fc9fe47f697",
   "pull_request": "https://github.com/den-run-ai/askme/pull/130",
   "files": [
     {
@@ -31,7 +31,7 @@
     {
       "path": "native_host.py",
       "source_path": "native/native_host.py",
-      "sha256": "e77c2956d578a4274b78dcfaadb6952a4051ee07fa3c54e8ae279803282c5952"
+      "sha256": "38b7355a23706800d63b547b73e5d5551ca227417c34146dc843ecfe07e74c11"
     },
     {
       "path": "native_http.py",
