@@ -486,8 +486,9 @@ def gen_class_value_dynamic(self, t: Node) -> bool:
             # isinstance() takes as that class object)
             return True
         if not self.class_value_named(unopt(xt)):
-            # (type(x) of another value: its builtin class's class object, class_value_type)
-            return xt != "dyn" and xt != "exc" and unopt(xt) != "exctype" and unopt(xt) not in self.classes
+            # (type(x) of another value: its builtin class's class object, class_value_type;
+            # type(None) names NoneType, which the static test decides)
+            return xt != "None" and xt != "dyn" and xt != "exc" and unopt(xt) != "exctype" and unopt(xt) not in self.classes
         # (where a module opts in to dynamic Any, type(x) may be a class box: class_value_typed)
         return not self.dyn_policy(self.line) or is_clsval(unopt(self.dry(t)))
     if t.kind == "attr" and t.kids[0].kind == "name" and self.dotted(t) == "":
