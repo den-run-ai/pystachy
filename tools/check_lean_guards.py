@@ -1472,6 +1472,13 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     stop = ("node", {"op": "stop"})
     payload_checks = not null_mode and not obligate_returns and not obligate_writes
     write_of = {}  # id of a write obligation node -> its typed memory key
+    marked = []
+
+    def mark(table, node, value):
+        """table[id(node)] = value, keeping node: a node made later cannot take the id of one
+        freed meanwhile (a check of a branch the graph does not keep) and inherit its mark."""
+        table[id(node)] = value
+        marked.append(node)
     def assign(dst, src, target):
         # dst gets src's value, then target: null's tag, an SSA value's tags or nothing known
         if src == "null":
@@ -1499,11 +1506,11 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 kinds = [kind for kind in kinds if kind in member] or kinds
             location = f"%bits.{site[0]}.{site[1]}.{len(origins)}"
             check = {"op": "payload", "value": location, "tags": member, "next": target}
-            origins[id(check)] = site
+            mark(origins, check, site)
             return ("node", {"op": "havoc", "dst": location, "next": (
                 "node", {"op": "guard", "value": location, "tags": kinds, "yes": ("node", check), "no": stop})})
         check = {"op": "payload", "value": location, "tags": member, "next": target}
-        origins[id(check)] = site
+        mark(origins, check, site)
         return ("node", check)
     def interpretation(op, position, operand):
         """The members whose bits op reads the payload word operand (at position) as: its
@@ -1693,8 +1700,8 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
             if kinds is not None:
                 assume(location, kinds)
         follow({"op": "payload", "value": location, "tags": tags})
-        origins[id(nodes[-1])] = site
-        write_of[id(nodes[-1])] = key
+        mark(origins, nodes[-1], site)
+        mark(write_of, nodes[-1], key)
     for block in fn["blocks"]:
         label = block["label"]
         if label == "":
@@ -1712,7 +1719,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 boundary.require(values.count("null") == 1, "removed check has no unique null operand")
                 value = canonical(values[1] if values[0] == "null" else values[0])
                 follow({"op": "payload", "value": value, "tags": [NONNULL]})
-                origins[id(nodes[-1])] = (label, offset, "removed check")
+                mark(origins, nodes[-1], (label, offset, "removed check"))
                 obligations += 1
             split = split_ops.get(id(op))
             if split is not None or (label, offset) in covered:
@@ -1732,7 +1739,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                         member = interpretation(op, position, operand)
                         if member is not None:
                             follow({"op": "payload", "value": words[operand["value"]], "tags": member})
-                            origins[id(nodes[-1])] = (label, offset, "payload interpretation")
+                            mark(origins, nodes[-1], (label, offset, "payload interpretation"))
             is_read = (label, offset, kind) in read_inventory
             if is_read:
                 value = canonical(args[0]["value"])
@@ -1742,7 +1749,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 allowed = ["member:" + op["text"]] if kind == "union.payload" else [t for t in tags if t != NULL]
                 boundary.require(bool(allowed), "union read has no accepted member")
                 follow({"op": "payload", "value": value, "tags": allowed})
-                origins[id(nodes[-1])] = (label, offset, kind)
+                mark(origins, nodes[-1], (label, offset, kind))
                 obligations += 1
             if obligate_writes:
                 for value, key, tags in writes_of(op):
@@ -1785,9 +1792,9 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                             assume("%returned", [NULL])
                         value = "%returned"
                     follow({"op": "payload", "value": canonical(value), "tags": returned})
-                    origins[id(nodes[-1])] = (label, offset, "returned union")
+                    mark(origins, nodes[-1], (label, offset, "returned union"))
                     if obligate_writes:
-                        write_of[id(nodes[-1])] = ("return", fn["symbol"])
+                        mark(write_of, nodes[-1], ("return", fn["symbol"]))
                     obligations += 1
                 emit({"op": "stop"})
             else:
@@ -1869,7 +1876,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         if id(value) not in placed:
             node = dict(value[1])
             if id(value[1]) in origins:
-                origins[id(node)] = origins[id(value[1])]
+                mark(origins, node, origins[id(value[1])])
             for key in ("yes", "no", "next"):
                 if key in node:
                     node[key] = place(node[key])
