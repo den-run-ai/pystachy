@@ -367,7 +367,9 @@ class UnionProof:
                     # tuple's, or a tuple[U, ...]'s past its length) holds a box of that union:
                     # container typing is its own contract, as for a list's items (list.get), so
                     # an item read from the slot has its members. A length read is no union read.
+                    # (Also of a tuple that may be None, read where it is not: a field's.)
                     owner = self.native.get(i.a[0].v, "")
+                    owner = owner[4:-1] if is_opt(owner) else owner
                     items = targs(owner) if owner.startswith("tuple[") or owner.startswith("vtuple[") else []
                     if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]):
                         self.typebase("MU:%t" + str(i.r[0]), items[0])

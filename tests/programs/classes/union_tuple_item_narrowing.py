@@ -49,6 +49,24 @@ def kinds(deps: tuple[Capsule | SourceDep | HeaderDep, Capsule | SourceDep | Hea
     return out
 
 
+class Holder:
+    def __init__(self, deps: tuple[Capsule | SourceDep, Capsule | SourceDep] | None) -> None:
+        self.deps = deps
+
+
+def paths(h: Holder) -> list[str]:
+    # (a tuple that may be None: its items read where it is not)
+    out: list[str] = []
+    if h.deps is not None:
+        for dep in h.deps:
+            if isinstance(dep, Capsule):
+                out.append("capsule " + dep.name)
+            else:
+                out.append("source " + dep.path)
+    return out
+
+
 print(describe((Capsule("librt.strings"), SourceDep("bytes_extra_ops.c"))))
 print(describe((SourceDep("a.c"), SourceDep("b.c"))))
 print(kinds((HeaderDep("x.h"), Capsule("librt.vecs"), SourceDep("y.c"))))
+print(paths(Holder((SourceDep("z.c"), Capsule("librt.time")))), paths(Holder(None)))
