@@ -617,7 +617,9 @@ class ClassInfo:
         # its single base (a class of the program or a builtin exception class), and the
         # builtin exception class it derives from through it ("" for an ordinary class)
         self.base = ""
-        self.role = ""  # a fieldless secondary base, inherited along the primary chain
+        # its fieldless secondary bases: those of its primary chain, then its own, in the order
+        # CPython's method resolution order takes them
+        self.roles: list[str] = []
         self.isrole = False  # some class names this root as its secondary base
         self.overlaps: list[str] = []  # unrelated bases with a common concrete subclass
         self.exc = ""

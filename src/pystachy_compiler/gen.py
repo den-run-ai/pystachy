@@ -618,6 +618,7 @@ from src.pystachy_compiler.declarations import (
     gen_iter_ann as declarations_iter_ann,
     gen_tv_plan as declarations_tv_plan,
     gen_tv_bound as declarations_tv_bound,
+    gen_tv_through as declarations_tv_through,
     gen_iter_item as declarations_iter_item,
     gen_join as declarations_join,
     gen_none_items as declarations_none_items,
@@ -1100,6 +1101,7 @@ from src.pystachy_compiler.program import (
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
     gen_generic_subclass as program_generic_subclass,
+    gen_generic_traits as program_generic_traits,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
 )
@@ -1619,10 +1621,10 @@ class Gen:
         # the generic classes (class C(Generic[T, *Ts]) and class C[T, *Ts]): their type variables,
         # which the arguments of the call that makes an object bind (see bind)
         self.tparams: dict[str, list[str]] = {}
-        # class V(G[X, ...]) of a generic class G that binds nothing (generic_subclass): G and the
-        # types X, ..., which bind G's TypeVars for the methods of V's objects (tv_bound)
-        self.genbase: dict[str, str] = {}
-        self.genargs: dict[str, list[str]] = {}
+        # class V(G[X, ...], H[Y, ...]) of generic classes G and H that bind nothing
+        # (generic_subclass): for each, the types X, ... that bind its TypeVars for the methods of
+        # V's objects (tv_bound); "~T" where generic V passes its own TypeVar T on
+        self.genargs: dict[str, dict[str, list[str]]] = {}
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
@@ -2972,6 +2974,9 @@ class Gen:
     def tv_bound(self, f: FnInfo, ts: list[str]) -> str:
         return declarations_tv_bound(self, f, ts)
 
+    def tv_through(self, c: str, g: str, k: int) -> str:
+        return declarations_tv_through(self, c, g, k)
+
     def iter_item(self, n: Node) -> Node | None:
         return declarations_iter_item(self, n)
 
@@ -3711,6 +3716,9 @@ class Gen:
 
     def generic_subclass(self, st: Node) -> str:
         return program_generic_subclass(self, st)
+
+    def generic_traits(self, st: Node) -> int:
+        return program_generic_traits(self, st)
 
     def exc_base(self, b: Node) -> str:
         return program_exc_base(self, b)

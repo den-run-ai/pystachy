@@ -1,0 +1,7 @@
+['int 3', 'name x', 'pass', 'int 4']
+['int 3', 'NAME X', 'pass', 'int 4']
+7
+Summer has no visit_pass
+None None
+True True True
+[exit 0]
