@@ -480,7 +480,8 @@ true, and whose `finally` block awaits `__aexit__(None, None, None)` unless the 
 `while` loop whose `try` statement awaits `__anext__()` and ends the loop on
 `StopAsyncIteration`, binding the target in its `else` block, so that a `StopAsyncIteration`
 from the target or the body propagates. Every later pass sees ordinary statements. The manager,
-the iterator and their flags are locals named `__pys_aw<k>_*`. The implicit awaits are `await`
+the iterator and their flags are locals named `__pys_aw<k>.*`, which no identifier can name
+(as `lower_matches`' temporaries), so that they never share a variable of the program. The implicit awaits are `await`
 nodes whose `s` names them (`aenter`, `aexit`, `aexitnone`, `aiter`, `anext`); `await_protocol`
 checks the protocol first, as CPython does (`__aexit__` before `__aenter__()` runs), raising
 CPython's `TypeError`s, then awaits the call through `await_expr` with CPython's message for a

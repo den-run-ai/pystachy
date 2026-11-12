@@ -1,0 +1,5 @@
+enter b
+inside 1 mine 10
+exit b True
+after changed 20
+[exit 0]

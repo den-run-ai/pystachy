@@ -1,0 +1,10 @@
+enter a
+inside True
+exit a True
+after True
+enter outer
+enter inner
+exit inner False
+exit outer False
+suppressed True True
+[exit 0]

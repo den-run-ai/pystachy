@@ -345,7 +345,10 @@ def gen_catch_item(self, c: Node) -> Node:
 
 def gen_catch_named(self, c: Node) -> bool:
     # is item c of an except clause (as catch_item reads it) a name that catch_set takes: not a
-    # variable, a function or another expression, whose value catch_values tests at run time
+    # variable, a function or another expression, whose value catch_values tests at run time; a
+    # builtin exception class that a lowering names (made) is one, whatever the program binds
+    if c.kind == "name" and c.made and is_excname(c.s):
+        return True
     return c.kind == "name" and c.s not in self.ltype and c.s not in self.gtypes and c.s not in self.funcs and c.s not in self.assigned
 
 def gen_catch_values(self, t: Node) -> bool:

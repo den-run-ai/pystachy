@@ -3382,6 +3382,8 @@ class Loader:
 
     def qexpr(self, m: Mod, n: Node, loc: dict[str, bool]) -> None:
         k = n.kind
+        if k == "name" and n.made and is_excname(n.s):
+            return  # (a builtin exception class that a lowering names, as async for's StopAsyncIteration)
         if k == "name" or k == "attr":
             if k == "name" and n.s == "__name__" and (m.name != "" or self.ext != "") and n.s not in loc:
                 if "__name__" in m.rebound:

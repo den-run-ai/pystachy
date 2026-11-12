@@ -166,8 +166,8 @@ class BindingIndexTests(unittest.TestCase):
                     hidden_with = 2
         """)[0].kids[2].kids
         self.check_body(body, {"iterable", "manager", "private", "alias", "hidden_loop", "hidden_with",
-                               "__pys_aw0_it", "__pys_aw0_run", "__pys_aw0_val",
-                               "__pys_aw1_mgr", "__pys_aw1_val", "__pys_aw1_hit"})
+                               "__pys_aw0.it", "__pys_aw0.run", "__pys_aw0.val",
+                               "__pys_aw1.mgr", "__pys_aw1.val", "__pys_aw1.hit"})
 
 
 class BindingCompileTests(unittest.TestCase):

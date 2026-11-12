@@ -68,8 +68,9 @@ def desugar_async(body: list[Node], aio: bool, tmps: list[int]) -> None:
     # of statements body, of an async def's own code (aio), becomes the statements PEP 492 gives
     # for it. Their implicit awaits are await nodes of their own kinds (s, see await_protocol), so
     # that the compiler's analyses and code see ordinary assignments, try and while statements.
-    # The locals that hold the manager, the iterator and their state are named __pys_aw<k>_*,
-    # k counting those of the async def (tmps)
+    # The locals that hold the manager, the iterator and their state are named __pys_aw<k>.*, k
+    # counting those of the async def (tmps): no identifier holds a dot, so no variable of the
+    # program shares them, as with lower_matches' temporaries
     i = 0
     while i < len(body):
         st = body[i]
@@ -110,13 +111,13 @@ def async_with(it: Node, body: list[Node], line: int, tmps: list[int]) -> list[N
     #     finally: if not hit: await mgr.__aexit__(None, None, None)
     k = str(tmps[0])
     tmps[0] += 1
-    mgr = "__pys_aw" + k + "_mgr"
-    hit = "__pys_aw" + k + "_hit"
+    mgr = "__pys_aw" + k + ".mgr"
+    hit = "__pys_aw" + k + ".hit"
     out = [mk("assign", "", line, [mk("name", mgr, line, []), it.kids[0]])]
     enter = mk("await", "aenter", line, [mk("name", mgr, line, [])])
     pre: list[Node] = []
     if len(it.kids) == 2:
-        val = "__pys_aw" + k + "_val"
+        val = "__pys_aw" + k + ".val"
         out.append(mk("assign", "", line, [mk("name", val, line, []), enter]))
         pre.append(mk("assign", "", line, [it.kids[1], mk("name", val, line, [])]))
     else:
@@ -140,13 +141,15 @@ def async_for(f: Node, line: int, tmps: list[int]) -> list[Node]:
     #     [else: rest]
     k = str(tmps[0])
     tmps[0] += 1
-    it = "__pys_aw" + k + "_it"
-    run = "__pys_aw" + k + "_run"
-    val = "__pys_aw" + k + "_val"
+    it = "__pys_aw" + k + ".it"
+    run = "__pys_aw" + k + ".run"
+    val = "__pys_aw" + k + ".val"
     out = [mk("assign", "", line, [mk("name", it, line, []), mk("await", "aiter", line, [f.kids[1]])])]
     out.append(mk("assign", "", line, [mk("name", run, line, []), mk("True", "", line, [])]))
     step = mk("block", "", line, [mk("assign", "", line, [mk("name", val, line, []), mk("await", "anext", line, [mk("name", it, line, [])])])])
-    stop = mk("except", "", line, [mk("name", "StopAsyncIteration", line, []), mk("block", "", line, [mk("assign", "", line, [mk("name", run, line, []), mk("False", "", line, [])])])])
+    end = mk("name", "StopAsyncIteration", line, [])
+    end.made = True  # (the builtin class, whatever the program binds to its name: qexpr, catch_named)
+    stop = mk("except", "", line, [end, mk("block", "", line, [mk("assign", "", line, [mk("name", run, line, []), mk("False", "", line, [])])])])
     each = mk("block", "else", line, [mk("assign", "", line, [f.kids[0], mk("name", val, line, [])])] + f.kids[2].kids)
     loop = mk("while", "", line, [mk("name", run, line, []), mk("block", "", line, [mk("try", "", line, [step, stop, each])])])
     if len(f.kids) > 3:
