@@ -27,6 +27,7 @@ Pystachy loads its ports of those C modules, `lib/_pystachy_binascii.py`,
 ([library reference](../../lib/compatibility.md#binascii)), and the
 end of the program runs `atexit`'s callbacks. For `abc`, which CPython imports as it starts, it
 loads `lib/_pystachy_abc.py` ([abc](../../lib/compatibility.md#abc)).
+`gc` loads `lib/_pystachy_gc.py` ([gc](../../lib/compatibility.md#gc)).
 `_weakref` loads `lib/_pystachy_weakref.py`,
 [collector-backed references](../weakref.md) to ordinary class instances, with
 callbacks that run after the collection that finds a referent dead; as in CPython, a reference
