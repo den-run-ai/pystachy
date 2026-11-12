@@ -1425,7 +1425,9 @@ def gen_tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> N
     r = self.parse_expr(ret.s) if ret.kind == "str" else ret
     if r.kind != "name" or r.s not in self.typevars or r.s in tvs or r.s in self.tvtuples:
         return
-    for i in range(len(ps)):
+    # (each index is f.params', which a class method's cls is not among: declare_fn)
+    skip = 1 if f.deco == "classmethod" and len(ps) > 0 and ps[0].kind == "param" else 0
+    for i in range(skip, len(ps)):
         a = self.parse_expr(ps[i].kids[0].s) if ps[i].kids[0].kind == "str" else ps[i].kids[0]
         if ps[i].kind != "param" or a.kind != "index" or a.kids[0].kind != "name" or a.kids[0].s not in self.tparams:
             continue
@@ -1433,7 +1435,7 @@ def gen_tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> N
         for k in range(len(xs)):
             if xs[k].kind == "name" and xs[k].s == r.s:
                 f.tvret = r.s
-                f.tvbparams.append(i)
+                f.tvbparams.append(i - skip)
                 f.tvbclass.append(a.kids[0].s)
                 f.tvbpos.append(k)
 
@@ -2382,8 +2384,9 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if m in ms and ms[m].prop:
             return targs(ms[m].ret)[0] if is_callable(ms[m].ret) else ""
         if m in ms and ms[m].bad == "" and ms[m].ret == "" and ms[m].tvret != "" and len([x for x in e.kids[1:] if x.kind == "kw" or x.kind == "starred" or x.kind == "dstar"]) == 0:
-            # self.accept(Visitor()) of a method -> T that a visitor's class binds (tv_bound)
-            return self.tv_bound(ms[m], [f.cls] + [self.guess(x, f) for x in e.kids[1:]])
+            # self.accept(Visitor()) of a method -> T that a visitor's class binds (tv_bound); a
+            # static or class method's parameters do not include self
+            return self.tv_bound(ms[m], ([f.cls] if ms[m].deco == "" else []) + [self.guess(x, f) for x in e.kids[1:]])
         return "" if m not in ms else ms[m].ret if ms[m].bad == "" else "!" + ms[m].bad
     if k == "call" and e.kids[0].kind == "name" and e.kids[0].s == me:
         ms = self.classes[f.cls].methods  # self(...): self.__call__(...)

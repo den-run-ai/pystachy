@@ -172,6 +172,10 @@ def gen_generic_subclass(self, st: Node) -> str:
         g = b.kids[0].s
         if self.init_template(self.classes[g].node):
             return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
+        if "__class_getitem__" in self.body_names(self.classes[g].node):
+            # (as generic_ann: g[T] calls it, which may run code or name another class; also
+            # where the arguments are the class's own type variables, passed on)
+            return f"{short(g)}[...] with a custom __class_getitem__ is not supported"
         xs = b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]]
         args: list[str] = []
         if self.typevar_in(xs, []) == "" or len(own) == 0:
