@@ -60,7 +60,7 @@ For parallel work today, CPython can run Pystachy-built extension modules in
 | Origin | Modules |
 |---|---|
 | Unchanged CPython 3.13.16 files | `bisect`, `colorsys`, `curses.ascii`, `this`, `stat`, `posixpath`, `genericpath`, `struct` (on a port of `_struct`) and `_weakrefset` |
-| CPython modules with marked edits | `codecs`, `contextlib`, `datetime`, `difflib`, `fnmatch`, `getopt`, `gettext`, `heapq`, `html`, `html.parser`, `keyword`, `operator`, `random`, `shlex`, `statistics`, `string`, `textwrap`, `token`, `tomllib`, `urllib.parse`, `warnings`, `weakref` |
+| CPython modules with marked edits | `codecs`, `contextlib`, `datetime`, `difflib`, `fnmatch`, `getopt`, `gettext`, `heapq`, `html`, `html.parser`, `keyword`, `operator`, `pprint`, `random`, `shlex`, `statistics`, `string`, `textwrap`, `token`, `tomllib`, `urllib.parse`, `warnings`, `weakref` |
 | Larger port | `re`: CPython's Python parser and compiler, plus a matcher adapted from its C engine |
 | Subset implementations | `abc`, `argparse`, `collections`, `csv`, `functools`, `io`, `json` and `types`; subset versions of the C modules `atexit`, `binascii`, `itertools`, `unicodedata`, `_codecs`, `_random`, `_string`, `_struct`, `_thread` and `_weakref` |
 | Compiler builtins | `sys`, `os`, `os.path`, `math`, `time`, `errno`, `tempfile`, `select`, `typing`, `collections.abc`, `dataclasses`, `builtins`, `__future__` and `ffi` |
