@@ -421,6 +421,17 @@ def gen_path_union(self, ms: list[Node]) -> str:
             none = none or t != "str"
     return ("opt[str]" if none else "str") if s else "!" + PATHLIKE
 
+def bad_attr(n: Node) -> Node | None:
+    # the first badattr in expression n, as CPython evaluates it (Loader.qexpr: a module
+    # attribute that does not exist, or a module as a value), or None
+    if n.kind == "badattr":
+        return n
+    for k in n.kids:
+        r = bad_attr(k)
+        if r is not None:
+            return r
+    return None
+
 def gen_typevar_def(self, st: Node) -> bool:
     # is st T = TypeVar("T") or Ts = TypeVarTuple("Ts") (typing's or typing_extensions'): T is
     # then a name only annotations use
@@ -445,6 +456,12 @@ def gen_typevar_def(self, st: Node) -> bool:
             bound = True
         elif a.kind != "kw" or not is_const(a.kids[0]):
             self.err(f"a {kind}'s arguments other than its name{', constraints and bound' if kind == 'TypeVar' else ''} must be constants")
+        b = bad_attr(a.kids[0] if a.kind == "kw" else a) if kind == "TypeVar" and (a.kind != "kw" or a.s == "bound") else None
+        if b is not None:
+            # (an attribute that its module does not bind, or a module as a value, which
+            # Loader.qexpr leaves as badattr: CPython raises AttributeError or TypeError there)
+            self.line = b.line
+            self.err(f"{b.s} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
         if a.kind == "kw" and a.s == "default":
             self.tvdefaults[st.kids[0].s] = True
     if constraints == 1:
