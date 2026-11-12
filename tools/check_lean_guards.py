@@ -2005,6 +2005,10 @@ def proved_domains(snapshot, checker=boundary.DEFAULT_CHECKER, initialized=froze
             domains.pop(key)
 
 
+# (each access-model attempt by its checker and normalized nodes: prove_removals)
+_removal_attempts = {}
+
+
 def prove_removals(snapshot, fn, removed, effects_of, checker=boundary.DEFAULT_CHECKER,
                    access_checker=access.DEFAULT_CHECKER):
     """One nullcheck invocation's removed checks of one function, proved in the before-pass
@@ -2015,14 +2019,22 @@ def prove_removals(snapshot, fn, removed, effects_of, checker=boundary.DEFAULT_C
     attempts = []
     try:
         nodes, meta = access.normalize_program(snapshot, fn["symbol"], effects_of, derefs=removed, record=fn)
-        # (a removal may rest on a chain of field reloads from a global or slot: pi.pong.ping)
-        candidate, meta = access.certify(nodes, meta, chain=REMOVAL_CHAIN, kinds=REMOVAL_FACTS)
-        encoded = access.encode(candidate)
-        accepted = access.run_checker(access_checker, encoded, meta)
-        attempt = {"model": "access", "status": "accepted" if accepted else "rejected", "nodes": meta["nodes"],
-                   "payloads": meta["derefs"], "candidate_sha256": hashlib.sha256(encoded.encode()).hexdigest()}
-        if not accepted:
-            attempt["error"] = (access.explain(candidate) or "")[:1000]
+        # (the candidate and Lean's verdict depend on the nodes alone: a library function that
+        # normalizes alike in another program of this process reuses them)
+        key = (str(Path(access_checker).resolve()),
+               hashlib.sha256(json.dumps(nodes, sort_keys=True, separators=(",", ":")).encode()).hexdigest())
+        attempt = _removal_attempts.get(key)
+        if attempt is None:
+            # (a removal may rest on a chain of field reloads from a global or slot: pi.pong.ping)
+            candidate, meta = access.certify(nodes, meta, chain=REMOVAL_CHAIN, kinds=REMOVAL_FACTS)
+            encoded = access.encode(candidate)
+            accepted = access.run_checker(access_checker, encoded, meta)
+            attempt = {"model": "access", "status": "accepted" if accepted else "rejected", "nodes": meta["nodes"],
+                       "payloads": meta["derefs"], "candidate_sha256": hashlib.sha256(encoded.encode()).hexdigest()}
+            if not accepted:
+                attempt["error"] = (access.explain(candidate) or "")[:1000]
+            _removal_attempts[key] = attempt
+        attempt = dict(attempt)
     except (boundary.Unsupported, ValueError, KeyError, OSError, subprocess.SubprocessError, RecursionError) as error:
         attempt = {"model": "access", "status": "unsupported" if isinstance(error, boundary.Unsupported) else "error",
                    "error": str(error)}
