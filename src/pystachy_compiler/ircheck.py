@@ -306,8 +306,9 @@ def gen_verify(self, fn: IFn, eh: bool) -> None:
                 if len(ts) != 1:
                     self.bad_ir(fn, b, "vtuple.make needs one declared native element type")
                 et = ts[0]
-                # (or objects of a declared class: Gen.vtuple_item)
-                if i.t != "vtuple[" + et + "]" or (et not in ["int", "float", "bool", "str", "dyn", "opt[int]", "opt[float]", "opt[bool]", "opt[str]", "opt[dyn]"] and et not in self.classes):
+                # (or objects of a declared class, also of a union of them: Gen.vtuple_item)
+                objects = all(m in self.classes for m in (umembers(et) if is_union(et) else [et]))
+                if i.t != "vtuple[" + et + "]" or (et not in ["int", "float", "bool", "str", "dyn", "opt[int]", "opt[float]", "opt[bool]", "opt[str]", "opt[dyn]"] and not objects):
                     self.bad_ir(fn, b, "vtuple.make needs one declared native element type")
                 if any(a.t != et for a in i.a):
                     self.bad_ir(fn, b, "vtuple.make needs elements of its declared native type")

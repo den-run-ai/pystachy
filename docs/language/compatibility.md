@@ -148,8 +148,9 @@ no effect. The shared runtime cache is independent of this setting.
 - **Tuple constants:** literal-only displays share a module constant; `()` is
   shared everywhere. CPython also folds operator expressions such as `(1 + 2, 3)`.
   Pystachy recreates those tuples, and tuples whose annotations retype/box items.
-- **Tuple conversions:** fixed-shape to runtime-length tuples, or scalar to
-  optional-element tuples, create new objects. Empty runtime-length tuples are
+- **Tuple conversions:** fixed-shape to runtime-length tuples, scalar to
+  optional-element tuples, or objects to union-item tuples
+  ([test](../../tests/deviations/tuple_runtime_union_identity.py)) create new objects. Empty runtime-length tuples are
   not interned. `tuple(t)` preserves identity only when its representation fits.
 - **Callables:** `is` compares the function and its environment/bound object, as
   `==` does. Two reads of `o.m` converted to `Callable` compare identical; CPython

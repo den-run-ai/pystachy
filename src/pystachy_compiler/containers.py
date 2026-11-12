@@ -33,6 +33,7 @@ from src.pystachy_compiler.utils import (
     targs,
     tname,
     typestr,
+    umembers,
     unopt,
 )
 
@@ -345,12 +346,13 @@ def gen_star_display(self, n: Node, want: str) -> Val:
 def gen_vtuple_item(self, t: str) -> bool:
     # can a runtime-length tuple hold items of type t: ints, floats, bools, strs (or None with
     # them), Any values, and objects of one of the program's classes, whose pointers a slot holds
-    # and the tuple's scanned allocation retains (runtime.c's pys_vtuple_from). Not yet objects
-    # of a union of classes: the union proof cannot narrow a tuple slot's box (union_proof.py)
+    # and the tuple's scanned allocation retains (runtime.c's pys_vtuple_from), also of a union of
+    # such classes (a tagged box, unions.py), whose narrowing union_proof.py proves from the
+    # tuple's item type
     u = unopt(t)
     if u in ["int", "float", "bool", "str", "dyn", BIG]:
         return True
-    return u in self.classes and self.classes[u].exc == "" and u not in self.nts
+    return all(m in self.classes and self.classes[m].exc == "" and m not in self.nts for m in (umembers(u) if is_union(u) else [u]))
 
 def gen_iter_elem(self, t: str) -> str:
     # the type of the items a loop over a value of type t gets, or ""

@@ -1,0 +1,5 @@
+capsule librt.strings
+source bytes_extra_ops.c
+source bytes_extra_ops.c | capsule librt.strings
+IndexError tuple index out of range
+[exit 0]

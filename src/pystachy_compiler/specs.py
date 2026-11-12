@@ -79,7 +79,7 @@ HEX = "0123456789ABCDEF"
 # only comparisons with None may read until a binding of another value types it
 NONEVAR = "opt[None]"
 # why a runtime-length tuple cannot hold items of a type (Gen.vtuple_item)
-VTUPLE_ITEMS = "runtime-length tuple elements must be int, float, bool, str or their optional types, or objects of one of the program's classes (not an exception, a NamedTuple or a union of classes)"
+VTUPLE_ITEMS = "runtime-length tuple elements must be int, float, bool, str or their optional types, or objects of the program's classes (not exceptions or NamedTuples)"
 NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far (Gen.none_container)
 # the type of an int in a module that opts in to promoting ints (# pystachy: python-int): two words,
 # an LLVM {i64, ptr} (bigints.py). Its "+" keeps it apart from every class name
