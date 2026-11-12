@@ -663,6 +663,11 @@ def gen_alias_tvars(self, a: Node, out: list[str], seen: list[str]) -> None:
     for k in a.kids:
         self.alias_tvars(k, out, seen)
 
+def gen_newtype_name(self, name: str) -> bool:
+    # is name a module global that N = NewType("N", T) binds (Loader.newtype), a type alias of T
+    # whose calls return their argument
+    return name in self.taliases and self.taliases[name].kind == "assign" and self.taliases[name].kids[1].kind == "call"
+
 def gen_alias_kept(self, name: str) -> bool:
     # does the assignment that binds type alias name stay in the module's code: Pos = int binds
     # a class, which can be called (Pos("3")), as does an alias of such an alias; the other
