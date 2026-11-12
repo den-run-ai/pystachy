@@ -700,8 +700,10 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   itself; the class's methods, properties and class methods work on them as on other objects.
   An `__init__` of the class gives them attributes: it is called for each member, which has its
   name and value by then, with the items of the value (a tuple's, else the value), and for an
-  alias before its object is dropped, as `EnumType` calls it; a parameter without an annotation
-  takes the type of its item ([test](../tests/programs/library/lib_enum_init.py)).
+  alias before its object is dropped, as `EnumType` calls it, and what it returns is dropped; a
+  parameter without an annotation takes the type of its item, or of its default value where no
+  item reaches it ([test](../tests/programs/library/lib_enum_init.py),
+  [test](../tests/programs/library/lib_enum_init_forms.py)).
 - The class as a value is an object of `EnumType`: `C(value)` finds the member with that value
   (or returns a member it is given, also one held through a base class's type, such as `Enum` or
   `Flag`: [test](../tests/programs/library/lib_enum_base_lookup.py),

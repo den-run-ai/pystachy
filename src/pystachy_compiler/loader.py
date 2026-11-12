@@ -506,9 +506,18 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 fail(f"enum class {st.s}'s __init__() is not supported: the class that defines the members defines it", inits[0].line)
             its = enum_item_types(vtype)
             ps = inits[0].kids[0].kids
+            kwonly = int(inits[0].kids[0].s.split(",")[1])  # (the first keyword-only parameter's index, or -1)
             for i in range(1, len(ps)):
-                if ps[i].kind == "param" and ps[i].kids[0].kind == "noann" and i - 1 < len(its):
-                    ps[i].kids[0] = Parser(Lexer(f"_: {its[i - 1]}\n", ps[i].line).file()).module().kids[0].kids[1]
+                if ps[i].kind != "param" or ps[i].kids[0].kind != "noann":
+                    continue
+                # (an item goes to a parameter that takes it by position; another one, which the
+                # members' values never give, has the type of its default value)
+                t = its[i - 1] if (kwonly < 0 or i < kwonly) and i - 1 < len(its) else ""
+                if t == "" and ps[i].kids[1].kind != "noann":
+                    lit = enum_literal(ps[i].kids[1])
+                    t = lit[0] if len(lit) > 0 and lit[0] != "None" else ""
+                if t != "":
+                    ps[i].kids[0] = Parser(Lexer(f"_: {t}\n", ps[i].line).file()).module().kids[0].kids[1]
             for o in out:
                 if o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enummember":
                     o.kids[2].kids.append(mk("str", "__init__", o.line, []))

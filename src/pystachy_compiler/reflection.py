@@ -3066,9 +3066,10 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
 
 def gen_enum_init(self, o: Val, v: Node) -> None:
     # the __init__ of member o's enum class, called as EnumType calls it once the member has its
-    # _name_ and _value_: with the items of its value v where that is a tuple, else with v
+    # _name_ and _value_: with the items of its value v where that is a tuple, else with v. It is
+    # a call of the method, whose result is dropped: no constructor checks that it is None
     items = v.kids if v.kind == "tuple" else [v]
-    self.init_result(self.call_fn(self.classes[o.t].methods["__init__"], [o], items, direct=True))
+    self.call_fn(self.classes[o.t].methods["__init__"], [o], items, direct=True)
 
 
 def gen_enum_alias(self, n: Node, want: str) -> Val:
