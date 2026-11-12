@@ -3069,9 +3069,10 @@ def gen_enum_init(self, o: Val, v: Node, count: list[Node]) -> None:
     # _name_ and _value_: with the items of its value v where that is a tuple, else with v. One
     # that the Loader made of the class's __new__ (enum_new_init) takes the value as written,
     # which the _value_ may differ from, after the number of names before it (count) where its
-    # body asks for that
+    # body asks for that. It is a call of the method, whose result is dropped: no constructor
+    # checks that it is None
     items = count + (v.kids if v.kind == "tuple" else [v])
-    self.init_result(self.call_fn(self.classes[o.t].methods["__init__"], [o], items, direct=True))
+    self.call_fn(self.classes[o.t].methods["__init__"], [o], items, direct=True)
 
 
 def gen_enum_alias(self, n: Node, want: str) -> Val:
