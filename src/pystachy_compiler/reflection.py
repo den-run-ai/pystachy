@@ -3059,14 +3059,31 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
     o = self.new_obj(c)
     self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.s), "str"))
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
+    if len(n.kids) > 1:
+        gen_enum_init(self, o, n.kids[0])
     return o
+
+
+def gen_enum_init(self, o: Val, v: Node) -> None:
+    # the __init__ of member o's enum class, called as EnumType calls it once the member has its
+    # _name_ and _value_: with the items of its value v where that is a tuple, else with v
+    items = v.kids if v.kind == "tuple" else [v]
+    self.init_result(self.call_fn(self.classes[o.t].methods["__init__"], [o], items, direct=True))
 
 
 def gen_enum_alias(self, n: Node, want: str) -> Val:
     # an enum member's alias (Loader's enum_classes), as its class attribute's default: the member
     # n.s, whose class attribute the class statement has bound before (body order), read from its
-    # global, as the class's own name is not bound until the statement ends
+    # global, as the class's own name is not bound until the statement ends. Where the class has
+    # an __init__ (n's kids: the alias's value and name), CPython first makes and initializes a
+    # member of the alias's own name, which it drops for the member of that value
     ci = self.classes[unopt(want)]
+    if len(n.kids) > 1:
+        v = self.coerce(self.expr(n.kids[0], ci.ftypes["_value_"]), ci.ftypes["_value_"])
+        o = self.new_obj(ci.name)
+        self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.kids[1].s), "str"))
+        self.setfield(o, self.field(o, "_value_"), "_value_", v)
+        gen_enum_init(self, o, n.kids[0])
     self.class_default(ci, n.s)
     t = ci.ftypes[n.s]
     return Val(self.mload(t, ci.fglob[n.s]), t)
