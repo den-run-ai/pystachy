@@ -246,6 +246,11 @@ def gen_ann(self, n: Node) -> str:
             # (Annotated[Any, ...] in a module that compiles Any as dyn: its type, Any, where other
             # modules infer what it annotates; its metadata aside, as any_in reads it, #782)
             return self.ann(a[0])
+        if (base == "typeguard" or base == "typeis") and len(a) == 1:
+            # TypeGuard[T], TypeIs[T] (typing's): what a type predicate returns, a bool, which tells a
+            # static checker that its argument is a T; Pystachy narrows by what the code tests
+            # (isinstance(), is None, ...), not by a predicate's annotation
+            return "bool"
         if base == "literal" or base == "annotated":
             return "!unsupported type annotation"  # (metadata is not an annotation: Literal["Any"], Annotated[int, "Any"])
         if base == "iterator" or base == "generator":

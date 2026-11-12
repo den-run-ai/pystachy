@@ -91,7 +91,9 @@ but in a module that opts in to the [dynamic `Any` prototype](../dynamic-any.md)
 `List`, `Dict`, `Set`, `FrozenSet`, `Tuple`, `Optional`, `Union`, `Callable`, `TextIO`
 and `Self` work when imported from `typing` or `typing_extensions`. String forward
 references work, including `list["Node"]`. `Self` in a class's methods and fields denotes
-that class or its current specialization.
+that class or its current specialization. A type predicate's `TypeGuard[T]` or `TypeIs[T]`
+is a `bool`; Pystachy narrows by the code's own tests, such as `isinstance()`, not by the
+predicate's annotation ([test](../../tests/programs/generics/typeguard_returns.py)).
 
 The supported `collections.abc` annotations use concrete container types:
 
