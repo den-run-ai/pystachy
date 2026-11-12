@@ -142,6 +142,10 @@ class Observer:
         self.typed_after_only = typed_after_only
         self.guard_evidence = guard_evidence
         self.nullcheck_evidence: list[dict] = []
+        # The slots the unionslots pass split, by function object (kept alive with it, so that
+        # an id is never another function's): each pair's tag and payload slots and the type of
+        # the slot they replace, which the IR no longer names.
+        self.split_unions: dict[int, tuple] = {}
         self.before: list[dict] = []
         self.after: list[dict] = []
         self.captured_before = False
@@ -183,6 +187,7 @@ class Observer:
             "recursion": {"counted": fn.counted, "rdepth": fn.rdepth, "landed": fn.landed, "gdepth": fn.gdepth,
                           "generator": f.gen, "coroutine": fn.coro},
             "slots": [self.instruction(i) for i in fn.slots],
+            **({"split_unions": self.split_record(fn)} if self.guard_evidence else {}),
             # A check op raises from a separate block: its key (the op's descriptor, else its
             # text) -> that block's label.
             "check_targets": dict(fn.cold),
@@ -659,6 +664,41 @@ class Observer:
             return wrapped
         return decorate
 
+    def split_record(self, fn) -> list:
+        """The split union slot pairs of fn that unionslots made and fn still holds."""
+        kept, entries = self.split_unions.get(id(fn), (None, []))
+        if kept is not fn:
+            return []
+        present = {f"%{s.s or 'h'}.{s.r[0]}" for s in fn.slots if len(s.r) == 1 and s.k == 0}
+        return [entry for entry in entries if entry["tag"] in present and entry["payload"] in present]
+
+    def unionslots_wrapper(self, original):
+        def wrapped(gen, fn, *args, **kwargs):
+            # optimizations.gen_unionslots replaces each slot it splits, in slot order, by a tag
+            # slot and a payload slot it appends in that order: pair them by that order and name
+            before = [(s.s, s.r[0], s.t) for s in fn.slots if s.k == 0 and len(s.r) == 1]
+            known = {id(s) for s in fn.slots}
+            result = original(gen, fn, *args, **kwargs)
+            remaining = {(s.s, s.r[0]) for s in fn.slots if s.k == 0 and len(s.r) == 1}  # (a flag keeps its number)
+            removed = [entry for entry in before if (entry[0], entry[1]) not in remaining]
+            created = [s for s in fn.slots if id(s) not in known]
+            entries = []
+            if len(created) == 2 * len(removed):
+                for index, (name, _, typ) in enumerate(removed):
+                    tag, payload = created[2 * index], created[2 * index + 1]
+                    base = name or "h"
+                    if (tag.s, payload.s) != (base + ".tag", base + ".pay") or tag.t != "int" or payload.t != "int":
+                        entries = []
+                        break
+                    entries.append({"tag": f"%{tag.s}.{tag.r[0]}", "payload": f"%{payload.s}.{payload.r[0]}",
+                                    "type": typ})
+            # (a record that does not pair up is left out: the adapter then refuses those slots)
+            if entries:
+                kept, recorded = self.split_unions.get(id(fn), (fn, []))
+                self.split_unions[id(fn)] = (fn, (recorded if kept is fn else []) + entries)
+            return result
+        return wrapped
+
     def lower_wrapper(self, original):
         def wrapped(gen, fn, *args, **kwargs):
             self.capture_before(gen)
@@ -698,6 +738,8 @@ class Observer:
                 for key in ("requires", "analyses", "preserves", "invalidates", "rerun")
             }
             self.wrap(Gen, contract.name, self.pass_wrapper(contract.name))
+        if self.guard_evidence:
+            self.wrap(Gen, "unionslots", self.unionslots_wrapper)
         for name in PROGRAM_PASS_UNITS:
             self.wrap(Gen, name, self.program_pass_wrapper(name))
         self.wrap(Gen, "eh_ir", self.pass_wrapper("exceptions"))

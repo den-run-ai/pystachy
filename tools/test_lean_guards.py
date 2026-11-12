@@ -162,13 +162,19 @@ class GuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "tag inventory"):
             guards.normalize(snap, self.union(snap))
 
-    def test_raw_union_is_explicitly_unsupported(self):
+    def test_raw_union_bits_are_read_as_their_member(self):
+        # (a raw read claims no member: the reads of its bits as a member's are the obligations)
         snap = self.sample()
         fn = self.union(snap)
         op = next(op for b in fn["blocks"] for op in b["operations"] if op["op"] == "union.payload")
         op["op"], op["text"] = "union.raw", ""
-        with self.assertRaisesRegex(boundary.Unsupported, "raw union"):
-            guards.normalize(snap, fn)
+        candidate, meta = guards.normalize(snap, fn)
+        self.assertGreater(meta["payload_obligations"], 0)
+        self.assertTrue(self.lean(candidate, meta))
+        test = next(op for b in fn["blocks"] for op in b["operations"] if op["op"] == "num.cmp")
+        test["operands"][1]["value"] = next(str(tag) for tag in snap["union_tags"].values()
+                                            if str(tag) != test["operands"][1]["value"])
+        self.assertFalse(self.lean(*guards.normalize(snap, fn)))
 
     def test_unknown_union_guard_stays_rejected(self):
         snap = self.sample()
@@ -354,7 +360,7 @@ class GuardTests(unittest.TestCase):
                     op["operands"][0]["value"] = "%t100"
         self.assertEqual(len(guards.inventory(fn)), 3)
         candidate, meta = guards.normalize(snap, fn)
-        self.assertEqual(meta["payloads"], 3)
+        self.assertEqual(meta["payloads"] - meta["payload_obligations"], 3)
         # Even an explicit null guard cannot turn the incoming float into a str.
         self.assertFalse(self.lean(candidate, meta))
 
@@ -478,6 +484,19 @@ class GuardCorpusAccountingTests(unittest.TestCase):
         record = self.record(union_reads=0, proved_union_reads=0, removed_checks=0, proved_removed_checks=0)
         report = summarize(["p.py"], [record], 0)
         self.assertEqual(report["totals"]["vacuous_programs"], 1)
+
+    def test_payload_obligations_are_counted_and_not_vacuous(self):
+        from check_lean_guard_corpus import summarize
+        record = self.record(union_reads=0, proved_union_reads=0, removed_checks=0, proved_removed_checks=0,
+                             payload_obligations=3, proved_payload_obligations=3)
+        report = summarize(["p.py"], [record], 0)
+        self.assertEqual(report["totals"]["vacuous_programs"], 0)
+        self.assertEqual(report["totals"]["proved_payload_obligations"], 3)
+        with self.assertRaisesRegex(ValueError, "omitted obligations"):
+            summarize(["p.py"], [self.record(payload_obligations=3, proved_payload_obligations=2)], 0)
+        with self.assertRaisesRegex(ValueError, "invalid payload obligation counts"):
+            summarize(["p.py"], [self.record(status="rejected", payload_obligations=1,
+                                             proved_payload_obligations=2)], 0)
 
     def test_unsupported_write_only_program_is_not_vacuous(self):
         from check_lean_guard_corpus import summarize

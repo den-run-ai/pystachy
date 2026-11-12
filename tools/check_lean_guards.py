@@ -14,6 +14,7 @@ from pathlib import Path
 import check_lean_access as access
 import check_lean_boundary as boundary
 from check_lean_effects import RUNTIME, summaries, targs
+from src.pystachy_compiler.specs import BIG  # (check_lean_effects puts the checkout on sys.path)
 
 NULL = "null"
 NONNULL = "nonnull"
@@ -25,12 +26,14 @@ REMOVAL_FACTS = frozenset({"eq", "ne", "cell", "absurd"})
 LIMITATIONS = (
     "Proves union guard safety in a normalized finite-tag model, across writes and calls only where "
     "no compiled code may write a union box (typed memory, the runtime ABI and complete inspection "
-    "trusted), and removed null checks redundant in the before-pass graph in the access model "
+    "trusted), that union payload bits are read, boxed and stored in split union locals only as their "
+    "box's member, and removed null checks redundant in the before-pass graph in the access model "
     "(fields, tracked globals, closure cells and write effects) or the finite-tag model. The Python "
-    "adapters, inspection fidelity, declared parameter union domains, the classes table, runtime "
-    "effect contracts and union tag/layout ABI are trusted; union return domains are proved. "
-    "Does not prove raw union reconstruction, payload unpacking, GC, lifetime, pass "
-    "equivalence or source/LLVM semantics. Unsupported forms fail closed."
+    "adapters, inspection fidelity (split slot records included), declared parameter union domains, "
+    "IR operand and container item types, the classes table, runtime effect contracts and union "
+    "tag/layout ABI are trusted; union return domains are proved. Does not prove reconstruction "
+    "from other tag sources, memory/container provenance, GC, lifetime, pass equivalence or "
+    "source/LLVM semantics. Unsupported forms fail closed."
 )
 
 
@@ -105,6 +108,93 @@ def union_writes(fn):
             if op["op"] in {"mem.store", "mach.store", "tuple.store", "landing"}
             and op["operands"] and (op["operands"][0]["value"] in roots
                                     or op["operands"][0]["value"] not in private)]
+
+
+# Obligations on the bits of union payloads (normalize): beyond inventoried reads, each read of
+# payload bits as a member's, each box made of a tag and bits, each split pair stored.
+PAYLOAD_OBLIGATIONS = frozenset({"payload interpretation", "union box payload", "split union payload"})
+PRESENT = "present"  # (an opt[None] split's tag 1: the member is its payload's, split_layout)
+SCALAR_MEMBERS = frozenset({"member:bool", "member:float", "member:int"})
+OPTIONAL_SCALARS = frozenset({"opt[bool]", "opt[float]", "opt[int]"})
+# Operand types that carry a payload word without saying which member's bits it holds.
+GENERIC_WORDS = frozenset({"%slot", "%ptr", "*T", "*K", "*V", "S", "*dyn", "dyn"})
+
+
+def split_layout(fn, slots, tag_names):
+    """The virtual union boxes of fn: the slots optimizations.gen_unionslots split, each pair of
+    an int tag slot and an int payload slot replacing a local's slot (inspect_compiler's
+    split_unions, which names the type it held). Tag slot -> (payload slot, the members its box
+    may be, and the member each literal tag stands for: a union of numbers keeps its union tags,
+    an optional scalar has 0 for None and 1 for its value, gen_uparts)."""
+    records = fn.get("split_unions", [])
+    boundary.require(isinstance(records, list), "invalid split union records")
+    layout = {}
+    for record in records:
+        boundary.require(isinstance(record, dict) and all(isinstance(record.get(key), str)
+                                                          for key in ("tag", "payload", "type")),
+                         "invalid split union record")
+        tag, payload, typ = record["tag"], record["payload"], record["type"]
+        boundary.require(slots.get(tag) == "int" and slots.get(payload) == "int" and tag != payload,
+                         "split union record names no int slots")
+        boundary.require(tag not in layout and all(payload not in (other, entry[0]) and tag != entry[0]
+                                                   for other, entry in layout.items()),
+                         "split union slot named twice")
+        if typ in OPTIONAL_SCALARS:
+            member = "member:" + typ[4:-1]
+            layout[tag] = (payload, sorted([member, NULL]), {"0": NULL, "1": member})
+            continue
+        if typ == "opt[None]":
+            # (a None-first local, its slot's type still provisional: None or a scalar, whose
+            # member is that of the bits each store pairs with presence 1, PRESENT)
+            layout[tag] = (payload, sorted(SCALAR_MEMBERS | {NULL}), {"0": NULL, "1": PRESENT})
+            continue
+        members = union_members(typ)
+        if members is None or not set(members) <= SCALAR_MEMBERS:
+            raise boundary.Unsupported(f"split union of {typ}")
+        decode = {literal: member for literal, member in tag_names.items() if member in members}
+        boundary.require(len(decode) == len(members), "split union member without a union tag")
+        layout[tag] = (payload, members, decode)
+    # (only unionslots names slots so: a pair the inspection did not record stays unmodeled)
+    named = {slot for slot in slots if slot.rsplit(".", 1)[0].endswith((".tag", ".pay"))}
+    if named - set(layout) - {payload for payload, _, _ in layout.values()}:
+        raise boundary.Unsupported("split union slots without their inspection record")
+    return layout
+
+
+def split_accesses(fn, layout):
+    """The accesses of fn's split slots, which gen_unionslots makes in pairs: a store of the tag
+    and, next, of the payload; a load of the tag and, next, of the payload. (label, offset of the
+    tag access) -> (tag slot, tag value, payload value), for stores and for loads; and the
+    payload accesses those cover. Any other access or use of the slots is unsupported."""
+    payloads = {entry[0]: tag for tag, entry in layout.items()}
+    stores, loads, covered = {}, {}, set()
+    for block in fn["blocks"]:
+        operations = block["operations"]
+        for offset, op in enumerate(operations):
+            for position, operand in enumerate(op["operands"]):
+                slot = operand["value"]
+                if slot not in layout and slot not in payloads:
+                    continue
+                if position != 0 or op["op"] not in {"mem.store", "mem.load"}:
+                    raise boundary.Unsupported("split union slot used other than by its loads and stores")
+                if slot in payloads:
+                    if (block["label"], offset) not in covered:
+                        raise boundary.Unsupported("split union payload accessed without its tag")
+                    continue
+                partner = operations[offset + 1] if offset + 1 < len(operations) else None
+                if (partner is None or partner["op"] != op["op"] or not partner["operands"]
+                        or partner["operands"][0]["value"] != layout[slot][0]):
+                    raise boundary.Unsupported("split union tag accessed without its payload")
+                if op["op"] == "mem.store":
+                    stores[(block["label"], offset)] = (slot, op["operands"][1]["value"],
+                                                        partner["operands"][1]["value"])
+                else:
+                    boundary.require(len(op["results"]) == 1 and len(partner["results"]) == 1,
+                                     "malformed split union load")
+                    loads[(block["label"], offset)] = (slot, f"%t{op['results'][0]}",
+                                                       f"%t{partner['results'][0]}")
+                covered.add((block["label"], offset + 1))
+    return stores, loads, covered
 
 
 def slot_name(op):
@@ -275,6 +365,14 @@ def check_call_order(fn, reads):
             later |= (block["label"], offset, op["op"]) in reads
 
 
+def payload_bits(fn):
+    """Whether fn handles union payload bits normalize obliges beyond inventoried reads: split
+    union slots, payloads read or raw, or boxes made of a tag and bits."""
+    return bool(fn.get("split_unions")) or any(
+        op["op"] in {"union.payload", "union.raw"} or (op["op"] == "rt" and op["text"] in {"ubox", "ubox_opt"})
+        for block in fn["blocks"] for op in block["operations"])
+
+
 def inventory(fn):
     """Inventory opcodes and union-derived addresses before guard recognition."""
     roots = union_provenance(fn)
@@ -379,8 +477,11 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 else:
                     escapes.add(value)
     entry = fn["blocks"][0]["label"]
+    # Split union slot pairs (virtual boxes, split_layout) are tracked as a whole below.
+    layout = {} if null_mode else split_layout(fn, slots, tag_names)
+    halves = set(layout) | {payload for payload, _, _ in layout.values()}
     immutable = {slot: rows[0][2] for slot, rows in writes.items() if len(rows) == 1
-                 and rows[0][0] == entry and slot not in escapes
+                 and slot not in halves and rows[0][0] == entry and slot not in escapes
                  and (not fn["blocks"][0]["handler"] or fn["blocks"][0]["handler"] not in {b["label"] for b in fn["blocks"]})
                  and all(label != entry or pos > rows[0][1] for label, pos in load_sites.get(slot, []))}
     # Entry backedges would execute stores again and are deliberately unsupported.
@@ -397,6 +498,94 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
             seen.add(value)
             value = aliases[value]
         return value
+    # A split pair's tag and payload are written and read together (split_accesses): a pair load
+    # gives its tag value a location, a copy of the virtual box (the tag slot's location), which
+    # is what the tag tests on that value test and what its payload's bits hold.
+    pair_stores, pair_loads, covered = split_accesses(fn, layout)
+    decoders = {tag: layout[slot][2] for slot, tag, _ in pair_loads.values()}
+    snapshots = {tag: slot for slot, tag, _ in pair_loads.values()}
+    # Payload words: the bits union.payload and union.raw read of a box (results: its address,
+    # then the bits), a pair load's payload, and what slot.pack and phis make of them. Each has
+    # the location whose tags are the members its bits may be: its box (whose tag never
+    # changes), its pair load's tag value, or a phi's own (copies on its edges, word_phis).
+    words, tag_sources = {}, {}
+    if not null_mode:
+        used = {a["value"] for block in fn["blocks"] for op in block["operations"] for a in op["operands"]}
+        for value, op in producers.items():
+            if op["op"] in {"union.payload", "union.raw"}:
+                if value == f"%t{op['results'][0]}":
+                    if value in used:
+                        raise boundary.Unsupported("union payload address used")
+                else:
+                    words[value] = canonical(op["operands"][0]["value"])
+            elif op["op"] == "union.tag":
+                tag_sources[value] = canonical(op["operands"][0]["value"])
+        for _, tag, payload in pair_loads.values():
+            words[payload] = tag_sources[tag] = tag
+    def close_words():
+        changed = True
+        while changed:
+            changed = False
+            for value, op in producers.items():
+                if value in words:
+                    continue
+                if op["op"] == "slot.pack" and op["operands"][0]["value"] in words:
+                    words[value] = words[op["operands"][0]["value"]]
+                    changed = True
+                elif op["op"] == "phi" and any(a["value"] in words for a in op["operands"]):
+                    words[value] = value
+                    changed = True
+                elif (op["op"] == "select" and op["type"] in GENERIC_WORDS
+                      and any(a["value"] in words for a in op["operands"][1:])):
+                    # (a typed select reads its payload operands as its type: interpretation)
+                    raise boundary.Unsupported("untyped select of union payload words")
+    close_words()
+    def static_kinds(value, seen=frozenset()):
+        """The members bits that come from no box may be, by what makes them: a word literal an
+        int or a bool, a typed value its type (a slot.pack's operand's, a fixed tuple's item's or
+        the type a dynamic payload read proved, their text), a phi its operands', else unknown
+        (None)."""
+        if value == "null":
+            return [NULL]
+        if value.lstrip("-").isdigit():
+            return ["member:bool", "member:int"]
+        if value in {"true", "false"}:
+            return ["member:bool"]
+        op = producers.get(value)
+        if op is not None and op["op"] == "phi" and value not in words and value not in seen:
+            joined = set()
+            for operand in op["operands"]:
+                kinds = static_kinds(operand["value"], seen | {value})
+                if kinds is None:
+                    return None
+                joined.update(kinds)
+            return sorted(joined)
+        if op is not None and op["op"] == "slot.pack" and len(op["operands"]) == 1:
+            typ = op["operands"][0]["type"]
+        elif op is not None and op["op"] in {"tuple.load", "dyn.payload"} and value == f"%t{op['results'][-1]}":
+            typ = op["text"]
+        elif op is not None and op["type"].startswith("*") and value == f"%t{op['results'][0]}" and (
+                op["op"] == "list.load" or (op["op"] == "rt" and op["text"] in {"list.get", "list.pop"})):
+            # (a list's item, encoded *element: typed-ir.md's list reads; a generic *T one is
+            # the receiver's item, as union payload provenance takes it there)
+            typ = op["type"][1:]
+            receiver = types.get(op["operands"][0]["value"], "") if op["operands"] else ""
+            if typ == "T" and receiver.startswith("list[") and receiver.endswith("]"):
+                typ = targs(receiver)[0]
+        else:
+            typ = types.get(value) if op is not None or value.startswith("%a") else None
+        if typ is None or typ in GENERIC_WORDS or value in words:
+            return None
+        if typ.startswith("opt[") and typ.endswith("]"):
+            return sorted(["member:" + typ[4:-1], NULL])
+        return ["member:" + typ]
+    def reconstructed(tag, payload):
+        """The location whose tags a box made of this tag value and payload word has: both read
+        of one box (union.tag and union.raw) or one pair load; else None."""
+        source = tag_sources.get(tag)
+        return source if source is not None and words.get(payload) == source else None
+    def location_domain(location):
+        return layout[snapshots[location]][1] if location in snapshots else domain(location)
     def domain(value, seen=frozenset()):
         if null_mode:
             return [NULL, NONNULL]
@@ -405,7 +594,10 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         if op is not None and op["op"] == "rt" and op["text"] in {"ubox", "ubox_opt"}:
             tag = tag_names.get(op["operands"][0]["value"])
             if tag is None:
-                raise boundary.Unsupported("dynamic union reconstruction tag")
+                source = reconstructed(op["operands"][0]["value"], op["operands"][1]["value"])
+                if source is None or op["text"] != "ubox":
+                    raise boundary.Unsupported("dynamic union reconstruction tag")
+                return location_domain(source)
             return [tag] + ([NULL] if op["text"] == "ubox_opt" else [])
         tags = union_members(types.get(value, ""))
         if tags is None and op is not None and op["op"] in {"select", "phi"} and value not in seen:
@@ -451,8 +643,9 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                     answer = ("atom", box, (NULL,))
         elif op["op"] == "num.cmp" and op["text"] in {"==", "!="} and len(args) == 2:
             for a, b in (args, args[::-1]):
-                if a["value"] in reads and b["value"] in tag_names:
-                    answer = ("atom", reads[a["value"]], (tag_names[b["value"]],))
+                decode = decoders.get(a["value"], tag_names)
+                if a["value"] in reads and b["value"] in decode and decode[b["value"]] != PRESENT:
+                    answer = ("atom", reads[a["value"]], (decode[b["value"]],))
                     break
         elif op["op"] == "scalar.bin" and op["type"] == "bool" and len(args) == 2:
             left, right = [condition(a["value"], visiting | {value}) for a in args]
@@ -470,15 +663,80 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         if op["op"] == "union.tag" or (op["op"] in {"mach.load", "mem.load"} and op["type"] == "int" and op["operands"]
                                         and domain(op["operands"][0]["value"]) is not None):
             reads[value] = canonical(op["operands"][0]["value"])
+    reads.update((tag, tag) for tag in snapshots)
+    # What a split pair store writes into its virtual box (pair_source): the member its literal
+    # tag stands for, whose box its payload must hold the bits of (an obligation, but for None);
+    # the box both parts were read of (union.tag and union.raw, or one pair load); or a pair phi,
+    # a phi of tags and a phi of payloads in one block, which writes each edge's pair (pair_phis:
+    # block -> its pair phis, each named by its tag phi, a location).
+    blocks_of = {f"%t{n}": block["label"] for block in fn["blocks"] for op in block["operations"]
+                 for n in op["results"]}
+    pair_phis, pair_edges = {}, {}
+    def phi_incoming(phi):
+        op = producers[phi]
+        boundary.require(len(op["targets"]) == len(op["operands"]) and len(set(op["targets"])) == len(op["targets"]),
+                         "malformed phi")
+        return dict(zip(op["targets"], (a["value"] for a in op["operands"]), strict=True))
+    def pair_source(tag, payload, decode):
+        if tag in decode:
+            return ("literal", decode[tag], payload)
+        source = reconstructed(tag, payload)
+        if source is not None:
+            return ("copy", source)
+        tag_op, payload_op = producers.get(tag), producers.get(payload)
+        if (tag_op is None or payload_op is None or tag_op["op"] != "phi" or payload_op["op"] != "phi"
+                or blocks_of[tag] != blocks_of[payload] or set(tag_op["targets"]) != set(payload_op["targets"])):
+            raise boundary.Unsupported("split union store of parts of no one box")
+        entries = pair_phis.setdefault(blocks_of[tag], {})
+        if entries.get(tag, (payload, decode)) != (payload, decode):
+            raise boundary.Unsupported("one tag phi paired twice")
+        entries[tag] = (payload, decode)
+        return ("copy", tag)
+    pair_writes = {key: pair_source(tag, payload, layout[slot][2])
+                   for key, (slot, tag, payload) in pair_stores.items()}
+    pending = True
+    while pending:
+        pending = False
+        for label, entries in list(pair_phis.items()):
+            for tag, (payload, decode) in list(entries.items()):
+                tags, payloads = phi_incoming(tag), phi_incoming(payload)
+                for source, value in tags.items():
+                    if (tag, source) not in pair_edges:
+                        pair_edges[(tag, source)] = pair_source(value, payloads[source], decode)
+                        pending = True
+    # (a pair phi's payload phi is a word of its own, whatever else uses it)
+    for entries in pair_phis.values():
+        for payload, _ in entries.values():
+            words.setdefault(payload, payload)
+    close_words()
+    split_ops = {}  # id of a split pair's tag access -> its virtual box and what it writes or reads
+    for block in fn["blocks"]:
+        for offset, op in enumerate(block["operations"]):
+            key = (block["label"], offset)
+            if key in pair_stores:
+                split_ops[id(op)] = ("store", pair_stores[key][0], pair_writes[key])
+            elif key in pair_loads:
+                split_ops[id(op)] = ("load", pair_loads[key][0], pair_loads[key][1])
     # Must-equality of private slots and immutable SSA copies. A write or SSA
     # redefinition invalidates the pair; exception edges keep only pairs that
-    # hold at every instruction in the covered block.
+    # hold at every instruction in the covered block. A virtual box equals the
+    # box or pair load it was written from, and its pair loads' tag values.
     def pairing(pairs, op):
         results = {f"%t{n}" for n in op["results"]}
         pairs = {pair for pair in pairs if pair[0] not in results}
         args = op["operands"]
         address = args[0]["value"] if args else ""
-        private = address in slots and address not in escapes
+        split = split_ops.get(id(op))
+        if split is not None:
+            kind, box, what = split
+            if kind == "store":
+                pairs = {pair for pair in pairs if pair[1] != box}
+                if what[0] == "copy":
+                    pairs.add((what[1], box))
+            else:
+                pairs.add((what, box))
+            return frozenset(pairs)
+        private = address in slots and address not in escapes and address not in halves
         if private and op["op"] in {"mem.store", "mach.store", "landing"}:
             pairs = {pair for pair in pairs if pair[1] != address}
             if op["op"] == "mem.store" and args[1]["value"] in types:
@@ -564,10 +822,19 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
             if entries:
                 phi_copies[block["label"]] = entries
     copied = {result for entries in phi_copies.values() for result, _ in entries}
+    # A phi of payload words is a location of its own: on each edge, the incoming word's (or
+    # the members the bits that come from no box may be, static_kinds).
+    word_phis = {}
+    for value in words:
+        if value == words[value]:
+            if value in copied:
+                raise boundary.Unsupported("union phi of payload words")
+            word_phis.setdefault(blocks_of[value], []).append(value)
     active_pairs = frozenset()
     nodes, labels, obligations = [], {}, 0
     origins = {}  # id of an obligation node -> its operation (label, offset, opcode)
     stop = ("node", {"op": "stop"})
+    payload_checks = not null_mode and not obligate_returns
     def assign(dst, src, target):
         # dst gets src's value, then target: null's tag, an SSA value's tags or nothing known
         if src == "null":
@@ -576,17 +843,108 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         if src in types:
             return ("node", {"op": "copy", "dst": dst, "src": canonical(src), "next": target})
         return ("node", {"op": "havoc", "dst": dst, "next": target})
+    def holds(word, member, target, site, deref=False):
+        """target, once the bits word holds are proved a member's: of its location's, or of
+        static_kinds's (a fresh location assumed so); unknown bits are unsupported. deref: the
+        bits are the word a pointer of opt[K] points at, a boxed scalar's or a promoting int's
+        low word (pys_ubox_opt)."""
+        if not payload_checks:
+            return target
+        location = None if deref else words.get(word)
+        if location is None:
+            kinds = static_kinds(word)
+            if deref and kinds is not None:
+                kinds = sorted({"member:int" if kind == "member:" + BIG else kind for kind in kinds})
+            if kinds is None:
+                raise boundary.Unsupported(f"union payload bits of no known member at {site[0]}:{site[1]}")
+            if word.lstrip("-").isdigit() or word in {"true", "false"}:
+                # (a word literal is the bits of whichever of its members the box is, if any)
+                kinds = [kind for kind in kinds if kind in member] or kinds
+            location = f"%bits.{site[0]}.{site[1]}.{len(origins)}"
+            check = {"op": "payload", "value": location, "tags": member, "next": target}
+            origins[id(check)] = site
+            return ("node", {"op": "havoc", "dst": location, "next": (
+                "node", {"op": "guard", "value": location, "tags": kinds, "yes": ("node", check), "no": stop})})
+        check = {"op": "payload", "value": location, "tags": member, "next": target}
+        origins[id(check)] = site
+        return ("node", check)
+    def interpretation(op, position, operand):
+        """The members whose bits op reads the payload word operand (at position) as: its
+        result's type for slot.unpack, else the operand's; None where op only moves the bits
+        (slot.pack, a phi, a select's choice) or makes a box of them (ubox, checked there)."""
+        kind = op["op"]
+        if kind in {"slot.pack", "phi"} or (
+                kind == "rt" and op["text"] in {"ubox", "ubox_opt"} and position == 1):
+            return None
+        typ = op["type"] if kind in {"slot.unpack", "select"} else operand["type"]
+        if kind == "rt" and op["text"] == "box" and position == 0:
+            # (a scalar box of the bits, its member that of its uses: each an opt[K] or a K box)
+            typed = {a["type"] for block in fn["blocks"] for use in block["operations"] for a in use["operands"]
+                     if op["results"] and a["value"] == f"%t{op['results'][0]}"}
+            if len(typed) != 1 or not next(iter(typed)).startswith("opt["):
+                raise boundary.Unsupported("scalar box of union payload bits of no one type")
+            typ = next(iter(typed))[4:-1]
+        if typ in GENERIC_WORDS:
+            raise boundary.Unsupported(f"union payload bits used by {kind} with no member type")
+        if typ.startswith("opt[") and typ.endswith("]"):
+            return sorted(["member:" + typ[4:-1], NULL])
+        return ["member:" + typ]
+    def write_pair(dst, what, target, site):
+        """dst, a virtual box or pair phi, gets what a pair writes (pair_source), then target."""
+        if what[0] == "copy":
+            return ("node", {"op": "copy", "dst": dst, "src": what[1], "next": target})
+        _, member, payload = what
+        if member == PRESENT:
+            # (an opt[None] split's value: the member of its bits, known unless unsupported)
+            if payload in words:
+                return ("node", {"op": "copy", "dst": dst, "src": words[payload], "next": target})
+            kinds = static_kinds(payload)
+            if kinds is None or NULL in kinds or not set(kinds) <= SCALAR_MEMBERS:
+                raise boundary.Unsupported(f"split optional of bits of no known scalar at {site[0]}:{site[1]}")
+            member = kinds
+        else:
+            member = [member]
+        made = ("node", {"op": "havoc", "dst": dst, "next": (
+            "node", {"op": "guard", "value": dst, "tags": member, "yes": target, "no": stop})})
+        return made if member == [NULL] else holds(payload, member, made, site)
     def into(source, target):
+        # (one edge's copies are parallel: a source that is a phi of the target block is havoc)
+        phis = ({result for result, _ in phi_copies.get(target, [])} | set(pair_phis.get(target, {}))
+                | set(word_phis.get(target, [])))
+        after = target
+        for word in reversed(word_phis.get(target, [])):
+            value = phi_incoming(word).get(source)
+            if value is None:
+                raise boundary.Unsupported("payload phi has no incoming value for an edge")
+            location = words.get(value)
+            if location == word:
+                continue  # (a loop's phi meets itself)
+            if location is not None and location not in phis:
+                after = ("node", {"op": "copy", "dst": word, "src": location, "next": after})
+                continue
+            kinds = None if location is not None else static_kinds(value)
+            after = ("node", {"op": "havoc", "dst": word, "next": after if kinds is None else (
+                "node", {"op": "guard", "value": word, "tags": kinds, "yes": after, "no": stop})})
+        for tag in reversed(list(pair_phis.get(target, {}))):
+            what = pair_edges.get((tag, source))
+            if what is None:
+                raise boundary.Unsupported("pair phi has no incoming value for an edge")
+            if what == ("copy", tag):
+                continue  # (a loop's pair meets itself)
+            if what[0] == "copy" and what[1] in phis:
+                after = ("node", {"op": "havoc", "dst": tag, "next": after})
+                continue
+            after = write_pair(tag, what, after, (source, target, "split union payload"))
         entries = phi_copies.get(target)
         if not entries:
-            return target
+            return after
         values = [(result, incoming.get(source)) for result, incoming in entries]
         if any(value is None for _, value in values):
             raise boundary.Unsupported("union phi has no incoming value for an edge")
         parallel = not any(value in {result for result, _ in entries} for _, value in values)
         for result, value in reversed(values):
-            target = assign(result, value, target) if parallel else ("node", {"op": "havoc", "dst": result, "next": target})
-        return target
+            after = assign(result, value, after) if parallel else ("node", {"op": "havoc", "dst": result, "next": after})
+        return after
     def emit(op):
         nodes.append(op)
     def follow(op):
@@ -653,6 +1011,25 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 follow({"op": "payload", "value": value, "tags": [NONNULL]})
                 origins[id(nodes[-1])] = (label, offset, "removed check")
                 obligations += 1
+            split = split_ops.get(id(op))
+            if split is not None or (label, offset) in covered:
+                boundary.require((label, offset, kind) not in read_inventory, "split union access inventoried as a read")
+                # (a split pair's two accesses as one: its tag access writes or reads the box)
+                if split is not None and split[0] == "store":
+                    after = len(nodes) + 1
+                    emit({"op": "jump", "next": write_pair(split[1], split[2], after,
+                                                           (label, offset, "split union payload"))})
+                elif split is not None:
+                    follow({"op": "copy", "dst": split[2], "src": split[1]})
+                active_pairs = pairing(active_pairs, op)
+                continue
+            if payload_checks:
+                for position, operand in enumerate(args):
+                    if operand["value"] in words:
+                        member = interpretation(op, position, operand)
+                        if member is not None:
+                            follow({"op": "payload", "value": words[operand["value"]], "tags": member})
+                            origins[id(nodes[-1])] = (label, offset, "payload interpretation")
             is_read = (label, offset, kind) in read_inventory
             if is_read:
                 value = canonical(args[0]["value"])
@@ -664,8 +1041,6 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 follow({"op": "payload", "value": value, "tags": allowed})
                 origins[id(nodes[-1])] = (label, offset, kind)
                 obligations += 1
-            if kind == "union.raw" and not null_mode:
-                raise boundary.Unsupported("raw union payload transport is outside guard-only scope")
             if kind == "br":
                 emit({"op": "jump", "next": edge(label, op["targets"][0])})
             elif kind in {"cbr", "check"}:
@@ -679,10 +1054,11 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                                                    edge(label, no, (args[0]["value"], False)))})
             elif kind == "switch" and args[0]["value"] in reads:
                 target = into(label, op["targets"][0])
+                decode = decoders.get(args[0]["value"], tag_names)
                 for arg, successor in reversed(list(zip(args[1:], op["targets"][1:], strict=True))):
-                    if arg["value"] not in tag_names:
+                    if decode.get(arg["value"], PRESENT) == PRESENT:
                         raise boundary.Unsupported("unknown union switch tag")
-                    target = decide(("atom", reads[args[0]["value"]], (tag_names[arg["value"]],)),
+                    target = decide(("atom", reads[args[0]["value"]], (decode[arg["value"]],)),
                                     into(label, successor), target)
                 emit({"op": "jump", "next": target})
             elif kind in {"ret", "ret.none", "unreachable"} or (kind in {"raise", "throw"} and not op["targets"]):
@@ -711,6 +1087,19 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                                                        assign(results[0], args[1]["value"], after),
                                                        assign(results[0], args[2]["value"], after))})
                     copied.add(results[0])
+                if kind == "rt" and op["text"] in {"ubox", "ubox_opt"} and not null_mode:
+                    # A box of a literal tag holds that member's bits (a fresh box, pys_ubox); one
+                    # made again of the parts of a box or a pair load is that box.
+                    tag, payload = args[0]["value"], args[1]["value"]
+                    if tag in tag_names:
+                        allowed = sorted([tag_names[tag]] + ([NULL] if op["text"] == "ubox_opt" else []))
+                        after = len(nodes) + 1
+                        emit({"op": "jump", "next": holds(payload, allowed, after, (label, offset, "union box payload"),
+                                                          deref=op["text"] == "ubox_opt" and len(args) == 3 and args[2]["value"] == "1")})
+                    else:
+                        domain(results[0])  # (unsupported unless reconstructed)
+                        follow({"op": "copy", "dst": results[0], "src": reconstructed(tag, payload)})
+                        copied.add(results[0])
                 for result in results:
                     tags = domain(result)
                     if not tags or result in aliases or result in copied:
@@ -739,6 +1128,8 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
             return labels[value] if isinstance(value, str) else value
         if id(value) not in placed:
             node = dict(value[1])
+            if id(value[1]) in origins:
+                origins[id(node)] = origins[id(value[1])]
             for key in ("yes", "no", "next"):
                 if key in node:
                     node[key] = place(node[key])
@@ -765,10 +1156,12 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 node[key] = indices[node[key]]
     payloads = sum(node["op"] == "payload" for node in nodes)
     located = {index: origins[id(node)] for index, node in enumerate(nodes) if id(node) in origins}
+    checked_payloads = sum(site[2] in PAYLOAD_OBLIGATIONS for site in located.values())
     candidate = {"schema_version": 2, "program": {"entry": 0, "nodes": nodes},
                  "certificate": boundary.infer_certificate(nodes)}
     return candidate, {"function": fn["symbol"], "obligations": obligations, "nodes": len(nodes),
-                       "payloads": payloads, "omitted_unreachable_obligations": obligations - payloads,
+                       "payloads": payloads, "payload_obligations": checked_payloads,
+                       "omitted_unreachable_obligations": obligations + checked_payloads - payloads,
                        "scope": "removed null checks (before-pass redundancy)" if null_mode else "closed-union guards",
                        "origins": located}
 
@@ -874,7 +1267,7 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.
                      and manifest.get("removed_checks") == sum(r["reported_rewrites"] for r in evidence),
                      "guard inventory manifest mismatch")
     records, codes = [], [0]
-    work = [(fn, None) for fn in snapshot["functions"] if inventory(fn) or union_writes(fn)]
+    work = [(fn, None) for fn in snapshot["functions"] if inventory(fn) or union_writes(fn) or payload_bits(fn)]
     # (without a classes table no field address is shown to lie outside boxes: every write
     # and call remains a possible box mutation, as box_writes reports none of it)
     writes = box_writes(snapshot) if isinstance(snapshot.get("classes"), dict) else None
@@ -922,6 +1315,10 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.
             "removed_checks": sum(r["reported_rewrites"] for r in snapshot["nullcheck_evidence"]),
             "proved_union_reads": sum(r.get("obligations", 0) for r in records if r["status"] == "accepted"
                                       and r.get("scope") == "closed-union guards"),
+            "payload_obligations": sum(r.get("payload_obligations", 0) for r in records
+                                       if r.get("scope") == "closed-union guards"),
+            "proved_payload_obligations": sum(r.get("payload_obligations", 0) for r in records
+                                              if r["status"] == "accepted" and r.get("scope") == "closed-union guards"),
             "proved_removed_checks": sum(r.get("obligations", 0) for r in records if r["status"] == "accepted"
                                          and r.get("scope") == REMOVALS),
             "limitations": LIMITATIONS}, code

@@ -20,6 +20,8 @@ import check_lean_guards as guards
 
 ROOT = Path(__file__).resolve().parent.parent
 COUNT_KEYS = ("union_reads", "removed_checks", "proved_union_reads", "proved_removed_checks")
+# Obligations on union payload bits beyond inventoried reads (check_lean_guards.normalize).
+PAYLOAD_KEYS = ("payload_obligations", "proved_payload_obligations")
 
 
 def failed(program, error):
@@ -39,9 +41,14 @@ def validate_record(record):
     else:
         boundary.require(record["status"] == "error" and all(record[key] is None for key in COUNT_KEYS),
                          "partial inventory must be an explicit uncounted error")
+    if complete and any(key in record for key in PAYLOAD_KEYS):
+        boundary.require(all(type(record.get(key)) is int and record[key] >= 0 for key in PAYLOAD_KEYS)
+                         and record["proved_payload_obligations"] <= record["payload_obligations"],
+                         "invalid payload obligation counts")
     if record["status"] == "accepted":
         boundary.require(complete and record["union_reads"] == record["proved_union_reads"]
-                         and record["removed_checks"] == record["proved_removed_checks"],
+                         and record["removed_checks"] == record["proved_removed_checks"]
+                         and record.get("payload_obligations", 0) == record.get("proved_payload_obligations", 0),
                          "accepted record omitted obligations")
 
 
@@ -52,12 +59,13 @@ def summarize(programs, records, seconds):
         validate_record(record)
     status = max((r["status"] for r in records), key=boundary.SEVERITY.index)
     counts = {key: sum(r[key] for r in records if r["inventory_complete"]) for key in COUNT_KEYS}
+    counts.update({key: sum(r.get(key, 0) for r in records if r["inventory_complete"]) for key in PAYLOAD_KEYS})
     counts.update({key: sum(r["status"] == key for r in records) for key in boundary.SEVERITY})
     counts["programs"] = len(records)
     counts["uninventoried_programs"] = sum(not r["inventory_complete"] for r in records)
     counts["vacuous_programs"] = sum(r["status"] == "accepted" and r["inventory_complete"]
                                      and r["union_reads"] == 0 and r["removed_checks"] == 0
-                                     for r in records)
+                                     and r.get("payload_obligations", 0) == 0 for r in records)
     return {"status": status, "totals": counts, "programs": records,
             "inventory_complete": counts["uninventoried_programs"] == 0,
             "seconds": seconds, "limitations": guards.LIMITATIONS}
