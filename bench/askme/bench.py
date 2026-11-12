@@ -18,13 +18,14 @@ import os
 import platform
 import re
 import shutil
+import ssl
 import statistics
 import subprocess
 import sys
 import tempfile
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -239,9 +240,14 @@ def reference_command(python, reference):
 
 
 class RecordedServer:
-    """A loopback chat-completions endpoint that answers from a reply list."""
+    """A loopback chat-completions endpoint that answers from a reply list.
 
-    def __init__(self):
+    Each reply leaves in one write, as production servers send it, and the
+    connection stays open for the next request. With ``certificate`` (a
+    certificate and key file) the endpoint speaks TLS.
+    """
+
+    def __init__(self, certificate=None):
         outer = self
         self.replies = []
 
@@ -251,17 +257,25 @@ class RecordedServer:
             def do_POST(self):
                 self.rfile.read(int(self.headers.get("Content-Length", "0")))
                 payload = outer.replies.pop(0)
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(payload)))
-                self.end_headers()
-                self.wfile.write(payload)
+                head = (
+                    "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+                    f"Content-Length: {len(payload)}\r\n\r\n"
+                )
+                self.wfile.write(head.encode() + payload)
 
             def log_message(self, *_args):
                 pass
 
-        self.server = HTTPServer(("127.0.0.1", 0), Handler)
-        self.url = f"http://127.0.0.1:{self.server.server_address[1]}/v1/chat/completions"
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        scheme = "http"
+        if certificate is not None:
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(*certificate)
+            self.server.socket = context.wrap_socket(self.server.socket, server_side=True)
+            scheme = "https"
+        port = self.server.server_address[1]
+        self.url = f"{scheme}://localhost:{port}/v1/chat/completions"
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
 
@@ -272,6 +286,33 @@ class RecordedServer:
         self.server.shutdown()
         self.thread.join()
         self.server.server_close()
+
+
+def make_certificate(directory):
+    """A private CA and a certificate for localhost: (CA file, (certificate, key)), or None."""
+    if shutil.which("openssl") is None:
+        return None
+    directory.mkdir()
+    (directory / "server.ext").write_text(
+        "subjectAltName=DNS:localhost\nbasicConstraints=critical,CA:FALSE\n"
+        "keyUsage=critical,digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\n"
+        "authorityKeyIdentifier=keyid\nsubjectKeyIdentifier=hash\n"
+    )
+    commands = [
+        ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2", "-keyout", "ca.key",
+         "-out", "ca.pem", "-subj", "/CN=AskMe benchmark CA",
+         "-addext", "basicConstraints=critical,CA:TRUE",
+         "-addext", "keyUsage=critical,keyCertSign,cRLSign"],
+        ["req", "-newkey", "rsa:2048", "-nodes", "-keyout", "server.key", "-out", "server.csr",
+         "-subj", "/CN=localhost"],
+        ["x509", "-req", "-in", "server.csr", "-CA", "ca.pem", "-CAkey", "ca.key",
+         "-CAcreateserial", "-days", "2", "-extfile", "server.ext", "-out", "server.pem"],
+    ]
+    for command in commands:
+        done = subprocess.run(["openssl", *command], cwd=directory, capture_output=True)
+        if done.returncode != 0:
+            return None
+    return str(directory / "ca.pem"), (str(directory / "server.pem"), str(directory / "server.key"))
 
 
 def first_difference(expected, actual):
@@ -361,9 +402,11 @@ def main():
     if args.mypyc:
         build = work / "mypyc"
         build.mkdir()
-        modules = sorted(path.name for path in port.glob("*.py"))
-        for name in modules:
+        sources = sorted(path.name for path in port.glob("*.py"))
+        for name in sources:
             shutil.copy(port / name, build / name)
+        # (the native_ffi modules are Pystachy's: read for their types, not compiled)
+        modules = [name for name in sources if not name.startswith("native_ffi_")]
         started = time.perf_counter()
         subprocess.run(
             [args.mypyc, *modules], cwd=build, check=True, stdout=subprocess.DEVNULL,
@@ -509,22 +552,36 @@ def main():
     measure("steady", steady, everyone, long_runs)
     measure("light", light, everyone, long_runs)
 
-    # 4. The real transports against an instant loopback server.
+    # 4. The real transports against an instant loopback server: the port's
+    #    kept connection, its curl process per request, and both over TLS,
+    #    beside the reference's requests.post (a new connection per request).
+    http_scenario = workload.build(2, 51)
+    selected = [r for r in runtimes if r != "reference-pypy"]
+    ported = [r for r in selected if not r.startswith("reference")]
+    material = make_certificate(work / "tls")
+    transports = [("http", None, "inprocess", selected)]
     if shutil.which("curl"):
-        server = RecordedServer()
-        http_env = {"LLM_API_URL": server.url}
-        http_scenario = workload.build(2, 51)
-        selected = [r for r in runtimes if r != "reference-pypy"]
+        transports.append(("http_curl", None, "curl", ported))
+    if material is not None:
+        transports.append(("https", material, "inprocess", selected))
+        if shutil.which("curl"):
+            transports.append(("https_curl", material, "curl", ported))
+    for label, tls, mode, names in transports:
+        server = RecordedServer(tls[1] if tls else None)
+        transport_env = {"LLM_API_URL": server.url, "ASKME_NATIVE_HTTP": mode}
+        if tls:
+            transport_env["CURL_CA_BUNDLE"] = tls[0]
+            transport_env["REQUESTS_CA_BUNDLE"] = tls[0]
         measure(
-            "http",
+            label,
             http_scenario,
-            selected,
+            names,
             long_runs,
-            extra_env=http_env,
+            extra_env=transport_env,
             use_replay=False,
-            before=lambda: server.load(http_scenario),
+            before=lambda server=server: server.load(http_scenario),
         )
-        results["http"]["requests"] = len(http_scenario["replay"])
+        results[label]["requests"] = len(http_scenario["replay"])
         server.close()
 
     suite = {}

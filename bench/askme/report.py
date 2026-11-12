@@ -120,27 +120,37 @@ def main(argv):
         )
     )
 
-    if "http" in results:
-        requests = results["http"]["requests"]
+    transports = [
+        (key, title)
+        for key, title in (
+            ("http", "HTTP"),
+            ("http_curl", "HTTP, `curl`"),
+            ("https", "HTTPS"),
+            ("https_curl", "HTTPS, `curl`"),
+        )
+        if key in results
+    ]
+    if transports:
+        requests = results[transports[0][0]]["requests"]
         out.append("\n## Real HTTP transport\n")
         out.append(
             f"The same kind of run ({requests} requests) against an instant loopback server "
-            "instead of in-process replies. The port sends each request with a `curl` process "
-            "on every runtime; `askme.py` uses `requests` in-process.\n"
+            "instead of in-process replies: milliseconds per request, harness included. The "
+            "port keeps one connection open and, in the `curl` columns, starts a `curl` "
+            "process per request instead; `askme.py` calls `requests.post`, which opens a "
+            "connection per request. TLS uses a 2048-bit RSA certificate from a private CA.\n"
         )
         rows = []
         for runtime in runtimes:
-            if runtime not in results["http"]:
-                continue
-            http = summary("http", runtime)
-            rows.append(
-                [
-                    LABELS[runtime],
-                    ms(http["wall_median_ms"]),
-                    f"{http['wall_median_ms'] / requests:.1f}",
-                ]
-            )
-        out.append(table(["Runtime", "Wall ms", "ms/request"], rows))
+            cells = []
+            for key, _title in transports:
+                if runtime in results[key]:
+                    cells.append(f"{summary(key, runtime)['wall_median_ms'] / requests:.2f}")
+                else:
+                    cells.append("")
+            if any(cells):
+                rows.append([LABELS[runtime]] + cells)
+        out.append(table(["Runtime"] + [title for _key, title in transports], rows))
 
     out.append("\n## Per-scenario medians (ms)\n")
     header = ["Scenario"] + [LABELS[runtime] for runtime in runtimes]
