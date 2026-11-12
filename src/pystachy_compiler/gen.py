@@ -1514,6 +1514,10 @@ class Gen:
         self.clokeys: dict[str, int] = {}
         self.cells: dict[str, str] = {}  # the function's variables that closures take: the cell of each (a pointer)
         self.adapters: dict[str, str] = {}  # "<function value type> <Callable type>" -> its adapter's symbol (Gen.adapter)
+        self.adcodes: dict[str, str] = {}  # every published adapter symbol -> function/signature, including inferred-result aliases
+        self.kwfns: dict[str, FnInfo] = {}  # typed keyword-call shape -> deferred native dispatcher
+        self.kwnames: dict[str, list[str]] = {}
+        self.kwsig = ""  # adapter universe used by the last keyword dispatcher pass
         self.adrets: dict[str, str] = {}  # "<function value type> <parameter types>" -> what it returns (Gen.adapter_ret)
         self.ncv = 0  # the adapters named (@cv.N), each before its body is compiled, which may name others
         self.cacheforms: dict[str, int] = {}  # cached calls: positional count and ordered keyword names

@@ -15,7 +15,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | `tuple[A, B]` | Fixed shape, up to nine items; a constant index gives the item's type, a variable one the union of the items'; slicing requires integer constants (items of one runtime-length element type also slice by run-time bounds, into a `tuple[T, ...]`) |
 | `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`; integer indexing checked at runtime, and slicing |
 | Classes, dataclasses, `NamedTuple` | Fields have static types |
-| `Callable[[A, B], R]` | Fixed positional signature; also supports zero arguments |
+| `Callable[[A, B], R]` | Fixed native signature; zero arguments and bounded keyword calls supported |
 | `A \| B` | Explicit scalar unions, or up to four non-overlapping native class/file members |
 | `T \| None` | Optional values, including containers, `Callable`, generators (`Generator[Y, None, None] \| None`) and exceptions (`BaseException \| None`) |
 | `type[E]`, `type[E] \| None` | The class of an exception (`E` an exception class), as a context manager's `__exit__` takes it; see [context managers](semantics.md#context-managers) |
@@ -924,8 +924,23 @@ later hold a different function.
 
 Annotate with `Callable[[A, B], R]` to store different functions with one fixed signature.
 They can be used in variables, parameters, fields, returns and containers, and as sorting
-keys. A `Callable` requires positional arguments and an exact return type.
-`Callable[..., R]` and keyword calls through a `Callable` are unsupported.
+keys. Positional calls use that fixed signature and require an exact return type.
+`Callable[..., R]` remains unsupported.
+
+Keyword calls through a `Callable` can use native module functions, closures and methods
+of classes without runtime-dispatched inheritance. Names, positional-only restrictions,
+defaults and keyword-only parameters come from each target's original definition. The
+callee and every supplied argument are evaluated once before a selected target's binding
+error raises `TypeError`. Statically expanded tuple and dict arguments work as they do in
+direct calls; runtime-sized expansion keeps its existing restrictions.
+
+The callable still has two words, code and environment. Only keyword call sites use a
+generated dispatcher over the program's emitted adapters; ordinary positional calls and
+typed argument storage are unchanged. Each supplied keyword value must have an inferable
+concrete type. All emitted targets of that `Callable` signature must support native
+signature lookup: builtin targets and methods in class hierarchies are rejected, because
+one virtual adapter may cover overrides with different names or defaults. Extension-module
+keyword calls and keyword calls after boxing a `Callable` as dynamic `Any` remain unsupported.
 
 Object methods and supported string, list, dict and file methods bind their object when read:
 `handler = obj.method`, `key=str.lower`, `write=file.write`. Bound methods compare equal

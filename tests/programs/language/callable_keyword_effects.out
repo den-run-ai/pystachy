@@ -1,0 +1,7 @@
+8 ['callee', 'pos', 'kw', 'body']
+function() got some positional-only arguments passed as keyword arguments: 'x' ['posonly', 'later']
+function() got multiple values for argument 'y' ['arg1', 'arg2', 'duplicate']
+function() got an unexpected keyword argument 'missing' ['arg', 'unknown']
+'NoneType' object is not callable ['before-none', 'also-before-none']
+13 20
+[exit 0]

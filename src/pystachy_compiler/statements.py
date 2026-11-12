@@ -1,5 +1,6 @@
 """Statements component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+from src.pystachy_compiler.callable_keywords import keyword_body
 from src.pystachy_compiler.utils import identity_abi, identity_default, is_union
 from src.pystachy_compiler.analysis import appends_to, builtin_has, local_names, none_display
 from src.pystachy_compiler.diagnostics import int_program, shown
@@ -615,6 +616,8 @@ def gen_stmt_main(self, n: Node) -> None:
             self.expr(n.kids[0], "")  # (a string or ... alone does nothing)
     elif k == "gendrop":
         self.gen_drop(self.expr(n.kids[0], ""))  # (a generator a loop owns: owned_loop)
+    elif k == "kwcallbody":
+        keyword_body(self, n.s)
     elif k == "dynbody":
         self.dyn_body(n.s)  # (a dispatcher of dynamic values: dynamic.py)
     elif k == "dynx":
