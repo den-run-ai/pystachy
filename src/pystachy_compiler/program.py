@@ -938,9 +938,9 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.tparams[st.s] = self.generic_base(st.kids[1])
             elif st.kind == "subclass" and len(st.kids) > 2 and self.generic_traits(st) > 0:
                 # class N(Generic[T], A[T], B[T]): generic class N's other bases (generic_subclass)
-                k = self.generic_traits(st)
-                self.tparams[st.s] = self.generic_base(st.kids[k])
-                st.kids = [st.kids[j] for j in range(len(st.kids)) if j != k]
+                gk = self.generic_traits(st)
+                self.tparams[st.s] = self.generic_base(st.kids[gk])
+                st.kids = [st.kids[j] for j in range(len(st.kids)) if j != gk]
             elif st.kind == "subclass" and st.kids[1].kind == "typeparams" and self.class_params(st) == "":
                 m.body.kids[i] = st.kids[0]  # class C[T]: as class C(Generic[T]) (see class_params)
                 self.tparams[st.s] = st.kids[1].s.split()
