@@ -2115,7 +2115,7 @@ class Loader:
                     x = a.kids[0].s[a.kids[0].s.rfind(".") + 1 :]
                     src = self.mods[path] if path in self.mods else None
                     k = src.kinds.get(x, "") if src is not None else ""
-                    if k == "f" or k == "c":
+                    if src is not None and (k == "f" or k == "c"):
                         m.tkinds[a.s] = "a:" + src.q + x
                     elif k.startswith("a:") or k.startswith("t:") or k.startswith("m:"):
                         m.tkinds[a.s] = k
