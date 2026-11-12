@@ -430,6 +430,7 @@ from src.pystachy_compiler.builtins import (
 )
 from src.pystachy_compiler.calls import (
     gen_adapter as calls_adapter,
+    gen_method_family as calls_method_family,
     gen_adapter_ret as calls_adapter_ret,
     gen_arity as calls_arity,
     gen_arity_error as calls_arity_error,
@@ -1100,6 +1101,13 @@ from src.pystachy_compiler.program import (
     gen_pure as program_pure,
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
+    gen_on_chain as program_on_chain,
+    gen_trait_root as program_trait_root,
+    gen_declarer as program_declarer,
+    gen_declares as program_declares,
+    gen_mro as program_mro,
+    gen_mro_first as program_mro_first,
+    gen_slotted_trait as program_slotted_trait,
     gen_generic_subclass as program_generic_subclass,
     gen_generic_traits as program_generic_traits,
     gen_tmpl_ann as program_tmpl_ann,
@@ -3738,6 +3746,27 @@ class Gen:
     def derives(self, c: str, base: str) -> bool:
         return program_derives(self, c, base)
 
+    def on_chain(self, c: str, a: str) -> bool:
+        return program_on_chain(self, c, a)
+
+    def trait_root(self, primary: str, secondary: str) -> str:
+        return program_trait_root(self, primary, secondary)
+
+    def declarer(self, c: str, m: str) -> str:
+        return program_declarer(self, c, m)
+
+    def declares(self, c: str, m: str) -> bool:
+        return program_declares(self, c, m)
+
+    def mro(self, c: str) -> list[str]:
+        return program_mro(self, c)
+
+    def mro_first(self, order: list[str], m: str) -> str:
+        return program_mro_first(self, order, m)
+
+    def slotted_trait(self, cls: str, role: str) -> bool:
+        return program_slotted_trait(self, cls, role)
+
     def init_template(self, st: Node) -> bool:
         return program_init_template(self, st)
 
@@ -4700,6 +4729,9 @@ class Gen:
 
     def adapter(self, ft: str, t: str) -> str:
         return calls_adapter(self, ft, t)
+
+    def method_family(self, cls: str, method: str) -> str:
+        return calls_method_family(self, cls, method)
 
     def callable_pat(self, a: Node) -> str:
         return calls_callable_pat(self, a)

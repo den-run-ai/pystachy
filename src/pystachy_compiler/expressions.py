@@ -4817,7 +4817,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             bc = b.t[5 : b.t.rfind(".")]
             am = a.t[a.t.rfind(".") + 1 : -1]
             bm = b.t[b.t.rfind(".") + 1 : -1]
-            if ac in self.classes and bc in self.classes and self.classes[ac].tag != 0 and self.classes[bc].tag != 0 and (self.derives(ac, bc) or self.derives(bc, ac)):
+            if ac in self.classes and bc in self.classes and self.classes[ac].tag != 0 and self.classes[bc].tag != 0 and (self.derives(ac, bc) or self.derives(bc, ac) or bc in self.classes[ac].overlaps):
+                # (also of a primary base and a trait, which one object may be: its class's one
+                # method either way, so equal where bound to that object)
                 if op == "is" or op == "is not":
                     self.err(f"'{op}' between bound methods is not supported: CPython makes a new method object each time one is read (compare them with ==)")
                 if am == bm:

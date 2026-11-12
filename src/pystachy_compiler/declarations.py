@@ -1663,7 +1663,9 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
                 if ci.mod == "":
                     self.err(why)
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: {why}"
-    if len(ci.roles) > 0 and "__slots__" in ci.fdefault:
+    if len(ci.roles) > 0 and "__slots__" in ci.fdefault and len([r for r in ci.roles if not self.slotted_trait(ci.name, r)]) > 0:
+        # (a secondary base without __slots__ gives CPython's objects a __dict__; a trait whose
+        # classes all declare __slots__ = () does not: slotted_trait)
         self.line = ci.node.line
         self.bad_class(ci, "__slots__ in a hierarchy with a secondary base is not supported")
     if ci.base in self.classes:
