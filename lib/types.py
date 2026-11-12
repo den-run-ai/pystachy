@@ -6,10 +6,11 @@ Define names for built-in types that aren't directly accessible as a builtin.
 # import TracebackType imports directly), MappingProxyType, a read-only view of a dict
 # (lib/_pystachy_mappingproxy.py's mappingproxy), and GenericAlias, for CPython's idiom for a generic class:
 # __class_getitem__ = classmethod(GenericAlias) in a class body defines nothing in Pystachy, and the
-# class's subscripts are what they are in annotations, but not supported at run time. Its other
-# names are CPython's, of what Pystachy does not have (functions, methods, code, frames and modules
-# as values, namespaces, dynamic class creation, coroutines): the compiler rejects any use of them,
-# as of GenericAlias elsewhere
+# class's subscripts are what they are in annotations, but not supported at run time, and coroutine,
+# which as a generator function's decorator marks its generators awaitable (the compiler's
+# coroutines.py). Its other names are CPython's, of what Pystachy does not have (functions, methods,
+# code, frames and modules as values, namespaces, dynamic class creation, coroutine objects): the
+# compiler rejects any use of them, as of GenericAlias elsewhere
 from _pystachy_types import TracebackType
 from _pystachy_mappingproxy import mappingproxy as MappingProxyType
 from _pystachy_typenames import (

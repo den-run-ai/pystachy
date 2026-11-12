@@ -6,8 +6,10 @@ use CPython to start separate processes, each importing an
 The [process-pool example](#process-pools-today) below shows this arrangement.
 
 This page describes current behavior and the probes that check it. Native
-parallel loops, shared-heap threads and `async def` remain unsupported; their
+parallel loops, shared-heap threads and a native `asyncio` remain unsupported; their
 proposals are linked under [design history](#design-history).
+[Coroutines](coroutines.md) (`async def` and `await`) run natively on the owner
+thread: they interleave at their awaits and run nothing in parallel.
 
 ## Capabilities
 
@@ -38,7 +40,8 @@ to check that the probes exist and that their test suites execute them.
 | `threading`'s locks, conditions, semaphores, events, barriers, timers and `Thread` objects, in the one thread | native | `tests/programs/library/lib_threading.py` |
 | `threading.Thread.start()` | refused: `NotImplementedError` | `tests/deviations/threading_start.py` |
 | A lock `acquire()` or a `join()` that would wait forever | refused: `RuntimeError` | `tests/deviations/lib_thread_deadlock.py` |
-| `async def`, `await`, `async for`, `async with` | refused at compile time | `tests/errors/generators/gen_async.py` |
+| `async def` and `await` of coroutines, `@types.coroutine` generators and objects whose `__await__` is a generator method; a coroutine's `send()`, `throw()` and `close()`, run by code of the owner thread | native | `tests/programs/generators/coro_protocol.py`, `tests/programs/generators/coro_scheduler.py`, `tests/programs/upstream/upstream_coroutines.py` |
+| `async for`, `async with`, asynchronous comprehensions and async generators | refused at compile time | `tests/errors/generators/coro_async_for.py`, `tests/errors/generators/coro_async_with.py`, `tests/errors/generators/gen_async.py` |
 
 
 A compiled program cannot import `queue`, `asyncio`, `concurrent.futures`,

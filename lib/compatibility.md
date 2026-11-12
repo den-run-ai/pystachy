@@ -1552,6 +1552,10 @@ the idiom, as CPython's `_sre` types are generic. At run time, where CPython mak
 `types.GenericAlias` objects, they are a compile-time error
 ([error test](../tests/errors/reflection/types_generic_alias_subscript.py)).
 
+`@types.coroutine` on a generator function makes its generators awaitable, as CPython's flag on the
+function's code does; the generators stay generators ([coroutines](../docs/coroutines.md),
+[test](../tests/programs/generators/coro_awaitables.py)). It is the only decorator of such a function.
+
 `MappingProxyType(d)` is a read-only view of dict `d`, CPython's `mappingproxy`
 (`lib/_pystachy_mappingproxy.py`): indexing, `in`, `len()`, iteration (which fails as the dict's
 iterator does where the dict changes size), `reversed()`, `get()`, `keys()`, `values()`, `items()`,

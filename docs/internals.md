@@ -430,6 +430,45 @@ function, called with its first iterable (evaluated where it is written) and the
 the enclosing function's variables it reads. Programs without `yield` and without such
 generator expressions emit the same typed IR and LLVM IR as before.
 
+<a id="coroutines"></a>
+
+## Coroutines
+
+An `async def` (`coroutines.py`) compiles as a generator function does: a call makes a
+coroutine object, the handle of an LLVM coroutine with the same promise, and runs none of the
+body. Its type is `coro[Y,None,R]` (shown as `Coroutine[Y, None, R]`): `R` is the return
+annotation or what its returns return, and `Y` is what its awaits yield to the code that runs
+it with `send()` and `throw()`. `Y` is `None` until an await of something that yields another
+type decides it, so an `async def` is a template whose first call compiles it. A recursive
+call compiled before that decision (`FnInfo.ysure`) makes a later change of `Y` a `yield:`
+hint: the program is compiled again with that `Y` from the start (`Rejoin`), as joins are. An
+await of a coroutine of the recursion being compiled passes its yields through unchanged.
+A coroutine is no iterator: it has no loop, `next()` or consumer of a generator.
+
+`await x` delegates as `r = yield from x` does: it resumes `x` (`gen.resume`), yields what `x`
+yields, sends what is thrown into this coroutine on to `x` (`throw()`), closes `x` when this
+coroutine is closed (PEP 380), and its value is what `x` returns, read from `x`'s promise. The
+awaitables are coroutine objects, the generators of a `@types.coroutine` generator function
+(`FnInfo.awaitable`; the decorator is a mark, as CPython's sets a code flag) and objects whose
+`__await__` is a generator method. A coroutine made elsewhere is checked before it is resumed:
+a finished one raises `RuntimeError: cannot reuse already awaited coroutine`, and one
+suspended where something else awaits it `RuntimeError: coroutine is being awaited already`.
+Its state needs `GENNEW` (not started), so a program with an `async def` keeps the protocol
+words of a program that calls `send()` (`Gen.gproto`). A coroutine's own `send()` and
+`throw()` raise that first `RuntimeError` once it has finished, where a generator's raise
+`StopIteration`; a coroutine that a call here made is destroyed once it returns, so that
+LLVM's CoroElide may put its frame in its caller's.
+
+Before any code compiles, `Gen.coro_analyze` finds the module-level `async def`s that never
+suspend: each await in them is of a call, by its name, of such an `async def` (the greatest
+such set, so mutual recursion qualifies). `await f(...)` of one calls `f`'s twin
+(`coro_twin`): the same body compiled as an ordinary template function (`FnInfo.direct`), whose
+awaits are such calls too. No coroutine object, frame allocation or resume remains, which is
+what running the coroutine to its return would compute; a call of `f` as a value still makes a
+coroutine. A twin's body is covered by a landing block that turns a `StopIteration` leaving it
+into `RuntimeError: coroutine raised StopIteration` (PEP 479), as its coroutine would; its
+mark is past every unwind action, which the handler that takes the exception runs.
+
 <a id="whole-program-optimization"></a>
 <a id="two-tiers"></a>
 

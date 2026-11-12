@@ -258,6 +258,18 @@ generator that takes a value from `send()` (CPython sends the value on to the it
 no `send()`). A generator the program drops while it is suspended is not closed (see
 [deviations](compatibility.md#memory-and-resource-lifetime)).
 
+<a id="coroutines"></a>
+
+## Coroutines
+
+An `async def` call makes a coroutine object and runs none of its body; `await` runs an
+awaitable (a coroutine, a `@types.coroutine` generator, or an object whose `__await__` is a
+generator method) to its return, passing what it yields on to the code that runs the
+coroutine, and gives what it returns. `send(None)`, `throw()` and `close()` reach through each
+await as through `yield from`, with CPython's errors for a coroutine awaited twice, awaited
+while suspended elsewhere, resumed after it finished, or awaited when it is no awaitable. See
+[coroutines](../coroutines.md) for the supported forms, their limits and costs.
+
 <a id="context-managers"></a>
 
 ## Context managers

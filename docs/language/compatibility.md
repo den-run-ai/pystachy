@@ -277,8 +277,9 @@ or generator/async initializers retain eager formatting
   immediately, and opening a file with an existing writer first triggers collection.
   Conservative roots can still retain a dropped writer, delaying writes or
   reordering appends.
-- **Dropped suspended generators never close**, including at exit, so their
-  `finally`/`with` cleanup is lost. A generator created as a `for` iterable closes
+- **Dropped suspended generators and coroutines never close**, including at exit, so their
+  `finally`/`with` cleanup is lost, and a coroutine that is never awaited prints no
+  `RuntimeWarning`. A generator created as a `for` iterable closes
   when that loop exits, as do its `yield from` delegates when it is closed
   ([deviation](../../tests/deviations/gen_finalization.py)).
 - **Generator-expression cleanup can be early.** When an exception escapes a
@@ -355,6 +356,21 @@ See [generator semantics](semantics.md#generators).
   one where a list is required. A dict comprehension works.
 - **Stored generator expressions:** capturing a surrounding comprehension variable, a variable
   of an outer function, or a local that may be unbound or rebound. These require late binding.
+
+### Coroutines
+
+See [coroutines](../coroutines.md).
+
+- **Statements and expressions:** `async for`, `async with`, asynchronous comprehensions and
+  async generators.
+- **Awaitables:** a generator held in a variable (await the call of its `@types.coroutine`
+  function); an `__await__` that returns an iterator object instead of yielding; a coroutine's
+  own `__await__()`.
+- **Values:** `send()` of anything but `None` (a coroutine's send type is `None`), a
+  coroutine's `StopIteration` value (await it instead), `cr_*` attributes, and coroutines in
+  containers that print or compare their items. An `async def` whose awaits yield values of
+  incompatible types to the code that runs it, such as `int` and `str`.
+- **Library:** the `asyncio` module.
 
 ### Context managers
 

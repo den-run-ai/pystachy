@@ -386,8 +386,11 @@ end blocks where it suspends (lowering alone sizes the promise, five words or se
 and `throw()` in the program, and gives a generator that has not started its state); `gen.promise` without an operand is its own promise's address,
 and with a generator operand that generator's. `gen.resume` runs a generator to its next
 suspend and has every effect (user code); the exception passes make it an `invoke` like a
-call. `gen.drop` closes and destroys a generator a loop owns and never raises. The verifier
-checks their places, operands and metadata; lowering alone emits the `llvm.coro.*` calls.
+call. `gen.drop` closes and destroys a generator a loop owns and never raises. An `async def`
+is a generator function to these operations, and a coroutine object (`coro[Y,None,R]`) a
+handle as a generator is ([coroutines](internals.md#coroutines)): `gen.promise`, `gen.resume`
+and `gen.drop` take either. The verifier checks their places, operands and metadata; lowering
+alone emits the `llvm.coro.*` calls.
 
 Each block ends with one terminator. Branch labels stay within the function, and phi
 predecessors must branch to their join. `switch` branches on an `int` to the label of the
