@@ -81,14 +81,27 @@ def gen_uop(self, v: Val, op: str) -> Val:
             arm = self.label()
             self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.utag(members[i])), "int")).v, arm, nxt)
             self.place(arm)
-        item = self.uget(Val(v.v, unopt(v.t)), members[i])
-        result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.repr(item) if op == "repr" else self.to_str(item)
+        if op == "repr" and members[i] not in self.classes:
+            result = self.repr(self.scalar_view(v))  # (the runtime reads the box's own tag)
+        else:
+            item = self.uget(Val(v.v, unopt(v.t)), members[i])
+            result = Val(self.truth(item), "bool") if op == "truth" else self.builtin("len", [self.vnode(item)], "") if op == "len" else self.repr(item) if op == "repr" else self.to_str(item)
         self.incoming(ph, result.v, self.cur)
         self.br(end)
         if nxt != "":
             self.place(nxt)
     self.place(end)
     return Val(self.phi(ph), t)
+
+def gen_scalar_view(self, v: Val) -> Val:
+    # The box of a union of objects and scalars, where its tag is one of the scalars', as a
+    # union of scalars alone: the same pointer, since a union's box is also one of a union of
+    # more types (utag). The runtime then formats it by its tag, as it does a scalar union's:
+    # no payload is read here, so none goes untyped to a descriptor's slot (docs/typed-ir.md).
+    scalars = [m for m in umembers(unopt(v.t)) if m == "int" or m == "float" or m == "bool" or m == "str"]
+    if len(scalars) == 1:
+        scalars.append("int" if scalars[0] == "str" else "str")  # (a tag the box never has)
+    return Val(v.v, self.union_type(scalars))
 
 def gen_uequal(self, op: str, a: Val, b: Val) -> Val:
     # Both operands are already evaluated. Boxes of a narrower union keep their

@@ -259,6 +259,7 @@ from src.pystachy_compiler.unions import (
     gen_num_union as unions_num_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
+    gen_scalar_view as unions_scalar_view,
     gen_uequal as unions_uequal,
     gen_reference_union as unions_reference_union,
     gen_umethod as unions_umethod,
@@ -5189,6 +5190,9 @@ class Gen:
 
     def uop(self, v: Val, op: str) -> Val:
         return unions_uop(self, v, op)
+
+    def scalar_view(self, v: Val) -> Val:
+        return unions_scalar_view(self, v)
 
     def uequal(self, op: str, a: Val, b: Val) -> Val:
         return unions_uequal(self, op, a, b)

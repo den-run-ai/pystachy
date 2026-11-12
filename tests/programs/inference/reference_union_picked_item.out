@@ -1,0 +1,6 @@
+circle 1 circle 1
+square 2! square 2!
+three three
+IndexError: tuple index out of range
+a circle 4 square 5
+[exit 0]

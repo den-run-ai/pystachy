@@ -321,10 +321,12 @@ provably disjoint fresh storage retain facts across unrelated writes.
 
 Standalone tag reads and box construction also require these proofs. An integer
 machine load whose defined source is a union is checked as a tag read, including its
-nonnull requirement. Simple guards of immutable, nonnullable union parameters can
-be proved by a bounded predecessor walk without allocating dataflow states. Mutable
-slots, nullable sources, raw payload transport and unsupported control-flow shapes
-fall back to the general solver.
+nonnull requirement. A machine-pointer `select` between `None` and boxes built in the
+function (an object that may be `None` is boxed this way) has those boxes' members and
+`None`, whatever is known of its condition: a later read still needs its own None test.
+Simple guards of immutable, nonnullable union parameters can be proved by a bounded
+predecessor walk without allocating dataflow states. Mutable slots, nullable sources, raw
+payload transport and unsupported control-flow shapes fall back to the general solver.
 
 The finite worklist joins possible tags and common equalities until stable, without a path
 product or an iteration cutoff. Conditional facts survive boolean phis and short-circuit

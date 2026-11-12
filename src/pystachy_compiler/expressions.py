@@ -2121,7 +2121,9 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
                 arm = self.label()
                 self.cbr(self.utest(Val(v.v, unopt(v.t)), [members[i]], False), arm, nxt)
                 self.place(arm)
-            text = self.format_(self.uget(Val(v.v, unopt(v.t)), members[i]), spec if empty else self.vnode(sv))
+            # (an object formats itself; a scalar's box goes whole to the runtime: scalar_view)
+            member = self.uget(Val(v.v, unopt(v.t)), members[i]) if members[i] in self.classes else self.scalar_view(v)
+            text = self.format_(member, spec if empty else self.vnode(sv))
             if not self.term:
                 self.incoming(ph, text.v, self.cur)
                 self.br(end)

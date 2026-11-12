@@ -7,7 +7,7 @@ stable. It keeps one state per block, not a product of whole-function execution 
 from __future__ import annotations
 from src.pystachy_compiler.ir import Data, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.specs import BIG
-from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join
+from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
 from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
 
 
@@ -529,6 +529,19 @@ class UnionProof:
         self.domains[t] = ts
         return ts
 
+    def box_select(self, i: Ins) -> bool:
+        # Is select i a machine pointer chosen between None and boxes made here (Gen.ubox's,
+        # for an object that may be None: null, else its box)? Its result is one of them, so
+        # it has their members and None though its own type names no union. Any other
+        # operand, a pointer of unknown provenance, leaves the result unknown as before.
+        if i.t != "%ptr":
+            return False
+        for a in i.a[1:]:
+            d = self.defs[a.v] if a.v in self.defs else None
+            if a.v != "null" and (d is None or d.op != "rt" or (d.s != "ubox" and d.s != "ubox_opt")):
+                return False
+        return True
+
     def box(self, s: UnionState, v: str) -> str:
         k = "U:" + v
         if v == "null":
@@ -753,6 +766,10 @@ class UnionProof:
                 else:
                     xt.cond(y, True)
                     s.boolean(r, xt, union_join(xf, yf))
+        elif op == "select" and self.box_select(i):
+            # Either operand: the condition is an object's own None test, and a class type's
+            # domain has no None for it to select. A later read needs its own None test.
+            s.set("U:" + r, union_tags(s.dom(self.box(s, a[1].v)), s.dom(self.box(s, a[2].v))))
         elif op == "select":
             yes = s.conditional(a[0].v, True)
             no = s.conditional(a[0].v, False)
