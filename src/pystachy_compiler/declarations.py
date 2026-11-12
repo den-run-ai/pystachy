@@ -2119,7 +2119,7 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                 # (Iterator[T] or Iterable[T] types nothing: the field's is its value's, see tmpl_ann)
                 k = "assign" if k == "annassign" and len(st.kids) == 3 and self.iter_item(st.kids[1]) is not None else k
                 why = self.ann_problem(st.kids[1], False) if k == "annassign" and ci.mod != "" else ""
-                t = "" if why != "" else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
+                t = "" if why != "" else self.mapping_ann(self.vtype(st.kids[1]), st.kids[-1]) if k == "annassign" and len(st.kids) == 3 else self.vtype(st.kids[1]) if k == "annassign" else self.guess(st.kids[-1], f)
                 if t.startswith("!"):
                     why = t[1:]  # (a call of a function Pystachy cannot compile: its error)
                 given = t

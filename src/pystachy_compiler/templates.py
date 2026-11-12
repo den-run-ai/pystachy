@@ -433,6 +433,26 @@ def gen_generic_ann(self, c: str, a: Node) -> str:
         return c
     return self.specialize(c, [], given, True, {})
 
+def gen_mapping_ann(self, t: str, v: Node) -> str:
+    # the type of a local, global or field that an assignment annotated t gives the value v: t,
+    # but where t is a dict[K, V] (or a spelling of one, such as Mapping[K, V]: ann_base) and v
+    # a call of one of lib/collections' mappings (dict_class), which derive from dict in CPython,
+    # that class's specialization whose type variables K and V bind (a Counter's K, where V is
+    # its counts' int), as the class's own annotation names it: the variable holds the object
+    # that the call makes, which a missing key's lookup asks for its default, as CPython's does
+    if not is_dict(t) or v.kind != "call":
+        return t
+    f = v.kids[0].kids[0] if v.kids[0].kind == "index" else v.kids[0]
+    if f.kind != "name" or f.s not in self.tparams or not self.dict_class(f.s):
+        return t
+    kv = targs(t)
+    tvs = self.tparams[f.s]
+    if len(tvs) == 2:
+        return self.specialize(f.s, [], {tvs[0]: kv[0], tvs[1]: kv[1]}, True, {})
+    if kv[1] != "int" and kv[1] != BIG:
+        return t  # (a Counter's counts are ints, also where they promote: a dict's int values do then)
+    return self.specialize(f.s, [], {tvs[0]: kv[0]}, True, {})
+
 def gen_named_params(self, c: str, init: Node) -> list[str]:
     # the types of the parameters (after self) of the __init__ of generic class c, as the
     # specialization that c[X] names (see generic_ann) types them, its type variables bound:

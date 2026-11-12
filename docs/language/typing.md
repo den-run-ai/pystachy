@@ -107,6 +107,13 @@ tests of these annotations are decided using the compiled type.
 `str | os.PathLike[str]` simplifies to `str`, because paths must be strings;
 `os.fspath()` returns its string argument. Other `PathLike` annotations are unsupported.
 
+An annotated assignment whose value is a call of `collections`' `defaultdict`, `OrderedDict`
+or `Counter`, which derive from `dict`, types its local, global or field as that class:
+`m: dict[str, list[str]] = defaultdict(list)`, or `Dict`, `Mapping` or `MutableMapping` in
+place of `dict`, gives `m` the type `defaultdict[str, list[str]]` (a `Counter`'s values must
+be `int`). `m` holds the object the call makes, so a missing key calls the factory, as in
+CPython. A `dict` stored to `m` later, or `m` passed where a `dict` is expected, is rejected.
+
 ## Annotations
 
 A function whose parameters are annotated uses those types. Ordinary functions and methods
