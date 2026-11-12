@@ -2980,6 +2980,48 @@ def index_value(self, v: Val) -> Val:
     return self.dyn_call(self.dyn_dispatcher("index", [DYN], DYN, "__index__"), [v])
 
 
+def gen_dyn_index(self, v: Val, none: str) -> Val:
+    # an Any value where a typed sequence's subscript or range() takes an index: an int's value,
+    # a bool's 0 or 1 and an object's __index__(), as CPython's index protocol gives them (no
+    # annotation is checked here); any other value raises CPython's TypeError, none's ("Kind:
+    # text", the one for None) with the value's type where that names NoneType
+    unbox = self.label()
+    convert = self.label()
+    isbool = self.label()
+    other = self.label()
+    bad = self.label()
+    end = self.label()
+    box = Ins("phi", DYN, "")
+    self.incoming(box, v.v, self.cur)
+    self.cbr(self.dyn_test(v, ["int"]), unbox, convert)
+    self.place(convert)
+    c = index_value(self, v)
+    self.cbr(self.dyn_test(c, ["bool"]), isbool, other)
+    self.place(isbool)
+    flag = self.as_int(self.dyn_payload(c, "bool"))
+    flagged = self.cur
+    self.br(end)
+    self.place(other)
+    self.incoming(box, c.v, self.cur)
+    self.cbr(self.dyn_test(c, ["int"]), unbox, bad)
+    self.place(bad)
+    text = none[none.find(": ") + 2 :]
+    cut = text.find("NoneType")
+    if cut < 0:
+        self.raise_(none[: none.find(":")], self.sconst(text))
+    else:
+        self.raise_(none[: none.find(":")], self.concat([Val(self.sconst(text[:cut]), "str"), self.dyn_type_name(v), Val(self.sconst(text[cut + 8 :]), "str")]).v)
+    self.place(unbox)
+    number = self.dyn_unbox(Val(self.phi(box), DYN), "int")
+    numbered = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "int", "")
+    self.incoming(ph, number.v, numbered)
+    self.incoming(ph, flag.v, flagged)
+    return Val(self.phi(ph), "int")
+
+
 def numeric_result(self, r: Val, method: str, owner: str) -> Val:
     # Protocol results are checked, not converted: __float__ returning an int is
     # an error, and __int__/__index__ must not recursively convert another object.
