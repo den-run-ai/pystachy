@@ -167,7 +167,7 @@ jobs:
           esac
 
       - name: Opt-in sweeps and Lean corpus CPython dependency
-        if: startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || (matrix.group == 'runtime-cache' && matrix.machine == 'x86_64')
+        if: startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')
         run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
 
       - name: Workload pytest oracle dependency
@@ -187,12 +187,13 @@ jobs:
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: tests/verify.sh "$VERIFY_GROUP"
 
-      # Keep the complete Lean corpora at two workers. Full dynamic-Any already approaches
-      # the job's time bound; put storage proofs in the shorter full scaling group instead.
-      # PR opt-in retains all three checks; contracts checks bounded union/null examples.
+      # Keep the complete Lean corpora at two workers. Runtime-cache plus corpus proofs and
+      # the program-cache probe exceeded 15 minutes; gc-jit-1 has room after its corpus.
+      # Storage proofs use full scaling. PR opt-in retains all three checks; contracts checks
+      # bounded union/null examples. Each check finishes before the next begins.
       # The pinned release archive is for x86_64 Linux.
       - name: Lean proofs of compiler guard obligations
-        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling' || matrix.group == 'contracts')
+        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')
         env:
           VERIFY_GROUP: ${{ matrix.group }}
         run: |
@@ -206,7 +207,7 @@ jobs:
             "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -
           tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
           case "$VERIFY_GROUP" in
-            opt-in|runtime-cache)
+            opt-in|gc-jit-1)
               PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
                 make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
               PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \

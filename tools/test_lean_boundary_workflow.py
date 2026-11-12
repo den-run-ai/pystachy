@@ -116,7 +116,7 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
             with self.subTest(event=event):
                 self.assertTrue(self.selected(event))
 
-    def test_corpus_proof_uses_pr_opt_in_and_full_runtime_cache_with_the_same_lean(self):
+    def test_corpus_proof_uses_pr_opt_in_and_full_gc_jit_with_the_same_lean(self):
         def lean_step(steps, command):
             return next(step for step in steps if command in step.get("run", ""))
         lint = yaml.load((ROOT / ".github/workflows/lint.yml").read_text(), Loader=yaml.BaseLoader)
@@ -131,13 +131,13 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
         self.assertEqual(pins(corpus["run"]), pins(boundary["run"]))
         self.assertEqual([len(found) for found in pins(boundary["run"])[:2]], [1, 1])
         self.assertEqual(corpus["if"], "matrix.machine == 'x86_64' && "
-                                       "(matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling' || matrix.group == 'contracts')")
+                                       "(matrix.group == 'opt-in' || matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')")
         for event in ("pull_request", "push", "workflow_dispatch"):
             with self.subTest(event=event):
                 selected = [(row["machine"], row["group"]) for row in matrix_rows(verification, event)
                             if self.selects_matrix_row(corpus["if"], row)]
-                group = "opt-in" if event == "pull_request" else "runtime-cache"
-                self.assertEqual(set(selected), {("x86_64", group), ("x86_64", "contracts")} if event == "pull_request" else {("x86_64", "runtime-cache"), ("x86_64", "scaling"), ("x86_64", "contracts")})
+                group = "opt-in" if event == "pull_request" else "gc-jit-1"
+                self.assertEqual(set(selected), {("x86_64", group), ("x86_64", "contracts")} if event == "pull_request" else {("x86_64", "gc-jit-1"), ("x86_64", "scaling"), ("x86_64", "contracts")})
         # (two workers, explicitly: the runner would otherwise start up to four)
         self.assertIn("LEAN_CORPUS_FLAGS='--jobs 2 ", corpus["run"])
         self.assertEqual(verification["timeout-minutes"], "15")
@@ -160,7 +160,8 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
                         'if [ "$1" = "check-lean-guards" ]; then printf "%s\\n" "$2"; fi\n')
         make.chmod(0o755)
         for group, expected in (("opt-in", ["check-lean-corpus", "check-lean-int", "check-lean-storage"]),
-                                ("runtime-cache", ["check-lean-corpus", "check-lean-int"]),
+                                ("gc-jit-1", ["check-lean-corpus", "check-lean-int"]),
+                                ("gc-jit-0", []), ("runtime-cache", []),
                                 ("scaling", ["check-lean-storage"]), ("contracts", ["check-lean-guards"]), ("hosted", [])):
             with self.subTest(group=group):
                 env = dict(os.environ, VERIFY_GROUP=group, lean_boundary_dir=str(self.directory),
@@ -197,7 +198,7 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
                 with self.subTest(event=event, **row):
                     opted = row["group"] == "opt-in" or row["group"].startswith(
                         ("dynany-optin-", "python-int-optin-"))
-                    lean_full = row["machine"] == "x86_64" and row["group"] == "runtime-cache"
+                    lean_full = row["machine"] == "x86_64" and row["group"] == "gc-jit-1"
                     self.assertEqual(self.selects_matrix_row(dependency["if"], row), opted or lean_full)
 
     def test_missing_merge_parent_runs_lean(self):

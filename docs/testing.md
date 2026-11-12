@@ -947,7 +947,7 @@ Python/development dependency pins. Missing merge history runs the check;
 documentation-only PRs skip it. The selector has temporary-Git-history controls.
 It uses the pinned Lean 4.35.0 release with a verified archive SHA-256 and runs
 `make check-lean-boundary`; no extra PR job is added. The x86_64 verification
-group `opt-in` on PRs, and `runtime-cache` on main and manual runs, run
+group `opt-in` on PRs, and `gc-jit-1` on main and manual runs, run
 `make check-lean-corpus` with the same archive: the corpus tool's tests
 (`tools/test_lean_corpus.py`), then each dynamic-`Any` test program compiled by
 the hosted compiler, failing unless Lean proves every dynamic payload read guarded
@@ -965,6 +965,9 @@ coverage; the strict full-corpus guard command remains an investigation tool wit
 unsupported forms, not a passing whole-corpus gate. Arithmetic reports separately
 count actual checked overflow reconstructions and other observed arithmetic.
 All sweeps use two workers within existing jobs and their 15-minute limits.
+On full runs, the corpus and integer proofs start after `gc-jit-1` finishes;
+runtime-cache and program-cache probes retain their own job. This keeps those
+cache checks from sharing a time budget with the complete Lean corpora.
 Lint runs none of these corpora. The bridge's Python tests also run in
 `make check-fast`; they skip executable checks when Lean has not been built.
 The dedicated target requires executable checks and fails if the executable
