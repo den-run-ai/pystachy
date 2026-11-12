@@ -1,5 +1,6 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
@@ -237,6 +238,26 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         secs = self.as_float(self.expr(args[1], "float"))
         utc = self.as_int(self.expr(args[2], "int"))
         return Val(self.rt("pys_strftime_at", "ptr", [f"ptr {fmt.v}", f"double {secs.v}", f"i64 {utc.v}"]), "str")
+    if name == "__pys_module_files":
+        # importlib.resources.files()'s table (lib/importlib/resources.py): the file of each module
+        # of the program, by its name, as the compiler read it: an absolute path, whose directory
+        # has its symbolic links resolved, as CPython's sys.path[0] has. A namespace package,
+        # which has no file, maps to "". The paths are those of the compilation: a built
+        # executable keeps them (as sys.prefix).
+        if (self.curfn.mod != "importlib.resources" or not lib_source(self.curfn.node.line, self.libdir, "importlib/resources.py") or
+                len(args) != 0):
+            self.err(f"name '{name}' is not defined")
+        mfkids: list[Node] = []
+        for mfname in self.mfile:
+            if mfname != "":
+                mfpath = self.mfile[mfname]
+                if mfpath != "":
+                    mfcut = mfpath.rfind("/")
+                    mfdir = mfpath[:mfcut] if mfcut > 0 else "/" if mfcut == 0 else "."
+                    mfpath = os.path.realpath(mfdir).rstrip("/") + "/" + mfpath[mfcut + 1 :]
+                mfkids.append(mk("str", mfname, self.line, []))
+                mfkids.append(mk("str", mfpath, self.line, []))
+        return self.expr(mk("dict", "", self.line, mfkids), "dict[str,str]")
     if name in FSPRIMS:
         # (lib/pathlib.py's and lib/shutil.py's file system calls: runtime.c's pys_stat_mode,
         # pys_touch, pys_copyfile, pys_copymode and pys_rmtree)

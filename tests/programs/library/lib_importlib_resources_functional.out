@@ -1,0 +1,19 @@
+top
+hello
+world
+café naïve
+a note in a subpackage
+TypeError 'encoding' argument required with multiple path names
+FileNotFoundError
+hello
+world
+['top\n']
+True False False
+True True
+PosixPath top.txt True top
+hello.txt data True
+True ['hello.txt', 'utf8.txt']
+ModuleNotFoundError No module named 'nope'
+b'caf\xc3\xa9 na\xc3\xafve\n' b'a note in a subpackage\n'
+b'hello' b'\nworld\n'
+[exit 0]
