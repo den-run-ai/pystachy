@@ -878,7 +878,7 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.
     # (without a classes table no field address is shown to lie outside boxes: every write
     # and call remains a possible box mutation, as box_writes reports none of it)
     writes = box_writes(snapshot) if isinstance(snapshot.get("classes"), dict) else None
-    returns = proved_returns(snapshot, checker) if writes == [] and any(inventory(fn) for fn, _ in work) else {}
+    returns = proved_returns(snapshot, checker) if writes == [] else {}
     effects_of = None
     for record in snapshot["nullcheck_evidence"]:
         try:
