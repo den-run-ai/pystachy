@@ -1,6 +1,5 @@
 # pystachy: dynamic-any
 import json
-import re
 from collections.abc import Callable
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any, TextIO
@@ -20,8 +19,11 @@ if TYPE_CHECKING:
     from .schema_repair import SchemaRepairer
 
 # Top-level characters that can start a value or a comment.
-TOP_LEVEL_VALUE_START = re.compile(r"[{\[(#/]")
-TOP_LEVEL_VALUE_OR_QUOTE_START = re.compile(r"[{\[(#/" + re.escape("".join(STRING_DELIMITERS)) + "]")
+# Pystachy port: the characters of upstream's two patterns, [{\[(#/] and that set with the string
+# delimiters. parse_json() scans for them itself: the two searches were this package's only use
+# of re, whose engine was two thirds of the code compiled into each program that imports it.
+TOP_LEVEL_VALUE_START = "{[(#/"
+TOP_LEVEL_VALUE_OR_QUOTE_START = TOP_LEVEL_VALUE_START + "".join(STRING_DELIMITERS)
 
 
 class JSONParser:
@@ -389,9 +391,12 @@ class JSONParser:
             # If everything else fails, we just ignore and move on
             self.index += 1
             if self.context.empty and isinstance(self.json_str, str):
-                pattern = TOP_LEVEL_VALUE_OR_QUOTE_START if check_initial_quote else TOP_LEVEL_VALUE_START
-                match = pattern.search(self.json_str, self.index)
-                self.index = match.start() if match else len(self.json_str)
+                # Pystachy port: the scan that pattern.search(self.json_str, self.index) makes
+                starts = TOP_LEVEL_VALUE_OR_QUOTE_START if check_initial_quote else TOP_LEVEL_VALUE_START
+                index = self.index
+                while index < len(self.json_str) and self.json_str[index] not in starts:
+                    index += 1
+                self.index = index
 
     def _resolve_schema_for_parse(
         self,

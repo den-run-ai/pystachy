@@ -11,10 +11,12 @@ into native heterogeneous Python values, with no CPython embedding. It uses Pyst
 dynamic `Any` for JSON values and repair logs, and static types for parser state.
 
 Until 0.64.8 the port was a schema-free rewrite: 2,671 of its lines differed from upstream.
-It is now upstream's source: 1,179 lines differ from 0.64.9, of which 743 are the
-[schema stand-in](#schema-guided-repair) and 51 the [command](#file-and-pipe-command).
-Thirteen modules differ only by their opt-in comment, and `utils/string_file_wrapper.py` not
-at all. Its behavior is upstream's; a difference that this page does not list is a bug.
+It is now upstream's source: 1,330 lines differ from 0.64.9, of which 743 are the
+[schema stand-in](#schema-guided-repair), 51 the [command](#file-and-pipe-command) and 116
+the body of upstream's `cli()`, which is in [a module of its own](#imports) with two lines
+changed. Thirteen modules differ only by their opt-in comment, and
+`utils/string_file_wrapper.py` not at all. Its behavior is upstream's; a difference that this
+page does not list is a bug.
 
 ## API and scope
 
@@ -35,8 +37,8 @@ The package exports upstream's names with upstream's signatures: `repair_json`, 
 `load`, `from_file` and `JSONReturnType`. `repair_json` takes `return_objects`,
 `skip_json_loads`, `logging`, `json_fd`, `chunk_length`, `stream_stable`, `strict`, `schema`,
 `schema_repair_mode` and `json.dumps()` keyword arguments. The native `json.dumps()` takes
-`ensure_ascii`, `allow_nan`, `sort_keys`, `separators`, `skipkeys`, `check_circular` and
-`default`; it has no `indent` or `cls`.
+`ensure_ascii`, `allow_nan`, `sort_keys`, `separators`, `indent`, `skipkeys`, `check_circular`
+and `default`; it has no `cls`.
 
 The port keeps upstream's heuristics, including the ones that surprise: truncated `fal`
 becomes a string; repeated top-level objects can replace earlier objects; duplicate keys can
@@ -79,6 +81,23 @@ that cannot seek, in place of upstream's chunked `StringFileWrapper`. A seekable
 upstream's file behavior: it does not probe a valid JSON value after a prefix. `chunk_length`
 is accepted and has no effect. `utils/string_file_wrapper.py` is upstream's file, which the
 port's parser does not use; its `seek()` and `tell()` do not compile natively.
+
+### Imports
+
+Upstream's `json_repair.py` imports `argparse` and `pathlib` for its command and for
+`from_file()`'s `Path`, and its parser compiles two regular expressions. A native program
+compiles what it imports: with those, a program that only repairs a string loaded 48 modules
+where the earlier port loaded 24, took three times as long to compile, was twice the size and
+started 7% slower, two thirds of its code being the `re` engine. The port loads none of them:
+
+- `cli()` is in [_cli.py](_cli.py), unchanged but for two lines (the schema it loads is
+  declared `Any`, and the output path has a `""` alternative for its type).
+  `json_repair.json_repair.cli()` imports that module where it runs, as CPython allows any
+  function; natively, a program that runs the command imports `json_repair._cli` itself.
+- `Path` is imported for type checking only, `from_file()`'s annotation is quoted, and the
+  file is opened with `open(str(filename))`, as `Path(filename).open()` opens it.
+- `parse_json()` scans for the characters of upstream's two patterns, `[{\[(#/]` and that set
+  with the string delimiters, in place of `pattern.search()`.
 
 ### Types the compiler needs
 
@@ -144,9 +163,13 @@ needs `--ensure_ascii`. A decoding or encoding error leaves the destination unto
 is single-line JSON with a trailing newline only on stdout. Argument errors exit 2. File and
 repair errors exit 1.
 
-Upstream's `cli()` remains in `json_repair.py` and runs under CPython. It does not compile
-natively yet: it indents its output, which the native `json` module does not, and reads
-optional arguments that a test of the parsed arguments does not narrow.
+Upstream's own command also compiles natively: `json_repair._cli.cli()`
+([imports](#imports)), with its indented output and its `--indent`, `--schema` and
+`--schema-repair-mode` options. The
+[native regression](../../tests/programs/apps/port_json_repair_upstream_cli.py) compares it
+with CPython; 19 invocations, the schema ones apart, matched pristine upstream's output,
+status and files in an informal check. The command above stays the port's own: it leaves the
+destination untouched where a repair or an encoding fails, which upstream's does not.
 
 Run the process-level [CLI check](../../tests/upstream/json_repair/cli.py) from the repo root
 with pinned CPython and a built compiler.

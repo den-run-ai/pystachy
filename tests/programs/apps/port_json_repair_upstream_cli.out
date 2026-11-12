@@ -1,0 +1,61 @@
+{
+  "name": "café",
+  "items": [
+    1,
+    2,
+    3
+  ],
+  "nested": {
+    "a": "tru",
+    "b": "nul"
+  },
+  "empty": [],
+  "none": {}
+}
+0
+{
+"name": "café",
+"items": [
+1,
+2,
+3
+],
+"nested": {
+"a": "tru",
+"b": "nul"
+},
+"empty": [],
+"none": {}
+}
+0
+{
+    "name": "caf\u00e9",
+    "items": [
+        1,
+        2,
+        3
+    ],
+    "nested": {
+        "a": "tru",
+        "b": "nul"
+    },
+    "empty": [],
+    "none": {}
+}
+0
+0 '{\n  "name": "café",\n  "items": [\n    1,\n    2,\n    3\n  ],\n  "nested": {\n    "a": "tru",\n    "b": "nul"\n  },\n  "empty": [],\n  "none": {}\n}'
+0 '{\n "name": "café",\n "items": [\n  1,\n  2,\n  3\n ],\n "nested": {\n  "a": "tru",\n  "b": "nul"\n },\n "empty": [],\n "none": {}\n}'
+0 '{\n  "a": 2,\n  "b": [\n    1,\n    2\n  ]\n}'
+{
+  "a": 2
+}
+0 '{"a": 1, "a": 2}'
+exit 1
+exit 1
+exit 1
+exit 1
+exit 1
+1
+1
+True
+[exit 0]

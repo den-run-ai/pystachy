@@ -23,15 +23,17 @@ If something is wrong (a missing parentheses or quotes for example) it will use 
 All supported use cases are in the unit tests
 """
 
-import argparse
 import json
 import sys
-from pathlib import Path
-from typing import Any, Literal, TextIO, overload
+from typing import TYPE_CHECKING, Any, Literal, TextIO, overload
 
 from .json_parser import JSONParser
-from .schema_repair import SchemaRepairer, load_schema_model, normalize_schema_repair_mode, schema_from_input
+from .schema_repair import SchemaRepairer, normalize_schema_repair_mode, schema_from_input
 from .utils.constants import JSONReturnType
+
+if TYPE_CHECKING:
+    # Pystachy port: from_file()'s annotation alone names Path (see cli())
+    from pathlib import Path
 
 
 @overload
@@ -324,7 +326,7 @@ def load(
 
 
 def from_file(
-    filename: str | Path,
+    filename: "str | Path",
     skip_json_loads: bool = False,
     logging: bool = False,
     chunk_length: int = 0,
@@ -347,7 +349,7 @@ def from_file(
     Returns:
         Union[JSONReturnType, Tuple[JSONReturnType, List[Dict[str, str]]]]: The repaired JSON object or a tuple with the repaired JSON object and repair log.
     """
-    with Path(filename).open() as fd:
+    with open(str(filename)) as fd:  # Pystachy port: open() of the name, as Path(filename).open() opens it
         return load(
             fd=fd,
             skip_json_loads=skip_json_loads,
@@ -385,123 +387,11 @@ def cli(inline_args: list[str] | None = None) -> int:
         >>> cli(['example.json', '--indent', '4'])
         >>> cat json.txt | json_repair
     """
-    parser = argparse.ArgumentParser(description="Repair and parse JSON files.")
-    # Make the filename argument optional; if omitted, we will read from stdin.
-    parser.add_argument(
-        "filename",
-        nargs="?",
-        help="The JSON file to repair (if omitted, reads from stdin)",
-    )
-    parser.add_argument(
-        "-i",
-        "--inline",
-        action="store_true",
-        help="Replace the file inline instead of returning the output to stdout",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        metavar="TARGET",
-        help="If specified, the output will be written to TARGET filename instead of stdout",
-    )
-    parser.add_argument(
-        "--ensure_ascii",
-        action="store_true",
-        help="Pass ensure_ascii=True to json.dumps()",
-    )
-    parser.add_argument(
-        "--indent",
-        type=int,
-        default=2,
-        help="Number of spaces for indentation (Default 2)",
-    )
-    parser.add_argument(
-        "--skip-json-loads",
-        action="store_true",
-        help="Skip initial json.loads validation",
-    )
-    parser.add_argument(
-        "--schema",
-        metavar="SCHEMA",
-        help="Path to a JSON Schema file that guides repairs",
-    )
-    parser.add_argument(
-        "--schema-model",
-        metavar="MODEL",
-        help="Pydantic v2 model in 'module:ClassName' form that guides repairs",
-    )
-    parser.add_argument(
-        "--strict",
-        action="store_true",
-        help="Raise on duplicate keys, missing separators, empty keys/values, and other unrecoverable structures instead of repairing them",
-    )
-    parser.add_argument(
-        "--schema-repair-mode",
-        choices=["standard", "salvage"],
-        default="standard",
-        help="Schema repair mode: 'standard' (default) or 'salvage' (best-effort array/object salvage).",
-    )
+    # Pystachy port: the command is _cli.py's, with its imports (argparse, pathlib): a program
+    # that only repairs loads neither, nor the textwrap, fnmatch and re they bring.
+    from ._cli import cli as command
 
-    args = parser.parse_args(inline_args)
-
-    # Inline mode requires a filename, so error out if none was provided.
-    if args.inline and not args.filename:  # pragma: no cover
-        print("Error: Inline mode requires a filename", file=sys.stderr)
-        sys.exit(1)
-
-    if args.inline and args.output:  # pragma: no cover
-        print("Error: You cannot pass both --inline and --output", file=sys.stderr)
-        sys.exit(1)
-
-    if args.schema and args.schema_model:
-        print("Error: You cannot pass both --schema and --schema-model", file=sys.stderr)
-        sys.exit(1)
-
-    if args.strict and (args.schema or args.schema_model):
-        print("Error: --strict cannot be used with --schema or --schema-model", file=sys.stderr)
-        sys.exit(1)
-    if args.schema_repair_mode == "salvage" and not (args.schema or args.schema_model):
-        print("Error: --schema-repair-mode salvage requires --schema or --schema-model", file=sys.stderr)
-        sys.exit(1)
-
-    ensure_ascii = args.ensure_ascii
-
-    try:
-        schema = None
-        if args.schema:
-            with Path(args.schema).open() as fd:
-                schema = json.load(fd)
-        elif args.schema_model:
-            schema = load_schema_model(args.schema_model)
-
-        # Use from_file if a filename is provided; otherwise read from stdin.
-        if args.filename:
-            result = from_file(
-                args.filename,
-                skip_json_loads=args.skip_json_loads,
-                strict=args.strict,
-                schema=schema,
-                schema_repair_mode=args.schema_repair_mode,
-            )
-        else:
-            data = sys.stdin.read()
-            result = loads(
-                data,
-                skip_json_loads=args.skip_json_loads,
-                strict=args.strict,
-                schema=schema,
-                schema_repair_mode=args.schema_repair_mode,
-            )
-        if args.inline or args.output:
-            with Path(args.output or args.filename).open(mode="w") as fd:
-                json.dump(result, fd, indent=args.indent, ensure_ascii=ensure_ascii)
-        else:
-            print(json.dumps(result, indent=args.indent, ensure_ascii=ensure_ascii))
-    except (OSError, TypeError, ValueError) as e:  # pragma: no cover
-        print(f"Error: {e!s}", file=sys.stderr)
-        return 1
-
-    return 0  # Success
+    return command(inline_args)
 
 
 if __name__ == "__main__":  # pragma: no cover
