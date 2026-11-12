@@ -921,6 +921,12 @@ A generic class may pass its own type variables on to generic bases, as mypy's v
 [chain](../../tests/programs/classes/generic_traits_chain.py)). Each type argument of such a base
 is a type or one of the class's own type variables, not a type that contains one
 (`Visitor[list[T]]`, [error test](../../tests/errors/generics/generic_traits_nested_arg.py)).
+Without `Generic[...]`, a class whose bases pass type variables on is generic in them, in the
+order they first appear, as PEP 484 says: mypy's `class TypeQuery(SyntheticTypeVisitor[T])`
+([test](../../tests/programs/generics/generic_implicit_bases.py)). Such a class binds nothing,
+also with an `__init__` of its own that names none of its type variables; one whose `__init__`
+names them is a class template
+([error test](../../tests/errors/generics/generic_implicit_init.py)).
 
 Function and class specializations share a limit of 4,096 per compilation. Additional
 nesting and size limits are listed in [compatibility](compatibility.md#templates-and-empty-containers).

@@ -688,6 +688,7 @@ class Loader:
         self.fragile: dict[str, str] = {}
         self.solid: dict[str, bool] = {}
         self.first_import: dict[str, bool] = {}  # first local import site's need for a binding flag
+        self.gvisit: dict[str, bool] = {}  # the classes generic_class is deciding: a recursion guard
         # the submodules that imports in try statements run, which their package has as an attribute
         # only once an import of them has run to its end (Gen.modchk), and the reads through such an
         # attribute that qmod() found in the expression being qualified (Node.mchk)
@@ -1195,6 +1196,8 @@ class Loader:
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 if k == "subclass" and (len(st.kids) == 2 or st.kids[1].kind == "typeparams") and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
                     m.cbases[st.s] = st.kids[1]
+                elif k == "subclass" and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
+                    m.cmulti[st.s] = st.kids[1:]  # (several bases: class N(Generic[T], A[T], B), S(A[T], B))
                 for x in st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids if k == "subclass" else []:
                     if x.kind == "assign" and len(x.kids) == 2 and x.kids[0].kind == "name" and x.kids[0].s == "__class_getitem__":
                         v = x.kids[1]
@@ -1894,9 +1897,46 @@ class Loader:
         base = m.cbases.get(name, None)
         if base is not None and base.kind == "typeparams":
             return True  # (class C[T])
+        if m.q + name in self.gvisit:
+            return False  # (a class whose bases name it again: CPython's NameError)
+        if base is None and name in m.cmulti:
+            # (several bases: generic where one is Generic[...], or a generic class's subscript that
+            # passes on a type variable, if each is a class or a subscript of one, as gen_program's
+            # generic_traits and implicit_tparams take them)
+            bs = m.cmulti[name]
+            if len([x for x in bs if x.kind != "index" and x.kind != "name" and x.kind != "attr"]) > 0:
+                return False
+            self.gvisit[m.q + name] = True
+            r = len([x for x in bs if x.kind == "index" and self.generic_base(m, x)]) > 0
+            del self.gvisit[m.q + name]
+            return r
         if base is None or base.kind != "index":
             return False
+        self.gvisit[m.q + name] = True
+        r = self.generic_base(m, base)
+        del self.gvisit[m.q + name]
+        return r
+
+    def generic_base(self, m: Mod, base: Node) -> bool:
+        # is base, a subscript that a class statement of module m names as a base, typing.Generic[...],
+        # or a generic class's subscript that passes on a type variable (class S(Visitor[T]))
         g = base.kids[0]
+        dm = self.dm
+        self.dm = m
+        gm = self.mod_of(g.kids[0]) if g.kind == "attr" else ""
+        gk = self.kind_of(g) if g.kind == "name" else self.mods[gm].kinds.get(g.s, "") if gm != "" else ""
+        implicit = False
+        if gk == "c" or gk.startswith("a:"):
+            # class S(Visitor[T]), also S(pkg.visitors.Visitor[T]): generic as Visitor is, in the
+            # type variables it passes on (PEP 484), its module's own or ones it imports
+            if gm != "":
+                self.dm = self.mods[gm]
+            generic = self.generic_class(mk("name", g.s, g.line, []) if gm != "" else g)
+            self.dm = m
+            implicit = generic and len([x for x in (base.kids[1].kids if base.kids[1].kind == "tuple" else [base.kids[1]]) if self.tv_named(x)]) > 0
+        self.dm = dm
+        if gk == "c" or gk.startswith("a:"):
+            return implicit
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
             return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
@@ -1912,6 +1952,48 @@ class Loader:
             return k[2:] if k.startswith("b:") else ""  # (also a user module's attribute: collections.abc)
         p = self.bpath(e.kids[0]) if e.kind == "attr" else ""
         return p + "." + e.s if p != "" else ""
+
+    def mod_of(self, e: Node) -> str:
+        # the user module that name or attribute e names in module dm (pkg.mod, where import
+        # pkg.mod binds pkg), or ""
+        if e.kind == "name":
+            k = self.dm.kinds.get(e.s, "")
+            return k[2:] if k.startswith("m:") and k[2:] in self.mods else ""
+        p = self.mod_of(e.kids[0]) if e.kind == "attr" else ""
+        k = self.mods[p].kinds.get(e.s, "") if p != "" else ""
+        if k.startswith("m:") and k[2:] in self.mods:
+            return k[2:]
+        return p + "." + e.s if p != "" and k == "" and p + "." + e.s in self.mods else ""
+
+    def tv_named(self, e: Node) -> bool:
+        # is name e a TypeVar of module dm (typevar), or another module's that an import binds
+        # there: its kind names it as its own module's records it ("t:", see bindings); or is e
+        # a user module's attribute that names one there (visitors.T)
+        if e.kind == "attr":
+            p = self.mod_of(e.kids[0])
+            if p == "":
+                return False
+            dm = self.dm
+            self.dm = self.mods[p]
+            r = self.tv_named(mk("name", e.s, e.line, []))
+            self.dm = dm
+            return r
+        if e.kind != "name":
+            return False
+        if self.typevar(e):
+            return True
+        k = self.dm.kinds.get(e.s, "")
+        if not k.startswith("t:"):
+            return False
+        for x in self.mods:
+            q = self.mods[x].q
+            if q != "" and k[2:].startswith(q) and "$" not in k[2 + len(q) :]:
+                dm = self.dm
+                self.dm = self.mods[x]
+                r = self.typevar(mk("name", k[2 + len(q) :], e.line, []))
+                self.dm = dm
+                return r
+        return False
 
     def typevar(self, e: Node) -> bool:
         # is name e a module global that only e = TypeVar(...) (or TypeVarTuple(...)) statements

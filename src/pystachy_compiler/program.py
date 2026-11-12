@@ -203,6 +203,20 @@ def gen_generic_subclass(self, st: Node) -> str:
         st.kids[j] = b.kids[0]
     return ""
 
+def gen_implicit_tparams(self, st: Node) -> list[str]:
+    # class S(A[T], B), without Generic[...]: the type variables that its subscripted bases, of
+    # generic classes, name as their arguments, in order of first appearance; [] where a base is
+    # another subscript or no class name
+    out: list[str] = []
+    for b in st.kids[1:]:
+        if b.kind == "index" and b.kids[0].kind == "name" and b.kids[0].s in self.tparams:
+            for x in b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]]:
+                if x.kind == "name" and x.s in self.typevars and x.s not in out:
+                    out.append(x.s)
+        elif b.kind != "name":
+            return []
+    return out
+
 def gen_generic_traits(self, st: Node) -> int:
     # class N(Generic[T], A[T], B[T], C): a generic class whose first other base is a generic
     # class, subscripted (generic_subclass), and whose others are classes too (secondary bases,
@@ -391,8 +405,9 @@ def gen_init_template(self, st: Node) -> bool:
         return False
     for d in st.kids[0].kids:
         if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
-            if st.s in self.tparams:
-                return True  # (its context can bind variables absent from __init__ parameters)
+            if st.s in self.tparams and st.s not in self.implicitgen:
+                return True  # (its context can bind variables absent from __init__ parameters; not an
+                # implicitly generic class's, which, as one without __init__, binds nothing)
             ps = d.kids[0].kids
             for i in range(1, len(ps)):
                 a = ps[i].kids[0]
@@ -952,6 +967,11 @@ def gen_program(self, mods: list[Mod]) -> str:
                 gk = self.generic_traits(st)
                 self.tparams[st.s] = self.generic_base(st.kids[gk])
                 st.kids = [st.kids[j] for j in range(len(st.kids)) if j != gk]
+            elif st.kind == "subclass" and len(self.implicit_tparams(st)) > 0:
+                # class S(Visitor[T]): generic in the type variables that its bases' subscripts
+                # name, as with Generic[T] first (PEP 484), which generic_subclass passes on
+                self.tparams[st.s] = self.implicit_tparams(st)
+                self.implicitgen[st.s] = True
             elif st.kind == "subclass" and st.kids[1].kind == "typeparams" and self.class_params(st) == "":
                 m.body.kids[i] = st.kids[0]  # class C[T]: as class C(Generic[T]) (see class_params)
                 self.tparams[st.s] = st.kids[1].s.split()

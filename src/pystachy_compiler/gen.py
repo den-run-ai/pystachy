@@ -1102,6 +1102,7 @@ from src.pystachy_compiler.program import (
     gen_subclass_problem as program_subclass_problem,
     gen_generic_subclass as program_generic_subclass,
     gen_generic_traits as program_generic_traits,
+    gen_implicit_tparams as program_implicit_tparams,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
 )
@@ -1625,6 +1626,7 @@ class Gen:
         # (generic_subclass): for each, the types X, ... that bind its TypeVars for the methods of
         # V's objects (tv_bound); "~T" where generic V passes its own TypeVar T on
         self.genargs: dict[str, dict[str, list[str]]] = {}
+        self.implicitgen: dict[str, bool] = {}  # the classes generic only by their bases' subscripts (program.implicit_tparams)
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
@@ -3719,6 +3721,9 @@ class Gen:
 
     def generic_traits(self, st: Node) -> int:
         return program_generic_traits(self, st)
+
+    def implicit_tparams(self, st: Node) -> list[str]:
+        return program_implicit_tparams(self, st)
 
     def exc_base(self, b: Node) -> str:
         return program_exc_base(self, b)
