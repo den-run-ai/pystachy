@@ -166,7 +166,7 @@ repair errors exit 1.
 Upstream's own command also compiles natively: `json_repair._cli.cli()`
 ([imports](#imports)), with its indented output and its `--indent`, `--schema` and
 `--schema-repair-mode` options. The
-[native regression](../../tests/programs/apps/port_json_repair_upstream_cli.py) compares it
+[native regression](../../tests/programs/apps/port_json_repair_cli.py) compares it
 with CPython; 19 invocations, the schema ones apart, matched pristine upstream's output,
 status and files in an informal check. The command above stays the port's own: it leaves the
 destination untouched where a repair or an encoding fails, which upstream's does not.
