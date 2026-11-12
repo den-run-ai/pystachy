@@ -234,6 +234,10 @@ def gen_ucmp(self, op: str, a: Val, b: Val, nonnull: bool = False) -> Val:
             # None has no ordering with a number, a str or None: CPython's TypeError, which names
             # both operands' types. (An object's method is asked about None, as it is below.)
             self.raise_("TypeError", self.sconst(f"'{op}' not supported between instances of '{tname(la.t)}' and '{tname(lb.t)}'"))
+        elif (op == "==" or op == "!=") and la.t == "None" and lb.t == "None":
+            r = Val("true" if op == "==" else "false", "bool")  # (the union holds None, as the other operand is)
+        elif (op == "==" or op == "!=") and (la.t == "None" or lb.t == "None") and la.t not in self.classes and lb.t not in self.classes:
+            pass  # (a number or str is never None)
         elif (op == "==" or op == "!=") and (self.unequal_types(la.t, lb.t) or self.unequal_types(lb.t, la.t)):
             pass  # (a number or str and an object whose class has no __eq__: never equal)
         else:

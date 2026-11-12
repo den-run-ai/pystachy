@@ -4731,11 +4731,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
-    if op in ["==", "!=", "<", "<=", ">", ">="] and (self.object_union(a.t) or self.object_union(b.t)) and a.t != "None" and b.t != "None":
+    if op in ["==", "!=", "<", "<=", ">", ">="] and (self.object_union(a.t) or self.object_union(b.t)):
         # A union that holds objects beside scalars: its member's own comparison, an object's by
         # its methods, selected by the tag before any rule below takes the box for an operand of
-        # its own (a class hierarchy's dispatch would compare the box's pointer). None itself is
-        # compared below, with the box's pointer, which is null where the union holds None.
+        # its own (a class hierarchy's dispatch would compare the box's pointer). So with None
+        # for the other operand: an object's __eq__ is asked about None, as a class's is.
         return self.ucmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
