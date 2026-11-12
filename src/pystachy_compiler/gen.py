@@ -661,6 +661,7 @@ from src.pystachy_compiler.emission import (
     gen_alloc_fixed as emission_alloc_fixed,
     gen_alloca as emission_alloca,
     gen_boxes as emission_boxes,
+    gen_vtuple_fits as emission_vtuple_fits,
     gen_br as emission_br,
     gen_cbr as emission_cbr,
     gen_switch as emission_switch,
@@ -2723,6 +2724,9 @@ class Gen:
 
     def boxes(self, a: str, b: str) -> bool:
         return emission_boxes(self, a, b)
+
+    def vtuple_fits(self, a: str, b: str) -> bool:
+        return emission_vtuple_fits(self, a, b)
 
     def convert_in(self, v: Val, t: str, blk: Blk) -> Val:
         return emission_convert_in(self, v, t, blk)

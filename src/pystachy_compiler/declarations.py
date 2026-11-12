@@ -982,6 +982,14 @@ def gen_join(self, a: str, b: str) -> str:
     if is_tuple(a) and is_tuple(b) and len(targs(a)) == len(targs(b)):
         js = [self.join(targs(a)[i], targs(b)[i]) for i in range(len(targs(a)))]  # (item by item)
         return self.ctype("tuple", js) if "" not in js else ""
+    if (is_tuple(a) or is_vtuple(a)) and (is_tuple(b) or is_vtuple(b)):
+        # tuples of other lengths (or one of a runtime length): a runtime-length tuple of their
+        # items' join, where one can hold them (tuple[()] and tuple[C]: tuple[C, ...])
+        xs = targs(a) + targs(b)
+        j = xs[0] if len(xs) > 0 else ""
+        for x in xs[1:]:
+            j = self.join(j, x) if j != "" else ""
+        return self.ctype("vtuple", [j]) if j != "" and "?" not in j and unopt(j) != BIG and self.vtuple_item(j) else ""
     return ""
 
 def gen_wider(self, a: str, b: str) -> str:

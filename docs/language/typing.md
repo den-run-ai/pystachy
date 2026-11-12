@@ -451,7 +451,11 @@ returns an `int | float`. The members are `int`, `float`, `bool` and `str`, with
 ([optional values](#optional-values-and-narrowing)). Lists, and dicts of one key type, join
 their items' types, and tuples of one length join item by item: the display
 `[1, 2.5]` makes a `list[int | float]`, and `[("a", 1), ("b", 2.5)]` a
-`list[tuple[str, int | float]]`. A list made by a call of a function without a return
+`list[tuple[str, int | float]]`. Tuples of other lengths join into a
+[runtime-length tuple](#supported-types) of their items' one type, where it can hold them: a
+function that returns `(n,)` or `()` returns a `tuple[int, ...]`, and `[("a", ()), ("b", (1,))]`
+makes a `list[tuple[str, tuple[int, ...]]]` (each a new tuple, as
+[conversions](compatibility.md#deviations-from-cpython) make; `(1,)` and `("a", "b")` do not join). A list made by a call of a function without a return
 annotation, assigned where a list of joined items is kept or returned by a function that
 returns one, makes that function return the joined list type, as a fresh result. So does a
 method called on a variable (`ops.scale(u, 0.5)`, `self.scale(...)`) whose class no other
