@@ -15,6 +15,7 @@ from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
     EXCEPTIONS,
+    FINAL_FIELD,
     PLAIN_EXC_BASES,
     exc_derives,
     GALIAS,
@@ -845,7 +846,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     for m in mods:
         self.generic_aliases(m.body.kids)
     for m in mods:
-        m.body.kids = self.typing_forms(m, m.body.kids, False)
+        m.body.kids = self.typing_forms(m, m.body.kids, False, False, True)
         for i in range(len(m.body.kids)):
             st = m.body.kids[i]
             if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
@@ -907,6 +908,13 @@ def gen_program(self, mods: list[Mod]) -> str:
                     why = self.class_problem(m, st.kids[0], True)
             elif st.kind == "class" and m.name != "":
                 why = self.class_problem(m, st, False)
+            for x in (st.kids[0] if st.kind == "subclass" else st).kids[0].kids if why != "" else []:
+                if x.kind == "assign" and x.s == "Final":
+                    # (x: Final = v, which typing_forms made a class attribute: rejected where it
+                    # is, as before, in a class that is not compiled, whose creation may read its
+                    # annotations, as a NamedTuple's or a TypedDict's does)
+                    self.line = x.line
+                    self.err(FINAL_FIELD)
             if why != "" and m.name == "":
                 self.err(why)
             if why != "":

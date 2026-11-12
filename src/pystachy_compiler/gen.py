@@ -2915,8 +2915,8 @@ class Gen:
     def typing_ref(self, n: Node) -> str:
         return declarations_typing_ref(self, n)
 
-    def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
-        return declarations_typing_forms(self, m, body, cls)
+    def typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = False, top: bool = False) -> list[Node]:
+        return declarations_typing_forms(self, m, body, cls, attrs, top)
 
     def stub(self, m: Mod, st: Node) -> bool:
         return declarations_stub(self, m, st)

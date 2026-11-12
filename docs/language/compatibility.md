@@ -588,7 +588,8 @@ See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 - **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
   `ParamSpec` or multiple `TypeVarTuple`s; explicit `C[X]` with a `TypeVarTuple` or unannotated /
   variadic constructor parameters.
-- **Declarations:** bare `Final` outside assignments (class assignments must be constant);
+- **Declarations:** bare `Final` outside assignments (a class's needs `Final[T]` or a value
+  typed as in an unannotated class attribute, and a constant in a dataclass or `NamedTuple`);
   missing imports for typing names even in local annotations; overload stubs not followed in
   the same block by their implementation with only intervening `def`s, or nonconstant
   stub defaults. Imported missing/late implementations fail when called.

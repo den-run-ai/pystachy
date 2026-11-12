@@ -147,7 +147,11 @@ annotations. `os.PathLike` and the supported `collections.abc` names are excepti
 restriction on builtin module attributes.
 
 `Final[T]` uses type `T` without enforcing immutability. `x: Final = value` infers the
-value's type; a class-body value must be a constant. `x: Final` alone binds nothing.
+value's type. In a class body, a constant gives a field its type, and any other value makes a
+class attribute typed as an unannotated one is (`FLAGS: Final = ["a", "b"]`). Nested classes,
+dataclasses, `NamedTuple`s and classes that are not compiled (whose creation may read the
+annotation, as a `TypedDict`'s does) still need a constant or `Final[T]`. `x: Final` alone
+binds nothing.
 `@overload` stubs are discarded when followed by their implementation; they do not create
 runtime overload dispatch. Decorators accepted on unused imported definitions are not
 necessarily supported on methods the program actually uses; see [module rules](modules.md).

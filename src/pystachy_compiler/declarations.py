@@ -17,6 +17,7 @@ from src.pystachy_compiler.specs import (
     EXCATTRS,
     EXCFIELDS,
     EXCINIT,
+    FINAL_FIELD,
     FROZENERR,
     GLUE,
     IOPS,
@@ -824,12 +825,15 @@ def gen_typing_ref(self, n: Node) -> str:
         return p[p.rfind(".") + 1 :]
     return short(n.s) if short(n.s) in TYPING and "__future__.annotations" in self.imports.values() else ""
 
-def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
-    # what typing decides before any code runs, in the statements of body (a class body if cls)
-    # and in those they hold: a def decorated with @overload is a stub that the def after it
-    # replaces, so it is dropped (unless no def of its name follows in its block, past other
-    # defs, or a default is more than a constant); x: Final = v is x = v outside class bodies,
-    # and a field typed by the constant v in one, x: Final[T] is x: T, and x: Final alone does
+def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = False, top: bool = False) -> list[Node]:
+    # what typing decides before any code runs, in the statements of body (a class body if cls,
+    # the module's if top) and in those they hold: a def decorated with @overload is a stub that
+    # the def after it replaces, so it is dropped (unless no def of its name follows in its
+    # block, past other defs, or a default is more than a constant); x: Final = v is x = v
+    # outside class bodies, and in one a field typed by the constant v, or else, where attrs (the
+    # body of a module-level class without decorators or a NamedTuple base, which CPython
+    # creates without reading its annotations), the class attribute x = v, its s "Final" (the
+    # class has __annotations__: refl_annotated); x: Final[T] is x: T, and x: Final alone does
     # nothing
     out: list[Node] = []
     defs: dict[str, bool] = {}
@@ -872,16 +876,24 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
                 st.kids[1] = mk("name", v.kind, v.line, [])
             elif v.kind == "True" or v.kind == "False":
                 st.kids[1] = mk("name", "bool", v.line, [])
+            elif attrs and st.kids[0].kind == "name":
+                # (a class attribute typed by its value, as x = v is: see class_fields; where its
+                # class is not compiled, the program's class loop rejects it as before)
+                st.kind = "assign"
+                st.s = "Final"
+                st.kids = [st.kids[0], v]
             else:
-                self.err("a field annotated Final without a type needs a constant value (int, float, str or bool): annotate it Final[T]")
+                self.err(FINAL_FIELD)
         elif a is not st and self.typing_ref(a) == "Final":
             st.kind = "pass"  # (x: Final alone binds nothing)
             st.kids = []
         for k in st.kids:
             if k.kind == "block":
-                k.kids = self.typing_forms(m, k.kids, st.kind == "class")
+                k.kids = self.typing_forms(m, k.kids, st.kind == "class", top and st.kind == "class" and len(st.kids) == 1)
             elif k.kind == "class":
-                k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True)  # (a subclass's)
+                # (a subclass's: decorators follow its block, and its bases it)
+                plain = top and len(k.kids) == 1 and len([b for b in st.kids[1:] if self.nt_base(b)]) == 0
+                k.kids[0].kids = self.typing_forms(m, k.kids[0].kids, True, plain)
             elif k.kind == "except":
                 k.kids[1].kids = self.typing_forms(m, k.kids[1].kids, False)
         out.append(st)
@@ -1707,13 +1719,13 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
             if t != "" and bt != "" and (self.widens(t, bt) or self.boxes(t, bt) or (t == "int" and bt == BIG)):
                 t = bt  # (a class attribute of the base bound again, with a value of its type)
             if t == "" and ci.mod == "":
-                self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: T = ...)")
+                self.err(f"cannot infer the type of class attribute '{st.kids[0].s}'; annotate it ({st.kids[0].s}: {'Final[T]' if st.s == 'Final' else 'T'} = ...)")
             if t == "":
                 ci.bad = ci.bad if ci.bad != "" else f"class {shown(ci.name)} is not supported: cannot infer the type of class attribute '{st.kids[0].s}'"
                 t = "int"
             self.add_field(ci, st.kids[0].s, t)
             ci.fdefault[st.kids[0].s] = st.kids[1]
-            st.kind = "annassign"
+            st.kind = "annassign"  # (its s stays "Final" where typing_forms made it of x: Final = v)
             st.kids = [st.kids[0], mk("noann", "", st.line, []), st.kids[1]]
         elif st.kind != "def" and st.kind != "pass" and not (st.kind == "expr" and (st.kids[0].kind == "str" or st.kids[0].kind == "ellipsis")):
             what = "an assignment to anything but one name (x = v)" if st.kind == "assign" else "an expression statement" if st.kind == "expr" else f"a{'n' if st.kind[0] in 'aeiou' else ''} {st.kind} statement"
