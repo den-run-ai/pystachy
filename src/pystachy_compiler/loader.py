@@ -511,7 +511,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                     ps[i].kids[0] = Parser(Lexer(f"_: {its[i - 1]}\n", ps[i].line).file()).module().kids[0].kids[1]
             for o in out:
                 if o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enummember":
-                    o.kids[2].kids.append(mk("name", "__init__", o.line, []))
+                    o.kids[2].kids.append(mk("str", "__init__", o.line, []))
                 elif o.kind == "annassign" and len(o.kids) == 3 and o.kids[2].kind == "enumalias":
                     o.kids[2].kids = [avals[o.kids[0].s], mk("str", o.kids[0].s, o.line, [])]
         aliases = [m for m in mnames if canon[m] != m]
