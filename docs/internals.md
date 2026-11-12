@@ -853,6 +853,30 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_JOBS` | Parallelism for the test runner and IR tools |
 | `PYSTACHY_CASE_TIMES=FILE` | The test runner appends each case's milliseconds to `FILE`, from which `tools/case_weights.py` balances verification's shards; `tests/verify.sh` sets its own |
 
+For GC research, build a separate executable with
+`PYSTACHY_CFLAGS=-DPYSTACHY_GC_PROFILE`, then run it with `PYSTACHY_GC=stats`.
+This adds cumulative work and phase records to stderr. Ordinary builds contain none
+of this instrumentation; the flag must stay out of release builds. No allocation,
+collection threshold, stress interval or tracing policy changes.
+
+`marked objects` counts each discovered object once per collection, including atomic
+objects. `scanned objects` excludes atomic objects. Repeated roots or edges do not
+count an object again in the same collection; later collections count it again.
+`root words` and `heap words` count the conservative ranges read, including rounded
+slots and slack, not just live payload bytes. Root words include the C stack,
+program globals and runtime roots. Phase times partition elapsed collection time
+into roots, transitive tracing, and sweep; sweep includes weak-reference, file and
+foreign-reference cleanup and page settling. They are not GC CPU time or a pause
+distribution. Instrumentation can change timing and conservative retention, so
+compare diagnostic work separately from uninstrumented performance.
+
+`python3 tools/test_gc_profile.py` checks the counters against a fixed graph and
+clock, including atomic pointer-looking payloads, duplicate/interior roots, cycles,
+large sliced objects, a second collection, and deliberately wrong counter controls.
+The instrumentation adapts the counters from
+[#1095 at 08963a31](https://github.com/den-run-ai/pystachy/commit/08963a31688a06c4c283efda6550c884e3181b31);
+it does not include that experiment's alternate tracer or allocator.
+
 For AddressSanitizer builds, set `ASAN_OPTIONS=detect_stack_use_after_return=0`: its fake stack
 is outside the collector's scanned stack. `PYSTACHY_CFLAGS=-fsanitize=address` instruments
 the C runtime and generated `runtime.py` code before caching. AOT builds and extension modules

@@ -485,6 +485,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
 	$(PY) -m unittest discover -s tools -p test_jitfdprobe.py
+	$(PY) -m unittest discover -s tools -p test_gc_profile.py
 
 # Optional development dependency, pinned by tools/lean_boundary/lean-toolchain.
 # The ordinary compiler and runtime do not invoke Lean.

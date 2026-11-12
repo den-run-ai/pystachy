@@ -259,6 +259,16 @@ static I gc_allocd, gc_limit = GC_MIN, gc_live, gc_heap, gc_peak, gc_n, gc_ns, g
 static I gc_big, gc_big_limit = BIG_MIN;   /* pointer-free large-object bytes handed out since the last collection */
 static I gc_ext;                       /* malloc'd bytes that heap objects hold: open files' buffers (see I/O) */
 static int gc_off, gc_stats;
+#ifdef PYSTACHY_GC_PROFILE
+/* Research counters, absent from ordinary builds; PYSTACHY_GC=stats enables them.
+   Marked objects include atomic objects, scanned objects do not. Each counts an
+   object once per collection, even when roots or edges repeat. Words are the
+   actual conservative ranges read (rounded slots and slack included), not live
+   payload bytes. The collector is single-mutator, as are these counters.
+   Adapted from #1095 at 08963a31; no alternate tracer or allocator is included. */
+static uint64_t gc_marked_objects, gc_scanned_objects, gc_root_words, gc_heap_words;
+static uint64_t gc_roots_ns, gc_trace_ns, gc_sweep_ns;
+#endif
 /* GC_NO_ROOT(gc_bottom): stack boundary; mark_roots scans the stack range explicitly. */
 static char *gc_bottom;                /* the stack is scanned from the collector up to here */
 /* GC_NO_ROOT(gc_roots): program root addresses; mark_roots scans their referenced slots. */
@@ -319,6 +329,9 @@ __attribute__((noinline)) static void mstk_grow(void) {
   if (!(mstk = realloc(mstk, (mcap = 2 * mcap + 4096) * sizeof *mstk))) oom();
 }
 __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, const W *e) {
+#ifdef PYSTACHY_GC_PROFILE
+  if (gc_stats) gc_heap_words += (uint64_t)(e - p);
+#endif
   uintptr_t lo = gc_lo, span = gc_hi - gc_lo;   /* fixed while marking: keep them in registers */
   Seg ***pm = pmap;
   for (; p < e; p++) {                 /* mark every heap object a word in [p, e) points into */
@@ -329,7 +342,13 @@ __attribute__((noinline, no_sanitize("address"))) static void scan(const W *p, c
     if (!s->large) i = off * s->inv >> 40;
     if (s->mark[i >> 6] >> (i & 63) & 1) continue;
     s->mark[i >> 6] |= 1ULL << (i & 63); s->nmark++;
+#ifdef PYSTACHY_GC_PROFILE
+    if (gc_stats) gc_marked_objects++;
+#endif
     if (s->k & 1) continue;            /* atomic: nothing to scan */
+#ifdef PYSTACHY_GC_PROFILE
+    if (gc_stats) gc_scanned_objects++;
+#endif
     if (msp + 2 > mcap) mstk_grow();
     mstk[msp++] = (uintptr_t)s->start + i * s->size;
     mstk[msp++] = (uintptr_t)(s->large ? s->size & ~7 : s->size);
@@ -605,10 +624,21 @@ static int gc_marked(const void *p);
 static void weakrefs_sweep(void);
 __attribute__((noinline)) static void collect(void) {
   struct timespec t0, t1;
+#ifdef PYSTACHY_GC_PROFILE
+  struct timespec roots, traced;
+  uint64_t words = gc_heap_words;
+#endif
   memset(text_hints, 0, sizeof text_hints);
   __builtin_unwind_init();             /* spill the callee-saved registers into this frame */
   if (gc_stats) clock_gettime(CLOCK_MONOTONIC, &t0);
   mark_roots();
+#ifdef PYSTACHY_GC_PROFILE
+  if (gc_stats) {
+    gc_root_words += gc_heap_words - words; gc_heap_words = words;
+    clock_gettime(CLOCK_MONOTONIC, &roots);
+    gc_roots_ns += (uint64_t)((roots.tv_sec - t0.tv_sec) * 1000000000 + roots.tv_nsec - t0.tv_nsec);
+  }
+#endif
   /* trace; big arrays in 4 KiB slices keep the stack short. A range off the stack waits in mq,
      its first 128 bytes prefetched, while the MQ - 1 before it are scanned: the cache misses of
      reading the objects, most of what collecting a big heap costs, overlap. The same objects are
@@ -629,6 +659,12 @@ __attribute__((noinline)) static void collect(void) {
     qh = (qh + 1) & (MQ - 1); qc--;
     scan(p, p + n / 8);
   }
+#ifdef PYSTACHY_GC_PROFILE
+  if (gc_stats) {
+    clock_gettime(CLOCK_MONOTONIC, &traced);
+    gc_trace_ns += (uint64_t)((traced.tv_sec - roots.tv_sec) * 1000000000 + traced.tv_nsec - roots.tv_nsec);
+  }
+#endif
   weakrefs_sweep();                    /* clear weak targets before any memory is reclaimed */
   if (nfiles) files_sweep();
   if (ntrk) trk_sweep();
@@ -636,6 +672,10 @@ __attribute__((noinline)) static void collect(void) {
   if (gc_stats) {
     clock_gettime(CLOCK_MONOTONIC, &t1);
     gc_ns += (t1.tv_sec - t0.tv_sec) * 1000000000 + t1.tv_nsec - t0.tv_nsec;
+#ifdef PYSTACHY_GC_PROFILE
+    /* Sweep includes weak-reference/file/foreign-reference cleanup and page settling. */
+    gc_sweep_ns += (uint64_t)((t1.tv_sec - traced.tv_sec) * 1000000000 + t1.tv_nsec - traced.tv_nsec);
+#endif
   }
 }
 /* The allocator's frames that a collection's caller holds are scanned as roots, words that no
@@ -827,6 +867,13 @@ static I trk_report(I *ex);
 static void gc_report(void) {
   fprintf(stderr, "gc: %lld collections, %.1f ms; heap peak %.1f MiB; live %.1f MiB at the last\n",
           (long long)gc_n, gc_ns / 1e6, gc_peak / 1048576.0, gc_live / 1048576.0);
+#ifdef PYSTACHY_GC_PROFILE
+  fprintf(stderr, "gc work: marked objects %llu; scanned objects %llu; root words %llu; heap words %llu\n",
+          (unsigned long long)gc_marked_objects, (unsigned long long)gc_scanned_objects,
+          (unsigned long long)gc_root_words, (unsigned long long)gc_heap_words);
+  fprintf(stderr, "gc phases: roots %.3f ms; trace %.3f ms; sweep %.3f ms\n",
+          gc_roots_ns / 1e6, gc_trace_ns / 1e6, gc_sweep_ns / 1e6);
+#endif
   I ex, n = trk_report(&ex);
   if (n >= 0) fprintf(stderr, "gc: Python references released: %lld after collections, %lld at exit\n", (long long)n, (long long)ex);
 }
