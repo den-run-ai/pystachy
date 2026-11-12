@@ -1,0 +1,163 @@
+{
+  "run_id": 43314381949,
+  "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "validator": "tools/coverage_report.py:parts_of(native=True), unchanged with actual profdata files",
+  "validator_sha256": "5011c69b177a2e2872840ace392f0e3f5ebcbec0f8546a5f0388534cd25223a1",
+  "validation_errors": [],
+  "parts": 7,
+  "corpus_shards": 6,
+  "corpus_cases": 4361,
+  "corpus_checks": "7058 passed, 0 failed",
+  "all_parts_same_clean_source": true,
+  "official_report_metadata_matches_raw_parts": true,
+  "suite_checks": {
+    "corpus": "7058 passed, 0 failed",
+    "ffi": "148 passed, 0 failed"
+  },
+  "part_records": [
+    {
+      "part": "corpus-0",
+      "suite": "corpus",
+      "shard": [
+        0,
+        6
+      ],
+      "selected": false,
+      "cases": 726,
+      "report": "1173 passed, 0 failed",
+      "profiles": 2,
+      "seconds": 410,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/native-coverage-validation/parts/corpus-0.profdata"
+    },
+    {
+      "part": "corpus-1",
+      "suite": "corpus",
+      "shard": [
+        1,
+        6
+      ],
+      "selected": false,
+      "cases": 727,
+      "report": "1175 passed, 0 failed",
+      "profiles": 2,
+      "seconds": 351,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/native-coverage-validation/parts/corpus-1.profdata"
+    },
+    {
+      "part": "corpus-2",
+      "suite": "corpus",
+      "shard": [
+        2,
+        6
+      ],
+      "selected": false,
+      "cases": 727,
+      "report": "1180 passed, 0 failed",
+      "profiles": 2,
+      "seconds": 396,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/native-coverage-validation/parts/corpus-2.profdata"
+    },
+    {
+      "part": "corpus-3",
+      "suite": "corpus",
+      "shard": [
+        3,
+        6
+      ],
+      "selected": false,
+      "cases": 727,
+      "report": "1174 passed, 0 failed",
+      "profiles": 2,
+      "seconds": 320,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/native-coverage-validation/parts/corpus-3.profdata"
+    },
+    {
+      "part": "corpus-4",
+      "suite": "corpus",
+      "shard": [
+        4,
+        6
+      ],
+      "selected": false,
+      "cases": 727,
+      "report": "1175 passed, 0 failed",
+      "profiles": 2,
+      "seconds": 413,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/native-coverage-validation/parts/corpus-4.profdata"
+    },
+    {
+      "part": "corpus-5",
+      "suite": "corpus",
+      "shard": [
+        5,
+        6
+      ],
+      "selected": false,
+      "cases": 727,
+      "report": "1181 passed, 0 failed",
+      "profiles": 2,
+      "seconds": 387,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/native-coverage-validation/parts/corpus-5.profdata"
+    },
+    {
+      "part": "ffi",
+      "suite": "ffi",
+      "shard": null,
+      "selected": false,
+      "cases": null,
+      "report": "148 passed, 0 failed",
+      "profiles": 3,
+      "seconds": 122,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/native-coverage-validation/parts/ffi.profdata"
+    }
+  ],
+  "coverage_totals": {
+    "branches": {
+      "count": 9564,
+      "covered": 8137,
+      "notcovered": 1427,
+      "percent": 85.07946465913844
+    },
+    "functions": {
+      "count": 1023,
+      "covered": 983,
+      "percent": 96.08993157380255
+    },
+    "instantiations": {
+      "count": 1048,
+      "covered": 1008,
+      "percent": 96.18320610687023
+    },
+    "lines": {
+      "count": 7946,
+      "covered": 7548,
+      "percent": 94.9911905361188
+    },
+    "mcdc": {
+      "count": 0,
+      "covered": 0,
+      "notcovered": 0,
+      "percent": 0
+    },
+    "regions": {
+      "count": 12942,
+      "covered": 11870,
+      "notcovered": 1072,
+      "percent": 91.71689074331634
+    }
+  }
+}

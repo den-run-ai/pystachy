@@ -1,0 +1,916 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "status": "passed",
+  "observed_at": "2026-11-12T23:03:24.555403+00:00",
+  "repository": "den-run-ai/pystachy",
+  "tag": "v0.4.0-rc.1",
+  "package_version": "0.4.0rc1",
+  "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "scope": "Public artifact identity/readback and fresh local installation. Source qualification, CI headroom and stable-release acceptance are recorded separately.",
+  "release": {
+    "id": 443602854,
+    "html_url": "https://github.com/den-run-ai/pystachy/releases/tag/v0.4.0-rc.1",
+    "tag_name": "v0.4.0-rc.1",
+    "target_commitish": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+    "prerelease": true,
+    "draft": false,
+    "published_at": "2026-11-12T22:52:24Z"
+  },
+  "workflows": {
+    "native": {
+      "id": 43321775172,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43321775172",
+      "attempt": 1,
+      "workflow_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "workflow_ref": "main",
+      "audit_report": "native-workflow-report.json",
+      "audit_report_sha256": "ea6c5cdcee743d2213239f1beb6a5bfb930e23c51d4707869923fc7bd198d7ea",
+      "jobs": [
+        {
+          "id": 131543984577,
+          "name": "prepare",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:38:37Z",
+          "completed_at": "2026-11-12T22:38:47Z"
+        },
+        {
+          "id": 131543986575,
+          "name": "Publish verified packages to PyPI",
+          "conclusion": "skipped",
+          "started_at": "2026-11-12T22:38:34Z",
+          "completed_at": "2026-11-12T22:38:34Z"
+        },
+        {
+          "id": 131543986693,
+          "name": "Verify PyPI source packages",
+          "conclusion": "skipped",
+          "started_at": "2026-11-12T22:38:34Z",
+          "completed_at": "2026-11-12T22:38:34Z"
+        },
+        {
+          "id": 131544103799,
+          "name": "Binary (linux-x86_64)",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:38:50Z",
+          "completed_at": "2026-11-12T22:44:43Z"
+        },
+        {
+          "id": 131544103833,
+          "name": "Binary (macos-x86_64)",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:38:51Z",
+          "completed_at": "2026-11-12T22:48:13Z"
+        },
+        {
+          "id": 131544103883,
+          "name": "Binary (macos-arm64)",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:38:51Z",
+          "completed_at": "2026-11-12T22:45:47Z"
+        },
+        {
+          "id": 131544103923,
+          "name": "Binary (linux-aarch64)",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:38:52Z",
+          "completed_at": "2026-11-12T22:44:28Z"
+        },
+        {
+          "id": 131549081172,
+          "name": "Container (linux/arm64)",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:48:18Z",
+          "completed_at": "2026-11-12T22:50:47Z"
+        },
+        {
+          "id": 131549081224,
+          "name": "Container (linux/amd64)",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:48:16Z",
+          "completed_at": "2026-11-12T22:50:56Z"
+        },
+        {
+          "id": 131550515565,
+          "name": "publish",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:50:59Z",
+          "completed_at": "2026-11-12T22:52:26Z"
+        }
+      ]
+    },
+    "pypi": {
+      "id": 43324568308,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43324568308",
+      "attempt": 1,
+      "workflow_commit": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+      "workflow_ref": "release/pypi-v0.2.0",
+      "audit_report": "pypi-workflow-report.json",
+      "audit_report_sha256": "d80e14e3383cb2111843e4fbfde612fb49e0409ec36be90dd4fa8c94e3541544",
+      "jobs": [
+        {
+          "id": 131553667966,
+          "name": "Verify PyPI source packages",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:57:14Z",
+          "completed_at": "2026-11-12T22:58:45Z"
+        },
+        {
+          "id": 131553670202,
+          "name": "Container (linux/${{ matrix.arch }})",
+          "conclusion": "skipped",
+          "started_at": "2026-11-12T22:57:12Z",
+          "completed_at": "2026-11-12T22:57:12Z"
+        },
+        {
+          "id": 131553670234,
+          "name": "prepare",
+          "conclusion": "skipped",
+          "started_at": "2026-11-12T22:57:12Z",
+          "completed_at": "2026-11-12T22:57:12Z"
+        },
+        {
+          "id": 131553670369,
+          "name": "Binary (${{ matrix.target }})",
+          "conclusion": "skipped",
+          "started_at": "2026-11-12T22:57:12Z",
+          "completed_at": "2026-11-12T22:57:12Z"
+        },
+        {
+          "id": 131553671580,
+          "name": "publish",
+          "conclusion": "skipped",
+          "started_at": "2026-11-12T22:57:12Z",
+          "completed_at": "2026-11-12T22:57:12Z"
+        },
+        {
+          "id": 131554422676,
+          "name": "Publish verified packages to PyPI",
+          "conclusion": "success",
+          "started_at": "2026-11-12T22:58:50Z",
+          "completed_at": "2026-11-12T22:59:17Z"
+        }
+      ]
+    }
+  },
+  "receipts": {
+    "native-report.json": {
+      "complete": true,
+      "status": "passed",
+      "repository": "den-run-ai/pystachy",
+      "tag": "v0.4.0-rc.1",
+      "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "native_run": 43321775172,
+      "assets": {
+        "linux-abi-linux-aarch64.json": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/linux-abi-linux-aarch64.json",
+          "size": 1368,
+          "sha256": "9362bda9b220e2f8e6358b582410f412b20299c322490dde5ad03fd8677f2685",
+          "tested_artifact_id": 13991406474,
+          "byte_for_byte_equal": true
+        },
+        "linux-abi-linux-x86_64.json": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/linux-abi-linux-x86_64.json",
+          "size": 1463,
+          "sha256": "7c6cbf8fc73500bd4628421ce792e7a6e6ea1cd1ba588309621521b606639cbc",
+          "tested_artifact_id": 13990482909,
+          "byte_for_byte_equal": true
+        },
+        "pystachy-v0.4.0-rc.1-linux-aarch64.tar.gz": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/pystachy-v0.4.0-rc.1-linux-aarch64.tar.gz",
+          "size": 3591900,
+          "sha256": "317548ed82cb423f9c25cc7b25856eb8976d32bde15d49f3b8ab24461dd7fb9f",
+          "tested_artifact_id": 13991406474,
+          "byte_for_byte_equal": true
+        },
+        "pystachy-v0.4.0-rc.1-linux-aarch64.tar.gz.sha256": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/pystachy-v0.4.0-rc.1-linux-aarch64.tar.gz.sha256",
+          "size": 108,
+          "sha256": "2cb0ba9dc436cae80144890b05bc149828c8f372ec75c9665bad497a257b82b7",
+          "tested_artifact_id": 13991406474,
+          "byte_for_byte_equal": true
+        },
+        "pystachy-v0.4.0-rc.1-linux-x86_64.tar.gz": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/pystachy-v0.4.0-rc.1-linux-x86_64.tar.gz",
+          "size": 3907248,
+          "sha256": "3947b5b9b48ba62cb75c84c8cbae4067302e1a7565e52002c4f9d6554931600e",
+          "tested_artifact_id": 13990482909,
+          "byte_for_byte_equal": true
+        },
+        "pystachy-v0.4.0-rc.1-linux-x86_64.tar.gz.sha256": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/pystachy-v0.4.0-rc.1-linux-x86_64.tar.gz.sha256",
+          "size": 107,
+          "sha256": "9c4aa1c8c4c54d6395632ec06f2c0e88457853b58f895434b8eea37494ad6241",
+          "tested_artifact_id": 13990482909,
+          "byte_for_byte_equal": true
+        },
+        "pystachy-v0.4.0-rc.1-macos-arm64.tar.gz": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/pystachy-v0.4.0-rc.1-macos-arm64.tar.gz",
+          "size": 3556939,
+          "sha256": "aa619e6e10cb65301160fe68af41b6f2aa230ffe08038d4b7b975d5700c76342",
+          "tested_artifact_id": 13989974760,
+          "byte_for_byte_equal": true
+        },
+        "pystachy-v0.4.0-rc.1-macos-arm64.tar.gz.sha256": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/pystachy-v0.4.0-rc.1-macos-arm64.tar.gz.sha256",
+          "size": 106,
+          "sha256": "9f4537b7937321bf9e17f7d28eb0c92b153902ca2d37d325318cd088e892e6f3",
+          "tested_artifact_id": 13989974760,
+          "byte_for_byte_equal": true
+        },
+        "pystachy-v0.4.0-rc.1-macos-x86_64.tar.gz": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/pystachy-v0.4.0-rc.1-macos-x86_64.tar.gz",
+          "size": 3864735,
+          "sha256": "17368892b484107d4f9550479294d49bf2a79e6bf9a527b807bc425541289a73",
+          "tested_artifact_id": 13990398847,
+          "byte_for_byte_equal": true
+        },
+        "pystachy-v0.4.0-rc.1-macos-x86_64.tar.gz.sha256": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/pystachy-v0.4.0-rc.1-macos-x86_64.tar.gz.sha256",
+          "size": 107,
+          "sha256": "92063ce8d092cb09a7dc2bc70a5aa8b9a60fd884eccc8732e6cc3e218d29d5fb",
+          "tested_artifact_id": 13990398847,
+          "byte_for_byte_equal": true
+        },
+        "SHA256SUMS": {
+          "url": "https://github.com/den-run-ai/pystachy/releases/download/v0.4.0-rc.1/SHA256SUMS",
+          "size": 436,
+          "sha256": "1af7a107a9a7521fb226c27cb3ea2e9f072a1f32e5e3277f67f2446ffdde3590"
+        }
+      },
+      "manifests": {
+        "linux-x86_64": {
+          "identity": {
+            "version": "v0.4.0-rc.1",
+            "target": "linux-x86_64",
+            "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab"
+          },
+          "payload_files": 117,
+          "directory": "/workspace/scratch/2cf34574fa6e/rc1-release-audit/extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64",
+          "version_stdout": "pystachy v0.4.0-rc.1 (commit 30822255ee7ee704e0e780e01cd8c23357ba13ab)\n"
+        },
+        "linux-aarch64": {
+          "identity": {
+            "version": "v0.4.0-rc.1",
+            "target": "linux-aarch64",
+            "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab"
+          },
+          "payload_files": 117,
+          "directory": "/workspace/scratch/2cf34574fa6e/rc1-release-audit/extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64"
+        },
+        "macos-arm64": {
+          "identity": {
+            "version": "v0.4.0-rc.1",
+            "target": "macos-arm64",
+            "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab"
+          },
+          "payload_files": 117,
+          "directory": "/workspace/scratch/2cf34574fa6e/rc1-release-audit/extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64"
+        },
+        "macos-x86_64": {
+          "identity": {
+            "version": "v0.4.0-rc.1",
+            "target": "macos-x86_64",
+            "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab"
+          },
+          "payload_files": 117,
+          "directory": "/workspace/scratch/2cf34574fa6e/rc1-release-audit/extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64"
+        }
+      }
+    },
+    "docker-amd64-report.json": {
+      "complete": true,
+      "status": "passed",
+      "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "native_run": 43321775172,
+      "tag": "v0.4.0-rc.1",
+      "architecture": "amd64",
+      "index_digest": "sha256:d77a0be567b12cc5539bc1d57a43d1662785d59b4db6b6e196b123dcc6ff5345",
+      "manifest_digest": "sha256:0a42317453eab0b0b1eecef6362891b07fc9130df11d33639860842cf838d3d9",
+      "tested": {
+        "artifact_id": 13990544077,
+        "archive_sha256": "e760a7ea352b281137537aa2d4117b85ea476853fce8e281e393db3b6926378a",
+        "config_digest": "sha256:4517ff25a920693e5e867e0aed71cd5a4388eed8e1848a0d2295ec1bc2336be9",
+        "config": {
+          "architecture": "amd64",
+          "config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "PYSTACHY_LLVM=/usr/lib/llvm-18/bin",
+              "PYSTACHY_CACHE=/tmp/pystachy-cache"
+            ],
+            "Entrypoint": [
+              "/usr/local/bin/pystachy"
+            ],
+            "WorkingDir": "/work",
+            "Labels": {
+              "org.opencontainers.image.description": "Self-hosting typed Python subset compiler with LLVM JIT and AOT",
+              "org.opencontainers.image.licenses": "MIT",
+              "org.opencontainers.image.revision": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+              "org.opencontainers.image.source": "https://github.com/den-run-ai/pystachy",
+              "org.opencontainers.image.title": "Pystachy",
+              "org.opencontainers.image.url": "https://github.com/den-run-ai/pystachy",
+              "org.opencontainers.image.version": "v0.4.0-rc.1"
+            }
+          },
+          "created": "2026-11-12T22:49:16.575569674Z",
+          "history": [
+            {
+              "created": "2026-11-10T08:36:30.089187849Z",
+              "created_by": "/bin/sh -c #(nop)  ARG RELEASE",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-10T08:36:30.118560043Z",
+              "created_by": "/bin/sh -c #(nop)  ARG LAUNCHPAD_BUILD_ARCH",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-10T08:36:30.16114408Z",
+              "created_by": "/bin/sh -c #(nop)  LABEL org.opencontainers.image.version=24.04",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-10T08:36:34.672149163Z",
+              "created_by": "/bin/sh -c #(nop) ADD file:3c41cdb0a333e30d2a3c4a90a152da473ef44ae84245fd34a49167a6b8f26cc6 in / "
+            },
+            {
+              "created": "2026-11-10T08:36:35.098007755Z",
+              "created_by": "/bin/sh -c #(nop)  CMD [\"/bin/bash\"]",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:37.869412931Z",
+              "created_by": "RUN /bin/sh -c case \"$(dpkg --print-architecture)\" in amd64|arm64) ;;     *) echo \"Pystachy's Docker release requires linux/amd64 or linux/arm64\" >&2; exit 1 ;; esac # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:48:53.397519564Z",
+              "created_by": "RUN /bin/sh -c apt-get update     && apt-get install -y --no-install-recommends clang-18 llvm-18 llvm-18-runtime     && rm -rf /var/lib/apt/lists/* # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:48:53.500065867Z",
+              "created_by": "ENV PYSTACHY_LLVM=/usr/lib/llvm-18/bin",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:53.500065867Z",
+              "created_by": "ARG VERSION=v0.4.0-rc.1",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:53.500065867Z",
+              "created_by": "ARG REVISION=30822255ee7ee704e0e780e01cd8c23357ba13ab",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:53.500065867Z",
+              "created_by": "LABEL org.opencontainers.image.title=Pystachy org.opencontainers.image.description=Self-hosting typed Python subset compiler with LLVM JIT and AOT org.opencontainers.image.url=https://github.com/den-run-ai/pystachy org.opencontainers.image.source=https://github.com/den-run-ai/pystachy org.opencontainers.image.licenses=MIT org.opencontainers.image.version=v0.4.0-rc.1 org.opencontainers.image.revision=30822255ee7ee704e0e780e01cd8c23357ba13ab",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:53.500065867Z",
+              "created_by": "COPY /out/usr/local/ /usr/local/ # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:48:53.508016701Z",
+              "created_by": "COPY --chmod=755 tools/docker_smoke.sh /usr/local/bin/pystachy-smoke # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:48:53.508016701Z",
+              "created_by": "ENV PYSTACHY_CACHE=/tmp/pystachy-cache",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:49:16.569346934Z",
+              "created_by": "RUN |2 VERSION=v0.4.0-rc.1 REVISION=30822255ee7ee704e0e780e01cd8c23357ba13ab /bin/sh -c mkdir -p /work     && chmod 1777 /work     && ! command -v python3     && pystachy-smoke # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:49:16.575569674Z",
+              "created_by": "WORKDIR /work",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:49:16.575569674Z",
+              "created_by": "ENTRYPOINT [\"/usr/local/bin/pystachy\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            }
+          ],
+          "os": "linux",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:21210938f5a37a9887b2d0a20428917b923a636ca6efe038c3c7d9cd9f1f9b61",
+              "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+              "sha256:20a0d3aec8e89d4b5366e8087303fd6587b599153cd98de965dd4247f78a8fb6",
+              "sha256:38004c01977594d3c579a5a84e76b77c75f8270bc26c1d2982f93c0a024f9597",
+              "sha256:8cbda066182593fbaa312af4fd40882e05b813500155fe86f5ec0fdaf0da5c87",
+              "sha256:12fa531966e0d8254281958ccaa196d3f5ec7306b89555e434a30209b6eb06e4",
+              "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+            ]
+          }
+        },
+        "diff_ids": [
+          "sha256:21210938f5a37a9887b2d0a20428917b923a636ca6efe038c3c7d9cd9f1f9b61",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "sha256:20a0d3aec8e89d4b5366e8087303fd6587b599153cd98de965dd4247f78a8fb6",
+          "sha256:38004c01977594d3c579a5a84e76b77c75f8270bc26c1d2982f93c0a024f9597",
+          "sha256:8cbda066182593fbaa312af4fd40882e05b813500155fe86f5ec0fdaf0da5c87",
+          "sha256:12fa531966e0d8254281958ccaa196d3f5ec7306b89555e434a30209b6eb06e4",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        ]
+      },
+      "public_layers": [
+        {
+          "digest": "sha256:2a2852b62ec0a9cb863f681ce4f84342e90ac974a14ce7e02feb99927447bd77",
+          "size": 30652855,
+          "diff_id": "sha256:21210938f5a37a9887b2d0a20428917b923a636ca6efe038c3c7d9cd9f1f9b61",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+          "size": 32,
+          "diff_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:7072bfc97d06618dce4d36f80b47507a33345d4392b9da17a6c82717027160e4",
+          "size": 170650437,
+          "diff_id": "sha256:20a0d3aec8e89d4b5366e8087303fd6587b599153cd98de965dd4247f78a8fb6",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:da96e2d9edd3c9c140f01e4f615bee184edeeaf3b211591ded206912f2d9418f",
+          "size": 3974945,
+          "diff_id": "sha256:38004c01977594d3c579a5a84e76b77c75f8270bc26c1d2982f93c0a024f9597",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:6b04e6fa5eb24fbab63c09e067f5b878da6e99d22c5e0f066631ffb8ebfa4199",
+          "size": 1355,
+          "diff_id": "sha256:8cbda066182593fbaa312af4fd40882e05b813500155fe86f5ec0fdaf0da5c87",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:32ec7343d7789ce06de08f9d5a35ebcdb45d8c951cf6ef3d6f60a2d423583fcb",
+          "size": 93,
+          "diff_id": "sha256:12fa531966e0d8254281958ccaa196d3f5ec7306b89555e434a30209b6eb06e4",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+          "size": 32,
+          "diff_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "bytes_verified": true
+        }
+      ]
+    },
+    "docker-arm64-report.json": {
+      "complete": true,
+      "status": "passed",
+      "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "native_run": 43321775172,
+      "tag": "v0.4.0-rc.1",
+      "architecture": "arm64",
+      "index_digest": "sha256:d77a0be567b12cc5539bc1d57a43d1662785d59b4db6b6e196b123dcc6ff5345",
+      "manifest_digest": "sha256:9858d4b34d91859959be198b7d82c0107653bae039193a870ea196e54a0c030d",
+      "tested": {
+        "artifact_id": 13990523805,
+        "archive_sha256": "f755a330d95a69098872a6bc44976780fe9553a19cc0967ae7b4548110a687ae",
+        "config_digest": "sha256:4571df785f7a3573be3a4fe7d6328d8f25f83362454642194f1d8ce6dc5b2648",
+        "config": {
+          "architecture": "arm64",
+          "config": {
+            "Env": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "PYSTACHY_LLVM=/usr/lib/llvm-18/bin",
+              "PYSTACHY_CACHE=/tmp/pystachy-cache"
+            ],
+            "Entrypoint": [
+              "/usr/local/bin/pystachy"
+            ],
+            "WorkingDir": "/work",
+            "Labels": {
+              "org.opencontainers.image.description": "Self-hosting typed Python subset compiler with LLVM JIT and AOT",
+              "org.opencontainers.image.licenses": "MIT",
+              "org.opencontainers.image.revision": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+              "org.opencontainers.image.source": "https://github.com/den-run-ai/pystachy",
+              "org.opencontainers.image.title": "Pystachy",
+              "org.opencontainers.image.url": "https://github.com/den-run-ai/pystachy",
+              "org.opencontainers.image.version": "v0.4.0-rc.1"
+            }
+          },
+          "created": "2026-11-12T22:49:15.345019743Z",
+          "history": [
+            {
+              "created": "2026-11-10T08:33:24.108066759Z",
+              "created_by": "/bin/sh -c #(nop)  ARG RELEASE",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-10T08:33:24.141039806Z",
+              "created_by": "/bin/sh -c #(nop)  ARG LAUNCHPAD_BUILD_ARCH",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-10T08:33:24.187970188Z",
+              "created_by": "/bin/sh -c #(nop)  LABEL org.opencontainers.image.version=24.04",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-10T08:33:26.241559135Z",
+              "created_by": "/bin/sh -c #(nop) ADD file:aeac09a5d64b4f3ea9f6270bab8e042832a855d9ab77269736eef18fda7dc7bb in / "
+            },
+            {
+              "created": "2026-11-10T08:33:26.688988194Z",
+              "created_by": "/bin/sh -c #(nop)  CMD [\"/bin/bash\"]",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:34.618309022Z",
+              "created_by": "RUN /bin/sh -c case \"$(dpkg --print-architecture)\" in amd64|arm64) ;;     *) echo \"Pystachy's Docker release requires linux/amd64 or linux/arm64\" >&2; exit 1 ;; esac # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:48:48.87429029Z",
+              "created_by": "RUN /bin/sh -c apt-get update     && apt-get install -y --no-install-recommends clang-18 llvm-18 llvm-18-runtime     && rm -rf /var/lib/apt/lists/* # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:48:48.947190873Z",
+              "created_by": "ENV PYSTACHY_LLVM=/usr/lib/llvm-18/bin",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:48.947190873Z",
+              "created_by": "ARG VERSION=v0.4.0-rc.1",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:48.947190873Z",
+              "created_by": "ARG REVISION=30822255ee7ee704e0e780e01cd8c23357ba13ab",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:48.947190873Z",
+              "created_by": "LABEL org.opencontainers.image.title=Pystachy org.opencontainers.image.description=Self-hosting typed Python subset compiler with LLVM JIT and AOT org.opencontainers.image.url=https://github.com/den-run-ai/pystachy org.opencontainers.image.source=https://github.com/den-run-ai/pystachy org.opencontainers.image.licenses=MIT org.opencontainers.image.version=v0.4.0-rc.1 org.opencontainers.image.revision=30822255ee7ee704e0e780e01cd8c23357ba13ab",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:48:48.947190873Z",
+              "created_by": "COPY /out/usr/local/ /usr/local/ # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:48:48.959787775Z",
+              "created_by": "COPY --chmod=755 tools/docker_smoke.sh /usr/local/bin/pystachy-smoke # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:48:48.959787775Z",
+              "created_by": "ENV PYSTACHY_CACHE=/tmp/pystachy-cache",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            },
+            {
+              "created": "2026-11-12T22:49:15.337229673Z",
+              "created_by": "RUN |2 VERSION=v0.4.0-rc.1 REVISION=30822255ee7ee704e0e780e01cd8c23357ba13ab /bin/sh -c mkdir -p /work     && chmod 1777 /work     && ! command -v python3     && pystachy-smoke # buildkit",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:49:15.345019743Z",
+              "created_by": "WORKDIR /work",
+              "comment": "buildkit.dockerfile.v0"
+            },
+            {
+              "created": "2026-11-12T22:49:15.345019743Z",
+              "created_by": "ENTRYPOINT [\"/usr/local/bin/pystachy\"]",
+              "comment": "buildkit.dockerfile.v0",
+              "empty_layer": true
+            }
+          ],
+          "os": "linux",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:d367816f799f33f5cbdd0a4cdb59a8c432f8d63bfcead9b880672c404202007a",
+              "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+              "sha256:8c4d67d6df7430008153e19ae1d58ae682d1be9e8f8b6fcfe3d215114f866dcb",
+              "sha256:a5a245e9641aa4d1af987235e45f97bbe9c7ad51a288225ffb3e630949288c72",
+              "sha256:165dca2a85dfa994f473ea9d126d6b9f15fa0cddb346f9aa2611d648e1179bb1",
+              "sha256:0b3c1369a49acba799a364a7beafc2905f975d037d01152fa6ead61211ce8704",
+              "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+            ]
+          }
+        },
+        "diff_ids": [
+          "sha256:d367816f799f33f5cbdd0a4cdb59a8c432f8d63bfcead9b880672c404202007a",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "sha256:8c4d67d6df7430008153e19ae1d58ae682d1be9e8f8b6fcfe3d215114f866dcb",
+          "sha256:a5a245e9641aa4d1af987235e45f97bbe9c7ad51a288225ffb3e630949288c72",
+          "sha256:165dca2a85dfa994f473ea9d126d6b9f15fa0cddb346f9aa2611d648e1179bb1",
+          "sha256:0b3c1369a49acba799a364a7beafc2905f975d037d01152fa6ead61211ce8704",
+          "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        ]
+      },
+      "public_layers": [
+        {
+          "digest": "sha256:0a8848502ed3ba3858fdd5512818d17398e9b90b6562ba8ecdfe6a485af6a65c",
+          "size": 30045706,
+          "diff_id": "sha256:d367816f799f33f5cbdd0a4cdb59a8c432f8d63bfcead9b880672c404202007a",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+          "size": 32,
+          "diff_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:5050fec3d311729041e27e32f04b209a7003aaa9c569adc0bd844bc60902251a",
+          "size": 167946602,
+          "diff_id": "sha256:8c4d67d6df7430008153e19ae1d58ae682d1be9e8f8b6fcfe3d215114f866dcb",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:c548baa138e6146e2805ea19e9784e7df2145b8e8c6c0ac6cb56cfd80670cbe0",
+          "size": 3662174,
+          "diff_id": "sha256:a5a245e9641aa4d1af987235e45f97bbe9c7ad51a288225ffb3e630949288c72",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:be0c0e8cb75e8b8d7800efc43fb0529e504410b636b4354919f4225f8d7ae8d8",
+          "size": 1357,
+          "diff_id": "sha256:165dca2a85dfa994f473ea9d126d6b9f15fa0cddb346f9aa2611d648e1179bb1",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:f415ba3159c690c74efc3a28d6bced43b69cdf4543bd637b0cc23df6a7cc4d3e",
+          "size": 93,
+          "diff_id": "sha256:0b3c1369a49acba799a364a7beafc2905f975d037d01152fa6ead61211ce8704",
+          "bytes_verified": true
+        },
+        {
+          "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1",
+          "size": 32,
+          "diff_id": "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+          "bytes_verified": true
+        }
+      ]
+    },
+    "pypi-report.json": {
+      "complete": true,
+      "status": "passed",
+      "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "native_run": 43321775172,
+      "pypi_run": 43324568308,
+      "artifact_id": 13992177252,
+      "version": "0.4.0rc1",
+      "source_receipt": {
+        "RELEASE_VERSION": "v0.4.0-rc.1",
+        "SOURCE_COMMIT": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+        "PACKAGE_VERSION": "0.4.0rc1",
+        "GITHUB_SHA": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf"
+      },
+      "distributions": [
+        {
+          "filename": "pystachy-0.4.0rc1-py3-none-any.whl",
+          "url": "https://files.pythonhosted.org/packages/48/46/6f73bfbe461fbe9b780366f09e261feb8c7f414ea82b37eaf55395526275/pystachy-0.4.0rc1-py3-none-any.whl",
+          "size": 1906914,
+          "sha256": "be8f2c8945db9cd92c39cbb5547c93871541fef56000526b7b55a5fd0bd65efd",
+          "byte_for_byte_equal": true
+        },
+        {
+          "filename": "pystachy-0.4.0rc1.tar.gz",
+          "url": "https://files.pythonhosted.org/packages/df/96/717708dc3539b2d7eba3533721f734aa6b6296feeef84da9884616ba5a9b/pystachy-0.4.0rc1.tar.gz",
+          "size": 1835243,
+          "sha256": "8ed3a699938cef8c740c9db854481ec754a1be4dc33029f67e85855dda7b0880",
+          "byte_for_byte_equal": true
+        }
+      ]
+    },
+    "pypi-public-install-evidence.json": {
+      "complete": true,
+      "status": "passed",
+      "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "tag": "v0.4.0-rc.1",
+      "version": "0.4.0rc1",
+      "pypi_run": 43324568308,
+      "observed_at": "2026-11-12T23:01:50.781805+00:00",
+      "toolchain": {
+        "python": "Python 3.13.16",
+        "llvm": "Debian clang version 19.1.7 (3+b1)",
+        "uv": "uv 0.13.6 (x86_64-unknown-linux-gnu)"
+      },
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+        "/workspace/scratch/2cf34574fa6e/pystachy-rc/tools/compiler_install_smoke.py",
+        "--source",
+        "/workspace/scratch/2cf34574fa6e/rc1-release-audit/pypi-public-dist/pystachy-0.4.0rc1-py3-none-any.whl"
+      ],
+      "exit_code": 0,
+      "public_wheel_sha256": "be8f2c8945db9cd92c39cbb5547c93871541fef56000526b7b55a5fd0bd65efd",
+      "helper_source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "helper_sha256": "b6379200a7b86bad7713918e20751b39724e656bd750358e3dcccd5aed35a2a7",
+      "raw_log_sha256": "be7bbe6a4f8b92f70df16ec004695bd888b2060ce7cc4d2c525cd866c2d75421",
+      "fresh_environment_per_manager": true,
+      "outside_checkout": true,
+      "checks": [
+        "version with LLVM unavailable",
+        "JIT equals pinned CPython",
+        "standalone AOT equals pinned CPython with empty PATH",
+        "external runtime and JIT-runner caches",
+        "pip and uv uninstall cleanup"
+      ],
+      "source_binding": "Public wheel equals the tested publishing artifact; SOURCE.json binds its source. Installed version text alone does not embed that source commit.",
+      "scope": "Local Linux x86_64 installation smoke using the recorded toolchain; other platforms rely on separately retained hosted evidence."
+    },
+    "stable-aliases-after-pypi-report.json": {
+      "complete": true,
+      "status": "passed",
+      "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "native_run": 43321775172,
+      "tag": "v0.4.0-rc.1",
+      "observation_phase": "pypi",
+      "observed_at": "2026-11-12T23:01:50.625971+00:00",
+      "unchanged": true,
+      "github_latest": {
+        "id": 438018648,
+        "tag_name": "v0.3.1",
+        "target_commitish": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+        "html_url": "https://github.com/den-run-ai/pystachy/releases/tag/v0.3.1"
+      },
+      "docker_latest": {
+        "image": "dta67/pystachy",
+        "tag": "latest",
+        "index_digest": "sha256:a9c31998280fc47c50fe401f2575fcefddc088f915615ac8f9ce8b8e1b41a953",
+        "platforms": {
+          "amd64": {
+            "manifest_digest": "sha256:f6c2ebca42d585b3879ba2351f924f2c67121f07c19d1081e5d013a52df75a50",
+            "config_digest": "sha256:954aad7bba8df7218f993a74512d8e9cebdcc541b88d2cb048934c0bd1d8316b",
+            "os": "linux",
+            "architecture": "amd64",
+            "labels": {
+              "org.opencontainers.image.description": "Self-hosting typed Python subset compiler with LLVM JIT and AOT",
+              "org.opencontainers.image.licenses": "MIT",
+              "org.opencontainers.image.revision": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+              "org.opencontainers.image.source": "https://github.com/den-run-ai/pystachy",
+              "org.opencontainers.image.title": "Pystachy",
+              "org.opencontainers.image.url": "https://github.com/den-run-ai/pystachy",
+              "org.opencontainers.image.version": "v0.3.1"
+            },
+            "diff_ids": [
+              "sha256:bec87777bc2fb2edcdf9af11df1531469e7df911309c1413082b18fcb8610278",
+              "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+              "sha256:ac0e526af6447ebb073c8c8cb2923115e267b27cd56afe2b792aad22cbe3b42a",
+              "sha256:fb6dd2cfe7cc5cd35164c9c10f41c871d45fdeaa84301888bf6848d4956e732a",
+              "sha256:8a323e1fa0b9813c248742c178064c7a0d297f788a59c2a8b0f8f92cdd61e083",
+              "sha256:5ef7c6c7385281c4c4f700c34fab0ef5628bb9b16eaebf262294a8939ba71851",
+              "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+            ],
+            "layers": [
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 30631832,
+                "digest": "sha256:6a7d1d6746ced8cad4cc70d1e354baa64c9105869834d7a34b60b2ee56c8fb14"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 32,
+                "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 164285778,
+                "digest": "sha256:0f8c3ad6a08cea028d6896f6ccc33f0b583c2fa4689e4cf161ebe340ef98c7aa"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 3429499,
+                "digest": "sha256:918ceb6e5b4641f0850b5afc5baf19e2173c10dbaa4957f7b7d04062c2e4ada2"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 1358,
+                "digest": "sha256:602dd5e3771a57fd23cc1b54e53d02cb72ee3a8f6b733c92e30958e400eb4dff"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 93,
+                "digest": "sha256:ab25a821c4b2aee6d6da497bd96804f732c75f722bcd9f7cd79b8aa7b228f4b3"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 32,
+                "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"
+              }
+            ]
+          },
+          "arm64": {
+            "manifest_digest": "sha256:418aaa1d9f584a51572c7628c4b04c784ea048c1684c461b2a9aba86cd7da589",
+            "config_digest": "sha256:f19282dc54b6a02f6f81c14f5bc295928a1f912bf4308e4d051083337d3335af",
+            "os": "linux",
+            "architecture": "arm64",
+            "labels": {
+              "org.opencontainers.image.description": "Self-hosting typed Python subset compiler with LLVM JIT and AOT",
+              "org.opencontainers.image.licenses": "MIT",
+              "org.opencontainers.image.revision": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+              "org.opencontainers.image.source": "https://github.com/den-run-ai/pystachy",
+              "org.opencontainers.image.title": "Pystachy",
+              "org.opencontainers.image.url": "https://github.com/den-run-ai/pystachy",
+              "org.opencontainers.image.version": "v0.3.1"
+            },
+            "diff_ids": [
+              "sha256:107ffca6dcd3fc87a7bed8c062f5ddc0d6a4b107205c82c0b49efdb7c1aff967",
+              "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+              "sha256:84966ddef2e34967c6bdf03615d6c388ce45d7200c6b35a368efcc117b451f0b",
+              "sha256:e7b1ece08897162aff014c4bf75399bf9c0c1fdbcccdb6eaf63db9777e995cbd",
+              "sha256:00b50ab8bd181707945fdad55062a2584e1812705da2ba4bc37cf242f78a47b3",
+              "sha256:15b9a533f49bc18cd65c1e8098a84644e25fc66677b1b3d90d4291346f6be1c8",
+              "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+            ],
+            "layers": [
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 30021698,
+                "digest": "sha256:2b97f501ebb5d1b3bfb6aa7afdf99f694b0addced2de751270be999d63320c00"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 32,
+                "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 161793735,
+                "digest": "sha256:4d87e32468129e7da990b131e867b0af59eabe2bd3ee8c004cd4bacec1756f20"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 3191207,
+                "digest": "sha256:ce348faa44e3de8d38de1bd19045c083e3492b3cf4418aab871e710ae23a0e3c"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 1357,
+                "digest": "sha256:b1c02e5223921656f0c1d0e952b027b1f920d9b8c1e41e74fc6fda3037c0f410"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 93,
+                "digest": "sha256:e8cc5bc82fc4f8e68f41cf0716b9636904ca3168f9e15f9028e676297131219e"
+              },
+              {
+                "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+                "size": 32,
+                "digest": "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"
+              }
+            ]
+          }
+        }
+      },
+      "scope": "Fresh before/after public alias observations for this publication; no prior release report is reused."
+    }
+  },
+  "method_sha256": {
+    "assemble_audit.py": "64727241d80dd854e11fb7ef655ef42ded9913865752a285333a28856603eec1",
+    "audit_context.py": "405b7c6f7b3df42d31e0cbe86674879b016d8a072e515cb19173db416e538f5e",
+    "audit_native_workflow.py": "12cac2fcdd4a0520bf0f2ae027b17578f5389f2de23db20b471e7d865edc0179",
+    "audit_pypi_workflow.py": "19fb6b6114b4d5f6b9adb6618a8350c22353d01a237eee1d148908b55657c4b1",
+    "registry_read.py": "e230b7d05b24502d51155891d305ff5d5da605d99f5adb93b4db41f97ef89900",
+    "retain_artifacts.py": "bb487c566a85cf8966bc0e4565a930d94325bbc6e388f8fd93d6d5dc8d06ec93",
+    "verify_aliases.py": "0f6b1506ab4a5bef42d9bdc7ea446e07931d08125112708dea6c10593969d453",
+    "verify_docker.py": "ff7fe12265e02fde8eb6bbc0966d5e123a95190cb55ff37042efbbc7f0b0642c",
+    "verify_install.py": "96a98affad5a4d3df87cda5db4da6b262123dd0adb62befa20b481a89ec45443",
+    "verify_native.py": "244d4443f29649db6889b29a65bf37a2f7e5a4853d5dbe49560dd90f27503963",
+    "verify_pypi.py": "fbe3bd2614b77ba61118b223541c105d61583df26e7ba19889283af8fbb495a0"
+  },
+  "receipt_sha256": {
+    "native-report.json": "e1a9127955b544b537b33cc142a9c2a8e6da5224bf367134d8e10b7c5f195bcb",
+    "docker-amd64-report.json": "d857dcc057fe1f4011a35e4473c1e647d597b603818076c2779a6cd0f89c4fc8",
+    "docker-arm64-report.json": "1af90a92215de797deb6959f99c596f5ed4595aa62b15c39f71ad91aa0511792",
+    "pypi-report.json": "6b99f08df43cee980f43f7a3e3573dc2a52f8492688cbe4dd55a6e659c9923ee",
+    "pypi-public-install-evidence.json": "8df6ef50a05f14383ade53f5ba1485c4ff939343d29aac98bf902f203c1efefb",
+    "stable-aliases-after-pypi-report.json": "24ffdd4e5aaec5f17c44319e1631aa7e689da501cc3ea0303ba11ccb6e595f3a"
+  },
+  "nonclaims": [
+    "No local Docker execution is claimed by config/layer readback.",
+    "Local wheel installation uses its recorded toolchain, not every supported platform.",
+    "RC publication does not close repeated CI headroom or source-size scaling requirements."
+  ]
+}

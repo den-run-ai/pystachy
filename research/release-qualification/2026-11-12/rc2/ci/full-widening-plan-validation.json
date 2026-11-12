@@ -1,0 +1,60 @@
+{
+  "parent_commit": "3e32c910cea293eec5bcf7cc487be232c2e0fbdd",
+  "profiles": {
+    "pr": {
+      "before_sha256": "33ac4539389988aa3f1dc8e730ba93342049273f34b6d4fe8407ed72ed06d310",
+      "after_sha256": "33ac4539389988aa3f1dc8e730ba93342049273f34b6d4fe8407ed72ed06d310",
+      "byte_identical": true,
+      "all_unchanged": true,
+      "step_multiset_unchanged": true,
+      "group_count": 14,
+      "all_step_count": 43,
+      "changed": {}
+    },
+    "full": {
+      "before_sha256": "9b8130a9a995b5f02522cc7a03de86ddf8eb81b4d4466dd1b88ef9612378cc9f",
+      "after_sha256": "93b2e874ffe59016e66ba7c4a083260dbca1d5d7e859d513823df1f269a8b7ba",
+      "byte_identical": false,
+      "all_unchanged": true,
+      "step_multiset_unchanged": true,
+      "group_count": 35,
+      "all_step_count": 58,
+      "changed": {
+        "runtime-cache": {
+          "before": [
+            "bootstrap",
+            "runtime-cache"
+          ],
+          "after": [
+            "bootstrap",
+            "runtime-cache",
+            "annotation-widening"
+          ]
+        },
+        "python-int-optin-2": {
+          "before": [
+            "bootstrap",
+            "python-int-optin-2",
+            "annotation-widening"
+          ],
+          "after": [
+            "bootstrap",
+            "python-int-optin-2"
+          ]
+        }
+      }
+    }
+  },
+  "pr_job_rows": 19,
+  "pr_job_counts": {
+    "ci.yml/pull_request/bootstrap": 1,
+    "ci.yml/pull_request/verification": 11,
+    "ci.yml/pull_request/pr-variants": 2,
+    "ci.yml/pull_request/qualification": 1,
+    "ci.yml/pull_request/verify": 1,
+    "dco.yml/pull_request_target/dco": 1,
+    "lint.yml/pull_request/lint": 1,
+    "submissions.yml/pull_request_target/description": 1
+  },
+  "no_limit_or_worker_changes": true
+}

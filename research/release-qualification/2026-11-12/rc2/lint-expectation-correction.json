@@ -1,0 +1,12 @@
+{
+  "local": "e1ce4280aa94d918b059b5024ba9e9b94c1efa9c",
+  "remote": "1a53d86c5fb81514d8cd9bd3f2e264f51849fdcb",
+  "tree": "2b06c58a6fe0b41b6240190e750add7bb3c85237",
+  "parent": "0554eb05f058dfc389ff0e0a4370345358f6e191",
+  "changed_file": "tools/test_lean_boundary_workflow.py",
+  "source_blob": "4ba9bf5d36354774805d99a39385f055fbbd4914",
+  "reason": "Update the existing independent dependency-owner test for the intentionally relocated full annotation check.",
+  "failed_lint_run": 43324381350,
+  "obsolete_full_run": 43324399820,
+  "validation": "9 Lean workflow and 27 workflow-limit tests; Ruff/diff; independent review with no findings."
+}

@@ -1,0 +1,55 @@
+{
+  "branch": "release/v0.4.0-rc.2-stabilization",
+  "remote_parent": "7d9e98cf1aa0179807a3a34ba6e758bc7f117211",
+  "remote_head": "0554eb05f058dfc389ff0e0a4370345358f6e191",
+  "remote_tree": "0f369f71d991bb5d04227673480791f792a6c73f",
+  "mapping": [
+    {
+      "local": "ccb7c983dcf381eda45882da00c7994c19e06234",
+      "remote": "d87347f34d9c01311cb3c3096f2f0e7aefd89667",
+      "tree": "8462b92f6b75e4e0eae8e9c066dd073a1202e53e",
+      "parent": "7d9e98cf1aa0179807a3a34ba6e758bc7f117211"
+    },
+    {
+      "local": "0e62e5d26a687619a4a7e6829761c1eb13d82168",
+      "remote": "997be0302b33866165589b156db9d98433ac23bc",
+      "tree": "ec81b6a4c9f18798d4322b0ca0e65d75409d559e",
+      "parent": "d87347f34d9c01311cb3c3096f2f0e7aefd89667"
+    },
+    {
+      "local": "394feb59acf077f3b2a2c2b69eb3b70aea941968",
+      "remote": "0554eb05f058dfc389ff0e0a4370345358f6e191",
+      "tree": "0f369f71d991bb5d04227673480791f792a6c73f",
+      "parent": "997be0302b33866165589b156db9d98433ac23bc"
+    }
+  ],
+  "source_equivalence": {
+    "qualified_local": "395227b75bb777401627c0296a18fe71388070e7",
+    "integrated_local": "394feb59acf077f3b2a2c2b69eb3b70aea941968",
+    "unchanged_objects": {
+      "src": "c489a0a73285315c2b1242011da11c25ac07917d",
+      "lib": "f9bac1cc6191e8c26679b9a4469af0da921b1d4e",
+      "runtime.c": "a7b5e190443cfbe26057a9daa7e83c68fd441946",
+      "runtime.py": "ec44c04542fcf603ad443bc9d930bc3d8bf04cda",
+      "pystachy.py": "e58146c8f62316ebcd77e46d1d3c21ce8f7fa122",
+      "Makefile": "d9c0cb67ad0bd77112d199f0918acf41df95746f",
+      ".python-version": "d5404088880ebb4fbb9834be634555d4a3ae4f2a",
+      "tests/programs": "61a2f639237f2cc2fd2e05f89f2af26b1fecb2b0",
+      "tests/errors": "36eb63edce9a25d12f915bb76c5ed338b2a04608",
+      "tests/deviations": "ee611b3747f42fdf16a40543227930460e3128a3",
+      "tests/ir": "6a92dad00ffef0a21e176b050eb1485592910a70",
+      "tools/verification_bootstrap.py": "8e14ce355027d0e7ee569525c0757ddcc06780bb"
+    },
+    "changed_files": [
+      ".github/workflows/ci.yml",
+      "VERSION",
+      "docs/releases/v0.4.0-rc.2.md",
+      "docs/testing.md",
+      "tests/verify.sh",
+      "tools/test_merge_verification.py",
+      "tools/test_verify_shards.py",
+      "tools/test_workflow_limits.py"
+    ]
+  },
+  "reviewed_ci_source": "ff0bba0af29a037ed1cc207f475444792dd9dba7"
+}

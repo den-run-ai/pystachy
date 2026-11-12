@@ -1,0 +1,140 @@
+{
+  "commit": "ff0bba0af29a037ed1cc207f475444792dd9dba7",
+  "tree": "52825a5e62dac7611c554512faa21715a82aed04",
+  "parent": "3e32c910cea293eec5bcf7cc487be232c2e0fbdd",
+  "test_results": {
+    "merge_verification": {
+      "passed": 40,
+      "seconds": 59.737
+    },
+    "workflow_limits": {
+      "passed": 27,
+      "seconds": 1.164
+    },
+    "verify_shards": {
+      "passed": 7,
+      "seconds": 42.382
+    },
+    "annotation_widening": {
+      "passed": 6,
+      "seconds": 0.009
+    }
+  },
+  "static_checks": [
+    "ruff check tools/test_merge_verification.py tools/test_workflow_limits.py",
+    "sh -n tests/verify.sh",
+    "git diff --check"
+  ],
+  "all_final_checks_passed": true,
+  "prior_attempts": [
+    "An initial evidence script used the wrong profile environment variable, so its inventory assertion failed before output; corrected to VERIFY_PROFILE and revalidated both plans.",
+    "Ruff rejected an initial test-helper lambda closure/default-call form. Bound the row directly, then reran all 27 workflow tests and Ruff successfully."
+  ],
+  "files": [
+    {
+      "path": "archives.json",
+      "sha256": "2c5f11e57035213baca4c9270e09819d03280218c82f12f31f4589b747fefb66",
+      "bytes": 3338
+    },
+    {
+      "path": "eligible-direct-imports.json",
+      "sha256": "234f19f5142ed4699bcde4d4b26bef5868d2918cf8919c01df574e07e95dd429",
+      "bytes": 911
+    },
+    {
+      "path": "feasibility.json",
+      "sha256": "e8d1f471f95a8fd5922b364e138e66d280b48d47df176178d154680d8933fcb0",
+      "bytes": 3601
+    },
+    {
+      "path": "full-plan-after.txt",
+      "sha256": "93b2e874ffe59016e66ba7c4a083260dbca1d5d7e859d513823df1f269a8b7ba",
+      "bytes": 2114
+    },
+    {
+      "path": "full-plan-before.txt",
+      "sha256": "9b8130a9a995b5f02522cc7a03de86ddf8eb81b4d4466dd1b88ef9612378cc9f",
+      "bytes": 2114
+    },
+    {
+      "path": "plan-validation.json",
+      "sha256": "cfc0522141630eec308a3bdb6d632a53301823a90082dc07fa00c074c8dd2aaf",
+      "bytes": 1774
+    },
+    {
+      "path": "pr-plan-after.txt",
+      "sha256": "33ac4539389988aa3f1dc8e730ba93342049273f34b6d4fe8407ed72ed06d310",
+      "bytes": 1374
+    },
+    {
+      "path": "pr-plan-before.txt",
+      "sha256": "33ac4539389988aa3f1dc8e730ba93342049273f34b6d4fe8407ed72ed06d310",
+      "bytes": 1374
+    },
+    {
+      "path": "validation-1.log",
+      "sha256": "4d53079661d15fa000850e60ae48d15e54e5393a687b40d8bdd45945dfeabc6b",
+      "bytes": 140
+    },
+    {
+      "path": "validation-2.log",
+      "sha256": "78b924550886da0cb768e4b479fed288c4edfc69bc33d79dfd010280218bf321",
+      "bytes": 126
+    },
+    {
+      "path": "validation-3.log",
+      "sha256": "a5efeecd23f16e3395ad3f753f9a670c88458be1beb096938db7733325b3d400",
+      "bytes": 106
+    },
+    {
+      "path": "validation-4.log",
+      "sha256": "37d8a0769d6c800296764c21f8e08feca52d770d400afabe65713604062cf749",
+      "bytes": 104
+    },
+    {
+      "path": "validation-5.log",
+      "sha256": "b7338ee7f8ced9ddc398c22a734de453296731c5afe13d6fb0a54e977ee8f715",
+      "bytes": 687
+    },
+    {
+      "path": "validation-6.log",
+      "sha256": "d7e28b187d3802b2e046168b2038780ad5ac77dfde7bcf215226a0ea3b3af10d",
+      "bytes": 126
+    },
+    {
+      "path": "validation-7.log",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "bytes": 19
+    },
+    {
+      "path": "validation-8.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "validation-9.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "validation-commands.json",
+      "sha256": "c684fbef215971f988ea50a7a0d958ae27f426056d1f1d14b837545d50dedf7d",
+      "bytes": 3725
+    },
+    {
+      "path": "x86_64-verification-cache-gc-43304014521.zip",
+      "sha256": "883f5aae2d0f0012975adbdcc2345694c57487599e5487e3f4a83da93d43b93b",
+      "bytes": 12614
+    },
+    {
+      "path": "x86_64-verification-runtime-cache-43263073296.zip",
+      "sha256": "10b0c9b5d2e3424c250a82f676aa0eb2d547eb0b22f16490431d606be10f3026",
+      "bytes": 25996
+    },
+    {
+      "path": "x86_64-verification-runtime-cache-43314382046.zip",
+      "sha256": "7712a7c6960e4a62b5388e5f51aaa9a96262875fa33a4cff7390fd85935a2aa4",
+      "bytes": 25980
+    }
+  ]
+}

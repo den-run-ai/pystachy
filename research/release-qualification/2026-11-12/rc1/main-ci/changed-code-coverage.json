@@ -1,0 +1,367 @@
+{
+  "baseline_commit": "0b13a2121014d8256954c6af50339ff0de8dac62",
+  "source_local_commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+  "source_remote_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "method": "Unchanged coverage_report.py parse_diff and hosted_changed/runtime_changed functions on exact-source git diff; statement and branch gaps intersect added/replaced source lines.",
+  "hosted": {
+    "statements": [
+      80,
+      81
+    ],
+    "branches": [
+      52,
+      54
+    ],
+    "gap_rows": [
+      [
+        "src/pystachy_compiler/declarations.py",
+        "2899",
+        "2898->2899"
+      ],
+      [
+        "src/pystachy_compiler/program.py",
+        "",
+        "1280->1282"
+      ]
+    ],
+    "details": [
+      {
+        "file": "src/pystachy_compiler/builtins.py",
+        "added_or_replaced_lines": [
+          615,
+          616,
+          617,
+          618,
+          619,
+          620,
+          621,
+          622,
+          623,
+          624,
+          2126,
+          2127,
+          2128,
+          2129
+        ],
+        "changed_executable_lines": [
+          615,
+          616,
+          617,
+          618,
+          620,
+          621,
+          622,
+          623,
+          624,
+          2129
+        ],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [],
+        "source_sha256": "4c7bddd030c56e09530c7f3dc9209d28bd80be96082688d19ea6974153785f7f"
+      },
+      {
+        "file": "src/pystachy_compiler/declarations.py",
+        "added_or_replaced_lines": [
+          2886,
+          2887,
+          2888,
+          2889,
+          2890,
+          2891,
+          2892,
+          2893,
+          2894,
+          2895,
+          2896,
+          2897,
+          2898,
+          2899,
+          2900,
+          2901,
+          2902,
+          2903,
+          2904,
+          2905,
+          2906,
+          2907,
+          2908,
+          2909,
+          2910
+        ],
+        "changed_executable_lines": [
+          2886,
+          2887,
+          2891,
+          2892,
+          2893,
+          2894,
+          2895,
+          2896,
+          2897,
+          2898,
+          2899,
+          2900,
+          2901,
+          2902,
+          2903,
+          2904,
+          2905,
+          2906,
+          2907,
+          2908,
+          2909,
+          2910
+        ],
+        "missed_changed_lines": [
+          {
+            "line": 2899,
+            "source": "                self.err(f\"class variable {short(x.name)}.{name} ({typestr(x.ftypes[name])}) shadowing field '{name}' of {short(ci.name)} ({typestr(p.t)}) is not supported\")"
+          }
+        ],
+        "missed_changed_branches": [
+          {
+            "arc": [
+              2898,
+              2899
+            ],
+            "source": "            if x.ftypes[name] != p.t:",
+            "target": "                self.err(f\"class variable {short(x.name)}.{name} ({typestr(x.ftypes[name])}) shadowing field '{name}' of {short(ci.name)} ({typestr(p.t)}) is not supported\")"
+          }
+        ],
+        "source_sha256": "fc8ac914bcaf4d987822e9467e52ed6e5e1f8b697159202f86f13c0d17b83064"
+      },
+      {
+        "file": "src/pystachy_compiler/flow.py",
+        "added_or_replaced_lines": [
+          534,
+          535,
+          536,
+          537,
+          544,
+          563,
+          564,
+          565,
+          566,
+          567,
+          568,
+          569,
+          570,
+          571
+        ],
+        "changed_executable_lines": [
+          536,
+          537,
+          544,
+          563,
+          568,
+          569,
+          570
+        ],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [],
+        "source_sha256": "531cf97fc2e93c0c66ce9ca3357a4d807c806915692c92031473ab78a5be64f9"
+      },
+      {
+        "file": "src/pystachy_compiler/gen.py",
+        "added_or_replaced_lines": [
+          919,
+          1322,
+          1323,
+          1324,
+          3817,
+          3818,
+          3819
+        ],
+        "changed_executable_lines": [
+          1324,
+          3817,
+          3818
+        ],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [],
+        "source_sha256": "054cff089dae62cc0ad3f9936238232e9f96be22aa0771e6b1989cb9b79cfc32"
+      },
+      {
+        "file": "src/pystachy_compiler/ir.py",
+        "added_or_replaced_lines": [
+          311,
+          312
+        ],
+        "changed_executable_lines": [],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [],
+        "source_sha256": "1f91a8d5e07f8e3e902d7eda3e32b4626b71d678d7a19379a5995dc047e00a96"
+      },
+      {
+        "file": "src/pystachy_compiler/lowering.py",
+        "added_or_replaced_lines": [
+          471,
+          472,
+          475,
+          476,
+          477
+        ],
+        "changed_executable_lines": [
+          471,
+          472,
+          476,
+          477
+        ],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [],
+        "source_sha256": "57ed98b57deb5ecc38664b4bf8858a1fa127f632074167310850b6f1cc5a37ed"
+      },
+      {
+        "file": "src/pystachy_compiler/optimizations.py",
+        "added_or_replaced_lines": [
+          660,
+          661,
+          662,
+          663,
+          664,
+          665,
+          666,
+          667,
+          668,
+          669,
+          670,
+          671,
+          672,
+          673,
+          674,
+          678,
+          679,
+          691,
+          733,
+          734,
+          735,
+          736,
+          737,
+          738,
+          739,
+          740,
+          741,
+          742,
+          743,
+          744,
+          745,
+          746,
+          747,
+          748,
+          951,
+          952
+        ],
+        "changed_executable_lines": [
+          660,
+          663,
+          664,
+          665,
+          666,
+          667,
+          668,
+          669,
+          670,
+          671,
+          672,
+          691,
+          738,
+          739,
+          740,
+          741,
+          742,
+          743,
+          744,
+          745,
+          746,
+          747,
+          748,
+          951,
+          952
+        ],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [],
+        "source_sha256": "f02a69a481f8aba0ce6b567ffb685540c5185ac2ffe56dae6420a16592cd0f17"
+      },
+      {
+        "file": "src/pystachy_compiler/program.py",
+        "added_or_replaced_lines": [
+          14,
+          1280,
+          1281
+        ],
+        "changed_executable_lines": [
+          14,
+          1280,
+          1281
+        ],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [
+          {
+            "arc": [
+              1280,
+              1282
+            ],
+            "source": "        if \"listguard\" in on:",
+            "target": "        changed = False"
+          }
+        ],
+        "source_sha256": "8f2f4298b140a474da17fc0206bf7ee14a3868b70659604df21bf452f009e194"
+      },
+      {
+        "file": "src/pystachy_compiler/statements.py",
+        "added_or_replaced_lines": [
+          224,
+          225,
+          226,
+          227,
+          228,
+          229,
+          230,
+          231
+        ],
+        "changed_executable_lines": [
+          224,
+          228,
+          229,
+          230,
+          231
+        ],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [],
+        "source_sha256": "9fcb7e85ab08386a587190fcbb5f2558237070f90db2239950d61f8ac93f8240"
+      },
+      {
+        "file": "src/pystachy_compiler/union_arithmetic.py",
+        "added_or_replaced_lines": [
+          113,
+          114
+        ],
+        "changed_executable_lines": [
+          113,
+          114
+        ],
+        "missed_changed_lines": [],
+        "missed_changed_branches": [],
+        "source_sha256": "4680d518cc8fc24029a039ddcfbdd2cf71068701f7f0108ba95882085b6b9d33"
+      }
+    ]
+  },
+  "native": {
+    "changed_files": [],
+    "lines": [
+      0,
+      0
+    ],
+    "branches": [
+      0,
+      0
+    ],
+    "gap_rows": []
+  },
+  "limitations": [
+    "Coverage is diagnostic evidence, not a percentage gate.",
+    "No changed native C source exists between these exact trees; native percentages characterize the wider release runtime.",
+    "Hosted coverage does not measure the native compiler as an instrumented executable; its full native differential/GC/IR gates provide separate qualification."
+  ]
+}

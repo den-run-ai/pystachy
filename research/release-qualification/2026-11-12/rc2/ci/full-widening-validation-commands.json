@@ -1,0 +1,102 @@
+{
+  "cwd": "/workspace/scratch/2cf34574fa6e/rc-ci-pr-scaling",
+  "python": "Python 3.13.16",
+  "commands": [
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python",
+        "tools/test_merge_verification.py"
+      ],
+      "exit_code": 0,
+      "seconds": 59.89806793099888,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-1.log",
+      "log_sha256": "4d53079661d15fa000850e60ae48d15e54e5393a687b40d8bdd45945dfeabc6b"
+    },
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python",
+        "tools/test_workflow_limits.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.230857255999581,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-2.log",
+      "log_sha256": "78b924550886da0cb768e4b479fed288c4edfc69bc33d79dfd010280218bf321"
+    },
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python",
+        "tools/test_verify_shards.py"
+      ],
+      "exit_code": 0,
+      "seconds": 42.44183510400035,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-3.log",
+      "log_sha256": "a5efeecd23f16e3395ad3f753f9a670c88458be1beb096938db7733325b3d400"
+    },
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python",
+        "tools/test_verify_annotation_widening.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.07648694199997408,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-4.log",
+      "log_sha256": "37d8a0769d6c800296764c21f8e08feca52d770d400afabe65713604062cf749"
+    },
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/ruff",
+        "check",
+        "tools/test_merge_verification.py",
+        "tools/test_workflow_limits.py"
+      ],
+      "exit_code": 1,
+      "seconds": 0.009411242999703973,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-5.log",
+      "log_sha256": "b7338ee7f8ced9ddc398c22a734de453296731c5afe13d6fb0a54e977ee8f715"
+    },
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python",
+        "tools/test_workflow_limits.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.244626210998831,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-6.log",
+      "log_sha256": "d7e28b187d3802b2e046168b2038780ad5ac77dfde7bcf215226a0ea3b3af10d"
+    },
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/ruff",
+        "check",
+        "tools/test_merge_verification.py",
+        "tools/test_workflow_limits.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.010241002000839217,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-7.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "command": [
+        "sh",
+        "-n",
+        "tests/verify.sh"
+      ],
+      "exit_code": 0,
+      "seconds": 0.002150199999960023,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-8.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.009951494001143146,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-9.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

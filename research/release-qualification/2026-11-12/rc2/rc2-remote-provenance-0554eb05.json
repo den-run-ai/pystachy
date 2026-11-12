@@ -1,0 +1,79 @@
+{
+  "pr": 1403,
+  "head": "0554eb05f058dfc389ff0e0a4370345358f6e191",
+  "commits": [
+    {
+      "sha": "78b7c5422b00d006013e3de4d1f3b77623b07122",
+      "tree": "9e0eb6f2db113c6889beeea68cc1965652f229e4",
+      "parents": [
+        "0b13a2121014d8256954c6af50339ff0de8dac62"
+      ],
+      "message": "Exit with an int-like enum member's value as the status\n\nsys.exit() and SystemExit of an IntEnum or IntFlag member, or of a member\nof a class of int and Enum, printed the member and ended with status 1.\nCPython's member is an int: the status, with nothing on stderr. The\nobject's class decides where the value is typed as a base such as Enum,\nand exception classes deriving from SystemExit keep the status too.",
+      "url": "https://github.com/den-run-ai/pystachy/commit/78b7c5422b00d006013e3de4d1f3b77623b07122"
+    },
+    {
+      "sha": "d66c7fbc03667f29a28497adfa9128a320a7d63e",
+      "tree": "7437c4e991bcd501ecf8a099e74be241b3232459",
+      "parents": [
+        "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+        "78b7c5422b00d006013e3de4d1f3b77623b07122"
+      ],
+      "message": "Merge PR #1392 for enum exit stabilization\n\nPreserve the upstream proposal in the RC stabilization history. The merge tree matches the independently checked local merge; subsequent commits correct overridable conversions and mutable metadata.",
+      "url": "https://github.com/den-run-ai/pystachy/commit/d66c7fbc03667f29a28497adfa9128a320a7d63e"
+    },
+    {
+      "sha": "2ca842cb4f76e942d5354d4a645bd8ae93a9c602",
+      "tree": "f033019c5cd2179bd612adfac1ac6e21158eb1ba",
+      "parents": [
+        "d66c7fbc03667f29a28497adfa9128a320a7d63e"
+      ],
+      "message": "Read immutable enum integer payloads for exit status\n\nKeep an integer payload separate from mutable enum metadata when creating an IntEnum or IntFlag member. Read that payload for exit status without calling overridden conversion methods. Aliases retain the same payload, and computed flags initialize it at creation.\n\nCover zero and nonzero statuses, aliases, computed flags, mutable metadata, integer and string overrides, caught and stored SystemExit values, subclasses, promoting integers and noninteger message controls. Existing eager exception argument formatting remains documented.",
+      "url": "https://github.com/den-run-ai/pystachy/commit/2ca842cb4f76e942d5354d4a645bd8ae93a9c602"
+    },
+    {
+      "sha": "fcc9dda09f5538a97b7e93bf2feed6c4dd9c7d10",
+      "tree": "066f5a791216fc721d734bb1e23bdd6194bce42f",
+      "parents": [
+        "2ca842cb4f76e942d5354d4a645bd8ae93a9c602"
+      ],
+      "message": "Keep enum exit payload outside Python attribute access",
+      "url": "https://github.com/den-run-ai/pystachy/commit/fcc9dda09f5538a97b7e93bf2feed6c4dd9c7d10"
+    },
+    {
+      "sha": "7d9e98cf1aa0179807a3a34ba6e758bc7f117211",
+      "tree": "b8e66da6dcb4426933fb1ad57b95b5faf2055b04",
+      "parents": [
+        "fcc9dda09f5538a97b7e93bf2feed6c4dd9c7d10"
+      ],
+      "message": "Prepare v0.4.0-rc.2 with enum exit corrections",
+      "url": "https://github.com/den-run-ai/pystachy/commit/7d9e98cf1aa0179807a3a34ba6e758bc7f117211"
+    },
+    {
+      "sha": "d87347f34d9c01311cb3c3096f2f0e7aefd89667",
+      "tree": "8462b92f6b75e4e0eae8e9c066dd073a1202e53e",
+      "parents": [
+        "7d9e98cf1aa0179807a3a34ba6e758bc7f117211"
+      ],
+      "message": "Move one PR scaling check beside an AOT shard\n\n(cherry picked from commit 036bb27eb7dfc453ceec03e522cb3305b9b5c5b4)",
+      "url": "https://github.com/den-run-ai/pystachy/commit/d87347f34d9c01311cb3c3096f2f0e7aefd89667"
+    },
+    {
+      "sha": "997be0302b33866165589b156db9d98433ac23bc",
+      "tree": "ec81b6a4c9f18798d4322b0ca0e65d75409d559e",
+      "parents": [
+        "d87347f34d9c01311cb3c3096f2f0e7aefd89667"
+      ],
+      "message": "Document the PR scaling check owners\n\n(cherry picked from commit 3e32c910cea293eec5bcf7cc487be232c2e0fbdd)",
+      "url": "https://github.com/den-run-ai/pystachy/commit/997be0302b33866165589b156db9d98433ac23bc"
+    },
+    {
+      "sha": "0554eb05f058dfc389ff0e0a4370345358f6e191",
+      "tree": "0f369f71d991bb5d04227673480791f792a6c73f",
+      "parents": [
+        "997be0302b33866165589b156db9d98433ac23bc"
+      ],
+      "message": "Move full annotation checks to the cache worker\n\n(cherry picked from commit ff0bba0af29a037ed1cc207f475444792dd9dba7)",
+      "url": "https://github.com/den-run-ai/pystachy/commit/0554eb05f058dfc389ff0e0a4370345358f6e191"
+    }
+  ]
+}

@@ -1,0 +1,4290 @@
+{
+  "schema_version": 1,
+  "created_utc": "2026-11-12T23:04:15.182297+00:00",
+  "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "native_run": 43321775172,
+  "pypi_run": 43324568308,
+  "audit_sha256": "bccbe5ce135d10c350258771d0c5544f683e9aad810e9d10e6a5e086b7d996d2",
+  "scope": "All retained audit files except generated index/bundle files and interpreter caches. Large native/container payloads remain in the working evidence directory and are described by hash; compact bundle selection is separate.",
+  "files": [
+    {
+      "path": "artifacts-final.json",
+      "kind": "file",
+      "bytes": 5152,
+      "sha256": "c0c321957f412f901ca3f992c35967788503a6942f62f0daca16923902e214b7"
+    },
+    {
+      "path": "artifacts.json",
+      "kind": "file",
+      "bytes": 5152,
+      "sha256": "c0c321957f412f901ca3f992c35967788503a6942f62f0daca16923902e214b7"
+    },
+    {
+      "path": "assemble_audit.py",
+      "kind": "file",
+      "bytes": 4912,
+      "sha256": "64727241d80dd854e11fb7ef655ef42ded9913865752a285333a28856603eec1"
+    },
+    {
+      "path": "audit.json",
+      "kind": "file",
+      "bytes": 43601,
+      "sha256": "bccbe5ce135d10c350258771d0c5544f683e9aad810e9d10e6a5e086b7d996d2"
+    },
+    {
+      "path": "audit_context.py",
+      "kind": "file",
+      "bytes": 1853,
+      "sha256": "405b7c6f7b3df42d31e0cbe86674879b016d8a072e515cb19173db416e538f5e"
+    },
+    {
+      "path": "audit_native_workflow.py",
+      "kind": "file",
+      "bytes": 5944,
+      "sha256": "12cac2fcdd4a0520bf0f2ae027b17578f5389f2de23db20b471e7d865edc0179"
+    },
+    {
+      "path": "audit_pypi_workflow.py",
+      "kind": "file",
+      "bytes": 4011,
+      "sha256": "19fb6b6114b4d5f6b9adb6618a8350c22353d01a237eee1d148908b55657c4b1"
+    },
+    {
+      "path": "context.json",
+      "kind": "file",
+      "bytes": 795,
+      "sha256": "ed0aa9f09a3d96bb80fe7069a4ef029b69daf2a22a0eec86937f4f012216596a"
+    },
+    {
+      "path": "docker-amd64-readback.log",
+      "kind": "file",
+      "bytes": 196,
+      "sha256": "d25af0dffc94db79524e9823ad7700ec2f53960f374c410b042d85aae13e6ef1"
+    },
+    {
+      "path": "docker-amd64-report.json",
+      "kind": "file",
+      "bytes": 8881,
+      "sha256": "d857dcc057fe1f4011a35e4473c1e647d597b603818076c2779a6cd0f89c4fc8"
+    },
+    {
+      "path": "docker-arm64-readback.log",
+      "kind": "file",
+      "bytes": 196,
+      "sha256": "b378eaad905f777e7f62ba752cd48cd9984a8363e645f493b69f99c1716a5149"
+    },
+    {
+      "path": "docker-arm64-report.json",
+      "kind": "file",
+      "bytes": 8881,
+      "sha256": "1af90a92215de797deb6959f99c596f5ed4595aa62b15c39f71ad91aa0511792"
+    },
+    {
+      "path": "docker-latest-after/amd64-config.json",
+      "kind": "file",
+      "bytes": 4603,
+      "sha256": "954aad7bba8df7218f993a74512d8e9cebdcc541b88d2cb048934c0bd1d8316b"
+    },
+    {
+      "path": "docker-latest-after/amd64-manifest.json",
+      "kind": "file",
+      "bytes": 1779,
+      "sha256": "f6c2ebca42d585b3879ba2351f924f2c67121f07c19d1081e5d013a52df75a50"
+    },
+    {
+      "path": "docker-latest-after/arm64-config.json",
+      "kind": "file",
+      "bytes": 4598,
+      "sha256": "f19282dc54b6a02f6f81c14f5bc295928a1f912bf4308e4d051083337d3335af"
+    },
+    {
+      "path": "docker-latest-after/arm64-manifest.json",
+      "kind": "file",
+      "bytes": 1779,
+      "sha256": "418aaa1d9f584a51572c7628c4b04c784ea048c1684c461b2a9aba86cd7da589"
+    },
+    {
+      "path": "docker-latest-after/index.json",
+      "kind": "file",
+      "bytes": 685,
+      "sha256": "a9c31998280fc47c50fe401f2575fcefddc088f915615ac8f9ce8b8e1b41a953"
+    },
+    {
+      "path": "docker-latest-after/report.json",
+      "kind": "file",
+      "bytes": 6113,
+      "sha256": "82c5d72bf8af96754ebf2b8dd2002eb5dc85f19c0ee27f0db6da52c00b62ec2e"
+    },
+    {
+      "path": "docker-latest-after-pypi/amd64-config.json",
+      "kind": "file",
+      "bytes": 4603,
+      "sha256": "954aad7bba8df7218f993a74512d8e9cebdcc541b88d2cb048934c0bd1d8316b"
+    },
+    {
+      "path": "docker-latest-after-pypi/amd64-manifest.json",
+      "kind": "file",
+      "bytes": 1779,
+      "sha256": "f6c2ebca42d585b3879ba2351f924f2c67121f07c19d1081e5d013a52df75a50"
+    },
+    {
+      "path": "docker-latest-after-pypi/arm64-config.json",
+      "kind": "file",
+      "bytes": 4598,
+      "sha256": "f19282dc54b6a02f6f81c14f5bc295928a1f912bf4308e4d051083337d3335af"
+    },
+    {
+      "path": "docker-latest-after-pypi/arm64-manifest.json",
+      "kind": "file",
+      "bytes": 1779,
+      "sha256": "418aaa1d9f584a51572c7628c4b04c784ea048c1684c461b2a9aba86cd7da589"
+    },
+    {
+      "path": "docker-latest-after-pypi/index.json",
+      "kind": "file",
+      "bytes": 685,
+      "sha256": "a9c31998280fc47c50fe401f2575fcefddc088f915615ac8f9ce8b8e1b41a953"
+    },
+    {
+      "path": "docker-latest-after-pypi/report.json",
+      "kind": "file",
+      "bytes": 6113,
+      "sha256": "82c5d72bf8af96754ebf2b8dd2002eb5dc85f19c0ee27f0db6da52c00b62ec2e"
+    },
+    {
+      "path": "docker-latest-before/amd64-config.json",
+      "kind": "file",
+      "bytes": 4603,
+      "sha256": "954aad7bba8df7218f993a74512d8e9cebdcc541b88d2cb048934c0bd1d8316b"
+    },
+    {
+      "path": "docker-latest-before/amd64-manifest.json",
+      "kind": "file",
+      "bytes": 1779,
+      "sha256": "f6c2ebca42d585b3879ba2351f924f2c67121f07c19d1081e5d013a52df75a50"
+    },
+    {
+      "path": "docker-latest-before/arm64-config.json",
+      "kind": "file",
+      "bytes": 4598,
+      "sha256": "f19282dc54b6a02f6f81c14f5bc295928a1f912bf4308e4d051083337d3335af"
+    },
+    {
+      "path": "docker-latest-before/arm64-manifest.json",
+      "kind": "file",
+      "bytes": 1779,
+      "sha256": "418aaa1d9f584a51572c7628c4b04c784ea048c1684c461b2a9aba86cd7da589"
+    },
+    {
+      "path": "docker-latest-before/index.json",
+      "kind": "file",
+      "bytes": 685,
+      "sha256": "a9c31998280fc47c50fe401f2575fcefddc088f915615ac8f9ce8b8e1b41a953"
+    },
+    {
+      "path": "docker-latest-before/report.json",
+      "kind": "file",
+      "bytes": 6113,
+      "sha256": "82c5d72bf8af96754ebf2b8dd2002eb5dc85f19c0ee27f0db6da52c00b62ec2e"
+    },
+    {
+      "path": "docker-public/amd64-config.json",
+      "kind": "file",
+      "bytes": 4622,
+      "sha256": "4517ff25a920693e5e867e0aed71cd5a4388eed8e1848a0d2295ec1bc2336be9"
+    },
+    {
+      "path": "docker-public/amd64-manifest.json",
+      "kind": "file",
+      "bytes": 1779,
+      "sha256": "0a42317453eab0b0b1eecef6362891b07fc9130df11d33639860842cf838d3d9"
+    },
+    {
+      "path": "docker-public/arm64-config.json",
+      "kind": "file",
+      "bytes": 4622,
+      "sha256": "4571df785f7a3573be3a4fe7d6328d8f25f83362454642194f1d8ce6dc5b2648"
+    },
+    {
+      "path": "docker-public/arm64-manifest.json",
+      "kind": "file",
+      "bytes": 1779,
+      "sha256": "9858d4b34d91859959be198b7d82c0107653bae039193a870ea196e54a0c030d"
+    },
+    {
+      "path": "docker-public/index.json",
+      "kind": "file",
+      "bytes": 685,
+      "sha256": "d77a0be567b12cc5539bc1d57a43d1662785d59b4db6b6e196b123dcc6ff5345"
+    },
+    {
+      "path": "docker-public/report.json",
+      "kind": "file",
+      "bytes": 6128,
+      "sha256": "1514df92d6f56ffa2fc1234c7181af3d91e87d0ff3c412066a4acbb40aa544d2"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/LICENSE",
+      "kind": "file",
+      "bytes": 1072,
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/README.txt",
+      "kind": "file",
+      "bytes": 831,
+      "sha256": "fad13948fc7e4e037ac023f3eea9bc6ca10f730ea1daa9948eb843cf44b46b4e"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/THIRD_PARTY_NOTICES",
+      "kind": "file",
+      "bytes": 66442,
+      "sha256": "79c27986f52ec514a5f385907c344d96f652777b009e67a85b1fbecc77525523"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/bin/pystachy",
+      "kind": "file",
+      "bytes": 1052,
+      "sha256": "6b0ecbb69f85cbcf26ae4513778b471a269cdac081ec4a5dffed1f44db309222"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/LICENSE",
+      "kind": "file",
+      "bytes": 1072,
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/REVISION",
+      "kind": "file",
+      "bytes": 41,
+      "sha256": "adfce508d28abd16d26c320ca112bafb467a4497a287c8cf7b589244998d817d"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/THIRD_PARTY_NOTICES",
+      "kind": "file",
+      "bytes": 66442,
+      "sha256": "79c27986f52ec514a5f385907c344d96f652777b009e67a85b1fbecc77525523"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/VERSION",
+      "kind": "file",
+      "bytes": 12,
+      "sha256": "b5e98a1ea06782f8608f13efcc2a2b13c8d0ac504c292c315cccef9ec2c39fa5"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/README.md",
+      "kind": "file",
+      "bytes": 29804,
+      "sha256": "463a006d9eafb0524d8e1c3471198861712cd8cf1bbac1a8afa6fcaa25f1d895"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_argparse_help.py",
+      "kind": "file",
+      "bytes": 6004,
+      "sha256": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_markupbase.py",
+      "kind": "file",
+      "bytes": 15388,
+      "sha256": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pyrandom.py",
+      "kind": "file",
+      "bytes": 10644,
+      "sha256": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy__io.py",
+      "kind": "file",
+      "bytes": 2289,
+      "sha256": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_abc.py",
+      "kind": "file",
+      "bytes": 3586,
+      "sha256": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_atexit.py",
+      "kind": "file",
+      "bytes": 2975,
+      "sha256": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_bfile.py",
+      "kind": "file",
+      "bytes": 9044,
+      "sha256": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_binascii.py",
+      "kind": "file",
+      "bytes": 13018,
+      "sha256": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_bytescan.py",
+      "kind": "file",
+      "bytes": 1333,
+      "sha256": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_cache.py",
+      "kind": "file",
+      "bytes": 1137,
+      "sha256": "884b77660eb425052dcce3a5fa622360e692b1469d395f84ecf457345fefa3d6"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_codecs.py",
+      "kind": "file",
+      "bytes": 19730,
+      "sha256": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_copy.py",
+      "kind": "file",
+      "bytes": 2211,
+      "sha256": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_ctypes.py",
+      "kind": "file",
+      "bytes": 197,
+      "sha256": "2ec7e8b16ce0a2648b1ee1e343aa7ca0db8cee8d0d941a1bac7e26dba9a727f8"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_iterators.py",
+      "kind": "file",
+      "bytes": 6592,
+      "sha256": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_itertools.py",
+      "kind": "file",
+      "bytes": 33009,
+      "sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_json_any.py",
+      "kind": "file",
+      "bytes": 11494,
+      "sha256": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_json_int.py",
+      "kind": "file",
+      "bytes": 157,
+      "sha256": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_mappingproxy.py",
+      "kind": "file",
+      "bytes": 3283,
+      "sha256": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_object.py",
+      "kind": "file",
+      "bytes": 626,
+      "sha256": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_percent.py",
+      "kind": "file",
+      "bytes": 11840,
+      "sha256": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_range.py",
+      "kind": "file",
+      "bytes": 6321,
+      "sha256": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_re_specialized.py",
+      "kind": "file",
+      "bytes": 1376,
+      "sha256": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_string.py",
+      "kind": "file",
+      "bytes": 6644,
+      "sha256": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_struct.py",
+      "kind": "file",
+      "bytes": 16477,
+      "sha256": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_thread.py",
+      "kind": "file",
+      "bytes": 16867,
+      "sha256": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_time.py",
+      "kind": "file",
+      "bytes": 733,
+      "sha256": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_types.py",
+      "kind": "file",
+      "bytes": 759,
+      "sha256": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_unicodedata.py",
+      "kind": "file",
+      "bytes": 31260,
+      "sha256": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_unicodedata_db.py",
+      "kind": "file",
+      "bytes": 138851,
+      "sha256": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_unicodedata_names.py",
+      "kind": "file",
+      "bytes": 713163,
+      "sha256": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_pystachy_weakref.py",
+      "kind": "file",
+      "bytes": 4552,
+      "sha256": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/_weakrefset.py",
+      "kind": "file",
+      "bytes": 5893,
+      "sha256": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/argparse.py",
+      "kind": "file",
+      "bytes": 12528,
+      "sha256": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/bisect.py",
+      "kind": "file",
+      "bytes": 3423,
+      "sha256": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/codecs.py",
+      "kind": "file",
+      "bytes": 37536,
+      "sha256": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/collections/__init__.py",
+      "kind": "file",
+      "bytes": 48812,
+      "sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/colorsys.py",
+      "kind": "file",
+      "bytes": 4062,
+      "sha256": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/compatibility.md",
+      "kind": "file",
+      "bytes": 124659,
+      "sha256": "ffd9fc1d8600252c842e605a88c213a5a8aa44dd6af9101c2da7c01dce788470"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/contextlib.py",
+      "kind": "file",
+      "bytes": 11276,
+      "sha256": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/copy.py",
+      "kind": "file",
+      "bytes": 8284,
+      "sha256": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/csv.py",
+      "kind": "file",
+      "bytes": 42860,
+      "sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/ctypes.py",
+      "kind": "file",
+      "bytes": 2496,
+      "sha256": "a422b62cc141173af5a710817fa683f9b4810a7a0652694c0b43bc71b5649601"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/curses/__init__.py",
+      "kind": "file",
+      "bytes": 187,
+      "sha256": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/curses/ascii.py",
+      "kind": "file",
+      "bytes": 2543,
+      "sha256": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/datetime.py",
+      "kind": "file",
+      "bytes": 117346,
+      "sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/difflib.py",
+      "kind": "file",
+      "bytes": 85162,
+      "sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/enum.py",
+      "kind": "file",
+      "bytes": 28669,
+      "sha256": "03af71f1b45b812efdfa3287ecf2037f67675c1eba1e17c6f01ef8345b36e9ba"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/fnmatch.py",
+      "kind": "file",
+      "bytes": 9201,
+      "sha256": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/functools.py",
+      "kind": "file",
+      "bytes": 16995,
+      "sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/genericpath.py",
+      "kind": "file",
+      "bytes": 6247,
+      "sha256": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/getopt.py",
+      "kind": "file",
+      "bytes": 8019,
+      "sha256": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/gettext.py",
+      "kind": "file",
+      "bytes": 22096,
+      "sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/glob.py",
+      "kind": "file",
+      "bytes": 8650,
+      "sha256": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/heapq.py",
+      "kind": "file",
+      "bytes": 28271,
+      "sha256": "bacf49f25d686ff915545a3ec4cce7bc9de20f268f7f82634404cd8eda3136a1"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/html/__init__.py",
+      "kind": "file",
+      "bytes": 5713,
+      "sha256": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/html/entities.py",
+      "kind": "file",
+      "bytes": 75594,
+      "sha256": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/html/parser.py",
+      "kind": "file",
+      "bytes": 25963,
+      "sha256": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/io.py",
+      "kind": "file",
+      "bytes": 44286,
+      "sha256": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/json.py",
+      "kind": "file",
+      "bytes": 32753,
+      "sha256": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/keyword.py",
+      "kind": "file",
+      "bytes": 1406,
+      "sha256": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/logging/__init__.py",
+      "kind": "file",
+      "bytes": 102786,
+      "sha256": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/mpz.py",
+      "kind": "file",
+      "bytes": 4316,
+      "sha256": "03446eef1f51aacb8ed978aea17db754ff1049ec2f1bab9eb15a9521d42c4434"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/operator.py",
+      "kind": "file",
+      "bytes": 11429,
+      "sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/pathlib.py",
+      "kind": "file",
+      "bytes": 28194,
+      "sha256": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/posixpath.py",
+      "kind": "file",
+      "bytes": 18233,
+      "sha256": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/provenance.md",
+      "kind": "file",
+      "bytes": 25853,
+      "sha256": "d87aab62f307c4ce7f879429bfde4dd97bedf2af4d357129b2b344e1786d15ba"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/pyobj.py",
+      "kind": "file",
+      "bytes": 18492,
+      "sha256": "7469a60287c88b96a812c29024edc2532dab06e29c32f856661527e498250b50"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/random.py",
+      "kind": "file",
+      "bytes": 42756,
+      "sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/re/__init__.py",
+      "kind": "file",
+      "bytes": 102521,
+      "sha256": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/re/_constants.py",
+      "kind": "file",
+      "bytes": 3062,
+      "sha256": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/re/_sre.py",
+      "kind": "file",
+      "bytes": 81213,
+      "sha256": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/re/_unicode.py",
+      "kind": "file",
+      "bytes": 26866,
+      "sha256": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/shlex.py",
+      "kind": "file",
+      "bytes": 16501,
+      "sha256": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/shutil.py",
+      "kind": "file",
+      "bytes": 7768,
+      "sha256": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/stat.py",
+      "kind": "file",
+      "bytes": 6308,
+      "sha256": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/statistics.py",
+      "kind": "file",
+      "bytes": 69148,
+      "sha256": "7edd44e399ae76def9dd5ae3a8e4ce91b86f5d966fa922d3816386bc9f24ce65"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/string.py",
+      "kind": "file",
+      "bytes": 15680,
+      "sha256": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/struct.py",
+      "kind": "file",
+      "bytes": 257,
+      "sha256": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/textwrap.py",
+      "kind": "file",
+      "bytes": 21831,
+      "sha256": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/this.py",
+      "kind": "file",
+      "bytes": 1003,
+      "sha256": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/threading.py",
+      "kind": "file",
+      "bytes": 61330,
+      "sha256": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/token.py",
+      "kind": "file",
+      "bytes": 4576,
+      "sha256": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/tomllib/__init__.py",
+      "kind": "file",
+      "bytes": 308,
+      "sha256": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/tomllib/_parser.py",
+      "kind": "file",
+      "bytes": 24804,
+      "sha256": "90eb6012af1c47527350e6bfae364eaafc1ad0bffaf89bd481471ac8406a6d8f"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/tomllib/_re.py",
+      "kind": "file",
+      "bytes": 3475,
+      "sha256": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/tomllib/_types.py",
+      "kind": "file",
+      "bytes": 459,
+      "sha256": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/traceback.py",
+      "kind": "file",
+      "bytes": 7004,
+      "sha256": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/types.py",
+      "kind": "file",
+      "bytes": 1719,
+      "sha256": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/urllib/__init__.py",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/urllib/parse.py",
+      "kind": "file",
+      "bytes": 66448,
+      "sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/warnings.py",
+      "kind": "file",
+      "bytes": 31522,
+      "sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lib/weakref.py",
+      "kind": "file",
+      "bytes": 16983,
+      "sha256": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/lljit.c",
+      "kind": "file",
+      "bytes": 23411,
+      "sha256": "fba2b30d745c78fd79e7c254e14b6a2d36e4a5b29301c9c51f1380e7039628ab"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/mpz/README.md",
+      "kind": "file",
+      "bytes": 3030,
+      "sha256": "6c799665d06dc2ae8d8cebbd61e9da246ed337ef4af2c7ffdff961bd1e982d06"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/mpz/mpz.c",
+      "kind": "file",
+      "bytes": 22409,
+      "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/pyembed.c",
+      "kind": "file",
+      "bytes": 25739,
+      "sha256": "5429fb7023c9dc952ee02d251938c64f8ef72a1de9403525c57f86cae97ff6b8"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/pyext.c",
+      "kind": "file",
+      "bytes": 14591,
+      "sha256": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/pystachy",
+      "kind": "file",
+      "bytes": 6233680,
+      "sha256": "6be16535762081a5fa650dff27f6376888612c2129f53a460fdd1c6eff44a9d7"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/runtime.c",
+      "kind": "file",
+      "bytes": 530625,
+      "sha256": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/runtime.py",
+      "kind": "file",
+      "bytes": 87997,
+      "sha256": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/ryu/LICENSE-Boost",
+      "kind": "file",
+      "bytes": 1338,
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/ryu/README.md",
+      "kind": "file",
+      "bytes": 3536,
+      "sha256": "746d657c420bb3d6598cbfecd6c21abc50da3a9c5be9711247f3a0918aa7f672"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/ryu/common.h",
+      "kind": "file",
+      "bytes": 3648,
+      "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/ryu/d2s.c",
+      "kind": "file",
+      "bytes": 17681,
+      "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/ryu/d2s_intrinsics.h",
+      "kind": "file",
+      "bytes": 13011,
+      "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/ryu/d2s_small_table.h",
+      "kind": "file",
+      "bytes": 7637,
+      "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/ryu/digit_table.h",
+      "kind": "file",
+      "bytes": 1745,
+      "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/libexec/pystachy/ryu/ryu.h",
+      "kind": "file",
+      "bytes": 1360,
+      "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+    },
+    {
+      "path": "extracted/linux-aarch64/pystachy-v0.4.0-rc.1-linux-aarch64/manifest.json",
+      "kind": "file",
+      "bytes": 13089,
+      "sha256": "3a8236ba59835ec928254059a0b45da716b82a5070c814d815780143a29e12cc"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/LICENSE",
+      "kind": "file",
+      "bytes": 1072,
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/README.txt",
+      "kind": "file",
+      "bytes": 830,
+      "sha256": "f093421d62effdf2cab9581c988f7ec59f20b538303e5b177cf16b8540723b53"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/THIRD_PARTY_NOTICES",
+      "kind": "file",
+      "bytes": 66442,
+      "sha256": "79c27986f52ec514a5f385907c344d96f652777b009e67a85b1fbecc77525523"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/bin/pystachy",
+      "kind": "file",
+      "bytes": 1052,
+      "sha256": "6b0ecbb69f85cbcf26ae4513778b471a269cdac081ec4a5dffed1f44db309222"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/LICENSE",
+      "kind": "file",
+      "bytes": 1072,
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/REVISION",
+      "kind": "file",
+      "bytes": 41,
+      "sha256": "adfce508d28abd16d26c320ca112bafb467a4497a287c8cf7b589244998d817d"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/THIRD_PARTY_NOTICES",
+      "kind": "file",
+      "bytes": 66442,
+      "sha256": "79c27986f52ec514a5f385907c344d96f652777b009e67a85b1fbecc77525523"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/VERSION",
+      "kind": "file",
+      "bytes": 12,
+      "sha256": "b5e98a1ea06782f8608f13efcc2a2b13c8d0ac504c292c315cccef9ec2c39fa5"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/README.md",
+      "kind": "file",
+      "bytes": 29804,
+      "sha256": "463a006d9eafb0524d8e1c3471198861712cd8cf1bbac1a8afa6fcaa25f1d895"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_argparse_help.py",
+      "kind": "file",
+      "bytes": 6004,
+      "sha256": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_markupbase.py",
+      "kind": "file",
+      "bytes": 15388,
+      "sha256": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pyrandom.py",
+      "kind": "file",
+      "bytes": 10644,
+      "sha256": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy__io.py",
+      "kind": "file",
+      "bytes": 2289,
+      "sha256": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_abc.py",
+      "kind": "file",
+      "bytes": 3586,
+      "sha256": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_atexit.py",
+      "kind": "file",
+      "bytes": 2975,
+      "sha256": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_bfile.py",
+      "kind": "file",
+      "bytes": 9044,
+      "sha256": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_binascii.py",
+      "kind": "file",
+      "bytes": 13018,
+      "sha256": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_bytescan.py",
+      "kind": "file",
+      "bytes": 1333,
+      "sha256": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_cache.py",
+      "kind": "file",
+      "bytes": 1137,
+      "sha256": "884b77660eb425052dcce3a5fa622360e692b1469d395f84ecf457345fefa3d6"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_codecs.py",
+      "kind": "file",
+      "bytes": 19730,
+      "sha256": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_copy.py",
+      "kind": "file",
+      "bytes": 2211,
+      "sha256": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_ctypes.py",
+      "kind": "file",
+      "bytes": 197,
+      "sha256": "2ec7e8b16ce0a2648b1ee1e343aa7ca0db8cee8d0d941a1bac7e26dba9a727f8"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_iterators.py",
+      "kind": "file",
+      "bytes": 6592,
+      "sha256": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_itertools.py",
+      "kind": "file",
+      "bytes": 33009,
+      "sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_json_any.py",
+      "kind": "file",
+      "bytes": 11494,
+      "sha256": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_json_int.py",
+      "kind": "file",
+      "bytes": 157,
+      "sha256": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_mappingproxy.py",
+      "kind": "file",
+      "bytes": 3283,
+      "sha256": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_object.py",
+      "kind": "file",
+      "bytes": 626,
+      "sha256": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_percent.py",
+      "kind": "file",
+      "bytes": 11840,
+      "sha256": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_range.py",
+      "kind": "file",
+      "bytes": 6321,
+      "sha256": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_re_specialized.py",
+      "kind": "file",
+      "bytes": 1376,
+      "sha256": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_string.py",
+      "kind": "file",
+      "bytes": 6644,
+      "sha256": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_struct.py",
+      "kind": "file",
+      "bytes": 16477,
+      "sha256": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_thread.py",
+      "kind": "file",
+      "bytes": 16867,
+      "sha256": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_time.py",
+      "kind": "file",
+      "bytes": 733,
+      "sha256": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_types.py",
+      "kind": "file",
+      "bytes": 759,
+      "sha256": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_unicodedata.py",
+      "kind": "file",
+      "bytes": 31260,
+      "sha256": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_unicodedata_db.py",
+      "kind": "file",
+      "bytes": 138851,
+      "sha256": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_unicodedata_names.py",
+      "kind": "file",
+      "bytes": 713163,
+      "sha256": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_pystachy_weakref.py",
+      "kind": "file",
+      "bytes": 4552,
+      "sha256": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/_weakrefset.py",
+      "kind": "file",
+      "bytes": 5893,
+      "sha256": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/argparse.py",
+      "kind": "file",
+      "bytes": 12528,
+      "sha256": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/bisect.py",
+      "kind": "file",
+      "bytes": 3423,
+      "sha256": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/codecs.py",
+      "kind": "file",
+      "bytes": 37536,
+      "sha256": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/collections/__init__.py",
+      "kind": "file",
+      "bytes": 48812,
+      "sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/colorsys.py",
+      "kind": "file",
+      "bytes": 4062,
+      "sha256": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/compatibility.md",
+      "kind": "file",
+      "bytes": 124659,
+      "sha256": "ffd9fc1d8600252c842e605a88c213a5a8aa44dd6af9101c2da7c01dce788470"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/contextlib.py",
+      "kind": "file",
+      "bytes": 11276,
+      "sha256": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/copy.py",
+      "kind": "file",
+      "bytes": 8284,
+      "sha256": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/csv.py",
+      "kind": "file",
+      "bytes": 42860,
+      "sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/ctypes.py",
+      "kind": "file",
+      "bytes": 2496,
+      "sha256": "a422b62cc141173af5a710817fa683f9b4810a7a0652694c0b43bc71b5649601"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/curses/__init__.py",
+      "kind": "file",
+      "bytes": 187,
+      "sha256": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/curses/ascii.py",
+      "kind": "file",
+      "bytes": 2543,
+      "sha256": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/datetime.py",
+      "kind": "file",
+      "bytes": 117346,
+      "sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/difflib.py",
+      "kind": "file",
+      "bytes": 85162,
+      "sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/enum.py",
+      "kind": "file",
+      "bytes": 28669,
+      "sha256": "03af71f1b45b812efdfa3287ecf2037f67675c1eba1e17c6f01ef8345b36e9ba"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/fnmatch.py",
+      "kind": "file",
+      "bytes": 9201,
+      "sha256": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/functools.py",
+      "kind": "file",
+      "bytes": 16995,
+      "sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/genericpath.py",
+      "kind": "file",
+      "bytes": 6247,
+      "sha256": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/getopt.py",
+      "kind": "file",
+      "bytes": 8019,
+      "sha256": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/gettext.py",
+      "kind": "file",
+      "bytes": 22096,
+      "sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/glob.py",
+      "kind": "file",
+      "bytes": 8650,
+      "sha256": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/heapq.py",
+      "kind": "file",
+      "bytes": 28271,
+      "sha256": "bacf49f25d686ff915545a3ec4cce7bc9de20f268f7f82634404cd8eda3136a1"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/html/__init__.py",
+      "kind": "file",
+      "bytes": 5713,
+      "sha256": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/html/entities.py",
+      "kind": "file",
+      "bytes": 75594,
+      "sha256": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/html/parser.py",
+      "kind": "file",
+      "bytes": 25963,
+      "sha256": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/io.py",
+      "kind": "file",
+      "bytes": 44286,
+      "sha256": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/json.py",
+      "kind": "file",
+      "bytes": 32753,
+      "sha256": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/keyword.py",
+      "kind": "file",
+      "bytes": 1406,
+      "sha256": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/logging/__init__.py",
+      "kind": "file",
+      "bytes": 102786,
+      "sha256": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/mpz.py",
+      "kind": "file",
+      "bytes": 4316,
+      "sha256": "03446eef1f51aacb8ed978aea17db754ff1049ec2f1bab9eb15a9521d42c4434"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/operator.py",
+      "kind": "file",
+      "bytes": 11429,
+      "sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/pathlib.py",
+      "kind": "file",
+      "bytes": 28194,
+      "sha256": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/posixpath.py",
+      "kind": "file",
+      "bytes": 18233,
+      "sha256": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/provenance.md",
+      "kind": "file",
+      "bytes": 25853,
+      "sha256": "d87aab62f307c4ce7f879429bfde4dd97bedf2af4d357129b2b344e1786d15ba"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/pyobj.py",
+      "kind": "file",
+      "bytes": 18492,
+      "sha256": "7469a60287c88b96a812c29024edc2532dab06e29c32f856661527e498250b50"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/random.py",
+      "kind": "file",
+      "bytes": 42756,
+      "sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/re/__init__.py",
+      "kind": "file",
+      "bytes": 102521,
+      "sha256": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/re/_constants.py",
+      "kind": "file",
+      "bytes": 3062,
+      "sha256": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/re/_sre.py",
+      "kind": "file",
+      "bytes": 81213,
+      "sha256": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/re/_unicode.py",
+      "kind": "file",
+      "bytes": 26866,
+      "sha256": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/shlex.py",
+      "kind": "file",
+      "bytes": 16501,
+      "sha256": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/shutil.py",
+      "kind": "file",
+      "bytes": 7768,
+      "sha256": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/stat.py",
+      "kind": "file",
+      "bytes": 6308,
+      "sha256": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/statistics.py",
+      "kind": "file",
+      "bytes": 69148,
+      "sha256": "7edd44e399ae76def9dd5ae3a8e4ce91b86f5d966fa922d3816386bc9f24ce65"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/string.py",
+      "kind": "file",
+      "bytes": 15680,
+      "sha256": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/struct.py",
+      "kind": "file",
+      "bytes": 257,
+      "sha256": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/textwrap.py",
+      "kind": "file",
+      "bytes": 21831,
+      "sha256": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/this.py",
+      "kind": "file",
+      "bytes": 1003,
+      "sha256": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/threading.py",
+      "kind": "file",
+      "bytes": 61330,
+      "sha256": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/token.py",
+      "kind": "file",
+      "bytes": 4576,
+      "sha256": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/tomllib/__init__.py",
+      "kind": "file",
+      "bytes": 308,
+      "sha256": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/tomllib/_parser.py",
+      "kind": "file",
+      "bytes": 24804,
+      "sha256": "90eb6012af1c47527350e6bfae364eaafc1ad0bffaf89bd481471ac8406a6d8f"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/tomllib/_re.py",
+      "kind": "file",
+      "bytes": 3475,
+      "sha256": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/tomllib/_types.py",
+      "kind": "file",
+      "bytes": 459,
+      "sha256": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/traceback.py",
+      "kind": "file",
+      "bytes": 7004,
+      "sha256": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/types.py",
+      "kind": "file",
+      "bytes": 1719,
+      "sha256": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/urllib/__init__.py",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/urllib/parse.py",
+      "kind": "file",
+      "bytes": 66448,
+      "sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/warnings.py",
+      "kind": "file",
+      "bytes": 31522,
+      "sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lib/weakref.py",
+      "kind": "file",
+      "bytes": 16983,
+      "sha256": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/lljit.c",
+      "kind": "file",
+      "bytes": 23411,
+      "sha256": "fba2b30d745c78fd79e7c254e14b6a2d36e4a5b29301c9c51f1380e7039628ab"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/mpz/README.md",
+      "kind": "file",
+      "bytes": 3030,
+      "sha256": "6c799665d06dc2ae8d8cebbd61e9da246ed337ef4af2c7ffdff961bd1e982d06"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/mpz/mpz.c",
+      "kind": "file",
+      "bytes": 22409,
+      "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/pyembed.c",
+      "kind": "file",
+      "bytes": 25739,
+      "sha256": "5429fb7023c9dc952ee02d251938c64f8ef72a1de9403525c57f86cae97ff6b8"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/pyext.c",
+      "kind": "file",
+      "bytes": 14591,
+      "sha256": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/pystachy",
+      "kind": "file",
+      "bytes": 6522992,
+      "sha256": "88a68f4a6d0eac752427e464d46e0844b33b7a22c427adc7fa260d1191c38d2b"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/runtime.c",
+      "kind": "file",
+      "bytes": 530625,
+      "sha256": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/runtime.py",
+      "kind": "file",
+      "bytes": 87997,
+      "sha256": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/ryu/LICENSE-Boost",
+      "kind": "file",
+      "bytes": 1338,
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/ryu/README.md",
+      "kind": "file",
+      "bytes": 3536,
+      "sha256": "746d657c420bb3d6598cbfecd6c21abc50da3a9c5be9711247f3a0918aa7f672"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/ryu/common.h",
+      "kind": "file",
+      "bytes": 3648,
+      "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/ryu/d2s.c",
+      "kind": "file",
+      "bytes": 17681,
+      "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/ryu/d2s_intrinsics.h",
+      "kind": "file",
+      "bytes": 13011,
+      "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/ryu/d2s_small_table.h",
+      "kind": "file",
+      "bytes": 7637,
+      "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/ryu/digit_table.h",
+      "kind": "file",
+      "bytes": 1745,
+      "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/libexec/pystachy/ryu/ryu.h",
+      "kind": "file",
+      "bytes": 1360,
+      "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+    },
+    {
+      "path": "extracted/linux-x86_64/pystachy-v0.4.0-rc.1-linux-x86_64/manifest.json",
+      "kind": "file",
+      "bytes": 13088,
+      "sha256": "1f73b322920350131c0634f64d4cfb0a7ebec0074a67ad29deec72f651af5174"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/LICENSE",
+      "kind": "file",
+      "bytes": 1072,
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/README.txt",
+      "kind": "file",
+      "bytes": 817,
+      "sha256": "3a1944d779b236aa5113d2a214ee833dee8663326323a71822bea5efdd80d2a0"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/THIRD_PARTY_NOTICES",
+      "kind": "file",
+      "bytes": 66442,
+      "sha256": "79c27986f52ec514a5f385907c344d96f652777b009e67a85b1fbecc77525523"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/bin/pystachy",
+      "kind": "file",
+      "bytes": 1052,
+      "sha256": "6b0ecbb69f85cbcf26ae4513778b471a269cdac081ec4a5dffed1f44db309222"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/LICENSE",
+      "kind": "file",
+      "bytes": 1072,
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/REVISION",
+      "kind": "file",
+      "bytes": 41,
+      "sha256": "adfce508d28abd16d26c320ca112bafb467a4497a287c8cf7b589244998d817d"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/THIRD_PARTY_NOTICES",
+      "kind": "file",
+      "bytes": 66442,
+      "sha256": "79c27986f52ec514a5f385907c344d96f652777b009e67a85b1fbecc77525523"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/VERSION",
+      "kind": "file",
+      "bytes": 12,
+      "sha256": "b5e98a1ea06782f8608f13efcc2a2b13c8d0ac504c292c315cccef9ec2c39fa5"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/README.md",
+      "kind": "file",
+      "bytes": 29804,
+      "sha256": "463a006d9eafb0524d8e1c3471198861712cd8cf1bbac1a8afa6fcaa25f1d895"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_argparse_help.py",
+      "kind": "file",
+      "bytes": 6004,
+      "sha256": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_markupbase.py",
+      "kind": "file",
+      "bytes": 15388,
+      "sha256": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pyrandom.py",
+      "kind": "file",
+      "bytes": 10644,
+      "sha256": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy__io.py",
+      "kind": "file",
+      "bytes": 2289,
+      "sha256": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_abc.py",
+      "kind": "file",
+      "bytes": 3586,
+      "sha256": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_atexit.py",
+      "kind": "file",
+      "bytes": 2975,
+      "sha256": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_bfile.py",
+      "kind": "file",
+      "bytes": 9044,
+      "sha256": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_binascii.py",
+      "kind": "file",
+      "bytes": 13018,
+      "sha256": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_bytescan.py",
+      "kind": "file",
+      "bytes": 1333,
+      "sha256": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_cache.py",
+      "kind": "file",
+      "bytes": 1137,
+      "sha256": "884b77660eb425052dcce3a5fa622360e692b1469d395f84ecf457345fefa3d6"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_codecs.py",
+      "kind": "file",
+      "bytes": 19730,
+      "sha256": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_copy.py",
+      "kind": "file",
+      "bytes": 2211,
+      "sha256": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_ctypes.py",
+      "kind": "file",
+      "bytes": 197,
+      "sha256": "2ec7e8b16ce0a2648b1ee1e343aa7ca0db8cee8d0d941a1bac7e26dba9a727f8"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_iterators.py",
+      "kind": "file",
+      "bytes": 6592,
+      "sha256": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_itertools.py",
+      "kind": "file",
+      "bytes": 33009,
+      "sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_json_any.py",
+      "kind": "file",
+      "bytes": 11494,
+      "sha256": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_json_int.py",
+      "kind": "file",
+      "bytes": 157,
+      "sha256": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_mappingproxy.py",
+      "kind": "file",
+      "bytes": 3283,
+      "sha256": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_object.py",
+      "kind": "file",
+      "bytes": 626,
+      "sha256": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_percent.py",
+      "kind": "file",
+      "bytes": 11840,
+      "sha256": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_range.py",
+      "kind": "file",
+      "bytes": 6321,
+      "sha256": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_re_specialized.py",
+      "kind": "file",
+      "bytes": 1376,
+      "sha256": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_string.py",
+      "kind": "file",
+      "bytes": 6644,
+      "sha256": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_struct.py",
+      "kind": "file",
+      "bytes": 16477,
+      "sha256": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_thread.py",
+      "kind": "file",
+      "bytes": 16867,
+      "sha256": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_time.py",
+      "kind": "file",
+      "bytes": 733,
+      "sha256": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_types.py",
+      "kind": "file",
+      "bytes": 759,
+      "sha256": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_unicodedata.py",
+      "kind": "file",
+      "bytes": 31260,
+      "sha256": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_unicodedata_db.py",
+      "kind": "file",
+      "bytes": 138851,
+      "sha256": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_unicodedata_names.py",
+      "kind": "file",
+      "bytes": 713163,
+      "sha256": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_pystachy_weakref.py",
+      "kind": "file",
+      "bytes": 4552,
+      "sha256": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/_weakrefset.py",
+      "kind": "file",
+      "bytes": 5893,
+      "sha256": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/argparse.py",
+      "kind": "file",
+      "bytes": 12528,
+      "sha256": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/bisect.py",
+      "kind": "file",
+      "bytes": 3423,
+      "sha256": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/codecs.py",
+      "kind": "file",
+      "bytes": 37536,
+      "sha256": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/collections/__init__.py",
+      "kind": "file",
+      "bytes": 48812,
+      "sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/colorsys.py",
+      "kind": "file",
+      "bytes": 4062,
+      "sha256": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/compatibility.md",
+      "kind": "file",
+      "bytes": 124659,
+      "sha256": "ffd9fc1d8600252c842e605a88c213a5a8aa44dd6af9101c2da7c01dce788470"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/contextlib.py",
+      "kind": "file",
+      "bytes": 11276,
+      "sha256": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/copy.py",
+      "kind": "file",
+      "bytes": 8284,
+      "sha256": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/csv.py",
+      "kind": "file",
+      "bytes": 42860,
+      "sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/ctypes.py",
+      "kind": "file",
+      "bytes": 2496,
+      "sha256": "a422b62cc141173af5a710817fa683f9b4810a7a0652694c0b43bc71b5649601"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/curses/__init__.py",
+      "kind": "file",
+      "bytes": 187,
+      "sha256": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/curses/ascii.py",
+      "kind": "file",
+      "bytes": 2543,
+      "sha256": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/datetime.py",
+      "kind": "file",
+      "bytes": 117346,
+      "sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/difflib.py",
+      "kind": "file",
+      "bytes": 85162,
+      "sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/enum.py",
+      "kind": "file",
+      "bytes": 28669,
+      "sha256": "03af71f1b45b812efdfa3287ecf2037f67675c1eba1e17c6f01ef8345b36e9ba"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/fnmatch.py",
+      "kind": "file",
+      "bytes": 9201,
+      "sha256": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/functools.py",
+      "kind": "file",
+      "bytes": 16995,
+      "sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/genericpath.py",
+      "kind": "file",
+      "bytes": 6247,
+      "sha256": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/getopt.py",
+      "kind": "file",
+      "bytes": 8019,
+      "sha256": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/gettext.py",
+      "kind": "file",
+      "bytes": 22096,
+      "sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/glob.py",
+      "kind": "file",
+      "bytes": 8650,
+      "sha256": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/heapq.py",
+      "kind": "file",
+      "bytes": 28271,
+      "sha256": "bacf49f25d686ff915545a3ec4cce7bc9de20f268f7f82634404cd8eda3136a1"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/html/__init__.py",
+      "kind": "file",
+      "bytes": 5713,
+      "sha256": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/html/entities.py",
+      "kind": "file",
+      "bytes": 75594,
+      "sha256": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/html/parser.py",
+      "kind": "file",
+      "bytes": 25963,
+      "sha256": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/io.py",
+      "kind": "file",
+      "bytes": 44286,
+      "sha256": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/json.py",
+      "kind": "file",
+      "bytes": 32753,
+      "sha256": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/keyword.py",
+      "kind": "file",
+      "bytes": 1406,
+      "sha256": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/logging/__init__.py",
+      "kind": "file",
+      "bytes": 102786,
+      "sha256": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/mpz.py",
+      "kind": "file",
+      "bytes": 4316,
+      "sha256": "03446eef1f51aacb8ed978aea17db754ff1049ec2f1bab9eb15a9521d42c4434"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/operator.py",
+      "kind": "file",
+      "bytes": 11429,
+      "sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/pathlib.py",
+      "kind": "file",
+      "bytes": 28194,
+      "sha256": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/posixpath.py",
+      "kind": "file",
+      "bytes": 18233,
+      "sha256": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/provenance.md",
+      "kind": "file",
+      "bytes": 25853,
+      "sha256": "d87aab62f307c4ce7f879429bfde4dd97bedf2af4d357129b2b344e1786d15ba"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/pyobj.py",
+      "kind": "file",
+      "bytes": 18492,
+      "sha256": "7469a60287c88b96a812c29024edc2532dab06e29c32f856661527e498250b50"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/random.py",
+      "kind": "file",
+      "bytes": 42756,
+      "sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/re/__init__.py",
+      "kind": "file",
+      "bytes": 102521,
+      "sha256": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/re/_constants.py",
+      "kind": "file",
+      "bytes": 3062,
+      "sha256": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/re/_sre.py",
+      "kind": "file",
+      "bytes": 81213,
+      "sha256": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/re/_unicode.py",
+      "kind": "file",
+      "bytes": 26866,
+      "sha256": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/shlex.py",
+      "kind": "file",
+      "bytes": 16501,
+      "sha256": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/shutil.py",
+      "kind": "file",
+      "bytes": 7768,
+      "sha256": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/stat.py",
+      "kind": "file",
+      "bytes": 6308,
+      "sha256": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/statistics.py",
+      "kind": "file",
+      "bytes": 69148,
+      "sha256": "7edd44e399ae76def9dd5ae3a8e4ce91b86f5d966fa922d3816386bc9f24ce65"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/string.py",
+      "kind": "file",
+      "bytes": 15680,
+      "sha256": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/struct.py",
+      "kind": "file",
+      "bytes": 257,
+      "sha256": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/textwrap.py",
+      "kind": "file",
+      "bytes": 21831,
+      "sha256": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/this.py",
+      "kind": "file",
+      "bytes": 1003,
+      "sha256": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/threading.py",
+      "kind": "file",
+      "bytes": 61330,
+      "sha256": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/token.py",
+      "kind": "file",
+      "bytes": 4576,
+      "sha256": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/tomllib/__init__.py",
+      "kind": "file",
+      "bytes": 308,
+      "sha256": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/tomllib/_parser.py",
+      "kind": "file",
+      "bytes": 24804,
+      "sha256": "90eb6012af1c47527350e6bfae364eaafc1ad0bffaf89bd481471ac8406a6d8f"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/tomllib/_re.py",
+      "kind": "file",
+      "bytes": 3475,
+      "sha256": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/tomllib/_types.py",
+      "kind": "file",
+      "bytes": 459,
+      "sha256": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/traceback.py",
+      "kind": "file",
+      "bytes": 7004,
+      "sha256": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/types.py",
+      "kind": "file",
+      "bytes": 1719,
+      "sha256": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/urllib/__init__.py",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/urllib/parse.py",
+      "kind": "file",
+      "bytes": 66448,
+      "sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/warnings.py",
+      "kind": "file",
+      "bytes": 31522,
+      "sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lib/weakref.py",
+      "kind": "file",
+      "bytes": 16983,
+      "sha256": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/lljit.c",
+      "kind": "file",
+      "bytes": 23411,
+      "sha256": "fba2b30d745c78fd79e7c254e14b6a2d36e4a5b29301c9c51f1380e7039628ab"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/mpz/README.md",
+      "kind": "file",
+      "bytes": 3030,
+      "sha256": "6c799665d06dc2ae8d8cebbd61e9da246ed337ef4af2c7ffdff961bd1e982d06"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/mpz/mpz.c",
+      "kind": "file",
+      "bytes": 22409,
+      "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/pyembed.c",
+      "kind": "file",
+      "bytes": 25739,
+      "sha256": "5429fb7023c9dc952ee02d251938c64f8ef72a1de9403525c57f86cae97ff6b8"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/pyext.c",
+      "kind": "file",
+      "bytes": 14591,
+      "sha256": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/pystachy",
+      "kind": "file",
+      "bytes": 6133992,
+      "sha256": "6b52d29839828f176373e65ffbaa0b4a4dcd29af770c192ac4fbbdbcec5f5a95"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/runtime.c",
+      "kind": "file",
+      "bytes": 530625,
+      "sha256": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/runtime.py",
+      "kind": "file",
+      "bytes": 87997,
+      "sha256": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/ryu/LICENSE-Boost",
+      "kind": "file",
+      "bytes": 1338,
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/ryu/README.md",
+      "kind": "file",
+      "bytes": 3536,
+      "sha256": "746d657c420bb3d6598cbfecd6c21abc50da3a9c5be9711247f3a0918aa7f672"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/ryu/common.h",
+      "kind": "file",
+      "bytes": 3648,
+      "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/ryu/d2s.c",
+      "kind": "file",
+      "bytes": 17681,
+      "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/ryu/d2s_intrinsics.h",
+      "kind": "file",
+      "bytes": 13011,
+      "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/ryu/d2s_small_table.h",
+      "kind": "file",
+      "bytes": 7637,
+      "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/ryu/digit_table.h",
+      "kind": "file",
+      "bytes": 1745,
+      "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/libexec/pystachy/ryu/ryu.h",
+      "kind": "file",
+      "bytes": 1360,
+      "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+    },
+    {
+      "path": "extracted/macos-arm64/pystachy-v0.4.0-rc.1-macos-arm64/manifest.json",
+      "kind": "file",
+      "bytes": 13095,
+      "sha256": "a52138ff8270cae285b285b35deab95c53fd855de7ad5377540712edeebfcb8b"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/LICENSE",
+      "kind": "file",
+      "bytes": 1072,
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/README.txt",
+      "kind": "file",
+      "bytes": 818,
+      "sha256": "aa85a636c4c1c6147c59ef9f1f070d22b7f66fdac79bb598ecbe960e9b6538bf"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/THIRD_PARTY_NOTICES",
+      "kind": "file",
+      "bytes": 66442,
+      "sha256": "79c27986f52ec514a5f385907c344d96f652777b009e67a85b1fbecc77525523"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/bin/pystachy",
+      "kind": "file",
+      "bytes": 1052,
+      "sha256": "6b0ecbb69f85cbcf26ae4513778b471a269cdac081ec4a5dffed1f44db309222"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/LICENSE",
+      "kind": "file",
+      "bytes": 1072,
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/REVISION",
+      "kind": "file",
+      "bytes": 41,
+      "sha256": "adfce508d28abd16d26c320ca112bafb467a4497a287c8cf7b589244998d817d"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/THIRD_PARTY_NOTICES",
+      "kind": "file",
+      "bytes": 66442,
+      "sha256": "79c27986f52ec514a5f385907c344d96f652777b009e67a85b1fbecc77525523"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/VERSION",
+      "kind": "file",
+      "bytes": 12,
+      "sha256": "b5e98a1ea06782f8608f13efcc2a2b13c8d0ac504c292c315cccef9ec2c39fa5"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/README.md",
+      "kind": "file",
+      "bytes": 29804,
+      "sha256": "463a006d9eafb0524d8e1c3471198861712cd8cf1bbac1a8afa6fcaa25f1d895"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_argparse_help.py",
+      "kind": "file",
+      "bytes": 6004,
+      "sha256": "71230160d94bdca256c1ec51df652634e56a663edb1934d8b15a3b45c8da0a42"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_markupbase.py",
+      "kind": "file",
+      "bytes": 15388,
+      "sha256": "6a294b294582f55905d310b8df054019e94f37b17eba3414be4e2cb61d5851d1"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pyrandom.py",
+      "kind": "file",
+      "bytes": 10644,
+      "sha256": "5b37918369c0e4becdac2d012ffe9e40e314a330ee9f7b3fe2ce4cd3a926ff09"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy__io.py",
+      "kind": "file",
+      "bytes": 2289,
+      "sha256": "77ee03b3a67f79f49c3fe30666f4f5077bd41069797c727529a230c4caa0a117"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_abc.py",
+      "kind": "file",
+      "bytes": 3586,
+      "sha256": "9f6f717c077b2dbac22e8dc9793373b939615a33f2698aaddd81ed905e5a48f8"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_atexit.py",
+      "kind": "file",
+      "bytes": 2975,
+      "sha256": "a5ff97e421a4a8fd782e08a0124bac6a7b27486fc279cb4384655bc4b208d60c"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_bfile.py",
+      "kind": "file",
+      "bytes": 9044,
+      "sha256": "3ae9d3ed7e23e4bd0712b097a73db93f14aa7321bf1e4c5585c8cd2774999826"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_binascii.py",
+      "kind": "file",
+      "bytes": 13018,
+      "sha256": "c8ca70973dc409011ba89749878a2a205780fdc907437bc08521be0e3d07f848"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_bytescan.py",
+      "kind": "file",
+      "bytes": 1333,
+      "sha256": "9d67b07a3bbcdf944454abbf138f3c588ffba4a5787d43ba148e5f918a3c8f63"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_cache.py",
+      "kind": "file",
+      "bytes": 1137,
+      "sha256": "884b77660eb425052dcce3a5fa622360e692b1469d395f84ecf457345fefa3d6"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_codecs.py",
+      "kind": "file",
+      "bytes": 19730,
+      "sha256": "fe8380d756e383192028c6a65d652047e9abb9c08b51e15aba5b35e8cf678acf"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_copy.py",
+      "kind": "file",
+      "bytes": 2211,
+      "sha256": "27d374af0fc595f85da5e4d19dd9f235b0ed3212dd926695ee4c696b0f5b4d3f"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_ctypes.py",
+      "kind": "file",
+      "bytes": 197,
+      "sha256": "2ec7e8b16ce0a2648b1ee1e343aa7ca0db8cee8d0d941a1bac7e26dba9a727f8"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_iterators.py",
+      "kind": "file",
+      "bytes": 6592,
+      "sha256": "61894584c1fda85936a740d4dafa2c5d631f9b05f5022fca8913e4ad0a84b27e"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_itertools.py",
+      "kind": "file",
+      "bytes": 33009,
+      "sha256": "14f451cf7647016ad8105aa988b9cbabe4fe3f5a08f2710f6ed2db5d81a00566"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_json_any.py",
+      "kind": "file",
+      "bytes": 11494,
+      "sha256": "9d4bf30d0a11b50d013de9b62f7c9b75269a66c26cbce1dcc67b6504428ea7af"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_json_int.py",
+      "kind": "file",
+      "bytes": 157,
+      "sha256": "dde398779410ac2476e4205468df5477af8e56a59809e8c12068a1938a19adb0"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_mappingproxy.py",
+      "kind": "file",
+      "bytes": 3283,
+      "sha256": "e1d04e45f0b12e0e29fba497adf16f77864154c9e175a40065d2fd73654be70c"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_object.py",
+      "kind": "file",
+      "bytes": 626,
+      "sha256": "6a21df25fa11b3c80a70d95f310760d86adaeecd4a63e767bde5b9ecde63ca9c"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_percent.py",
+      "kind": "file",
+      "bytes": 11840,
+      "sha256": "38119feeb5bff2d50d8d5d48e8c23e853bfe5ca92c6df99163b82a8699eda0e3"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_range.py",
+      "kind": "file",
+      "bytes": 6321,
+      "sha256": "50df392f248e25a79896007a3b0a23741f8f5f56622e7c56060ba9612292f8b2"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_re_specialized.py",
+      "kind": "file",
+      "bytes": 1376,
+      "sha256": "d09604c416700c3a7acd3a9f8c6f7536289c895b2e72393a9875e68ed92e45bf"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_string.py",
+      "kind": "file",
+      "bytes": 6644,
+      "sha256": "2e87bb96489d12051446c1b59c2e4ee65543a14f15d8eff3465a43f2e1f51434"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_struct.py",
+      "kind": "file",
+      "bytes": 16477,
+      "sha256": "2f224f07dd5a8db374dc2604257cc7c41a4caa7140c5d2ddf30a34bc8f88f1d6"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_thread.py",
+      "kind": "file",
+      "bytes": 16867,
+      "sha256": "db3920b84b5b801ede68b2facab9ef2bc21f1f714dcc767625e66f1f4bf936cc"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_time.py",
+      "kind": "file",
+      "bytes": 733,
+      "sha256": "21470e0d9af8a1fb86b34f9977c4e5049a3b6785bb0db3f23198546665a9fa39"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_types.py",
+      "kind": "file",
+      "bytes": 759,
+      "sha256": "221d41e2f90c40493b3d712fb99cf39fb5a25c2306e63de7a89358e66cfcfe70"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_unicodedata.py",
+      "kind": "file",
+      "bytes": 31260,
+      "sha256": "f1c877238f94279dfdb5a5f77396d9d25f504c409f34b78099613c6c3f71c7d0"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_unicodedata_db.py",
+      "kind": "file",
+      "bytes": 138851,
+      "sha256": "d511e3c104f697e9e9ce150b97119ceb1fcaf00ebcdd3be21cf52c88337608b2"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_unicodedata_names.py",
+      "kind": "file",
+      "bytes": 713163,
+      "sha256": "9b18f9e4aecb03f28672fdecce4fcf9d0ece0a1c565c7e9e0ce504fe4fc2bb28"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_pystachy_weakref.py",
+      "kind": "file",
+      "bytes": 4552,
+      "sha256": "961b272cf9e756d3829f57ad7325b123e5329a06dfb64519a50c8132728cb3cb"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/_weakrefset.py",
+      "kind": "file",
+      "bytes": 5893,
+      "sha256": "91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/argparse.py",
+      "kind": "file",
+      "bytes": 12528,
+      "sha256": "7badc6e5fd7d0cd32884ee819a2c2875614ae49b0d17ccc46cf80a5910066936"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/bisect.py",
+      "kind": "file",
+      "bytes": 3423,
+      "sha256": "f1cf7b85fc36b5da249813fc5ab97d9464f8cc1bc817f7146206fa2713e35999"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/codecs.py",
+      "kind": "file",
+      "bytes": 37536,
+      "sha256": "feafe30244cc2ac23a8f03ca6c8b106ef82dede1630aac103126767e123a3c42"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/collections/__init__.py",
+      "kind": "file",
+      "bytes": 48812,
+      "sha256": "8a6533ddf04c4823e1c1da10925028613420cc4e5cb6264e6066fdd3739b4852"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/colorsys.py",
+      "kind": "file",
+      "bytes": 4062,
+      "sha256": "65e3dfbf7bad61d4d7d7731a69dd7e75a347fd350d91327a51010a94e6fd2f1d"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/compatibility.md",
+      "kind": "file",
+      "bytes": 124659,
+      "sha256": "ffd9fc1d8600252c842e605a88c213a5a8aa44dd6af9101c2da7c01dce788470"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/contextlib.py",
+      "kind": "file",
+      "bytes": 11276,
+      "sha256": "08bf5d132ae0aceafcd94c72396e21fd45fc9cd1ba6e74807ce1e39f22d0d665"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/copy.py",
+      "kind": "file",
+      "bytes": 8284,
+      "sha256": "360bbbd25d50a8f6292487aadfaa43291619d09b26d90596a9a0cf36c727c969"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/csv.py",
+      "kind": "file",
+      "bytes": 42860,
+      "sha256": "29676a25a82679e93c6d0eb771a3f60890aedf49941206c0387ce59696b7c3c4"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/ctypes.py",
+      "kind": "file",
+      "bytes": 2496,
+      "sha256": "a422b62cc141173af5a710817fa683f9b4810a7a0652694c0b43bc71b5649601"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/curses/__init__.py",
+      "kind": "file",
+      "bytes": 187,
+      "sha256": "91156d2c9afdc168cee4bb7085c8b16936ca7079fa4035ac4d7908712d86f394"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/curses/ascii.py",
+      "kind": "file",
+      "bytes": 2543,
+      "sha256": "780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/datetime.py",
+      "kind": "file",
+      "bytes": 117346,
+      "sha256": "d269c51c55e7668b988c8194a7a2e643a39aa3a2770a727c178a5c898b91c239"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/difflib.py",
+      "kind": "file",
+      "bytes": 85162,
+      "sha256": "4d33db46d2f0748bd674b5ae2f52c59ab0cab0865c465a99ea9521d8751aea0f"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/enum.py",
+      "kind": "file",
+      "bytes": 28669,
+      "sha256": "03af71f1b45b812efdfa3287ecf2037f67675c1eba1e17c6f01ef8345b36e9ba"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/fnmatch.py",
+      "kind": "file",
+      "bytes": 9201,
+      "sha256": "fd1da199d0eeabc34ec9796d5a0790da6300fff4d15e16ee2d8ca26e6885eec5"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/functools.py",
+      "kind": "file",
+      "bytes": 16995,
+      "sha256": "d0f3327820b75ec5804c5c7c60903fb3a81feafe3f258375f86bf9f62429c703"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/genericpath.py",
+      "kind": "file",
+      "bytes": 6247,
+      "sha256": "cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/getopt.py",
+      "kind": "file",
+      "bytes": 8019,
+      "sha256": "0d152bede49816f2924ffb944d86369099bea3b68ec1ee6f0c84c56251670241"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/gettext.py",
+      "kind": "file",
+      "bytes": 22096,
+      "sha256": "97b7fa3d8112826dae4d021a6445fe791521524bd4b06e729d0497ed59a85e63"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/glob.py",
+      "kind": "file",
+      "bytes": 8650,
+      "sha256": "3ff5a1497ed62460e45f6031f1c9b921849a5e73b8ff6ea35fe25635a4106b78"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/heapq.py",
+      "kind": "file",
+      "bytes": 28271,
+      "sha256": "bacf49f25d686ff915545a3ec4cce7bc9de20f268f7f82634404cd8eda3136a1"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/html/__init__.py",
+      "kind": "file",
+      "bytes": 5713,
+      "sha256": "067cf63fe3eee1bece807caba82a83d0307010bf1c30d9974e56ea704ddea893"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/html/entities.py",
+      "kind": "file",
+      "bytes": 75594,
+      "sha256": "6fbeb0318e22905269b414b7d045574b8a98767f194310071b9177fadc738a2f"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/html/parser.py",
+      "kind": "file",
+      "bytes": 25963,
+      "sha256": "f3ab8871f5342562328cd3ff8e65d5667c79d27189c7a0401982a193de7b4e90"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/io.py",
+      "kind": "file",
+      "bytes": 44286,
+      "sha256": "31f5102c549e7051190c81838928db3f5c21863ac9cf63e7a493352e767fa71f"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/json.py",
+      "kind": "file",
+      "bytes": 32753,
+      "sha256": "b217485992131dd49d083a0fcff14fe56e6507933b4d7e3d5e09071be071dd39"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/keyword.py",
+      "kind": "file",
+      "bytes": 1406,
+      "sha256": "833eb8e01577a8330f473ed49403fae4b5e6c95a66a81254405deb5c7ea7efb9"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/logging/__init__.py",
+      "kind": "file",
+      "bytes": 102786,
+      "sha256": "73ce5de4a0780ba93deb120274a7aebba5f629a6a0ee48b81757f0770b12d6e3"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/mpz.py",
+      "kind": "file",
+      "bytes": 4316,
+      "sha256": "03446eef1f51aacb8ed978aea17db754ff1049ec2f1bab9eb15a9521d42c4434"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/operator.py",
+      "kind": "file",
+      "bytes": 11429,
+      "sha256": "7d42396ef02c03aa69eb86643769cdb889ab9fc66ffd140bc0efa0896fc94c99"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/pathlib.py",
+      "kind": "file",
+      "bytes": 28194,
+      "sha256": "e489f1ddacdd4076b3f54b81e89e1d9a20e63d1e651a25f0c5b135398918cba2"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/posixpath.py",
+      "kind": "file",
+      "bytes": 18233,
+      "sha256": "69acb9e294987cd6056a2237048373cf8d6201faf1e43a49c38889b47d2fb28e"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/provenance.md",
+      "kind": "file",
+      "bytes": 25853,
+      "sha256": "d87aab62f307c4ce7f879429bfde4dd97bedf2af4d357129b2b344e1786d15ba"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/pyobj.py",
+      "kind": "file",
+      "bytes": 18492,
+      "sha256": "7469a60287c88b96a812c29024edc2532dab06e29c32f856661527e498250b50"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/random.py",
+      "kind": "file",
+      "bytes": 42756,
+      "sha256": "91e7fa770bfc1affb76a6441a10e1913af8993d8c657c12ffe6cbadc3e3add1e"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/re/__init__.py",
+      "kind": "file",
+      "bytes": 102521,
+      "sha256": "62ebb86b1d7c3cabca75918d374c48eece358fd03bfe96f3ef486bb651b4c412"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/re/_constants.py",
+      "kind": "file",
+      "bytes": 3062,
+      "sha256": "d8c63d4b91920ceb02d7c00073a062504c349b3e0de83ba480c3f4d1bca442fe"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/re/_sre.py",
+      "kind": "file",
+      "bytes": 81213,
+      "sha256": "c7e98ec21fe209e8d3833516f408a5b219002e26a2f630cceb933b3e12cca3c5"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/re/_unicode.py",
+      "kind": "file",
+      "bytes": 26866,
+      "sha256": "61f1343780ef2537ff83813b7a2097a55482a51a23b172a609a6836af4197ea2"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/shlex.py",
+      "kind": "file",
+      "bytes": 16501,
+      "sha256": "7392b7c738fe818c43a8031820bef96db0b9f598d354a9fac0b771546a4fdba4"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/shutil.py",
+      "kind": "file",
+      "bytes": 7768,
+      "sha256": "6f2ece466c6ebbd609758a22312842d61f8fba24bac5fefccbd9918a08d224c1"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/stat.py",
+      "kind": "file",
+      "bytes": 6308,
+      "sha256": "07217986d9b2172b509dab3578d18ac05ba768b418e1f1e8c90e38a8f7c2b3c6"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/statistics.py",
+      "kind": "file",
+      "bytes": 69148,
+      "sha256": "7edd44e399ae76def9dd5ae3a8e4ce91b86f5d966fa922d3816386bc9f24ce65"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/string.py",
+      "kind": "file",
+      "bytes": 15680,
+      "sha256": "5a6ea720721a70a9d76d30135697ea612b9cb6610366b38d8c1d997043508b27"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/struct.py",
+      "kind": "file",
+      "bytes": 257,
+      "sha256": "9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/textwrap.py",
+      "kind": "file",
+      "bytes": 21831,
+      "sha256": "5102b1deb8905ad1b31a2830f7ac5a980229e55f3bbce06fd64baa9930159c1b"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/this.py",
+      "kind": "file",
+      "bytes": 1003,
+      "sha256": "481d0cb3de511eae0b5713dad18542b07eafd9c013bb7690f7497bad49923a71"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/threading.py",
+      "kind": "file",
+      "bytes": 61330,
+      "sha256": "b213b086e74428f910b7a469be2dd98108ae9041156851e8bc892f04a6bd62f9"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/token.py",
+      "kind": "file",
+      "bytes": 4576,
+      "sha256": "1d81391050d5389c41f319ba4d42159c6247777400e48c27f2d28cac8ca4e6e2"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/tomllib/__init__.py",
+      "kind": "file",
+      "bytes": 308,
+      "sha256": "71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/tomllib/_parser.py",
+      "kind": "file",
+      "bytes": 24804,
+      "sha256": "90eb6012af1c47527350e6bfae364eaafc1ad0bffaf89bd481471ac8406a6d8f"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/tomllib/_re.py",
+      "kind": "file",
+      "bytes": 3475,
+      "sha256": "17ec24dabd4e7089df6f04acacb331c85c437addbd2ab98bdfefcb18671ba056"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/tomllib/_types.py",
+      "kind": "file",
+      "bytes": 459,
+      "sha256": "e018cf69245202408dd97664cf76618e8cbb5efb6f43b134d29efd1d9221a6c0"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/traceback.py",
+      "kind": "file",
+      "bytes": 7004,
+      "sha256": "0019cd354b5261be3496db20445c3f36f2e642cdee711fc1af51c7650e1625c1"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/types.py",
+      "kind": "file",
+      "bytes": 1719,
+      "sha256": "d4215ea3abc258bdde763cc21ec4b0759f0c44e874b2483851c5681ae93f45e2"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/urllib/__init__.py",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/urllib/parse.py",
+      "kind": "file",
+      "bytes": 66448,
+      "sha256": "f5914562f9903ab7dde287fcb8bc0b1667a812f82e7e7c4419fed0493bfd0148"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/warnings.py",
+      "kind": "file",
+      "bytes": 31522,
+      "sha256": "be4467c02d67040c87e31ede6787740815085298a880f2aa126b02fbabc0f133"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lib/weakref.py",
+      "kind": "file",
+      "bytes": 16983,
+      "sha256": "4a08091ebed64fcd1d2368e97381009eab49669e40cdbddaaefd64d525e46e7a"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/lljit.c",
+      "kind": "file",
+      "bytes": 23411,
+      "sha256": "fba2b30d745c78fd79e7c254e14b6a2d36e4a5b29301c9c51f1380e7039628ab"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/mpz/README.md",
+      "kind": "file",
+      "bytes": 3030,
+      "sha256": "6c799665d06dc2ae8d8cebbd61e9da246ed337ef4af2c7ffdff961bd1e982d06"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/mpz/mpz.c",
+      "kind": "file",
+      "bytes": 22409,
+      "sha256": "2d648cec5de20c6bb7d4882a364cfc9fa1d355395255c1d0e82e4389bde03afa"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/pyembed.c",
+      "kind": "file",
+      "bytes": 25739,
+      "sha256": "5429fb7023c9dc952ee02d251938c64f8ef72a1de9403525c57f86cae97ff6b8"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/pyext.c",
+      "kind": "file",
+      "bytes": 14591,
+      "sha256": "4278d2506c88d20a08b4a5b5563237e6323372201603b6c5c78231ee52301109"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/pystachy",
+      "kind": "file",
+      "bytes": 6254896,
+      "sha256": "ec3db93ead01583caae678e1ae1c09629f593eb29bddca52b5ce51f2051cdbf4"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/runtime.c",
+      "kind": "file",
+      "bytes": 530625,
+      "sha256": "7ce5afadf35c462f99d7abee96e56428aa32cc6b90ea8b807bc0ca0c048b3dbe"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/runtime.py",
+      "kind": "file",
+      "bytes": 87997,
+      "sha256": "0f7d032f743f916ea01dda9dff3336b03659f28cebbcc0faca80048be72a09eb"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/ryu/LICENSE-Boost",
+      "kind": "file",
+      "bytes": 1338,
+      "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/ryu/README.md",
+      "kind": "file",
+      "bytes": 3536,
+      "sha256": "746d657c420bb3d6598cbfecd6c21abc50da3a9c5be9711247f3a0918aa7f672"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/ryu/common.h",
+      "kind": "file",
+      "bytes": 3648,
+      "sha256": "0bbd71d26da6193e678d0776cf418f43f287c73d6fd6725353df0aadf70f2a19"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/ryu/d2s.c",
+      "kind": "file",
+      "bytes": 17681,
+      "sha256": "c6357b5d53ac1ba7f4984847d3a76f0803e0a931b7d0b02680656576829cf1d2"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/ryu/d2s_intrinsics.h",
+      "kind": "file",
+      "bytes": 13011,
+      "sha256": "01d9bdaada67b42f2d1bbdebb3765867e6c44e3a181b806c1d7e851b93f9cc21"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/ryu/d2s_small_table.h",
+      "kind": "file",
+      "bytes": 7637,
+      "sha256": "01f3d8a3ff739a26ecbddc2caae44c91574592b1de7c01fec67bc2d06672b606"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/ryu/digit_table.h",
+      "kind": "file",
+      "bytes": 1745,
+      "sha256": "8b782573abc0b8554d74163ae6c02f0beb5c30d1e63eaebdb0ddf2c98d817e01"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/libexec/pystachy/ryu/ryu.h",
+      "kind": "file",
+      "bytes": 1360,
+      "sha256": "b7feab0ba1df5e9ef3d602f386592ad152491405e49b408fb21c0e0e9e6bfb16"
+    },
+    {
+      "path": "extracted/macos-x86_64/pystachy-v0.4.0-rc.1-macos-x86_64/manifest.json",
+      "kind": "file",
+      "bytes": 13096,
+      "sha256": "e7d8f1bd09045015c31ec3cb551574cff0b0871c70a885576e62c586093f2445"
+    },
+    {
+      "path": "latest-github-after-pypi.json",
+      "kind": "file",
+      "bytes": 26061,
+      "sha256": "4f1369aaa94b6ba8b2c3b9bbefea51b00d18cb8cd404b747403b6f6a4493907d"
+    },
+    {
+      "path": "latest-github-after.json",
+      "kind": "file",
+      "bytes": 26061,
+      "sha256": "4f1369aaa94b6ba8b2c3b9bbefea51b00d18cb8cd404b747403b6f6a4493907d"
+    },
+    {
+      "path": "latest-github-before.json",
+      "kind": "file",
+      "bytes": 26061,
+      "sha256": "4f1369aaa94b6ba8b2c3b9bbefea51b00d18cb8cd404b747403b6f6a4493907d"
+    },
+    {
+      "path": "main-variants/artifacts-final.json",
+      "kind": "file",
+      "bytes": 21163,
+      "sha256": "fe385b429c6fc31161e229137b5db041a3d98aa2ed9a1f91f4d73d65dd0ac8d5"
+    },
+    {
+      "path": "main-variants/artifacts-initial.json",
+      "kind": "file",
+      "bytes": 11865,
+      "sha256": "996dab2e1ed18b62be7c05e870421b80241412c605c87cc056663522d6602bea"
+    },
+    {
+      "path": "main-variants/audit_variants.py",
+      "kind": "file",
+      "bytes": 12490,
+      "sha256": "ac1697d4b6bfc604cb150376824828af61a0fb129d731ae55988ab6fbcc08d44"
+    },
+    {
+      "path": "main-variants/download_artifacts.py",
+      "kind": "file",
+      "bytes": 2862,
+      "sha256": "72d89a05f801b632f600582014498edfbd58c6d0a3ef0be916de727cc2c8454b"
+    },
+    {
+      "path": "main-variants/downloads.json",
+      "kind": "file",
+      "bytes": 10604,
+      "sha256": "b754bb74b0f5f03ce4035711118a2b9119380fb428f8eef320d9ae327ccae0a7"
+    },
+    {
+      "path": "main-variants/expected-inventory.json",
+      "kind": "file",
+      "bytes": 258915,
+      "sha256": "b28c2fcc03d11c338bdbce7983ff97cade339fb311a4dde688dd76e1d7c94746"
+    },
+    {
+      "path": "main-variants/job-logs/131518435917.json",
+      "kind": "file",
+      "bytes": 24715,
+      "sha256": "3ada2ec94f9e000927eb4c0037c7fee069bc432f900d37d9fd2c16decfa348d5"
+    },
+    {
+      "path": "main-variants/job-logs/131518435917.log",
+      "kind": "file",
+      "bytes": 24180,
+      "sha256": "3190d7fac2f2d1aa2e76877887bc82e84bdb4be27421140fd6986b4f890d71b4"
+    },
+    {
+      "path": "main-variants/job-logs/131520986048.json",
+      "kind": "file",
+      "bytes": 29381,
+      "sha256": "a3574a891d510aee56d8f87df574bff538238626bc2c352d798dbcb92b946f93"
+    },
+    {
+      "path": "main-variants/job-logs/131520986048.log",
+      "kind": "file",
+      "bytes": 28774,
+      "sha256": "636b2d3b54c019ee0566d899cd11d39151bb45f1b6ea511b24754909f3548bfe"
+    },
+    {
+      "path": "main-variants/job-logs/131520986082.json",
+      "kind": "file",
+      "bytes": 29590,
+      "sha256": "fafe3319dc8a981c1692810eb21316a7521eda6d417fc82a79787cb9ffb0fdda"
+    },
+    {
+      "path": "main-variants/job-logs/131520986082.log",
+      "kind": "file",
+      "bytes": 28982,
+      "sha256": "52188adfed23cc9671bdf6a21140c8d385342f828c226d372cbaeb349943488d"
+    },
+    {
+      "path": "main-variants/job-logs/131520986083.json",
+      "kind": "file",
+      "bytes": 29386,
+      "sha256": "20de7b8397a269ac78f90408f61d90574d96279abcac961c54bbf86ab7852fdb"
+    },
+    {
+      "path": "main-variants/job-logs/131520986083.log",
+      "kind": "file",
+      "bytes": 28779,
+      "sha256": "17f4cebf555f8436d15038c9dae71a386a9fc7a7cb648809e74d1e746f66622e"
+    },
+    {
+      "path": "main-variants/job-logs/131520986085.json",
+      "kind": "file",
+      "bytes": 29384,
+      "sha256": "a30972eb1aab5c3b6e6f7e7e5ea7f860fb7ecfb9b08d3da42146a7ee0ec8bfc1"
+    },
+    {
+      "path": "main-variants/job-logs/131520986085.log",
+      "kind": "file",
+      "bytes": 28777,
+      "sha256": "be95b14bd0c250a4ca42d4cb528d0f74c603d01e4ab902ec6a4890cd5d9baa4b"
+    },
+    {
+      "path": "main-variants/job-logs/131520986093.json",
+      "kind": "file",
+      "bytes": 29583,
+      "sha256": "67f7f1d2b097d2c5eb9fda20df3742123898c536077ce8687535a878cf747003"
+    },
+    {
+      "path": "main-variants/job-logs/131520986093.log",
+      "kind": "file",
+      "bytes": 28975,
+      "sha256": "f5d2e5e3d144e7234df0f7f1534db511fb22174ac0e3df4ca1782e2fe4bdc208"
+    },
+    {
+      "path": "main-variants/job-logs/131520986100.json",
+      "kind": "file",
+      "bytes": 29589,
+      "sha256": "07976cbb65e4c2e5fcb255a76abea31375c0f8f3b07151eaa0e73c7c3b8d3dda"
+    },
+    {
+      "path": "main-variants/job-logs/131520986100.log",
+      "kind": "file",
+      "bytes": 28981,
+      "sha256": "3c6cca3f7a4a9c4252cbc9daf94f41630a95605dba3c9a3f919efd31f6af14ba"
+    },
+    {
+      "path": "main-variants/job-logs/131520986103.json",
+      "kind": "file",
+      "bytes": 29382,
+      "sha256": "a2f46072b582ceeac5e236ea6c2847c229c8a4e4ff7a163882f4aeecb4213c59"
+    },
+    {
+      "path": "main-variants/job-logs/131520986103.log",
+      "kind": "file",
+      "bytes": 28775,
+      "sha256": "c41d49526127ae530a04c0b2d66c0bf3433a82cdbbb98c3f5adca1e9209b5ad5"
+    },
+    {
+      "path": "main-variants/job-logs/131520986150.json",
+      "kind": "file",
+      "bytes": 29584,
+      "sha256": "8d3e264993a14a43057535c0c64239c9c822ebcd937cc52fd01efaaa9710015a"
+    },
+    {
+      "path": "main-variants/job-logs/131520986150.log",
+      "kind": "file",
+      "bytes": 28976,
+      "sha256": "0069395d2d0c27be0353672f0884953d888175829c53de8eecd1a68372d6e7ef"
+    },
+    {
+      "path": "main-variants/job-logs/131520986167.json",
+      "kind": "file",
+      "bytes": 29384,
+      "sha256": "4f58fe1089e574bb0f53d511059b6e862f45d0216e250168eda94c77d2ee8d05"
+    },
+    {
+      "path": "main-variants/job-logs/131520986167.log",
+      "kind": "file",
+      "bytes": 28777,
+      "sha256": "a285a423575bb5100a572f78c3c6cabf2af045b9eaf022e076eca9b828a9be91"
+    },
+    {
+      "path": "main-variants/job-logs/131520986188.json",
+      "kind": "file",
+      "bytes": 29407,
+      "sha256": "d89e8af1128a1171500d967654ed77394e2a7697225672a6386ce7540c072b8c"
+    },
+    {
+      "path": "main-variants/job-logs/131520986188.log",
+      "kind": "file",
+      "bytes": 28800,
+      "sha256": "3a71cbfcb7a37533170b4342aaada64857a313578a406ad9f7126c63fe5d1b0d"
+    },
+    {
+      "path": "main-variants/job-logs/131520986192.json",
+      "kind": "file",
+      "bytes": 29380,
+      "sha256": "b761ced3555dc1596ed142b8f078083f2d03ad44a8543f76b6311516f8f26dc3"
+    },
+    {
+      "path": "main-variants/job-logs/131520986192.log",
+      "kind": "file",
+      "bytes": 28773,
+      "sha256": "c5b3d8942a000de025ed680bd98dbbf46c4159b0fcb461d45ea7600666139173"
+    },
+    {
+      "path": "main-variants/job-logs/131520986196.json",
+      "kind": "file",
+      "bytes": 29392,
+      "sha256": "96223dc6b585f9fb9796dbb1529296bbe3803afd94df0e5ecd05db8abf980b94"
+    },
+    {
+      "path": "main-variants/job-logs/131520986196.log",
+      "kind": "file",
+      "bytes": 28785,
+      "sha256": "1ef078193c1410a9c6cfc189edd3da61280e2811fbcfd4e0c21cbf91aa22ef8b"
+    },
+    {
+      "path": "main-variants/job-logs/131520986212.json",
+      "kind": "file",
+      "bytes": 29394,
+      "sha256": "b01bc4d5baaed4dcead7dd6f2a616d9e5cd64e54261addbca764d3953a1d0075"
+    },
+    {
+      "path": "main-variants/job-logs/131520986212.log",
+      "kind": "file",
+      "bytes": 28787,
+      "sha256": "8e7d5f4baaee3416aefd2282c6fb0d05b3fbfdc0a3e61e7eb5b0039a3c01de41"
+    },
+    {
+      "path": "main-variants/job-logs/131520986213.json",
+      "kind": "file",
+      "bytes": 29395,
+      "sha256": "791e557e6477ab81490e8dbd1c1ce265f174017980f64b4212a1f7690b03ed3a"
+    },
+    {
+      "path": "main-variants/job-logs/131520986213.log",
+      "kind": "file",
+      "bytes": 28788,
+      "sha256": "e19c28357c233544f74c7097479bca44695ded6e0f1c3614e3f9d01ad4b9adcf"
+    },
+    {
+      "path": "main-variants/job-logs/131520986214.json",
+      "kind": "file",
+      "bytes": 29405,
+      "sha256": "43bd3d78a887062a4f930725de0213dd5c671747b27f5643e34f306109d87997"
+    },
+    {
+      "path": "main-variants/job-logs/131520986214.log",
+      "kind": "file",
+      "bytes": 28798,
+      "sha256": "1b0bcec766174def6b1b9950ce339163f40f8b796998a0478a41c9a5805dd636"
+    },
+    {
+      "path": "main-variants/job-logs/131520986218.json",
+      "kind": "file",
+      "bytes": 29392,
+      "sha256": "899b9121d59dfcab89740f441623ab4e2651bbafb046aa2309a86a5a7a77ce4c"
+    },
+    {
+      "path": "main-variants/job-logs/131520986218.log",
+      "kind": "file",
+      "bytes": 28785,
+      "sha256": "f6aea3183e2228ade3b0223341845fe1c70794ba4a8eaa613d52700d5454eba2"
+    },
+    {
+      "path": "main-variants/job-logs/131520986237.json",
+      "kind": "file",
+      "bytes": 29399,
+      "sha256": "9363474b5b8446ecc2edd72e1150c7ec42474d9542b193c18abd47fbb48d239c"
+    },
+    {
+      "path": "main-variants/job-logs/131520986237.log",
+      "kind": "file",
+      "bytes": 28792,
+      "sha256": "5f80bfb46fb5fd40303bdba819ddc301a9bb4a4bf7451cef0fd405b771a16e4b"
+    },
+    {
+      "path": "main-variants/job-logs/131520986240.json",
+      "kind": "file",
+      "bytes": 29395,
+      "sha256": "02208d1befdc0bdde048a56122d6640a71e2c844128f6177889160ddb55ade60"
+    },
+    {
+      "path": "main-variants/job-logs/131520986240.log",
+      "kind": "file",
+      "bytes": 28788,
+      "sha256": "6ee9212a3dc32faa457047b2694cb9c5223adaa2dc062911a1ac7820c627a633"
+    },
+    {
+      "path": "main-variants/job-logs/131520986305.json",
+      "kind": "file",
+      "bytes": 29386,
+      "sha256": "7a8a34a12b786ddb1805a9ecd1e7e5d660934364c2bdbfaa2f52f974b17f0744"
+    },
+    {
+      "path": "main-variants/job-logs/131520986305.log",
+      "kind": "file",
+      "bytes": 28779,
+      "sha256": "3fbfbb689ff2b69a49596555dd060af27143d09945f41e3129d24620b45f2d23"
+    },
+    {
+      "path": "main-variants/job-logs/131520986307.json",
+      "kind": "file",
+      "bytes": 29413,
+      "sha256": "e96b7426438cb922c62d0fae2fc45183a75900214647bd5576e59f81c2b2b83e"
+    },
+    {
+      "path": "main-variants/job-logs/131520986307.log",
+      "kind": "file",
+      "bytes": 28806,
+      "sha256": "e2f9920bee5c3acbba0e04216cbc159caac1201f6bd1de041065796e97829650"
+    },
+    {
+      "path": "main-variants/job-logs/131520986344.json",
+      "kind": "file",
+      "bytes": 29380,
+      "sha256": "58669baf7c81b628a6edc5842315f8a0d8a8a889c24fb86de8b465f99135fefb"
+    },
+    {
+      "path": "main-variants/job-logs/131520986344.log",
+      "kind": "file",
+      "bytes": 28773,
+      "sha256": "5b937e4a605f67c89a46312824b077ad44e1d72182e566eb6c3a59babec7faf7"
+    },
+    {
+      "path": "main-variants/job-logs/131520986383.json",
+      "kind": "file",
+      "bytes": 29407,
+      "sha256": "373bbb325b83993c5445cf669ed9f757db722cf11a208503d6546a40ed421d30"
+    },
+    {
+      "path": "main-variants/job-logs/131520986383.log",
+      "kind": "file",
+      "bytes": 28800,
+      "sha256": "48150ef96e34ddf1c94e6a2dac4a554d5ae83f05a6b88fe018dad10a47012888"
+    },
+    {
+      "path": "main-variants/job-logs/131520986424.json",
+      "kind": "file",
+      "bytes": 29394,
+      "sha256": "1900109b158a1fa47ef73e424ab5a479b50e8af09238918cbbcbd383d7b04936"
+    },
+    {
+      "path": "main-variants/job-logs/131520986424.log",
+      "kind": "file",
+      "bytes": 28787,
+      "sha256": "d2ebb4f615f760602ba2aababda34b0129887ce1f157b29e1653329e462ea811"
+    },
+    {
+      "path": "main-variants/job-logs/131520986472.json",
+      "kind": "file",
+      "bytes": 29391,
+      "sha256": "57480e6deade50d044b42890ef03438b83f24e95bcf22eef0f0d62ebeafe0fc0"
+    },
+    {
+      "path": "main-variants/job-logs/131520986472.log",
+      "kind": "file",
+      "bytes": 28784,
+      "sha256": "53c182510ebca097738aa087bb0012d900e3ef44454a0fe7ead9f290ce9ee381"
+    },
+    {
+      "path": "main-variants/job-logs-receipt.json",
+      "kind": "file",
+      "bytes": 4914,
+      "sha256": "5ad79fafdd902470e923d43ba5dcd1897a9fe91efe4fec66781103c8504372d7"
+    },
+    {
+      "path": "main-variants/jobs-final.json",
+      "kind": "file",
+      "bytes": 102032,
+      "sha256": "d85d668ca9a838683c6642c6285dcbd6652af6962e06b6ad0c5b14fed8421614"
+    },
+    {
+      "path": "main-variants/jobs-initial.json",
+      "kind": "file",
+      "bytes": 97467,
+      "sha256": "9cd7c54c5a9491658b15aaad1bcb1070d9663583283bb6be849e892bfae109a0"
+    },
+    {
+      "path": "main-variants/raw/13986594985/opt-6.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815"
+    },
+    {
+      "path": "main-variants/raw/13986674870/opt-5.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815"
+    },
+    {
+      "path": "main-variants/raw/13987024316/bootstrap.log",
+      "kind": "file",
+      "bytes": 123,
+      "sha256": "4cbe1e58dfed2979306be8f4b407b2d63e9583a6e0ca3414546f8de2bc2bd2b3"
+    },
+    {
+      "path": "main-variants/raw/13987024316/manifest.json",
+      "kind": "file",
+      "bytes": 1120,
+      "sha256": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a"
+    },
+    {
+      "path": "main-variants/raw/13987024316/verification.json",
+      "kind": "file",
+      "bytes": 8511,
+      "sha256": "3330783daaa22e62a297737080bf40fb7db011d91dfe85f3ce8efda26dfba49d"
+    },
+    {
+      "path": "main-variants/raw/13987094543/opt-2.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815"
+    },
+    {
+      "path": "main-variants/raw/13987574066/opt-5.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a"
+    },
+    {
+      "path": "main-variants/raw/13987633561/opt-4.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815"
+    },
+    {
+      "path": "main-variants/raw/13987808208/opt-3.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a"
+    },
+    {
+      "path": "main-variants/raw/13987897099/opt-6.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af"
+    },
+    {
+      "path": "main-variants/raw/13988028471/opt-3.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af"
+    },
+    {
+      "path": "main-variants/raw/13988152309/cflags-O0.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af"
+    },
+    {
+      "path": "main-variants/raw/13988152309/opt-1.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af"
+    },
+    {
+      "path": "main-variants/raw/13988336893/opt-4.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a"
+    },
+    {
+      "path": "main-variants/raw/13988412342/cflags-O0.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815"
+    },
+    {
+      "path": "main-variants/raw/13988412342/opt-1.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815"
+    },
+    {
+      "path": "main-variants/raw/13988516388/opt-3.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a"
+    },
+    {
+      "path": "main-variants/raw/13988557229/opt-6.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a"
+    },
+    {
+      "path": "main-variants/raw/13988616411/opt-2.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a"
+    },
+    {
+      "path": "main-variants/raw/13988820721/opt-4.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a"
+    },
+    {
+      "path": "main-variants/raw/13988880676/opt-2.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af"
+    },
+    {
+      "path": "main-variants/raw/13989005328/opt-3.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815"
+    },
+    {
+      "path": "main-variants/raw/13989136184/opt-4.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af"
+    },
+    {
+      "path": "main-variants/raw/13989230141/cflags-O0.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a"
+    },
+    {
+      "path": "main-variants/raw/13989230141/opt-1.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a"
+    },
+    {
+      "path": "main-variants/raw/13989245062/opt-2.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a"
+    },
+    {
+      "path": "main-variants/raw/13989305843/opt-6.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a"
+    },
+    {
+      "path": "main-variants/raw/13989420058/opt-5.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af"
+    },
+    {
+      "path": "main-variants/raw/13989445314/cflags-O0.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a"
+    },
+    {
+      "path": "main-variants/raw/13989445314/opt-1.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a"
+    },
+    {
+      "path": "main-variants/raw/13989605020/opt-5.log",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a"
+    },
+    {
+      "path": "main-variants/run-final.json",
+      "kind": "file",
+      "bytes": 13582,
+      "sha256": "9690ed07e5b50428555994acb3c59de11def9c4aa9d7118b434e0ae57cdcd7e8"
+    },
+    {
+      "path": "main-variants/run-initial.json",
+      "kind": "file",
+      "bytes": 13579,
+      "sha256": "063067f9fe06fd23cc20c268ce03ba42185c6b7c8ce527d2d0a500986020a43e"
+    },
+    {
+      "path": "main-variants/variants-audit.json",
+      "kind": "file",
+      "bytes": 79609,
+      "sha256": "c7edd52cd1c43ad4f5915649a03480f3cbd6ff7163db4dc3976e2f989876fd61"
+    },
+    {
+      "path": "main-variants/zips/13986594985.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "442ef7d9f84b77c9620a4fdf9b14f5a6e2901a40fcfdbc6e81d54c3aec56dc49"
+    },
+    {
+      "path": "main-variants/zips/13986674870.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "9c9e40fb34c3a2ed2e2e8dbe984d554bf665997662cd58a14de7baafdc65fc66"
+    },
+    {
+      "path": "main-variants/zips/13987024316.zip",
+      "kind": "file",
+      "bytes": 8860588,
+      "sha256": "7fcd7970f2b31ef27556944a981e1467ea4a1d9f07219872fc7ff227762c3451"
+    },
+    {
+      "path": "main-variants/zips/13987094543.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "e2127b097816a36d30665a303c01c1e5a11ba503faeb312ce03de8590f136fc9"
+    },
+    {
+      "path": "main-variants/zips/13987574066.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "5eded9b14cb12dc0609169353c54921f9cfb16f6ba7ea95f7eee16b8bfdf2a72"
+    },
+    {
+      "path": "main-variants/zips/13987633561.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "47c88a6308dc23aec72e790498b2a80924d25c737a20bc017cc436a0c8da8c11"
+    },
+    {
+      "path": "main-variants/zips/13987808208.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "27852e56da299f40d9ea17750870df13bb50ba04a65c8ea584ab851cae5e6c6c"
+    },
+    {
+      "path": "main-variants/zips/13987897099.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "f71b2de0c87506a36bb7f095ddd9e11ff4cfce2f4a613e3a64a656aea6a1b1d9"
+    },
+    {
+      "path": "main-variants/zips/13988028471.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "758a99f0d901862eddcb35b167a7b39270617fda106befce7cba893dce362db4"
+    },
+    {
+      "path": "main-variants/zips/13988152309.zip",
+      "kind": "file",
+      "bytes": 338,
+      "sha256": "c31ce3e814b82f9de1f36e41c243b25e419fffcf009b712b5ce43aa3a4caf68e"
+    },
+    {
+      "path": "main-variants/zips/13988336893.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "c09b314e3de0bf6fd518a22a1f290fd67c8c7a94f3477190af61a053d61fc4f1"
+    },
+    {
+      "path": "main-variants/zips/13988412342.zip",
+      "kind": "file",
+      "bytes": 338,
+      "sha256": "af57686e25e9a9597a53f3482cb50d8cce340055eee90c5014aad3b329bab713"
+    },
+    {
+      "path": "main-variants/zips/13988516388.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "4325bf887ee24ad68448991d45d0e6e8eaaaf9ff54fb402b470599871de8c664"
+    },
+    {
+      "path": "main-variants/zips/13988557229.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "ff861674013bfed38a4aa94771299ee0007f50c3a6631fd33c4cbe587675eef7"
+    },
+    {
+      "path": "main-variants/zips/13988616411.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "4544740f775ddeb042e75958288d454c6da8f1813234f8a2ad5981b9c8aead75"
+    },
+    {
+      "path": "main-variants/zips/13988820721.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "c4cfaca4f6b9624d8824be8ce17389fcce226056016334e9d205797b9fc9ce4a"
+    },
+    {
+      "path": "main-variants/zips/13988880676.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "81457eb4d915f70f08714f52481e2ebbe2e9630c657015fc8dcbfbe437a5d9cf"
+    },
+    {
+      "path": "main-variants/zips/13989005328.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "ca7543ea9125d761a5e31942461e6a0d57a2d2e93dfe6d45cbaa25a369f9ccdf"
+    },
+    {
+      "path": "main-variants/zips/13989136184.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "f08aa094f7e1d3f5b93dc48a65a60817ea632407356798a5479809cd6ff8eac4"
+    },
+    {
+      "path": "main-variants/zips/13989230141.zip",
+      "kind": "file",
+      "bytes": 338,
+      "sha256": "c247f6d8e45f88eb58987f39fc798beb52d2e558f902df7d5388103e9308339e"
+    },
+    {
+      "path": "main-variants/zips/13989245062.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "a0a6cd145e252055ba1f4b5ed7b0da9c861169bd54d594b57f07f297533f9703"
+    },
+    {
+      "path": "main-variants/zips/13989305843.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "c47e57fd4eacf750581756e27a6edc89594446b308a8899427ee9bdb983c7d4a"
+    },
+    {
+      "path": "main-variants/zips/13989420058.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "cd9180f1fa43d4b903bf69e8e9d2c7e7dd6c8fa77d60c0d1f6eb3273df37e236"
+    },
+    {
+      "path": "main-variants/zips/13989445314.zip",
+      "kind": "file",
+      "bytes": 338,
+      "sha256": "43a01667c23b50853b0321f6f94affaa78df73a4c36223bf426b91a9dee28eba"
+    },
+    {
+      "path": "main-variants/zips/13989605020.zip",
+      "kind": "file",
+      "bytes": 176,
+      "sha256": "7bce241c38ba8ec5b0e79a8dbcae161888924673c65c7bbe2b275badd21e8f67"
+    },
+    {
+      "path": "methods-preparation.json",
+      "kind": "file",
+      "bytes": 4377,
+      "sha256": "78547b0e11526b43b34c1dff393d3761641dd6761e0d97da7f6ac3e4f7bc4f62"
+    },
+    {
+      "path": "native-artifacts-initial.json",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "f7417e1fb877d3f5934f143cc38ad9e2905476e8f5ac6776507d09441efcd6f6"
+    },
+    {
+      "path": "native-downloads.json",
+      "kind": "file",
+      "bytes": 4474,
+      "sha256": "2b52ca09ec2092c9cb33c5fadf74a3278cc7d8c8d620538c575a32ddb6988bb7"
+    },
+    {
+      "path": "native-final-jobs.json",
+      "kind": "file",
+      "bytes": 36058,
+      "sha256": "abb52aab845f1d9495cbba951320690594e03a8d321c7f26e46a0f5038330fa3"
+    },
+    {
+      "path": "native-job-logs/131543984577.json",
+      "kind": "file",
+      "bytes": 66064,
+      "sha256": "8242f85a1e02822acc8a440c267d9c44e0a5cab2048ead14e68e6df5e8360b74"
+    },
+    {
+      "path": "native-job-logs/131543984577.log",
+      "kind": "file",
+      "bytes": 65004,
+      "sha256": "e0ba4d83a7339f0d84eb7b15d6628cd01dd2895e818fa126e828d4ba6d8a7e49"
+    },
+    {
+      "path": "native-job-logs/131544103799.json",
+      "kind": "file",
+      "bytes": 38192,
+      "sha256": "305b27b744f729dd7bff5cd86ffbda691c981406807dbf334a3d04f20c866229"
+    },
+    {
+      "path": "native-job-logs/131544103799.log",
+      "kind": "file",
+      "bytes": 37290,
+      "sha256": "bb878068c36c2652e459e36688b96ca4fee13cfd6f890887ea042eacf9ad753a"
+    },
+    {
+      "path": "native-job-logs/131544103833.json",
+      "kind": "file",
+      "bytes": 39633,
+      "sha256": "da354e59ed1f756af8bf1e97658c95f975cbcbd629801c1045cfaaed2ba156c6"
+    },
+    {
+      "path": "native-job-logs/131544103833.log",
+      "kind": "file",
+      "bytes": 38801,
+      "sha256": "17f19abd43a434d3fbbfdc2bc9894695589cc9a2df47a3d8c296b7224ac0b9ac"
+    },
+    {
+      "path": "native-job-logs/131544103883.json",
+      "kind": "file",
+      "bytes": 37643,
+      "sha256": "7c8b5682fa31b8d4ed4fd4f114b68aac7c2cbc7e89065a99a6d1dae9aff91faf"
+    },
+    {
+      "path": "native-job-logs/131544103883.log",
+      "kind": "file",
+      "bytes": 36867,
+      "sha256": "288bcf74828d92cb4e203e66945a35161d66283396a09441e235b82ffdb7f0dc"
+    },
+    {
+      "path": "native-job-logs/131544103923.json",
+      "kind": "file",
+      "bytes": 37749,
+      "sha256": "c52845a50f1dbc3a1db1149d4c72c3c7069b73e6d05c9c3e9485a606e4795166"
+    },
+    {
+      "path": "native-job-logs/131544103923.log",
+      "kind": "file",
+      "bytes": 36862,
+      "sha256": "8a8dfd8001f119ae073ebf616a599a45a662009c9c27c991e0795de8a83df550"
+    },
+    {
+      "path": "native-job-logs/131549081172.json",
+      "kind": "file",
+      "bytes": 97529,
+      "sha256": "addfa09d81a6d8a8bf2e8de1e8e473ab5830016cbcbe398ee7f71eafee0bdec4"
+    },
+    {
+      "path": "native-job-logs/131549081172.log",
+      "kind": "file",
+      "bytes": 95641,
+      "sha256": "a4ccd4aec7029482a051f3d9ea1e7ceaf9c942d39babb3b6e0e2d7ae0ec925ad"
+    },
+    {
+      "path": "native-job-logs/131549081224.json",
+      "kind": "file",
+      "bytes": 97991,
+      "sha256": "6e3cf69f9434f72fd1904d3ae162b324f64cf0f62cb9e6c573db60d025fb2a64"
+    },
+    {
+      "path": "native-job-logs/131549081224.log",
+      "kind": "file",
+      "bytes": 96095,
+      "sha256": "1f7752fc47dc6c96d3747b039c9e307a36036b281028c4e4f16dcb8b25267ec8"
+    },
+    {
+      "path": "native-job-logs/131550515565.json",
+      "kind": "file",
+      "bytes": 49765,
+      "sha256": "b217b289fdbcdf7571d06785cfccb98d50eb147defdb093f3f5243731869a375"
+    },
+    {
+      "path": "native-job-logs/131550515565.log",
+      "kind": "file",
+      "bytes": 48428,
+      "sha256": "50cfeb6f715f5fb69a27f564857f0244490238a88375f12f9c239858b5852c10"
+    },
+    {
+      "path": "native-jobs-initial.json",
+      "kind": "file",
+      "bytes": 18752,
+      "sha256": "86c6ef3bed85d330a814dd63791fd9a8c6e02d5cab024ab92d5fcd1dda2e1fc5"
+    },
+    {
+      "path": "native-publication-ready.json",
+      "kind": "file",
+      "bytes": 2319,
+      "sha256": "f4188bc4d336b312b3779667188f24c699a1ed972a95e548ae8da58c1168d337"
+    },
+    {
+      "path": "native-readback.log",
+      "kind": "file",
+      "bytes": 5570,
+      "sha256": "e1a9127955b544b537b33cc142a9c2a8e6da5224bf367134d8e10b7c5f195bcb"
+    },
+    {
+      "path": "native-report.json",
+      "kind": "file",
+      "bytes": 5570,
+      "sha256": "e1a9127955b544b537b33cc142a9c2a8e6da5224bf367134d8e10b7c5f195bcb"
+    },
+    {
+      "path": "native-run-initial.json",
+      "kind": "file",
+      "bytes": 13551,
+      "sha256": "98f84355275603da2d0ed45cebb61105f8365a22b19d45809e476777ce32a663"
+    },
+    {
+      "path": "native-run.json",
+      "kind": "file",
+      "bytes": 13554,
+      "sha256": "51af7eb421aeed6c1f61b8dde0911f37ac655f60a8daeac5f55efd3030b7cfcd"
+    },
+    {
+      "path": "native-tag.json",
+      "kind": "file",
+      "bytes": 395,
+      "sha256": "b144725660fa95344ebe5bc023048abbc7be88713956d5c2090be17987615cc0"
+    },
+    {
+      "path": "native-workflow-report.json",
+      "kind": "file",
+      "bytes": 27110,
+      "sha256": "ea6c5cdcee743d2213239f1beb6a5bfb930e23c51d4707869923fc7bd198d7ea"
+    },
+    {
+      "path": "public/SHA256SUMS",
+      "kind": "file",
+      "bytes": 436,
+      "sha256": "1af7a107a9a7521fb226c27cb3ea2e9f072a1f32e5e3277f67f2446ffdde3590"
+    },
+    {
+      "path": "public/linux-abi-linux-aarch64.json",
+      "kind": "file",
+      "bytes": 1368,
+      "sha256": "9362bda9b220e2f8e6358b582410f412b20299c322490dde5ad03fd8677f2685"
+    },
+    {
+      "path": "public/linux-abi-linux-x86_64.json",
+      "kind": "file",
+      "bytes": 1463,
+      "sha256": "7c6cbf8fc73500bd4628421ce792e7a6e6ea1cd1ba588309621521b606639cbc"
+    },
+    {
+      "path": "public/pystachy-v0.4.0-rc.1-linux-aarch64.tar.gz",
+      "kind": "file",
+      "bytes": 3591900,
+      "sha256": "317548ed82cb423f9c25cc7b25856eb8976d32bde15d49f3b8ab24461dd7fb9f"
+    },
+    {
+      "path": "public/pystachy-v0.4.0-rc.1-linux-aarch64.tar.gz.sha256",
+      "kind": "file",
+      "bytes": 108,
+      "sha256": "2cb0ba9dc436cae80144890b05bc149828c8f372ec75c9665bad497a257b82b7"
+    },
+    {
+      "path": "public/pystachy-v0.4.0-rc.1-linux-x86_64.tar.gz",
+      "kind": "file",
+      "bytes": 3907248,
+      "sha256": "3947b5b9b48ba62cb75c84c8cbae4067302e1a7565e52002c4f9d6554931600e"
+    },
+    {
+      "path": "public/pystachy-v0.4.0-rc.1-linux-x86_64.tar.gz.sha256",
+      "kind": "file",
+      "bytes": 107,
+      "sha256": "9c4aa1c8c4c54d6395632ec06f2c0e88457853b58f895434b8eea37494ad6241"
+    },
+    {
+      "path": "public/pystachy-v0.4.0-rc.1-macos-arm64.tar.gz",
+      "kind": "file",
+      "bytes": 3556939,
+      "sha256": "aa619e6e10cb65301160fe68af41b6f2aa230ffe08038d4b7b975d5700c76342"
+    },
+    {
+      "path": "public/pystachy-v0.4.0-rc.1-macos-arm64.tar.gz.sha256",
+      "kind": "file",
+      "bytes": 106,
+      "sha256": "9f4537b7937321bf9e17f7d28eb0c92b153902ca2d37d325318cd088e892e6f3"
+    },
+    {
+      "path": "public/pystachy-v0.4.0-rc.1-macos-x86_64.tar.gz",
+      "kind": "file",
+      "bytes": 3864735,
+      "sha256": "17368892b484107d4f9550479294d49bf2a79e6bf9a527b807bc425541289a73"
+    },
+    {
+      "path": "public/pystachy-v0.4.0-rc.1-macos-x86_64.tar.gz.sha256",
+      "kind": "file",
+      "bytes": 107,
+      "sha256": "92063ce8d092cb09a7dc2bc70a5aa8b9a60fd884eccc8732e6cc3e218d29d5fb"
+    },
+    {
+      "path": "pypi-approved_ref-initial.json",
+      "kind": "file",
+      "bytes": 425,
+      "sha256": "f010147ce8dc63a0cb9f79eb49dab10d8b827a9fd7aad1100895426138c2f1a4"
+    },
+    {
+      "path": "pypi-artifacts-initial.json",
+      "kind": "file",
+      "bytes": 42,
+      "sha256": "f7417e1fb877d3f5934f143cc38ad9e2905476e8f5ac6776507d09441efcd6f6"
+    },
+    {
+      "path": "pypi-artifacts.json",
+      "kind": "file",
+      "bytes": 903,
+      "sha256": "7f997cb3f9b38fd0ed7a831eecf5c395ae1ff676afff80b6abc28b02116306e8"
+    },
+    {
+      "path": "pypi-downloads.json",
+      "kind": "file",
+      "bytes": 884,
+      "sha256": "e032e94c9d98574713111100489d55d3a784dc0e8df2a871c1329f588463cb53"
+    },
+    {
+      "path": "pypi-final-jobs.json",
+      "kind": "file",
+      "bytes": 12674,
+      "sha256": "c2ff4a5f80252e9573527b70c20a637edec2389845523f71842d2e7255450530"
+    },
+    {
+      "path": "pypi-job-logs/131553667966.json",
+      "kind": "file",
+      "bytes": 182117,
+      "sha256": "dde5a083103b3595d4ef1558b6abcea244f9719c7183c9cfa4d952f4c7a5b6bb"
+    },
+    {
+      "path": "pypi-job-logs/131553667966.log",
+      "kind": "file",
+      "bytes": 179803,
+      "sha256": "86e916f1c662b0b493ceb37ec80530733d631cbe8b2da80ba48a06aaca73435b"
+    },
+    {
+      "path": "pypi-job-logs/131554422676.json",
+      "kind": "file",
+      "bytes": 48477,
+      "sha256": "27d42d79318d8a667b48a87407332d51d45e0c61b86e719c77af0cd01337e910"
+    },
+    {
+      "path": "pypi-job-logs/131554422676.log",
+      "kind": "file",
+      "bytes": 47547,
+      "sha256": "d9ac0a2f27c6a9e4f3e8169030b91d069a2b003cd5483df2950fb930a2c4cd4d"
+    },
+    {
+      "path": "pypi-jobs-initial.json",
+      "kind": "file",
+      "bytes": 9432,
+      "sha256": "00e7cfa6cd96b76e859d5398def709d74b9095ba0c58160148189d879e0825d3"
+    },
+    {
+      "path": "pypi-public-dist/pystachy-0.4.0rc1-py3-none-any.whl",
+      "kind": "file",
+      "bytes": 1906914,
+      "sha256": "be8f2c8945db9cd92c39cbb5547c93871541fef56000526b7b55a5fd0bd65efd"
+    },
+    {
+      "path": "pypi-public-dist/pystachy-0.4.0rc1.tar.gz",
+      "kind": "file",
+      "bytes": 1835243,
+      "sha256": "8ed3a699938cef8c740c9db854481ec754a1be4dc33029f67e85855dda7b0880"
+    },
+    {
+      "path": "pypi-public-install-evidence.json",
+      "kind": "file",
+      "bytes": 1689,
+      "sha256": "8df6ef50a05f14383ade53f5ba1485c4ff939343d29aac98bf902f203c1efefb"
+    },
+    {
+      "path": "pypi-public-install.log",
+      "kind": "file",
+      "bytes": 1019,
+      "sha256": "be7bbe6a4f8b92f70df16ec004695bd888b2060ce7cc4d2c525cd866c2d75421"
+    },
+    {
+      "path": "pypi-public.json",
+      "kind": "file",
+      "bytes": 16465,
+      "sha256": "d93ce948194234f0bcea4800e0da7abc507bb1b4ff3d9e94c88d6bdae8f72d15"
+    },
+    {
+      "path": "pypi-readback.log",
+      "kind": "file",
+      "bytes": 1186,
+      "sha256": "6b99f08df43cee980f43f7a3e3573dc2a52f8492688cbe4dd55a6e659c9923ee"
+    },
+    {
+      "path": "pypi-report.json",
+      "kind": "file",
+      "bytes": 1186,
+      "sha256": "6b99f08df43cee980f43f7a3e3573dc2a52f8492688cbe4dd55a6e659c9923ee"
+    },
+    {
+      "path": "pypi-run-initial.json",
+      "kind": "file",
+      "bytes": 13521,
+      "sha256": "905912c60fb610a88b44abd18084541591cf1ee1e08376e4174ce0dfb31f2787"
+    },
+    {
+      "path": "pypi-run.json",
+      "kind": "file",
+      "bytes": 13524,
+      "sha256": "cdfc459062cca9634a9ed813a57dbabb43c10a8b5019c43c964381b617071356"
+    },
+    {
+      "path": "pypi-workflow-report.json",
+      "kind": "file",
+      "bytes": 8549,
+      "sha256": "d80e14e3383cb2111843e4fbfde612fb49e0409ec36be90dd4fa8c94e3541544"
+    },
+    {
+      "path": "registry-public-read.log",
+      "kind": "file",
+      "bytes": 6128,
+      "sha256": "1514df92d6f56ffa2fc1234c7181af3d91e87d0ff3c412066a4acbb40aa544d2"
+    },
+    {
+      "path": "registry-stable-after-pypi-read.log",
+      "kind": "file",
+      "bytes": 6113,
+      "sha256": "82c5d72bf8af96754ebf2b8dd2002eb5dc85f19c0ee27f0db6da52c00b62ec2e"
+    },
+    {
+      "path": "registry-stable-after-read.log",
+      "kind": "file",
+      "bytes": 6113,
+      "sha256": "82c5d72bf8af96754ebf2b8dd2002eb5dc85f19c0ee27f0db6da52c00b62ec2e"
+    },
+    {
+      "path": "registry_read.py",
+      "kind": "file",
+      "bytes": 3459,
+      "sha256": "e230b7d05b24502d51155891d305ff5d5da605d99f5adb93b4db41f97ef89900"
+    },
+    {
+      "path": "release.json",
+      "kind": "file",
+      "bytes": 30183,
+      "sha256": "b67d73f958f72c4324346fbc66e90c1eed614ad47c1954aa7a6c9e97aa2a669b"
+    },
+    {
+      "path": "retain_artifacts.py",
+      "kind": "file",
+      "bytes": 3169,
+      "sha256": "bb487c566a85cf8966bc0e4565a930d94325bbc6e388f8fd93d6d5dc8d06ec93"
+    },
+    {
+      "path": "run-binding.json",
+      "kind": "file",
+      "bytes": 648,
+      "sha256": "ab2620c83de103eac214fbcb1fea5add4050f4095beaf6f2ca51f97487ba7b39"
+    },
+    {
+      "path": "source-commit.json",
+      "kind": "file",
+      "bytes": 2929,
+      "sha256": "8b0a6728ed0060f2af781e3a30567417da635b0da36eebbb4fc00702dfb3a3b8"
+    },
+    {
+      "path": "stable-aliases-after-pypi-report.json",
+      "kind": "file",
+      "bytes": 6989,
+      "sha256": "24ffdd4e5aaec5f17c44319e1631aa7e689da501cc3ea0303ba11ccb6e595f3a"
+    },
+    {
+      "path": "stable-aliases-report.json",
+      "kind": "file",
+      "bytes": 6958,
+      "sha256": "1d938fcc62ea2e87cdcc26f84f69d5ad39c7f6b3c3bfca85fa24aa23e5770efb"
+    },
+    {
+      "path": "stable-before-receipt.json",
+      "kind": "file",
+      "bytes": 2096,
+      "sha256": "87d0f03b460fc9c5af54ca046c8e985d76e245358b1e5835feba65ed4b219808"
+    },
+    {
+      "path": "tested-images/pystachy-image-amd64.tar.gz",
+      "kind": "file",
+      "bytes": 199992908,
+      "sha256": "e760a7ea352b281137537aa2d4117b85ea476853fce8e281e393db3b6926378a"
+    },
+    {
+      "path": "tested-images/pystachy-image-arm64.tar.gz",
+      "kind": "file",
+      "bytes": 194322713,
+      "sha256": "f755a330d95a69098872a6bc44976780fe9553a19cc0967ae7b4548110a687ae"
+    },
+    {
+      "path": "tested-zips/binary-linux-aarch64.zip",
+      "kind": "file",
+      "bytes": 3581609,
+      "sha256": "b75259e9da198d8379ca2fc17fc46c63366ebc062ae4c0018a2e71d26e637216"
+    },
+    {
+      "path": "tested-zips/binary-linux-x86_64.zip",
+      "kind": "file",
+      "bytes": 3896893,
+      "sha256": "084e2bc56369c9f2ddace01569253ce0ed4867f34811d375f5e203feac01f250"
+    },
+    {
+      "path": "tested-zips/binary-macos-arm64.zip",
+      "kind": "file",
+      "bytes": 3546053,
+      "sha256": "91f407ea2247c1bf730febb73c04a9bee44b12255c21a3939ec671525be3d378"
+    },
+    {
+      "path": "tested-zips/binary-macos-x86_64.zip",
+      "kind": "file",
+      "bytes": 3854572,
+      "sha256": "a8ea6914255ebb861b113c3652fcec0a99ea47f080248a7f7838052b8b4c7229"
+    },
+    {
+      "path": "tested-zips/container-linux-amd64.zip",
+      "kind": "file",
+      "bytes": 197732940,
+      "sha256": "4a42e467b1a9d6041562c3757729239219016eaa958f0682cc49ca030e7ad91a"
+    },
+    {
+      "path": "tested-zips/container-linux-arm64.zip",
+      "kind": "file",
+      "bytes": 191905858,
+      "sha256": "ae97200034119ca857921fc54acdb03fea000c400f0f59c8ba2b0bf9736935cc"
+    },
+    {
+      "path": "tested-zips/pypi-0.4.0rc1.zip",
+      "kind": "file",
+      "bytes": 3714612,
+      "sha256": "23f73569f80107984fdffb05b8bd3cb40aa49da779e87260b27ca454321306b3"
+    },
+    {
+      "path": "verify_aliases.py",
+      "kind": "file",
+      "bytes": 2989,
+      "sha256": "0f6b1506ab4a5bef42d9bdc7ea446e07931d08125112708dea6c10593969d453"
+    },
+    {
+      "path": "verify_docker.py",
+      "kind": "file",
+      "bytes": 7148,
+      "sha256": "ff7fe12265e02fde8eb6bbc0966d5e123a95190cb55ff37042efbbc7f0b0642c"
+    },
+    {
+      "path": "verify_install.py",
+      "kind": "file",
+      "bytes": 4280,
+      "sha256": "96a98affad5a4d3df87cda5db4da6b262123dd0adb62befa20b481a89ec45443"
+    },
+    {
+      "path": "verify_native.py",
+      "kind": "file",
+      "bytes": 7321,
+      "sha256": "244d4443f29649db6889b29a65bf37a2f7e5a4853d5dbe49560dd90f27503963"
+    },
+    {
+      "path": "verify_pypi.py",
+      "kind": "file",
+      "bytes": 4900,
+      "sha256": "fbe3bd2614b77ba61118b223541c105d61583df26e7ba19889283af8fbb495a0"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "qualified_local": "395227b75bb777401627c0296a18fe71388070e7",
+  "integrated_local": "e1ce4280aa94d918b059b5024ba9e9b94c1efa9c",
+  "unchanged_objects": {
+    "src": "c489a0a73285315c2b1242011da11c25ac07917d",
+    "lib": "f9bac1cc6191e8c26679b9a4469af0da921b1d4e",
+    "runtime.c": "a7b5e190443cfbe26057a9daa7e83c68fd441946",
+    "runtime.py": "ec44c04542fcf603ad443bc9d930bc3d8bf04cda",
+    "pystachy.py": "e58146c8f62316ebcd77e46d1d3c21ce8f7fa122",
+    "Makefile": "d9c0cb67ad0bd77112d199f0918acf41df95746f",
+    ".python-version": "d5404088880ebb4fbb9834be634555d4a3ae4f2a",
+    "tests/programs": "61a2f639237f2cc2fd2e05f89f2af26b1fecb2b0",
+    "tests/errors": "36eb63edce9a25d12f915bb76c5ed338b2a04608",
+    "tests/deviations": "ee611b3747f42fdf16a40543227930460e3128a3",
+    "tests/ir": "6a92dad00ffef0a21e176b050eb1485592910a70",
+    "tools/verification_bootstrap.py": "8e14ce355027d0e7ee569525c0757ddcc06780bb"
+  },
+  "changed_files": [
+    ".github/workflows/ci.yml",
+    "VERSION",
+    "docs/releases/v0.4.0-rc.2.md",
+    "docs/testing.md",
+    "tests/verify.sh",
+    "tools/test_merge_verification.py",
+    "tools/test_verify_shards.py",
+    "tools/test_workflow_limits.py",
+    "tools/test_lean_boundary_workflow.py"
+  ]
+}

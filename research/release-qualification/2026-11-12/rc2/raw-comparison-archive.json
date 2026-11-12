@@ -1,0 +1,17 @@
+{
+  "source_comparison": {
+    "baseline": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+    "candidate": "395227b75bb777401627c0296a18fe71388070e7",
+    "cases": 4481,
+    "raw_difference_cases": 339,
+    "unaccounted_cases": 0
+  },
+  "archive": {
+    "file_name": "pystachy-rc2-raw-compiler-comparison.tar.gz",
+    "bytes": 221507656,
+    "sha256": "f287ffff4cfbea24a113f2659f18c34c207f8501c67d5f6358569a9a30b55b65",
+    "files": 28300,
+    "contents": "Complete ir-comparison directory, preserving raw old/new IR gzip streams, diagnostics, compiler records, input inventory and summary."
+  },
+  "preservation": "The complete archive was saved as a persistent task deliverable; compact public qualification evidence is retained separately on the repository research branch."
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-12T23:01:33Z",
+  "main_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "inspected_equivalent_local": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+  "location": "src/pystachy_compiler/declarations.py:2898-2899",
+  "condition": "x.ftypes[name] != p.t in exception subclass class-default fallback",
+  "finding": "No retained external negative control was found that executes this incompatible-type diagnostic; keep it disclosed as a narrow diagnostic-branch coverage gap.",
+  "evidence_reviewed": [
+    "rc-fix-review/handoff.json",
+    "rc-fix-review/negative-boundary-results.json",
+    "rc-fix-review/run_negative_and_boundary.py",
+    "rc-fix-review/retained-exception-review.json",
+    "rc-safety-review-evidence/review-hosted.json",
+    "repository tests/errors expected diagnostics"
+  ],
+  "distinction": "The retained before-fix negative controls expose wrong outputs/crashes for same-type shadowed defaults. The existing base/descendant class-default override rejection is a different earlier boundary; neither establishes coverage of this new diagnostic.",
+  "valid_path_scope": "Retained probes cover same-type mutable defaults, inherited and base-typed reads/writes, assignment flags, identity boxes and promoting integers.",
+  "actions": "No new tests, builds or source changes performed solely for coverage.",
+  "limit": "No claim that the branch is unreachable, and no newly demonstrated runtime correctness defect from absence of a coverage hit."
+}

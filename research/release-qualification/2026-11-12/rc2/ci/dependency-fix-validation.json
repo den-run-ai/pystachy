@@ -1,0 +1,49 @@
+{
+  "cwd": "/workspace/scratch/2cf34574fa6e/rc-ci-pr-scaling",
+  "python": "Python 3.13.16",
+  "commands": [
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python",
+        "tools/test_lean_boundary_workflow.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.1124228179996862,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc2-candidate-ci/dependency-fix-test-1.log",
+      "log_sha256": "d569a442690fb5e7f47b7d30e32903443185d3eb9653acba4fe4931b6d7fa236"
+    },
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python",
+        "tools/test_workflow_limits.py"
+      ],
+      "exit_code": 0,
+      "seconds": 1.2244974059995002,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc2-candidate-ci/dependency-fix-test-2.log",
+      "log_sha256": "12a6dce48f207073b1b023f06fcc25422ff1e2efe1c7e3e38fbb1043334d7c75"
+    },
+    {
+      "command": [
+        "/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/ruff",
+        "check",
+        "tools/test_lean_boundary_workflow.py",
+        "tools/test_workflow_limits.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.025497081000139588,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc2-candidate-ci/dependency-fix-test-3.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.011236119999011862,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc2-candidate-ci/dependency-fix-test-4.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

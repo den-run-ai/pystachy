@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-12 22:43:34 UTC",
+  "source_commit": "036bb27eb7dfc453ceec03e522cb3305b9b5c5b4",
+  "docs_correction_commit": "3e32c910cea293eec5bcf7cc487be232c2e0fbdd",
+  "result": "No remaining findings. The two-cell documentation mismatch identified during review is corrected in the separate docs-only commit.",
+  "review_scope": "Read-only source, plan, coverage, budget and failure-propagation review; no native workload timing.",
+  "worktree_clean": true,
+  "plan": {
+    "pr_rows": 19,
+    "changed_pr_groups": [
+      "native-aot-3",
+      "benchmarks"
+    ],
+    "moved_step": "scaling-1",
+    "new_owner": "native-aot-3",
+    "all_pr_steps_unchanged": true,
+    "each_nonbootstrap_step_exactly_once": true,
+    "full_plan_byte_identical": true,
+    "full_plan_sha256": "9b8130a9a995b5f02522cc7a03de86ddf8eb81b4d4466dd1b88ef9612378cc9f"
+  },
+  "tests": {
+    "python": "3.13.16",
+    "merge_verification": {
+      "passed": 39,
+      "seconds": 59.743
+    },
+    "workflow_limits": {
+      "passed": 26,
+      "seconds": 1.135
+    },
+    "real_shell_shards": {
+      "passed": 7,
+      "seconds": 44.056
+    }
+  },
+  "checks": [
+    "Moved only PR plan ownership; full-profile code, workflows, scaling implementation and report gate are unchanged.",
+    "The native AOT step precedes scaling-1 in the real shell plan and retains its stage-2 compiler and complete quarter of the corpus.",
+    "Real-shell failure injection verifies a passing AOT step followed by failed scaling produces a failed step, failed report and nonzero command status.",
+    "Merge tests reject missing or duplicated scaling steps even with plausible passing summaries, and reject overlapping scaling shapes.",
+    "PR native coverage traverses named native steps rather than assuming the native step is last, so the additional step preserves exact case-by-mode coverage.",
+    "Both modified test suites are registered in Lint via the existing test_*verif*.py controls; workflow limits run separately.",
+    "The documentation correction changes only the Native AOT and Benchmarks coverage cells to match the plan."
+  ],
+  "limitation": "Hosted CI on the final RC.2 tree remains required; source and mocked harness tests do not guarantee real job duration or release qualification."
+}

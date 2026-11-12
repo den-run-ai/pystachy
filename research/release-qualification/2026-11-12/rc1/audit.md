@@ -1,5 +1,7 @@
 # RC.1 qualification and publication
 
+**RC.1 is published and publicly verified.** GitHub release `443602854`, Docker tag `dta67/pystachy:v0.4.0-rc.1` and PyPI package `0.4.0rc1` all identify the qualified source. The broader stable-release headroom and scaling requirements remain open.
+
 Candidate: `886ed9153e954b387f2afd39578a21168771ae6e`, tree `64f1fb7295efd25401052d61a22823681e5669ab`. Baseline: `0b13a2121014d8256954c6af50339ff0de8dac62`. The local integrated commit `7c75948747090c7d6a0a0bf76f9aecee8de90a15` has the identical candidate tree.
 
 Source integration, independent review and evidence adjudication used ChatGPT. [PR #1389](https://github.com/den-run-ai/pystachy/pull/1389) tracks the current candidate, required reviews and remaining release qualification.
@@ -59,7 +61,26 @@ The longest exact-main worker took 749 seconds on znver3, exceeding the separate
 
 The stated acceptance criteria for #1333, #1358 and #1300 are met on merged main; all three issues are closed with source-specific evidence. [The gate and closure receipt](main-gate-and-closure-receipt.json) records this boundary. #1178, #1179 and #1181 remain open until their repeated-run headroom and GC scaling criteria are met.
 
-Native and Docker publication started in [Release run 43321775172](https://github.com/den-run-ai/pystachy/actions/runs/43321775172), from the same exact main commit with tag `v0.4.0-rc.1` and PyPI disabled. Publication and tested-versus-public archive, Docker and PyPI verification remain pending at this checkpoint.
+The supplemental Coverage run passed all 23 jobs and validated the retained hosted/native reports against the exact clean source. Changed executable code has 80/81 statements and 52/54 branches exercised. The unexecuted exception-shadow incompatible-type diagnostic is a disclosed narrow coverage gap; no retained rejection case exercises it. The other uncovered branch disables listguard and is exercised by the separately passing Lint metadata controls. Coverage is advisory and these observations are not new runtime failures. The [Coverage receipt](main-ci/coverage-qualification.json) preserves counts and limitations.
+
+## Publication and public verification
+
+Native and Docker publication passed in [Release run 43321775172](https://github.com/den-run-ai/pystachy/actions/runs/43321775172), attempt 1, from the exact merged-main commit: eight successful jobs and two expected PyPI skips. [GitHub release v0.4.0-rc.1](https://github.com/den-run-ai/pystachy/releases/tag/v0.4.0-rc.1) is a public prerelease, and its tag points to `30822255ee7ee704e0e780e01cd8c23357ba13ab`.
+
+The approved [PyPI workflow run 43324568308](https://github.com/den-run-ai/pystachy/actions/runs/43324568308) also passed on attempt 1, with two successful jobs and four expected native/Docker skips. Its workflow ref remains `release/pypi-v0.2.0` at `6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf`; `SOURCE.json` separately binds package `0.4.0rc1` to release source `30822255`. Publishing permissions and environment restrictions were unchanged.
+
+All 11 public native assets were verified against tested outputs, including the four archive payload manifests, each containing 117 files with exact source/version/target identity. The downloaded Linux x86-64 archive reports its source and version without LLVM available. Both public Docker configurations equal the tested saved-image configurations. All 14 public layer blobs were completely read and hashed, and their decoded contents match the tested image layers. The public multiarchitecture index is `sha256:d77a0be567b12cc5539bc1d57a43d1662785d59b4db6b6e196b123dcc6ff5345`.
+
+The public PyPI wheel and source distribution match their tested publishing artifact byte for byte:
+
+| Distribution | SHA-256 |
+|---|---|
+| Wheel | `be8f2c8945db9cd92c39cbb5547c93871541fef56000526b7b55a5fd0bd65efd` |
+| Source distribution | `8ed3a699938cef8c740c9db854481ec754a1be4dc33029f67e85855dda7b0880` |
+
+Fresh pip and uv installations outside the checkout passed version, JIT/CPython parity, standalone AOT with an empty PATH, external runtime/JIT-runner cache, and uninstall checks. These local executions used Linux x86-64, CPython 3.13.16, LLVM 19.1.7 and uv 0.13.6; hosted LLVM18 publication checks are retained separately. No local Docker execution or broader local-platform claim is made. Fresh observations after both publication stages confirm that GitHub and Docker stable aliases remain at `v0.3.1`.
+
+[The final publication audit](publication/audit.json) contains all six completed verification receipts. [The evidence index](publication/evidence-index.json) describes 713 retained files totaling 873,942,592 bytes. [The compact bundle](publication/evidence-bundle.tar.gz), SHA-256 `f0d1a3b9e4248c053ed5a397e982861ec4c7f9f07413d5d79141f048a7b8f451`, preserves 203 metadata, report, method, inventory and decoded-log members; every member was read back and hash-checked. Large archive/image payloads are indexed separately.
 
 ## Separate follow-up
 

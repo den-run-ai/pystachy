@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-12T23:01:33Z",
+  "commit": "9494b5586ee1f234df4cc55affee9c33350e2347",
+  "parent": "ff0bba0af29a037ed1cc207f475444792dd9dba7",
+  "changed_file": "tools/test_lean_boundary_workflow.py",
+  "result": "No findings. Corrects the stale test expectation exposed by hosted Lint.",
+  "source_review": [
+    "Adds only runtime-cache on full events to the existing exact dependency-owner assertion.",
+    "Preserves pinned requirements, installation order and no-continue-on-error controls.",
+    "Retains the existing opt-in and Lean owners; does not allow arbitrary new dependency owners.",
+    "No compiler, production workflow, fixture, job, timeout or validation implementation changes."
+  ],
+  "validation": {
+    "executed_by": "rc_ci_audit; logs and recorded SHA-256 hashes independently verified by rc_fix_review",
+    "python": "Python 3.13.16",
+    "tests": [
+      {
+        "tests": 9,
+        "seconds": 1.001,
+        "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc2-candidate-ci/dependency-fix-test-1.log",
+        "sha256": "d569a442690fb5e7f47b7d30e32903443185d3eb9653acba4fe4931b6d7fa236"
+      },
+      {
+        "tests": 27,
+        "seconds": 1.117,
+        "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc2-candidate-ci/dependency-fix-test-2.log",
+        "sha256": "12a6dce48f207073b1b023f06fcc25422ff1e2efe1c7e3e38fbb1043334d7c75"
+      }
+    ],
+    "ruff_and_diff_pass": true,
+    "receipt": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc2-candidate-ci/dependency-fix-validation.json",
+    "receipt_sha256": "97bba3b5532d71372ec2a921254dd4dd598308e41cf48f01384462afd630879a"
+  },
+  "no_duplicate_test_run": true,
+  "remaining_gate": "Publish through the owned integration branch and qualify the new exact head in CI; retain the earlier failed Lint run."
+}

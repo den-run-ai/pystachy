@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-12 22:43:34 UTC",
+  "reviewer": "rc_fix_review",
+  "scope": "Read-only release-scope assessment, not complete compiler qualification or an independent execution of the new PR reproductions.",
+  "decision": "Defer PRs 1399, 1400, 1401 and 1402. Keep frozen RC.2 scope to the qualified enum correction and separately reviewed PR CI redistribution.",
+  "urgent_independently_extractable_fix_identified": false,
+  "heads_rechecked_unchanged": true,
+  "source_snapshot_file": "new-wip-source-snapshots.json",
+  "baseline_source": {
+    "local_commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+    "tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+    "main_commit_with_same_tree": "30822255ee7ee704e0e780e01cd8c23357ba13ab"
+  },
+  "actions": {
+    "source_edits": 0,
+    "builds": 0,
+    "pr_probe_executions": 0,
+    "remote_mutations": 0
+  },
+  "pull_requests": [
+    {
+      "number": 1399,
+      "url": "https://github.com/den-run-ai/pystachy/pull/1399",
+      "head": "2150fe89bd625289d7036fe2974829bb63ed8b42",
+      "base": "59ca2507d3ec7cdb57f492c63a3119472cfe764a",
+      "dependency": "PR #1355, unmerged typing.NewType feature",
+      "decision": "defer",
+      "scope": "Adds runtime module-attribute checks for assigned type-alias values and changes the deferred NewType checks to honor only Loader-marked evaluated reads.",
+      "evidence": [
+        "Reviewed all changed compiler hunks and new regressions, including aliasvalue statement preservation, chk_names selection, ann_reads and NewType handler changes.",
+        "Issue #1382 records the alias-cycle mismatch on earlier main 655bab52. This is a real pre-existing correctness gap, not evidence of a regression from the frozen RC fixes.",
+        "PR #1355 remains open; its body states NewType was unsupported on main. The forward-reference correction repairs that unmerged feature.",
+        "Current Codex review is complete at the exact head with no findings; no inline threads are present."
+      ],
+      "risks": [
+        "The patch is based on the NewType machinery and touches alias erasure, module initialization flags and exception timing. An alias-only adaptation is technically possible but would be new release work requiring source and native qualification.",
+        "The separate from-import cycle error remains tracked by #1398; taking this patch would not complete circular-import semantics."
+      ],
+      "release_rationale": "No crash, memory-safety issue, new RC regression or release artifact failure is identified in this bounded source review. Preserve the tracked correction for later qualification instead of importing the deferred typing stack."
+    },
+    {
+      "number": 1400,
+      "url": "https://github.com/den-run-ai/pystachy/pull/1400",
+      "head": "fa6b4671a8c36471290042859a94704ebc6ac4f0",
+      "base": "2150fe89bd625289d7036fe2974829bb63ed8b42",
+      "dependency": "PR #1399 and transitively #1355",
+      "decision": "defer",
+      "scope": "Adds annotation-read checks at module definitions, decorated definitions, class and method construction, and annotated assignments, preserving selected eager-evaluation order.",
+      "evidence": [
+        "Reviewed parameter-order construction in gen_def_ann_reads and all statements/variables insertion points plus cycle, lazy, future and bound-name fixtures.",
+        "Issue #512 has tracked missing definition-annotation errors since 2026-10-16.",
+        "Author reports 140 changed cases in a 4,465-case comparison, including library annotation checks; those execution claims were read, not independently rerun here.",
+        "Current Codex review is complete at the exact head with no findings; no inline threads are present."
+      ],
+      "risks": [
+        "Changes the order and possible exceptions of definition defaults, decorators, class bodies and module assignment, with much wider execution effects than an isolated error-message fix.",
+        "Depends on the new ann_reads machinery and still leaves #1398's from-import form outstanding. Requires evaluation-order and postponed-annotation qualification as one coherent stack."
+      ],
+      "release_rationale": "A valuable pre-existing semantics correction, but no evidence establishes an urgent frozen-release regression. Do not partially import the annotation stack during RC.2."
+    },
+    {
+      "number": 1401,
+      "url": "https://github.com/den-run-ai/pystachy/pull/1401",
+      "head": "2edbc4afd0dc6c7e53077bcc82a5534b7829488b",
+      "base": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dependency": "main",
+      "decision": "defer; unresolved regression blocks adoption",
+      "scope": "Makes collection wrappers satisfy dict/Mapping isinstance tests outside lib, adds dynamic box dispatch and a program-wide DICTHINT recompilation pass, and disables Any-to-dict narrowing when a wrapper is boxed.",
+      "evidence": [
+        "Reviewed static dict_class/dict_object checks, dynamic isdict dispatcher, global hint discovery and the additional Rejoin path.",
+        "Baseline docs and tests/deviations/lib_collections_mappings.py explicitly describe these wrappers as holding dictionaries rather than deriving from dict.",
+        "Current review thread PRRT_kwDOU_6QTs622qA3 is unresolved and not outdated at this exact head.",
+        "The review reports an executed new rejection: an unrelated Any=Counter('abc') makes a formerly accepted guarded dict.get(x, 'a', 0) reject. The source mechanism is corroborated by global DICTHINT, gen_dyn_narrow_type returning no refinement, and unchanged gen_unbound_call accepting a dynamic descriptor receiver only for list. This agent did not execute the reproduction."
+      ],
+      "concrete_review_finding": {
+        "severity": "P1 as reported by Codex",
+        "url": "https://github.com/den-run-ai/pystachy/pull/1401#discussion_r4556993284",
+        "path": "src/pystachy_compiler/dynamic.py",
+        "line_start": 2578,
+        "line_end": 2579,
+        "summary": "Program-wide removal of dict refinement makes unrelated wrapper boxing reject supported ordinary-dictionary descriptor calls."
+      },
+      "risks": [
+        "The new global compiler pass creates inference coupling to unrelated boxing and has a demonstrated no-new-rejections violation.",
+        "Static-only extraction would still change branch selection for wrapper objects whose representation is not dict and could activate unsupported dict-only operations; it needs coherent descriptor/refinement coverage.",
+        "The source-location distinction for lib code preserves an intentional divergence; this is not a complete dict-subclass representation change."
+      ],
+      "release_rationale": "This is correction of a disclosed compatibility limitation with a concrete new acceptance regression. It should not enter frozen RC.2."
+    },
+    {
+      "number": 1402,
+      "url": "https://github.com/den-run-ai/pystachy/pull/1402",
+      "head": "24f0df1010a2f21f64cdba96dedaafc1a722118b",
+      "base": "2edbc4afd0dc6c7e53077bcc82a5534b7829488b",
+      "dependency": "PR #1401",
+      "decision": "defer",
+      "scope": "Infers a concrete collection-wrapper type from dict/Dict/Mapping/MutableMapping annotations and wrapper constructor calls across locals, globals and fields.",
+      "evidence": [
+        "Reviewed mapping_ann and all field, statement and ahead/global insertion points, positive fixtures and three rejection boundaries.",
+        "The PR explicitly targets mypy #1322 and describes previously rejected annotation forms; no accepted-program regression in the frozen release is established.",
+        "Current Codex review is complete at this exact head with no findings, but the stack includes #1401's unresolved P1."
+      ],
+      "risks": [
+        "Changes generic specialization and the effective storage type of annotated locals/globals/fields; later dict assignment and dict-parameter passing intentionally remain rejected.",
+        "Relies on the parent dict_class helper and inherits the parent global-narrowing regression if taken as a stack.",
+        "This is new accepted syntax/composition behavior, not an isolated runtime crash or release blocker."
+      ],
+      "release_rationale": "Keep with the broader mypy and collection-annotation qualification effort; no urgent independently extractable fix for frozen RC.2 was found."
+    }
+  ],
+  "remaining_tracked_gaps": [
+    {
+      "issue": 1382,
+      "url": "https://github.com/den-run-ai/pystachy/issues/1382",
+      "scope": "assigned type-alias module attribute reads in circular imports"
+    },
+    {
+      "issue": 512,
+      "url": "https://github.com/den-run-ai/pystachy/issues/512",
+      "scope": "definition annotation evaluation failures"
+    },
+    {
+      "issue": 1398,
+      "url": "https://github.com/den-run-ai/pystachy/issues/1398",
+      "scope": "from-import cycles, explicitly still outside 1399/1400"
+    },
+    {
+      "issue": 1322,
+      "url": "https://github.com/den-run-ai/pystachy/issues/1322",
+      "scope": "broader native mypy compatibility and qualification"
+    }
+  ]
+}

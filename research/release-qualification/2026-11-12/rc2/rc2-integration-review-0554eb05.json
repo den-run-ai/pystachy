@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-12T23:01:33Z",
+  "pr": 1403,
+  "remote_head": "0554eb05f058dfc389ff0e0a4370345358f6e191",
+  "tree": "0f369f71d991bb5d04227673480791f792a6c73f",
+  "local_equivalent": "394feb59acf077f3b2a2c2b69eb3b70aea941968",
+  "qualified_source": "395227b75bb777401627c0296a18fe71388070e7",
+  "source_objects_verified": {
+    "src": "c489a0a73285315c2b1242011da11c25ac07917d",
+    "lib": "f9bac1cc6191e8c26679b9a4469af0da921b1d4e",
+    "runtime.c": "a7b5e190443cfbe26057a9daa7e83c68fd441946",
+    "runtime.py": "ec44c04542fcf603ad443bc9d930bc3d8bf04cda",
+    "pystachy.py": "e58146c8f62316ebcd77e46d1d3c21ce8f7fa122",
+    "Makefile": "d9c0cb67ad0bd77112d199f0918acf41df95746f",
+    ".python-version": "d5404088880ebb4fbb9834be634555d4a3ae4f2a",
+    "tests/programs": "61a2f639237f2cc2fd2e05f89f2af26b1fecb2b0",
+    "tests/errors": "36eb63edce9a25d12f915bb76c5ed338b2a04608",
+    "tests/deviations": "ee611b3747f42fdf16a40543227930460e3128a3",
+    "tests/ir": "6a92dad00ffef0a21e176b050eb1485592910a70",
+    "tools/verification_bootstrap.py": "8e14ce355027d0e7ee569525c0757ddcc06780bb"
+  },
+  "ci_files_verified_identical_to": "ff0bba0af29a037ed1cc207f475444792dd9dba7",
+  "ci_files": [
+    ".github/workflows/ci.yml",
+    "docs/testing.md",
+    "tests/verify.sh",
+    "tools/test_merge_verification.py",
+    "tools/test_verify_shards.py",
+    "tools/test_workflow_limits.py"
+  ],
+  "changes_after_qualified_source": [
+    ".github/workflows/ci.yml",
+    "VERSION",
+    "docs/releases/v0.4.0-rc.2.md",
+    "docs/testing.md",
+    "tests/verify.sh",
+    "tools/test_merge_verification.py",
+    "tools/test_verify_shards.py",
+    "tools/test_workflow_limits.py"
+  ],
+  "provenance": "Original #1392 head is the real second parent of d66c7fbc, with main308 as first parent. The merge and each subsequent corrected/versioned/CI tree match the corresponding locally reviewed tree.",
+  "remote_history_file": "rc2-remote-provenance-0554eb05.json",
+  "source_receipt": "/workspace/scratch/2cf34574fa6e/publication/qualification/rc2/frozen-source-receipt.json",
+  "source_receipt_sha256": "60d47630fd098ce191c389b550dd822bb941571f3c75cefd0bd1192f890135c5",
+  "source_findings": [],
+  "known_ci_blocker": "Hosted Lint found the old Lean dependency-owner expectation omitted runtime-cache. Test-only correction 9494b558 is reviewed separately; no compiler or production workflow change is needed.",
+  "review_state_at_initial_read": "Draft PR; no comments or inline threads. Review completion remains pending and must be checked at the next published head.",
+  "scope": "Read-only object, diff and provenance checks; no builds, compiler tests, mutations or review requests."
+}

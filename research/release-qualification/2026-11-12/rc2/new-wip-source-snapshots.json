@@ -1,0 +1,1023 @@
+{
+  "retrieved_utc": "2026-11-12 22:43:34 UTC",
+  "heads_rechecked_unchanged": true,
+  "pull_requests": {
+    "1399": {
+      "info": {
+        "url": "https://github.com/den-run-ai/pystachy/pull/1399",
+        "number": 1399,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Problem\n\nA module-level type alias whose value reads another module's class, `X = list[a.C]`, compiled to no code: where a circular import has not bound `a.C` yet, CPython raises `AttributeError` and Pystachy's program ran on (#1382). #1355's NewType check, generalized here, also checked a string's names, which CPython does not evaluate: `NewType(\"N\", list[\"C\"])` before `from m import C` raised `NameError`.\n\n## Change\n\n- Stacked on #1355. `gen_program` leaves an `aliasvalue` statement where such an alias was. Like `newtype`, it checks each attribute the value reads through a module (`ann_reads`), raising the existing `AttributeError`.\n- Both check only what `Loader.reads` marks as evaluated: not a string's names, nor a name alone. A from-imported name that a cycle has not bound passes, as it does elsewhere, where CPython raises `ImportError` at the import (#1398); #1355's NewType raised `AttributeError` there.\n- Documented in `typing.md`. Claude Code assisted.\n\n## Validation\n\n- `make` fixed points. The reflection, generics and imports areas pass in JIT and AOT: 692 runs, 0 failures; each new program fails on 59ca2507. `make check-fast lint`, both `lint_controls` suites and both opt-in gates pass.\n- `tools/irsame.sh` against 59ca2507, one shared home: only the new programs differ.\n\nRefs #1382.",
+        "title": "Check what type alias values read during circular imports",
+        "base": "claude/gifted-ride-6d430y-newtype",
+        "base_sha": "59ca2507d3ec7cdb57f492c63a3119472cfe764a",
+        "head": "claude/gifted-ride-6d430y-alias-reads",
+        "head_sha": "2150fe89bd625289d7036fe2974829bb63ed8b42",
+        "head_repo_id": 1409192014,
+        "head_repo_full_name": "den-run-ai/pystachy",
+        "merge_commit_sha": "6fa26d7d384a132d48aa8516cd625234be380f49",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T22:05:07Z",
+        "updated_at": "2026-11-12T22:08:34Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 21,
+        "additions": 133,
+        "deletions": 26,
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1399",
+        "display_title": "Check what type alias values read during circular imports"
+      },
+      "final_info": {
+        "url": "https://github.com/den-run-ai/pystachy/pull/1399",
+        "number": 1399,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Problem\n\nA module-level type alias whose value reads another module's class, `X = list[a.C]`, compiled to no code: where a circular import has not bound `a.C` yet, CPython raises `AttributeError` and Pystachy's program ran on (#1382). #1355's NewType check, generalized here, also checked a string's names, which CPython does not evaluate: `NewType(\"N\", list[\"C\"])` before `from m import C` raised `NameError`.\n\n## Change\n\n- Stacked on #1355. `gen_program` leaves an `aliasvalue` statement where such an alias was. Like `newtype`, it checks each attribute the value reads through a module (`ann_reads`), raising the existing `AttributeError`.\n- Both check only what `Loader.reads` marks as evaluated: not a string's names, nor a name alone. A from-imported name that a cycle has not bound passes, as it does elsewhere, where CPython raises `ImportError` at the import (#1398); #1355's NewType raised `AttributeError` there.\n- Documented in `typing.md`. Claude Code assisted.\n\n## Validation\n\n- `make` fixed points. The reflection, generics and imports areas pass in JIT and AOT: 692 runs, 0 failures; each new program fails on 59ca2507. `make check-fast lint`, both `lint_controls` suites and both opt-in gates pass.\n- `tools/irsame.sh` against 59ca2507, one shared home: only the new programs differ.\n\nRefs #1382.",
+        "title": "Check what type alias values read during circular imports",
+        "base": "claude/gifted-ride-6d430y-newtype",
+        "base_sha": "59ca2507d3ec7cdb57f492c63a3119472cfe764a",
+        "head": "claude/gifted-ride-6d430y-alias-reads",
+        "head_sha": "2150fe89bd625289d7036fe2974829bb63ed8b42",
+        "head_repo_id": 1409192014,
+        "head_repo_full_name": "den-run-ai/pystachy",
+        "merge_commit_sha": "6fa26d7d384a132d48aa8516cd625234be380f49",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T22:05:07Z",
+        "updated_at": "2026-11-12T22:08:34Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 21,
+        "additions": 133,
+        "deletions": 26,
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1399",
+        "display_title": "Check what type alias values read during circular imports"
+      },
+      "patches": {
+        "patches": [
+          {
+            "filename": "docs/language/typing.md",
+            "patch": "@@ -162,14 +162,17 @@ too. An annotation that names an alias uses its value, also in another module (`\n Row`, `m.Row`, `import *`).\n \n An assignment evaluates its value when it runs, so the names in it must be bound by then, and\n-an annotation that CPython evaluates can name the alias only after the assignment. Its\n+an annotation that CPython evaluates can name the alias only after the assignment. A class it\n+reads through a module that has not bound it yet, as during a circular import, raises\n+`AttributeError` there ([test](../../tests/programs/reflection/type_alias_cycle.py)). Its\n subscripts are checked there as CPython's `typing` checks them, even if no annotation names\n the alias: `Box[int, str]` for a class with one type parameter, `Iterable[int, str]` or\n `Union[()]` is an error. A subscript of a typing name other than its generic aliases\n (`List`, `Iterable`, `Generator`, ...), `Optional`, `Union`, `Callable`, `Tuple`, `Literal`,\n `Annotated` and the single-type forms (`ClassVar`, `Final`, ...) is unsupported there. A\n `type` statement's value is evaluated lazily and may name classes defined further down; so\n-may a string value, `Label: TypeAlias = \"Text\"`.\n+may a string value, `Label: TypeAlias = \"Text\"`, and a string in one, `list[\"Text\"]`, which\n+CPython does not evaluate either.\n \n Generic aliases take type arguments: `type Pair[T] = tuple[T, T]`, or an assignment whose\n value mentions `TypeVar`s, `Pair = tuple[T, T]`, whose parameters are those variables in the\n@@ -183,10 +186,12 @@ arguments for a `TypeVarTuple` or `ParamSpec` parameter are unsupported.\n ([test](../../tests/programs/generics/newtype.py)). Its type is read when the assignment runs,\n as a type alias's value is: a class it reads through a module that has not bound it yet, as\n during a circular import, raises `AttributeError`\n-([test](../../tests/programs/generics/newtype_cycle.py)). A function that imports `N` binds a\n-local, which a call where the import may not have run checks, as for an imported function; a\n-nested `def` that reads it is rejected. `N` is no generic alias, also where `T` names a TypeVar:\n-`N[int]` is CPython's `TypeError`, an error here. Other uses of `N` as a value are rejected.\n+([test](../../tests/programs/generics/newtype_cycle.py)), and a string in it is not evaluated\n+([test](../../tests/programs/generics/newtype_forward_ref.py)). A function that imports `N`\n+binds a local, which a call where the import may not have run checks, as for an imported\n+function; a nested `def` that reads it is rejected. `N` is no generic alias, also where `T`\n+names a TypeVar: `N[int]` is CPython's `TypeError`, an error here. Other uses of `N` as a value\n+are rejected.\n \n Other code can use an alias of `int`, `float`, `str` or `bool` (`Pos = int`) as that class,\n to call it or pass it to `isinstance()`; using another alias as a value (`print(Row)`,"
+          },
+          {
+            "filename": "src/pystachy_compiler/analysis.py",
+            "patch": "@@ -1635,7 +1635,8 @@ def comp_vars(n: Node, out: dict[str, bool]) -> None:\n \n def chk_names(n: Node, out: dict[str, bool]) -> None:\n     # the names of the reads in code n (not in the defs and lambdas in it) that Flow marked\n-    # (Node.chk): they may find their variable unassigned\n+    # (Node.chk): they may find their variable unassigned (in a type alias's value, those that\n+    # Loader.reads marked: its attributes of modules, see Gen.ann_reads)\n     if n.kind == \"name\" and n.chk:\n         out[n.s] = True\n     if n.kind == \"def\" or n.kind == \"lambda\":"
+          },
+          {
+            "filename": "src/pystachy_compiler/declarations.py",
+            "patch": "@@ -674,18 +674,22 @@ def gen_newtype_name(self, name: str) -> bool:\n     # whose calls return their argument\n     return name in self.taliases and self.taliases[name].kind == \"assign\" and self.taliases[name].kids[1].kind == \"call\"\n \n-def gen_newtype_reads(self, e: Node) -> None:\n-    # N = NewType(\"N\", T) runs (statement newtype): CPython evaluates T first, where a class or\n-    # NewType that T names may not be bound yet, as one read through its module (a.C) during a\n-    # circular import, or one that an import which raised was to bind: their errors, as\n-    # isinstance's argument has them (isinst_reads). (A string in T is not evaluated)\n+def gen_ann_reads(self, e: Node) -> None:\n+    # CPython evaluates e, an assigned type alias's value or the T of N = NewType(\"N\", T), where\n+    # its statement runs (aliasvalue, newtype): an attribute it reads through a module (a.C),\n+    # which Loader.reads marks (Node.chk), may not be bound yet, as during a circular import, or\n+    # the import it needs may have raised: their errors, as isinstance's argument has them\n+    # (isinst_reads). A name alone is bound then (Loader.reads rejects one that may not be); the\n+    # names of a string, a forward reference, which CPython does not evaluate, are not marked\n+    # (Loader.qann parses it later)\n     if e.kind == \"name\":\n-        self.modchk(e)\n-        if (e.s in self.classes or self.newtype_name(e.s)) and (e.chk or self.foreign(e.s)) and e.s in self.gflag:\n-            self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))\n+        if e.chk:\n+            self.modchk(e)\n+            if (e.s in self.classes or self.newtype_name(e.s)) and e.s in self.gflag:\n+                self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))\n         return\n-    for k in e.kids if e.kind != \"str\" else []:\n-        self.newtype_reads(k)\n+    for k in e.kids:\n+        self.ann_reads(k)\n \n def gen_alias_kept(self, name: str) -> bool:\n     # does the assignment that binds type alias name stay in the module's code: Pos = int binds"
+          },
+          {
+            "filename": "src/pystachy_compiler/gen.py",
+            "patch": "@@ -559,7 +559,7 @@\n     gen_alias_arity as declarations_alias_arity,\n     gen_alias_kept as declarations_alias_kept,\n     gen_newtype_name as declarations_newtype_name,\n-    gen_newtype_reads as declarations_newtype_reads,\n+    gen_ann_reads as declarations_ann_reads,\n     gen_alias_params as declarations_alias_params,\n     gen_alias_problem as declarations_alias_problem,\n     gen_alias_tvars as declarations_alias_tvars,\n@@ -2892,8 +2892,8 @@ def alias_kept(self, name: str) -> bool:\n     def newtype_name(self, name: str) -> bool:\n         return declarations_newtype_name(self, name)\n \n-    def newtype_reads(self, e: Node) -> None:\n-        return declarations_newtype_reads(self, e)\n+    def ann_reads(self, e: Node) -> None:\n+        return declarations_ann_reads(self, e)\n \n     def unalias(self, a: Node, seen: list[str]) -> Node:\n         return declarations_unalias(self, a, seen)"
+          },
+          {
+            "filename": "src/pystachy_compiler/program.py",
+            "patch": "@@ -4,7 +4,7 @@\n import sys\n from src.pystachy_compiler.callbacks import specialize_callbacks\n from src.pystachy_compiler.reflection import refl_needs_eh, refl_props\n-from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin\n+from src.pystachy_compiler.analysis import all_imports, chk_names, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin\n from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown\n from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage\n from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol\n@@ -873,8 +873,11 @@ def gen_program(self, mods: list[Mod]) -> str:\n                 m.body.kids[i] = mk(\"pass\", \"\", st.line, [])  # (a type alias, which only annotations name)\n             elif st.kind == \"assign\" and st.kids[0].kind == \"name\" and st.kids[0].s in self.taliases and self.taliases[st.kids[0].s] is st and not self.alias_kept(st.kids[0].s):\n                 # (N = NewType(\"N\", T) binds N where it runs, as a def does: a call N(x) that may come\n-                # first checks it, see call)\n-                m.body.kids[i] = mk(\"newtype\", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk(\"pass\", \"\", st.line, [])\n+                # first checks it, see call. CPython evaluates an alias's value there, which may read\n+                # a class through its module before that module binds it: see ann_reads)\n+                vreads: dict[str, bool] = {}\n+                chk_names(st.kids[1], vreads)\n+                m.body.kids[i] = mk(\"newtype\", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk(\"aliasvalue\", st.kids[0].s, st.line, []) if len(vreads) > 0 else mk(\"pass\", \"\", st.line, [])\n     for q in self.taliases:\n         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's\n         # only where its __value__ is read)"
+          },
+          {
+            "filename": "src/pystachy_compiler/statements.py",
+            "patch": "@@ -1094,9 +1094,11 @@ def gen_stmt_main(self, n: Node) -> None:\n             self.sdiscard(f\"ptr {self.lcs[-1]}\", v, et)\n         else:\n             self.list_store(Val(self.lcs[-1], self.ctype(\"list\", [et])), self.list_hold(v, et), \"append\")\n-    elif k == \"newtype\":\n-        self.newtype_reads(self.alias_value(n.s))\n-        if n.s in self.gflag:\n+    elif k == \"newtype\" or k == \"aliasvalue\":\n+        # (where program left out N = NewType(\"N\", T), or an assigned type alias that reads a\n+        # module's attribute: CPython evaluates T, or the value, there)\n+        self.ann_reads(self.alias_value(n.s))\n+        if k == \"newtype\" and n.s in self.gflag:\n             self.mstore('bool', 'true', f'@g.{n.s}.def')  # (N = NewType(...) has run: see call)\n     elif k == \"defaults\" or k == \"cdefaults\":\n         if k == \"defaults\":"
+          },
+          {
+            "filename": "tests/mods/talias_cyc_a.py",
+            "patch": "@@ -0,0 +1,10 @@\n+# (tests/programs/reflection/type_alias_cycle.py) imports talias_cyc_b before its class statement\n+import mods.talias_cyc_b as b\n+\n+\n+class C:\n+    pass\n+\n+\n+x: b.X = [C()]\n+print(len(x))"
+          },
+          {
+            "filename": "tests/mods/talias_cyc_b.py",
+            "patch": "@@ -0,0 +1,6 @@\n+# (tests/programs/reflection/type_alias_cycle.py) reads talias_cyc_a.C in a type alias's value,\n+# which talias_cyc_a has not bound yet where it imports this module\n+from mods import talias_cyc_a as a\n+\n+X = list[a.C]\n+print(\"not reached\")"
+          },
+          {
+            "filename": "tests/mods/talias_forms.py",
+            "patch": "@@ -0,0 +1,14 @@\n+# (tests/programs/reflection/type_alias_cycle_forms.py) imports modules whose type aliases read C\n+# through this module, before its class statement and after\n+try:\n+    import mods.talias_forms_nested\n+except AttributeError:\n+    print(\"dict[str, a.C] | None: AttributeError\")\n+import mods.talias_forms_str\n+\n+\n+class C:\n+    pass\n+\n+\n+import mods.talias_forms_bound"
+          },
+          {
+            "filename": "tests/mods/talias_forms_bound.py",
+            "patch": "@@ -0,0 +1,7 @@\n+# (tests/programs/reflection/type_alias_cycle_forms.py) reads talias_forms.C, which talias_forms\n+# has bound where it imports this module\n+from mods import talias_forms as a\n+\n+X = list[a.C]\n+x: X = [a.C(), a.C()]\n+print(\"bound:\", len(x))"
+          },
+          {
+            "filename": "tests/mods/talias_forms_nested.py",
+            "patch": "@@ -0,0 +1,8 @@\n+# (tests/programs/reflection/type_alias_cycle_forms.py) reads talias_forms.C, which talias_forms\n+# has not bound yet where it imports this module, inside a TypeAlias's value\n+from typing import TypeAlias\n+\n+import mods.talias_forms as a\n+\n+X: TypeAlias = dict[str, a.C] | None\n+print(\"not reached\")"
+          },
+          {
+            "filename": "tests/mods/talias_forms_str.py",
+            "patch": "@@ -0,0 +1,10 @@\n+# (tests/programs/reflection/type_alias_cycle_forms.py) names talias_forms.C, which talias_forms\n+# has not bound yet where it imports this module, in strings: forward references, which CPython\n+# does not evaluate\n+from typing import NewType\n+\n+from mods import talias_forms as a\n+\n+X = list[\"a.C\"]\n+N = NewType(\"N\", list[\"a.C\"])\n+print(\"strings: not evaluated\")"
+          },
+          {
+            "filename": "tests/programs/generics/newtype_forward_ref.out",
+            "patch": "@@ -0,0 +1,4 @@\n+mods: init mods\n+mods.shapes: init mods.shapes\n+2\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/generics/newtype_forward_ref.path",
+            "patch": "@@ -0,0 +1 @@\n+tests"
+          },
+          {
+            "filename": "tests/programs/generics/newtype_forward_ref.py",
+            "patch": "@@ -0,0 +1,8 @@\n+# A string in a NewType's type is a forward reference, which CPython does not evaluate where the\n+# assignment runs: the name in it may be bound later, here by the import below\n+from typing import NewType\n+\n+Shapes = NewType(\"Shapes\", list[\"Circle\"])\n+from mods.shapes import Circle\n+\n+print(len(Shapes([Circle(1.0), Circle(2.0)])))"
+          },
+          {
+            "filename": "tests/programs/reflection/type_alias_cycle.out",
+            "patch": "@@ -0,0 +1,4 @@\n+mods: init mods\n+mods.shapes: init mods.shapes\n+AttributeError\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/reflection/type_alias_cycle.path",
+            "patch": "@@ -0,0 +1 @@\n+tests"
+          },
+          {
+            "filename": "tests/programs/reflection/type_alias_cycle.py",
+            "patch": "@@ -0,0 +1,7 @@\n+# An assigned type alias's value is evaluated where the assignment runs: a class read through its\n+# module before that module's class statement has run, as during this circular import, raises\n+# AttributeError (whose message CPython words apart: tests/deviations/circular_attr.py)\n+try:\n+    import mods.talias_cyc_a\n+except AttributeError:\n+    print(\"AttributeError\")"
+          },
+          {
+            "filename": "tests/programs/reflection/type_alias_cycle_forms.out",
+            "patch": "@@ -0,0 +1,6 @@\n+mods: init mods\n+mods.shapes: init mods.shapes\n+dict[str, a.C] | None: AttributeError\n+strings: not evaluated\n+bound: 2\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/reflection/type_alias_cycle_forms.path",
+            "patch": "@@ -0,0 +1 @@\n+tests"
+          },
+          {
+            "filename": "tests/programs/reflection/type_alias_cycle_forms.py",
+            "patch": "@@ -0,0 +1,5 @@\n+# What type aliases' values read during a circular import (mods/talias_forms.py), where their\n+# assignments run: a class read through its module before its class statement has run raises\n+# AttributeError, also nested in a TypeAlias's value; a string, a forward reference, is not\n+# evaluated, nor in a NewType's type; once the class statement has run, the alias reads the class\n+import mods.talias_forms"
+          }
+        ],
+        "url": "https://github.com/den-run-ai/pystachy/pull/1399",
+        "title": "den-run-ai/pystachy#1399 (patch)",
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1399",
+        "display_title": "den-run-ai/pystachy#1399 (patch)"
+      },
+      "comments": {
+        "comments": [
+          {
+            "url": "https://github.com/den-run-ai/pystachy/pull/1399#issuecomment-6837218079",
+            "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"2150fe89bd625289d7036fe2974829bb63ed8b42\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong>: ✅ Completed</summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T22:08:32.876460Z\">2026-11-12T22:08:32.876460Z</relative-time> | `2150fe8` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>\n\n</details>",
+            "user": {
+              "login": "chatgpt-codex-connector[bot]",
+              "name": "chatgpt-codex-connector[bot]",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+              "id": 199175422
+            },
+            "id": 6837218079,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T22:05:52Z",
+            "updated_at": "2026-11-12T22:08:34Z",
+            "review": null,
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null
+          }
+        ],
+        "url": "https://github.com/den-run-ai/pystachy/pull/1399",
+        "title": "den-run-ai/pystachy PR #1399 comments",
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1399",
+        "display_title": "den-run-ai/pystachy PR #1399 comments"
+      },
+      "review_threads": {
+        "review_threads": []
+      }
+    },
+    "1400": {
+      "info": {
+        "url": "https://github.com/den-run-ai/pystachy/pull/1400",
+        "number": 1400,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Problem\n\nWithout `from __future__ import annotations`, CPython evaluates `def f(x: a.Later)` where the def runs, class-body annotations where the class statement runs and a module's annotated assignment after its value. Where a circular import has not bound `a.Later` yet, that raises `AttributeError`; Pystachy ran on. Part of #512; stacked on the type alias check for #1382.\n\n## Change\n\n- These now check the module attributes their annotations read (`ann_reads`): module-level defs, also decorated, after their defaults and in CPython's parameter order; methods and class-body annotations; module-level annotated assignments.\n- Strings, function-local annotations and modules importing annotations from `__future__` stay unchecked: CPython evaluates none of them. From-imports in cycles stay #1398's.\n- Documented in `typing.md`. Claude Code assisted.\n\n## Validation\n\n- `make` fixed points. The reflection, generics, imports and classes areas pass in JIT and AOT: 1169 runs, 0 failures; the new program fails on 2150fe89. `make check-fast lint`, both `lint_controls` suites and both opt-in gates pass.\n- `tools/irsame.sh` against 2150fe89, one shared home: 140 of 4,465 cases differ, by checks of library modules' annotations (`re.Pattern` in `textwrap`). Those pass in JIT and AOT (274 runs), as do two benchmarks' smoke runs and `check-ir`.\n\nRefs #512.",
+        "title": "Check what evaluated annotations read during circular imports",
+        "base": "claude/gifted-ride-6d430y-alias-reads",
+        "base_sha": "2150fe89bd625289d7036fe2974829bb63ed8b42",
+        "head": "claude/gifted-ride-6d430y-annotation-reads",
+        "head_sha": "fa6b4671a8c36471290042859a94704ebc6ac4f0",
+        "head_repo_id": 1409192014,
+        "head_repo_full_name": "den-run-ai/pystachy",
+        "merge_commit_sha": "1cbf3537d880b1563303007d1ea03921eb9faa18",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T22:05:19Z",
+        "updated_at": "2026-11-12T22:08:33Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 17,
+        "additions": 209,
+        "deletions": 2,
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1400",
+        "display_title": "Check what evaluated annotations read during circular imports"
+      },
+      "final_info": {
+        "url": "https://github.com/den-run-ai/pystachy/pull/1400",
+        "number": 1400,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Problem\n\nWithout `from __future__ import annotations`, CPython evaluates `def f(x: a.Later)` where the def runs, class-body annotations where the class statement runs and a module's annotated assignment after its value. Where a circular import has not bound `a.Later` yet, that raises `AttributeError`; Pystachy ran on. Part of #512; stacked on the type alias check for #1382.\n\n## Change\n\n- These now check the module attributes their annotations read (`ann_reads`): module-level defs, also decorated, after their defaults and in CPython's parameter order; methods and class-body annotations; module-level annotated assignments.\n- Strings, function-local annotations and modules importing annotations from `__future__` stay unchecked: CPython evaluates none of them. From-imports in cycles stay #1398's.\n- Documented in `typing.md`. Claude Code assisted.\n\n## Validation\n\n- `make` fixed points. The reflection, generics, imports and classes areas pass in JIT and AOT: 1169 runs, 0 failures; the new program fails on 2150fe89. `make check-fast lint`, both `lint_controls` suites and both opt-in gates pass.\n- `tools/irsame.sh` against 2150fe89, one shared home: 140 of 4,465 cases differ, by checks of library modules' annotations (`re.Pattern` in `textwrap`). Those pass in JIT and AOT (274 runs), as do two benchmarks' smoke runs and `check-ir`.\n\nRefs #512.",
+        "title": "Check what evaluated annotations read during circular imports",
+        "base": "claude/gifted-ride-6d430y-alias-reads",
+        "base_sha": "2150fe89bd625289d7036fe2974829bb63ed8b42",
+        "head": "claude/gifted-ride-6d430y-annotation-reads",
+        "head_sha": "fa6b4671a8c36471290042859a94704ebc6ac4f0",
+        "head_repo_id": 1409192014,
+        "head_repo_full_name": "den-run-ai/pystachy",
+        "merge_commit_sha": "1cbf3537d880b1563303007d1ea03921eb9faa18",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T22:05:19Z",
+        "updated_at": "2026-11-12T22:08:33Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 17,
+        "additions": 209,
+        "deletions": 2,
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1400",
+        "display_title": "Check what evaluated annotations read during circular imports"
+      },
+      "patches": {
+        "patches": [
+          {
+            "filename": "docs/language/typing.md",
+            "patch": "@@ -131,7 +131,9 @@ length tuple conversions retain their existing item-type restrictions.\n Parameter, return, class-body and module-level annotations follow CPython 3.13's evaluation\n timing. They are checked even in unused imported definitions. A name must be bound when its\n annotation is evaluated; use `\"Node\"` for a forward reference or\n-`from __future__ import annotations` to defer evaluation.\n+`from __future__ import annotations` to defer evaluation. A class that an evaluated annotation\n+reads through a module that has not bound it yet, as during a circular import, raises\n+`AttributeError` there ([test](../../tests/programs/reflection/annotation_cycle.py)).\n \n Evaluated annotations may name classes, supported typing forms, builtin generics, unions,\n type variables and [type aliases](#type-aliases). Aliases of supported classes can name"
+          },
+          {
+            "filename": "src/pystachy_compiler/declarations.py",
+            "patch": "@@ -675,7 +675,8 @@ def gen_newtype_name(self, name: str) -> bool:\n     return name in self.taliases and self.taliases[name].kind == \"assign\" and self.taliases[name].kids[1].kind == \"call\"\n \n def gen_ann_reads(self, e: Node) -> None:\n-    # CPython evaluates e, an assigned type alias's value or the T of N = NewType(\"N\", T), where\n+    # CPython evaluates e, an assigned type alias's value, the T of N = NewType(\"N\", T) or an\n+    # annotation of module code or a class body (def_ann_reads, an annotated assignment's), where\n     # its statement runs (aliasvalue, newtype): an attribute it reads through a module (a.C),\n     # which Loader.reads marks (Node.chk), may not be bound yet, as during a circular import, or\n     # the import it needs may have raised: their errors, as isinstance's argument has them\n@@ -691,6 +692,25 @@ def gen_ann_reads(self, e: Node) -> None:\n     for k in e.kids:\n         self.ann_reads(k)\n \n+def gen_def_ann_reads(self, d: Node) -> None:\n+    # def statement d runs in module code or a class body: CPython evaluates its annotations\n+    # there (unless its module imports annotations from __future__, where Loader.ann marks none),\n+    # after its defaults, in the order its compiler visits them: the parameters after the\n+    # positional-only ones, those, *args, the keyword-only ones, **kwargs, then the return's\n+    # (each as ann_reads checks a type alias's value)\n+    ps = d.kids[0].kids\n+    lim = d.kids[0].s.split(\",\")\n+    posonly = int(lim[0])\n+    kwonly = int(lim[1])\n+    order: list[Node] = [ps[i] for i in range(len(ps)) if ps[i].kind == \"param\" and i >= posonly and (kwonly < 0 or i < kwonly)]\n+    order.extend(ps[:posonly])\n+    order.extend([p for p in ps if p.kind == \"starparam\"])\n+    order.extend([ps[i] for i in range(len(ps)) if ps[i].kind == \"param\" and kwonly >= 0 and i >= kwonly])\n+    order.extend([p for p in ps if p.kind == \"dstarparam\"])\n+    for p in order:\n+        self.ann_reads(p.kids[0])\n+    self.ann_reads(d.kids[1])\n+\n def gen_alias_kept(self, name: str) -> bool:\n     # does the assignment that binds type alias name stay in the module's code: Pos = int binds\n     # a class, which can be called (Pos(\"3\")), as does an alias of such an alias; the other"
+          },
+          {
+            "filename": "src/pystachy_compiler/gen.py",
+            "patch": "@@ -560,6 +560,7 @@\n     gen_alias_kept as declarations_alias_kept,\n     gen_newtype_name as declarations_newtype_name,\n     gen_ann_reads as declarations_ann_reads,\n+    gen_def_ann_reads as declarations_def_ann_reads,\n     gen_alias_params as declarations_alias_params,\n     gen_alias_problem as declarations_alias_problem,\n     gen_alias_tvars as declarations_alias_tvars,\n@@ -2895,6 +2896,9 @@ def newtype_name(self, name: str) -> bool:\n     def ann_reads(self, e: Node) -> None:\n         return declarations_ann_reads(self, e)\n \n+    def def_ann_reads(self, d: Node) -> None:\n+        return declarations_def_ann_reads(self, d)\n+\n     def unalias(self, a: Node, seen: list[str]) -> Node:\n         return declarations_unalias(self, a, seen)\n "
+          },
+          {
+            "filename": "src/pystachy_compiler/statements.py",
+            "patch": "@@ -373,6 +373,9 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:\n             if (cv or not is_const(st.kids[2])) and (fl not in ci.fglob or ci.fglob[fl] in self.pending):\n                 self.class_store(ci, fl, self.expr(st.kids[2], t))\n                 self.pending.pop(ci.fglob[fl], False)\n+            self.ann_reads(st.kids[1])  # (CPython evaluates the annotation after the value)\n+        elif st.kind == \"annassign\":\n+            self.ann_reads(st.kids[1])\n         elif st.kind == \"def\":\n             f = ci.methods[st.s]\n             for k in [st.s + \".setter\", st.s + \".deleter\"]:\n@@ -382,6 +385,7 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:\n             bound[st.s] = True\n             if f.name != \"__init__\" or not syn:\n                 self.hoist(f)\n+            self.def_ann_reads(st)  # (after its defaults)\n     if syn:\n         init = ci.methods[\"__init__\"]\n         for j in range(1, len(init.params)):\n@@ -699,6 +703,8 @@ def gen_stmt_main(self, n: Node) -> None:\n         # an annotation that names a class template types nothing: x: Box = v is x = v\n         if len(n.kids) == 3:\n             self.stmt(mk(\"assign\", \"\", n.line, [n.kids[0], n.kids[2]]))\n+        if self.modlevel:\n+            self.ann_reads(n.kids[1])  # (module code's, which CPython evaluates after the value)\n     elif k == \"annassign\":\n         if n.s != \"\" and self.ann_problem(n.kids[1], False) != \"\":\n             self.err(n.s)  # (the declaration of a local that only dropped code binds: Loader.dropped_locals())\n@@ -709,6 +715,8 @@ def gen_stmt_main(self, n: Node) -> None:\n             v = self.expr(n.kids[2], t)\n             # (x: T | None = <a T> knows x holds a T, see narrowed)\n             self.assign(n.kids[0], v if n.kids[0].kind == \"name\" and ((is_opt(t) and self.widens(v.t, t)) or (is_union(unopt(t)) and (self.widens(v.t, t) or self.boxes(v.t, t)))) else self.coerce(v, t))\n+        if self.modlevel:\n+            self.ann_reads(n.kids[1])  # (module code's, which CPython evaluates after the value)\n     elif k == \"augassign\":\n         self.augassign(n)\n     elif k == \"if\":\n@@ -1104,6 +1112,7 @@ def gen_stmt_main(self, n: Node) -> None:\n         if k == \"defaults\":\n             self.decorators(self.funcs[n.s].node, self.funcs[n.s].node.kids[3:] if self.curfn.mod != \"\" else [], {})\n             self.hoist(self.funcs[n.s])\n+            self.def_ann_reads(self.funcs[n.s].node)  # (after its defaults, as CPython evaluates them)\n             ef = self.funcs[n.s]\n             if ef.extern and not self.rtmode and ef.mod not in GLUE:\n                 # @ffi.extern looks its C function up when the def runs, as ctypes.CDLL does (cextern)"
+          },
+          {
+            "filename": "src/pystachy_compiler/variables.py",
+            "patch": "@@ -253,6 +253,8 @@ def gen_decorate(self, n: Node) -> Val:\n             wraps.append([])\n             callees.append(self.vnode(self.call(e, \"\")) if len(decos[i].kids) > 0 else e)\n     v = self.closure(n)\n+    if self.modlevel:\n+        self.def_ann_reads(n)  # (module code's def: after its defaults, before the decorators run)\n     for j in range(len(callees) - 1, -1, -1):\n         self.line = callees[j].line\n         if len(wraps[j]) > 0:"
+          },
+          {
+            "filename": "tests/mods/annot_cyc.py",
+            "patch": "@@ -0,0 +1,43 @@\n+# (tests/programs/reflection/annotation_cycle.py) imports modules whose annotations read Later and\n+# Other through this module, before its class statements and after\n+\n+\n+def missing(e: AttributeError) -> str:\n+    # the attribute that e says this module lacks (CPython's message also says that the module is\n+    # partially initialized and names its file: tests/deviations/circular_attr.py)\n+    return str(e).split(\"attribute '\")[1].split(\"'\")[0]\n+\n+\n+try:\n+    import mods.annot_cyc_def\n+except AttributeError as e:\n+    print(\"def:\", missing(e))\n+try:\n+    import mods.annot_cyc_deco\n+except AttributeError as e:\n+    print(\"decorated def:\", missing(e))\n+try:\n+    import mods.annot_cyc_method\n+except AttributeError as e:\n+    print(\"method:\", missing(e))\n+try:\n+    import mods.annot_cyc_field\n+except AttributeError as e:\n+    print(\"class body:\", missing(e))\n+try:\n+    import mods.annot_cyc_var\n+except AttributeError as e:\n+    print(\"annotated assignment:\", missing(e))\n+import mods.annot_cyc_lazy\n+import mods.annot_cyc_future\n+\n+\n+class Later:\n+    pass\n+\n+\n+class Other:\n+    pass\n+\n+\n+import mods.annot_cyc_bound"
+          },
+          {
+            "filename": "tests/mods/annot_cyc_bound.py",
+            "patch": "@@ -0,0 +1,16 @@\n+# (tests/programs/reflection/annotation_cycle.py) annotations that read annot_cyc.Later, which\n+# annot_cyc has bound where it imports this module\n+from mods import annot_cyc as a\n+\n+\n+def make() -> a.Later:\n+    return a.Later()\n+\n+\n+class Holder:\n+    def __init__(self, item: a.Later) -> None:\n+        self.item = item\n+\n+\n+held: list[a.Later] = [make()]\n+print(\"bound:\", len(held), Holder(held[0]).item is held[0])"
+          },
+          {
+            "filename": "tests/mods/annot_cyc_deco.py",
+            "patch": "@@ -0,0 +1,13 @@\n+# (tests/programs/reflection/annotation_cycle.py) a decorated def whose parameter's annotation\n+# reads annot_cyc.Later before annot_cyc binds it\n+import functools\n+\n+import mods.annot_cyc as a\n+\n+\n+@functools.cache\n+def name(x: a.Later) -> str:\n+    return \"later\"\n+\n+\n+print(\"not reached\")"
+          },
+          {
+            "filename": "tests/mods/annot_cyc_def.py",
+            "patch": "@@ -0,0 +1,11 @@\n+# (tests/programs/reflection/annotation_cycle.py) a def whose annotations read annot_cyc.Later and\n+# annot_cyc.Other, which annot_cyc has not bound yet where it imports this module: CPython\n+# evaluates the parameters after the positional-only ones first\n+import mods.annot_cyc as a\n+\n+\n+def make(first: a.Later, /, n: a.Other) -> a.Later:\n+    return first\n+\n+\n+print(\"not reached\")"
+          },
+          {
+            "filename": "tests/mods/annot_cyc_field.py",
+            "patch": "@@ -0,0 +1,10 @@\n+# (tests/programs/reflection/annotation_cycle.py) a class body's annotation that reads\n+# annot_cyc.Later before annot_cyc binds it\n+from mods import annot_cyc as a\n+\n+\n+class Holder:\n+    item: a.Later | None = None\n+\n+\n+print(\"not reached\")"
+          },
+          {
+            "filename": "tests/mods/annot_cyc_future.py",
+            "patch": "@@ -0,0 +1,18 @@\n+# (tests/programs/reflection/annotation_cycle.py) annotations that read annot_cyc.Later before\n+# annot_cyc binds it, in a module that imports annotations from __future__: CPython does not\n+# evaluate them\n+from __future__ import annotations\n+\n+from mods import annot_cyc as a\n+\n+\n+def make(n: int) -> a.Later | None:\n+    return None\n+\n+\n+class Holder:\n+    item: a.Later | None = None\n+\n+\n+held: list[a.Later] = []\n+print(\"future:\", make(1), len(held))"
+          },
+          {
+            "filename": "tests/mods/annot_cyc_lazy.py",
+            "patch": "@@ -0,0 +1,20 @@\n+# (tests/programs/reflection/annotation_cycle.py) annotations that name annot_cyc.Later, which\n+# annot_cyc has not bound yet where it imports this module, where CPython does not evaluate them:\n+# in strings (forward references) and in a function's body\n+from mods import annot_cyc as a\n+\n+\n+def make(x: \"a.Later | None\", n: list[\"a.Later\"]) -> \"a.Later | None\":\n+    return x\n+\n+\n+def count() -> int:\n+    held: list[a.Later] = []\n+    return len(held)\n+\n+\n+class Holder:\n+    item: \"a.Later | None\" = None\n+\n+\n+print(\"lazy:\", make(None, []), count())"
+          },
+          {
+            "filename": "tests/mods/annot_cyc_method.py",
+            "patch": "@@ -0,0 +1,11 @@\n+# (tests/programs/reflection/annotation_cycle.py) a method whose parameter's annotation reads\n+# annot_cyc.Later before annot_cyc binds it, which CPython evaluates where the class statement runs\n+from mods import annot_cyc as a\n+\n+\n+class Holder:\n+    def put(self, x: a.Later | None) -> None:\n+        pass\n+\n+\n+print(\"not reached\")"
+          },
+          {
+            "filename": "tests/mods/annot_cyc_var.py",
+            "patch": "@@ -0,0 +1,7 @@\n+# (tests/programs/reflection/annotation_cycle.py) a module's annotated assignment whose\n+# annotation reads annot_cyc.Later before annot_cyc binds it, after the value\n+from mods import annot_cyc as a\n+\n+print(\"value\")\n+held: list[a.Later] = []\n+print(\"not reached\")"
+          },
+          {
+            "filename": "tests/programs/reflection/annotation_cycle.out",
+            "patch": "@@ -0,0 +1,12 @@\n+mods: init mods\n+mods.shapes: init mods.shapes\n+def: Other\n+decorated def: Later\n+method: Later\n+class body: Later\n+value\n+annotated assignment: Later\n+lazy: None 0\n+future: None 0\n+bound: 1 True\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/reflection/annotation_cycle.path",
+            "patch": "@@ -0,0 +1 @@\n+tests"
+          },
+          {
+            "filename": "tests/programs/reflection/annotation_cycle.py",
+            "patch": "@@ -0,0 +1,8 @@\n+# Without annotations from __future__, CPython evaluates a def's annotations where the def runs, a\n+# class body's where the class statement runs and a module's annotated assignment's after its\n+# value: a class read through its module before that module's class statement has run, as during\n+# this circular import (mods/annot_cyc.py), raises AttributeError there. A string, a forward\n+# reference, is not evaluated, nor is a function's local annotation or any annotation where the\n+# module imports annotations from __future__; once the class statements have run, the\n+# annotations read the classes\n+import mods.annot_cyc"
+          }
+        ],
+        "url": "https://github.com/den-run-ai/pystachy/pull/1400",
+        "title": "den-run-ai/pystachy#1400 (patch)",
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1400",
+        "display_title": "den-run-ai/pystachy#1400 (patch)"
+      },
+      "comments": {
+        "comments": [
+          {
+            "url": "https://github.com/den-run-ai/pystachy/pull/1400#issuecomment-6837217373",
+            "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"fa6b4671a8c36471290042859a94704ebc6ac4f0\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong>: ✅ Completed</summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T22:08:32.619134Z\">2026-11-12T22:08:32.619134Z</relative-time> | `fa6b467` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>\n\n</details>",
+            "user": {
+              "login": "chatgpt-codex-connector[bot]",
+              "name": "chatgpt-codex-connector[bot]",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+              "id": 199175422
+            },
+            "id": 6837217373,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T22:05:50Z",
+            "updated_at": "2026-11-12T22:08:33Z",
+            "review": null,
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null
+          }
+        ],
+        "url": "https://github.com/den-run-ai/pystachy/pull/1400",
+        "title": "den-run-ai/pystachy PR #1400 comments",
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1400",
+        "display_title": "den-run-ai/pystachy PR #1400 comments"
+      },
+      "review_threads": {
+        "review_threads": []
+      }
+    },
+    "1401": {
+      "info": {
+        "url": "https://github.com/den-run-ai/pystachy/pull/1401",
+        "number": 1401,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Problem\n\nCPython's `defaultdict`, `OrderedDict` and `Counter` derive from `dict`; lib/collections' versions hold one, and `isinstance(x, dict)` was silently false for them, also with tuples of types, `Mapping`, optional or union values, generic functions and `Any` values. Refs #1322.\n\n## Change\n\nOutside lib/, whose own tests assume the classes as they are, `isinstance()` takes these objects for dicts and Mappings; `type(x) is dict` stays false and `issubclass()` stays rejected. Where a program boxes such an object, one extra compilation pass makes an `Any` value's dict test read the box's class, and the test then no longer narrows the value to a dict. A generic function's dict branch now compiles for these objects, and is rejected where it uses dict-only operations. Claude Code assisted.\n\n## Validation\n\n`make` reaches both fixed points. The 5 new programs print wrong results on main (0b13a212); they and the edited deviation pass in JIT and AOT, also under program GC stress. Containers, library, classes, inference and deviations: 2938 passed. `make check-fast lint`, the lint controls and both opt-in gates pass. Against main's compiler, paths normalized, 4448 of 4456 corpus cases match: the rest are the new tests, two `sys.prefix` strings and a deviation's docstring.",
+        "title": "Take collections' mappings for dicts in isinstance()",
+        "base": "main",
+        "base_sha": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+        "head": "claude/gifted-ride-6d430y-dict-subclasses",
+        "head_sha": "2edbc4afd0dc6c7e53077bcc82a5534b7829488b",
+        "head_repo_id": 1409192014,
+        "head_repo_full_name": "den-run-ai/pystachy",
+        "merge_commit_sha": "1a0736256a62832fbba1406f4d292807e0b77ded",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T22:06:00Z",
+        "updated_at": "2026-11-12T22:10:14Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 19,
+        "additions": 215,
+        "deletions": 19,
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1401",
+        "display_title": "Take collections' mappings for dicts in isinstance()"
+      },
+      "final_info": {
+        "url": "https://github.com/den-run-ai/pystachy/pull/1401",
+        "number": 1401,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Problem\n\nCPython's `defaultdict`, `OrderedDict` and `Counter` derive from `dict`; lib/collections' versions hold one, and `isinstance(x, dict)` was silently false for them, also with tuples of types, `Mapping`, optional or union values, generic functions and `Any` values. Refs #1322.\n\n## Change\n\nOutside lib/, whose own tests assume the classes as they are, `isinstance()` takes these objects for dicts and Mappings; `type(x) is dict` stays false and `issubclass()` stays rejected. Where a program boxes such an object, one extra compilation pass makes an `Any` value's dict test read the box's class, and the test then no longer narrows the value to a dict. A generic function's dict branch now compiles for these objects, and is rejected where it uses dict-only operations. Claude Code assisted.\n\n## Validation\n\n`make` reaches both fixed points. The 5 new programs print wrong results on main (0b13a212); they and the edited deviation pass in JIT and AOT, also under program GC stress. Containers, library, classes, inference and deviations: 2938 passed. `make check-fast lint`, the lint controls and both opt-in gates pass. Against main's compiler, paths normalized, 4448 of 4456 corpus cases match: the rest are the new tests, two `sys.prefix` strings and a deviation's docstring.",
+        "title": "Take collections' mappings for dicts in isinstance()",
+        "base": "main",
+        "base_sha": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+        "head": "claude/gifted-ride-6d430y-dict-subclasses",
+        "head_sha": "2edbc4afd0dc6c7e53077bcc82a5534b7829488b",
+        "head_repo_id": 1409192014,
+        "head_repo_full_name": "den-run-ai/pystachy",
+        "merge_commit_sha": "1a0736256a62832fbba1406f4d292807e0b77ded",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T22:06:00Z",
+        "updated_at": "2026-11-12T22:10:14Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 19,
+        "additions": 215,
+        "deletions": 19,
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1401",
+        "display_title": "Take collections' mappings for dicts in isinstance()"
+      },
+      "patches": {
+        "patches": [
+          {
+            "filename": "docs/dynamic-any.md",
+            "patch": "@@ -319,7 +319,10 @@ class. A list test keeps the layout-aware dynamic reference described above.\n `isinstance(x, int)` retains the box because a bool also passes that test, but\n proves an int or bool payload for arithmetic and comparisons. Bool `&`, `|` and\n `^` with another bool, and `**`, stay dynamic because their result rules differ\n-(`tests/programs/inference/dynany_proven_int.py`).\n+(`tests/programs/inference/dynany_proven_int.py`). Where the program boxes an object of\n+`collections`' `defaultdict`, `OrderedDict` or `Counter`, which derive from `dict` in CPython,\n+`isinstance(x, dict)` outside `lib/` takes that box too and leaves `x` dynamic; the compiler\n+finds such a box in one more compilation pass (`tests/programs/inference/dynany_dict_subclasses.py`).\n \n ## Class values and type-keyed registries\n "
+          },
+          {
+            "filename": "docs/stdlib.md",
+            "patch": "@@ -39,7 +39,7 @@ argument types or documented differences within a supported API. The statuses ma\n | [Regular expressions](../lib/README.md#regular-expressions) | 🟡 Bounded<br>🧪 Generated matchers | `re`, for CPython 3.13's syntax of `str` patterns, with optional [generated matchers](re-specialization.md); `fnmatch` | Bytes patterns; `findall()` with two or more groups raises `NotImplementedError` | `finditer()` returns a list; `split()` raises where an unmatched group would add `None`; no `Scanner`, `Match.regs` or `\\N{...}` |\n | [Data formats and markup](../lib/README.md#data-formats-and-markup) | 🟡 Bounded<br>🧪 `json`, `tomllib` | [`json`](json.md), `tomllib`, `csv`, `html` with `html.entities`, `html.parser`, `urllib.parse` | `configparser`, `xml`, `email`, `pickle`; JSON files, hooks and indentation; `tomllib.load()`, which reads a binary file | Typed JSON integers are 64-bit, and nesting stays within the recursion limit and 2,000 containers; `csv` has no `Sniffer`; `urllib.parse` takes `str` only |\n | [Binary data and encodings](../lib/README.md#binary-data-and-encodings) | 🟡 Bounded | `struct`, `binascii`, `codecs` | `base64`, `hashlib`, `zlib`, `zipfile`, `array`; `bytearray` and `memoryview` buffers | `struct` formats must be known as the program compiles, and there is no `pack_into()`; `codecs` has UTF-8, Latin-1, ASCII and charmap, without `lookup()` |\n-| [Collections and functional tools](../lib/README.md#collections-and-functional-tools) | 🟡 Bounded<br>🟢 `itertools`, `bisect` | `collections` (`deque`, `defaultdict`, `OrderedDict`, `Counter`, `namedtuple()`), `copy`, `enum` (`Enum`, `IntEnum`, `StrEnum`, `Flag`, `IntFlag`, `str`/`int` mixins), `heapq`, `bisect`, `itertools`, `functools`, `operator`, `contextlib` | `enum`'s functional API and `boundary=`; `copy.replace()`; `ChainMap` and the `User*` classes; `heapq.merge()`; `contextlib.ExitStack`; `functools.singledispatch()` and `total_ordering()` | A container's items share one type; the mappings are not `dict` subclasses; `itertools` iterators are generators; `lru_cache` keys cannot be floats; `copy` follows static types, so an object in an `Any` value is not copied; enum members' values are literals or constant expressions, and int-like members are no ints where those are typed |\n+| [Collections and functional tools](../lib/README.md#collections-and-functional-tools) | 🟡 Bounded<br>🟢 `itertools`, `bisect` | `collections` (`deque`, `defaultdict`, `OrderedDict`, `Counter`, `namedtuple()`), `copy`, `enum` (`Enum`, `IntEnum`, `StrEnum`, `Flag`, `IntFlag`, `str`/`int` mixins), `heapq`, `bisect`, `itertools`, `functools`, `operator`, `contextlib` | `enum`'s functional API and `boundary=`; `copy.replace()`; `ChainMap` and the `User*` classes; `heapq.merge()`; `contextlib.ExitStack`; `functools.singledispatch()` and `total_ordering()` | A container's items share one type; the mappings hold a `dict` rather than derive from it (`isinstance()` still takes them for dicts, but `type()` is not `dict`, and the library's functions do not take them for dicts); `itertools` iterators are generators; `lru_cache` keys cannot be floats; `copy` follows static types, so an object in an `Any` value is not copied; enum members' values are literals or constant expressions, and int-like members are no ints where those are typed |\n | [Numbers and randomness](../lib/README.md#numbers-and-randomness) | 🟡 Bounded<br>🧪 `mpz` | `math` (builtin), `random`, `statistics`, `colorsys`, [`mpz`](mpz.md) | `decimal`, `fractions`, `cmath`, `numbers`, `secrets`; `statistics.mean()`, `stdev()`, `variance()`, `kde()` and `NormalDist` | `kde()` passes bounded `match` but still needs heterogeneous function storage; `getrandbits()` takes at most 63 bits; no `str` seeds, `randbytes()` or `SystemRandom`; no `math.sumprod()` |\n | [Dates and times](../lib/README.md#dates-and-times) | 🟡 Bounded | `datetime`; `time.time()`, `monotonic()`, `perf_counter()` and `sleep()` (builtin) | The local time zone (`date.today()`, `datetime.now()` without a zone); `strptime()`; `time.localtime()`, `gmtime()` and `strftime()`; `calendar`, `zoneinfo` | `2 * delta` and other reflected operators are rejected; `hash()` values differ from CPython's; `timedelta` arithmetic is 64-bit |\n | [Files, OS and command line](../lib/README.md#files-os-and-command-line) | 🟡 Bounded | `open()` of text and binary files; `io` (`StringIO`, `BytesIO`, `TextIOWrapper`); selected `sys`, `os` and `os.path` (builtin), including `os.makedirs()`, `os.environ[name]` reads and writes and its `get()`, `pop()` and `in`; `posixpath`, `stat`, `tempfile.mkdtemp()`, `errno`, [`select.select()`](select.md), [`argparse` with literal declarations](../lib/compatibility.md#argparse), `getopt`, `pathlib` (POSIX), `glob`, `shutil` (copies, `move()`, `rmtree()`) | Runtime-defined parsers and subparsers, `os.environ` as a mapping value (iteration, `items()`) and `os.stat()`, `shutil.copytree()` | `TextIOWrapper` decodes UTF-8, Latin-1 and ASCII, without `seek()`; a dropped file closes at a later collection; no `posixpath.relpath()`; `open()` and `os` take `str(path)`, not a path object |"
+          },
+          {
+            "filename": "lib/collections/__init__.py",
+            "patch": "@@ -8,8 +8,8 @@\n with the C OrderedDict's messages. Their items have one type each, T (or K and V), bound by the\n constructor's arguments, an annotation such as deque[int] or Counter[str], or an explicit\n constructor such as deque[int](). CPython's mappings derive from dict; these hold dicts\n-instead, so isinstance(x, dict) is false for them, and keys(), values() and items() return\n-lists, as a dict's do here.\n+instead: isinstance(x, dict) is true for them, though not in lib/'s own code (this module's\n+too), and keys(), values() and items() return lists, as a dict's do here.\n \n namedtuple() makes its class at compile time: the compiler compiles NAME = namedtuple(...) in a\n module's top-level code, given literal arguments, as a class statement, a NamedTuple whose fields"
+          },
+          {
+            "filename": "src/pystachy_compiler/dynamic.py",
+            "patch": "@@ -24,7 +24,7 @@\n from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short\n from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA\n from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk\n-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt\n+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_file, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt\n \n DYN = \"dyn\"\n # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),\n@@ -2530,7 +2530,37 @@ def gen_dyn_isinst(self, v: Val, c: Node) -> Val:\n         self.err(\"isinstance() of an Any value is only supported with builtin types, classes, None and tuples of them\")\n     if \"*\" in ts:\n         return Val(\"true\", \"bool\")\n-    return Val(self.dyn_test(v, ts), \"bool\")\n+    r = self.dyn_test(v, ts)\n+    if \"dict[dyn,dyn]\" in ts and dyn_dict_objects(self):\n+        # (or the box of an object of lib/collections' mappings, by its class: @dyn.isdict)\n+        hit = self.dyn_call(self.dyn_dispatcher(\"isdict\", [DYN], \"bool\", \"\"), [v])\n+        r = self.scalar(\"or\", [Val(r, \"bool\"), hit])\n+    return Val(r, \"bool\")\n+\n+\n+# Gen.hints' key of a program whose Any values may hold objects of lib/collections' mappings,\n+# which CPython's isinstance() takes for dicts (dyn_dict_objects)\n+DICTHINT = \"dyn:dict-objects\"\n+\n+\n+def dyn_dict_objects(self) -> bool:\n+    # does a test isinstance(x, dict) of an Any value x compiled here take the box of an object of\n+    # lib/collections' mappings for a dict too, as CPython's derive from dict (Gen.dict_object):\n+    # in code outside lib/, where a pass found that the program boxes one (DICTHINT, which\n+    # dyn_dict_rejoin sets). The test then reads the box's class too, and the value stays an Any\n+    # value where the test holds. A pass without the hint compiles the test as a dict's alone\n+    if lib_file(self.line, self.libdir):\n+        return False\n+    self.dyndicts = True\n+    return DICTHINT in self.hints\n+\n+\n+def dyn_dict_rejoin(self) -> None:\n+    # at the end of a pass that compiled tests isinstance(x, dict) of Any values outside lib/\n+    # without DICTHINT (dyn_dict_objects): where the program boxes an object of lib/collections'\n+    # mappings, the next pass compiles them with it\n+    if self.dyndicts and DICTHINT not in self.hints and len([c for c in self.dynclasses if self.dict_class(c)]) > 0:\n+        self.newhints[DICTHINT] = \"1\"\n \n \n def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:\n@@ -2545,6 +2575,8 @@ def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:\n     # Keep its descriptor and use the layout-aware dynamic operations after the test.\n     if len(ts) != 1 or ts[0] == \"\" or ts[0] == \"*\" or ts[0] == \"%class:type\":\n         return \"\"\n+    if ts[0] == \"dict[dyn,dyn]\" and dyn_dict_objects(self):\n+        return \"\"  # (an object of lib/collections' mappings passes the test too)\n     return ts[0]\n \n \n@@ -3376,6 +3408,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:\n         return True\n     if key == \"callable\":\n         return \"__call__\" in ci.methods\n+    if key == \"isdict\":\n+        return self.dict_class(c)\n     if key == \"truth\":\n         return \"__bool__\" in ci.methods or \"__len__\" in ci.methods\n     if key == \"lengthhint\":\n@@ -3540,7 +3574,7 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])\n         r = self.expr(mk(\"call\", \"\", line, [mk(\"attr\", key[5 : key.rfind(\".\")], line, [xn])] + an), \"\")\n     elif key == \"module\" or key == \"qualname\":\n         r = Val(self.sconst(self.refl_type_name(x.t, \"__module__\" if key == \"module\" else \"__qualname__\")), \"str\")\n-    elif key == \"callable\":\n+    elif key == \"callable\" or key == \"isdict\":\n         r = Val(\"true\", \"bool\")\n     elif key == \"slice\":\n         self.raise_(\"TypeError\", self.sconst(f\"slicing an object is not supported: {short(x.t)}.__getitem__ would take a slice object, which Pystachy does not have\"))\n@@ -4157,6 +4191,8 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:\n         self.ret_(Val(self.sconst(\"builtins\"), \"str\"))\n     elif key == \"qualname\":\n         self.ret_(self.dyn_type_name(o))\n+    elif key == \"isdict\":\n+        self.ret_(Val(\"false\", \"bool\"))  # (a box of no class of lib/collections' mappings)\n     elif key == \"callable\":\n         kind = Val(self.mload(\"int\", self.dyn_typeof(o)), \"int\")\n         self.ret_(Val(self.scalar(\"or\", [self.num_cmp(\"==\", kind, Val(str(DK_FUNC), \"int\")),"
+          },
+          {
+            "filename": "src/pystachy_compiler/expressions.py",
+            "patch": "@@ -70,6 +70,7 @@\n     is_vtuple,\n     kw_names,\n     kw_types,\n+    lib_file,\n     lib_source,\n     lt,\n     nones,\n@@ -435,7 +436,7 @@ def gen_isinst(self, t: str, c: Node) -> int:\n     if abc == \"Sequence\" or abc == \"MutableSequence\" or abc == \"Mapping\" or abc == \"MutableMapping\":\n         # (collections.abc's: str, bytes and tuple, also a NamedTuple, are Sequences, list is a mutable one)\n         if abc.endswith(\"Mapping\"):\n-            return 1 if is_dict(t) else 0\n+            return 1 if is_dict(t) else -2 if self.dict_object(t) else 0\n         if is_list(t) or (abc == \"Sequence\" and (t == \"str\" or t == \"bytes\" or is_tuple(t) or is_vtuple(t))):\n             return 1\n         return -2 if abc == \"Sequence\" and (t in self.nts or t == RANGEC) else 0  # (a range is a Sequence too)\n@@ -483,6 +484,8 @@ def gen_isinst(self, t: str, c: Node) -> int:\n         return -2  # (a tuple, unless it is None)\n     if c.s == \"tuple\" and is_vtuple(t):\n         return 1\n+    if c.s == \"dict\" and self.dict_object(t):\n+        return -2  # (unless it is None)\n     if c.s == \"list\" or c.s == \"dict\" or c.s == \"tuple\" or c.s == \"set\" or c.s == \"frozenset\":\n         return 1 if t.startswith(c.s + \"[\") else 0\n     if c.s == \"type\" and t == \"exctype\":\n@@ -498,6 +501,23 @@ def gen_isinst(self, t: str, c: Node) -> int:\n         return 0\n     return -1\n \n+def gen_dict_class(self, t: str) -> bool:\n+    # is t one of lib/collections' mappings, defaultdict, OrderedDict and Counter, or a\n+    # specialization of one: classes that derive from dict in CPython, and hold a dict here\n+    if t not in self.classes:\n+        return False\n+    o = self.classes[t].origin if self.classes[t].origin != \"\" else t\n+    if o != \"collections$defaultdict\" and o != \"collections$OrderedDict\" and o != \"collections$Counter\":\n+        return False\n+    return lib_source(self.classes[o].node.line, self.libdir, \"collections/__init__.py\")\n+\n+def gen_dict_object(self, t: str) -> bool:\n+    # does isinstance(x, dict) (and a Mapping) hold for x of static type t, which is no dict: an\n+    # object of lib/collections' mappings (dict_class), as CPython's derive from dict. Not in\n+    # lib/'s own code, which tests what they are here, objects that hold a dict (copy's and\n+    # csv's tests stand for CPython's of exact types, collections' for its own classes)\n+    return self.dict_class(t) and not lib_file(self.line, self.libdir)\n+\n def gen_isnone(self, t: str) -> int:\n     # isinstance(x, type(None)) for x of static type t, not an optional one (see isinst)\n     return 1 if t == \"None\" else -3 if t in self.classes else 0"
+          },
+          {
+            "filename": "src/pystachy_compiler/gen.py",
+            "patch": "@@ -843,6 +843,8 @@\n     gen_obj_isinst as expressions_obj_isinst,\n     gen_isinst_reads as expressions_isinst_reads,\n     gen_isnone as expressions_isnone,\n+    gen_dict_class as expressions_dict_class,\n+    gen_dict_object as expressions_dict_object,\n     gen_isnull as expressions_isnull,\n     gen_iter_ret as expressions_iter_ret,\n     gen_keep_stack as expressions_keep_stack,\n@@ -1443,6 +1445,11 @@ def __init__(self):\n         self.hints: dict[str, str] = {}\n         self.newhints: dict[str, str] = {}\n         self.final = True\n+        # whether code outside lib/ tested isinstance(x, dict) of an Any value (dyn_dict_objects):\n+        # where the program boxes an object of lib/collections' mappings, the next pass compiles\n+        # those tests with DICTHINT. Speculative compilation (dry, a declined adapter) may set it\n+        # as well, which costs at most that pass: the hint is correct for any such test\n+        self.dyndicts = False\n         # comparison methods (Class.method) that @o.x.<class> does not call with an Any value, as\n         # their call with one did not compile on an earlier pass (dyn_xbody); the ones this pass\n         # finds; the method whose call with one is being compiled (then an error restarts: gen_err)\n@@ -4233,6 +4240,12 @@ def obj_isinst(self, v: Val, t: Node) -> Val:\n     def isnone(self, t: str) -> int:\n         return expressions_isnone(self, t)\n \n+    def dict_class(self, t: str) -> bool:\n+        return expressions_dict_class(self, t)\n+\n+    def dict_object(self, t: str) -> bool:\n+        return expressions_dict_object(self, t)\n+\n     def isinst_reads(self, c: Node) -> None:\n         return expressions_isinst_reads(self, c)\n "
+          },
+          {
+            "filename": "src/pystachy_compiler/program.py",
+            "patch": "@@ -6,7 +6,7 @@\n from src.pystachy_compiler.reflection import refl_needs_eh, refl_props\n from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin\n from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown\n-from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage\n+from src.pystachy_compiler.dynamic import DICTHINT, comparison_properties, comparison_storage, dyn_dict_rejoin\n from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol\n from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS, one_nums_intact\n from src.pystachy_compiler.module import Mod\n@@ -1240,9 +1240,11 @@ def gen_program(self, mods: list[Mod]) -> str:\n         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:\n             self.global_var(f\"@g.{nm}.def\", \"bool\")  # (a variable no compiled code assigns)\n     timing_end(phase + \".discover\", started)\n+    dyn_dict_rejoin(self)  # (Any values that may hold objects of lib/collections' mappings)\n     # Finite comparison field discoveries only grow (incompatible joins are\n     # terminal). Finish these even if earlier fields used the ordinary join budget.\n-    if len(self.newhints) > 0 and (not self.final or any(k.startswith(\"cmpfield:\") or k.startswith(\"cmpwrite:\") for k in self.newhints)):\n+    # So does DICTHINT, which one pass adds at most.\n+    if len(self.newhints) > 0 and (not self.final or any(k.startswith(\"cmpfield:\") or k.startswith(\"cmpwrite:\") or k == DICTHINT for k in self.newhints)):\n         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)\n     started = timing_start()\n     # The completed adapter set makes candidate discovery independent of which"
+          },
+          {
+            "filename": "tests/deviations/lib_collections_mappings.out",
+            "patch": "@@ -1,4 +1,3 @@\n-False False False\n ['a', 'b', 'c'] [2, 1, 1] [('a', 2), ('b', 1), ('c', 1)] ['a', 'a', 'b', 'c']\n Counter({'a': 2, 'b': 1, 'c': 1, 'z': 1})\n defaultdict(<function>, {'x': 0})"
+          },
+          {
+            "filename": "tests/deviations/lib_collections_mappings.py",
+            "patch": "@@ -1,15 +1,12 @@\n # Documented deviations of lib/collections' Counter, defaultdict and OrderedDict (Pystachy's\n # own) from CPython's.\n-from collections import Counter, OrderedDict, defaultdict\n+from collections import Counter, defaultdict\n \n-# They hold a dict rather than derive from it: CPython prints True three times.\n+# They hold a dict rather than derive from it (isinstance() takes them for dicts all the same:\n+# tests/programs/library/lib_collections_isinstance.py). keys(), values() and items() are lists,\n+# as a dict's are here (CPython: dict_keys([...]), ...), and elements() is a list (CPython:\n+# <itertools.chain object at 0x...>).\n c = Counter(\"abca\")\n-d: defaultdict[str, int] = defaultdict(int)\n-od: OrderedDict[str, int] = OrderedDict()\n-print(isinstance(c, dict), isinstance(d, dict), isinstance(od, dict))\n-\n-# keys(), values() and items() are lists, as a dict's are here (CPython: dict_keys([...]), ...),\n-# and elements() is a list (CPython: <itertools.chain object at 0x...>).\n print(c.keys(), c.values(), c.items(), c.elements())\n \n # A loop gets the keys the mapping has when it starts: CPython raises RuntimeError: dictionary"
+          },
+          {
+            "filename": "tests/programs/inference/dynany_dict_subclasses.out",
+            "patch": "@@ -0,0 +1,7 @@\n+dict of 1 True False\n+dict of 1 True True\n+list True False\n+other False False\n+dict of 3 True False\n+dict of 1 True False\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/inference/dynany_dict_subclasses.py",
+            "patch": "@@ -0,0 +1,20 @@\n+# pystachy: dynamic-any\n+# isinstance(x, dict) of an Any value that holds an object of lib/collections' mappings, which\n+# CPython's derive from dict: true, also where the test narrows the value of a dict\n+from collections import Counter, OrderedDict, defaultdict\n+from typing import Any\n+\n+\n+def describe(v: Any) -> str:\n+    if isinstance(v, dict):\n+        return f\"dict of {len(v)}\"\n+    if isinstance(v, list):\n+        return \"list\"\n+    return \"other\"\n+\n+\n+dd: Any = defaultdict[str, int](int)\n+dd[\"a\"] = 2\n+values: list[Any] = [dd, {\"q\": 1}, [1], 3, Counter(\"abca\"), OrderedDict[str, int]([(\"p\", 1)])]\n+for v in values:\n+    print(describe(v), isinstance(v, (list, dict)), type(v) is dict)"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_isinstance.out",
+            "patch": "@@ -0,0 +1,9 @@\n+True True True\n+True True True\n+False False False\n+False False False False\n+True True True\n+True False False\n+x is a dict: ['v']\n+c is a dict: 2\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_isinstance.py",
+            "patch": "@@ -0,0 +1,22 @@\n+# isinstance() of lib/collections' mappings: CPython's derive from dict, so each object is a dict\n+# (also in a tuple or union of types), though its type is its own class, not dict\n+from collections import Counter, OrderedDict, defaultdict\n+\n+x: defaultdict[str, set[str]] = defaultdict(set)\n+x[\"k\"].add(\"v\")\n+od: OrderedDict[str, int] = OrderedDict([(\"a\", 1)])\n+c = Counter(\"abca\")\n+print(isinstance(x, dict), isinstance(od, dict), isinstance(c, dict))\n+print(isinstance(x, (dict, list)), isinstance(od, (list, dict)), isinstance(c, list | dict))\n+print(isinstance(x, list), isinstance(od, (list, tuple)), isinstance(c, set | frozenset))\n+print(type(x) is dict, type(od) is dict, type(c) is dict, type(x) == dict)\n+print(type(x) is defaultdict, type(od) is OrderedDict, type(c) is Counter)\n+print(isinstance(x, defaultdict), isinstance(od, Counter), isinstance(c, OrderedDict))\n+if isinstance(x, dict):\n+    print(\"x is a dict:\", sorted(x[\"k\"]))\n+else:\n+    print(\"x is no dict\")\n+if not isinstance(c, dict):\n+    print(\"c is no dict\")\n+else:\n+    print(\"c is a dict:\", c[\"a\"])"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_isinstance_abc.out",
+            "patch": "@@ -0,0 +1,3 @@\n+True True True\n+True True False\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_isinstance_abc.py",
+            "patch": "@@ -0,0 +1,12 @@\n+# collections.abc's Mapping and MutableMapping (and typing's) take lib/collections' mappings,\n+# which derive from dict in CPython, for mappings: but no Sequence\n+import collections.abc\n+import typing\n+from collections import Counter, OrderedDict, defaultdict\n+from collections.abc import Mapping, MutableMapping, Sequence\n+\n+dd: defaultdict[str, int] = defaultdict(int)\n+od: OrderedDict[str, int] = OrderedDict()\n+c = Counter(\"ab\")\n+print(isinstance(dd, Mapping), isinstance(od, MutableMapping), isinstance(c, collections.abc.Mapping))\n+print(isinstance(dd, typing.Mapping), isinstance(c, typing.MutableMapping), isinstance(od, Sequence))"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_isinstance_generic.out",
+            "patch": "@@ -0,0 +1,3 @@\n+0 1 -1 2 1\n+3\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_isinstance_generic.py",
+            "patch": "@@ -0,0 +1,14 @@\n+# isinstance(x, dict) in a function compiled for each argument's type (no annotation): an object\n+# of lib/collections' mappings takes the dict's branch, as CPython's derive from dict\n+from collections import Counter, OrderedDict, defaultdict\n+\n+\n+def size(x):\n+    if isinstance(x, dict):\n+        return len(x)\n+    return -1\n+\n+\n+print(size(defaultdict[str, int](int)), size({\"a\": 1}), size([1]), size(Counter(\"aab\")), size(OrderedDict([(\"a\", 1)])))\n+held = Counter(\"xyz\")\n+print(size(held))"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_isinstance_unions.out",
+            "patch": "@@ -0,0 +1,4 @@\n+dict of 1 None\n+Box Counter, a: 2\n+Box OrderedDict, a dict: True\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_isinstance_unions.py",
+            "patch": "@@ -0,0 +1,32 @@\n+# isinstance(x, dict) of a value that may be None or another class's object, which holds one of\n+# lib/collections' mappings (CPython's derive from dict): the test, and the narrowing it gives\n+from collections import Counter, OrderedDict, defaultdict\n+\n+\n+class Box:\n+    pass\n+\n+\n+def optional(x: defaultdict[str, int] | None) -> str:\n+    if isinstance(x, dict):\n+        return f\"dict of {len(x)}\"\n+    return \"None\"\n+\n+\n+def either(x: Box | Counter[str]) -> str:\n+    if isinstance(x, dict):\n+        return f\"Counter, a: {x['a']}\"\n+    return \"Box\"\n+\n+\n+def rest(x: Box | OrderedDict[str, int]) -> str:\n+    if isinstance(x, Box):\n+        return \"Box\"\n+    return f\"OrderedDict, a dict: {isinstance(x, dict)}\"\n+\n+\n+dd: defaultdict[str, int] = defaultdict(int)\n+dd[\"a\"] += 2\n+print(optional(dd), optional(None))\n+print(either(Box()), either(Counter(\"aab\")))\n+print(rest(Box()), rest(OrderedDict[str, int]()))"
+          }
+        ],
+        "url": "https://github.com/den-run-ai/pystachy/pull/1401",
+        "title": "den-run-ai/pystachy#1401 (patch)",
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1401",
+        "display_title": "den-run-ai/pystachy#1401 (patch)"
+      },
+      "comments": {
+        "comments": [
+          {
+            "url": "https://github.com/den-run-ai/pystachy/pull/1401#issuecomment-6837235074",
+            "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"2edbc4afd0dc6c7e53077bcc82a5534b7829488b\",\"has_any_findings\":true,\"has_unresolved_findings\":true,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong>: ✅ Completed</summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T22:10:14.105135Z\">2026-11-12T22:10:14.105135Z</relative-time> | `2edbc4a` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>\n\n</details>",
+            "user": {
+              "login": "chatgpt-codex-connector[bot]",
+              "name": "chatgpt-codex-connector[bot]",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+              "id": 199175422
+            },
+            "id": 6837235074,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T22:06:42Z",
+            "updated_at": "2026-11-12T22:10:14Z",
+            "review": null,
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null
+          },
+          {
+            "url": "https://github.com/den-run-ai/pystachy/pull/1401#pullrequestreview-5882791310",
+            "body": "<!-- codex-review-receipt:v1 -->\n\n\n### 💡 Codex Review\n\nHere are some automated review suggestions for this pull request.\n\n**Reviewed commit:** `2edbc4afd0`\n    \n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\".\n\nIf Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\nCodex can also answer questions or update the PR. Try commenting \"@codex address that feedback\".\n            \n</details>",
+            "user": {
+              "login": "chatgpt-codex-connector[bot]",
+              "name": "chatgpt-codex-connector[bot]",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+              "id": 199175422
+            },
+            "id": 5882791310,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T22:10:11Z",
+            "updated_at": null,
+            "review": "COMMENTED",
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null
+          },
+          {
+            "url": "https://github.com/den-run-ai/pystachy/pull/1401#discussion_r4556993284",
+            "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Preserve dict descriptor calls when disabling Any narrowing**\n\nWhen any unrelated `Counter`, `defaultdict`, or `OrderedDict` is boxed, this program-wide hint removes dict narrowing even from functions that only receive ordinary dictionaries. Consequently, `def lookup(x: Any) -> Any:`, with `if isinstance(x, dict): return dict.get(x, 'a', 0)`, stops compiling as soon as the program includes `unrelated: Any = Counter('abc')`: `gen_unbound_call` rejects the receiver as `Any`. I verified that the parent emits IR for this program and CPython prints `2`, whereas this commit rejects it. Preserve descriptor support for the dynamic receiver, or retain an appropriate guarded refinement, rather than making unrelated boxing reject previously supported programs.\n\nAGENTS.md reference: [AGENTS.md:L13-L17](https://github.com/den-run-ai/pystachy/blob/2edbc4afd0dc6c7e53077bcc82a5534b7829488b/AGENTS.md#L13-L17)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+            "user": {
+              "login": "chatgpt-codex-connector[bot]",
+              "name": "chatgpt-codex-connector[bot]",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+              "id": 199175422
+            },
+            "id": 4556993284,
+            "pull_request_review_id": 5882791310,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T22:10:12Z",
+            "updated_at": "2026-11-12T22:10:12Z",
+            "review": null,
+            "side": "RIGHT",
+            "line": 2579,
+            "start_line": 2578,
+            "path": "src/pystachy_compiler/dynamic.py"
+          }
+        ],
+        "url": "https://github.com/den-run-ai/pystachy/pull/1401",
+        "title": "den-run-ai/pystachy PR #1401 comments",
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1401",
+        "display_title": "den-run-ai/pystachy PR #1401 comments"
+      },
+      "review_threads": {
+        "review_threads": [
+          {
+            "id": "PRRT_kwDOU_6QTs622qA3",
+            "is_resolved": false,
+            "is_outdated": false,
+            "path": "src/pystachy_compiler/dynamic.py",
+            "line": 2579,
+            "diff_side": "RIGHT",
+            "start_line": 2578,
+            "start_diff_side": "RIGHT",
+            "original_line": 2579,
+            "original_start_line": 2578,
+            "resolved_by": null,
+            "comments": [
+              {
+                "id": "PRRC_kwDOU_6QTs8AAAABD54zBA",
+                "database_id": 4556993284,
+                "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Preserve dict descriptor calls when disabling Any narrowing**\n\nWhen any unrelated `Counter`, `defaultdict`, or `OrderedDict` is boxed, this program-wide hint removes dict narrowing even from functions that only receive ordinary dictionaries. Consequently, `def lookup(x: Any) -> Any:`, with `if isinstance(x, dict): return dict.get(x, 'a', 0)`, stops compiling as soon as the program includes `unrelated: Any = Counter('abc')`: `gen_unbound_call` rejects the receiver as `Any`. I verified that the parent emits IR for this program and CPython prints `2`, whereas this commit rejects it. Preserve descriptor support for the dynamic receiver, or retain an appropriate guarded refinement, rather than making unrelated boxing reject previously supported programs.\n\nAGENTS.md reference: [AGENTS.md:L13-L17](https://github.com/den-run-ai/pystachy/blob/2edbc4afd0dc6c7e53077bcc82a5534b7829488b/AGENTS.md#L13-L17)\n\nUseful? React with 👍 / 👎.\n\n<!-- codex-code-review-finding:v1 -->",
+                "created_at": "2026-11-12T22:10:12Z",
+                "updated_at": "2026-11-12T22:10:12Z",
+                "author": {
+                  "login": "chatgpt-codex-connector",
+                  "name": "chatgpt-codex-connector",
+                  "email": null,
+                  "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+                  "id": null
+                },
+                "viewer_did_author": false
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "1402": {
+      "info": {
+        "url": "https://github.com/den-run-ai/pystachy/pull/1402",
+        "number": 1402,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Problem\n\nmypy annotates defaultdicts as dicts, as in `sub_code_map: dict[str, set[str]] = defaultdict(set)` (errorcodes.py; locals in checker.py, checkpattern.py and stubutil.py). Pystachy rejected these: a `dict` annotation binds no type variable of `defaultdict`. Refs #1322.\n\n## Change\n\nStacked on the `isinstance()` fix for these classes. An annotated assignment whose annotation is a `dict[K, V]` (or `Dict`, `Mapping`, `MutableMapping`) and whose value calls `defaultdict`, `OrderedDict` or `Counter` types its local, global or field as that class for `K` and `V`. It holds the object the call makes, never a copy, so a missing key calls the factory. A dict stored there later, or the variable passed as a `dict`, stays rejected. Claude Code assisted.\n\n## Validation\n\n`make` reaches both fixed points. The 3 programs and 3 rejections fail on main and on the base, and pass in JIT and AOT, also under program GC stress. All 192 combinations of 8 annotation spellings, 8 values and 3 scopes, rejected before, now match CPython. Against the base's compiler, only the 6 new cases change. Containers, library, classes, generics: 2230 passed. `make check-fast lint`, the lint controls and both opt-in gates pass.",
+        "title": "Type x: dict[K, V] = defaultdict(...) as the defaultdict",
+        "base": "claude/gifted-ride-6d430y-dict-subclasses",
+        "base_sha": "2edbc4afd0dc6c7e53077bcc82a5534b7829488b",
+        "head": "claude/gifted-ride-6d430y-dict-annotated-defaultdict",
+        "head_sha": "24f0df1010a2f21f64cdba96dedaafc1a722118b",
+        "head_repo_id": 1409192014,
+        "head_repo_full_name": "den-run-ai/pystachy",
+        "merge_commit_sha": "204bd729f1c252ea5a36244d53e6d09782d7ed99",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T22:06:12Z",
+        "updated_at": "2026-11-12T22:10:59Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 15,
+        "additions": 198,
+        "deletions": 2,
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1402",
+        "display_title": "Type x: dict[K, V] = defaultdict(...) as the defaultdict"
+      },
+      "final_info": {
+        "url": "https://github.com/den-run-ai/pystachy/pull/1402",
+        "number": 1402,
+        "state": "open",
+        "merged": false,
+        "mergeable": true,
+        "draft": false,
+        "body": "## Problem\n\nmypy annotates defaultdicts as dicts, as in `sub_code_map: dict[str, set[str]] = defaultdict(set)` (errorcodes.py; locals in checker.py, checkpattern.py and stubutil.py). Pystachy rejected these: a `dict` annotation binds no type variable of `defaultdict`. Refs #1322.\n\n## Change\n\nStacked on the `isinstance()` fix for these classes. An annotated assignment whose annotation is a `dict[K, V]` (or `Dict`, `Mapping`, `MutableMapping`) and whose value calls `defaultdict`, `OrderedDict` or `Counter` types its local, global or field as that class for `K` and `V`. It holds the object the call makes, never a copy, so a missing key calls the factory. A dict stored there later, or the variable passed as a `dict`, stays rejected. Claude Code assisted.\n\n## Validation\n\n`make` reaches both fixed points. The 3 programs and 3 rejections fail on main and on the base, and pass in JIT and AOT, also under program GC stress. All 192 combinations of 8 annotation spellings, 8 values and 3 scopes, rejected before, now match CPython. Against the base's compiler, only the 6 new cases change. Containers, library, classes, generics: 2230 passed. `make check-fast lint`, the lint controls and both opt-in gates pass.",
+        "title": "Type x: dict[K, V] = defaultdict(...) as the defaultdict",
+        "base": "claude/gifted-ride-6d430y-dict-subclasses",
+        "base_sha": "2edbc4afd0dc6c7e53077bcc82a5534b7829488b",
+        "head": "claude/gifted-ride-6d430y-dict-annotated-defaultdict",
+        "head_sha": "24f0df1010a2f21f64cdba96dedaafc1a722118b",
+        "head_repo_id": 1409192014,
+        "head_repo_full_name": "den-run-ai/pystachy",
+        "merge_commit_sha": "204bd729f1c252ea5a36244d53e6d09782d7ed99",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "requested_reviewers": null,
+        "requested_team_reviewers": null,
+        "diff": null,
+        "comments": null,
+        "created_at": "2026-11-12T22:06:12Z",
+        "updated_at": "2026-11-12T22:10:59Z",
+        "closed_at": null,
+        "merged_at": null,
+        "commits": 1,
+        "changed_files": 15,
+        "additions": 198,
+        "deletions": 2,
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1402",
+        "display_title": "Type x: dict[K, V] = defaultdict(...) as the defaultdict"
+      },
+      "patches": {
+        "patches": [
+          {
+            "filename": "docs/language/typing.md",
+            "patch": "@@ -107,6 +107,13 @@ tests of these annotations are decided using the compiled type.\n `str | os.PathLike[str]` simplifies to `str`, because paths must be strings;\n `os.fspath()` returns its string argument. Other `PathLike` annotations are unsupported.\n \n+An annotated assignment whose value is a call of `collections`' `defaultdict`, `OrderedDict`\n+or `Counter`, which derive from `dict`, types its local, global or field as that class:\n+`m: dict[str, list[str]] = defaultdict(list)`, or `Dict`, `Mapping` or `MutableMapping` in\n+place of `dict`, gives `m` the type `defaultdict[str, list[str]]` (a `Counter`'s values must\n+be `int`). `m` holds the object the call makes, so a missing key calls the factory, as in\n+CPython. A `dict` stored to `m` later, or `m` passed where a `dict` is expected, is rejected.\n+\n ## Annotations\n \n A function whose parameters are annotated uses those types. Ordinary functions and methods"
+          },
+          {
+            "filename": "src/pystachy_compiler/declarations.py",
+            "patch": "@@ -2119,7 +2119,7 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic\n                 # (Iterator[T] or Iterable[T] types nothing: the field's is its value's, see tmpl_ann)\n                 k = \"assign\" if k == \"annassign\" and len(st.kids) == 3 and self.iter_item(st.kids[1]) is not None else k\n                 why = self.ann_problem(st.kids[1], False) if k == \"annassign\" and ci.mod != \"\" else \"\"\n-                t = \"\" if why != \"\" else self.vtype(st.kids[1]) if k == \"annassign\" else self.guess(st.kids[-1], f)\n+                t = \"\" if why != \"\" else self.mapping_ann(self.vtype(st.kids[1]), st.kids[-1]) if k == \"annassign\" and len(st.kids) == 3 else self.vtype(st.kids[1]) if k == \"annassign\" else self.guess(st.kids[-1], f)\n                 if t.startswith(\"!\"):\n                     why = t[1:]  # (a call of a function Pystachy cannot compile: its error)\n                 given = t"
+          },
+          {
+            "filename": "src/pystachy_compiler/gen.py",
+            "patch": "@@ -1172,6 +1172,7 @@\n     gen_fn_sig as templates_fn_sig,\n     gen_instance as templates_instance,\n     gen_generic_ann as templates_generic_ann,\n+    gen_mapping_ann as templates_mapping_ann,\n     gen_generic_hint as templates_generic_hint,\n     gen_named_param as templates_named_param,\n     gen_named_params as templates_named_params,\n@@ -4843,6 +4844,9 @@ def generic_hint(self, e: Node, t: str) -> str:\n     def generic_ann(self, c: str, a: Node) -> str:\n         return templates_generic_ann(self, c, a)\n \n+    def mapping_ann(self, t: str, v: Node) -> str:\n+        return templates_mapping_ann(self, t, v)\n+\n     def named_params(self, c: str, init: Node) -> list[str]:\n         return templates_named_params(self, c, init)\n "
+          },
+          {
+            "filename": "src/pystachy_compiler/statements.py",
+            "patch": "@@ -703,6 +703,8 @@ def gen_stmt_main(self, n: Node) -> None:\n         if n.s != \"\" and self.ann_problem(n.kids[1], False) != \"\":\n             self.err(n.s)  # (the declaration of a local that only dropped code binds: Loader.dropped_locals())\n         t = self.vtype(n.kids[1])\n+        if len(n.kids) == 3:\n+            t = self.mapping_ann(t, n.kids[2])  # (x: dict[K, V] = defaultdict(...): the defaultdict's)\n         if n.kids[0].kind == \"name\":\n             self.declare(n.kids[0].s, t)\n         if len(n.kids) == 3:"
+          },
+          {
+            "filename": "src/pystachy_compiler/templates.py",
+            "patch": "@@ -433,6 +433,26 @@ def gen_generic_ann(self, c: str, a: Node) -> str:\n         return c\n     return self.specialize(c, [], given, True, {})\n \n+def gen_mapping_ann(self, t: str, v: Node) -> str:\n+    # the type of a local, global or field that an assignment annotated t gives the value v: t,\n+    # but where t is a dict[K, V] (or a spelling of one, such as Mapping[K, V]: ann_base) and v\n+    # a call of one of lib/collections' mappings (dict_class), which derive from dict in CPython,\n+    # that class's specialization whose type variables K and V bind (a Counter's K, where V is\n+    # its counts' int), as the class's own annotation names it: the variable holds the object\n+    # that the call makes, which a missing key's lookup asks for its default, as CPython's does\n+    if not is_dict(t) or v.kind != \"call\":\n+        return t\n+    f = v.kids[0].kids[0] if v.kids[0].kind == \"index\" else v.kids[0]\n+    if f.kind != \"name\" or f.s not in self.tparams or not self.dict_class(f.s):\n+        return t\n+    kv = targs(t)\n+    tvs = self.tparams[f.s]\n+    if len(tvs) == 2:\n+        return self.specialize(f.s, [], {tvs[0]: kv[0], tvs[1]: kv[1]}, True, {})\n+    if kv[1] != \"int\" and kv[1] != BIG:\n+        return t  # (a Counter's counts are ints, also where they promote: a dict's int values do then)\n+    return self.specialize(f.s, [], {tvs[0]: kv[0]}, True, {})\n+\n def gen_named_params(self, c: str, init: Node) -> list[str]:\n     # the types of the parameters (after self) of the __init__ of generic class c, as the\n     # specialization that c[X] names (see generic_ann) types them, its type variables bound:"
+          },
+          {
+            "filename": "src/pystachy_compiler/variables.py",
+            "patch": "@@ -866,7 +866,7 @@ def gen_ahead(self, name: str) -> str:\n     copying = self.copying\n     self.copying = st.s == \"from\" and self.foreign(e.s)  # (see copying)\n     if st.kind == \"annassign\" and st.kids[0].kind == \"name\":\n-        self.new_global(name, self.vtype(st.kids[1]))\n+        self.new_global(name, self.mapping_ann(self.vtype(st.kids[1]), st.kids[2]) if len(st.kids) == 3 else self.vtype(st.kids[1]))\n     elif st.kind == \"assign\" and assigns(st, name) and self.empty_of(e) != \"\":\n         self.new_global(name, \"dict[?,?]\" if e.kind == \"dict\" else f\"{self.empty_of(e)}[?]\")\n         self.lookahead(name, True)"
+          },
+          {
+            "filename": "tests/errors/library/lib_collections_dict_annotation_param.py",
+            "patch": "@@ -0,0 +1,12 @@\n+# error: lib_collections_dict_annotation_param.py:12: error: expected dict[str,int], got defaultdict[str, int]\n+# x: dict[K, V] = defaultdict(...) types x as the defaultdict it holds: x passed where a dict\n+# is expected is not supported (CPython's defaultdict is a dict)\n+from collections import defaultdict\n+\n+\n+def size(d: dict[str, int]) -> int:\n+    return len(d)\n+\n+\n+x: dict[str, int] = defaultdict(int)\n+print(size(x))"
+          },
+          {
+            "filename": "tests/errors/library/lib_collections_dict_annotation_reset.py",
+            "patch": "@@ -0,0 +1,17 @@\n+# error: lib_collections_dict_annotation_reset.py:12: error: cannot infer the type of an empty dict\n+# self.m: dict[K, V] = defaultdict(...) types the field as the defaultdict it holds: an empty\n+# dict stored to it later is not supported (CPython's field then holds the dict)\n+from collections import defaultdict\n+\n+\n+class Groups:\n+    def __init__(self) -> None:\n+        self.m: dict[str, list[int]] = defaultdict(list)\n+\n+    def clear(self) -> None:\n+        self.m = {}\n+\n+\n+g = Groups()\n+g.clear()\n+print(g.m)"
+          },
+          {
+            "filename": "tests/errors/library/lib_collections_dict_annotation_store.py",
+            "patch": "@@ -0,0 +1,8 @@\n+# error: lib_collections_dict_annotation_store.py:7: error: expected defaultdict[str, int], got dict[str,int]\n+# x: dict[K, V] = defaultdict(...) types x as the defaultdict it holds: a dict stored to it later\n+# is not supported (CPython's x then holds the dict)\n+from collections import defaultdict\n+\n+x: dict[str, int] = defaultdict(int)\n+x = {\"a\": 1}\n+print(x)"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_dict_annotations.out",
+            "patch": "@@ -0,0 +1,5 @@\n+['a', 'b'] defaultdict(<class 'int'>, {'x': 2}) defaultdict(<class 'list'>, {'k': [1]}) ['n'] 7 1\n+1 0 0 defaultdict(<class 'int'>, {'z': 0})\n+OrderedDict({'b': 2, 'a': 1}) ['b', 'a'] 2 0 3\n+True defaultdict OrderedDict Counter\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_dict_annotations.py",
+            "patch": "@@ -0,0 +1,28 @@\n+# A module's global annotated as a dict (dict, Dict, Mapping or MutableMapping, qualified or\n+# quoted) whose value is a call of collections' defaultdict, OrderedDict or Counter, which derive\n+# from dict: the global holds the object the call makes, so a missing key calls its factory\n+import collections\n+import collections.abc\n+import typing\n+from collections import Counter, OrderedDict, defaultdict\n+from collections.abc import Mapping, MutableMapping\n+from typing import Dict\n+\n+sub_code_map: dict[str, set[str]] = defaultdict(set)\n+sub_code_map[\"misc\"].add(\"b\")\n+sub_code_map[\"misc\"].add(\"a\")\n+counts: Dict[str, int] = defaultdict(int)\n+counts[\"x\"] += 2\n+lists: typing.Dict[str, list[int]] = collections.defaultdict(list)\n+lists[\"k\"].append(1)\n+module_map: Mapping[str, list[str]] = defaultdict(list)\n+module_map[\"m\"].append(\"n\")\n+mutable: MutableMapping[str, int] = defaultdict(lambda: 7)\n+qualified: collections.abc.Mapping[str, int] = defaultdict(int, {\"q\": 1})\n+quoted: \"dict[str, int]\" = defaultdict(int)\n+ordered: dict[str, int] = OrderedDict([(\"b\", 2), (\"a\", 1)])\n+tally: dict[str, int] = Counter(\"abca\")\n+print(sorted(sub_code_map[\"misc\"]), counts, lists, module_map[\"m\"], mutable[\"new\"], len(mutable))\n+print(qualified[\"q\"], qualified[\"missing\"], quoted[\"z\"], quoted)\n+print(ordered, list(ordered), tally[\"a\"], tally[\"none\"], len(tally))\n+print(isinstance(sub_code_map, dict), type(counts).__name__, type(ordered).__name__, type(tally).__name__)"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_dict_annotations_fields.out",
+            "patch": "@@ -0,0 +1,4 @@\n+defaultdict(<class 'list'>, {'b': [2, 3], 'a': [1], 'absent': []}) [] 3\n+0 0 ['b', 'a'] 1 1\n+True Counter OrderedDict\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_dict_annotations_fields.py",
+            "patch": "@@ -0,0 +1,29 @@\n+# A field annotated as a dict whose value is a call of collections' defaultdict, OrderedDict or\n+# Counter: it holds that object, whose missing keys call the factory in each method\n+from collections import Counter, OrderedDict, defaultdict\n+from collections.abc import Mapping\n+from typing import Dict, MutableMapping\n+\n+\n+class Index:\n+    def __init__(self) -> None:\n+        self.by_key: dict[str, list[int]] = defaultdict(list)\n+        self.hits: Mapping[str, int] = Counter()\n+        self.order: MutableMapping[str, int] = OrderedDict()\n+        self.width: Dict[str, int] = defaultdict(lambda: 1)\n+\n+    def add(self, key: str, value: int) -> None:\n+        self.by_key[key].append(value)\n+        self.order[key] = value\n+\n+    def report(self) -> None:\n+        print(self.by_key, self.by_key[\"absent\"], len(self.by_key))\n+        print(self.hits[\"x\"], len(self.hits), list(self.order), self.width[\"w\"], len(self.width))\n+\n+\n+ix = Index()\n+ix.add(\"b\", 2)\n+ix.add(\"a\", 1)\n+ix.add(\"b\", 3)\n+ix.report()\n+print(isinstance(ix.by_key, dict), type(ix.hits).__name__, type(ix.order).__name__)"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_dict_annotations_locals.out",
+            "patch": "@@ -0,0 +1,7 @@\n+a [('a', 0), ('c', 2), ('e', 4)]\n+b [('b', 1), ('d', 3)]\n+0 3\n+[(1, ['c']), (2, ['ab', 'de']), (3, ['fgh'])] [] 4\n+[('os', ['/a', '/c']), ('sys', ['/b'])] [] True\n+3 0 ['b', 'a', 'n'] OrderedDict({'b': 1, 'a': 3, 'n': 2})\n+[exit 0]"
+          },
+          {
+            "filename": "tests/programs/library/lib_collections_dict_annotations_locals.py",
+            "patch": "@@ -0,0 +1,53 @@\n+# A local annotated as a dict whose value is a call of collections' defaultdict, OrderedDict or\n+# Counter (mypy's checker.py and stubutil.py): it holds that object, whose missing keys call\n+# the factory\n+from collections import Counter, OrderedDict, defaultdict\n+from collections.abc import Mapping\n+from typing import Dict, MutableMapping\n+\n+\n+class SymbolNode:\n+    def __init__(self, name: str) -> None:\n+        self.name = name\n+\n+\n+def captures(names: list[str]) -> None:\n+    nodes = [SymbolNode(n) for n in names]\n+    all_captures: dict[SymbolNode, list[tuple[str, int]]] = defaultdict(list)\n+    for i in range(len(names)):\n+        all_captures[nodes[i % 2]].append((names[i], i))\n+    for node in nodes[:2]:\n+        print(node.name, all_captures[node])\n+    print(len(all_captures[nodes[-1]]), len(all_captures))\n+\n+\n+def module_paths(entries: list[tuple[str, str]]) -> None:\n+    module_map: Mapping[str, list[str]] = defaultdict(list)\n+    for mod, path in entries:\n+        module_map[mod].append(path)\n+    print(sorted(module_map.items()), module_map[\"none\"], \"none\" in module_map)\n+\n+\n+def others(text: str) -> None:\n+    counted: Dict[str, int] = Counter(text)\n+    seen: MutableMapping[str, int] = OrderedDict()\n+    for ch in text:\n+        seen[ch] = counted[ch]\n+    print(counted[\"a\"], counted[\"?\"], list(seen), seen)\n+\n+\n+def grouped(words: list[str]) -> None:\n+    groups: dict[int, list[str]] = defaultdict(list)\n+\n+    def add(w: str) -> None:\n+        groups[len(w)].append(w)\n+\n+    for w in words:\n+        add(w)\n+    print(sorted(groups.items()), groups[0], len(groups))\n+\n+\n+captures([\"a\", \"b\", \"c\", \"d\", \"e\"])\n+grouped([\"ab\", \"c\", \"de\", \"fgh\"])\n+module_paths([(\"os\", \"/a\"), (\"sys\", \"/b\"), (\"os\", \"/c\")])\n+others(\"banana\")"
+          }
+        ],
+        "url": "https://github.com/den-run-ai/pystachy/pull/1402",
+        "title": "den-run-ai/pystachy#1402 (patch)",
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1402",
+        "display_title": "den-run-ai/pystachy#1402 (patch)"
+      },
+      "comments": {
+        "comments": [
+          {
+            "url": "https://github.com/den-run-ai/pystachy/pull/1402#issuecomment-6837235527",
+            "body": "<!-- codex-pull-request-review-summary -->\n<!-- codex-review-state:v1 {\"code_review\":{\"commit_sha\":\"24f0df1010a2f21f64cdba96dedaafc1a722118b\",\"has_any_findings\":false,\"has_unresolved_findings\":false,\"status\":\"completed\"},\"security_review\":{\"commit_sha\":null,\"has_any_findings\":null,\"has_unresolved_findings\":null,\"status\":null}} -->\n\n<details>\n<summary><strong>Codex Review Summary</strong>: ✅ Completed</summary>\n\nThis comment shows the latest Codex review activity on this pull request.\n\n| Review | Status | Commit | Review trigger |\n| --- | --- | --- | --- |\n| 📝 **Code Review** | ✅ **Completed** <relative-time datetime=\"2026-11-12T22:10:58.338950Z\">2026-11-12T22:10:58.338950Z</relative-time> | `24f0df1` | Draft marked ready |\n\n\n\n<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n[Your team has set up Codex to review pull requests in this repo](https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n- Open a pull request for review\n- Mark a draft as ready\n- Comment \"@codex review\" or \"@codex security review\".\n\nCodex reacts with 👀 while any review is running, comments if it has suggestions, and reacts with 👍 once all reviews finish with no findings.\n\n</details>\n\n</details>",
+            "user": {
+              "login": "chatgpt-codex-connector[bot]",
+              "name": "chatgpt-codex-connector[bot]",
+              "email": null,
+              "avatar_url": "https://avatars.githubusercontent.com/in/1144995?v=4",
+              "id": 199175422
+            },
+            "id": 6837235527,
+            "pull_request_review_id": null,
+            "in_reply_to_id": null,
+            "created_at": "2026-11-12T22:06:43Z",
+            "updated_at": "2026-11-12T22:10:59Z",
+            "review": null,
+            "side": null,
+            "line": null,
+            "start_line": null,
+            "path": null
+          }
+        ],
+        "url": "https://github.com/den-run-ai/pystachy/pull/1402",
+        "title": "den-run-ai/pystachy PR #1402 comments",
+        "display_url": "https://github.com/den-run-ai/pystachy/pull/1402",
+        "display_title": "den-run-ai/pystachy PR #1402 comments"
+      },
+      "review_threads": {
+        "review_threads": []
+      }
+    }
+  },
+  "related_issues": {
+    "512": {
+      "issue": {
+        "url": "https://github.com/den-run-ai/pystachy/issues/512",
+        "title": "Preserve def-annotation evaluation failures",
+        "issue_number": 512,
+        "body": "## Problem\n\nSome annotations that raise when CPython executes a def are silently accepted:\n\n```python\nfrom typing import Union\ndef f(x: list[int] | Union[()]) -> None:\n    pass\nprint(\"ran\")\n```\n\nCPython 3.13.16 raises TypeError; recorded `bdc20a2` JIT/AOT prints `ran`. Class annotations read from partially initialized modules also miss AttributeError/ImportError.\n\n## Scope\n\nPreserve annotation evaluation at the def's execution point, including direct module attributes and from-imports in cycles. [Loader checks](https://github.com/den-run-ai/pystachy/blob/bdc20a24c720e084b7f506a318bc416a76062200/src/pystachy_compiler/loader.py#L573-L590); reuse #469's alias safeguards where appropriate.\n\n## Done when\n\n- Differential native JIT/AOT cases match the first CPython failure for empty Union and both cycle forms.\n- Cover both import orders, later bindings and valid annotations.\n- Preserve postponed-annotation behavior where supported.\n- Already accepted correct programs remain valid.\n\nRelated: #10/#6/#469/#18.",
+        "state": "open",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "assignees": null,
+        "labels": [
+          {
+            "name": "bug",
+            "color": "d73a4a",
+            "description": "Something isn't working"
+          }
+        ],
+        "milestone": null,
+        "state_reason": null,
+        "comments": 0,
+        "created_at": "2026-10-16T05:25:17Z",
+        "updated_at": "2026-11-05T01:36:06Z",
+        "closed_at": null,
+        "display_url": "https://github.com/den-run-ai/pystachy/issues/512",
+        "display_title": "Preserve def-annotation evaluation failures"
+      },
+      "url": "https://github.com/den-run-ai/pystachy/issues/512",
+      "title": "Preserve def-annotation evaluation failures",
+      "display_url": "https://github.com/den-run-ai/pystachy/issues/512",
+      "display_title": "Preserve def-annotation evaluation failures"
+    },
+    "1322": {
+      "issue": {
+        "url": "https://github.com/den-run-ai/pystachy/issues/1322",
+        "title": "Track compiling upstream mypy to a native executable",
+        "issue_number": 1322,
+        "body": "## Problem\n\nCompile upstream mypy to a qualified Python-free executable before using it as Pystachy's type gate.\n\n## Scope\n\nThe [mypy 2.4.1 baseline](https://github.com/den-run-ai/pystachy/blob/9d47976a99fb0dd1577d2bcdba1be0378d961dcf/research/mypy-native/README.md) at 6e02b36 has 26/242 modules compiling and 23/50 idiom probes rejected; trial-stack improvements are unmerged.\n\n| Workstream | Owners |\n|---|---|\n| Parallel compilation and object reuse | #1323; prototypes #1089–#1091 |\n| Traits, narrowing, read-only views and predicates | #1324–#1327 |\n| Class values, tuples, sentinels and generic bases | #7/#251/#962; open class/tuple PRs |\n| Library closure and native subprocesses | #1328/#1308/#1309 |\n| Parser bridge | #1329 |\n| Qualification rungs and performance | #1330 |\n| Type-gate integration | #1331/#261 |\n\n#1289's merged leaf qualification covers selected literal encoders, stubinfo and NameGenerator. It does not qualify the full checker. Daemon, stubgenc, stubtest, reports and dynamically loaded plugins remain outside scope.\n\n## Done when\n\nmypy.main runs natively through #1330's qualification/performance rungs; #1331 uses it for make typecheck with output identical to pinned mypy. Preserve unmodified upstream sources and explicit exclusions.",
+        "state": "open",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "assignees": null,
+        "labels": [
+          {
+            "name": "enhancement",
+            "color": "a2eeef",
+            "description": "New feature or request"
+          }
+        ],
+        "milestone": null,
+        "state_reason": null,
+        "comments": 0,
+        "created_at": "2026-11-12T06:14:51Z",
+        "updated_at": "2026-11-12T20:47:09Z",
+        "closed_at": null,
+        "display_url": "https://github.com/den-run-ai/pystachy/issues/1322",
+        "display_title": "Track compiling upstream mypy to a native executable"
+      },
+      "url": "https://github.com/den-run-ai/pystachy/issues/1322",
+      "title": "Track compiling upstream mypy to a native executable",
+      "display_url": "https://github.com/den-run-ai/pystachy/issues/1322",
+      "display_title": "Track compiling upstream mypy to a native executable"
+    },
+    "1382": {
+      "issue": {
+        "url": "https://github.com/den-run-ai/pystachy/issues/1382",
+        "title": "Check classes a type alias reads during circular imports",
+        "issue_number": 1382,
+        "body": "## Problem\n\nA module-level type alias whose value reads another module's class, `X = list[a.C]`, compiles to no code. During a circular import that has not bound `a.C` yet, CPython raises `AttributeError` there; Pystachy's program runs on. On main at 655bab52 the repro below prints `1`, and CPython prints `AttributeError`.\n\n## Scope\n\n```python\n# main.py\ntry:\n    import a\nexcept AttributeError:\n    print(\"AttributeError\")\n# a.py\nimport b\nclass C:\n    pass\nx: b.X = [C()]\nprint(len(x))\n# b.py\nimport a\nX = list[a.C]\n```\n\nOnly assigned aliases that the compiler leaves out of the code are affected (`alias_kept` keeps `Pos = int`); a `type` statement evaluates its value lazily. #1355 checks the same reads for a NewType's type (`newtype_reads`, `declarations.py`). Found with Claude Code's assistance.\n\n## Done when\n\nThe repro raises `AttributeError` as CPython does: the statement left in an alias's place checks the classes its value reads where it runs, with a differential test in `tests/programs/`.",
+        "state": "open",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "assignees": null,
+        "labels": [
+          {
+            "name": "bug",
+            "color": "d73a4a",
+            "description": "Something isn't working"
+          }
+        ],
+        "milestone": null,
+        "state_reason": null,
+        "comments": 0,
+        "created_at": "2026-11-12T15:47:23Z",
+        "updated_at": "2026-11-12T20:50:28Z",
+        "closed_at": null,
+        "display_url": "https://github.com/den-run-ai/pystachy/issues/1382",
+        "display_title": "Check classes a type alias reads during circular imports"
+      },
+      "url": "https://github.com/den-run-ai/pystachy/issues/1382",
+      "title": "Check classes a type alias reads during circular imports",
+      "display_url": "https://github.com/den-run-ai/pystachy/issues/1382",
+      "display_title": "Check classes a type alias reads during circular imports"
+    },
+    "1398": {
+      "issue": {
+        "url": "https://github.com/den-run-ai/pystachy/issues/1398",
+        "title": "Raise ImportError for from-imports cycles have not bound",
+        "issue_number": 1398,
+        "body": "## Problem\n\nA `from a import C` that runs while a circular import has not bound `a.C` yet raises `ImportError` in CPython (`cannot import name 'C' from partially initialized module 'a'`); Pystachy's program runs on. On main (0b13a212) this repro prints `b ran` and `a done`, where CPython prints `ImportError`:\n\n```python\n# main.py\ntry:\n    import a\nexcept ImportError:\n    print(\"ImportError\")\n# a.py\nimport b\nclass C:\n    pass\nprint(\"a done\")\n# b.py\nfrom a import C\nprint(\"b ran\")\n```\n\n## Scope\n\nThe from-import statement checks each name it binds where it runs, as the reads of `a.C` through a module do (#1382's alias checks, `Gen.modchk`), for classes, functions and globals alike. It covers what NewTypes, type aliases and evaluated annotations name through such an import (#512's from-import part). Found with Claude Code's assistance.\n\n## Done when\n\nThe repro raises `ImportError` as CPython does, with a differential test in `tests/programs/` covering a class, a function and a global, both import orders, and a control where the name is bound before the import runs.",
+        "state": "open",
+        "user": {
+          "login": "den-run-ai",
+          "name": "den-run-ai",
+          "email": null,
+          "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+          "id": 7870949
+        },
+        "assignees": null,
+        "labels": [
+          {
+            "name": "bug",
+            "color": "d73a4a",
+            "description": "Something isn't working"
+          }
+        ],
+        "milestone": null,
+        "state_reason": null,
+        "comments": 0,
+        "created_at": "2026-11-12T22:04:32Z",
+        "updated_at": "2026-11-12T22:04:32Z",
+        "closed_at": null,
+        "display_url": "https://github.com/den-run-ai/pystachy/issues/1398",
+        "display_title": "Raise ImportError for from-imports cycles have not bound"
+      },
+      "url": "https://github.com/den-run-ai/pystachy/issues/1398",
+      "title": "Raise ImportError for from-imports cycles have not bound",
+      "display_url": "https://github.com/den-run-ai/pystachy/issues/1398",
+      "display_title": "Raise ImportError for from-imports cycles have not bound"
+    }
+  },
+  "dependency_pr_1355": {
+    "url": "https://github.com/den-run-ai/pystachy/pull/1355",
+    "number": 1355,
+    "state": "open",
+    "merged": false,
+    "mergeable": false,
+    "draft": false,
+    "body": "## Problem\n\n`typing.NewType` was unsupported. mypy's `types.py:2744` binds `NormalizedCallableType = NewType(\"NormalizedCallableType\", CallableType)`, the next blocker of `import mypy.types` after #1346 and #1352.\n\n## Change\n\n- A module-level `N = NewType(\"N\", T)` that is `N`'s only binding becomes a type alias of `T` (`loader.py` `newtype`), also in modules that import it.\n- `N(x)` compiles to `x` itself (`calls.py`), as CPython's NewType returns its argument unchanged. A call that may run before the assignment, or before a function's import of `N`, checks its flag, as a function's does.\n- `T` is evaluated where the assignment runs: a class defined further down is an error, one read through a module that has not bound it yet raises `AttributeError`, and `Callable[int]` is CPython's `TypeError`, reported when compiling. Other uses of `N` as a value stay rejected.\n- Documented in `typing.md`.\n\nClaude Code assisted.\n\n## Validation\n\n- `make` fixed points. The generics, imports and language areas, with the NewType programs and six rejections, pass in JIT and AOT (741 runs), as do `make check-fast lint` and both opt-in gates.\n- At eb7ec0c1, `ir` comparison of 4,353 corpus cases against main's build: only the new tests differ, besides two checkout-path cases.\n\nRefs #6.",
+    "title": "Compile typing.NewType as an alias whose calls return x",
+    "base": "main",
+    "base_sha": "1ab0b934183e17bca517372181151f725f5e7ba5",
+    "head": "claude/gifted-ride-6d430y-newtype",
+    "head_sha": "59ca2507d3ec7cdb57f492c63a3119472cfe764a",
+    "head_repo_id": 1409192014,
+    "head_repo_full_name": "den-run-ai/pystachy",
+    "merge_commit_sha": "05ca1259e1bcfc0a645d416991bcc1f96d0aaf70",
+    "user": {
+      "login": "den-run-ai",
+      "name": "den-run-ai",
+      "email": null,
+      "avatar_url": "https://avatars.githubusercontent.com/u/7870949?v=4",
+      "id": 7870949
+    },
+    "requested_reviewers": null,
+    "requested_team_reviewers": null,
+    "diff": null,
+    "comments": null,
+    "created_at": "2026-11-12T08:12:09Z",
+    "updated_at": "2026-11-12T16:42:07Z",
+    "closed_at": null,
+    "merged_at": null,
+    "commits": 4,
+    "changed_files": 31,
+    "additions": 326,
+    "deletions": 16,
+    "display_url": "https://github.com/den-run-ai/pystachy/pull/1355",
+    "display_title": "Compile typing.NewType as an alias whose calls return x"
+  }
+}

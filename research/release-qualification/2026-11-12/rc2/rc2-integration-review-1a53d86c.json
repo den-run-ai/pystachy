@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-12T23:02:50Z",
+  "pr": 1403,
+  "remote_head": "1a53d86c5fb81514d8cd9bd3f2e264f51849fdcb",
+  "remote_parent": "0554eb05f058dfc389ff0e0a4370345358f6e191",
+  "tree": "2b06c58a6fe0b41b6240190e750add7bb3c85237",
+  "local_equivalent": "e1ce4280aa94d918b059b5024ba9e9b94c1efa9c",
+  "qualified_source": "395227b75bb777401627c0296a18fe71388070e7",
+  "source_objects_verified": {
+    "src": "c489a0a73285315c2b1242011da11c25ac07917d",
+    "lib": "f9bac1cc6191e8c26679b9a4469af0da921b1d4e",
+    "runtime.c": "a7b5e190443cfbe26057a9daa7e83c68fd441946",
+    "runtime.py": "ec44c04542fcf603ad443bc9d930bc3d8bf04cda",
+    "pystachy.py": "e58146c8f62316ebcd77e46d1d3c21ce8f7fa122",
+    "Makefile": "d9c0cb67ad0bd77112d199f0918acf41df95746f",
+    ".python-version": "d5404088880ebb4fbb9834be634555d4a3ae4f2a",
+    "tests/programs": "61a2f639237f2cc2fd2e05f89f2af26b1fecb2b0",
+    "tests/errors": "36eb63edce9a25d12f915bb76c5ed338b2a04608",
+    "tests/deviations": "ee611b3747f42fdf16a40543227930460e3128a3",
+    "tests/ir": "6a92dad00ffef0a21e176b050eb1485592910a70",
+    "tools/verification_bootstrap.py": "8e14ce355027d0e7ee569525c0757ddcc06780bb"
+  },
+  "delta_files": [
+    "tools/test_lean_boundary_workflow.py"
+  ],
+  "delta_blob": "4ba9bf5d36354774805d99a39385f055fbbd4914",
+  "equivalent_reviewed_fix": "9494b5586ee1f234df4cc55affee9c33350e2347",
+  "base_review": "rc2-integration-review-0554eb05.json",
+  "base_provenance": "rc2-remote-provenance-0554eb05.json",
+  "delta_provenance": "rc2-remote-delta-1a53d86c.json",
+  "test_fix_review": "lean-dependency-followup-review.json",
+  "source_findings": [],
+  "result": "No source or integration findings. Exact tree and one-file test delta verified; full CI and current-head external review remain pending.",
+  "ci_run": 43325282489,
+  "review_state": "Draft at last live read; no comments or inline threads. Root will trigger ready review after full GC qualification. No external review-completion claim.",
+  "coverage_gap_receipt": "exception-shadow-diagnostic-coverage-review.json",
+  "actions": "Read-only: no tests, builds, source edits, pushes or review requests."
+}

@@ -1,0 +1,249 @@
+{
+  "run_id": 43314381949,
+  "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "validator": "tools/coverage_report.py:parts_of (unchanged, actual data files present)",
+  "validator_sha256": "5011c69b177a2e2872840ace392f0e3f5ebcbec0f8546a5f0388534cd25223a1",
+  "validation_errors": [],
+  "parts": 14,
+  "corpus_shards": 10,
+  "corpus_cases": 4361,
+  "corpus_checks": "7058 passed, 0 failed",
+  "all_parts_same_clean_source": true,
+  "official_report_metadata_matches_raw_parts": true,
+  "processes": 7400,
+  "suite_checks": {
+    "corpus": "7058 passed, 0 failed",
+    "ffi": "194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)",
+    "cache": "84 passed, 0 failed",
+    "unit": "525 tests, OK",
+    "ir": "the IR check and llvm-as accept the IR of 103 programs"
+  },
+  "part_records": [
+    {
+      "part": "cache",
+      "suite": "cache",
+      "shard": null,
+      "selected": false,
+      "cases": null,
+      "report": "84 passed, 0 failed",
+      "processes": 45,
+      "data_files": 44,
+      "seconds": 279,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.cache"
+    },
+    {
+      "part": "corpus-0",
+      "suite": "corpus",
+      "shard": [
+        0,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "707 passed, 0 failed",
+      "processes": 708,
+      "data_files": 708,
+      "seconds": 436,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-0"
+    },
+    {
+      "part": "corpus-1",
+      "suite": "corpus",
+      "shard": [
+        1,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "707 passed, 0 failed",
+      "processes": 708,
+      "data_files": 708,
+      "seconds": 422,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-1"
+    },
+    {
+      "part": "corpus-2",
+      "suite": "corpus",
+      "shard": [
+        2,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "704 passed, 0 failed",
+      "processes": 705,
+      "data_files": 705,
+      "seconds": 516,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-2"
+    },
+    {
+      "part": "corpus-3",
+      "suite": "corpus",
+      "shard": [
+        3,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "704 passed, 0 failed",
+      "processes": 705,
+      "data_files": 705,
+      "seconds": 314,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-3"
+    },
+    {
+      "part": "corpus-4",
+      "suite": "corpus",
+      "shard": [
+        4,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "706 passed, 0 failed",
+      "processes": 707,
+      "data_files": 707,
+      "seconds": 671,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-4"
+    },
+    {
+      "part": "corpus-5",
+      "suite": "corpus",
+      "shard": [
+        5,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "705 passed, 0 failed",
+      "processes": 706,
+      "data_files": 706,
+      "seconds": 368,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-5"
+    },
+    {
+      "part": "corpus-6",
+      "suite": "corpus",
+      "shard": [
+        6,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "707 passed, 0 failed",
+      "processes": 708,
+      "data_files": 708,
+      "seconds": 398,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-6"
+    },
+    {
+      "part": "corpus-7",
+      "suite": "corpus",
+      "shard": [
+        7,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "705 passed, 0 failed",
+      "processes": 706,
+      "data_files": 706,
+      "seconds": 665,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-7"
+    },
+    {
+      "part": "corpus-8",
+      "suite": "corpus",
+      "shard": [
+        8,
+        10
+      ],
+      "selected": false,
+      "cases": 436,
+      "report": "707 passed, 0 failed",
+      "processes": 708,
+      "data_files": 708,
+      "seconds": 511,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-8"
+    },
+    {
+      "part": "corpus-9",
+      "suite": "corpus",
+      "shard": [
+        9,
+        10
+      ],
+      "selected": false,
+      "cases": 437,
+      "report": "706 passed, 0 failed",
+      "processes": 707,
+      "data_files": 707,
+      "seconds": 573,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.corpus-9"
+    },
+    {
+      "part": "ffi",
+      "suite": "ffi",
+      "shard": null,
+      "selected": false,
+      "cases": null,
+      "report": "194 passed, 0 failed; skipped: py_coerce (the CPython-hosted compiler's own locale coercion reaches the program)",
+      "processes": 175,
+      "data_files": 175,
+      "seconds": 254,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.ffi"
+    },
+    {
+      "part": "ir",
+      "suite": "ir",
+      "shard": null,
+      "selected": false,
+      "cases": null,
+      "report": "the IR check and llvm-as accept the IR of 103 programs",
+      "processes": 103,
+      "data_files": 103,
+      "seconds": 213,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.ir"
+    },
+    {
+      "part": "unit",
+      "suite": "unit",
+      "shard": null,
+      "selected": false,
+      "cases": null,
+      "report": "525 tests, OK",
+      "processes": 9,
+      "data_files": 9,
+      "seconds": 69,
+      "commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "dirty": false,
+      "data": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/coverage-parts/parts/data.unit"
+    }
+  ]
+}

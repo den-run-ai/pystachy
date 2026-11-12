@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "reviewed_utc": "2026-11-12T22:55:05Z",
+  "reviewer": "rc_fix_review",
+  "result": "No findings; suitable for the isolated RC.2 integration and fresh CI.",
+  "commit": "ff0bba0af29a037ed1cc207f475444792dd9dba7",
+  "tree": "52825a5e62dac7611c554512faa21715a82aed04",
+  "parent": "3e32c910cea293eec5bcf7cc487be232c2e0fbdd",
+  "worktree_clean": true,
+  "changed_files": [
+    ".github/workflows/ci.yml",
+    "docs/testing.md",
+    "tests/verify.sh",
+    "tools/test_merge_verification.py",
+    "tools/test_workflow_limits.py"
+  ],
+  "scope": "Read-only source and test review, independent plan/dependency inventory execution, and verification of retained validation logs. No source edits, native builds, remote mutations or duplicate full unit-test reruns.",
+  "plan": {
+    "pr_byte_identical": true,
+    "pr_sha256": "33ac4539389988aa3f1dc8e730ba93342049273f34b6d4fe8407ed72ed06d310",
+    "pr_job_rows": 19,
+    "full_group_inventory_identical": true,
+    "full_all_step_order_identical": true,
+    "full_changed_groups": [
+      "runtime-cache",
+      "python-int-optin-2"
+    ],
+    "each_full_nonbootstrap_step_exactly_once": true,
+    "annotation_widening_owner": "runtime-cache",
+    "new_owner_steps": [
+      "bootstrap",
+      "runtime-cache",
+      "annotation-widening"
+    ],
+    "former_owner_steps": [
+      "bootstrap",
+      "python-int-optin-2"
+    ]
+  },
+  "dependency_ownership": {
+    "pull_request": {
+      "added": [],
+      "removed": [],
+      "rows": 1
+    },
+    "push": {
+      "added": [
+        [
+          "aarch64",
+          "runtime-cache"
+        ],
+        [
+          "x86_64",
+          "runtime-cache"
+        ]
+      ],
+      "removed": [],
+      "rows": 15
+    },
+    "workflow_dispatch": {
+      "added": [
+        [
+          "aarch64",
+          "runtime-cache"
+        ],
+        [
+          "x86_64",
+          "runtime-cache"
+        ]
+      ],
+      "removed": [],
+      "rows": 15
+    }
+  },
+  "source_review": [
+    "Only full-profile group ownership changes: annotation-widening moves from python-int-optin-2 to runtime-cache; the PR plan returns before those full-profile cases.",
+    "The cache harness waits for the background native lane and completes both cache logs before execution reaches annotation-widening. The stage-2 compiler and private runtime homes remain intact.",
+    "Annotation-widening keeps its unchanged compiler, full profile, candidate discovery, CPython oracle, native JIT/AOT and focused GC lanes. The implementation and report validator are unchanged.",
+    "The existing pinned typing_extensions installer precedes Verify group and adds exactly the x86_64 and aarch64 runtime-cache rows on push/manual events. It removes no previous dependency owner and adds none on PR events.",
+    "The native program-cache workflow step still follows successful Verify group on full runtime-cache workers.",
+    "The merger selects steps by name and serializes its combined report in all-plan order, preserving the unchanged full inventory despite the worker move.",
+    "No workflow row, timeout, concurrency, worker count, native corpus selector, compiler, runtime or library source changes."
+  ],
+  "negative_controls_reviewed": [
+    "Missing widening from the destination and duplicated widening on the former owner are rejected despite fabricated passing summary counts.",
+    "A failed widening step is rejected even under an otherwise passing report.",
+    "Downgraded PR-profile widening evidence and missing full cases are rejected by exact expected-report validation.",
+    "Existing annotation tests reject CPython oracle disagreement before every native lane, incomplete cases/modes, changed GC settings, fabricated expected failures and altered outputs.",
+    "The workflow test verifies dependency owners on PR, push and workflow_dispatch, installation before verification, and no continue-on-error escape."
+  ],
+  "retained_validation": {
+    "executed_by": "rc_ci_audit; independently read and SHA-256-verified by rc_fix_review",
+    "python": "Python 3.13.16",
+    "tests": [
+      {
+        "command_number": 1,
+        "tests": 40,
+        "unittest_seconds": 59.737,
+        "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-1.log",
+        "sha256": "4d53079661d15fa000850e60ae48d15e54e5393a687b40d8bdd45945dfeabc6b"
+      },
+      {
+        "command_number": 3,
+        "tests": 7,
+        "unittest_seconds": 42.382,
+        "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-3.log",
+        "sha256": "a5efeecd23f16e3395ad3f753f9a670c88458be1beb096938db7733325b3d400"
+      },
+      {
+        "command_number": 4,
+        "tests": 6,
+        "unittest_seconds": 0.009,
+        "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-4.log",
+        "sha256": "37d8a0769d6c800296764c21f8e08feca52d770d400afabe65713604062cf749"
+      },
+      {
+        "command_number": 6,
+        "tests": 27,
+        "unittest_seconds": 1.164,
+        "log": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-6.log",
+        "sha256": "d7e28b187d3802b2e046168b2038780ad5ac77dfde7bcf215226a0ea3b3af10d"
+      }
+    ],
+    "final_test_total": 80,
+    "ruff_shell_and_diff_pass": true,
+    "initial_failure_preserved": "The initial Ruff lambda-binding style failure remains in validation-5.log; the corrected final helper passed workflow tests again and Ruff in validation-6/7.log.",
+    "command_receipt": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/full-widening-feasibility/validation-commands.json",
+    "command_receipt_sha256": "c684fbef215971f988ea50a7a0d958ae27f426056d1f1d14b837545d50dedf7d"
+  },
+  "remaining_gate": "Fresh hosted PR/full CI on the final RC.2 tree is still required. This review makes no guarantee of actual job duration from plan or mocked test evidence."
+}
