@@ -70,6 +70,34 @@
       "diagnostic": "tests/programs/upstream/upstream_colorsys_extracted.py:36: error: unpacking a Any into the arguments of colorsys.rgb_to_hsv() is not supported (a tuple's items are)",
       "reason": "With the pragma the mixed int/float tuples of the test's values list become Any values, and f(*value) of an Any value is not supported; the unchanged program passes.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/774"
+    },
+    {
+      "case": "tests/programs/classes/class_const_module.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/classes/class_const_module.py:9: error: cannot infer the type of class attribute 'y'; annotate it (y: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/classes/class_const_module.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/classes/class_const_module.py:9: error: cannot infer the type of class attribute 'y'; annotate it (y: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/field_module_constants.py",
+      "mode": "jit",
+      "diagnostic": "tests/programs/inference/field_module_constants.py:21: error: cannot infer the type of field 'local'; annotate it (self.local: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
+    },
+    {
+      "case": "tests/programs/inference/field_module_constants.py",
+      "mode": "aot",
+      "diagnostic": "tests/programs/inference/field_module_constants.py:21: error: cannot infer the type of field 'local'; annotate it (self.local: T = ...)",
+      "reason": "With the pragma the entry module opts in to dynamic Any, whose constants do not type fields or class attributes (field inference reads only constants of modules that opt in to neither dynamic Any nor promoting ints); the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/9"
     }
   ]
 }

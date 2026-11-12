@@ -608,6 +608,38 @@
       "diagnostic": "lib/operator.py:176: error: 'is' between ints is not supported in python-int modules yet (compiling operator.indexOf(IteratingSequenceClass, int) for the call at tests/programs/upstream/upstream_iter_classes.py:359)",
       "reason": "operator.indexOf tests integer identity before equality; is between promoting ints is explicitly unsupported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/class_const_module.py",
+      "mode": "jit",
+      "category": "unsupported-inference",
+      "diagnostic": "tests/programs/classes/class_const_module.py:9: error: cannot infer the type of class attribute 'y'; annotate it (y: T = ...)",
+      "reason": "With the pragma the entry module's ints promote, so its constant (N = 3, LOCAL = 3) is a promoting int whose spelling does not give its type: it types no field or class attribute; the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/classes/class_const_module.py",
+      "mode": "aot",
+      "category": "unsupported-inference",
+      "diagnostic": "tests/programs/classes/class_const_module.py:9: error: cannot infer the type of class attribute 'y'; annotate it (y: T = ...)",
+      "reason": "With the pragma the entry module's ints promote, so its constant (N = 3, LOCAL = 3) is a promoting int whose spelling does not give its type: it types no field or class attribute; the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/field_module_constants.py",
+      "mode": "jit",
+      "category": "unsupported-inference",
+      "diagnostic": "tests/programs/inference/field_module_constants.py:21: error: cannot infer the type of field 'local'; annotate it (self.local: T = ...)",
+      "reason": "With the pragma the entry module's ints promote, so its constant (N = 3, LOCAL = 3) is a promoting int whose spelling does not give its type: it types no field or class attribute; the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/field_module_constants.py",
+      "mode": "aot",
+      "category": "unsupported-inference",
+      "diagnostic": "tests/programs/inference/field_module_constants.py:21: error: cannot infer the type of field 'local'; annotate it (self.local: T = ...)",
+      "reason": "With the pragma the entry module's ints promote, so its constant (N = 3, LOCAL = 3) is a promoting int whose spelling does not give its type: it types no field or class attribute; the unchanged program passes.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }
