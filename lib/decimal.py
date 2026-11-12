@@ -235,6 +235,10 @@ class Context:
 
     def create_decimal(self, num: str | int | float = "0") -> "Decimal":
         """A Decimal from num, rounded to this context (unlike the Decimal constructor)."""
+        if isinstance(num, str) and (num != num.strip() or "_" in num):
+            # (text as the specification writes a number: the constructor's surrounding
+            # whitespace and underscores are not part of it)
+            raise InvalidOperation("[<class 'decimal.ConversionSyntax'>]")
         d = Decimal(num, self)
         if d._kind >= _NAN and _ndigits(d._int) > self._prec - self._clamp and d._int != 0:
             raise InvalidOperation("[<class 'decimal.ConversionSyntax'>]")
@@ -244,7 +248,7 @@ class Context:
         return Decimal(f)._fix(self)
 
     def abs(self, a: "Decimal") -> "Decimal":
-        return a.copy_abs()._fix(self) if a._kind == _FINITE else a._unary(self, 0)
+        return a.copy_abs()._fix(self) if a._kind < _NAN else a._unary(self, 0)
 
     def add(self, a: "Decimal", b: "Decimal") -> "Decimal":
         return a._add(b, self)
@@ -881,6 +885,8 @@ class Decimal:
             # (both of CPython's signals for x // 0 and x % 0: the first trapped one is raised)
             raise InvalidOperation("[<class 'decimal.InvalidOperation'>, <class 'decimal.DivisionByZero'>]")
         quotient, remainder = self._divide(other, context)
+        if other._kind == _INFINITY:
+            return quotient, remainder._fix(context)  # (the zero quotient of an infinite divisor is as it is)
         return quotient._fix(context), remainder._fix(context)
 
     def _mod(self, other: "Decimal", context: Context) -> "Decimal":
@@ -908,8 +914,9 @@ class Decimal:
                 raise InvalidOperation("[<class 'decimal.DivisionUndefined'>]")
             raise DivisionByZero("[<class 'decimal.DivisionByZero'>]")
         # (the context's exponent limits apply to an integer quotient too: Overflow past Emax,
-        # and zeros appended for a clamped exponent)
-        return self._divide(other, context)[0]._fix(context)
+        # and zeros appended for a clamped exponent; the zero of an infinite divisor is as it is)
+        quotient = self._divide(other, context)[0]
+        return quotient if other._kind == _INFINITY else quotient._fix(context)
 
     def _isinteger(self) -> bool:
         if self._kind != _FINITE:
