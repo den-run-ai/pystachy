@@ -131,8 +131,11 @@ changes a result.
 - **Comments** ([parse_comment.py](parse_comment.py)). `skip_comment()` finds a line
   comment's earliest terminator in bounded windows and a block comment's closing delimiter
   directly, and slices the log text only when logging. Upstream builds the comment one
-  character at a time, which is quadratic natively: in an informal check, ten repairs of an
-  80,000-character block comment took 1.7 s, and take 0.4 ms.
+  character at a time. For a block comment that was quadratic natively until
+  [an append stayed in place](../../docs/performance.md) through `endswith()`. It is linear
+  now and still the slower: in an informal check, a repair with an 80,000-character comment
+  took 1.3 ms with upstream's module and 0.03 ms with this one, and one with a 400-character
+  comment 13 µs and 5 µs.
 - **Root scan** ([json_repair.py](json_repair.py), [json_parser.py](json_parser.py)). Where
   `json.loads()` rejected the document for a reason other than extra data, or the document
   starts with a bare object key, the parser does not scan the whole first root again to
