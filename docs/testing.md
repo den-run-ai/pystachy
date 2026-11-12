@@ -615,7 +615,7 @@ benchmark correctness, and Lint checks CPython port preservation. The full group
 | `gc-aot-0`, `gc-aot-1`, `gc-aot-2` | Three disjoint thirds of the AOT suite with program GC stress, one case in 16 of each third with the compiler stressed too. |
 | `dynany-optin-0` through `dynany-optin-2` | Three disjoint thirds of `tests/programs/`, opted into dynamic `Any`, compared with a fresh pinned-CPython oracle in JIT and AOT. |
 | `python-int-optin-0` through `python-int-optin-2` | Three disjoint thirds of `tests/programs/`, opted into promoting ints, with a fresh pinned-CPython oracle in JIT and AOT and exact reviewed limitations. |
-| `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side; then native program-cache invalidation and execution. |
+| `runtime-cache` | The cached runtime's rules with both compilers, the two runs side by side; annotation-widening parity with CPython, native JIT/AOT and focused GC checks; then native program-cache invalidation and execution. |
 | `contracts` | Runtime, IR, library and resource-bound checks, including 540 seeded dynamic-`Any` cases (90 typed/Any pairs) in JIT/AOT, normally and with program GC stress; independent steps run side by side. |
 | `benchmarks` | Benchmark correctness/timings, real example CLI parity, JSON repair process cases and agent loopback HTTP; extended correctness checks reuse the verified compiler. |
 | `scaling` | Every compiler-scaling shape, in two steps, shapes measured side by side. |

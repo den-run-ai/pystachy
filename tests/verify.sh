@@ -201,11 +201,10 @@ plan() {
     gc-jit) echo 'bootstrap gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1' ;;
     gc-aot) echo 'bootstrap gc-aot-0 gc-aot-1 gc-aot-2' ;;
     gc-stress) echo 'bootstrap gc-self gc-ir-0 gc-ir-1 gc-jit-0 gc-jit-1 gc-aot-0 gc-aot-1 gc-aot-2' ;;
-    runtime-cache) echo 'bootstrap runtime-cache' ;;
+    runtime-cache) echo 'bootstrap runtime-cache annotation-widening' ;;
     dynany-optin-0|dynany-optin-1|dynany-optin-2) echo "bootstrap $1" ;;
     dynany-optin) echo 'bootstrap dynany-optin-0 dynany-optin-1 dynany-optin-2' ;; # local alias
-    python-int-optin-0|python-int-optin-1) echo "bootstrap $1" ;;
-    python-int-optin-2) echo "bootstrap $1 annotation-widening" ;;
+    python-int-optin-0|python-int-optin-1|python-int-optin-2) echo "bootstrap $1" ;;
     python-int-optin) echo 'bootstrap python-int-optin-0 python-int-optin-1 python-int-optin-2' ;; # local alias
     contracts) echo 'bootstrap check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit' ;;
     benchmarks) echo 'bootstrap benchmarks example-cli' ;;
@@ -1019,7 +1018,7 @@ step "$intoptin_name" "$r" "$s" "$L" "$intoptin_fields"
 fi
 done
 
-# ---- annotation-widening: one existing opt-in worker; PR selection or all eligible pairs
+# ---- annotation-widening: PR opt-in or full runtime-cache worker; selected or all eligible pairs
 if want annotation-widening; then
 L=$V/annotation-widening.log; s=$(now); r=fail; fields=
 if rm -f "$V/annotation-widening.json" &&
