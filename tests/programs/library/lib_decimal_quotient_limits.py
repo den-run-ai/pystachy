@@ -38,3 +38,6 @@ for a, b in [("100", "1"), ("1E+2", "1"), ("9E+2", "3"), ("10", "1")]:
         print(a, b, Decimal(a) // Decimal(b), divmod(Decimal(a), Decimal(b)))
     except Overflow as e:
         print(a, b, "Overflow", e)
+# The zero quotient of an infinite divisor is not clamped; a zero dividend's quotient is.
+print(Decimal("7") // Decimal("Infinity"), divmod(Decimal("7"), Decimal("-Infinity")), c2.divide_int(Decimal("0"), Decimal("3")))
+print(c2.abs(Decimal("-Infinity")), c2.abs(Decimal("-1.5")), c2.abs(Decimal("-NaN7")), abs(Decimal("-Infinity")))

@@ -33,4 +33,6 @@ Overflow [<class 'decimal.Overflow'>]
 1E+2 1 100.00 (Decimal('100.00'), Decimal('0.00'))
 9E+2 3 300.00 (Decimal('300.00'), Decimal('0.00'))
 10 1 10.00 (Decimal('10.00'), Decimal('0.00'))
+0 (Decimal('-0'), Decimal('7.00')) 0.00
+Infinity 1.50 -NaN7 Infinity
 [exit 0]
