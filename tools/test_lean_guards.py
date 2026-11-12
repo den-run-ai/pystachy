@@ -442,6 +442,7 @@ class GuardTests(unittest.TestCase):
                                    op("ret", operands=[("0", "int")])])
                 fn["blocks"] = [{"label": "entry", "handler": "", "operations": operations}]
                 self.assertEqual(len(guards.inventory(fn)), 1)
+                self.assertEqual(len(guards.inventory(fn, guards.union_context(snap))), 1)
                 with self.assertRaisesRegex(boundary.Unsupported, "declared source domain|nonprivate writes|opaque call"):
                     guards.normalize(snap, fn)
                 snap["functions"], snap["nullcheck_evidence"] = [fn], []
@@ -450,6 +451,75 @@ class GuardTests(unittest.TestCase):
                 self.assertEqual(code, 2)
                 self.assertEqual(report["union_reads"], 1)
                 self.assertEqual(report["proved_union_reads"], 0)
+
+
+    def test_typed_union_memory_keeps_retyped_reads(self):
+        # Typed union memory (a field word or tuple item some view types as a union, a private slot,
+        # a call's result) is read as that union; each way of reading the word as anything else and
+        # then reading through it as a box must stay inventoried. Reads of other words must not be.
+        from test_lean_boundary import instruction as op
+        union, holder = "union[int,str]", "Holder"
+        def field(results, typ, index=0):
+            made = op("field.addr", "*" + typ, results=results, operands=[("%a1", holder)])
+            made["immediate"] = index
+            return made
+        def box_read(word):
+            return [op("scalar.cast", "%ptr", "inttoptr", [150], [(word, "int")]),
+                    op("mach.load", "int", results=[151], operands=[("%t150", "%ptr")])]
+        def tuple_item(kind, typ, text, results, operands):
+            made = op(kind, typ, text, results, operands)
+            made["immediate"] = 0
+            return made
+        cases = {
+            "raw object": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
+                            op("mach.addr", "%ptr", "%ptr", [101], [("%a1", holder), ("1", "int")]),
+                            op("mach.load", "int", results=[102], operands=[("%t101", "%ptr")])], "%t102", 1),
+            "other view": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
+                            field([101], "int"), op("mem.load", "int", results=[102], operands=[("%t101", "*int")])],
+                           "%t102", 1),
+            "other field": ([field([100], union), op("mem.store", operands=[("%t100", "*" + union), ("%a0", union)]),
+                             field([101], "int", 1), op("mem.load", "int", results=[102], operands=[("%t101", "*int")])],
+                            "%t102", 0),
+            "item text": ([op("slot.pack", "%slot", results=[100], operands=[("%a0", union)]),
+                           op("alloc.fixed", f"tuple[{union}]", results=[101]),
+                           tuple_item("tuple.store", "", union, [], [("%t101", f"tuple[{union}]"), ("%t100", "%slot")]),
+                           tuple_item("tuple.load", "%slot", "int", [103, 104], [("%t101", f"tuple[{union}]")]),
+                           op("slot.unpack", "int", results=[102], operands=[("%t104", "%slot")])], "%t102", 1),
+            "tuple view": ([op("slot.pack", "%slot", results=[100], operands=[("%a0", union)]),
+                            op("alloc.fixed", f"tuple[{union}]", results=[101]),
+                            tuple_item("tuple.store", "", union, [], [("%t101", f"tuple[{union}]"), ("%t100", "%slot")]),
+                            op("select", "tuple[int]", results=[105], operands=[
+                                ("true", "bool"), ("%t101", "tuple[int]"), ("%t101", "tuple[int]")]),
+                            tuple_item("tuple.load", "%slot", "int", [103, 104], [("%t105", "tuple[int]")]),
+                            op("slot.unpack", "int", results=[102], operands=[("%t104", "%slot")])], "%t102", 1),
+            "tuple cast": ([op("slot.pack", "%slot", results=[100], operands=[("%a0", union)]),
+                            op("alloc.fixed", f"tuple[{union}]", results=[101]),
+                            tuple_item("tuple.store", "", union, [], [("%t101", f"tuple[{union}]"), ("%t100", "%slot")]),
+                            op("scalar.cast", "tuple[int]", "bitcast", [105], [("%t101", f"tuple[{union}]")]),
+                            tuple_item("tuple.load", "%slot", "int", [103, 104], [("%t105", "tuple[int]")]),
+                            op("slot.unpack", "int", results=[102], operands=[("%t104", "%slot")])], "%t102", 1),
+            "slot": ([op("mem.store", operands=[("%value.9", "*" + union), ("%a0", union)]),
+                      op("mem.load", "int", results=[102], operands=[("%value.9", "*int")])], "%t102", 1),
+            "transport": ([op("call", "int", "@f.leak", [102], [("%a0", union)])], "%t102", 1),
+        }
+        for name, (operations, word, expected) in cases.items():
+            with self.subTest(case=name):
+                snap = self.sample()
+                fn = self.union(snap)
+                fn["parameters"] = fn["parameters"] + [dict(fn["parameters"][0], representation=holder)]
+                fn["slots"] = fn["slots"] + [dict(fn["slots"][0], text="value", type=union, results=[9])]
+                fn["blocks"] = [{"label": "entry", "handler": "", "operations": operations + box_read(word) + [
+                    op("ret", operands=[("0", "int")])]}]
+                leak = copy.deepcopy(fn)
+                leak.update(symbol="@f.leak", name="leak", return_representation="int", slots=[])
+                leak["blocks"] = [{"label": "entry", "handler": "", "operations": [
+                    op("scalar.cast", "int", "ptrtoint", [100], [("%a0", union)]), op("ret", operands=[("%t100", "int")])]}]
+                snap["functions"] = [fn, leak]
+                snap["classes"][holder] = {"base": "", "role": "", "overlaps": [], "tagged": False}
+                snap["class_layouts"][holder] = {"fields": ["u", "n"], "flags": {}, "sure": []}
+                context = guards.union_context(snap)
+                self.assertEqual(context["transports"], {"@f.leak"})
+                self.assertEqual(len(guards.inventory(fn, context)), expected)
 
 
 class PlaceholderSlotTests(unittest.TestCase):

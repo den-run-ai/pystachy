@@ -64,41 +64,209 @@ def union_members(typ):
     return sorted(["member:" + part for part in parts] + ([NULL] if nullable else []))
 
 
-def union_provenance(fn):
-    """Conservative union value/address provenance, independent of guard facts."""
+def field_word(classes, layouts, cls, index):
+    """The memory word field index of an object of class cls names: (the class whose struct first
+    has that index, index). A class's struct is a prefix of each subclass's (class_layouts: its
+    fields, then its flags and identity boxes, which a subclass's fields begin with), so every
+    view of one object's word has the same key."""
+    seen = set()
+    while cls not in seen:
+        seen.add(cls)
+        base = (classes.get(cls) or {}).get("base") or ""
+        layout = layouts.get(base)
+        if layout is None or index >= max([len(layout["fields"]), *[k + 1 for k in layout["flags"].values()],
+                                           *[k + 1 for k in (layout.get("boxes") or {}).values()]]):
+            break
+        cls = base
+    return cls, index
+
+
+def union_context(snapshot):
+    """What the union inventory types memory by, or None without the classes tables: the field
+    words some view types as a union (a field address *U of a union U, in any function), their
+    classes, whose objects a raw access may read such a word of, and the functions that may return
+    a union value's address as another type (transports), whose call results are union values."""
+    classes, layouts = snapshot.get("classes"), snapshot.get("class_layouts")
+    if not isinstance(classes, dict) or not isinstance(layouts, dict):
+        return None
+    words, unknown = set(), set()
+    for fn in snapshot["functions"]:
+        for block in fn["blocks"]:
+            for op in block["operations"]:
+                if (op["op"] == "field.addr" and len(op["operands"]) == 1 and op["type"].startswith("*")
+                        and union_members(op["type"][1:]) is not None):
+                    cls = op["operands"][0]["type"]
+                    if cls in layouts:
+                        words.add(field_word(classes, layouts, cls, op["immediate"]))
+                    else:
+                        unknown.add(cls)  # (its field addresses stay storage: union_provenance)
+    # An object of a class whose struct shares a word's root class (a base's or a subclass's view),
+    # or of one that may be the same object (its secondary role, or an overlap: classes), may
+    # hold the word; a field address names it, a raw access any word.
+    def hierarchy(cls):
+        seen = set()
+        while cls not in seen and ((classes.get(cls) or {}).get("base") or "") in layouts:
+            seen.add(cls)
+            cls = classes[cls]["base"]
+        return cls
+    roots = {hierarchy(cls) for cls, _ in words}
+    holders = {cls for cls in layouts if hierarchy(cls) in roots} | unknown
+    for cls, info in classes.items():
+        if cls in holders or info.get("role") in holders or any(o in holders for o in info.get("overlaps") or []):
+            holders.add(cls)
+            if info.get("role"):
+                holders.add(info["role"])
+            holders.update(info.get("overlaps") or [])
+    context = {"classes": classes, "layouts": layouts, "words": words, "holders": holders, "transports": set()}
+    # (the least set: a function returns a union value's address as another type where a ret's
+    # operand is a union value by its own provenance, given what its callees return)
+    while True:
+        transports = {fn["symbol"] for fn in snapshot["functions"]
+                      if union_members(fn.get("return_representation") or "") is None
+                      and any(op["op"] == "ret" and op["operands"] and op["operands"][0]["value"] in roots
+                              for roots in [union_provenance(fn, context)]
+                              for block in fn["blocks"] for op in block["operations"])}
+        if transports <= context["transports"]:
+            return context
+        context["transports"] |= transports
+
+
+_CONTEXT = [None, None]  # (the last snapshot union_context was computed for, its context)
+
+
+def snapshot_context(snapshot):
+    """union_context(snapshot), computed once for the snapshot last asked about."""
+    if _CONTEXT[0] is not snapshot:
+        _CONTEXT[:] = [snapshot, union_context(snapshot)]
+    return _CONTEXT[1]
+
+
+def union_items(typ):
+    """Whether a tuple type has an item of union type (directly)."""
+    return typ.startswith("tuple[") and any(union_members(item) is not None for item in targs(typ))
+
+
+def union_provenance(fn, context=None):
+    """Conservative union value/address provenance, independent of guard facts.
+
+    Values: union-typed ones and what any operation makes of them (opaque results may transport a
+    box's address), but for what reads a box's words (a tag, payload bits, a word a machine read
+    loaded through a box's address). Storage: memory such a value is stored into, and loads from it
+    are values. With context (union_context), memory the IR types as a union is the exception: a
+    field word some view types as a union, and a tuple item whose type is one, hold union values
+    whose loads are unions by type; their objects and tuples are not storage, except to a raw
+    access, which may read such a word under any type."""
     roots = {f"%a{n}" for n, p in enumerate(fn["parameters"])
              if union_members(p["representation"]) is not None}
     operations = [op for block in fn["blocks"] for op in block["operations"]]
     for op in operations:
         if union_members(op["type"]) is not None or (op["op"] == "rt" and op["text"] in {"ubox", "ubox_opt"}):
             roots.update(f"%t{n}" for n in op["results"])
-    storage = set()
+    storage, typed, held = set(), set(), set()
+    # (a private slot or module global named by its register, whose address nothing else uses: it
+    # holds the union value stored into it, which its loads are, as a value)
+    named = set()
+    if context is not None:
+        named = {slot_name(op) for op in fn["slots"]} | {a["value"] for op in operations for a in op["operands"]
+                                                         if a["value"].startswith("@g.")}
+        named -= {a["value"] for op in operations for position, a in enumerate(op["operands"])
+                  if not (position == 0 and op["op"] in {"mem.load", "mem.store"})}
+    # (a tuple value each operand of which, and its definition, types alike: its union items are
+    # what its typed loads read; another view of it may read them as anything)
+    views = {}
+    for op in operations:
+        for a in op["operands"]:
+            views.setdefault(a["value"], set()).add(a["type"])
+    for op in operations:
+        for n in op["results"]:
+            views.setdefault(f"%t{n}", set()).add(op["type"])
+    for n, p in enumerate(fn["parameters"]):
+        views.setdefault(f"%a{n}", set()).add(p["representation"])
+    def items(tuple_value, index):
+        typ = next(iter(views.get(tuple_value, set())), "")
+        return (len(views.get(tuple_value, set())) == 1 and typ.startswith("tuple[")
+                and index < len(targs(typ)) and union_members(targs(typ)[index]) is not None)
+    if context is not None:
+        for op in operations:
+            if (op["op"] == "field.addr" and len(op["operands"]) == 1
+                    and op["operands"][0]["type"] in context["layouts"]
+                    and field_word(context["classes"], context["layouts"], op["operands"][0]["type"],
+                                   op["immediate"]) in context["words"]):
+                # (whatever type this view loads it as: loads from it are values)
+                storage.update(f"%t{n}" for n in op["results"])
+                typed.update(f"%t{n}" for n in op["results"])
+            elif op["op"] == "tuple.load" and len(op["results"]) == 2 and op["operands"] and (
+                    union_members(op["text"]) is not None or items(op["operands"][0]["value"], op["immediate"])):
+                # (a union item's address and word, by its text or its tuple's type)
+                storage.add(f"%t{op['results'][0]}")
+                typed.add(f"%t{op['results'][0]}")
+                roots.add(f"%t{op['results'][1]}")
+    def raw(op):
+        # (memory accessed through the address of an object or tuple that may hold a union word,
+        # other than by a field address or a typed tuple item: it may read that word as any type;
+        # but a tagged class's first word, its class tag)
+        if context is None or op["op"] not in {"mach.addr", "mach.load", "mach.store", "mem.load", "mem.store"}:
+            return False
+        typ = op["operands"][0]["type"] if op["operands"] else ""
+        if typ in context["holders"]:
+            return not (op["op"] in {"mach.load", "mem.load"} and context["classes"].get(typ, {}).get("tagged")
+                        and op["type"] == "int")
+        return union_items(typ)
+    types = {f"%a{n}": p["representation"] for n, p in enumerate(fn["parameters"])}
+    types.update((f"%t{n}", op["type"]) for op in operations for n in op["results"])
     for _ in range(2 * len(operations) + 1):
-        prior = (len(roots), len(storage))
+        prior = (len(roots), len(storage), len(held))
         for op in operations:
             args = op["operands"]
+            results = {f"%t{n}" for n in op["results"]}
             # Opaque results may transport union bits; inventory must not depend
-            # on an allowlist of casts, big words or packing operations.
+            # on an allowlist of casts, big words or packing operations. A box's tag and payload
+            # bits, and a word a machine read loads through a union-typed value (a box's), are not
+            # its address (payload bits are each a member's value, whose uses normalize obliges).
+            # A compiled callee's result is what it returns, typed by its return type, which a
+            # union value has (box_values takes call results as opaque too).
+            reads = context is not None and (op["op"] in {"union.tag", "union.payload", "union.raw"} or (
+                op["op"] == "call" and op["text"] not in context["transports"]) or (
+                op["op"] in {"mach.load", "mem.load"} and op["type"] == "int" and args
+                and union_members(types.get(args[0]["value"], "")) is not None and args[0]["value"] not in storage))
             if any(a["value"] in roots for a in args):
-                roots.update(f"%t{n}" for n in op["results"])
-            if any(a["value"] in storage for a in args):
-                storage.update(f"%t{n}" for n in op["results"])
+                if not reads:
+                    roots.update(results)
+                elif op["op"] in {"union.payload", "union.raw"}:
+                    roots.add(f"%t{op['results'][0]}")  # (the payload's address)
+            if any(a["value"] in storage for a in args) and not (
+                    op["op"] in {"mem.load", "mach.load"} and args[0]["value"] in typed):
+                # (but a union a typed word holds is a value, not memory: a store through it
+                # would write a box, box_writes's subject)
+                storage.update(results)
             if (op["op"] in {"mem.store", "mach.store", "tuple.store"} and len(args) == 2
                     and args[1]["value"] in roots | storage):
+                if op["op"] == "mem.store" and args[0]["value"] in named and args[1]["value"] not in storage:
+                    held.add(args[0]["value"])
+                elif not (op["op"] == "tuple.store" and context is not None
+                          and items(args[0]["value"], op["immediate"]) and union_members(op["text"]) is not None):
+                    storage.add(args[0]["value"])
+            if raw(op):
                 storage.add(args[0]["value"])
-            if any(f"%t{n}" in storage for n in op["results"]):
+            if context is not None and op["op"] not in {"tuple.load", "tuple.store"}:
+                # (a tuple with union items that an operation makes a value of another type of may
+                # be read through that value as anything: it is memory again)
+                for a in args:
+                    if union_items(a["type"]) and any(types.get(r) != a["type"] for r in results):
+                        storage.add(a["value"])
+            if any(r in storage and r not in typed for r in results):
                 # (named values only: a literal such as 1 or null names no memory, and as
                 # storage it would taint every operation that uses the same literal)
                 storage.update(a["value"] for a in args if a["value"].startswith(("%", "@")))
-            if op["op"] in {"mem.load", "mach.load", "tuple.load"} and args and args[0]["value"] in storage:
-                roots.update(f"%t{n}" for n in op["results"])
-        if (len(roots), len(storage)) == prior:
+            if op["op"] in {"mem.load", "mach.load", "tuple.load"} and args and args[0]["value"] in storage | held:
+                roots.update(results)
+        if (len(roots), len(storage), len(held)) == prior:
             break
     return roots
 
 
-def union_writes(fn):
-    roots = union_provenance(fn)
+def union_writes(fn, context=None):
+    roots = union_provenance(fn, context)
     if not roots:
         return []
     private = {f"%{op['text']}.def.{op['results'][0]}" if op["immediate"] == 1
@@ -373,9 +541,10 @@ def payload_bits(fn):
         for block in fn["blocks"] for op in block["operations"])
 
 
-def inventory(fn):
-    """Inventory opcodes and union-derived addresses before guard recognition."""
-    roots = union_provenance(fn)
+def inventory(fn, context=None):
+    """Inventory opcodes and union-derived addresses before guard recognition (context:
+    union_context of the function's snapshot)."""
+    roots = union_provenance(fn, context)
     found = []
     for block in fn["blocks"]:
         for offset, op in enumerate(block["operations"]):
@@ -428,7 +597,8 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     functions to the union domains their results may be assumed in (check_all proves each:
     obligate_returns makes every returned union value of fn the obligations, not its reads)."""
     null_mode = null_obligations is not None
-    read_inventory = set(inventory(fn)) if not null_mode and not obligate_returns else set()
+    context = snapshot_context(snapshot)
+    read_inventory = set(inventory(fn, context)) if not null_mode and not obligate_returns else set()
     returns = returns or {}
     returned = union_members(fn.get("return_representation") or "") if obligate_returns else None
     boundary.require(not obligate_returns or (not null_mode and returned is not None),
@@ -438,7 +608,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     # with their original check and handler edges retained below.
     validation = dict(snapshot, functions=[fn])
     boundary.normalize_snapshot(validation, fn["symbol"])
-    if not null_mode and not immutable_boxes and union_writes(fn):
+    if not null_mode and not immutable_boxes and union_writes(fn, context):
         raise boundary.Unsupported("nonprivate writes may alias immutable union boxes")
     if not null_mode and not immutable_boxes:
         check_call_order(fn, read_inventory)
@@ -1298,7 +1468,9 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.
                      and manifest.get("removed_checks") == sum(r["reported_rewrites"] for r in evidence),
                      "guard inventory manifest mismatch")
     records, codes = [], [0]
-    work = [(fn, None) for fn in snapshot["functions"] if inventory(fn) or union_writes(fn) or payload_bits(fn)]
+    context = snapshot_context(snapshot)
+    work = [(fn, None) for fn in snapshot["functions"]
+            if inventory(fn, context) or union_writes(fn, context) or payload_bits(fn)]
     # (without a classes table no field address is shown to lie outside boxes: every write
     # and call remains a possible box mutation, as box_writes reports none of it)
     writes = box_writes(snapshot) if isinstance(snapshot.get("classes"), dict) else None
@@ -1332,13 +1504,13 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.
         except (boundary.Unsupported, ValueError, KeyError, OSError, subprocess.SubprocessError, RecursionError) as error:
             code = 2 if isinstance(error, boundary.Unsupported) else 3
             records.append({"function": fn.get("symbol"), "status": "unsupported" if code == 2 else "error", "error": str(error),
-                            "union_box_writes": len(union_writes(fn))})
+                            "union_box_writes": len(union_writes(fn, context))})
             codes.append(code)
     code = 3 if 3 in codes else 1 if 1 in codes else 2 if 2 in codes else 0
     return {"status": {0: "accepted", 1: "rejected", 2: "unsupported", 3: "error"}[code],
             "checked": code == 0, "records": records,
-            "union_reads": sum(len(inventory(fn)) for fn in snapshot["functions"]),
-            "union_box_writes": sum(len(union_writes(fn)) for fn in snapshot["functions"]),
+            "union_reads": sum(len(inventory(fn, context)) for fn in snapshot["functions"]),
+            "union_box_writes": sum(len(union_writes(fn, context)) for fn in snapshot["functions"]),
             "possible_box_writes": None if writes is None else len(writes),
             "union_returns": sum(union_members(fn.get("return_representation") or "") is not None
                                  for fn in snapshot["functions"]),

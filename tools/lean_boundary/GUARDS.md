@@ -290,8 +290,20 @@ Inventory follows union-derived operands through every result-producing
 operation, including opaque operations, and conservatively tracks raw memory,
 tuple storage and address transports. Unrecognized derived machine reads stay
 in the denominator and fail unsupported; they cannot disappear when their
-address loses its union annotation. This overapproximation can also inventory
-reads that would need additional analysis to distinguish from union reads.
+address loses its union annotation. What reads a box's words is no transport of
+its address: a tag, payload bits (each a member's value, which payload checks
+oblige) and a word a machine read loads through a union-typed value. Memory that
+the IR types as a union is read as one, not tracked as raw memory: a field word
+some view of it types as a union (by `class_layouts`, whose structs are prefixes
+of their subclasses', so every view shares the word), a tuple item whose type is
+one, a private slot or module global (whose address no other operation uses) and
+a compiled callee's result (but of a callee that may return a union value's
+address as another type, which makes its results transports). Each other way of
+reading such a word remains a transport: another view of the field word, a raw
+access to an object of its class hierarchy or a tuple that holds one, a tuple
+read under another type or through a value of another type, and a slot loaded as
+another type ([`test_lean_guards.py`](../test_lean_guards.py)). The trust is the
+IR's, as for container items: what a typed load returns is its type's.
 
 Union member proofs require stable box contents. `box_writes` scans every compiled
 function of the snapshot for an operation that may write a union box: a store (or raw
