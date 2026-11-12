@@ -168,14 +168,20 @@ def raises_any(expected: list[type[BaseException]], *, match: str | None = None)
     return Raises(expected, match)
 
 
-def match_exception(pattern: str, message: str) -> bool:
-    """ExceptionInfo.match for a raises block the collector expanded (typed .value)."""
-    _search(pattern, message)
+def match_exception(pattern: str | None, message: str) -> bool:
+    """ExceptionInfo.match for a raises block the collector expanded (typed .value).
+
+    match=None is no pattern, as in pytest.raises.
+    """
+    if pattern is not None:
+        _search(pattern, message)
     return True
 
 
-def check_pattern(pattern: str) -> None:
+def check_pattern(pattern: str | None) -> None:
     """Reject an invalid match= regex before an expanded raises block runs its body."""
+    if pattern is None:
+        return
     try:
         re.compile(pattern)
     except re.error as error:
@@ -188,12 +194,29 @@ def _number(value) -> float:
     return float(value)
 
 
+def _whole(value) -> int:
+    """An int's own value, which a float cannot hold beyond 2**53; 0 for another number."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    return 0
+
+
+def _within(difference: int, tolerance: float) -> bool:
+    """difference <= tolerance for a non-negative int, without rounding it to a float."""
+    if tolerance >= 9223372036854775808.0:
+        return True
+    return difference <= int(tolerance)
+
+
 class Approx:
     """pytest.approx for one number: pytest's default and explicit tolerances."""
 
-    def __init__(self, expected: float, rel: float, has_rel: bool, tolerance: float, has_abs: bool,
-                 nan_ok: bool) -> None:
+    def __init__(self, expected: float, whole: int, is_whole: bool, rel: float, has_rel: bool, tolerance: float,
+                 has_abs: bool, nan_ok: bool) -> None:
         self.expected = expected
+        # An int expected value: compared with an int exactly, as pytest compares them.
+        self.whole = whole
+        self.is_whole = is_whole
         self.rel = rel
         self.has_rel = has_rel
         self.abs = tolerance
@@ -220,6 +243,12 @@ class Approx:
     def __eq__(self, actual: object) -> bool:
         if isinstance(actual, bool) or not isinstance(actual, (int, float)):
             return False
+        if isinstance(actual, int):
+            if self.is_whole:
+                # Floats would round two ints beyond 2**53 to one value: these subtract exactly.
+                if actual == self.whole:
+                    return True
+                return _within(abs(self.whole - actual), self.tolerance())
         number = float(actual)
         if number == self.expected:
             return True
@@ -232,11 +261,12 @@ class Approx:
     def __repr__(self) -> str:
         if math.isnan(self.expected) or math.isinf(self.expected):
             return repr(self.expected)
-        return repr(self.expected) + " ± " + repr(self.tolerance())
+        return (repr(self.whole) if self.is_whole else repr(self.expected)) + " ± " + repr(self.tolerance())
 
 
 def approx(expected, rel=None, abs=None, nan_ok: bool = False) -> Approx:
-    return Approx(_number(expected), 0.0 if rel is None else _number(rel), rel is not None,
+    return Approx(_number(expected), _whole(expected), isinstance(expected, int) and not isinstance(expected, bool),
+                  0.0 if rel is None else _number(rel), rel is not None,
                   0.0 if abs is None else _number(abs), abs is not None, nan_ok)
 
 

@@ -143,6 +143,21 @@ def test_approx_forms():
     assert [2.5000001 == approx(2.5), 2.6 == approx(2.5)] == [True, False]
 
 
+def test_approx_compares_large_ints_exactly():
+    # (Two ints that one float holds: 2**53 and 2**53 + 1.)
+    assert 9007199254740992 != pytest.approx(9007199254740993, rel=0, abs=0)
+    assert 9007199254740993 == pytest.approx(9007199254740993, rel=0, abs=0)
+    assert 9007199254740992 == pytest.approx(9007199254740993, rel=0, abs=1)
+    assert 9007199254740990 != pytest.approx(9007199254740993, rel=0, abs=2.5)
+    assert 9007199254740991 == pytest.approx(9007199254740993, rel=0, abs=2.5)
+    assert 9007199254740992 == pytest.approx(9007199254740993)
+    assert 9007199254740992.0 == pytest.approx(9007199254740993, rel=0, abs=0)
+
+
+def test_approx_large_int_failure():
+    assert 9007199254740992 == pytest.approx(9007199254740993, rel=0, abs=0)
+
+
 def test_approx_failure():
     assert 1.0 == pytest.approx(1.1)
 
@@ -326,6 +341,12 @@ def test_reused_name_keeps_the_context_manager():
     with pytest.raises(NotFound) as info:
         fetch(404)
     assert str(info.value) == "not found"
+
+
+def test_match_none_is_no_pattern():
+    with pytest.raises(HttpError, match=None) as info:
+        fetch(500)
+    assert info.value.code == 500
 '''
 
 FIXTURE_PARAMS = '''
@@ -783,7 +804,8 @@ class FormParity(TemporarySuite):
         outcomes = self.outcomes(actual)
         failed = {name for (name, phase), outcome in outcomes.items() if outcome in {"failed", "error"}}
         self.assertEqual(failed, {
-            "test_approx_failure", "test_exact_match_never_reads_a_negative_tolerance", "test_raises_tuple_miss",
+            "test_approx_failure", "test_approx_large_int_failure",
+            "test_exact_match_never_reads_a_negative_tolerance", "test_raises_tuple_miss",
             "test_match_method_fails", "test_failing_repr_fails_as_an_assertion", "test_xfail_raises_other",
             "test_xfail_raises_strict_pass", "test_xfail_raises_setup_other", "test_xfail_raises_teardown_other"})
         self.assertEqual(outcomes["test_xfail_raises_setup", "setup"], "xfailed")
@@ -794,6 +816,8 @@ class FormParity(TemporarySuite):
         self.assertTrue(details["test_failing_repr_fails_as_an_assertion"].startswith("AssertionError: "))
         self.assertIn("raised in repr()", details["test_failing_repr_fails_as_an_assertion"])
         self.assertTrue(details["test_approx_failure"].endswith("assert 1.0 == 1.1 ± 1.1e-06"), details)
+        self.assertTrue(details["test_approx_large_int_failure"].endswith(
+            "assert 9007199254740992 == 9007199254740993 ± 0.0"), details)
 
     def test_typed_value_expands_only_where_it_is_safe(self):
         actual, _ = self.check("typed_value")
@@ -804,6 +828,32 @@ class FormParity(TemporarySuite):
         self.assertIn("except HttpError as _pyn_caught_", source)
         # A name bound by two blocks cannot become one typed variable.
         self.assertIn("with pytest.raises(NotFound) as info:", source)
+        # pytest.raises keeps the class it was given; a handler would read the name again
+        # after the body, so a class the function binds keeps the context manager.
+        rebound = self.source("""
+            import pytest
+            class Problem(Exception):
+                def __init__(self, code: int) -> None:
+                    super().__init__("problem")
+                    self.code = code
+            def test_local_class_is_read_once():
+                expected = Problem
+                with pytest.raises(expected) as info:
+                    expected = TypeError
+                    raise Problem(7)
+                assert info.value.code == 7
+            def test_argument(expected=Problem):
+                with pytest.raises(expected) as info:
+                    raise Problem(8)
+                assert info.value.code == 8
+        """, "test_rebound.py")
+        kept = generate(rebound.read_text(), "test_rebound.py").source
+        self.assertEqual(kept.count("with pytest.raises(expected) as info:"), 2)
+        self.assertNotIn("_pyn_caught_", kept)
+        result = runner.run_module(rebound, self.root, self.work / "rebound", "python", [], sys.executable, 60)
+        reference = runner.oracle([rebound], self.root, self.work / "oracle-rebound", sys.executable, 60)
+        self.assertEqual(result.state, "passed", result.error + result.stderr)
+        self.assertEqual(runner.compare([result], reference), [])
         for body in ("return 1", "info = None", "print(info)"):
             with self.subTest(body=body):
                 kept = generate("import pytest\nclass E(Exception):\n    pass\ndef helper():\n"
@@ -906,7 +956,7 @@ class FormParity(TemporarySuite):
         self.assertEqual(runner.compare(results, expected), [], results[0].error + results[0].stderr + json.dumps(
             runner.outcome_differences(results, expected), indent=2))
         self.assertEqual({result.path: result.state for result in results}, states)
-        self.assertEqual(len(expected["cases"]), 123)
+        self.assertEqual(len(expected["cases"]), 126)
         # conftest.py's session fixture fails as the last case of the last module ends.
         self.assertEqual(results[-1].events[-1]["detail"], "RuntimeError: session teardown\n")
         return results

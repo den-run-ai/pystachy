@@ -1819,6 +1819,9 @@ class Generator:
                   for part in ast.walk(node) if isinstance(part, ast.Name)}
         arguments = {arg.arg for arg in ast.walk(function.args) if isinstance(arg, ast.arg)}
         declared = {name for node in own if isinstance(node, (ast.Global, ast.Nonlocal)) for name in node.names}
+        # A class named by something the function binds: the block's body could bind it
+        # again before the handler reads it, where pytest.raises keeps the class it was given.
+        rebindable = _local_bindings(function) | arguments | declared
         blocks = {}
         names = {}
         for node in own:
@@ -1848,7 +1851,7 @@ class Generator:
                 expected = expected.value
             name = target.id
             if (not isinstance(expected, ast.Name) or name in nested or name in arguments or name in declared
-                    or name in names):
+                    or name in names or expected.id in rebindable):
                 continue
             references = [part for part in own if isinstance(part, ast.Name) and part.id == name]
             if sum(not isinstance(part.ctx, ast.Load) for part in references) != 1:
