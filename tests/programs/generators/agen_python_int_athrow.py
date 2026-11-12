@@ -19,7 +19,9 @@ async def main() -> None:
     print(await g.__anext__())
     print(await g.athrow(ValueError))
     v = await g.athrow(ValueError("again"))
-    print(v, v is None, v > 2**64 if v is not None else "none")
+    print(v, v is None)
+    if v is not None:
+        print("past 64 bits:", v > 2**64)
     try:
         await g.athrow(KeyError)
     except KeyError:
