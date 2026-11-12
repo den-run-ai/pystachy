@@ -1,0 +1,120 @@
+'1' (1+0j)
+'1j' 1j
+'j' 1j
+'+j' 1j
+'-j' -1j
+'J' 1j
+'1+2j' (1+2j)
+'1-2j' (1-2j)
+' 1+2j ' (1+2j)
+'(1+2j)' (1+2j)
+'( 1+2j )' (1+2j)
+'\t(1+2j)\n' (1+2j)
+'1+j' (1+1j)
+'1-j' (1-1j)
+'-1-j' (-1-1j)
+'1e3j' 1000j
+'1.5e-3+2.5E+2J' (0.0015+250j)
+'.5j' 0.5j
+'5.' (5+0j)
+'5.j' 5j
+'.5+.5j' (0.5+0.5j)
+'inf' (inf+0j)
+'infj' infj
+'-inf+nanj' (-inf+nanj)
+'nan' (nan+0j)
+'nanj' nanj
+'NaN+InFj' (nan+infj)
+'infinity' (inf+0j)
+'+Infinity-INFINITYj' (inf-infj)
+'1_0+2_0j' (10+20j)
+'1_000.000_1e1_0j' 10000001000000j
+'1e1_0' (10000000000+0j)
+'1e400' (inf+0j)
+'-1e400j' -infj
+'1e-400' 0j
+'-0j' -0j
+'-0-0j' (-0-0j)
+'0.0' 0j
+'+1' (1+0j)
+'999999999999999999999999999999' (1e+30+0j)
+'1.0000000000000002+1e-320j' (1.0000000000000002+1e-320j)
+'١+٢j' (1+2j)
+'1\u2003' (1+0j)
+'\xa01j' 1j
+'(1)' (1+0j)
+'(j)' 1j
+'1e5' (100000+0j)
+'0j' 0j
+'00' 0j
+'1E2' (100+0j)
+'+.5e1j' 5j
+'-.0' (-0+0j)
+'3+4J' (3+4j)
+'' ValueError: complex() arg is a malformed string
+' ' ValueError: complex() arg is a malformed string
+'()' ValueError: complex() arg is a malformed string
+'(' ValueError: complex() arg is a malformed string
+')' ValueError: complex() arg is a malformed string
+'1+2' ValueError: complex() arg is a malformed string
+'1 + 2j' ValueError: complex() arg is a malformed string
+'1+ 2j' ValueError: complex() arg is a malformed string
+'1 +2j' ValueError: complex() arg is a malformed string
+'(1+2j' ValueError: complex() arg is a malformed string
+'1+2j)' ValueError: complex() arg is a malformed string
+'((1+2j))' ValueError: complex() arg is a malformed string
+'j1' ValueError: complex() arg is a malformed string
+'1jj' ValueError: complex() arg is a malformed string
+'1+2j3' ValueError: complex() arg is a malformed string
+'0x10' ValueError: complex() arg is a malformed string
+'1e' ValueError: complex() arg is a malformed string
+'1e+' ValueError: complex() arg is a malformed string
+'e5' ValueError: complex() arg is a malformed string
+'+' ValueError: complex() arg is a malformed string
+'-' ValueError: complex() arg is a malformed string
+'++1' ValueError: complex() arg is a malformed string
+'1+-2j' ValueError: complex() arg is a malformed string
+'1++2j' ValueError: complex() arg is a malformed string
+'--1' ValueError: complex() arg is a malformed string
+'.' ValueError: complex() arg is a malformed string
+'.j' ValueError: complex() arg is a malformed string
+'1\x00' ValueError: complex() arg is a malformed string
+'1j\x00' ValueError: complex() arg is a malformed string
+'1_' ValueError: could not convert string to complex: '1_'
+'_1' ValueError: could not convert string to complex: '_1'
+'1__0' ValueError: could not convert string to complex: '1__0'
+'1e_1' ValueError: could not convert string to complex: '1e_1'
+'1._5' ValueError: could not convert string to complex: '1._5'
+'1_.5' ValueError: could not convert string to complex: '1_.5'
+'1_j' ValueError: could not convert string to complex: '1_j'
+'one' ValueError: complex() arg is a malformed string
+'1i' ValueError: complex() arg is a malformed string
+'1+2i' ValueError: complex() arg is a malformed string
+'1,2' ValueError: complex() arg is a malformed string
+'1j+2' ValueError: complex() arg is a malformed string
+'j+1' ValueError: complex() arg is a malformed string
+'1+2jj' ValueError: complex() arg is a malformed string
+'(1+2j)j' ValueError: complex() arg is a malformed string
+'1 j' ValueError: complex() arg is a malformed string
+'+ j' ValueError: complex() arg is a malformed string
+'infi' ValueError: complex() arg is a malformed string
+'nanana' ValueError: complex() arg is a malformed string
+'i' ValueError: complex() arg is a malformed string
+'1+' ValueError: complex() arg is a malformed string
+'1-' ValueError: complex() arg is a malformed string
+'1e5e5' ValueError: complex() arg is a malformed string
+'é' ValueError: complex() arg is a malformed string
+'1é' ValueError: complex() arg is a malformed string
+'1.2.3' ValueError: complex() arg is a malformed string
+'1+2.j.' ValueError: complex() arg is a malformed string
+'(1 +2j)' ValueError: complex() arg is a malformed string
+'1+2j (' ValueError: complex() arg is a malformed string
+'+-j' ValueError: complex() arg is a malformed string
+True True (2+3j) 5.0
+(1e+308+0j) 4.0 (1.25-0.5j) (-0-0j) (inf-infj)
+TypeError complex() can't take second arg if first is a string
+TypeError complex() second arg can't be a string
+TypeError complex() can't take second arg if first is a string
+TypeError complex() second arg can't be a string
+TypeError complex() can't take second arg if first is a string
+[exit 0]

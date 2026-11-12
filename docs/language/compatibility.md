@@ -22,7 +22,8 @@ These programs can compile and run with different results, errors or timing of e
 |---|---|
 | Ordinary `int` | Signed 64-bit. Oversized results, intermediates and `int()` conversions raise `OverflowError`. Use explicit [`mpz`](../mpz.md) or opt in to [promoting ints](#promoting-ints-opt-in-prototype). |
 | `int ** negative int` | `ValueError`; `0 ** -1` still raises `ZeroDivisionError`. |
-| Negative float to a fractional power | `ValueError`; CPython returns a complex number. |
+| Negative float to a fractional power | `ValueError`; CPython returns a complex number. `complex(x) ** y` gives CPython's result. |
+| `complex` | Arithmetic, `abs()`, `**`, `==`, `hash()`, `repr()` and `complex()` of numbers and strings follow CPython 3.13's `complexobject.c`. An `int` or `float` is not accepted where `complex` is annotated (write `complex(x)`), as an `int` is not where `float` is. A format spec (`f"{z:.2f}"`), `sum()` of complex numbers and `cmath` are not supported. Products and quotients are not contracted into fused multiply-adds, which a CPython built for a platform with them may use. |
 | NaN identity | Unboxed NaNs have no identity, including inside scalar union boxes: `nan in [nan]` is false. Container equality and sorting treat a shared NaN as distinct values. `hash(nan)` is 0, rather than an identity hash. |
 | Empty `list[float]` | `sum(xs)` returns `0.0`, `sum(xs, 1)` returns `1.0`, and `math.prod(xs)` returns `1.0`; CPython preserves the integer start. |
 | Native JSON | Typed `JSONValue` rejects integers outside 64 bits; dynamic `Any` decoding promotes them. Nesting is limited by recursion depth and a 2,000-container cap. See [JSON limits](../../lib/compatibility.md#json). |

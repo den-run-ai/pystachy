@@ -1,6 +1,6 @@
-def report(msg: str, **kwargs: complex) -> str:
+def report(msg: str, **kwargs: memoryview) -> str:
     return msg
 
 
-def collect(*args: complex) -> int:
+def collect(*args: memoryview) -> int:
     return len(args)

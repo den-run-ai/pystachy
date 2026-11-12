@@ -138,7 +138,7 @@ class Tagged:
     def __repr__(self) -> str:
         return f"Tagged({self.x})"
 
-    def __eq__(self, other: complex) -> bool:
+    def __eq__(self, other: memoryview) -> bool:
         return isinstance(other, Tagged) and other.x == self.x
 
 

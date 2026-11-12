@@ -1,0 +1,26 @@
+(1+0j) (1+2j) (-3+4j) (-11-2j) (-7-24j) (237-3116j) (-11-2j) (-3+4j) (1+2j) (1+0j)
+(0.2-0.4j) (-0.12-0.16j) (-0+0.125j) (-0.25-0j) (-1073741824+0j) (1.2676506002282294e+30+0j) (7.888609052210118e-31+0j)
+(-3+4j) (-11-2j) True (-1+0j) (-1+0j) 1j (1+0j) -1j
+(9+0j) (8+0j) (0.5+0j) (1+0j) 0j (1+0j) (1+0j) (1+0j) 0j 0j
+(-3+4j) (0.2-0.4j) (-11-2j) (-11-2j)
+(-3+4j) (1+2j)
+(1.27201965, 0.7861513778) (1.176301073, 0.3341624842) (-6.96066446, 2.729624465) (-0.0268581375, -0.2978613093) (-0.2225171568, 0.1007091311) (0.229140186, 0.2381701151) (-1.640101018, 0.2020503986)
+(0.3669139495, 1.966055481) (-0.6470131995, 2.414823786) (-1.758764803, 2.430379881) (0.7692389014, -0.6389612763) (1, 1.732050808) (0, 2) (0, 1)
+(5.783317925e+34, -1.899957069e+35) (1.466245288e-36, 4.816963438e-36) (-3.389899015e+34, -1.284146586e+35) (1.2676506e+30, 0) (0.7071067812, 0.7071067812) (0.7071067812, -0.7071067812)
+(1.069553932e+50, 2.127475047e+49) (7.071067812e-151, 7.071067812e-151)
+(1+0j) (1+0j) (nan+nanj) (nan+nanj) (nan+nanj) False
+ZeroDivisionError 0j (-1+0j) 0.0 to a negative or complex power
+ZeroDivisionError 0j 1j 0.0 to a negative or complex power
+ZeroDivisionError 0j (1+1j) 0.0 to a negative or complex power
+ZeroDivisionError 0j (-2+0j) 0.0 to a negative or complex power
+ZeroDivisionError (-0+0j) (-1.5+0j) 0.0 to a negative or complex power
+(nan+nanj)
+OverflowError (2+0j) (1024+0j) complex exponentiation
+OverflowError (10000000000+10000000000j) (50+0j) complex exponentiation
+OverflowError (2+0j) (2000.5+0j) complex exponentiation
+OverflowError (1e+308+0j) (1.5+0j) complex exponentiation
+OverflowError (inf+0j) (0.5+0j) complex exponentiation
+ZeroDivisionError 0.0 to a negative or complex power
+ZeroDivisionError 0.0 to a negative or complex power
+ZeroDivisionError 0.0 to a negative or complex power
+[exit 0]

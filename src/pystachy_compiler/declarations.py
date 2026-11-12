@@ -27,6 +27,8 @@ from src.pystachy_compiler.specs import (
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
+    COMPLEXC,
+    COMPLEXS,
     OBJECTC,
     RANGEC,
     RANGES,
@@ -175,6 +177,8 @@ def gen_ann(self, n: Node) -> str:
             return s
         if s == "range" and RANGEC in self.classes:
             return RANGEC  # (the class of range objects, lib/_pystachy_range.py)
+        if s == "complex" and COMPLEXC in self.classes:
+            return COMPLEXC  # (the class of complex numbers, lib/_pystachy_complex.py)
         if self.imported(s).startswith("ffi.") and self.imported(s)[4:] in CTYPES:
             return "int"  # (a C integer type, in an @extern function's signature: see CTYPES)
         if self.imported(s) == "ffi.c_buf":
@@ -2001,8 +2005,8 @@ def gen_frozen_store(self, o: Val, name: str, delete: bool = False) -> bool:
 def gen_frozen(self, t: str, name: str) -> None:
     # a NamedTuple's fields are assigned only by its __init__, a range object's by none (as
     # CPython's start, stop and step are read-only)
-    if t == RANGEC and self.curfn.mod != RANGES:
-        self.err("readonly attribute")
+    if (t == RANGEC and self.curfn.mod != RANGES) or (t == COMPLEXC and self.curfn.mod != COMPLEXS):
+        self.err("readonly attribute")  # (a complex number's real and imag are read-only too)
     if t in self.nts and not (self.curfn.name == "__init__" and self.curfn.cls == t):
         self.err(f"cannot assign to field '{name}' of NamedTuple {short(t)} (AttributeError: can't set attribute); make a new one with _replace({name}=...)")
     if t in self.classes and name in self.classes[t].fconst and not (self.curfn.name == "__init__" and self.curfn.cls == t):
@@ -2396,6 +2400,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return RANGEC  # (where it is a value)
         if c == "object" and OBJECTC in self.classes and not self.bound(c):
             return OBJECTC  # (object(): an object of lib/_pystachy_object.py's class)
+        if c == "complex" and COMPLEXC in self.classes and not self.bound(c):
+            return COMPLEXC  # (complex(): an object of lib/_pystachy_complex.py's class)
         if c == "len" or c == "ord":
             return "int"
         if c == "input" or c == "repr" or c == "chr" or c == "ascii" or c == "hex" or c == "oct" or c == "bin":

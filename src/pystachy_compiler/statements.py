@@ -10,6 +10,7 @@ from src.pystachy_compiler.specs import (
     ABCS,
     BIG,
     BIGOPT,
+    COMPLEXC,
     ABCSMORE,
     ABCSOTHER,
     DUNDER,
@@ -281,6 +282,13 @@ def gen_hoist(self, f: FnInfo) -> None:
                 f.dglob[j] = "!" + bad
                 continue
             v = self.expr(d, t)
+            if t == COMPLEXC and f.mod != "" and not early and v.t != COMPLEXC and v.t != "None":
+                # an imported module's def whose complex parameter has a default of another type
+                # (z: complex = scale()), which compiled while complex was no type: the def is
+                # left out as it was then, an error only where the program calls it, and its
+                # default is evaluated as CPython evaluates it
+                f.bad = f"{f.name}() is not supported: the default value of parameter '{f.params[j]}' is a {tname(v.t)}, not the complex its annotation names"
+                t = ""
             if early:
                 # a call compiled before this statement declared its global (early_default)
                 del self.pending[f"{f.ll}.{j}"]

@@ -1058,6 +1058,21 @@ def object_values(n: Node) -> bool:
     return False
 
 
+def complex_values(n: Node, ann: bool = False) -> bool:
+    # may code n use a complex number, an object of lib's class (Loader.program)? A complex
+    # literal does, and so may any read of the name complex: a call, an annotation (ann: n is in
+    # one, where a string's text may name it) or isinstance()'s class. A false True only loads
+    # the module; only reading the tree
+    k = n.kind
+    if k == "complex" or (k == "name" and n.s == "complex") or (k == "str" and ann and "complex" in n.s):
+        return True
+    for i in range(len(n.kids)):
+        inann = ann or ((k == "param" or k == "starparam" or k == "dstarparam") and i == 0) or (k == "def" and i == 1) or (k == "annassign" and i == 1)
+        if complex_values(n.kids[i], inann):
+            return True
+    return False
+
+
 def builtins_names(n: Node, out: dict[str, bool]) -> None:
     # the names that an import of the builtins module in n binds (import builtins as b)
     for a in n.kids if n.kind == "import" and n.s == "" else NOKIDS:

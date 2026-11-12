@@ -1,4 +1,4 @@
-# An imported class whose __eq__ Pystachy cannot compile (its parameter is annotated complex):
+# An imported class whose __eq__ Pystachy cannot compile (its parameter is annotated memoryview):
 # printing its objects, also inside a list, a tuple and a dict, uses only __repr__, so it is no
 # error; nor is comparing the objects of a class without __eq__, which is identity.
 from scope import sigs
