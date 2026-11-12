@@ -1,0 +1,7 @@
+10 10
+AttributeError property 'x' of 'Both' object has no setter
+AttributeError property 'x' of 'Both' object has no deleter
+3 3
+0
+AttributeError property 'x' of 'Both' object has no setter set 7 AttributeError property 'x' of 'Both' object has no deleter deleted 0
+[exit 0]

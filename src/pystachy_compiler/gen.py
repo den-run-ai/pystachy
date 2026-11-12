@@ -1104,6 +1104,8 @@ from src.pystachy_compiler.program import (
     gen_trait_root as program_trait_root,
     gen_declarer as program_declarer,
     gen_declares as program_declares,
+    gen_mro as program_mro,
+    gen_mro_first as program_mro_first,
     gen_slotted_trait as program_slotted_trait,
     gen_generic_subclass as program_generic_subclass,
     gen_generic_traits as program_generic_traits,
@@ -3754,6 +3756,12 @@ class Gen:
 
     def declares(self, c: str, m: str) -> bool:
         return program_declares(self, c, m)
+
+    def mro(self, c: str) -> list[str]:
+        return program_mro(self, c)
+
+    def mro_first(self, order: list[str], m: str) -> str:
+        return program_mro_first(self, order, m)
 
     def slotted_trait(self, cls: str, role: str) -> bool:
         return program_slotted_trait(self, cls, role)

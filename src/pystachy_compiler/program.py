@@ -165,10 +165,11 @@ def gen_subclass_problem(self, st: Node) -> str:
                 c = self.classes[c].base
         root = ""
         first = ""
-        for secondary in secondaries:
-            # (traits of one class derive from one class of the primary chain, as mypy's do from
-            # Node: a trait of another class there would reorder CPython's method resolution order
-            # around the primary chain's classes between them, which inherit does not follow)
+        for secondary in self.classes[primary].roles + secondaries:
+            # (traits of one class, also those its primary base has, derive from one class of the
+            # primary chain, as mypy's do from Node: a trait of another class there would reorder
+            # CPython's method resolution order around the primary chain's classes between them,
+            # which super() and the checks of inherit do not follow)
             t = self.trait_root(primary, secondary) if self.classes[secondary].base != "" else ""
             if t != "" and root != "" and t != root:
                 return f"traits {short(first)} and {short(secondary)} of one class derive from different classes of its primary base's chain, {short(root)} and {short(t)}: not supported"
@@ -355,8 +356,11 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         elif ci.exc != "" and m != "__init__" and m != "__str__" and m != "__repr__":
             self.line = ci.methods[m].node.line
             self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
-    overrides: dict[str, bool] = {}  # (the methods of the primary chain that a secondary base overrides)
     seen: dict[str, str] = {}  # (the secondary base whose method of each name comes first)
+    order = self.mro(ci.name) if len(ci.roles) > 0 else []  # (CPython's method resolution order)
+    if len(ci.roles) > 0 and len(order) == 0:
+        self.line = ci.node.line
+        self.bad_class(ci, "Cannot create a consistent method resolution order (MRO) for its bases (CPython's TypeError)")
     for r in ci.roles:
         role = self.classes[r]
         # (a generic secondary base's methods leave out the annotations that name its type
@@ -376,22 +380,23 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                     self.line = ci.node.line
                     self.bad_class(ci, f"secondary bases {short(seen[method])} and {short(r)} both declare method '{method}' (not supported, also where {short(ci.name)} overrides it)")
                 seen[method] = seen.get(method, r)
-                pm = self.declarer(ci.base, method) if method in b.methods else ""
-                if role.base != "" and own:
-                    pass  # (its own comes first, checked against the trait's below)
-                elif role.base != "" and pm != "" and self.derives(r, pm):
-                    # (the primary base's is a class's that the trait derives from: the trait's comes
-                    # first in CPython's method resolution order, after an earlier secondary base's)
-                    if method not in overrides and original.deco == "classmethod" and original.clsuse:
+                first = self.mro_first(order, method)
+                if role.base != "" and first == r and method in b.methods:
+                    # (the trait's comes first in CPython's method resolution order: before the
+                    # primary chain's from the classes it derives from, and the primary base's
+                    # earlier traits' and other bases' that do not declare it)
+                    if original.deco == "classmethod" and original.clsuse:
                         # (its cls names the trait, where CPython's names the class: compiled for
                         # the trait, as it is, it would read the trait's class attributes)
+                        pm = self.declarer(ci.base, method)
                         self.line = ci.node.line
-                        self.bad_class(ci, f"class method '{method}' of trait {short(r)} uses cls where it overrides that of {short(pm)}: not supported")
-                    if method not in overrides:
-                        ci.methods[method] = original
-                        overrides[method] = True
-                elif role.base != "" and pm != "" and self.on_chain(ci.base, pm):
-                    pass  # (the primary chain's own comes first: kept, and checked against the trait's)
+                        self.bad_class(ci, f"class method '{method}' of trait {short(r)} uses cls where it overrides that of {short(pm if pm != '' else b.methods[method].cls)}: not supported")
+                    for acc in [method + ".setter", method + ".deleter"] if original.prop else []:
+                        if acc in ci.methods and acc not in role.methods:
+                            del ci.methods[acc]  # (its property replaces the one with that accessor)
+                    ci.methods[method] = original
+                elif role.base != "" and method in b.methods:
+                    pass  # (the class's own, or one that comes before the trait's: kept, and checked against it)
                 elif method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
                     # (also another secondary base's: CPython's method resolution order picks one)
                     self.line = ci.node.line
@@ -501,6 +506,39 @@ def gen_declares(self, c: str, m: str) -> bool:
     # does class c's own body define method m (an accessor x.setter: its def x)
     nm = m[: m.find(".")] if "." in m else m
     return len([d for d in self.classes[c].node.kids[0].kids if d.kind == "def" and d.s == nm]) > 0
+
+def gen_mro(self, c: str) -> list[str]:
+    # CPython's method resolution order of class c (C3), as far as the program's classes go: c,
+    # then the merge of its bases' orders and its bases, the primary base and the secondary bases
+    # it names (ClassInfo.roles after its base's: subclass_problem rejects one named again); []
+    # where they have no consistent order
+    info = self.classes[c]
+    bases: list[str] = []
+    if info.base in self.classes:
+        bases.append(info.base)
+        bases += info.roles[len(self.classes[info.base].roles) :]
+    seqs: list[list[str]] = [self.mro(x) for x in bases]
+    seqs.append(bases)
+    out = [c]
+    while True:
+        seqs = [x for x in seqs if len(x) > 0]
+        if len(seqs) == 0:
+            return out
+        head = ""
+        for x in seqs:
+            if head == "" and len([y for y in seqs if x[0] in y[1:]]) == 0:
+                head = x[0]
+        if head == "":
+            return []
+        out.append(head)
+        seqs = [y[1:] if y[0] == head else y for y in seqs]
+
+def gen_mro_first(self, order: list[str], m: str) -> str:
+    # the first class of method resolution order order whose own body defines method m, or ""
+    for c in order:
+        if self.declares(c, m):
+            return c
+    return ""
 
 
 def gen_slotted_trait(self, cls: str, role: str) -> bool:

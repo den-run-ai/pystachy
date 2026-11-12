@@ -1153,8 +1153,9 @@ mypy's `Statement(Node)` in
 ([test](../../tests/programs/classes/inheritance_traits.py)). Objects of the combined class begin
 with the fields of the class they share, so a value of the trait's type reads them. A trait's
 methods may read the instance and be properties, class or static methods, abstract or not, but
-may not call `super()`. Methods resolve in CPython's order: the class's own, then the primary
-chain's own, then the first trait's, which comes before what the primary base inherits from the
-class they share. A class's traits derive from the same class, and a trait's class method that
-overrides one of that chain's may not use `cls`. `__slots__` in such a hierarchy needs every
-trait to declare `__slots__ = ()`.
+may not call `super()`. Methods resolve in CPython's C3 order: the first class there whose body
+defines a method, among the class, its primary chain and its traits (also those of its primary
+base), gives it, and a trait's property replaces an inherited property whole, with its setter
+and deleter. A class's traits, its primary base's included, derive from the same class, and a
+trait's class method that overrides one of that chain's may not use `cls`. `__slots__` in such a
+hierarchy needs every trait to declare `__slots__ = ()`.
