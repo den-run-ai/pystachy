@@ -1,0 +1,8 @@
+'plain run, then' plain run None ['plain', 'run', 'then']
+'„quoted“ text' None 7 ['quoted', 'text']
+'x{y' x 1 ['x', 'y']
+'“start' None 0 ['start']
+'héllo wörld: 1' héllo wörld None ['h', 'llo', 'w', 'rld']
+'日本語のテキスト,' 日本語のテキスト None ['日本語']
+'mixed😀emoji🙂 z' mixed😀emoji🙂 z None ['mixed😀emoji🙂', 'z']
+[exit 0]

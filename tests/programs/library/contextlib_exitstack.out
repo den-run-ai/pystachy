@@ -1,0 +1,7 @@
+['enter a', 'got a', 'enter b', 'got b', 'enter c', 'got c', 'body', 'cbcb', 'exit c True', 'exit b True', 'exit a True']
+7
+swallow sees boom
+['enter outer', 'enter inner', 'exit inner False', 'exit outer True', 'after']
+['enter x']
+['enter x', 'exit x True']
+[exit 0]

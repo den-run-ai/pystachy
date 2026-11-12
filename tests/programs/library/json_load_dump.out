@@ -1,0 +1,3 @@
+{"a": [1, 2.5, null, true, "x"]}
+{'a': [1, 2.5, None, True, 'x']} {"a": [1, 2.5, null, true, "x"]}
+[exit 0]

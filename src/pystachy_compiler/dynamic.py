@@ -5176,7 +5176,7 @@ def gen_dyn_sum(self, xs: Val, start: Val) -> Val:
 
 
 def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool) -> Val | None:
-    # json.loads(), json.dumps(), or the native _raw_decode adapter in an opt-in module:
+    # json.loads(), json.load(), json.dumps(), json.dump(), or the native _raw_decode adapter in an opt-in module:
     # dyn: lib's function of Any values (JSONANY, which the loader adds to a program that has such
     # a module and json) where the document is Any values, so that loads() decodes it into Any's
     # containers and dumps() encodes those as the objects they are, with no copy (#779); else
@@ -5187,8 +5187,8 @@ def gen_json_any(self, name: str, args: list[Node], want: str, resultsoft: bool)
     q = JSONANY + "$" + name[name.find("$") + 1 :]
     if q not in self.funcs:
         return None
-    if name == "json$loads" or name == "json$_raw_decode":
-        if name == "json$loads" and not holds_dyn(want):
+    if name == "json$loads" or name == "json$load" or name == "json$_raw_decode":
+        if name != "json$_raw_decode" and not holds_dyn(want):
             return None
         self.add(Ins("init", "", JSONANY))  # (its module's code, as an import runs it: nothing imports it)
         return self.call_fn(self.funcs[q], [], args, want, resultsoft=resultsoft)

@@ -3,8 +3,10 @@ class Stream:
     pass
 
 
-def check(value: Stream | int) -> None:
-    pass
+def make(n: int) -> Stream | int:
+    if n > 0:
+        return n
+    return Stream()
 
 
-check(Stream())
+print(make(1))

@@ -1,0 +1,2 @@
+stream s int 42 b.txt d.json
+[exit 0]

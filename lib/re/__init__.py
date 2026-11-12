@@ -1663,8 +1663,7 @@ def _optimize_charset(charset: list[Item], case: _Case) -> _Charset:
                 break
             if len(charmap) == 256:
                 # character set contains non-UCS1 character codes
-                for _ in range(0xFF00):
-                    charmap.append(0)
+                charmap.extend([0] * 0xFF00)
                 continue
             # character set contains non-BMP character codes: for a range, all BMP characters
             # in it are already set
@@ -1729,7 +1728,11 @@ def _optimize_charset(charset: list[Item], case: _Case) -> _Charset:
     block = 0
     chunks: list[int] = []
     for i in range(0, 65536, 256):
-        key = "".join(["1" if charmap[j] != 0 else "0" for j in range(i, i + 256)])
+        # (a chunk without a character, as most are, has the empty key: no str of its 256 bits)
+        k = i
+        while k < i + 256 and charmap[k] == 0:
+            k += 1
+        key = "" if k == i + 256 else "".join(["1" if charmap[j] != 0 else "0" for j in range(i, i + 256)])
         if key in comps:
             mapping.append(comps[key])
         else:

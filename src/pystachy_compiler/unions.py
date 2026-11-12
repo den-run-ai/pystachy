@@ -5,8 +5,8 @@ from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
-from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.specs import BIG, BIGOPT, MIXEDREFS, NONEVAR, OPTTYPES
+from src.pystachy_compiler.utils import elem, holds_dyn, is_dict, is_list, is_opt, is_set, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
@@ -133,6 +133,11 @@ def gen_union_type(self, ts: list[str]) -> str:
         # (an int | None of a module that opts in, with other types: their union, which holds a 64-bit
         # int, as the 64-bit int | None it holds makes one: bigints.py)
         ms[ms.index(BIG)] = "int"
+    if len(ms) > 1 and any((is_list(m) or is_dict(m) or is_set(m) or is_tuple(m) or is_vtuple(m)) and holds_dyn(m) for m in ms):
+        # (list[Any] | str, dict[str, Any] | bool | None: a union with a container of Any values
+        # among its members is an Any value, which holds each of them as it is, and what else
+        # such loosely typed storage is given: docs/dynamic-any.md)
+        return "dyn"
     if len(ms) == 0:
         return "None"
     if len(ms) == 1:
@@ -144,7 +149,7 @@ def gen_union_type(self, ts: list[str]) -> str:
     refs = [m for m in ms if m == "file" or m in self.classes]
     if len(refs) > 0:
         if len(refs) != len(ms):
-            return "!reference unions cannot mix native references with scalar or container members"
+            return "!" + MIXEDREFS
         if len(ms) > 4:
             return "!reference unions support at most four members"
         for a in refs:

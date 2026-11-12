@@ -24,6 +24,11 @@ class Mod:
         self.spec: dict[str, str] = {}  # and those it binds so (specials()): the module, or "" if two differ
         self.specat: dict[str, int] = {}  # the top-level statement that first does
         self.falseat = -1  # the top-level TYPE_CHECKING = False, if nothing else binds it (false_flag())
+        # the names that only imports in its top-level if TYPE_CHECKING: blocks bind, which no code
+        # runs, each with the module and name a from-import takes it from ("pkg.mod Name", else
+        # ""): an annotation CPython does not evaluate may name one (Loader.tc_target(), tc_ann())
+        self.tconly: dict[str, str] = {}
+        self.lazyann = False  # does it import annotations from __future__ (no annotation is evaluated)
         # its top-level name = <a test of the platform> that nothing else binds (Loader.platform_flags()):
         # the statement's index and the test's value (1 or 0)
         self.flagat: dict[str, int] = {}

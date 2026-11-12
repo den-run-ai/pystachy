@@ -661,6 +661,8 @@ def gen_fromkeys(self, args: list[Node], want: str, resultsoft: bool = False) ->
         w = want  # ({} has no key to type: the keys wanted)
     xs = self.consume(args[0], w, resultsoft=resultsoft) if self.iterator_call(args[0]) and args[0].kids[0].s == "range" else self.expr(args[0], w, resultsoft=resultsoft)
     V = kv[1]
+    if want == "dyn" and V == "":
+        V = "dyn"  # (where an Any value is wanted: a dict of Any values, which None is one of)
     v = self.expr(args[1], V, resultsoft=resultsoft) if len(args) == 2 else Val("null", "None")
     if is_opt(xs.t):
         xs = self.unwrap(xs, "TypeError: 'NoneType' object is not iterable")

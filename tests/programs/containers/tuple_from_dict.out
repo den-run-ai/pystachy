@@ -1,0 +1,11 @@
+('[', '{', '(') True 3
+(3, 1, 2) 3 3 False
+(7,)
+('only',)
+() True
+[ ]
+{ }
+( )
+(1, 2) ('a', 'b') (0, 1, 2)
+[True, False, True, False, True, True, True, False, True, True] [False, True, False, True, False, True, True, False, True, True] [False, True, True, False, False, True, True, False, True, True]
+[exit 0]

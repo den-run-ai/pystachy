@@ -7107,6 +7107,11 @@ I pys_file_fileno(File *f) {           /* the OS descriptor; a closed file raise
   if (f->closed) pys_fail("ValueError: I/O operation on closed file");
   return fileno(f->f);
 }
+I pys_file_seekable(File *f) {         /* seekable(): whether the OS can seek it, as FileIO's tells (a pipe or a
+                                          terminal cannot); a closed file raises FileIO's error, as fileno() does */
+  if (f->closed) pys_fail("ValueError: I/O operation on closed file");
+  return lseek(fileno(f->f), 0, SEEK_CUR) >= 0;
+}
 Str *pys_file_name(File *f) { return f->name ? f->name : cstr(f == &std_in ? "<stdin>" : f == &std_out ? "<stdout>" : "<stderr>"); }
 Str *pys_file_mode(File *f) { return f->mode ? f->mode : cstr(f == &std_in ? "r" : "w"); }
 /* Binary files: open() of a mode with "b", which lib/_pystachy_bfile.py's classes hold. CPython makes a FileIO

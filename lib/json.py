@@ -5,16 +5,18 @@ This prototype implements loads(str), dumps(JSONValue) and the default JSONDecod
 Typed JSONValue integers use Pystachy's signed 64-bit range; the dynamic Any
 decoder promotes larger tokens. Nesting counts against sys.setrecursionlimit() and stops at
 2,000 containers, which keeps a raised limit within the native stack; object keys are str.
-Decoder hooks, bytes input, encoder subclasses, indentation and file APIs are not
-implemented. Containers are created with recursive JSONValue storage; narrowing
+load(fp) and dump(obj, fp) read and write a text file's whole document. Decoder hooks, bytes
+input, encoder subclasses and indentation are not implemented. Containers are created with recursive JSONValue storage; narrowing
 keeps their original identity and mutable contents.
 """
+
+from typing import TextIO
 
 from _pystachy_bytescan import scan as _scan_bytes
 
 type JSONValue = None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]
 
-__all__ = ["loads", "dumps", "JSONDecoder", "JSONDecodeError", "JSONValue"]
+__all__ = ["load", "loads", "dump", "dumps", "JSONDecoder", "JSONDecodeError", "JSONValue"]
 
 
 class JSONDecodeError(ValueError):
@@ -617,6 +619,11 @@ def loads(s: str) -> JSONValue:
 
 
 
+def load(fp: TextIO) -> JSONValue:
+    """Decode the JSON text that fp.read() returns, as loads() does."""
+    return loads(fp.read())
+
+
 class JSONDecoder:
     """Default JSON decoder; custom hooks and strict=False are not supported."""
 
@@ -841,3 +848,9 @@ def dumps(obj: JSONValue, *, ensure_ascii: bool = True, allow_nan: bool = True,
     encoder = _Encoder(ensure_ascii, allow_nan, sort_keys, item_separator, key_separator)
     encoder.write(obj, 0)
     return "".join(encoder.out)
+
+
+def dump(obj: JSONValue, fp: TextIO, *, ensure_ascii: bool = True, allow_nan: bool = True,
+         sort_keys: bool = False, separators: tuple[str, str] | None = None) -> None:
+    """Write the text dumps() returns to fp (one write, where CPython writes it in pieces)."""
+    fp.write(dumps(obj, ensure_ascii=ensure_ascii, allow_nan=allow_nan, sort_keys=sort_keys, separators=separators))

@@ -11,7 +11,7 @@ json's own functions keep JSONValue's typed storage for other code. The text sca
 and limits are json's (_Parser): strings, keys, number syntax and its bound on nesting.
 Integer tokens beyond int64 promote through a separate helper; scanner indices stay fixed-width.
 """
-from typing import Any
+from typing import Any, TextIO
 
 from json import _ARRAY_TOKEN, _OBJECT_TOKEN, _Parser, _STRING_TOKEN, _quote
 from _pystachy_json_int import _integer
@@ -77,6 +77,11 @@ def loads(s: str) -> Any:
         return _parse(_Parser(s, False))
     except UnicodeDecodeError:
         return _parse(_Parser(s, True))
+
+
+def load(fp: TextIO) -> Any:
+    """Decode the JSON text that fp.read() returns into Any values, as loads() does."""
+    return loads(fp.read())
 
 
 def _floatstr(value: float, allow_nan: bool) -> str:
@@ -256,6 +261,14 @@ def dumps(obj: Any, *, skipkeys: bool = False, ensure_ascii: bool = True, check_
     w = _Writer(skipkeys, ensure_ascii, check_circular, allow_nan, sort_keys, item_separator, key_separator, default)
     w.write(obj, 0)
     return "".join(w.out)
+
+
+def dump(obj: Any, fp: TextIO, *, skipkeys: bool = False, ensure_ascii: bool = True, check_circular: bool = True,
+         allow_nan: bool = True, separators: tuple[str, str] | None = None, default: Any = None,
+         sort_keys: bool = False) -> None:
+    """Write the text dumps() returns to fp (one write, where CPython writes it in pieces)."""
+    fp.write(dumps(obj, skipkeys=skipkeys, ensure_ascii=ensure_ascii, check_circular=check_circular,
+                   allow_nan=allow_nan, separators=separators, default=default, sort_keys=sort_keys))
 
 
 def _raw_decode(s: str, idx: int = 0) -> tuple[Any, int]:
