@@ -86,6 +86,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/scope.py',
     'src/pystachy_compiler/source_lines.py',
     'src/pystachy_compiler/specs.py',
+    'src/pystachy_compiler/slices.py',
     'src/pystachy_compiler/statements.py',
     'src/pystachy_compiler/structs.py',
     'src/pystachy_compiler/syntax.py',

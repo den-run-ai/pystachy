@@ -1,0 +1,14 @@
+1 3 0
+[1]
+['receiver', 'start', 'stop', 'step', 'get']
+1 3 None [7, 8]
+['value', 'receiver', 'start', 'stop', 'set']
+1 3 None
+1 3 None [1, 7, 8]
+['receiver', 'start', 'stop', 'get', 'value', 'set']
+1 3 None
+['receiver', 'start', 'stop', 'del']
+[1, 7, 8, 4] ['value', 'key']
+[1, 7, 8, 7, 8, 4] ['key', 'value']
+[1, 7, 8, 4] ['key']
+[exit 0]

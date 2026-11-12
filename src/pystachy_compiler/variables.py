@@ -2017,7 +2017,11 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
             return
         if is_list(unopt(o.t)):
-            ix = self.ival(t.kids[1])
+            indexkey = self.expr(t.kids[1], "int")
+            if indexkey.t == "_pystachy_slice$slice":
+                self.assign(self.slice_node(o, indexkey), v)
+                return
+            ix = self.ival(self.vnode(indexkey))
             o = self.unwrap(o, nosub)
             self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
@@ -2110,8 +2114,16 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] |
     # bnd: start, stop and step, see Gen.slice_bound), are evaluated, and xs being None raises
     # nosub. A dynamic augmented assignment also keeps the evaluated bounds in raw/values:
     # CPython converts them again at the store, after the RHS has run. Strs and tuples cannot
-    # change, and Pystachy has no slice objects for __setitem__
+    # change. For user objects bnd holds the native slice key instead of normalized bounds.
     o = self.expr(t.kids[0], "")
+    if o.t in self.classes and o.t not in self.nts:
+        key = self.slice_object(t.kids[1:])
+        m = "__getitem__" if "subscriptable" in nosub else "__delitem__" if "deletion" in nosub else "__setitem__"
+        what = "is not subscriptable" if m == "__getitem__" else "does not support item deletion" if m == "__delitem__" else "does not support item assignment"
+        self.argtype(o.t, m, 1, f"'{tname(o.t)}' object {what}")
+        self.notnone(o, nosub)
+        bnd.append(key.v)
+        return o
     dvs: list[Val] = []
     if o.t == "dyn":
         for j in range(3):
@@ -2148,6 +2160,9 @@ def gen_slice_check(self, step: str) -> None:
         self.guard(self.num_cmp('==', Val(step, "int"), Val('0', "int")).v, "ValueError: slice step cannot be zero")
 
 def gen_slice_store(self, o: Val, bnd: list[str], v: Val) -> None:
+    if o.t in self.classes:
+        self.protocol(o, "__setitem__", [Val(bnd[0], "_pystachy_slice$slice"), v])
+        return
     # o[lo:hi:st] = v for list o and its slice's bounds bnd (slice_target): v's items, taken as
     # CPython's PySequence_Fast takes them (a list as it is, which the runtime copies first where
     # it is o itself; any other iterable's by iterating it, see as_list) once the step is checked

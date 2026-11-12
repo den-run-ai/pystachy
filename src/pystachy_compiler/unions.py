@@ -143,7 +143,7 @@ def gen_union_type(self, ts: list[str]) -> str:
             return "!" + self.umember_problem(m)
     refs = [m for m in ms if m == "file" or m in self.classes]
     if len(refs) > 0:
-        if len(refs) != len(ms):
+        if len(refs) != len(ms) and not (refs == ["_pystachy_slice$slice"] and all(m in ["int", "bool", "_pystachy_slice$slice"] for m in ms)):
             return "!reference unions cannot mix native references with scalar or container members"
         if len(ms) > 4:
             return "!reference unions support at most four members"

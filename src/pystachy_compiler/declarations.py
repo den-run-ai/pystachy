@@ -30,6 +30,8 @@ from src.pystachy_compiler.specs import (
     OBJECTC,
     RANGEC,
     RANGES,
+    SLICES,
+    SLICEC,
     SPECIAL,
     STANDINS,
     STUB,
@@ -173,6 +175,8 @@ def gen_ann(self, n: Node) -> str:
             return BIG  # (a promoting int: bigints.py)
         if s == "int" or s == "float" or s == "bool" or s == "str" or s == "bytes" or s in self.classes:
             return s
+        if (s == "slice" or self.imported(s) == "builtins.slice") and SLICEC in self.classes:
+            return SLICEC
         if s == "range" and RANGEC in self.classes:
             return RANGEC  # (the class of range objects, lib/_pystachy_range.py)
         if self.imported(s).startswith("ffi.") and self.imported(s)[4:] in CTYPES:
@@ -2050,6 +2054,8 @@ def gen_frozen_store(self, o: Val, name: str, delete: bool = False) -> bool:
 def gen_frozen(self, t: str, name: str) -> None:
     # a NamedTuple's fields are assigned only by its __init__, a range object's by none (as
     # CPython's start, stop and step are read-only)
+    if t == SLICEC and self.curfn.mod != SLICES:
+        self.err("readonly attribute")
     if t == RANGEC and self.curfn.mod != RANGES:
         self.err("readonly attribute")
     if t in self.nts and not (self.curfn.name == "__init__" and self.curfn.cls == t):

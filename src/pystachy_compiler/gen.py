@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 from src.pystachy_compiler.source_lines import SourceLines
+from src.pystachy_compiler.slices import gen_slice_object as slices_slice_object, gen_slice_node as slices_slice_node
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
     gen_scalar as scalar_ir_scalar,
@@ -3389,6 +3390,12 @@ class Gen:
 
     def assign(self, t: Node, v: Val) -> None:
         return variables_assign(self, t, v)
+
+    def slice_object(self, bounds: list[Node]) -> Val:
+        return slices_slice_object(self, bounds)
+
+    def slice_node(self, obj: Val, key: Val) -> Node:
+        return slices_slice_node(self, obj, key)
 
     def slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
         return variables_slice_target(self, t, bnd, nosub, raw, values)

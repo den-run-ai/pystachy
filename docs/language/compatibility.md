@@ -492,8 +492,8 @@ See [object protocols](semantics.md#object-protocols) and
   NamedTuple slices unless a homogeneous runtime tuple can hold the result; slice mutation
   outside lists; noniterable or incompatible list-slice values (`list.extend` likewise requires
   homogeneous tuple items); unpacking noniterables or wrong-arity tuples; heterogeneous
-  starred remainders without a compatible annotation; object slicing through slice-protocol
-  methods; nonconstant tuple repetition.
+  starred remainders without a compatible annotation; slice values with bounds other than
+  int/bool/None; nonconstant tuple repetition.
 - **Specific builtins:** `sum(..., start)` with a bool start (use `int(start)`); a
   `startswith` / `endswith` tuple containing anything beyond `str` / `str | None`.
 - **Function values:** mixing functions without a `Callable` annotation; `Callable[..., R]`;

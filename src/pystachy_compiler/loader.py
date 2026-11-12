@@ -80,6 +80,7 @@ from src.pystachy_compiler.specs import (
     PYBUILTINS,
     OBJECTS,
     RANGES,
+    SLICES,
     STANDINS,
     TYPESMOD,
     IOMOD,
@@ -820,6 +821,12 @@ class Loader:
                     break
         self.intry = 0
         # (each module that uses one of these modules of lib's depends on it as on an import: Mod.deps)
+        users = [x for x in self.order if has_kind(x.body, "slice") or module_reads(x.body, "slice")] if not self.rtmode and len(self.dirs) > 0 and SLICES not in self.mods else []
+        if len(users) > 0:
+            self.load(SLICES, self.dirs[-1] + "/" + SLICES + ".py", "")
+            self.order = [self.order[-1]] + self.order[:-1]
+            for x in users:
+                x.deps[SLICES] = True
         users = [x for x in self.order if range_values(x.body, 0) and module_reads(x.body, "range")] if not self.rtmode and len(self.dirs) > 0 and RANGES not in self.mods else []
         if len(users) > 0:
             # range() as a value is an object of lib's class, whose module nothing imports: loaded
@@ -1022,7 +1029,7 @@ class Loader:
             return self.dirs[-1] + "/" + STANDINS[name] + ".py"  # (lib's stand-in for a C module)
         if name in CBUILTIN:
             return ""  # a module built into CPython: no file on the path replaces it (find())
-        if name == ITERS or name == RANGES or name == OBJECTS or name == JSONANY:
+        if name == ITERS or name == RANGES or name == OBJECTS or name == JSONANY or name == SLICES:
             return ""  # (iter()'s classes, range's, object's and json's of Any values, which no program imports: see program)
         return self.filepath(name)
 
