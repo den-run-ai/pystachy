@@ -180,6 +180,17 @@ def auto():
     LOG.append("auto-")
 
 
+class Checks(unittest.TestCase):
+    def check(self, value: int) -> None:
+        with self.subTest(value=value):
+            self.assertEqual(value, 1)
+
+
+def test_subtest_outside_a_case_does_not_hide_its_failure():
+    # No case is running: unittest lets the failure through, and so must the runner.
+    Checks().check(2)
+
+
 def test_plain_last():
     assert "after subtests" in LOG
     assert "tearDown after failed setUp" not in LOG
@@ -669,7 +680,7 @@ class StyleParity(TemporarySuite):
     def test_suites_match_pytest(self):
         results, expected = self.suites("python")
         cases = expected["cases"]
-        self.assertEqual(len(cases), 107)
+        self.assertEqual(len(cases), 108)
         outcomes = self.outcomes(results)
         # unittest sorts a case's methods, inherited ones too, and runs setUp, the test
         # and tearDown in the call phase; a second failure is the teardown's.
@@ -692,6 +703,8 @@ class StyleParity(TemporarySuite):
                                     ("test_sub_fail", "failed"), *[("test_sub_pass", "passed")] * 3])
         # A failed subtest is reported apart: its test's own call passes.
         self.assertEqual(outcomes["test_unit.py::Derived::test_sub_fail", "call"], "passed")
+        self.assertEqual(outcomes["test_unit.py::test_subtest_outside_a_case_does_not_hide_its_failure", "call"],
+                         "failed")
         self.assertEqual(runner.outcome_counts(results)["subtests passed"], 4)
         # Computed tables: pytest's IDs for values, names and objects.
         for case in ("test_range[2]", "test_named_comprehension[6]", "test_product[2-b]", "test_items[two-2]",

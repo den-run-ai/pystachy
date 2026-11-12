@@ -307,9 +307,11 @@ def table_length(actual: int, expected: int, name: str) -> None:
                     + str(expected) + ": the module changes it while it is imported")
 
 
-# The outcomes of the running unittest case's subtests, in order.
+# The outcomes of the running unittest case's subtests, in order, and whether one is
+# running: only then is a subTest block's failure reported apart and the test continued.
 subtest_outcomes: list[str] = []
 subtest_details: list[str] = []
+unit_running = [False]
 
 
 class SubTest:
@@ -321,10 +323,12 @@ class SubTest:
     def __exit__(self, kind: type[BaseException] | None,
                  value: BaseException | None, traceback: TracebackType | None) -> bool:
         if value is None:
-            subtest_outcomes.append("passed")
-            subtest_details.append("")
+            if unit_running[0]:
+                subtest_outcomes.append("passed")
+                subtest_details.append("")
             return False
-        if isinstance(value, (KeyboardInterrupt, UnsupportedOperation)):
+        if isinstance(value, (KeyboardInterrupt, UnsupportedOperation)) or not unit_running[0]:
+            # (Outside a case the runner drives, nothing would report what the block raised.)
             return False
         if isinstance(value, Skipped):
             subtest_outcomes.append("skipped")
@@ -672,6 +676,7 @@ class UnitRun:
         self.details: list[str] = []
         self.expected = False
         self.expected_detail = ""
+        unit_running[0] = True
 
     def skip(self, reason: str) -> None:
         self.outcomes.append("skipped")
@@ -699,6 +704,7 @@ class UnitRun:
             report.record(nodeid, "subtest", subtest_outcomes[index], subtest_details[index])
         subtest_outcomes.clear()
         subtest_details.clear()
+        unit_running[0] = False
         if expecting and not self.outcomes and not failed_subtest:
             if self.expected:
                 self.outcomes.append("xfailed")

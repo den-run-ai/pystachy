@@ -574,7 +574,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
                   "    if _pyn_code == 1:", "        _pyn_failed = True"]
     count = sum(len(result.cases) for result in results)
     marker = suite_work / "started"
-    temporary = suite_work / "tmp"
+    # (A reserved name: a test package called tmp is mirrored beside it.)
+    temporary = suite_work / "_pyn_tmp"
     builtin = any(module.builtin_fixtures for module in instrumented)
     if builtin:
         # tmp_path directories live under one directory that this run owns and removes.
