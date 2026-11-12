@@ -1,0 +1,5 @@
+base evaluated
+True
+base evaluated
+TypeError: issubclass() arg 1 must be a class
+[exit 0]

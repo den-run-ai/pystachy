@@ -159,8 +159,9 @@ def gen_class_value_isa(self, v: Val, t: str) -> str:
     self.place(box)
     rec = Val(self.mload("%ptr", self.maddr("%ptr", v.v, "1")), "%ptr")
     r = "false"
-    for k in self.class_value_kinds(clsof(t)):
-        if self.class_value_problem(k) == "":
+    for k in self.class_value_kinds(clsof(t)) + ["None"]:
+        # (NoneType's too, which type(x) of an x that is None gives a typed location)
+        if k == "None" or self.class_value_problem(k) == "":
             x = self.scalar_cmp("eq", rec, Val(self.refl_record(k), "%ptr"))
             r = x if r == "false" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])
     self.incoming(ph, r, self.cur)
@@ -290,12 +291,23 @@ def gen_class_value_isinst(self, v: Val, k: Val, known: bool) -> Val:
 
 def gen_class_value_issub(self, k: Val, t: Node) -> Val:
     # issubclass(k, t) of class object k: t names an ordinary class, or is a class object
+    named = t.kind == "name" and t.s in self.classes and t.s not in self.ltype
+    anyclass = t.kind == "name" and t.s == "object" and not self.bound("object")
+    # CPython evaluates both arguments before it checks either: the second is read, or
+    # evaluated, before a first that is None raises
+    o = Val("", "")
+    if named:
+        self.isinst_reads(t)
+    elif not anyclass:
+        o = self.expr(t, "")
+        if o.t.startswith("fn[b:") and o.t[5:-1] not in "int float bool str bytes bytearray list dict set frozenset tuple object type range complex memoryview slice".split():
+            # (a builtin function, such as len, is no class: CPython's TypeError)
+            self.err("issubclass() arg 2 must be a class, a tuple of classes, or a union")
     k = self.unwrap(k, "TypeError: issubclass() arg 1 must be a class")
     base = clsof(k.t)
     kinds = self.class_value_kinds(base)
-    if t.kind == "name" and t.s in self.classes and t.s not in self.ltype:
+    if named:
         # (a class named: the classes k may be that derive from it)
-        self.isinst_reads(t)
         if not self.class_value_named(t.s):
             return Val("false", "bool")  # (no ordinary class derives from an exception or enum class)
         if self.derives(base, t.s):
@@ -306,9 +318,8 @@ def gen_class_value_issub(self, k: Val, t: Node) -> Val:
                 isk = self.class_value_is(k, c)
                 out = isk if out.v == "false" else Val(self.scalar('or', [out, isk]), "bool")
         return out
-    if t.kind == "name" and t.s == "object" and not self.bound("object"):
+    if anyclass:
         return Val("true", "bool")  # (every class derives from object, NoneType too)
-    o = self.expr(t, "")
     if o.t == "exctype" or o.t.startswith("fn[b:"):
         return Val("false", "bool")  # (an exception class, or a builtin type such as int: no class k may be derives from one)
     if not is_clsval(unopt(o.t)):
