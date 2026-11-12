@@ -9,6 +9,7 @@ forms accepted by the collector.
 import math
 import re
 from types import TracebackType
+import warnings
 from typing import Callable
 
 
@@ -186,6 +187,27 @@ def check_pattern(pattern: str | None) -> None:
         re.compile(pattern)
     except re.error as error:
         fail("Invalid regex pattern provided to 'match': " + str(error))
+
+
+def recorded(caught: list[warnings.WarningMessage] | None) -> list[warnings.WarningMessage]:
+    """The list that `warnings.catch_warnings(record=True)` appends to."""
+    if caught is None:
+        raise RuntimeError("warnings are not being recorded")
+    return caught
+
+
+def check_warnings(caught: list[warnings.WarningMessage], expected: list[type[BaseException]],
+                   match: str | None) -> None:
+    """After a `with pytest.warns(...)` block: one recorded warning must be of an expected
+    class and, with match=, have that pattern in its text."""
+    for item in caught:
+        for kind in expected:
+            if issubclass(item.category, kind) and (match is None or re.search(match, str(item.message)) is not None):
+                return
+    names = " or ".join([kind.__name__ for kind in expected])
+    if match is None:
+        fail("DID NOT WARN. No warnings of type " + names + " were emitted.")
+    fail("DID NOT WARN. No warnings of type " + names + " matching the regex were emitted.\n Regex: " + match)
 
 
 def _number(value) -> float:

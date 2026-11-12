@@ -107,8 +107,13 @@ class ClassInfo:
 
 SCOPES = {"function": 0, "class": 1, "module": 2, "session": 3}
 FINALIZERS = {"class": "class_finalizers", "module": "module_finalizers", "session": "session_finalizers"}
-PYTEST_IMPORTS = {"fixture", "mark", "param", "raises", "fail", "skip", "xfail", "approx"}
-PYTEST_CALLS = {"pytest.raises", "pytest.fail", "pytest.skip", "pytest.xfail", "pytest.approx"}
+PYTEST_IMPORTS = {"fixture", "mark", "param", "raises", "fail", "skip", "xfail", "approx", "warns",
+                  "deprecated_call"}
+PYTEST_CALLS = {"pytest.raises", "pytest.fail", "pytest.skip", "pytest.xfail", "pytest.approx", "pytest.warns",
+                "pytest.deprecated_call"}
+# Contexts that expect a warning: written out around warnings.catch_warnings (Rewrite.visit_With).
+WARNS = {"pytest.warns": 1, "pytest.deprecated_call": 0}
+UNIT_WARNS = {"assertWarns": 1, "assertWarnsRegex": 2}
 XUNIT_MODULE = {"setup_module", "setupModule", "teardown_module", "teardownModule",
                 "setup_function", "teardown_function", "setUpModule", "tearDownModule"}
 XUNIT_CLASS = {"setup_method", "teardown_method", "setup_class", "teardown_class", "setup", "teardown"}
@@ -116,7 +121,7 @@ XUNIT_CLASS = {"setup_method", "teardown_method", "setup_class", "teardown_class
 UNIT_UNSUPPORTED = {"setUpClass", "tearDownClass", "run", "debug", "runTest", "__init__", "__new__",
                     "__call__", "addCleanup", "doCleanups", "addClassCleanup", "doClassCleanups",
                     "enterContext", "enterClassContext", "id", "shortDescription", "defaultTestResult",
-                    "countTestCases", "assertWarns", "assertWarnsRegex", "assertLogs", "assertNoLogs",
+                    "countTestCases", "assertLogs", "assertNoLogs",
                     "failureException", "addTypeEqualityFunc"}
 # conftest.py hooks that only add text to pytest's own report: nothing a test can observe.
 REPORT_HOOKS = {"pytest_report_header", "pytest_terminal_summary"}
@@ -1875,6 +1880,17 @@ class Generator:
                 self.error(node, "unsupported unittest use: " + name)
             if not (isinstance(parent, ast.Call) and parent.func is node and name in PYTEST_CALLS):
                 self.error(node, "unsupported pytest use: " + name)
+            if name in WARNS:
+                item = parents.get(parent)
+                block = parents.get(item)
+                if not (isinstance(item, ast.withitem) and isinstance(block, ast.With) and len(block.items) == 1
+                        and (item.optional_vars is None or isinstance(item.optional_vars, ast.Name))):
+                    self.error(parent, name.removeprefix("pytest.") + " is supported as the one context of a with "
+                               "statement")
+                if len(parent.args) > WARNS[name] or any(kw.arg != "match" for kw in parent.keywords):
+                    self.error(parent, name.removeprefix("pytest.") + " supports "
+                               + ("warning classes and " if WARNS[name] else "") + "match= only")
+                continue
             if name == "pytest.raises":
                 expected = parent.args[0] if parent.args else None
                 statement = parents.get(parent)
@@ -1919,6 +1935,13 @@ class Generator:
                         if any(isinstance(part, (ast.Call, ast.Await, ast.Yield, ast.YieldFrom, ast.NamedExpr))
                                for part in ast.walk(value)):
                             self.error(node, "subTest arguments must be names, literals and attributes")
+                if node.attr in UNIT_WARNS:
+                    item = parents.get(parent) if called else None
+                    block = parents.get(item)
+                    if not (isinstance(item, ast.withitem) and isinstance(block, ast.With) and len(block.items) == 1
+                            and (item.optional_vars is None or isinstance(item.optional_vars, ast.Name))
+                            and len(parent.args) == UNIT_WARNS[node.attr] and not parent.keywords):
+                        self.error(node, f"{node.attr} is supported as `with self.{node.attr}(...):` only")
                 if node.attr in ("assertRaises", "assertRaisesRegex") and called:
                     fixed = 1 if node.attr == "assertRaises" else 2
                     if len(parent.args) < fixed or (len(parent.args) > fixed and not isinstance(
@@ -2270,7 +2293,57 @@ class Generator:
                     result += visited if isinstance(visited, list) else [visited]
                 return result
 
+            def warning_context(self, node):
+                """(classes, pattern) of `with pytest.warns(...)` or `with self.assertWarns(...)`, or None."""
+                if len(node.items) != 1 or not isinstance(node.items[0].context_expr, ast.Call):
+                    return None
+                call = node.items[0].context_expr
+                name = generator.name(call.func)
+                if name in WARNS:
+                    classes = call.args[0] if call.args else None
+                    pattern = call.keywords[0].value if call.keywords else None
+                    if name == "pytest.deprecated_call":
+                        classes = ast.Tuple([ast.Name(kind, ast.Load()) for kind in (
+                            "DeprecationWarning", "PendingDeprecationWarning", "FutureWarning")], ast.Load())
+                elif (isinstance(call.func, ast.Attribute) and self.receiver(call.func.value)
+                        and call.func.attr in UNIT_WARNS):
+                    classes = call.args[0]
+                    pattern = call.args[1] if len(call.args) > 1 else None
+                else:
+                    return None
+                if classes is None:
+                    classes = ast.Name("Warning", ast.Load())
+                return (classes.elts if isinstance(classes, ast.Tuple) else [classes]), pattern
+
             def visit_With(self, node):
+                expected = self.warning_context(node)
+                if expected is not None:
+                    # The block runs with every warning recorded; then one of the expected
+                    # classes (and pattern) must be among them, also where the block raised an
+                    # Exception, as pytest checks. The `as` name is the list of warnings.
+                    classes, pattern = expected
+                    target = node.items[0].optional_vars
+                    caught = f"_pyn_caught_{generator.counter}"
+                    log = target.id if target is not None else f"_pyn_warnings_{generator.counter}"
+                    generator.counter += 1
+                    module = ast.Name("_pyn_warnings", ast.Load())
+
+                    def check():
+                        return ast.Expr(ast.Call(_attribute("check_warnings"), [
+                            ast.Name(log, ast.Load()), ast.List(classes, ast.Load()),
+                            pattern if pattern is not None else ast.Constant(None)], []))
+
+                    body = [ast.Assign([ast.Name(log, ast.Store())], ast.Call(
+                                _attribute("recorded"), [ast.Name(caught, ast.Load())], [])),
+                            ast.Expr(ast.Call(ast.Attribute(module, "simplefilter", ast.Load()),
+                                              [ast.Constant("always")], [])),
+                            ast.Try(node.body, [ast.ExceptHandler(ast.Name("Exception", ast.Load()), None,
+                                                                  [check(), ast.Raise()])], [], [])]
+                    block = ast.With([ast.withitem(ast.Call(ast.Attribute(module, "catch_warnings", ast.Load()), [],
+                                                            [ast.keyword("record", ast.Constant(True))]),
+                                                   ast.Name(caught, ast.Store()))], body)
+                    return [self.generic_visit(ast.fix_missing_locations(ast.copy_location(block, node))),
+                            self.generic_visit(ast.fix_missing_locations(ast.copy_location(check(), node)))]
                 expansion = self.raises[-1][0].get(node) if self.raises and self.scopes[-1] == "function" else None
                 node = self.generic_visit(node)
                 if expansion is None:
@@ -2372,6 +2445,9 @@ class Generator:
         output = []
         # Each entry: (text, the statement it came from or None).
         placed = False
+        if any(self.name(node) in WARNS or isinstance(node, ast.Attribute) and node.attr in UNIT_WARNS
+               for node in ast.walk(self.tree)):
+            imports.append("import warnings as _pyn_warnings")
         for node in self.tree.body:
             leading = (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
                        and isinstance(node.value.value, str) and not output
