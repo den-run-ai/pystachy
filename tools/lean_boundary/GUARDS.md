@@ -118,6 +118,20 @@ of a box phi beside its split pair are not correlated with presence (three funct
 one payload, a dictionary value whose member the IR does not name, and generators remain
 unsupported.
 
+Field initialization was swept over all 2,416 programs on 2026-11-12 (snapshots of the
+compiler at b27908f4): Lean proved 156,781 of 157,770 obligations (4,612 of
+4,639 unchecked reads, 115,679 of 116,538 escapes, 8,081 of 8,098 call pre-conditions,
+28,177 of 28,263 post-conditions and 232 of 232 flag stores) in 16,102 of
+16,693 functions. Each of the 86 rejected functions, in 24 programs, was traced to the
+model: 41 store an object under construction into a closure's cell (`weakref.ref`'s
+callback, which `logging` uses, and two tests of closures in `__init__`), an escape here,
+41 call an `__init__` so rejected, and four, `logging`'s `getLogger`, join in a handler a
+path where the new `Logger` is incomplete with one that returns it (facts are not relational).
+505 functions (53 distinct) are unsupported: beyond the boundary validator's bounds
+or the certificate's size, or a list store, generator or long type name it refuses.
+Designing these checks found the bug b27908f4 fixes (no corpus program had its shape),
+and they reject that program as compiled before the fix.
+
 ## Payload bits and split locals
 
 The `unionslots` pass keeps a local of a union of numbers (or an optional scalar) out of
@@ -222,7 +236,7 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 The bounded CI selection exercises twenty-nine inventoried union reads, fifty-two
 payload obligations, three proved union return domains, twenty-five removed null checks
-and 106 field obligations in `examples/union_guards.py`, `examples/union_effects.py`,
+and 111 field obligations in `examples/union_guards.py`, `examples/union_effects.py`,
 `examples/union_split.py`, `examples/null_guards.py`, `examples/null_reloads.py` and
 `examples/field_init.py`.
 This small gate does not claim complete-corpus acceptance. Programs whose union values
