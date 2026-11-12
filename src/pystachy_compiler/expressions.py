@@ -1077,6 +1077,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             return self.class_value_name(o, n.s)  # (an ordinary class's class object: class_values.py)
         if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) in self.classes and clsof(unopt(o.t)) not in self.nts and n.s in self.classes[clsof(unopt(o.t))].fdefault and n.s not in self.classes[clsof(unopt(o.t))].methods:
             return self.class_value_attr(o, n.s)  # (a class attribute, through the class object)
+        if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) == "object" and len(self.class_value_having(n.s, False)) > 0:
+            return self.class_value_attr(o, n.s)  # (through any class's class object: of the classes that bind it)
         if n.s == "__class__" and self.class_value_named(o.t) and not self.dyn_policy(self.line) and "__class__" not in self.classes[o.t].ftypes and "__class__" not in self.classes[o.t].methods:
             return self.class_value_of(o, self.knownobj(n.kids[0]))  # (an object's class: its class object)
         if o.t == "file" and (n.s == "closed" or n.s == "name" or n.s == "mode"):

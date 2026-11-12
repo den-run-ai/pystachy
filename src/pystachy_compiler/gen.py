@@ -493,6 +493,8 @@ from src.pystachy_compiler.class_values import (
     gen_class_value_kinds as class_values_class_value_kinds,
     gen_class_value_bases as class_values_class_value_bases,
     gen_class_value_builtin as class_values_class_value_builtin,
+    gen_class_value_having as class_values_class_value_having,
+    gen_class_value_lacks as class_values_class_value_lacks,
     gen_class_value_type as class_values_class_value_type,
     gen_class_value_builtin_record as class_values_class_value_builtin_record,
     gen_class_value_chain as class_values_class_value_chain,
@@ -4763,6 +4765,12 @@ class Gen:
 
     def class_value_builtin(self, v: Val) -> Val:
         return class_values_class_value_builtin(self, v)
+
+    def class_value_having(self, name: str, method: bool) -> list[str]:
+        return class_values_class_value_having(self, name, method)
+
+    def class_value_lacks(self, k: Val, name: str) -> None:
+        class_values_class_value_lacks(self, k, name)
 
     def class_value_type(self, v: Val, known: bool) -> Val:
         return class_values_class_value_type(self, v, known)

@@ -553,18 +553,53 @@ def gen_class_value_call(self, c: Val, args: list[Node]) -> Val:
 NONETYPE_NAMES = "__bool__ __class__ __delattr__ __dir__ __doc__ __eq__ __format__ __ge__ __getattribute__ __getstate__ __gt__ __hash__ __init__ __init_subclass__ __le__ __lt__ __ne__ __new__ __reduce__ __reduce_ex__ __repr__ __setattr__ __sizeof__ __str__ __subclasshook__"
 
 
+def gen_class_value_having(self, name: str, method: bool) -> list[str]:
+    # the classes that any class's class object (type[object]) may be whose class object has
+    # name: a class attribute (a name the class body binds), or with method a class method or
+    # a static method. A class in which the name is something else, an instance method or a
+    # property, is an error: what its class object gives for the name is not supported
+    out: list[str] = []
+    for c in self.class_value_kinds("object"):
+        ci = self.classes[c]
+        if name in ci.methods:
+            if not method or (ci.methods[name].deco != "classmethod" and ci.methods[name].deco != "staticmethod"):
+                self.err(f"{name} through a class object that may be any class's (type[object]) is not supported: in class {short(c)} it is {'a method' if not method else 'no class method or static method'}; hold a type[C] of a base class")
+            out.append(c)
+        elif not method and c not in self.nts and name in ci.fdefault and name in ci.ftypes:
+            out.append(c)
+        elif method and name in ci.fdefault:
+            self.err(f"{name}() through a class object that may be any class's (type[object]) is not supported: in class {short(c)} it is a class attribute; hold a type[C] of a base class")
+    return out
+
+
+def gen_class_value_lacks(self, k: Val, name: str) -> None:
+    # CPython's AttributeError of class object k, whose class has no attribute name
+    self.raise_("AttributeError", self.concat([Val(self.sconst("type object '"), "str"), self.class_value_name(k, "__name__"), Val(self.sconst(f"' has no attribute '{name}'"), "str")]).v)
+
+
 def gen_class_value_attr(self, k: Val, name: str) -> Val:
     # k.name of class object k, a class attribute (a name the class body binds): that of the
     # class k is, which is C's unless a class deriving from C binds the name anew. NoneType's
     # class object (type(x) of an x that is None) has none: CPython's AttributeError
     base = clsof(unopt(k.t))
     k = self.unwrap(k, f"AttributeError: 'NoneType' object has no attribute '{name}'")
-    t = self.classes[base].ftypes[name]
-    kinds = self.class_value_kinds(base)
+    if base == "object":
+        # (any class's: the classes that bind the name, whose values share one type; another
+        # class's class object, a builtin class's too, raises CPython's AttributeError)
+        kinds = self.class_value_having(name, False)
+        t = self.classes[kinds[0]].ftypes[name]
+        for c in kinds[1:]:
+            j = self.join(t, self.classes[c].ftypes[name])
+            if j == "":
+                self.err(f"{name} is {typestr(t)} in class {short(kinds[0])} and {typestr(self.classes[c].ftypes[name])} in class {short(c)}: a class attribute read through a class object that may be any class's (type[object]) has one type")
+            t = j
+    else:
+        t = self.classes[base].ftypes[name]
+        kinds = self.class_value_kinds(base)
     for c in kinds:
         if k.v == self.refl_record(c):
             return self.coerce(self.class_attr(mk("name", c, self.line, []), name), t)  # (the class a constant names)
-    if name in NONETYPE_NAMES.split() and not (name == "__doc__" and t == "str"):
+    if name in NONETYPE_NAMES.split() and not (name == "__doc__" and t == "str" and base != "object"):
         self.err(f"reading {name} through a class object ({typestr(k.t)}) is not supported: the value may be NoneType's class object, which has its own {name}")
     end = self.label()
     ph = Ins("phi", t, "")
@@ -581,7 +616,9 @@ def gen_class_value_attr(self, k: Val, name: str) -> Val:
         edges.append(self.cur)
         self.br(end)
         self.place(miss)
-    if name == "__doc__":
+    if base == "object":
+        self.class_value_lacks(k, name)
+    elif name == "__doc__":
         # (NoneType's own, which CPython reads of the class object of None)
         v = Val(self.sconst("The type of the None singleton."), "str")
         self.incoming(ph, v.v, self.cur)
@@ -608,14 +645,27 @@ def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str,
         if a.kind == "starred" or a.kind == "dstar":
             self.err("a method call through a class held as a value is not supported with * or ** arguments: pass them one by one")
     k = self.unwrap(k, f"AttributeError: 'NoneType' object has no attribute '{name}'")
-    if not k.v.startswith("@"):
+    # (any class's: the classes with such a method; another class's class object has none)
+    kinds = self.class_value_having(name, True) if base == "object" else self.class_value_kinds(base)
+    if base == "object" and not k.v.startswith("@"):
+        # (CPython reads k.name before it evaluates the arguments)
+        has = Val("false", "bool")
+        for c in kinds:
+            isc = self.class_value_is(k, c)
+            has = isc if has.v == "false" else Val(self.scalar('or', [has, isc]), "bool")
+        l1 = self.label()
+        l2 = self.label()
+        self.cbr(has.v, l2, l1)
+        self.place(l1)
+        self.class_value_lacks(k, name)
+        self.place(l2)
+    elif not k.v.startswith("@"):
         self.guard(self.ptr_cmp("==", k, Val(self.refl_record("None"), k.t)).v, f"AttributeError: type object 'NoneType' has no attribute '{name}'")
     nodes: list[Node] = []
     for a in args:
         x = a.kids[0] if a.kind == "kw" else a
         y = x if pure_arg(x) else self.vnode(self.expr(x, ""))
         nodes.append(mk("kw", a.s, a.line, [y]) if a.kind == "kw" else y)
-    kinds = self.class_value_kinds(base)
     for c in kinds:
         if k.v == self.refl_record(c):
             return self.class_call(mk("name", c, self.line, []), name, nodes, want, resultsoft)  # (the class a constant names)
@@ -625,6 +675,8 @@ def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str,
         rt = self.dry(mk("call", "", self.line, [mk("attr", name, self.line, [mk("name", c, self.line, [])])] + nodes), want)
         self.making.pop()
         j = rt if t == "" or t == rt else self.join(t, rt)
+        if j == "" and base == "object":
+            self.err(f"{name}() returns {typestr(t)} in one class and {typestr(rt)} in class {short(c)}: a call through a class object that may be any class's (type[object]) has one type")
         if j == "":
             self.err(f"{short(base)}.{name}() returns {typestr(t)}, and {short(c)}.{name}() of a class deriving from it {typestr(rt)}: a call through a class object has one type")
         t = j

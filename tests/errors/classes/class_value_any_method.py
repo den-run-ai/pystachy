@@ -1,4 +1,5 @@
-# error: 'type[object]' has no method 'make'
+# error: 'type[object]' has no method 'build'
+# No class of the program has such a class method or static method.
 class A:
     @classmethod
     def make(cls) -> "A":
@@ -10,4 +11,4 @@ class C:
 
 
 ks: list[type] = [A, C]
-print(ks[0].make())
+print(ks[0].build())

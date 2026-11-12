@@ -455,10 +455,13 @@ and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
   program: a registry of unrelated classes, a dict keyed by `type(node)`, and `type(x)` of an
   object of a union of classes. It is compared, hashed, named and printed as any class object,
   and `isinstance(x, k)` and `issubclass(k, C)` test it
-  ([test](../../tests/programs/classes/class_value_any.py)). Its class is not known where the
-  program is compiled, so a call, a class attribute or a method through it is a compile error:
-  hold a `type[C]` of a base class for those. Exception classes and enum classes are no such
-  values.
+  ([test](../../tests/programs/classes/class_value_any.py)). `k.attr` and `k.m(args)` read
+  the class attribute, or call the class method or static method, of the class it is, where
+  the classes that have the name agree on one type; the class object of a class without it
+  raises CPython's `AttributeError`
+  ([test](../../tests/programs/classes/class_value_any_attrs.py)). Its class is not known where
+  the program is compiled, so a call of it is a compile error: hold a `type[C]` of a base class
+  for that. Exception classes and enum classes are no such values.
 - A builtin class is such a value too: `int`, `str`, `list` and the others, `type(x)` of a
   value that is no object of the program, and `type(None)`
   ([test](../../tests/programs/classes/class_value_builtin.py)). A location typed `type` takes
