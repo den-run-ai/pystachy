@@ -12,6 +12,7 @@ from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
     is_clsval,
+    clsof,
     opaque_class,
     atomic_dict,
     identity_abi,
@@ -186,6 +187,10 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 return self.refl_dict_copy(f.kids[0])  # (vars(x).copy(): reflection.py)
             self.err(VARS_USES)
         o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
+        if is_clsval(unopt(o.t)) and f.s in self.classes[clsof(unopt(o.t))].methods:
+            if self.classes[clsof(unopt(o.t))].methods[f.s].deco != "classmethod" and self.classes[clsof(unopt(o.t))].methods[f.s].deco != "staticmethod":
+                self.err(f"{f.s}() called through a class object ({typestr(o.t)}) is supported for class methods and static methods: call a method on its object, o.{f.s}()")
+            return self.class_value_method(o, f.s, args, want, resultsoft)  # (through a class object)
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)

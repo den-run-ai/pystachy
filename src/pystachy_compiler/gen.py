@@ -503,6 +503,8 @@ from src.pystachy_compiler.class_values import (
     gen_class_value_issub as class_values_class_value_issub,
     gen_class_value_dynamic as class_values_class_value_dynamic,
     gen_class_value_call as class_values_class_value_call,
+    gen_class_value_attr as class_values_class_value_attr,
+    gen_class_value_method as class_values_class_value_method,
 )
 from src.pystachy_compiler.containers import (
     gen_list_id_kind as containers_list_id_kind,
@@ -4784,6 +4786,12 @@ class Gen:
 
     def class_value_call(self, c: Val, args: list[Node]) -> Val:
         return class_values_class_value_call(self, c, args)
+
+    def class_value_attr(self, k: Val, name: str) -> Val:
+        return class_values_class_value_attr(self, k, name)
+
+    def class_value_method(self, k: Val, name: str, args: list[Node], want: str, resultsoft: bool) -> Val:
+        return class_values_class_value_method(self, k, name, args, want, resultsoft)
 
     def call_callable(self, o: Val, args: list[Node]) -> Val:
         return calls_call_callable(self, o, args)
