@@ -28,8 +28,10 @@ files, the explicit selected methods, source hashes and known exclusions.
 |---|---:|---:|---|
 | fnmatch | 3 | 17 | CPython 3.13.16 `Lib/test/test_fnmatch.py` |
 | textwrap | 6 | 66 | CPython 3.13.16 `Lib/test/test_textwrap.py` |
-| statistics | 2 | 401 | CPython 3.13.16 `Lib/test/test_statistics.py` |
+| statistics | 5 | 401 | CPython 3.13.16 `Lib/test/test_statistics.py` |
 | mypyc NameGenerator | 5 | 5 | mypy `mypyc/test/test_namegen.py` |
+| mypyc literal encoders | 3 | 11 | mypy `mypyc/test/test_literals.py` |
+| mypy stub packages | 2 | 2 | mypy `mypy/test/teststubinfo.py` |
 
 The CPython pin is `cbc944f4bc59639a444dd971c737788ba2283a91`; the mypy pin is
 `1231cf158a9cab0c41f613f3d8070c1332632f29`. NameGenerator's implementation and all
@@ -45,15 +47,27 @@ their assertions but become ordinary statements after extraction, so a failed
 adapted subtest stops that method. Exact subtest IDs, failure aggregation,
 messages and traceback formatting are outside this contract.
 
-`TestFMean.test_weights` is an observed exclusion: original unittest and adapted
-CPython pass, but alpha.3 native compilation rejects its local exception-class
-alias (`StatisticsError = statistics.StatisticsError`) in an `except` clause.
-A second observed exclusion, `TestLinearRegression.test_proportional`, passes
-original/adapted CPython but native compilation rejects its unchanged integer
-inputs (`expected int, got float` in `lib/statistics.py:1542`). The original
+`TestFMean.test_weights` now runs with its original local exception-class alias
+(`StatisticsError = statistics.StatisticsError`) in an `except` clause, following
+support for validated exception class values. `TestLinearRegression.test_proportional`
+was another exclusion until the
+`linear_regression` port stopped rebinding its parameters to other types; it and
+`test_constant_input_error` now run with their original integer inputs. The original
 source and full 401-case inventory remain pinned. Other unselected
 methods are explicitly listed in the report as outside this bounded
 qualification; this is not a claim that each one is unsupported.
+
+The literal-encoder suite runs `format_str_literal()`, `_encode_str_values()` and
+`_encode_bytes_values()` of the unchanged `mypyc/codegen/literals.py`, the encoders of the
+string and bytes tables in mypyc's generated C. Its other eight methods are observed
+exclusions: original unittest and adapted CPython pass them, and native compilation rejects
+`b"%d" % value` and the integers past 64 bits of `test_encode_int_values`, the `float`,
+`complex`, object-tuple and frozenset dictionary keys of the `Literals` class (five methods),
+and the runtime-length tuples of unrelated values that `literal_sort_key()` returns (two).
+
+The stub-package suite runs both methods of `mypy/test/teststubinfo.py` on the unchanged
+`mypy/stubinfo.py`, mypy's table of the stub distributions of third-party packages: the
+first module of mypy itself, rather than of mypyc, that is qualified here.
 
 ## Reproduce
 
@@ -66,7 +80,7 @@ python3 tools/pytest_native_upstream.py --suite fnmatch --suite textwrap \
   --compiler ./pystachy --json build/pytest-upstream-bundled.json
 ```
 
-Fetch optional sources once, then qualify all four suites. `--fetch` only
+Fetch optional sources once, then qualify all six suites. `--fetch` only
 downloads missing files whose exact URLs and hashes are in the manifest; a
 mismatched existing file is an error. Real CPython `test.support` sources are
 included for statistics. No support stubs replace upstream code.

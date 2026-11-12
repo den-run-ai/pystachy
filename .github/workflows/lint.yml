@@ -4,7 +4,7 @@
 # check-recordings (tests/record.sh --check): the CPython of .python-version, which recorded the
 # tests' expected output (with the typing_extensions of tools/requirements-dev.txt), still prints
 # every recording, every deviation still deviates from it, lib/'s copies are its files, and no
-# *.rej, *.orig or core file lies in the tree. A minute or two, beside CI's make verify, on the same
+# *.rej, *.orig or core file lies in the tree. Runs beside CI's make verify on the same
 # events: pull requests (forks too, and documentation-only ones), pushes to main,
 # and on demand.
 name: Lint
@@ -60,7 +60,7 @@ jobs:
             echo 'run=false' >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build, audit and test the Lean boundary prototype
+      - name: Build and audit the Lean boundary prototype
         if: steps.lean-boundary.outputs.run == 'true'
         run: |
           lean_boundary_dir=$(mktemp -d)
@@ -72,7 +72,8 @@ jobs:
           printf '%s  %s\n' '7289597a44543246c9227b8cae501767e095ce17f6d448b95fc4a8dc97268f6d' \
             "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -
           tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
-          PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" make check-lean-boundary
+          cd tools/lean_boundary
+          PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" lake build
 
       - name: Validate GitHub Actions workflows (actionlint)
         env:
@@ -90,6 +91,10 @@ jobs:
           "$actionlint_dir/actionlint" -pyflakes=
 
       - name: Fast hosted checks and full lint
+        # check-fast runs every boundary test once against the checker built above.
+        # A missing selector output must require the checker, not silently skip it.
+        env:
+          LEAN_BOUNDARY_REQUIRED: ${{ steps.lean-boundary.outputs.run != 'false' && '1' || '' }}
         run: make check-fast lint
 
       - name: Retained IR and failed native build controls
@@ -125,27 +130,6 @@ jobs:
         run: |
           python3 -m unittest discover -s tools -p 'test_comm_*.py'
           python3 examples/comm/check.py --compiler 'python3 -m pystachy' --cc "$PYSTACHY_LLVM/clang" --sanitizers --leak-check
-
-      - name: Install sanitizer runtime for native controls
-        run: sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
-
-      - name: Runtime ABI and GC root checker controls
-        run: |
-          # Generated-code ASan controls run in the existing x86 contracts job.
-          PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 - <<'PY'
-          from pathlib import Path
-          import unittest
-          suite = unittest.TestSuite(
-              unittest.defaultTestLoader.discover("tools", pattern=path.name)
-              for path in sorted(Path("tools").glob("test_runtime_*.py"))
-              if path.name != "test_runtime_asan.py"
-          )
-          raise SystemExit(not unittest.TextTestRunner().run(suite).wasSuccessful())
-          PY
-          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
-            tools/check_cpu_buffers.sh '-fsanitize=address,undefined'
-          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
-            tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'
 
       - name: pyperformance runner and port record tests
         run: python3 -m unittest discover -s tools -p test_bench_pyperformance.py

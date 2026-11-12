@@ -30,6 +30,7 @@ from src.pystachy_compiler.specs import (
     UNSUPPORTED,
     is_excname,
 )
+from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.utils import (
     bool_for_int,
@@ -1153,6 +1154,14 @@ def gen_stmt_main(self, n: Node) -> None:
         self.err("a class inside a function is not supported")
     elif k == "badimport":
         self.err(n.s)
+    elif k == "match":
+        # (one that patterns.lower_matches left as it is: its first pattern outside the
+        # bounded lowering)
+        bad = unsupported_match(n)
+        if bad is not None:
+            self.line = bad.line
+            self.err(unsupported_reason(bad))
+        self.err(UNSUPPORTED[k])
     elif k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
     elif k != "pass":

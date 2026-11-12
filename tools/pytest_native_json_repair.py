@@ -250,6 +250,7 @@ def main(argv=None):
     parser.add_argument("--json", type=Path)
     parser.add_argument("--timeout", type=float, default=180)
     args = parser.parse_args(argv)
+    args.compiler = shlex.join(runner.compiler_command(args.compiler))
     args.mode = args.mode or ["python", "jit", "aot"]
     if len(args.mode) != len(set(args.mode)) or not math.isfinite(args.timeout) or args.timeout <= 0:
         parser.error("modes must be unique and timeout finite and positive")

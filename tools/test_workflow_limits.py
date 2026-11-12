@@ -4,8 +4,11 @@ import ast
 from collections import Counter
 import itertools
 import json
+import os
 from pathlib import Path
 import re
+import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -303,7 +306,7 @@ class LimitTests(unittest.TestCase):
     def test_generated_asan_runs_once_in_existing_x86_contracts_job(self):
         found = workflows()
         job = found["ci.yml"]["jobs"]["verification"]
-        controls = [step for step in job["steps"] if "test_runtime_asan.py" in step.get("run", "")]
+        controls = [step for step in job["steps"] if "-p test_runtime_asan.py" in step.get("run", "")]
         self.assertEqual(len(controls), 1)
         control = controls[0]
         self.assertEqual(control["if"], "matrix.group == 'contracts' && matrix.machine == 'x86_64'")
@@ -321,16 +324,60 @@ class LimitTests(unittest.TestCase):
         self.assertEqual(len(toolchains), 1)
         self.assertLess(job["steps"].index(toolchains[0]), job["steps"].index(control))
 
-    def test_lint_runtime_discovery_omits_only_asan_and_preserves_failure(self):
-        steps = workflows()["lint.yml"]["jobs"]["lint"]["steps"]
-        controls = [step for step in steps if "test_runtime_*.py" in step.get("run", "")]
-        self.assertEqual(len(controls), 1)
-        control = controls[0]
-        self.assertNotIn("if", control)
-        self.assertNotIn("continue-on-error", control)
-        self.assertIn('PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 -', control["run"])
-        self.assertIn("<<'PY'\n", control["run"])
-        script = control["run"].split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+    def test_runtime_controls_use_short_existing_workers_once_per_event(self):
+        found = workflows()
+        jobs = found["ci.yml"]["jobs"]
+        lint_commands = "\n".join(step.get("run", "") for step in found["lint.yml"]["jobs"]["lint"]["steps"])
+        self.assertNotIn("test_runtime_*.py", lint_commands)
+        self.assertNotIn("check_cpu_buffers.sh", lint_commands)
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            selected = []
+            for name in ("verification", "pr-variants"):
+                job = jobs[name]
+                controls = [step for step in job["steps"] if "test_runtime_*.py" in step.get("run", "")]
+                self.assertEqual(len(controls), 1, name)
+                control = controls[0]
+                self.assertNotIn("continue-on-error", control)
+                self.assertNotIn("continue-on-error", job)
+                self.assertEqual(job["env"]["PYSTACHY_LLVM"], "/usr/lib/llvm-18/bin")
+                prior = "tests/verify.sh" if name == "verification" else "tools/pr_variants.py"
+                worker = next(step for step in job["steps"] if prior in step.get("run", ""))
+                self.assertLess(job["steps"].index(worker), job["steps"].index(control))
+                job_condition = job["if"].split("&&")[0] if name == "pr-variants" else "True"
+                for row in matrix_rows(job, event):
+                    condition = "(" + job_condition + ") && (" + control["if"] + ")"
+                    condition = condition.replace("github.event_name", repr(event))
+                    for key in ("machine", "group"):
+                        condition = condition.replace("matrix." + key, repr(row.get(key)))
+                    condition = condition.replace("matrix.worker", str(row.get("worker")))
+                    condition = condition.replace("&&", " and ").replace("||", " or ")
+                    expression = ast.parse(condition, mode="eval")
+                    allowed = (ast.Expression, ast.BoolOp, ast.Compare, ast.Constant, ast.And, ast.Or, ast.Eq)
+                    self.assertTrue(all(isinstance(node, allowed) for node in ast.walk(expression)), condition)
+                    if eval(compile(expression, "<runtime-controls condition>", "eval"), {"__builtins__": {}}, {}):
+                        selected.append((name, row.get("machine"), row.get("group"), row.get("worker")))
+            expected = [("pr-variants", None, None, "1")] if event == "pull_request" else [
+                ("verification", "x86_64", "gc-jit-0", None)]
+            with self.subTest(event=event):
+                self.assertEqual(selected, expected)
+
+    def test_runtime_discovery_omits_only_asan_and_preserves_native_controls_and_failure(self):
+        jobs = workflows()["ci.yml"]["jobs"]
+        controls = [step for name in ("verification", "pr-variants") for step in jobs[name]["steps"]
+                    if "test_runtime_*.py" in step.get("run", "")]
+        self.assertEqual(len(controls), 2)
+        self.assertEqual(controls[0]["run"], controls[1]["run"])
+        command = controls[0]["run"]
+        self.assertTrue(command.startswith("sudo apt-get update\nsudo apt-get install -y libclang-rt-18-dev\n"))
+        self.assertIn('PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 -', command)
+        self.assertIn("<<'PY'\n", command)
+        script, native = command.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)
+        self.assertEqual(native.splitlines(), [
+            'PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \\',
+            "  tools/check_cpu_buffers.sh '-fsanitize=address,undefined'",
+            'PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \\',
+            "  tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'",
+        ])
         paths = [*sorted((ROOT / "tools").glob("test_runtime_*.py")), Path("test_runtime_added.py")]
         self.assertIn("test_runtime_asan.py", [path.name for path in paths])
         expected = [path.name for path in paths if path.name != "test_runtime_asan.py"]
@@ -340,10 +387,37 @@ class LimitTests(unittest.TestCase):
                     patch.object(unittest, "TextTestRunner") as runner:
                 runner.return_value.run.return_value.wasSuccessful.return_value = success
                 with self.assertRaises(SystemExit) as raised:
-                    exec(compile(script, "<Lint runtime discovery>", "exec"), {})
+                    exec(compile(script, "<CI runtime discovery>", "exec"), {})
                 self.assertEqual(raised.exception.code, not success)
                 self.assertCountEqual(discover.call_args_list,
                                       [unittest.mock.call("tools", pattern=name) for name in expected])
+
+    def test_runtime_setup_failures_stop_before_controls(self):
+        job = workflows()["ci.yml"]["jobs"]["verification"]
+        control = next(step for step in job["steps"] if "test_runtime_*.py" in step.get("run", ""))
+        setup = control["run"].split("PYSTACHY_CACHE_TEST_LLVM=", 1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "calls"
+            sudo = root / "sudo"
+            sudo.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$SETUP_LOG"\n'
+                            'if [ "$2" = "$FAIL_STAGE" ]; then exit 23; fi\nexit 0\n')
+            sudo.chmod(0o755)
+            for stage in ("update", "install", ""):
+                with self.subTest(stage=stage):
+                    log.write_text("")
+                    env = dict(os.environ, PATH=directory + os.pathsep + os.environ["PATH"],
+                               SETUP_LOG=str(log), FAIL_STAGE=stage)
+                    completed = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c",
+                                                setup + 'printf "controls\\n" >> "$SETUP_LOG"\n'],
+                                               env=env, capture_output=True, text=True, timeout=10)
+                    self.assertEqual(completed.returncode, 23 if stage else 0, completed.stderr)
+                    expected = ["apt-get update"]
+                    if stage != "update":
+                        expected.append("apt-get install -y libclang-rt-18-dev")
+                    if not stage:
+                        expected.append("controls")
+                    self.assertEqual(log.read_text().splitlines(), expected)
 
     def test_native_pytest_parity_runs_once_with_oracle_in_existing_x86_hosted_job(self):
         found = workflows()
