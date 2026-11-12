@@ -847,6 +847,13 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_check(keyv, f"{name}()")
     if len(vals) == 1 and len(kws) == 0 and name in ["str", "repr", "bool", "id"] and self.dyn_policy(self.line) and self.refl_builtin_class(vals[0].t) != "":
         vals[0] = self.dyn_box(vals[0])
+    if len(vals) == 1 and len(kws) == 0 and name == "id":
+        idt = self.rec_type(vals[0].t)
+        if is_list(idt) or is_dict(idt) or is_set(idt) or idt == "str":
+            # its address, which is also the identity of an Any value that holds it (pys_dyn_id)
+            return Val(self.scalar_cast("ptrtoint", Val(vals[0].v, "%ptr"), "int"), "int")
+        if self.dyn_policy(self.line) and idt in self.classes and idt not in self.tmpl and self.dyn_boxable(idt) == "":
+            vals[0] = self.dyn_box(vals[0])  # (an object: its box's identity is its own)
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):

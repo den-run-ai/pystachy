@@ -1042,6 +1042,12 @@ Two dynamic values satisfy `is` exactly when their `id()` values are equal (#797
 None, bools and references identify their payload objects. Ints, floats and bound
 methods identify their boxes.
 
+`id()` of a typed list, dict, set or str is that same identity, in any module: `id(d)`
+equals `id(a)` for an `Any` value `a` that holds the dict `d`, so a cache can key on
+`id(schema)` for a `dict[str, Any]`. In an opted-in module `id()` also takes an object of
+the program's classes. `id()` of a typed int, float or tuple, which have no identity of
+their own here, is still rejected.
+
 | Numeric value | Object identity |
 | --- | --- |
 | Int from -5 through 256 | One cached box per value |
