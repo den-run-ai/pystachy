@@ -1402,7 +1402,13 @@ class StyleRejections(TemporarySuite):
             "from .base import Plain\nclass Mine(Plain):\n    def test_a(self):\n        self.check()\n": "",
             "from library import Other\nclass TestMine(Other):\n    def test_a(self): pass\n":
                 "imported or computed base classes",
+            # pytest collects an imported unittest case where it is imported: its limits apply there too.
+            "from .base import Decorated\ndef test_a(): pass\n": "decorated methods of an imported base",
+            # A decorated class that no test derives from is only a value of the module.
+            "from .records import Record\ndef test_a():\n    assert Record(1).value == 1\n": "",
         }
+        self.source("from dataclasses import dataclass\n@dataclass\nclass Record:\n    value: int\n",
+                    "tests/records.py")
         for index, (source, message) in enumerate(cases.items()):
             path = self.source(source, f"tests/test_{index}.py")
             result = runner.run_suite([path], self.root, self.work, "python", [], sys.executable, 60)[0]

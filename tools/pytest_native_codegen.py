@@ -487,6 +487,7 @@ class Generator:
         self.module_names = {}
         self.external = {}
         self.external_nodes = {}
+        self.external_reasons = {}
         self.fixed_names = None
         # What the test module reads as __file__ and __name__: pytest imports the original
         # file under its own name, where the generated one has another path.
@@ -1567,7 +1568,12 @@ class Generator:
         return answer
 
     def external_class(self, level, module, original, depth=0):
-        """The ClassInfo of a class of another module (external_info), named by how it is imported."""
+        """The ClassInfo of a class of another module (external_info), named by how it is imported.
+
+        None for a class the collector cannot use; external_reasons says why where the
+        class is one it could read, for the test class that derives from it (most
+        imported classes are no test's base).
+        """
         name = (level, module, original)
         if name in self.external:
             return self.external[name]
@@ -1585,24 +1591,35 @@ class Generator:
             if ancestor.tests or ancestor.node not in other.class_nodes.values():
                 continue
             if ancestor.node.decorator_list:
-                self.error(ancestor.node, f"{filename}: decorators on an imported base class are unsupported: "
-                           + ancestor.node.name)
+                return self.unusable(name, ancestor.node, f"{filename}: decorators on an imported base class are "
+                                     "unsupported: " + ancestor.node.name)
             for statement in ancestor.node.body:
                 if any(target == "pytestmark" for target in _bound_names(statement)):
-                    self.error(statement, f"{filename}: pytestmark in an imported base class is unsupported")
+                    return self.unusable(name, statement,
+                                         f"{filename}: pytestmark in an imported base class is unsupported")
                 if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     continue
                 if any(other.name(dec.func if isinstance(dec, ast.Call) else dec)
                        for dec in statement.decorator_list) or (
                         statement.name.startswith("test") and statement.decorator_list):
-                    self.error(statement, f"{filename}: decorated methods of an imported base class are "
-                               "unsupported: " + statement.name)
+                    return self.unusable(name, statement, f"{filename}: decorated methods of an imported base "
+                                         "class are unsupported: " + statement.name)
                 if ancestor.unit and statement.name in UNIT_UNSUPPORTED:
-                    self.error(statement, f"{filename}: unsupported unittest.TestCase method: " + statement.name)
-                if statement.name.startswith("test") and isinstance(statement, ast.FunctionDef):
+                    return self.unusable(name, statement,
+                                         f"{filename}: unsupported unittest.TestCase method: " + statement.name)
+        for ancestor in info.mro:
+            if ancestor.tests or ancestor.node not in other.class_nodes.values():
+                continue
+            for statement in ancestor.node.body:
+                if statement.name.startswith("test") if isinstance(statement, ast.FunctionDef) else False:
                     ancestor.tests[statement.name] = Test(statement, ancestor.node, [], [], [], ancestor.unit)
         self.external[name] = info
         return info
+
+    def unusable(self, name, node, message):
+        """Note why an imported class cannot be a test's base (external_class); returns None."""
+        self.external_reasons[name] = (node, message)
+        return None
 
     def imported_kind(self, node, alias):
         """What pytest makes of an imported name that begins test or Test.
@@ -1661,6 +1678,9 @@ class Generator:
             elif self.attribute_base(base) is not None and self.external_class(*self.attribute_base(base)):
                 bases.append(self.external_class(*self.attribute_base(base)))
             elif not self.marker_base(base):
+                origin = (self.imported.get(base.id) if isinstance(base, ast.Name) else self.attribute_base(base))
+                if origin in self.external_reasons:
+                    self.error(node, self.external_reasons[origin][1])
                 self.error(node, "test classes with imported or computed base classes are unsupported: "
                            + ast.unparse(base))
         if len(bases) + unit > 1:
@@ -1878,6 +1898,12 @@ class Generator:
                     # a class called Test* that has no constructor.
                     local = alias.asname or alias.name
                     external = self.external_info(local)
+                    origin = self.imported.get(local)
+                    if external is None and origin in self.external_reasons and not self.conftest:
+                        # pytest would collect it here: what the collector cannot use is an error.
+                        found = self.external_node(*origin)
+                        if found is not None and (found[0].unittest_bases(found[1]) or local.startswith("Test")):
+                            self.error(node, self.external_reasons[origin][1])
                     if external is not None and not self.conftest and (
                             external.unit or local.startswith("Test") and self.imported_kind(node, alias) == "class"):
                         bound = copy.copy(external.node)
