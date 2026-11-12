@@ -13,6 +13,7 @@ from src.pystachy_compiler.utils import (
     is_opt,
     is_sopt,
     is_tuple,
+    is_vtuple,
     list_read_error,
     list_write_error,
     numeric_identity,
@@ -562,7 +563,7 @@ def gen_reboxes(self, a: str, b: str) -> bool:
             x = "int"  # (coerce narrows a promoting int item first, as 64-bit storage takes it: bigints.py)
         dyn = x != y and ((y == "dyn" and self.dyn_boxable(x) == "") or (x == "dyn" and self.dyn_boxable(y) == ""))
         big = y == "int+" and x == "int"  # (a promoting int holds it, bigints.py; the other way, coerce tests)
-        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn and not big:
+        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not self.vtuple_fits(x, y) and not dyn and not big:
             return False
     return True
 
@@ -585,15 +586,26 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
     return v
 
 def gen_converts(self, a: str, b: str) -> bool:
-    # does a value of type a take code to be one of type b (convert_in)
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int")
+    # does a value of type a take code to be one of type b (convert_in): also a runtime-length
+    # tuple whose items each become a box (coerce's pys_vtuple_box), which a join of tuples makes
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int") or (is_vtuple(a) and is_vtuple(unopt(b)) and is_sopt(targs(unopt(b))[0]) and targs(a)[0] == unopt(targs(unopt(b))[0]))
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a
-    # union, also as tuple items, and a value as a dynamic one (dynamic.py)
+    # union, also as tuple items, and a value as a dynamic one (dynamic.py); and a fixed tuple
+    # as a runtime-length one, a new tuple of its items (vtuple_fits)
     if b == "dyn":
         return a != "dyn" and self.dyn_boxable(a) == ""
-    return (is_sopt(b) and a == unopt(b)) or (b == BIGOPT and a == "int") or self.uboxes(a, b) or self.reboxes(a, b)
+    return (is_sopt(b) and a == unopt(b)) or (b == BIGOPT and a == "int") or self.uboxes(a, b) or self.reboxes(a, b) or self.vtuple_fits(a, b)
+
+def gen_vtuple_fits(self, a: str, b: str) -> bool:
+    # is fixed tuple type a one of runtime-length tuple type b (or b | None) once its items are
+    # copied into a new tuple (coerce's vtuple_make): items of b's item type, or that are one
+    # as they are or boxed; the empty tuple's too
+    if not is_tuple(a) or not is_vtuple(unopt(b)):
+        return False
+    et = targs(unopt(b))[0]
+    return all(x == et or self.widens(x, et) or self.boxes(x, et) for x in targs(a))
 
 def gen_convert_in(self, v: Val, t: str, blk: Blk) -> Val:
     # v as a t, at the end of block blk, which has ended (see convert_at): a test the conversion

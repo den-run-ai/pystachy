@@ -526,6 +526,14 @@ def gen_join_type(self, a: str, b: str) -> str:
                 return ""
             ts.append(x)
         return self.ctype("tuple", ts)
+    if (is_tuple(a) or is_vtuple(a)) and (is_tuple(b) or is_vtuple(b)) and "?" not in a and "?" not in b:
+        # tuples of other lengths (or one of a runtime length): a runtime-length tuple of their
+        # items' join, where one can hold them (tuple[()] and tuple[int, int]: tuple[int, ...])
+        xs = targs(a) + targs(b)
+        e = xs[0] if len(xs) > 0 else ""
+        for x in xs[1:]:
+            e = (e if e == x else self.join_type(e, x)) if e != "" else ""
+        return self.ctype("vtuple", [e]) if e != "" and unopt(e) != BIG and self.vtuple_item(e) else ""
     if a == b:
         return a
     if (a == BIG and b == "int") or (b == BIG and a == "int"):
