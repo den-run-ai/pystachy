@@ -3926,7 +3926,11 @@ def gen_cmp_key(self, op: str, a: Val, b: Val) -> str:
     if len(p) == 0:
         if op != "==" and op != "!=":
             return f"raise {tname(a.t)} {tname(b.t)}"  # (the TypeError names both classes)
-        return "is" if (a.t in self.classes or a.t == "None") and (b.t in self.classes or b.t == "None") else "not"
+        if (a.t in self.classes or a.t == "None") and (b.t in self.classes or b.t == "None"):
+            return "is"
+        # (None and a value of another type that may be None: equal where it is None too, which
+        # the arm of the operand's other alternatives, never equal, must not decide)
+        return "none" if (a.t == "None" and self.refl_may_none(b)) or (b.t == "None" and self.refl_may_none(a)) else "not"
     lhs = a if p[0] == "a" else b
     rhs = b if p[0] == "a" else a
     if self.cmp_method(lhs.t, p[1], rhs.t) == "":
@@ -4026,6 +4030,13 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
         # object.__eq__ declines, then Python falls back to object identity.
         if (a.t in self.classes or a.t == "None") and (b.t in self.classes or b.t == "None"):
             return self.ptr_cmp('==' if op == '==' else '!=', a, b)
+        for side in range(2):
+            x = a if side == 0 else b
+            y = b if side == 0 else a
+            if x.t == "None" and self.refl_may_none(y):
+                # (None and a value of another type that may be None, a str | None: equal
+                # where that value is None too)
+                return self.ptr_cmp('==' if op == '==' else '!=', y, Val("null", "None"))
         return Val("false" if op == "==" else "true", "bool")
     self.raise_("TypeError", self.sconst(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'"))
     return Val("false", "bool")
