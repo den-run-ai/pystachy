@@ -2090,9 +2090,10 @@ class Loader:
         # class bodies (before: what runs before st in its block), as mypy's MYPYC = False then
         # if MYPYC: Bogus = ... else: Bogus = ...: nothing runs between the assignment and the
         # test, so CPython decides the test as the literal says. Only where the branch that does
-        # not run assigns names, and only names that the branch that runs binds too: dropping it
-        # leaves each name a binding (an unbound global is an error: see Gen's read of a name) and
-        # changes no other declaration. Appends what runs to out; False if st is no such if
+        # not run assigns names, and only names that the branch that runs binds too, at its own
+        # level: dropping it leaves each name a binding (an unbound global is an error: see Gen's
+        # read of a name) and changes no other declaration. Appends what runs to out; False if st
+        # is no such if
         if st.kind != "if" or self.pos < 0 or self.incls or len(before) == 0:
             return False
         t = st.kids[0]
@@ -2104,7 +2105,11 @@ class Loader:
         r = 1 if (p.kids[1].kind == "True") != neg else 0
         run = st.kids[1].kids if r == 1 else st.kids[2].kids
         kept: dict[str, bool] = {}
-        binds(run, kept, True)
+        for x in run:
+            # (only what it binds at its own level, which simplify() keeps: a binding in a block of
+            # its own may be in code that simplify() drops too, as in if False: x = 1)
+            if x.kind == "assign" or (x.kind == "annassign" and len(x.kids) == 3) or x.kind == "def" or x.kind == "class" or x.kind == "subclass" or x.kind == "import":
+                binds([x], kept, True)
         for x in st.kids[2].kids if r == 1 else st.kids[1].kids:
             names: dict[str, bool] = {}
             binds([x], names, True)
