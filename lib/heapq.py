@@ -136,6 +136,10 @@ def heappush(heap, item):
 
 def heappop(heap):
     """Pop the smallest item off the heap, maintaining the heap invariant."""
+    # Pystachy port: there is no _heapq, whose C functions CPython imports over these (below):
+    # they follow Modules/_heapqmodule.c of CPython 3.13.16, here its IndexError's message
+    if len(heap) == 0:
+        raise IndexError('index out of range')
     lastelt = heap.pop()    # raises appropriate IndexError if heap is empty
     if heap:
         returnitem = heap[0]
@@ -155,6 +159,8 @@ def heapreplace(heap, item):
         if item > heap[0]:
             item = heapreplace(heap, item)
     """
+    if len(heap) == 0:
+        raise IndexError('index out of range')  # Pystachy port: as heappop()
     returnitem = heap[0]    # raises appropriate IndexError if heap is empty
     heap[0] = item
     _siftup(heap, 0)
@@ -162,10 +168,15 @@ def heapreplace(heap, item):
 
 def heappushpop(heap, item):
     """Fast version of a heappush followed by a heappop."""
-    if heap and heap[0] < item:
-        item, heap[0] = heap[0], item
-        _siftup(heap, 0)
-    return item
+    # Pystachy port: as heappop(), and the comparison may empty the heap
+    if len(heap) == 0 or not heap[0] < item:
+        return item
+    if len(heap) == 0:
+        raise IndexError('index out of range')
+    returnitem = heap[0]
+    heap[0] = item
+    _siftup(heap, 0)
+    return returnitem
 
 def heapify(x):
     """Transform list into a heap, in-place, in O(len(x)) time."""
@@ -175,11 +186,48 @@ def heapify(x):
     # or i < (n-1)/2.  If n is even = 2*j, this is (2*j-1)/2 = j-1/2 so
     # j-1 is the largest, which is n//2 - 1.  If n is odd = 2*j+1, this is
     # (2*j+1-1)/2 = j so j-1 is the largest, and that's again n//2-1.
+    if n > 2500:
+        _heapify_cached(x, False)  # Pystachy port: as heappop()
+        return
     for i in reversed(range(n//2)):
         _siftup(x, i)
 
+def _keep_top_bit(n):
+    # Pystachy port: as heappop(), for _heapify_cached()
+    i = 0
+    while n > 1:
+        n >>= 1
+        i += 1
+    return n << i
+
+def _heapify_cached(x, maxheap):
+    # Pystachy port: as heappop(), the C module's heapify of a heap past 2500 items, which sifts
+    # each parent as soon as its two children are heaps: the same comparisons and heap, in an
+    # order that keeps the children in cache
+    m = len(x) >> 1
+    leftmost = _keep_top_bit(m + 1) - 1
+    mhalf = m >> 1
+    for i in range(leftmost - 1, mhalf - 1, -1):
+        _siftup_parents(x, i, maxheap)
+    for i in range(m - 1, leftmost - 1, -1):
+        _siftup_parents(x, i, maxheap)
+
+def _siftup_parents(x, j, maxheap):
+    # Pystachy port: for _heapify_cached(), j, then its parent while j is a left child (whose
+    # sibling, sifted before it, is a heap too)
+    while True:
+        if maxheap:
+            _siftup_max(x, j)
+        else:
+            _siftup(x, j)
+        if not j & 1:
+            break
+        j >>= 1
+
 def _heappop_max(heap):
     """Maxheap version of a heappop."""
+    if len(heap) == 0:
+        raise IndexError('index out of range')  # Pystachy port: as heappop()
     lastelt = heap.pop()    # raises appropriate IndexError if heap is empty
     if heap:
         returnitem = heap[0]
@@ -190,6 +238,8 @@ def _heappop_max(heap):
 
 def _heapreplace_max(heap, item):
     """Maxheap version of a heappop followed by a heappush."""
+    if len(heap) == 0:
+        raise IndexError('index out of range')  # Pystachy port: as heappop()
     returnitem = heap[0]    # raises appropriate IndexError if heap is empty
     heap[0] = item
     _siftup_max(heap, 0)
@@ -198,6 +248,9 @@ def _heapreplace_max(heap, item):
 def _heapify_max(x):
     """Transform list into a maxheap, in-place, in O(len(x)) time."""
     n = len(x)
+    if n > 2500:
+        _heapify_cached(x, True)  # Pystachy port: as heappop()
+        return
     for i in reversed(range(n//2)):
         _siftup_max(x, i)
 
@@ -205,18 +258,28 @@ def _heapify_max(x):
 # is the index of a leaf with a possibly out-of-order value.  Restore the
 # heap invariant.
 def _siftdown(heap, startpos, pos):
+    # Pystachy port: as heappop(): newitem trades places with each parent it passes, so that
+    # a comparison that changes the list finds all its items there, and one that changes its
+    # size raises the C module's RuntimeError
+    size = len(heap)
+    if pos >= size:
+        raise IndexError('index out of range')
     newitem = heap[pos]
     # Follow the path to the root, moving parents down until finding a place
     # newitem fits.
     while pos > startpos:
         parentpos = (pos - 1) >> 1
         parent = heap[parentpos]
-        if newitem < parent:
-            heap[pos] = parent
-            pos = parentpos
-            continue
-        break
-    heap[pos] = newitem
+        less = newitem < parent
+        if size != len(heap):
+            raise RuntimeError('list changed size during iteration')
+        if not less:
+            break
+        parent = heap[parentpos]
+        newitem = heap[pos]
+        heap[parentpos] = newitem
+        heap[pos] = parent
+        pos = parentpos
 
 # The child indices of heap index pos are already heaps, and we want to make
 # a heap at index pos too.  We do this by bubbling the smaller child of
@@ -258,59 +321,75 @@ def _siftdown(heap, startpos, pos):
 # for sorting.
 
 def _siftup(heap, pos):
+    # Pystachy port: as _siftdown(), the item at pos trades places with the smaller child
     endpos = len(heap)
     startpos = pos
-    newitem = heap[pos]
+    if pos >= endpos:
+        raise IndexError('index out of range')
     # Bubble up the smaller child until hitting a leaf.
-    childpos = 2*pos + 1    # leftmost child position
-    while childpos < endpos:
+    limit = endpos >> 1    # smallest pos that has no child
+    while pos < limit:
         # Set childpos to index of smaller child.
-        rightpos = childpos + 1
-        if rightpos < endpos and not heap[childpos] < heap[rightpos]:
-            childpos = rightpos
+        childpos = 2*pos + 1    # leftmost child position
+        if childpos + 1 < endpos:
+            if not heap[childpos] < heap[childpos + 1]:
+                childpos += 1
+            if endpos != len(heap):
+                raise RuntimeError('list changed size during iteration')
         # Move the smaller child up.
-        heap[pos] = heap[childpos]
+        child = heap[childpos]
+        heap[childpos] = heap[pos]
+        heap[pos] = child
         pos = childpos
-        childpos = 2*pos + 1
-    # The leaf at pos is empty now.  Put newitem there, and bubble it up
-    # to its final resting place (by sifting its parents down).
-    heap[pos] = newitem
+    # Bubble it up to its final resting place (by sifting its parents down).
     _siftdown(heap, startpos, pos)
 
 def _siftdown_max(heap, startpos, pos):
     'Maxheap variant of _siftdown'
+    # Pystachy port: as _siftdown()
+    size = len(heap)
+    if pos >= size:
+        raise IndexError('index out of range')
     newitem = heap[pos]
     # Follow the path to the root, moving parents down until finding a place
     # newitem fits.
     while pos > startpos:
         parentpos = (pos - 1) >> 1
         parent = heap[parentpos]
-        if parent < newitem:
-            heap[pos] = parent
-            pos = parentpos
-            continue
-        break
-    heap[pos] = newitem
+        less = parent < newitem
+        if size != len(heap):
+            raise RuntimeError('list changed size during iteration')
+        if not less:
+            break
+        parent = heap[parentpos]
+        newitem = heap[pos]
+        heap[parentpos] = newitem
+        heap[pos] = parent
+        pos = parentpos
 
 def _siftup_max(heap, pos):
     'Maxheap variant of _siftup'
+    # Pystachy port: as _siftup()
     endpos = len(heap)
     startpos = pos
-    newitem = heap[pos]
+    if pos >= endpos:
+        raise IndexError('index out of range')
     # Bubble up the larger child until hitting a leaf.
-    childpos = 2*pos + 1    # leftmost child position
-    while childpos < endpos:
+    limit = endpos >> 1    # smallest pos that has no child
+    while pos < limit:
         # Set childpos to index of larger child.
-        rightpos = childpos + 1
-        if rightpos < endpos and not heap[rightpos] < heap[childpos]:
-            childpos = rightpos
+        childpos = 2*pos + 1    # leftmost child position
+        if childpos + 1 < endpos:
+            if not heap[childpos + 1] < heap[childpos]:
+                childpos += 1
+            if endpos != len(heap):
+                raise RuntimeError('list changed size during iteration')
         # Move the larger child up.
-        heap[pos] = heap[childpos]
+        child = heap[childpos]
+        heap[childpos] = heap[pos]
+        heap[pos] = child
         pos = childpos
-        childpos = 2*pos + 1
-    # The leaf at pos is empty now.  Put newitem there, and bubble it up
-    # to its final resting place (by sifting its parents down).
-    heap[pos] = newitem
+    # Bubble it up to its final resting place (by sifting its parents down).
     _siftdown_max(heap, startpos, pos)
 
 def merge(*iterables, key=None, reverse=False):

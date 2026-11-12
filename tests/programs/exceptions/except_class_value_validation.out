@@ -1,0 +1,18 @@
+single finally
+invalid single: catching classes that do not inherit from BaseException is not allowed
+single matched
+single finally
+single finally
+single missed
+invalid display: catching classes that do not inherit from BaseException is not allowed
+evaluated: ['ValueError', 'NoneType']
+invalid display: catching classes that do not inherit from BaseException is not allowed
+evaluated: ['NoneType', 'ValueError']
+display matched
+evaluated: ['ValueError', 'ValueError']
+no exception
+earlier handler
+not evaluated: []
+isinstance: True
+invalid held: catching classes that do not inherit from BaseException is not allowed
+[exit 0]

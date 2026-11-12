@@ -261,7 +261,8 @@ def main(argv=None):
     work = args.work_dir.resolve()
     try:
         with runner.lock_work_directory(work):
-            evidence = qualify(work, modes, shlex.split(args.compiler), args.python, args.timeout, args.input_seed)
+            evidence = qualify(work, modes, runner.compiler_command(args.compiler),
+                               args.python, args.timeout, args.input_seed)
             if args.json:
                 runner.write_changed(args.json.resolve(), json.dumps(evidence, indent=2) + "\n")
             for row in evidence["results"]:
