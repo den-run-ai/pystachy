@@ -1049,6 +1049,32 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # result type, when the call is compiled
         conversion = "__int__" if name == "int" else "__float__"
         protocol = conversion if conversion in self.classes[t].methods else "__index__" if "__index__" in self.classes[t].methods else ""
+        kinds = self.refl_concrete(t)
+        chosen = [conversion if conversion in self.classes[c].methods else "__index__" if "__index__" in self.classes[c].methods else "" for c in kinds]
+        if len([p for p in chosen if p != protocol]) > 0:
+            # A class derived from t defines a method that t has not (__int__ where t has
+            # __index__, or the only one): CPython asks the object's own class, so each class
+            # the object may be of calls its own, and one that has none raises CPython's error
+            self.notnone(v, "TypeError: " + NONEARG[name])
+            arms: list[Val] = []
+            blocks: list[str] = []
+            end = self.label()
+            for lf in self.refl_split_class(v):
+                self.place(lf.label)
+                own = chosen[kinds.index(lf.c)]
+                if own == "":
+                    self.raise_("TypeError", self.sconst(NONEARG[name].replace("NoneType", tname(lf.c))))
+                    continue
+                conv = self.method(lf.v, own, [])
+                if own == "__float__" and conv.t != "float":
+                    self.err(f"{tname(lf.c)}.__float__ returned non-float (type {tname(conv.t)})")
+                if own != "__float__" and conv.t != "int" and conv.t != BIG:
+                    self.err(f"{own} returned non-int (type {tname(conv.t)})")
+                if not self.term:
+                    arms.append(conv if name == "int" or own == "__float__" else self.as_float(conv))
+                    blocks.append(self.cur)
+                    self.br(end)
+            return self.refl_phi(arms, blocks, end, name + "()")
         if protocol != "":
             self.notnone(v, "TypeError: " + NONEARG[name])
             conv = self.method(v, protocol, [])
