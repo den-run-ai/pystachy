@@ -14,7 +14,8 @@ scenarios through its reference `askme.py` and through these files and requires
 equal model requests, events, console lines, results and workspaces.
 
 The files are pinned copies from
-[AskMe's `native/` directory](https://github.com/den-run-ai/askme/tree/572c26284acc32dcac59095611237c464df8c22c/native);
+[AskMe's `native/` directory](https://github.com/den-run-ai/askme/tree/572c26284acc32dcac59095611237c464df8c22c/native),
+proposed there in [pull request 130](https://github.com/den-run-ai/askme/pull/130);
 `UPSTREAM.json` records the commit and every file's SHA-256, and
 `make check-recordings` verifies them.
 

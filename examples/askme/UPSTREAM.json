@@ -1,6 +1,7 @@
 {
   "repository": "https://github.com/den-run-ai/askme",
   "commit": "572c26284acc32dcac59095611237c464df8c22c",
+  "pull_request": "https://github.com/den-run-ai/askme/pull/130",
   "files": [
     {
       "path": "askme_native.py",
