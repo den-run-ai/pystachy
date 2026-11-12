@@ -90,33 +90,21 @@ user code because the program defines no exception class and exception arguments
 formatted at construction (`exc_values.py`). Each was traced to the compiler's
 justification and found sound; no removal was found to be wrong.
 
-A union sweep on 2026-11-11 over the 288 programs with union records (snapshots of the
-same compiler revision) found no possible box write in any of them, and Lean proved
-2,298 of the 8,916 inventoried union reads (393 of 9,108 before box immutability, joins
-and return domains; the inventory lost 192 reads that only a shared literal had tainted)
-and 286 of 316 union return domains. 1,304 reads in 136 functions are rejected: a value
-loaded from a field, global or container, or returned by a function whose own returns
-are unproved, has no known tag; an "is assigned" flag, a boolean phi with more than one
-use and a `None`-typed join operand are not correlated with what they guard. Each kind
-was traced to the compiler's IR and found guarded; no union read was found to be wrong.
-5,314 reads remain unsupported, 4,908 of them reads of values of no union type, which
-the conservative inventory derives from union values through memory and arithmetic, the
-rest raw union transport (361), generators (24) and dynamic tag reconstruction (21).
-
-With payload bits and split locals modeled, a sweep of all 2,416 programs on 2026-11-12,
-inspected again to record split slots, proved the same 135,958 removals, 2,428 of the
-8,916 union reads (no read the previous rules proved was lost), 302 of 316 return domains
-and 8,949 of 10,617 payload obligations (8,809 of 10,471 in the 288 programs with union
-records), with no checker error. 87 of the 173 functions with split locals, in 77
-programs, are fully proved; every one of the others fails a union read of a value loaded
-from memory or returned by an unproved function. Checked alone, without the union reads,
-10,420 of the 288 programs' 12,757 payload obligations are proved: each of the 236
-rejected functions lacks facts about a box loaded from memory (215) or keeps a superset
-that a boolean phi with more than one use does not narrow (21); none reads, boxes or
-stores bits as a member its tag excludes. Elsewhere, an "is assigned" flag and a None test
-of a box phi beside its split pair are not correlated with presence (three functions);
-one payload, a dictionary value whose member the IR does not name, and generators remain
-unsupported.
+A union sweep on 2026-11-12 over the 288 programs with union records (snapshots of the
+compiler at `e7ec9bb8`) found no possible box write and proved 5,712 of the 6,043 inventoried
+union reads, 12,777 of the 13,026 payload obligations and 1,922 of the 1,951 typed union
+memory domains: 836 of 847 parameters, 312 of 316 returns, 240 of 253 packed words, 181 of
+182 globals, all 65 fields and every program's indirect-call arguments. The inventory counts
+reads of union values and of what typed union memory holds; the
+[whole-object inventory before it](https://github.com/den-run-ai/pystachy/blob/8257a3cd079329b322fbd6b07a8e7e32520582de/tools/lean_boundary/GUARDS.md#coverage-of-compiled-code)
+counted 8,916 reads, of which Lean proved 2,428. Of the 331 reads left, 247 are rejected:
+`string.Formatter`'s methods in `logging` read a union default another method passes (70),
+a tuple is indexed by a variable (35), closure cells and nonlocal snapshots hold union values
+(21), `logging.getLogger` narrows a union of classes (20), and 17 functions of other shapes
+hold the other 101 (reflection over union fields, recursive aliases, `min` and `max` with
+defaults, a JSON value's dict, "is assigned" flags). 84 are unsupported: template results
+whose union read has no declared domain (65) and generators (19). Each kind was traced to IR
+that guards the read; no union read was found to be wrong.
 
 Field initialization was swept over all 2,416 programs on 2026-11-12 (snapshots of the
 compiler at b27908f4): Lean proved 157,697 of 157,934 obligations (all 4,662 unchecked
@@ -254,10 +242,11 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI selection exercises 58 inventoried union reads, 97 payload obligations, three
-proved union return domains, twenty-seven removed null checks and 148 field obligations in
-`examples/union_guards.py`, `examples/union_effects.py`, `examples/union_split.py`,
-`examples/union_memory.py`, `examples/union_defaults.py`, `examples/null_guards.py`,
+The bounded CI selection exercises 61 inventoried union reads, 101 payload obligations, three
+proved union return domains, twenty-seven removed null checks, 151 field obligations and 120
+collector-scanning obligations ([GC.md](GC.md)) in `examples/union_guards.py`,
+`examples/union_effects.py`, `examples/union_split.py`, `examples/union_memory.py`,
+`examples/union_defaults.py`, `examples/gc_arrays.py`, `examples/null_guards.py`,
 `examples/null_reloads.py` and `examples/field_init.py`.
 This small gate does not claim complete-corpus acceptance. Programs whose union values
 come from closure cells or from library initializers' defaults remain investigation targets
@@ -302,7 +291,8 @@ stores only whole, the words `slot.pack` makes of a union (every container item,
 and generic word: `slot.unpack` is how each comes back), each parameter and result of a
 union, and the union arguments of indirect calls. Each write of a key is a Lean obligation in
 its writer: a store, a pack, a call's argument (an indirect call's against its operand
-types) and a return must be a member of the declared union, null only where the union has it.
+types; a parameter of type `None` takes no operand, so a direct call's operands are the other
+parameters' in order) and a return must be a member of the declared union, null only where the union has it.
 Each read assumes the key's domain: a load of the memory, an unpacked word, a parameter (of a
 function whose address code takes, only while indirect calls are proved) and a call's
 result. The keys start all assumed; a key a write of which Lean does not prove, or that a
@@ -332,8 +322,9 @@ field checker's own trust and on the adapter's dominance and call-graph analyses
 [`examples/union_defaults.py`](examples/union_defaults.py) (a dynamic program, which stores
 union defaults once) read fields, globals, list and tuple items, parameters, defaults and
 chained conditions; [`test_lean_union_memory.py`](../test_lean_union_memory.py) corrupts them:
-a field store, pack or argument outside its union, an uninitialized field, a default read
-before its class statement, and swapped branches of a chained join must each be rejected.
+a field store, pack or argument outside its union (also one after a `None` parameter), an
+uninitialized field, a default read before its class statement, and swapped branches of a
+chained join must each be rejected.
 
 Inventory follows union-derived operands through every result-producing
 operation, including opaque operations, and conservatively tracks raw memory,

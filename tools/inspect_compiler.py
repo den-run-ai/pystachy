@@ -400,6 +400,24 @@ class Observer:
                        "tagged": info.tag != 0} for name, info in sorted(gen.classes.items())}
 
     @staticmethod
+    def key_descriptors(gen, functions) -> dict:
+        # @s.N -> its text, for each string constant an operand of the snapshot passes as a key
+        # kind (ptrtoint of its address) to a runtime function that makes a dict or a set
+        found = {}
+        for fn in functions:
+            for block in fn["blocks"]:
+                for op in block["operations"]:
+                    for operand in op["operands"][:1]:
+                        value = operand["value"]
+                        if (op["op"] == "rt" and op["text"].startswith(("dict.", "set.")) and value.startswith("ptrtoint (ptr @s.")
+                                and value.endswith(" to i64)")):
+                            name = value[len("ptrtoint (ptr "):-len(" to i64)")]
+                            number = name[3:]
+                            if number.isdigit() and int(number) < len(gen.strvals):
+                                found[name] = gen.strvals[int(number)]
+        return dict(sorted(found.items()))
+
+    @staticmethod
     def class_layouts(gen) -> dict:
         # Each class's struct as field.addr indexes it: its fields (a name beginning with a
         # space is hidden storage), then each "is assigned" flag (fl_fields) and identity box.
@@ -781,6 +799,12 @@ class Observer:
                     if self.guard_evidence:
                         snapshot["class_layouts"] = self.class_layouts(self.gen)
                         snapshot["union_tags"] = dict(self.gen.utags)
+                        # (each type hole's resolved type, which lowering reads to allocate an empty
+                        # list or dict a later use typed: check_lean_gc.py)
+                        snapshot["holes"] = list(self.gen.holes)
+                        # (the text of each string constant whose address a dict or set's key kind
+                        # is, a hash descriptor: runtime.c's keymem reads its first character)
+                        snapshot["key_descriptors"] = self.key_descriptors(self.gen, functions)
                         snapshot["nullcheck_evidence"] = self.nullcheck_evidence
                         snapshot["guard_inventory"] = {"nullcheck_passes": len(self.nullcheck_evidence),
                             "removed_checks": sum(r["reported_rewrites"] for r in self.nullcheck_evidence)}

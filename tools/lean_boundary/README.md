@@ -14,11 +14,12 @@ the model does not establish that the exporter or runtime implements that model.
 | Null-check removal | Removed checks are redundant in the captured before-pass graph, including through fields, globals, closure cells and box payloads | Whole-pass equivalence, box immutability across calls, runtime effect contracts and the classes table |
 | Closed unions | Inventoried tag/payload reads have nonnull/member guards, across writes and calls where no compiled code may write a union box, through joins; fields, globals, container items, parameters and results hold members of their declared unions, each write proved (an unassigned word only where field initialization, a definition check or call order does not exclude it); payload bits are read, boxed and stored in split locals only as their box's member | Reconstruction from other tag sources, closure cells, split slot records, IR operand/item types, runtime callbacks' arguments, the adapter's dominance and call-graph analyses and box immutability's typed-memory and runtime ABI |
 | Field initialization | Each field a class's code reads without an "is assigned" flag test is assigned before that code can see an object under construction, through `__init__`, other calls and closures called directly or through their `Callable` (whose cells stay private until an environment escapes) by inferred contracts | Class layouts and the closure layout, that only compiled allocations make objects of the program's classes and set flags after fields, and raw accesses of objects under construction (escapes) |
+| Collector scanning | No list, dict or set whose item, value or key array may be atomic (unscanned) reaches a use, argument, return or store whose type lets that array hold pointers, and words that may be pointers are written only into scanned arrays, from the allocator, type hole, key kind and `empty.kind` that made it, with each memory word typed once for the program ([GC.md](GC.md)) | Runtime array kinds through copies, columns and writes, exported holes and key descriptors, declared and item types, every function of a program accepted; strings and buffers, roots and lifetime are not covered |
 
 All accepted certificates are checked by Lean. Mutation controls exercise the
 Python adapters, including lost inventories, exceptional edges and forged facts.
-Parsing, inference, specialization, GC/lifetime, general optimization equivalence,
-exception semantics and LLVM lowering remain unproved.
+Parsing, inference, specialization, collector roots and lifetime, general optimization
+equivalence, exception semantics and LLVM lowering remain unproved.
 
 [GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
 full-corpus inventory command; full-corpus acceptance is not claimed. Removed null
