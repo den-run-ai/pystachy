@@ -1,0 +1,12 @@
+bytes_writer 2
+  strings.h
+  capsule librt.strings
+  bytes_extra_ops.h
+  source bytes_extra_ops.c
+plain none
+empty 0
+later 1
+  a.h
+  source a.c
+True 2
+[exit 0]

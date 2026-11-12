@@ -13,7 +13,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |
 | `set[T]`, `frozenset[T]` | Elements must use the supported dict key types |
 | `tuple[A, B]` | Fixed shape, up to nine items; a constant index gives the item's type, a variable one the union of the items'; slicing requires integer constants (items of one runtime-length element type also slice by run-time bounds, into a `tuple[T, ...]`) |
-| `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`, or a class of the program; integer indexing checked at runtime, and slicing |
+| `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`, or a class of the program (also a union of classes); integer indexing checked at runtime, and slicing |
 | Classes, dataclasses, `NamedTuple` | Fields have static types |
 | `Callable[[A, B], R]` | Fixed positional signature; also supports zero arguments |
 | `A \| B` | Explicit scalar unions, or up to four non-overlapping native class/file members |
@@ -57,7 +57,9 @@ it) over the items both tuples have, also where their lengths differ, then by le
 the ordering method at the first unequal pair; `hash()` hashes each with its class's `__hash__`,
 by identity where the class defines neither `__eq__` nor `__hash__`. A tuple of a subclass's
 objects is one of its base class's. Objects of a [union](#native-reference-unions) of classes
-are not such items yet.
+are items too (`tuple[Capsule | SourceDep, ...]`), which narrow with `isinstance()` as a loop
+reads them; such a tuple does not compare or `repr()` yet, and a `tuple[A, ...]` is no
+`tuple[A | B, ...]`.
 Optional scalar elements use boxes when needed; widening an immutable tuple to
 optional elements copies its slots rather than reinterpreting numeric bits as pointers.
 
