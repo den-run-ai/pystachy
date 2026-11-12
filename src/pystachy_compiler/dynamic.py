@@ -22,7 +22,7 @@ from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
 from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -2514,6 +2514,9 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
         return [c.s]
     if self.bound(c.s):
         return [""]
+    if c.s == "complex" and COMPLEXC in self.classes:
+        self.dyn_class_type(COMPLEXC)  # (the class of complex numbers, lib/_pystachy_complex.py: boxed as its objects)
+        return [COMPLEXC]
     m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]", "list[int]"], "dict": ["dict[dyn,dyn]"],
          "tuple": ["vtuple[dyn]"], "object": ["*"], "type": ["%class:type"]}
     if c.s in m:

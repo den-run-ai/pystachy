@@ -232,6 +232,13 @@ do not import it. See [range objects](../docs/language/semantics.md#range-object
 loads it for a program that may call `object()`; programs do not import it. See
 [sentinels](../docs/language/semantics.md#sentinels).
 
+`_pystachy_complex.py` holds the class of complex numbers, after CPython 3.13's
+`Objects/complexobject.c`: a complex literal and `complex()` make its objects, and its operator
+methods are compiled for the operand types of each use. `abs()` and `**` call `runtime.c`, which
+reads libm's `errno` as CPython does. The compiler loads it for a program that names `complex`
+or writes a complex literal; programs do not import it. See
+[numbers](../docs/language/compatibility.md#numbers).
+
 `_pystachy_json_any.py` holds `json.loads()` and `json.dumps()` of `Any` values: the decoder builds
 `Any`'s containers with `json`'s scanner, and the encoder walks `Any` values as CPython's does. The
 compiler loads it for a program that has `json` and a module that opts in to

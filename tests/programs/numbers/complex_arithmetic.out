@@ -1,0 +1,24 @@
+values (1.5-2j) (0.25+4j) (3+0j) (3+0.5j)
+add (1.75+2j) (1.75+2j) (4.5-2j) (4.5-2j) (4.5-2j) (4.5-2j) (2.5-2j) (1.5-2j)
+sub (1.25-6j) (-1.25+6j) (-1.5-2j) (1.5+2j) (-1.5-2j) (1.5+2j) 0j
+mul (8.375+5.5j) (8.375+5.5j) (4.5-6j) (4.5-6j) (4.5-6j) (4.5-6j) (0.75-1j) (2+1.5j) (-1+0j)
+div (-0.47470817120622566-0.4046692607003891j) (-1.22+1.04j) (0.5-0.6666666666666666j) (0.04669260700389105-0.7470817120622568j) (0.5-0.6666666666666666j) (0.04669260700389105-0.7470817120622568j) (3-4j) (2-0.125j) (1-0j) -1j
+unary (-1.5+2j) (1.5-2j) (1.5-2j) (-0-0j) -0j (-0-0j)
+inplace (0.375+1j) (1.5-2j)
+chain (-0.75+14j) (14.1875-8j) (14.1875-8j) (5+0j)
+zeros 0j 0j 0j (-0+0j) 0j -0j -0j -0j
+zero quotients 0j 0j (-0-0j) 0j (-0+0j)
+inf (inf+1j) (inf+nanj) (inf+nanj) (nan+infj) 0j -0j (nan+nanj) (inf+nanj)
+nan (nan+1j) (nan+nanj) (nan+nanj) (nan+nanj) (nan+nanj) (nan+nanj)
+large (inf+infj) (inf+infj) 0j (inf+0j) 0j (inf+0j)
+ZeroDivisionError 0j complex division by zero
+ZeroDivisionError -0j complex division by zero
+ZeroDivisionError int complex division by zero
+ZeroDivisionError float complex division by zero
+ZeroDivisionError bool complex division by zero
+ZeroDivisionError complex division by zero
+2.5 4.00780488547035 5.0 inf inf nan 4.9999999999999995e+200 5e-320 0.0
+1.4142135623730951e+308
+1.75 5.5 (1.25+6j) 10.125
+(55-55j) (11-11j) True
+[exit 0]

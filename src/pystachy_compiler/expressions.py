@@ -25,6 +25,7 @@ from src.pystachy_compiler.specs import (
     ITERS,
     MODATTRS,
     NONEVAR,
+    COMPLEXC,
     OBJECTC,
     ORDOP,
     PYBUILTINS,
@@ -445,6 +446,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -1
     while c.s in self.taliases and self.alias_kept(c.s):
         c = self.alias_value(c.s)  # (Pos = int: the class int, which nothing else binds to Pos)
+    if c.s == "complex" and COMPLEXC in self.classes and not self.bound("complex"):
+        c = mk("name", COMPLEXC, c.line, [])  # (the class of complex numbers, lib/_pystachy_complex.py)
     if c.s in self.classes:
         if (c.s == "enum$IntEnum" or c.s == "enum$StrEnum" or c.s == "enum$ReprEnum") and t in self.classes and not lib_source(self.curfn.node.line, self.libdir, "enum.py"):
             # (an enum class of int or str and Enum derives from lib/enum.py's _IntMixin or
@@ -881,6 +884,12 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.dict_merge(n, want)
     if k == "yield":
         return self.yield_value(n)  # (what send() sends the generator)
+    if k == "complex" and COMPLEXC in self.classes:
+        # an imaginary literal, 2j: a new complex number of it (lib/_pystachy_complex.py), 0.0 its
+        # real part, as CPython's constant is
+        o = self.new_obj(COMPLEXC)
+        self.call_fn(self.classes[COMPLEXC].methods["__init__"], [o], [mk("float", "0.0", n.line, []), mk("float", n.s[:-1], n.line, [])], direct=True)
+        return o
     if k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
     if k == "walrus":
@@ -3590,6 +3599,20 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         r = self.ntop(op, a, b, shown)
         if r.t != "":
             return r
+    if b.t == COMPLEXC and (self.isnum(a.t) or a.t == BIG) and (m != "" or op == "**") and op not in REFL:
+        # a real number and a complex number: complex's reflected method (lib/_pystachy_complex.py),
+        # which takes the number as the float CPython makes of it (to_complex); == and != are
+        # the complex number's own, which compare an int exactly
+        cm = self.classes[COMPLEXC].methods
+        rcm = "_rpow" if op == "**" else "_r" + m[2:-2]  # (__radd__'s own: _radd, which takes the float)
+        if op == "==" or op == "!=":
+            return self.eqcall(cm[m], op == "==", b, a)
+        if rcm in cm:
+            self.notnone(b, f"TypeError: unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{tname(a.t)}' and 'NoneType'")
+            return self.call_fn(cm[rcm], [b, self.as_float(a)], [])
+    if a.t == COMPLEXC and op == "**" and (b.t == COMPLEXC or self.isnum(b.t) or b.t == BIG):
+        self.none_operand(shown if shown != "" else "** or pow()", a, b)
+        return self.call_fn(self.classes[COMPLEXC].methods["__pow__"], [a], [self.vnode(b)])
     if op in REFL and (a.t in self.classes or b.t in self.classes):
         return self.richcmp(op, a, b)
     if (op == "==" or op == "!=") and a.t == "None" and b.t in self.classes:

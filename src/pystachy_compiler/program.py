@@ -24,6 +24,7 @@ from src.pystachy_compiler.specs import (
     is_excname,
     ITERS,
     MODATTRS,
+    COMPLEXS,
     OBJECTS,
     PURE,
     PYBUILTINS,
@@ -810,7 +811,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     self.identity_modules(mods)  # (which modules' code tracks numeric identity: dynamic.py)
     # (lib's modules of range objects and of object()'s bind no global of another module: the
     # names they bind do not keep a global of the program from being constant)
-    own = [m for m in mods if m.name != RANGES and m.name != OBJECTS]
+    own = [m for m in mods if m.name != RANGES and m.name != OBJECTS and m.name != COMPLEXS]
     if "moduleints" in self.opts:
         self.intglobals = module_ints(own, self.intat)
     self.strglobals = module_strs(own, self.strtuples)
@@ -1132,7 +1133,7 @@ def gen_program(self, mods: list[Mod]) -> str:
                     self.err(f"cannot infer the initial optional type of '{short(name)}'; annotate its later assignment")
                 self.declare(name, t)
     for i in range(len(mods)):
-        if mods[i].name != ITERS and mods[i].name != RANGES and mods[i].name != OBJECTS:
+        if mods[i].name != ITERS and mods[i].name != RANGES and mods[i].name != OBJECTS and mods[i].name != COMPLEXS:
             # (lib's modules of iter()'s classes, of range's and of object's run no code: nothing
             # imports them, see Loader.program)
             self.function(self.inits[mods[i].name], tops[i])

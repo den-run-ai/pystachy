@@ -37,6 +37,8 @@ from src.pystachy_compiler.specs import (
     OPTTYPES,
     OSCONST,
     PYBUILTINS,
+    COMPLEXC,
+    COMPLEXS,
     OBJECTC,
     RANGEC,
     RANGES,
@@ -290,6 +292,17 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_range_"):
         return self.range_prim(name, args)
+    if name.startswith("__pys_cx_"):
+        # the compiler primitives lib/_pystachy_complex.py calls, runtime.c's: __pys_cx_abs(re,
+        # im), abs() of a complex number, and __pys_cx_pow(ar, ai, br, bi), a ** b as (re, im)
+        if self.curfn.mod != COMPLEXS or len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) > 0:
+            self.err(f"name '{name}' is not defined")
+        fs = [self.as_float(self.expr(a, "float")).v for a in args]
+        if name == "__pys_cx_abs" and len(fs) == 2:
+            return Val(self.rt("pys_cx_abs", "double", [f"double {x}" for x in fs]), "float")
+        if name == "__pys_cx_pow" and len(fs) == 4:
+            return Val(self.rt("pys_cx_pow", "ptr", [f"double {x}" for x in fs]), "tuple[float,float]")
+        self.err(f"name '{name}' is not defined")
     if name.startswith("__pys_bfile_"):
         # lib/_pystachy_bfile.py's binary files, in that module only: a file of a binary mode
         # (runtime.c's pys_bopen), its reads and writes of bytes, and io.UnsupportedOperation
@@ -407,6 +420,17 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if len(args) > 0:
             self.err("object() takes no arguments")
         return self.new_obj(OBJECTC)
+    if name == "complex" and COMPLEXC in self.classes:
+        # complex(), complex(x), complex(x, y): lib/_pystachy_complex.py's _new, a template that
+        # each call's argument types compile (a number, a complex number or a str to parse), with
+        # its parameters' names, real and imag. None is no number (CPython's TypeError names
+        # NoneType), though it is _new's mark of an argument left out
+        for a in args:
+            if a.kind == "starred" or a.kind == "dstar":
+                self.err("complex() with *args or **kwargs is not supported")
+            if (a.kids[0] if a.kind == "kw" else a).kind == "None":
+                self.err("complex() argument must be a string or a number, not 'NoneType'")
+        return self.call_fn(self.funcs[COMPLEXS + "$_new"], [], args)
     if name == "range" and RANGEC in self.classes:
         # range() as a value: an object of lib's class (lib/_pystachy_range.py), of its arguments
         # evaluated in turn, then checked (where a loop or a consumer takes its numbers at once,
@@ -1173,7 +1197,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     us = [j for j in range(len(vals)) if self.scalar_union(vals[j].t) and not is_opt(vals[j].t)]
     if len(us) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         return self.usplit(name, vals, us[0], want)  # (each member's call: union splitting)
-    self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range')}")
+    self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range').replace(COMPLEXC, 'complex')}")
     return v
 
 def gen_callable_type(self, t: str) -> int:

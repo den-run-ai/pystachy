@@ -1996,6 +1996,62 @@ double pys_m_hypot(double x, double y) {
   if (isnan(x) || isnan(y)) return NAN;
   return vnorm(v, 2, max);
 }
+/* ---------- complex ----------
+   A complex number is an object of lib/_pystachy_complex.py's class, whose arithmetic is written
+   there after CPython 3.13's Objects/complexobject.c. abs() and ** are here: they are what C's libm
+   leaves in errno, which no float of the subset tells (cos(inf) is a domain error, and math.hypot
+   is CPython's own sum of squares, not hypot()). No product is contracted into a fused
+   multiply-add, so that each platform computes what the subset's own float operations would */
+double pys_cx_abs(double re, double im) {            /* complex_abs, _Py_c_abs */
+  if (!isfinite(re) || !isfinite(im)) return isinf(re) ? fabs(re) : isinf(im) ? fabs(im) : NAN;   /* (C99: an infinite part, even beside a NaN) */
+  double r = hypot(re, im);
+  if (!isfinite(r)) pys_fail("OverflowError: absolute value too large");
+  return r;
+}
+#pragma STDC FP_CONTRACT OFF
+static void cx_prod(double *r, const double *a, const double *b) {   /* _Py_c_prod: r may be a or b */
+  double re = a[0] * b[0] - a[1] * b[1], im = a[0] * b[1] + a[1] * b[0];
+  r[0] = re; r[1] = im;
+}
+/* complex_pow: a ** b as (re, im), a tuple of two floats. An exponent that is an integer of at
+   most 100 in magnitude takes c_powi (squaring, and 1 / it for a negative one), any other
+   _Py_c_pow's polar form; errno is what they and libm leave, as complex_pow reads it */
+__attribute__((no_builtin("pow", "exp", "log", "cos", "sin", "hypot", "atan2"))) void **pys_cx_pow(double ar, double ai, double br, double bi) {
+  double p[2] = {0.0, 0.0};
+  errno = 0;
+  if (bi == 0.0 && br == floor(br) && fabs(br) <= 100.0) {
+    long n = (long)br, m = n > 0 ? n : -n, mask = 1;
+    double r[2] = {1.0, 0.0}, x[2] = {ar, ai};
+    while (mask > 0 && m >= mask) {                   /* c_powu */
+      if (m & mask) cx_prod(r, r, x);
+      mask <<= 1;
+      cx_prod(x, x, x);
+    }
+    if (n > 0) { p[0] = r[0]; p[1] = r[1]; }
+    else {                                            /* _Py_c_quot(1, r): Smith's, by the larger part of r */
+      double abr = r[0] < 0 ? -r[0] : r[0], abi = r[1] < 0 ? -r[1] : r[1];
+      if (abr >= abi) {
+        if (abr == 0.0) errno = EDOM;
+        else { double ratio = r[1] / r[0], denom = r[0] + r[1] * ratio; p[0] = (1.0 + 0.0 * ratio) / denom; p[1] = (0.0 - 1.0 * ratio) / denom; }
+      }
+      else if (abi >= abr) { double ratio = r[0] / r[1], denom = r[0] * ratio + r[1]; p[0] = (1.0 * ratio + 0.0) / denom; p[1] = (0.0 * ratio - 1.0) / denom; }
+      else p[0] = p[1] = NAN;
+    }
+  }
+  else if (br == 0.0 && bi == 0.0) p[0] = 1.0;
+  else if (ar == 0.0 && ai == 0.0) { if (bi != 0.0 || br < 0.0) errno = EDOM; }
+  else {
+    double vabs = hypot(ar, ai), len = pow(vabs, br), at = atan2(ai, ar), phase = at * br;
+    if (bi != 0.0) { len *= exp(-at * bi); phase += bi * log(vabs); }
+    p[0] = len * cos(phase); p[1] = len * sin(phase);
+  }
+  if (isinf(p[0]) || isinf(p[1])) { if (errno == 0) errno = ERANGE; }   /* _Py_ADJUST_ERANGE2 */
+  else if (errno == ERANGE) errno = 0;
+  if (errno == EDOM) pys_fail("ZeroDivisionError: 0.0 to a negative or complex power");
+  if (errno == ERANGE) pys_fail("OverflowError: complex exponentiation");
+  I *t = pys_alloc(16); memcpy(t, p, 16); return (void **)t;
+}
+#pragma STDC FP_CONTRACT DEFAULT
 double pys_m_copysign(double x, double y) { return copysign(x, y); }
 double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 divides by zero, as in CPython */
   double n = mchk(log(x), x, 0, 0), d = mchk(log(b), b, 0, 0);

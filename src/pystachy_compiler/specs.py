@@ -358,6 +358,8 @@ RANGES = "_pystachy_range"  # lib's module of the class of range objects, range(
 RANGEC = "_pystachy_range$range"  # (that class)
 OBJECTS = "_pystachy_object"  # lib's module of the class of the objects object() makes, sentinels (Loader.program)
 OBJECTC = "_pystachy_object$object"  # (that class)
+COMPLEXS = "_pystachy_complex"  # lib's module of the class of complex numbers, 1j and complex() (Loader.program)
+COMPLEXC = "_pystachy_complex$complex"  # (that class)
 # lib's module of json.loads() and json.dumps() of Any values, for the modules that compile Any as
 # dynamic values (Loader.program, Gen.json_any: #779)
 JSONANY = "_pystachy_json_any"
@@ -882,6 +884,7 @@ RUNTIME: dict[str, str] = {
     "list.give": "None:S|R I rL wL|",
     "any": "bool:list[T]|rL|", "all": "bool:list[T]|rL|", "sum.int": "int:list[T],int|R rL|",
     "sum.float": "float:list[float],float|rL|", "sum.float_int": "float:list[float],int|rL|", "sum.int_float": "float:list[T],float|rL|",
+    "cx.abs": "float:float,float|R|", "cx.pow": "tuple[float,float]:float,float,float,float|R A|",
     "range.len": "int:int,int,int|R|", "range.has": "bool:int,int,int,int|R|", "range.list": "list[int]:int,int,int|R A|",
     "list.identity": "None:S,int|R A rL wL|", "list.get_identity": "dyn:S,int,int|R A rL wL|",
     "list.append_identity": "None:S,*T,dyn,int|R A rL wL|", "list.set_identity": "None:S,int,*T,dyn,int|R A rL wL|",

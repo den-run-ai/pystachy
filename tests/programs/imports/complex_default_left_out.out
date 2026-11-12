@@ -1,0 +1,7 @@
+main: start
+mods: init mods
+mods.shapes: init mods.shapes
+default factor
+default by
+2j (3+2j) 3j 3j
+[exit 0]
