@@ -175,6 +175,8 @@ def gen_ann(self, n: Node) -> str:
             return BIG  # (a promoting int: bigints.py)
         if s == "int" or s == "float" or s == "bool" or s == "str" or s == "bytes" or s in self.classes:
             return s
+        if s == "type":
+            return "type[object]"  # (the class object of any ordinary class: class_values.py)
         if s == "range" and RANGEC in self.classes:
             return RANGEC  # (the class of range objects, lib/_pystachy_range.py)
         if self.imported(s).startswith("ffi.") and self.imported(s)[4:] in CTYPES:
@@ -224,6 +226,9 @@ def gen_ann(self, n: Node) -> str:
         # type[BaseException], as __exit__ takes the class of the exception: exctype, which is the
         # exception itself (its class is what it shows)
         return "exctype"
+    elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and n.kids[1].s == "object" and "object" not in self.classes:
+        # type[object] (and type alone): the class object of any ordinary class of the program
+        return "type[object]"
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and self.class_value_named(n.kids[1].s):
         # type[C] of an ordinary class C of the program: its class object, or that of a class
         # deriving from it (class_values.py)
@@ -981,8 +986,12 @@ def gen_join(self, a: str, b: str) -> str:
             c = self.classes[c].base
     if is_clsval(a) and is_clsval(b):
         # class objects: of the nearest base class that both classes derive from
-        j = self.join(clsof(a), clsof(b))
-        return "type[" + j + "]" if j in self.classes else ""
+        j = self.join(clsof(a), clsof(b)) if clsof(a) in self.classes and clsof(b) in self.classes else ""
+        if j in self.classes:
+            return "type[" + j + "]"
+        # (classes without a common base: any class's, type[object]; a module that opts in to
+        # dynamic Any keeps the Any values it has always made of them, unless one is typed so)
+        return "type[object]" if clsof(a) == "object" or clsof(b) == "object" or not self.dyn_policy(self.line) else ""
     if a == "None" or b == "None":
         return self.optional(b if a == "None" else a)
     if is_opt(a) or is_opt(b):
@@ -1094,7 +1103,7 @@ def gen_widens(self, a: str, b: str) -> bool:
         return a == "None" or (a in self.classes and self.derives(a, b))
     if is_clsval(b):
         # (the class object of a class is one of its base classes' too)
-        return is_clsval(a) and self.derives(clsof(a), clsof(b))
+        return is_clsval(a) and (clsof(b) == "object" or self.derives(clsof(a), clsof(b)))
     if is_union(b):
         # (its box: the tags are the program's, the same in every union)
         if a == "None":

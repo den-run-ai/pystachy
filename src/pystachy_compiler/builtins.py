@@ -554,7 +554,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             return self.refl_type_value(tv)
         if tv.t == "exc" or (tv.t in self.classes and self.classes[tv.t].exc != ""):
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-        if self.class_value_named(tv.t):
+        if self.class_value_named(tv.t) or (is_union(unopt(tv.t)) and self.class_value_objects(tv.t)):
             return self.class_value_of(tv, self.knownobj(args[0]))  # (an object's class: its class object, class_values.py)
         self.err("type(x) as a value (a class object) is supported for objects of the program's classes (#7); of other values, type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
     if name == "callable" and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred":

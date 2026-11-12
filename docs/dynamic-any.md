@@ -332,7 +332,10 @@ modules: a call of it runs the class's constructor without the limits below, and
 `type[C]` annotates it. Storing it in `Any` gives its class value, the same object,
 and a `type[C]` location takes one back, [checking](#deviations) that it is `C` or a
 class deriving from it
-([test](../tests/programs/inference/dynany_class_objects.py)). Where a program does
+([test](../tests/programs/inference/dynany_class_objects.py)). `type[object]` annotates
+the class object of any ordinary class; a display of unrelated classes without that
+annotation keeps its class values
+([test](../tests/programs/inference/dynany_class_value_any.py)). Where a program does
 not compile with typed class objects, its opted-in modules that have no `type[C]`
 annotation are compiled with class values throughout, as before they were typed
 ([test](../tests/programs/inference/dynany_class_boxes_kept.py)). For example:
