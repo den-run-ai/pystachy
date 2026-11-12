@@ -1318,6 +1318,9 @@ class Gen:
         self.source_lines = SourceLines(os.getenv("PYSTACHY_DEBUG_LINES", "") == "1")
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
+        # listguard (gen_listguard): how many calls of each function the program's IR makes, by
+        # symbol, once the program is built and before any pass copies one (call_counts)
+        self.callsites: dict[str, int] = {}
         self.summaries = EffectSummaries()
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}

@@ -657,10 +657,26 @@ def guard_offset(self, vs: Values, v: str, idx: str, sums: dict[str, Ins], index
     return NO_OFFSET
 
 
+def call_counts(fns: list[IFn]) -> dict[str, int]:
+    # how many times fns' IR names each function (by symbol), as a call's callee or as a value,
+    # an operand that a Callable or a store takes (Gen.callsites)
+    n: dict[str, int] = {}
+    for fn in fns:
+        for b in fn.blocks:
+            for i in b.code:
+                if i.op == "call":
+                    n[i.s] = n.get(i.s, 0) + 1
+                for v in i.a:
+                    if v.v.startswith("@"):
+                        n[v.v] = n.get(v.v, 0) + 1
+    return n
+
+
 class GuardPlan:
     # what listguard does to one loop: its blocks (by label), the block before it, the lists the
     # test before it reads (the value, or "slot S" for a slot it loads in the loop and never stores)
-    # with the largest constant added to an index of each, and the ops the copy leaves unchecked
+    # with the largest constant added to an index of each, the ops the copy leaves unchecked, and
+    # the calls whose copies it marks to be inlined
     def __init__(self, lp: Loop, pre: Blk):
         self.lp = lp
         self.pre = pre
@@ -672,6 +688,7 @@ class GuardPlan:
         self.reads: list[Ins] = []
         self.stores: list[Ins] = []
         self.folds: list[Ins] = []
+        self.inline: list[Ins] = []
 
 
 def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at: dict[str, int], sums: dict[str, Ins]) -> GuardPlan | None:
@@ -713,6 +730,22 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
         return None
     plan = GuardPlan(lp, pre)
     plan.region = region
+    # a call of a function that the program names nowhere else (Gen.callsites), which LLVM inlines
+    # as an internal function's last call: once the copy calls it too, LLVM would inline neither
+    # call, and the copy would run slower than the loop did (#1300). The copy's call is inlined
+    # (lowering: alwaysinline), the loop's then being the last, and the callee's ops count toward
+    # the copy's. Not a coroutine's, nor an exported function's, which C or CPython may call too
+    for l in region:
+        for i in fn.blocks[at[l]].code:
+            if i.op == "call" and i.s != fn.f.ll and i.s in self.fll and self.callsites.get(i.s, 0) == 1:
+                callee = self.fns[self.fll[i.s]]
+                if callee.coro or callee.f.export or callee.f.pyexport:
+                    continue
+                for cb in callee.blocks:
+                    ops += len(cb.code)
+                if ops > GUARD_OPS:
+                    return None
+                plan.inline.append(i)
     idx = self.canon(vs, lp.idx[0])
     bad = FXBIT["wL"] | FXBIT["U"]
     defined: dict[str, bool] = {}
@@ -915,6 +948,8 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
             elif i.op == "cbr" and len([x for x in folds if x is i]) > 0:
                 d.a = [Val("true", "bool")]  # (listfast's check, which the test before the loop makes)
                 n += 1
+            elif i.op == "call" and len([x for x in plan.inline if x is i]) > 0:
+                d.x = "inline"  # (its callee's only call but the loop's: guard_plan)
             c.code.append(d)
         copies.append(c)
     # the tests, each list's in turn: stop <= len(xs) - c, for its largest c. A list the loop loads
