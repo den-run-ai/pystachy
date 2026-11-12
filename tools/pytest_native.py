@@ -97,6 +97,12 @@ def outcome_counts(results: list[Result]) -> dict[str, int]:
     for result in results:
         phases: dict[str, dict[str, str]] = {}
         for event in result.events:
+            if event["phase"] == "subtest":
+                # pytest counts a subtest that failed as a failure, and the others apart.
+                name = {"failed": "failed", "passed": "subtests passed"}.get(event["outcome"],
+                                                                             "subtests " + event["outcome"])
+                counts[name] = counts.get(name, 0) + 1
+                continue
             phases.setdefault(event["nodeid"], {})[event["phase"]] = event["outcome"]
         for case in result.cases:
             seen = phases.get(case, {})
@@ -232,11 +238,16 @@ def read_report(path: Path, cases: list[str], returncode: int) -> list[dict]:
             raise ValueError("malformed event")
         if not all(isinstance(value, str) for value in event.values()):
             raise ValueError("non-string event field")
-        if event["nodeid"] not in expected or event["phase"] not in {"setup", "call", "teardown"}:
+        if event["nodeid"] not in expected or event["phase"] not in {"setup", "subtest", "call", "teardown"}:
             raise ValueError("unknown test or phase in report")
         if event["outcome"] not in {"passed", "failed", "error", "skipped", "xfailed", "xpassed"}:
             raise ValueError("unknown outcome in report")
         phases = seen.setdefault(event["nodeid"], [])
+        if event["phase"] == "subtest":
+            # A unittest case reports its subtests between its setup and its call.
+            if phases != ["setup"] or event["outcome"] not in {"passed", "failed", "skipped"}:
+                raise ValueError("subtest outside a test's call in report")
+            continue
         if event["phase"] in phases or (phases and event["phase"] == "setup"):
             raise ValueError("duplicate or out-of-order phase in report")
         phases.append(event["phase"])
@@ -308,7 +319,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         modules = []
         if conftest_name:
             try:
-                module, shared = generate_conftest(conftest.read_text(), conftest_name, operands)
+                module, shared = generate_conftest(conftest.read_text(), conftest_name, operands, str(conftest),
+                                                   "conftest")
                 modules.append(module)
             except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
                 for result in results:
@@ -320,7 +332,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
                 if path not in texts:
                     texts[path] = path.read_text()
                 generated.append(generate(texts[path], result.path, operands,
-                                          selections.get(path) if selections else None, shared, False))
+                                          selections.get(path) if selections else None, shared, False,
+                                          str(path), path.stem))
                 result.cases = generated[-1].cases
                 result.state = "collected"
             except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
@@ -335,7 +348,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         last = max((index for index, module in enumerate(generated) if module.cases), default=None)
         if last is not None:
             generated[last] = generate(texts[paths[last]], results[last].path, operands,
-                                       selections.get(paths[last]) if selections else None, shared, True)
+                                       selections.get(paths[last]) if selections else None, shared, True,
+                                       str(paths[last]), paths[last].stem)
         return modules + generated
 
     instrumented = build(True)
@@ -514,7 +528,9 @@ def pytest_runtest_logreport(report):
     outcome = report.outcome
     if hasattr(report, "wasxfail"):
         outcome = "xfailed" if report.skipped else "xpassed" if report.passed else outcome
-    _write({"nodeid": report.nodeid, "phase": report.when, "outcome": outcome,
+    # (A unittest subTest block reports apart from its test's own call.)
+    phase = "subtest" if type(report).__name__ == "SubtestReport" else report.when
+    _write({"nodeid": report.nodeid, "phase": phase, "outcome": outcome,
             "detail": str(report.longrepr) if report.longrepr else ""})
 
 def pytest_sessionfinish(session, exitstatus):
@@ -603,8 +619,15 @@ def outcome_differences(results: list[Result], reference: dict) -> list[str]:
         return lines  # (no native outcomes to set beside pytest's)
 
     def outcomes(events):
-        return {(event["nodeid"], event["phase"]): "failed" if event["outcome"] == "error" else event["outcome"]
-                for event in events}
+        found = {}
+        subtests: dict[str, int] = {}
+        for event in events:
+            phase = event["phase"]
+            if phase == "subtest":
+                subtests[event["nodeid"]] = subtests.get(event["nodeid"], 0) + 1
+                phase = f"subtest {subtests[event['nodeid']]}"
+            found[event["nodeid"], phase] = "failed" if event["outcome"] == "error" else event["outcome"]
+        return found
     native = outcomes(event for result in results for event in result.events)
     original = outcomes(reference["events"])
     for key in dict.fromkeys([*original, *native]):
@@ -726,7 +749,8 @@ def execute(args) -> int:
         print("no tests collected")
     counts = outcome_counts(results)
     summary = ", ".join(f"{counts[name]} {name + 's' if name == 'error' and counts[name] > 1 else name}"
-                        for name in ("failed", "passed", "skipped", "xfailed", "xpassed", "error") if counts.get(name))
+                        for name in ("failed", "passed", "skipped", "xfailed", "xpassed", "error", "subtests passed",
+                                     "subtests skipped") if counts.get(name))
     if summary:
         verdict = ("; UNVERIFIED" if not args.compare else "; pytest comparison failed"
                    if differences or reference is None else "")

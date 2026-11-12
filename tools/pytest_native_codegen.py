@@ -7,12 +7,16 @@ CLI's independent oracle detects collection behavior hidden in imported symbols.
 """
 
 import ast
+import builtins
+import copy
 import dataclasses
 from dataclasses import dataclass, field
 import io
 import itertools
 import keyword
+import math
 import re
+import string
 import tokenize
 
 
@@ -28,6 +32,12 @@ class GeneratedModule:
     builtin_fixtures: bool = False
     # Generated line -> original line, for the compiler's diagnostics (line_map).
     lines: dict[int, int] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Opaque:
+    """A parameter value the collector does not evaluate; name is its __name__ if it shows one."""
+    name: str | None = None
 
 
 @dataclass
@@ -77,6 +87,22 @@ class Test:
     parameters: list[Parameter]
     marks: list[Mark]
     usefixtures: list[str]
+    # A unittest.TestCase method: setUp, the test and tearDown all run in its call phase.
+    unit: bool = False
+
+
+@dataclass
+class ClassInfo:
+    """A module-level class that pytest collects, or a base class of one."""
+    node: ast.ClassDef
+    unit: bool  # (derives from unittest.TestCase)
+    bases: list["ClassInfo"]
+    mro: list["ClassInfo"] = field(default_factory=list)  # (itself first)
+    parameters: list[Parameter] = field(default_factory=list)
+    marks: list[Mark] = field(default_factory=list)
+    usefixtures: list[str] = field(default_factory=list)
+    tests: dict[str, Test] = field(default_factory=dict)  # (its own test methods)
+    names: set[str] = field(default_factory=set)  # (every name its body binds)
 
 
 SCOPES = {"function": 0, "class": 1, "module": 2, "session": 3}
@@ -84,8 +110,16 @@ FINALIZERS = {"class": "class_finalizers", "module": "module_finalizers", "sessi
 PYTEST_IMPORTS = {"fixture", "mark", "param", "raises", "fail", "skip", "xfail", "approx"}
 PYTEST_CALLS = {"pytest.raises", "pytest.fail", "pytest.skip", "pytest.xfail", "pytest.approx"}
 XUNIT_MODULE = {"setup_module", "setupModule", "teardown_module", "teardownModule",
-                "setup_function", "teardown_function"}
+                "setup_function", "teardown_function", "setUpModule", "tearDownModule"}
 XUNIT_CLASS = {"setup_method", "teardown_method", "setup_class", "teardown_class", "setup", "teardown"}
+# unittest.TestCase machinery the runner does not drive.
+UNIT_UNSUPPORTED = {"setUpClass", "tearDownClass", "run", "debug", "runTest", "__init__", "__new__",
+                    "__call__", "addCleanup", "doCleanups", "addClassCleanup", "doClassCleanups",
+                    "enterContext", "enterClassContext", "id", "shortDescription", "defaultTestResult",
+                    "countTestCases", "assertWarns", "assertWarnsRegex", "assertLogs", "assertNoLogs",
+                    "failureException", "addTypeEqualityFunc"}
+UNITTEST_IMPORTS = {"TestCase", "SkipTest", "skip", "skipIf", "skipUnless", "expectedFailure", "main"}
+UNITTEST_MARKS = {"unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure"}
 MONKEYPATCH = {"setenv", "delenv", "undo"}
 BUILTIN_FIXTURES = {
     "tmp_path": Fixture(None, [], False, False, call="_pyn_fixtures.tmp_path", named=True, origin="builtin"),
@@ -93,9 +127,89 @@ BUILTIN_FIXTURES = {
 }
 
 
+UNKNOWN = object()  # (what evaluate() returns for an expression it does not read)
+# Builtins whose __name__ is their name: pytest names such a parameter value after it.
+BUILTIN_NAMES = {name for name, value in vars(builtins).items()
+                 if callable(value) and getattr(value, "__name__", None) == name}
+STATIC_TYPES = (type(None), bool, int, float, complex, str, bytes, tuple, list, dict, range)
+# Pure builtins the collector may call on literal data to read a parameter table.
+STATIC_CALLS = {name: getattr(builtins, name) for name in (
+    "range", "len", "list", "tuple", "sorted", "enumerate", "zip", "min", "max", "sum", "abs", "str",
+    "int", "float", "bool", "repr", "chr", "ord", "dict", "round", "divmod", "any", "all", "bytes",
+    "hex", "oct", "bin", "ascii")}
+STATIC_CALLS["reversed"] = lambda value: list(reversed(value))
+STATIC_ITERTOOLS = {"product": itertools.product, "chain": itertools.chain,
+                    "combinations": itertools.combinations, "permutations": itertools.permutations,
+                    "combinations_with_replacement": itertools.combinations_with_replacement,
+                    "zip_longest": itertools.zip_longest}
+# Methods that read their object and leave it unchanged, by the object's type.
+STATIC_METHODS = {
+    str: {name for name in dir(str) if not name.startswith("_")},
+    bytes: {name for name in dir(bytes) if not name.startswith("_")},
+    list: {"index", "count", "copy"}, tuple: {"index", "count"},
+    dict: {"items", "keys", "values", "get", "copy"},
+    int: {"bit_length", "bit_count"}, float: {"is_integer", "hex"}, range: {"index", "count"}}
+STATIC_MODULES = {
+    "string": {name: getattr(string, name) for name in (
+        "ascii_letters", "ascii_lowercase", "ascii_uppercase", "digits", "hexdigits", "octdigits",
+        "punctuation", "whitespace")},
+    "math": {"pi": math.pi, "e": math.e, "tau": math.tau, "inf": math.inf}}
+STATIC_LIMIT = 100000  # (items of one value, and evaluation steps of one table)
+BINARY = {ast.Add: lambda a, b: a + b, ast.Sub: lambda a, b: a - b, ast.Mult: lambda a, b: a * b,
+          ast.Div: lambda a, b: a / b, ast.FloorDiv: lambda a, b: a // b, ast.Mod: lambda a, b: a % b,
+          ast.BitOr: lambda a, b: a | b, ast.BitAnd: lambda a, b: a & b, ast.BitXor: lambda a, b: a ^ b}
+COMPARE = {ast.Eq: lambda a, b: a == b, ast.NotEq: lambda a, b: a != b, ast.Lt: lambda a, b: a < b,
+           ast.LtE: lambda a, b: a <= b, ast.Gt: lambda a, b: a > b, ast.GtE: lambda a, b: a >= b,
+           ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b}
+
+
+def _static(value, budget=None):
+    """Whether a value is plain data a literal could write: no objects, sets or generators."""
+    budget = budget if budget is not None else [STATIC_LIMIT]
+    budget[0] -= 1
+    if budget[0] < 0 or not isinstance(value, STATIC_TYPES):
+        return False
+    if isinstance(value, int) and not isinstance(value, bool) and value.bit_length() > 4096:
+        return False
+    if isinstance(value, (str, bytes, range)):
+        return len(value) <= STATIC_LIMIT
+    if isinstance(value, (tuple, list)):
+        return all(_static(item, budget) for item in value)
+    if isinstance(value, dict):
+        return all(_static(key, budget) and _static(item, budget) for key, item in value.items())
+    return True
+
+
+def _literal_node(value):
+    """An expression that writes a static value; a float that has no literal by float()."""
+    if isinstance(value, float) and (value != value or value in (math.inf, -math.inf)):
+        return ast.Call(ast.Name("float", ast.Load()), [ast.Constant(str(value))], [])
+    if isinstance(value, tuple):
+        return ast.Tuple([_literal_node(item) for item in value], ast.Load())
+    if isinstance(value, list):
+        return ast.List([_literal_node(item) for item in value], ast.Load())
+    if isinstance(value, dict):
+        return ast.Dict([_literal_node(key) for key in value], [_literal_node(item) for item in value.values()])
+    if isinstance(value, range):
+        return ast.Call(ast.Name("range", ast.Load()), [ast.Constant(value.start), ast.Constant(value.stop),
+                                                         ast.Constant(value.step)], [])
+    return ast.Constant(value)
+
+
 def _bound_names(node):
-    return [item.id for item in ast.walk(node)
-            if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Store)]
+    """The names a statement or target binds in its own scope, in no particular order."""
+    names = []
+    pending = [node]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, ast.Name) and isinstance(item.ctx, ast.Store):
+            names.append(item.id)
+        for child in ast.iter_child_nodes(item):
+            # (A comprehension's targets, like a function's locals, are its own.)
+            if not isinstance(child, (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp, ast.Lambda,
+                                      ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                pending.append(child)
+    return names
 
 
 def _main_guard(node):
@@ -187,9 +301,14 @@ def _attribute(name):
 
 class Generator:
     def __init__(self, source: str, filename: str, operands: bool = True, selected=None,
-                 shared=None, conftest: bool = False, session_end: bool = True):
+                 shared=None, conftest: bool = False, session_end: bool = True, path: str = "",
+                 module: str = ""):
         self.source = source
         self.filename = filename
+        # What the test module reads as __file__ and __name__: pytest imports the original
+        # file under its own name, where the generated one has another path.
+        self.path = path or filename
+        self.module = module or filename.rsplit("/", 1)[-1].removesuffix(".py")
         self.operands = operands
         self.selected = selected
         # conftest.py's fixtures as this module calls them (export), or None.
@@ -205,6 +324,14 @@ class Generator:
         self.tree.body = [node for node in self.tree.body if not _main_guard(node)]
         self.aliases = {}
         self.constants = {}
+        # Module-level names: every one bound; modules by their import name; classes,
+        # functions and imported names by the __name__ their binding shows; and the
+        # value expression of each name assigned once.
+        self.bound = set()
+        self.modules = {}
+        self.named = {}
+        self.bindings = {}
+        self.rebound = set()
         self.fixtures = {}
         self.class_fixtures = {}
         self.tests = []
@@ -212,6 +339,10 @@ class Generator:
         self.preludes = {}
         self.counter = 0
         self.metadata_constants = set()
+        # `pytestmark = ...` statements, which become the marks of their tests.
+        self.dropped = set()
+        # Declarations that read a named parameter table, placed after the module's own code.
+        self.late = []
         # Names a test class binds: pytest declarations there cannot use them, because
         # the runner evaluates those declarations at module level.
         self.shadowed = None
@@ -242,8 +373,342 @@ class Generator:
             return {self.constant(k, track): self.constant(v, track) for k, v in zip(node.keys, node.values)}
         try:
             return ast.literal_eval(node)
-        except (ValueError, TypeError):
-            self.error(node, "expected a literal or an earlier literal constant")
+        except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+            value = self.evaluate(node, None, track)
+            if value is UNKNOWN:
+                self.error(node, "expected a literal or an expression of earlier literal constants")
+            return value
+
+    def evaluate(self, node, env=None, track=False):
+        """The value of an expression over literals that runs no test code, else UNKNOWN.
+
+        Reads literals, earlier constants, arithmetic, comparisons, subscripts, f-strings,
+        comprehensions and calls of pure builtins and itertools functions (STATIC_CALLS):
+        enough for range(3), [n * 2 for n in SIZES] or sorted(TABLE.items()).
+        """
+        budget = [STATIC_LIMIT]
+        env = env or {}
+
+        class Unknown(Exception):
+            pass
+
+        def bind(target, value, scope):
+            if isinstance(target, ast.Name):
+                scope[target.id] = value
+            elif isinstance(target, (ast.Tuple, ast.List)) and not any(isinstance(e, ast.Starred) for e in target.elts):
+                items = list(value)
+                if len(items) != len(target.elts):
+                    raise Unknown
+                for part, item in zip(target.elts, items):
+                    bind(part, item, scope)
+            else:
+                raise Unknown
+
+        def comprehension(generators, scope, emit):
+            if not generators:
+                emit(scope)
+                return
+            first = generators[0]
+            if first.is_async:
+                raise Unknown
+            for item in run(first.iter, scope):
+                inner = dict(scope)
+                bind(first.target, item, inner)
+                if all(run(condition, inner) for condition in first.ifs):
+                    comprehension(generators[1:], inner, emit)
+
+        def call(node, scope):
+            if any(keyword.arg is None for keyword in node.keywords) or any(
+                    isinstance(argument, ast.Starred) for argument in node.args):
+                raise Unknown
+            arguments = [run(argument, scope) for argument in node.args]
+            keywords = {keyword.arg: run(keyword.value, scope) for keyword in node.keywords}
+            function = node.func
+            if isinstance(function, ast.Name):
+                if function.id not in STATIC_CALLS or function.id in self.bound or function.id in scope:
+                    raise Unknown
+                if function.id == "sorted" and "key" in keywords:
+                    raise Unknown
+                target = STATIC_CALLS[function.id]
+            elif isinstance(function, ast.Attribute):
+                owner = function.value
+                if (isinstance(owner, ast.Name) and self.modules.get(owner.id) == "itertools"
+                        and function.attr in STATIC_ITERTOOLS):
+                    target = STATIC_ITERTOOLS[function.attr]
+                else:
+                    receiver = run(owner, scope)
+                    if function.attr not in STATIC_METHODS.get(type(receiver), ()):
+                        raise Unknown
+                    target = getattr(receiver, function.attr)
+            else:
+                raise Unknown
+            result = target(*arguments, **keywords)
+            if not isinstance(result, STATIC_TYPES):
+                # (An iterator or view: read it now, within the budget.)
+                result = list(itertools.islice(result, STATIC_LIMIT + 1))
+            return result
+
+        def run(node, scope):
+            budget[0] -= 1
+            if budget[0] < 0:
+                raise Unknown
+            if isinstance(node, ast.Constant):
+                if node.value is Ellipsis:
+                    raise Unknown
+                return node.value
+            if isinstance(node, ast.Name):
+                if node.id in scope:
+                    return scope[node.id]
+                if self.shadowed is not None and node.id in self.shadowed:
+                    self.error(node, "pytest declarations in a test class cannot use its attributes: " + node.id)
+                if node.id in self.constants:
+                    if track:
+                        self.metadata_constants.add(node.id)
+                    return self.constants[node.id]
+                raise Unknown
+            if isinstance(node, (ast.Tuple, ast.List)):
+                items = []
+                for item in node.elts:
+                    if isinstance(item, ast.Starred):
+                        items.extend(run(item.value, scope))
+                    else:
+                        items.append(run(item, scope))
+                return tuple(items) if isinstance(node, ast.Tuple) else items
+            if isinstance(node, ast.Dict):
+                if any(key is None for key in node.keys):
+                    raise Unknown
+                return {run(key, scope): run(value, scope) for key, value in zip(node.keys, node.values)}
+            if isinstance(node, ast.UnaryOp):
+                value = run(node.operand, scope)
+                if isinstance(node.op, ast.Not):
+                    return not value
+                if isinstance(node.op, ast.USub):
+                    return -value
+                if isinstance(node.op, ast.UAdd):
+                    return +value
+                return ~value
+            if isinstance(node, ast.BinOp):
+                left, right = run(node.left, scope), run(node.right, scope)
+                if isinstance(node.op, ast.Pow):
+                    if not (isinstance(right, int) and 0 <= right <= 64 and isinstance(left, (int, float))):
+                        raise Unknown
+                    return left ** right
+                if isinstance(node.op, (ast.LShift, ast.RShift)):
+                    if not (isinstance(right, int) and 0 <= right <= 256 and isinstance(left, int)):
+                        raise Unknown
+                    return left << right if isinstance(node.op, ast.LShift) else left >> right
+                if type(node.op) not in BINARY:
+                    raise Unknown
+                if isinstance(node.op, ast.Mult):
+                    for sequence, times in ((left, right), (right, left)):
+                        if isinstance(sequence, (str, bytes, list, tuple)) and isinstance(times, int):
+                            if len(sequence) * max(times, 0) > STATIC_LIMIT:
+                                raise Unknown
+                return BINARY[type(node.op)](left, right)
+            if isinstance(node, ast.BoolOp):
+                value = run(node.values[0], scope)
+                for following in node.values[1:]:
+                    if bool(value) != isinstance(node.op, ast.And):
+                        break
+                    value = run(following, scope)
+                return value
+            if isinstance(node, ast.Compare):
+                left = run(node.left, scope)
+                for operator, comparator in zip(node.ops, node.comparators):
+                    right = run(comparator, scope)
+                    if type(operator) not in COMPARE or not COMPARE[type(operator)](left, right):
+                        if type(operator) not in COMPARE:
+                            raise Unknown
+                        return False
+                    left = right
+                return True
+            if isinstance(node, ast.IfExp):
+                return run(node.body if run(node.test, scope) else node.orelse, scope)
+            if isinstance(node, ast.Subscript):
+                value = run(node.value, scope)
+                if isinstance(node.slice, ast.Slice):
+                    parts = [None if part is None else run(part, scope)
+                             for part in (node.slice.lower, node.slice.upper, node.slice.step)]
+                    return value[slice(*parts)]
+                return value[run(node.slice, scope)]
+            if isinstance(node, ast.JoinedStr):
+                text = ""
+                for part in node.values:
+                    if isinstance(part, ast.Constant):
+                        text += part.value
+                        continue
+                    value = run(part.value, scope)
+                    if part.conversion == 114:
+                        value = repr(value)
+                    elif part.conversion == 115:
+                        value = str(value)
+                    elif part.conversion == 97:
+                        value = ascii(value)
+                    spec = run(part.format_spec, scope) if part.format_spec is not None else ""
+                    text += format(value, spec)
+                return text
+            if isinstance(node, (ast.ListComp, ast.GeneratorExp)):
+                items = []
+                comprehension(node.generators, scope, lambda inner: items.append(run(node.elt, inner)))
+                return items
+            if isinstance(node, ast.DictComp):
+                result = {}
+                def emit(inner):
+                    result[run(node.key, inner)] = run(node.value, inner)
+                comprehension(node.generators, scope, emit)
+                return result
+            if isinstance(node, ast.Attribute):
+                owner = node.value
+                if isinstance(owner, ast.Name) and owner.id not in scope:
+                    constants = STATIC_MODULES.get(self.modules.get(owner.id, ""))
+                    if constants is not None and node.attr in constants:
+                        return constants[node.attr]
+                raise Unknown
+            if isinstance(node, ast.Call):
+                return call(node, scope)
+            raise Unknown
+
+        try:
+            value = run(node, dict(env))
+        except (Unknown, RecursionError):
+            return UNKNOWN
+        except CollectionError:
+            raise
+        except Exception:  # noqa: BLE001 (whatever the expression raises, it was not read)
+            return UNKNOWN
+        return value if _static(value) else UNKNOWN
+
+    def unroll(self, node):
+        """A comprehension's element expression for each item of its literal iterables.
+
+        The loop variables are written into each copy as literals, so the copies run in
+        order where the comprehension stood; None unless the iterables and conditions
+        are ones evaluate() reads.
+        """
+        targets = {name for generator in node.generators for name in _bound_names(generator.target)}
+        for part in ast.walk(node.elt):
+            # (A nested scope could bind a loop variable's name again.)
+            if isinstance(part, (ast.Lambda, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp,
+                                 ast.NamedExpr, ast.Await, ast.Yield, ast.YieldFrom)):
+                return None
+        rows = []
+
+        class Substitute(ast.NodeTransformer):
+            def __init__(self, scope):
+                self.scope = scope
+
+            def visit_Name(self, name):
+                if name.id in self.scope and isinstance(name.ctx, ast.Load):
+                    return ast.copy_location(_literal_node(self.scope[name.id]), name)
+                return name
+
+        def loop(index, scope):
+            if index == len(node.generators):
+                rows.append(Substitute({name: scope[name] for name in targets if name in scope})
+                            .visit(copy.deepcopy(node.elt)))
+                return len(rows) <= 10000
+            generator = node.generators[index]
+            if generator.is_async:
+                return False
+            iterable = self.evaluate(generator.iter, scope, True)
+            if iterable is UNKNOWN or isinstance(iterable, (bool, int, float, complex, type(None))):
+                return False
+            for item in iterable:
+                inner = dict(scope)
+                if not self.bind(generator.target, item, inner):
+                    return False
+                keep = True
+                for condition in generator.ifs:
+                    value = self.evaluate(condition, inner, True)
+                    if value is UNKNOWN:
+                        return False
+                    if not value:
+                        keep = False
+                        break
+                if keep and not loop(index + 1, inner):
+                    return False
+            return True
+
+        return rows if loop(0, {}) else None
+
+    def bind(self, target, value, scope):
+        """Assign a loop target from a literal item; False for a shape that does not fit."""
+        if isinstance(target, ast.Name):
+            scope[target.id] = value
+            return True
+        if isinstance(target, (ast.Tuple, ast.List)) and isinstance(value, (tuple, list)) and len(value) == len(
+                target.elts) and not any(isinstance(part, ast.Starred) for part in target.elts):
+            return all(self.bind(part, item, scope) for part, item in zip(target.elts, value))
+        return False
+
+    def expand(self, node, depth=0):
+        """The row expressions of a parameter table that is not one display, or None.
+
+        A display with *unpacking, a comprehension over literals, list()/tuple() of such,
+        tables joined by +, a name bound once to any of these, or a value evaluate() reads.
+        """
+        if depth > 20:
+            return None
+        if isinstance(node, (ast.List, ast.Tuple)):
+            rows = []
+            for item in node.elts:
+                if isinstance(item, ast.Starred):
+                    part = self.expand(item.value, depth + 1)
+                    if part is None:
+                        return None
+                    rows += part
+                else:
+                    rows.append(item)
+            return rows
+        if isinstance(node, (ast.ListComp, ast.GeneratorExp)):
+            return self.unroll(node)
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left, right = self.expand(node.left, depth + 1), self.expand(node.right, depth + 1)
+            return None if left is None or right is None else left + right
+        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("list", "tuple")
+                and node.func.id not in self.bound and len(node.args) == 1 and not node.keywords
+                and not isinstance(node.args[0], ast.Starred)):
+            return self.expand(node.args[0], depth + 1)
+        if isinstance(node, ast.Name) and node.id in self.bindings and not (
+                self.shadowed is not None and node.id in self.shadowed):
+            self.metadata_constants.add(node.id)
+            return self.expand(self.bindings[node.id], depth + 1)
+        value = self.evaluate(node, None, True)
+        if value is UNKNOWN or isinstance(value, (bool, int, float, complex, type(None))):
+            return None
+        return [_literal_node(item) for item in value]
+
+    def unshadowed(self, node):
+        """Reject a declaration in a test class that reads the class's own attributes.
+
+        The runner evaluates such declarations at module level, before the class body.
+        """
+        if self.shadowed is not None:
+            for part in ast.walk(node):
+                if isinstance(part, ast.Name) and part.id in self.shadowed:
+                    self.error(part, "pytest declarations in a test class cannot use its attributes: " + part.id)
+
+    def described(self, node):
+        """A parameter value for its ID: the literal it is, or an Opaque expression.
+
+        pytest names a class or function after its __name__ and any other object after
+        the argument and its index. Only syntax is read here, so a name is taken to be
+        what its binding shows; the pytest comparison reports an ID that differs.
+        """
+        try:
+            return self.constant(node, True)
+        except CollectionError:
+            if isinstance(node, ast.Name) and self.shadowed is not None and node.id in self.shadowed:
+                raise
+        static = self.evaluate(node)
+        if static is not UNKNOWN:
+            return static
+        if isinstance(node, ast.Lambda):
+            return Opaque("<lambda>")
+        if isinstance(node, ast.Name) and (node.id in self.named or (
+                node.id in BUILTIN_NAMES and node.id not in self.bound)):
+            return Opaque(self.named.get(node.id, node.id))
+        return Opaque()
 
     def keywords(self, call, allowed):
         result = {}
@@ -296,29 +761,62 @@ class Generator:
 
     def table(self, decorator, names, string_names, table, ids, annotations, what):
         """One parametrization: its cases' value variables, IDs and marks, and their declarations."""
-        inline = isinstance(table, (ast.List, ast.Tuple))
-        rows = table.elts if inline else self.constant(table, True)
-        if not isinstance(rows, (list, tuple)) or not rows:
-            self.error(decorator, what + " needs a nonempty literal list or tuple")
+        prelude = []
+        # rows: the expression that shows each row's shape and ID. source: the module's
+        # own table, whose rows generated code reads by position once the module has
+        # been imported, as pytest reads them when it collects; without one, each row
+        # expression runs once where the decorator stood.
+        source = None
+        self.unshadowed(table)
+        if isinstance(table, (ast.List, ast.Tuple)) and not any(isinstance(item, ast.Starred) for item in table.elts):
+            rows = table.elts
+        else:
+            if isinstance(table, ast.Name) and table.id in self.rebound:
+                self.error(decorator, "parametrize constants require one literal binding: " + table.id)
+            rows = self.expand(table)
+            if rows is None:
+                self.error(decorator, what + " needs a table the collector can read: a literal, range(), a "
+                           "comprehension over literals, or a name bound once to one")
+            if isinstance(table, ast.Name):
+                source = table
+                bound = self.bindings.get(table.id)
+                value = self.constants.get(table.id, UNKNOWN)
+                sequence = isinstance(value, (list, tuple)) if value is not UNKNOWN else (
+                    isinstance(bound, (ast.List, ast.Tuple, ast.ListComp, ast.BinOp))
+                    or isinstance(bound, ast.Call) and isinstance(bound.func, ast.Name)
+                    and bound.func.id in ("list", "tuple", "sorted"))
+                if not sequence:
+                    # (A dict, range or other iterable, which pytest iterates once.)
+                    source = ast.Name(f"_pyn_table_{self.counter}", ast.Load())
+                    self.counter += 1
+                    self.late.append(f"{source.id} = list({table.id})")
+                # The collector read the table's length from syntax; the program checks it.
+                self.late.append(f"_pyn_support.table_length(len({source.id}), {len(rows)}, {table.id!r})")
+        if not rows:
+            self.error(decorator, what + " needs a nonempty table")
         if len(rows) > 10000:
             self.error(decorator, what + " exceeds the 10000-case collection bound")
         if ids is not None and (not isinstance(ids, (list, tuple)) or len(ids) != len(rows)
-                                or any(not isinstance(item, str) for item in ids)):
-            self.error(decorator, "ids must be a literal string list matching the value table")
+                                or any(item is not None and not isinstance(item, (str, int, float))
+                                       for item in ids)):
+            self.error(decorator, "ids must be a literal list of strings, numbers or None matching the value table")
         result = []
         generated_ids = []
         row_marks = []
-        prelude = []
         for index, row in enumerate(rows):
-            expr = row if inline else ast.Subscript(value=table, slice=ast.Constant(index), ctx=ast.Load())
+            expr = row if source is None else ast.Subscript(value=source, slice=ast.Constant(index), ctx=ast.Load())
             explicit_id = None
             marks = []
-            parameter_set = isinstance(expr, ast.Call) and self.name(expr.func) == "pytest.param"
+            parameter_set = isinstance(row, ast.Call) and self.name(row.func) == "pytest.param"
+            if parameter_set and source is not None:
+                self.error(decorator, "pytest.param rows must be written in the decorator's own table")
             if parameter_set:
-                items = [self.constant(item, True) for item in expr.args]
-                expressions = expr.args
+                if any(isinstance(item, ast.Starred) for item in row.args):
+                    self.error(row, "pytest.param values must be written out: expected a literal or an expression")
+                items = [self.described(item) for item in row.args]
+                expressions = row.args
                 seen = set()
-                for kw in expr.keywords:
+                for kw in row.keywords:
                     if kw.arg not in {"id", "marks"} or kw.arg in seen:
                         self.error(kw, "pytest.param supports id= and static marks= only")
                     seen.add(kw.arg)
@@ -332,12 +830,25 @@ class Generator:
                         declarations = kw.value.elts if isinstance(kw.value, (ast.List, ast.Tuple)) else [kw.value]
                         marks = [mark for mark in (self.marker(item) for item in declarations) if mark is not None]
             else:
-                value = self.constant(row, True) if inline else row
                 single_value = string_names and len(names) == 1
+                display = isinstance(row, (ast.List, ast.Tuple)) and not any(
+                    isinstance(item, ast.Starred) for item in row.elts)
+                if single_value or not display:
+                    value = self.described(row)
+                else:
+                    value = [self.described(item) for item in row.elts]
+                if isinstance(value, Opaque) and not single_value:
+                    if source is None:
+                        # A row some expression makes: read once, then by position.
+                        variable = f"_pyn_row_{self.counter}"
+                        self.counter += 1
+                        prelude.append(f"{variable} = {ast.unparse(expr)}")
+                        expr = ast.Name(variable, ast.Load())
+                    value = [Opaque()] * len(names)
                 items = [value] if single_value else value
                 if single_value:
                     expressions = [expr]
-                elif isinstance(expr, (ast.List, ast.Tuple)):
+                elif source is None and isinstance(expr, (ast.List, ast.Tuple)) and display:
                     expressions = expr.elts
                 else:
                     expressions = [ast.Subscript(value=expr, slice=ast.Constant(i), ctx=ast.Load())
@@ -364,11 +875,13 @@ class Generator:
                         annotation.value, str) else ast.unparse(annotation)
                     # Strings preserve CPython's annotation evaluation count.
                     declaration += ": " + repr(hint)
-                prelude.append(f"{declaration} = {ast.unparse(expression)}")
+                (prelude if source is None else self.late).append(f"{declaration} = {ast.unparse(expression)}")
                 variables.append(variable)
             result.append(variables)
             row_marks.append(marks)
             label = explicit_id if explicit_id is not None else ids[index] if ids is not None else None
+            if label is not None and not isinstance(label, str):
+                label = str(label)
             generated_ids.append(self.parameter_id("", label, index) if label is not None else "-".join(
                 self.parameter_id(name, item, index) for name, item in zip(names, items)))
         counts = {value: generated_ids.count(value) for value in generated_ids}
@@ -398,6 +911,8 @@ class Generator:
                            for byte in value)
         if value is None or isinstance(value, (bool, int, float, complex)):
             return str(value)
+        if isinstance(value, Opaque) and value.name is not None:
+            return value.name
         return name + str(index)
 
     def fixture_names(self, decorator):
@@ -458,19 +973,7 @@ class Generator:
         condition = True
         if runtime:
             expression = call.args[0]
-            if any(self.name(part) for part in ast.walk(expression)):
-                self.error(decorator, "skipif conditions cannot use pytest")
-            if self.shadowed is not None:
-                # The condition runs before the class body here, not inside it.
-                for part in ast.walk(expression):
-                    if isinstance(part, ast.Name) and part.id in self.shadowed:
-                        self.error(decorator, "pytest declarations in a test class cannot use its attributes: "
-                                   + part.id)
-                    if isinstance(part, (ast.Call, ast.Subscript, ast.NamedExpr, ast.Await, ast.Yield,
-                                         ast.YieldFrom, ast.ListComp, ast.SetComp, ast.DictComp,
-                                         ast.GeneratorExp, ast.Lambda)):
-                        self.error(decorator, "skipif conditions in a test class must be names, attributes, "
-                                   "literals and comparisons")
+            self.runtime_condition(decorator, expression)
             if "reason" not in kws:
                 self.error(decorator, "skipif with a boolean condition requires an explicit reason")
             condition = f"_pyn_condition_{self.counter}"
@@ -498,14 +1001,73 @@ class Generator:
             self.error(decorator, "xfail strict/run must be literal booleans")
         return Mark(kind, condition, reason, kws.get("strict", False), kws.get("run", True), raises)
 
-    def decorations(self, node, prelude, annotations):
+    def unit_mark(self, decorator, prelude, method):
+        """unittest's skip decorators and expectedFailure, or None where the condition is false.
+
+        A decorated method is skipped in its call phase, where unittest runs it; a
+        decorated class in setup, as pytest's own skip marks are.
+        """
+        call = decorator if isinstance(decorator, ast.Call) else None
+        kind = self.name(call.func if call else decorator).removeprefix("unittest.")
+        if kind == "expectedFailure":
+            if call is not None:
+                self.error(decorator, "expectedFailure takes no arguments")
+            return Mark("unit-xfail", True, "")
+        if call is None or call.keywords or len(call.args) != (1 if kind == "skip" else 2):
+            self.error(decorator, f"unittest.{kind} requires " + (
+                "a reason" if kind == "skip" else "a condition and a reason"))
+        reason = self.constant(call.args[-1], True)
+        if not isinstance(reason, str):
+            self.error(decorator, "marker reason must be a literal string")
+        condition = True
+        if kind != "skip":
+            expression = call.args[0]
+            value = self.evaluate(expression, None, True)
+            if value is not UNKNOWN:
+                if bool(value) != (kind == "skipIf"):
+                    return None
+            else:
+                self.runtime_condition(decorator, expression)
+                condition = f"_pyn_condition_{self.counter}"
+                self.counter += 1
+                source = ast.unparse(expression)
+                prelude.append(f"{condition} = bool({source})" if kind == "skipIf" else f"{condition} = not ({source})")
+        return Mark("unit-skip" if method else "skip" if condition is True else "skipif", condition, reason)
+
+    def runtime_condition(self, decorator, expression):
+        """Reject a skip condition that cannot run where the runner evaluates it: at module level."""
+        if any(self.name(part) for part in ast.walk(expression)):
+            self.error(decorator, "skipif conditions cannot use pytest")
+        if self.shadowed is not None:
+            # The condition runs before the class body here, not inside it.
+            for part in ast.walk(expression):
+                if isinstance(part, ast.Name) and part.id in self.shadowed:
+                    self.error(decorator, "pytest declarations in a test class cannot use its attributes: "
+                               + part.id)
+                if isinstance(part, (ast.Call, ast.Subscript, ast.NamedExpr, ast.Await, ast.Yield,
+                                     ast.YieldFrom, ast.ListComp, ast.SetComp, ast.DictComp,
+                                     ast.GeneratorExp, ast.Lambda)):
+                    self.error(decorator, "skipif conditions in a test class must be names, attributes, "
+                               "literals and comparisons")
+
+    def decorations(self, node, prelude, annotations, unit=False, method=True):
         """A test function's or test class's pytest marks, nearest decorator first."""
         parameters = []
         marks = []
         usefixtures = []
         for decorator in node.decorator_list:
             name = self.name(decorator.func if isinstance(decorator, ast.Call) else decorator)
-            if name == "pytest.mark.parametrize":
+            if name in UNITTEST_MARKS:
+                if not unit:
+                    self.error(decorator, "unittest decorators are supported on unittest.TestCase classes and "
+                               "their methods only")
+                mark = self.unit_mark(decorator, prelude, method)
+                if mark is not None:
+                    marks.append(mark)
+            elif name == "pytest.mark.xfail" and unit:
+                self.error(decorator, "pytest.mark.xfail on a unittest.TestCase is unsupported; "
+                           "use unittest.expectedFailure")
+            elif name == "pytest.mark.parametrize":
                 parameter, setup = self.parameter(decorator, annotations)
                 parameters.append(parameter)
                 prelude.extend(setup)
@@ -521,26 +1083,164 @@ class Generator:
         return (list(reversed(parameters)), list(reversed(marks)),
                 [name for names in reversed(usefixtures) for name in names])
 
+    def unittest_bases(self, node, seen=()):
+        """Whether a class derives from unittest.TestCase, as far as this module shows."""
+        for base in node.bases:
+            name = self.name(base)
+            if name == "unittest.TestCase":
+                return True
+            # (An imported base that is called a test case very probably is one.)
+            if isinstance(base, ast.Attribute) and base.attr.endswith("TestCase"):
+                return True
+            if isinstance(base, ast.Name):
+                local = self.class_nodes.get(base.id)
+                if local is not None and local is not node and local not in seen:
+                    if self.unittest_bases(local, (*seen, node)):
+                        return True
+                elif local is None and base.id.endswith("TestCase"):
+                    return True
+        return False
+
+    def class_info(self, node):
+        """This class with its module-level bases resolved, or an error for bases it cannot read."""
+        if node in self.infos:
+            return self.infos[node]
+        if node.keywords:
+            self.error(node, "test classes with class keywords are unsupported")
+        unit = False
+        bases = []
+        for base in node.bases:
+            if self.name(base) == "unittest.TestCase":
+                unit = True
+            elif isinstance(base, ast.Name) and self.class_nodes.get(base.id) not in (None, node) \
+                    and self.class_nodes[base.id].lineno < node.lineno:
+                bases.append(self.class_info(self.class_nodes[base.id]))
+            elif not (isinstance(base, ast.Name) and base.id == "object" and "object" not in self.bound):
+                self.error(node, "test classes with imported or computed base classes are unsupported: "
+                           + ast.unparse(base))
+        if len(bases) + unit > 1:
+            # (Compiled classes have one base; the unittest replacement is one.)
+            self.error(node, "test classes with several base classes are unsupported")
+        info = ClassInfo(node, unit or any(base.unit for base in bases), bases)
+        info.mro = [info] + [ancestor for base in bases for ancestor in base.mro]
+        for statement in node.body:
+            if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                info.names.add(statement.name)
+            elif isinstance(statement, ast.Import):
+                info.names.update(alias.asname or alias.name.split(".")[0] for alias in statement.names)
+            elif isinstance(statement, ast.ImportFrom):
+                info.names.update(alias.asname or alias.name for alias in statement.names)
+            else:
+                info.names.update(_bound_names(statement))
+        self.infos[node] = info
+        return info
+
+    def marks_of(self, node, value, prelude, unit):
+        """The marks of `pytestmark = mark` or `pytestmark = [mark, ...]`, first one nearest."""
+        if isinstance(node, ast.Assign) and len(node.targets) != 1:
+            self.error(node, "pytestmark must be assigned once, to a mark or a list of marks")
+        items = value.elts if isinstance(value, (ast.List, ast.Tuple)) else [value]
+        holder = ast.copy_location(ast.ClassDef("pytestmark", [], [], [], list(reversed(items))), node)
+        return self.decorations(holder, prelude, {}, unit=unit, method=False)
+
     def collect(self):
         direct = set(self.tree.body)
         parents = {child: node for node in ast.walk(self.tree) for child in ast.iter_child_nodes(node)}
-        classes = {node for node in self.tree.body if isinstance(node, ast.ClassDef) and node.name.startswith("Test")}
-        # A literal is neither callable nor a class, so pytest collects no test from
-        # `test_cases = [...]` or `TestData = (...)`, at module level or in a test class.
+        self.class_nodes = {node.name: node for node in self.tree.body if isinstance(node, ast.ClassDef)}
+        self.infos = {}
+        seen = set()
+        assigned = {}
+        for node in self.tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                self.bound.add(node.name)
+                self.named[node.name] = node.name
+            elif isinstance(node, ast.Import):
+                # (A module is neither callable nor a class: pytest collects nothing from
+                # "import test_helpers", whatever the module's name.)
+                for alias in node.names:
+                    self.bound.add(alias.asname or alias.name.split(".")[0])
+                    if alias.asname or "." not in alias.name:
+                        self.modules[alias.asname or alias.name] = alias.name
+                    if alias.name in ("pytest", "unittest"):
+                        self.aliases[alias.asname or alias.name] = alias.name
+                    elif alias.name.startswith("pytest.") or alias.name.startswith("_pytest"):
+                        self.error(node, "pytest internals are unsupported")
+                    elif alias.name.startswith("unittest."):
+                        self.error(node, "unsupported unittest import: " + alias.name)
+            elif isinstance(node, ast.ImportFrom):
+                for alias in node.names:
+                    self.bound.add(alias.asname or alias.name)
+                    # (An imported CONSTANT is a value, not something with a __name__.)
+                    if not alias.name.isupper() and alias.name != "*":
+                        self.named[alias.asname or alias.name] = alias.name
+                if node.module in ("pytest", "unittest") and not node.level:
+                    allowed = PYTEST_IMPORTS if node.module == "pytest" else UNITTEST_IMPORTS
+                    for alias in node.names:
+                        if alias.name not in allowed:
+                            self.error(node, f"unsupported {node.module} import: " + alias.name)
+                        self.aliases[alias.asname or alias.name] = node.module + "." + alias.name
+                elif (node.module or "").startswith(("_pytest", "unittest.")):
+                    self.error(node, f"unsupported import from {node.module}")
+            else:
+                names = _bound_names(node)
+                self.bound.update(names)
+                for name in names:
+                    assigned[name] = assigned.get(name, 0) + 1
+                if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+                    self.bindings[node.targets[0].id] = node.value
+                elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.value is not None:
+                    self.bindings[node.target.id] = node.value
+        for name in list(self.named):
+            if name in assigned:
+                del self.named[name]
+        for name in list(self.bindings):
+            if assigned.get(name) != 1 or name in self.named or name in self.modules:
+                del self.bindings[name]
+        self.rebound = {name for name, count in assigned.items() if count > 1}
+        # The classes pytest collects: unittest cases whatever their names, and Test* classes.
+        collected = [node for node in self.tree.body if isinstance(node, ast.ClassDef)
+                     and (self.unittest_bases(node) or node.name.startswith("Test"))]
+        classes = set()
+        for node in collected:
+            classes.update(info.node for info in self.class_info(node).mro)
+        for node in self.tree.body:
+            if (isinstance(node, ast.ClassDef) and node not in classes and node.bases
+                    and any(isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name.startswith("test")
+                            for item in node.body)
+                    and any(not (isinstance(base, ast.Name) and base.id in self.class_nodes) for base in node.bases)):
+                # Its base may be a unittest case defined elsewhere, which pytest would collect.
+                self.error(node, "a class with test methods has a base class the collector cannot read: "
+                           + ast.unparse(node.bases[0]))
+
+        def plain(value):
+            # A value that is neither callable nor a class, so pytest collects no test from
+            # `test_cases = [...]` or `TestData = (...)`, at module level or in a test class.
+            return _literal(value) or isinstance(value, (
+                ast.List, ast.Tuple, ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp, ast.JoinedStr,
+                ast.Constant, ast.BinOp, ast.UnaryOp, ast.Compare, ast.BoolOp))
+
         literal_targets = set()
+        marks = {}
         for holder in [self.tree, *classes]:
             for node in holder.body:
-                if isinstance(node, ast.Assign) and len(node.targets) == 1 and _literal(node.value):
-                    literal_targets.add(node.targets[0])
-                elif isinstance(node, ast.AnnAssign) and node.value is not None and _literal(node.value):
-                    literal_targets.add(node.target)
-        seen = set()
+                target = (node.targets[0] if isinstance(node, ast.Assign) and len(node.targets) == 1
+                          else node.target if isinstance(node, ast.AnnAssign) and node.value is not None else None)
+                if target is not None and plain(node.value):
+                    literal_targets.add(target)
+                if any(name == "pytestmark" for name in (_bound_names(node) if isinstance(
+                        node, (ast.Assign, ast.AnnAssign, ast.AugAssign)) else [])):
+                    if not isinstance(target, ast.Name) or holder in marks:
+                        self.error(node, "pytestmark must be assigned once, to a mark or a list of marks")
+                    marks[holder] = node
+        mark_names = {target for node in marks.values() for target in ast.walk(node)
+                      if isinstance(target, ast.Name) and target.id == "pytestmark"}
         for node in ast.walk(self.tree):
             if isinstance(node, ast.Name) and node.id.startswith("_pyn_"):
                 self.error(node, "names beginning _pyn_ are reserved by the native runner")
-            if isinstance(node, ast.Name) and node.id in {
-                    "__file__", "__name__", "__package__", "__spec__", "__test__", "__annotations__",
-                    "pytestmark", "pytest_plugins"}:
+            if isinstance(node, ast.Name) and (node.id in {
+                    "__package__", "__spec__", "__test__", "__annotations__", "pytest_plugins"}
+                    or node.id in {"__file__", "__name__"} and not isinstance(node.ctx, ast.Load)
+                    or node.id == "pytestmark" and node not in mark_names):
                 self.error(node, "module metadata and dynamic pytest collection are unsupported: " + node.id)
             if (isinstance(node, ast.Name) and node.id.startswith(("test", "Test"))
                     and isinstance(node.ctx, ast.Store) and node not in literal_targets):
@@ -556,8 +1256,9 @@ class Generator:
             if isinstance(node, (ast.Import, ast.ImportFrom)) and node not in direct:
                 imported = ([item.name for item in node.names] if isinstance(node, ast.Import)
                             else [node.module or ""])
-                if any(name == "pytest" or name.startswith(("pytest.", "_pytest")) for name in imported):
-                    self.error(node, "pytest imports must be at module level")
+                if any(name in ("pytest", "unittest") or name.startswith(("pytest.", "_pytest", "unittest."))
+                       for name in imported):
+                    self.error(node, "pytest and unittest imports must be at module level")
             if (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                     and node.func.id in {"globals", "locals", "vars", "eval", "exec", "compile", "__import__"}):
                 self.error(node, "runtime namespace inspection or mutation is unsupported")
@@ -577,58 +1278,55 @@ class Generator:
                         scope = parents.get(scope)
                     if scope is None or scope in classes:
                         self.error(node, "test methods and conditional/nested test definitions are unsupported")
-            if isinstance(node, ast.ClassDef):
-                bases = [base.attr if isinstance(base, ast.Attribute) else getattr(base, "id", "")
-                         for base in node.bases]
-                if (any(base.endswith("TestCase") for base in bases)
-                        or any(isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name == "runTest"
-                               for item in node.body)):
-                    # pytest collects these whatever the class is called.
-                    self.error(node, "unittest test cases are unsupported")
-                if node.name.startswith("Test") and node not in direct:
+            if isinstance(node, ast.ClassDef) and node not in direct:
+                scope = parents.get(node)
+                while scope is not None and not isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+                    scope = parents.get(scope)
+                # (pytest collects module attributes: a class made inside a function is not one.)
+                if scope is None and (node.name.startswith("Test") or self.unittest_bases(node)):
                     self.error(node, "nested and conditional test classes are unsupported")
+        module_marks = ([], [], [])
         for node in self.tree.body:
-            if isinstance(node, ast.Import):
-                # (A module is neither callable nor a class: pytest collects nothing from
-                # "import test_helpers", whatever the module's name.)
-                for alias in node.names:
-                    if alias.name == "pytest":
-                        self.aliases[alias.asname or alias.name] = "pytest"
-                    elif alias.name.startswith("pytest.") or alias.name.startswith("_pytest"):
-                        self.error(node, "pytest internals are unsupported")
-            elif isinstance(node, ast.ImportFrom) and node.module == "pytest":
-                for alias in node.names:
-                    if alias.name not in PYTEST_IMPORTS:
-                        self.error(node, "unsupported pytest import: " + alias.name)
-                    self.aliases[alias.asname or alias.name] = "pytest." + alias.name
-            elif isinstance(node, ast.ImportFrom):
+            if isinstance(node, ast.ImportFrom) and node.module not in ("pytest", "unittest"):
                 if any((alias.asname or alias.name).startswith(("test", "Test")) or alias.name == "*"
                        for alias in node.names):
                     self.error(node, "imported tests and star imports are unsupported")
+            elif node is marks.get(self.tree):
+                if self.conftest:
+                    self.error(node, "pytestmark in conftest.py is unsupported")
+                module_marks = self.marks_of(node, node.value, self.preludes.setdefault(node, []), False)
+                self.dropped.add(node)
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 names = _bound_names(node)
                 if any(name in self.aliases for name in names):
                     self.error(node, "rebinding pytest or dynamically assigning tests is unsupported")
+                if node.value is None:
+                    continue
                 try:
-                    value = self.constant(node.value) if node.value is not None else None
+                    value = self.constant(node.value)
                 except CollectionError:
                     for name in names:
                         self.constants.pop(name, None)
                 else:
-                    if len(names) == 1:
+                    if len(names) == 1 and assigned.get(names[0]) == 1:
                         self.constants[names[0]] = value
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if node.name in seen or node.name in self.aliases:
                     self.error(node, "duplicate function or pytest binding: " + node.name)
                 seen.add(node.name)
-                test = self.declare(node, None, self.preludes.setdefault(node, []))
-                if test is not None:
-                    self.finish_test(test)
+                self.declare(node, None, self.preludes.setdefault(node, []))
             elif node in classes:
                 if node.name in seen or node.name in self.aliases:
                     self.error(node, "duplicate function or pytest binding: " + node.name)
                 seen.add(node.name)
-                self.collect_class(node)
+                self.collect_class(self.infos[node], marks.get(node), node in collected)
+        for test in self.tests:
+            test.parameters = test.parameters + module_marks[0]
+            test.marks = test.marks + module_marks[1]
+            test.usefixtures = test.usefixtures + module_marks[2]
+            if test.unit and test.parameters:
+                self.error(test.function, "unittest test methods cannot be parametrized")
+            self.check_test(test)
         if len(self.tests) > 10000:
             self.error(self.tree, "more than 10000 tests in one module")
         for owner, fixtures in self.class_fixtures.items():
@@ -638,52 +1336,78 @@ class Generator:
         self.validate_declarations()
         self.validate_constants()
 
-    def collect_class(self, node):
-        """A plain test class: pytest runs each test method on a new instance."""
-        if node.bases or node.keywords:
-            self.error(node, "test classes with base classes or class keywords are unsupported")
+    def collect_class(self, info, pytestmark, collected):
+        """A test class or a base of one: pytest runs each test method on a new instance.
+
+        A base class declares its methods' marks and fixtures once; each class pytest
+        collects then takes its own tests and those it inherits.
+        """
+        node = info.node
         if self.conftest:
             self.error(node, "conftest.py cannot define tests")
-        self.shadowed = set()
-        for statement in node.body:
-            if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                self.shadowed.add(statement.name)
-            elif isinstance(statement, ast.Import):
-                self.shadowed.update(alias.asname or alias.name.split(".")[0] for alias in statement.names)
-            elif isinstance(statement, ast.ImportFrom):
-                self.shadowed.update(alias.asname or alias.name for alias in statement.names)
-            else:
-                self.shadowed.update(_bound_names(statement))
+        self.shadowed = info.names
         prelude = self.preludes.setdefault(node, [])
-        # A class's decorators run before its body does.
-        parameters, marks, usefixtures = self.decorations(node, prelude, {})
+        # A class's decorators run before its body does; pytest reads `pytestmark` in the
+        # body first, then the decorators from the nearest.
+        own = ([], [], [])
+        if pytestmark is not None:
+            own = self.marks_of(pytestmark, pytestmark.value, prelude, info.unit)
+            self.dropped.add(pytestmark)
+        decorated = self.decorations(node, prelude, {}, unit=info.unit, method=False)
+        info.parameters, info.marks, info.usefixtures = (own[index] + decorated[index] for index in range(3))
         members = set()
-        tests = []
         for statement in node.body:
             if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             if statement.name in members:
                 self.error(statement, "duplicate method in a test class: " + statement.name)
             members.add(statement.name)
+            if info.unit and statement.name in UNIT_UNSUPPORTED:
+                self.error(statement, "unsupported unittest.TestCase method: " + statement.name)
             if statement.name in ("__init__", "__new__"):
                 # pytest warns and collects nothing from such a class.
                 self.error(statement, "test classes cannot define __init__ or __new__")
-            test = self.declare(statement, node, prelude)
+            test = self.declare(statement, info, prelude)
             if test is not None:
-                tests.append(test)
+                info.tests[statement.name] = test
         self.shadowed = None
-        for test in tests:
-            test.parameters += parameters
-            test.marks += marks
-            test.usefixtures += usefixtures
-            self.finish_test(test)
         self.classes.append(node)
+        if not collected:
+            return
+        # Marks of the class and its bases apply to each test: a base's first, as pytest
+        # lists them along the class's ancestry.
+        parameters = [parameter for ancestor in reversed(info.mro) for parameter in ancestor.parameters]
+        marks = [mark for ancestor in reversed(info.mro) for mark in ancestor.marks]
+        usefixtures = [name for ancestor in reversed(info.mro) for name in ancestor.usefixtures]
+        if info.unit:
+            # unittest sorts the names of a case's test methods, inherited ones too.
+            found = {}
+            for ancestor in reversed(info.mro):
+                for name in ancestor.names:
+                    found.pop(name, None)
+                found.update(ancestor.tests)
+            inherited = [found[name] for name in sorted(found)]
+        else:
+            # pytest lists a base's tests before its subclass's, each in definition order;
+            # any attribute of a subclass hides the base's of that name.
+            inherited = []
+            hidden = set()
+            for ancestor in info.mro:
+                inherited = [test for name, test in ancestor.tests.items() if name not in hidden] + inherited
+                hidden |= ancestor.names
+        for test in inherited:
+            self.tests.append(Test(test.function, node, test.parameters + parameters, test.marks + marks,
+                                   test.usefixtures + usefixtures, info.unit))
 
-    def declare(self, node, owner, prelude):
+    def declare(self, node, info, prelude):
         """Record a fixture or a test (returned); other functions are the module's own."""
+        owner = info.node if info is not None else None
+        unit = info is not None and info.unit
         fixture = [dec for dec in node.decorator_list
                    if self.name(dec.func if isinstance(dec, ast.Call) else dec) == "pytest.fixture"]
         if fixture:
+            if unit:
+                self.error(node, "fixtures defined in a unittest.TestCase are unsupported")
             if len(fixture) != 1 or len(node.decorator_list) != 1:
                 self.error(node, "fixtures support one fixture decorator only")
             if isinstance(node, ast.AsyncFunctionDef):
@@ -701,12 +1425,15 @@ class Generator:
             self.error(node, "async and generator tests are unsupported")
         annotations = {arg.arg: arg.annotation for arg in node.args.args + node.args.kwonlyargs
                        if arg.annotation is not None}
-        parameters, marks, usefixtures = self.decorations(node, prelude, annotations)
-        test = Test(node, owner, parameters, marks, usefixtures)
-        self.tests.append(test)
+        parameters, marks, usefixtures = self.decorations(node, prelude, annotations, unit=unit)
+        test = Test(node, owner, parameters, marks, usefixtures, unit)
+        if owner is None:
+            self.tests.append(test)
+        elif unit and self.arguments(node, bound=True):
+            self.error(node, "unittest test methods take no arguments")
         return test
 
-    def finish_test(self, test):
+    def check_test(self, test):
         all_names = [name for parameter in test.parameters for name in parameter.names]
         if len(all_names) != len(set(all_names)):
             self.error(test.function, "duplicate parametrized argument")
@@ -798,94 +1525,66 @@ class Generator:
     def declared_functions(self):
         """Every test and fixture function, at module level and in test classes."""
         functions = {test.function for test in self.tests}
+        functions.update(test.function for info in self.infos.values() for test in info.tests.values())
         functions.update(fixture.function for fixture in self.fixtures.values())
         for fixtures in self.class_fixtures.values():
             functions.update(fixture.function for fixture in fixtures.values())
         return functions
 
     def validate_constants(self):
-        # Literal table references preserve aliases, but their number/shape must
-        # not change during module import. Reject mutation/escape instead of
-        # silently collecting a stale subset of the real pytest cases.
-        if not self.metadata_constants:
-            return
-        postponed = any(isinstance(node, ast.ImportFrom) and node.module == "__future__"
-                        and any(alias.name == "annotations" for alias in node.names) for node in self.tree.body)
-        declared = self.declared_functions()
-        bound = set()
-        for node in self.tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                bound.add(node.name)
-            elif isinstance(node, ast.Import):
-                bound.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
-            elif isinstance(node, ast.ImportFrom):
-                bound.update(alias.asname or alias.name for alias in node.names)
-            else:
-                bound.update(_bound_names(node))
-        # Built-in method decorators run no module code, unless the module rebinds them.
-        builtin = {"property", "staticmethod", "classmethod"} - bound
-
-        def static(statements, method=False):
-            for node in statements:
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                    # Function bodies run later; arbitrary decorators and defaults
-                    # could mutate a parameter table before pytest collects it.
-                    plain = method and all(isinstance(decorator, ast.Name) and decorator.id in builtin
-                                           for decorator in node.decorator_list)
-                    if node not in declared and node.decorator_list and not plain:
-                        self.error(node, "named parameter tables require static module initialization")
-                    evaluated = list(node.args.defaults) + [value for value in node.args.kw_defaults if value]
-                    if not postponed:
-                        arguments = node.args.posonlyargs + node.args.args + node.args.kwonlyargs
-                        arguments += [arg for arg in (node.args.vararg, node.args.kwarg) if arg is not None]
-                        evaluated += [arg.annotation for arg in arguments if arg.annotation is not None]
-                        if node.returns is not None:
-                            evaluated.append(node.returns)
-                    if any(isinstance(part, ast.Call) for value in evaluated for part in ast.walk(value)):
-                        self.error(node, "named parameter tables require static defaults and evaluated annotations")
-                    continue
-                if isinstance(node, (ast.Import, ast.ImportFrom)):
-                    continue
-                if isinstance(node, ast.ClassDef) and not node.keywords and (
-                        node in self.classes or not node.decorator_list) and all(
-                        not isinstance(part, ast.Call) for base in node.bases for part in ast.walk(base)):
-                    # A class body runs at import like module code; a test class's
-                    # decorators are pytest marks, which hold literals only.
-                    static(node.body, True)
-                    continue
-                if any(isinstance(part, (ast.Call, ast.AugAssign, ast.Delete, ast.ClassDef, ast.If, ast.For,
-                                         ast.While, ast.Try, ast.With))
-                       or isinstance(part, ast.Subscript) and isinstance(part.ctx, ast.Store)
-                       for part in ast.walk(node)):
-                    self.error(node, "named parameter tables require static module initialization")
-
-        static(self.tree.body)
-        for name in self.metadata_constants:
-            definitions = []
+        # The collector read these names' values from their one binding. A named table's
+        # rows are read again where the program has finished importing, as pytest reads
+        # them, and its length is checked there (table_length); a second binding would
+        # make the collector's reading another object's.
+        for name in sorted(self.metadata_constants):
+            bindings = 0
+            for node in self.tree.body:
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                    bindings += node.name == name
+                elif isinstance(node, ast.Import):
+                    bindings += sum((alias.asname or alias.name.split(".")[0]) == name for alias in node.names)
+                elif isinstance(node, ast.ImportFrom):
+                    bindings += sum((alias.asname or alias.name) == name for alias in node.names)
+                else:
+                    bindings += _bound_names(node).count(name)
+            if bindings != 1:
+                self.error(self.tree, "parametrize constants require one literal binding: " + name)
+            for node in ast.walk(self.tree):
+                if isinstance(node, ast.Global) and name in node.names:
+                    self.error(node, "parametrize constants cannot be rebound through globals: " + name)
             for node in self.tree.body:
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Import, ast.ImportFrom)):
                     continue
                 references = [part for part in ast.walk(node) if isinstance(part, ast.Name) and part.id == name]
-                if not references:
+                if not references or node in self.dropped:
                     continue
-                if isinstance(node, (ast.Assign, ast.AnnAssign)) and references == [
-                        part for part in references if isinstance(part.ctx, ast.Store)]:
-                    definitions.append(node)
-                else:
-                    self.error(node, "parametrize constants cannot be mutated or escape during import: " + name)
-            if len(definitions) != 1:
-                self.error(self.tree, "parametrize constants require one literal binding: " + name)
+                stores = [part for part in references if isinstance(part.ctx, ast.Store)]
+                # Its definition, or an assignment whose value the collector reads whole
+                # (which neither changes the table nor keeps another name for it).
+                inside = set(ast.walk(node.value)) if getattr(node, "value", None) is not None else set()
+                if isinstance(node, (ast.Assign, ast.AnnAssign)) and (references == stores or (
+                        all(part in inside for part in references)
+                        and self.evaluate(node.value) is not UNKNOWN)):
+                    continue
+                self.error(node, "parametrize constants cannot be mutated or escape during import: " + name)
 
     def fixture_functions(self):
         return {fixture.function.name for fixture in self.fixtures.values()}
+
+    def own_fixtures(self, owner):
+        """The fixtures a test class defines or inherits, a subclass's over its base's."""
+        fixtures = {}
+        if owner is not None:
+            for ancestor in reversed(self.infos[owner].mro):
+                fixtures.update(self.class_fixtures.get(ancestor.node.name, {}))
+        return fixtures
 
     def visible(self, owner):
         """The fixtures a test of this class (or of the module) can request, by name."""
         fixtures = dict(BUILTIN_FIXTURES)
         fixtures.update(self.shared)
         fixtures.update(self.fixtures)
-        if owner is not None:
-            fixtures.update(self.class_fixtures.get(owner.name, {}))
+        fixtures.update(self.own_fixtures(owner))
         return fixtures
 
     def closure(self, test, direct):
@@ -900,7 +1599,7 @@ class Generator:
         names = []
         groups = [self.shared, self.fixtures]
         if test.owner is not None:
-            groups.append(self.class_fixtures.get(test.owner.name, {}))
+            groups.append(self.own_fixtures(test.owner))
         for group in groups:
             names += sorted((name for name, fixture in group.items() if fixture.autouse),
                             key=lambda name: group[name].function.name)
@@ -955,6 +1654,8 @@ class Generator:
         parents = {child: node for node in ast.walk(self.tree) for child in ast.iter_child_nodes(node)}
         decorators = {item for holder in [*self.declared_functions(), *self.classes]
                       for dec in holder.decorator_list for item in ast.walk(dec)}
+        # (`pytestmark = ...` statements are declarations too.)
+        decorators.update(item for statement in self.dropped for item in ast.walk(statement))
         method_fixtures = {fixture.function.name for fixtures in self.class_fixtures.values()
                            for fixture in fixtures.values()}
         monkeypatch = all("monkeypatch" not in fixtures for fixtures in
@@ -996,11 +1697,22 @@ class Generator:
             parent = parents.get(node)
             if isinstance(parent, ast.Attribute) and parent.value is node:
                 continue
+            if name.startswith("unittest"):
+                if name == "unittest.SkipTest" or (name == "unittest.TestCase" and isinstance(parent, ast.ClassDef)
+                                                   and node in parent.bases):
+                    continue
+                self.error(node, "unsupported unittest use: " + name)
             if not (isinstance(parent, ast.Call) and parent.func is node and name in PYTEST_CALLS):
                 self.error(node, "unsupported pytest use: " + name)
             if name == "pytest.raises":
-                expected = parent.args[0] if len(parent.args) == 1 else None
-                if (expected is None or (isinstance(expected, ast.Tuple) and not expected.elts)
+                expected = parent.args[0] if parent.args else None
+                statement = parents.get(parent)
+                if len(parent.args) > 1:
+                    # raises(E, function, *arguments): written out as a with block.
+                    if not (isinstance(statement, ast.Expr) or isinstance(statement, ast.Assign)
+                            and len(statement.targets) == 1 and isinstance(statement.targets[0], ast.Name)):
+                        self.error(parent, "the callable form of raises must be a statement of its own")
+                elif (expected is None or (isinstance(expected, ast.Tuple) and not expected.elts)
                         or any(kw.arg != "match" for kw in parent.keywords)):
                     self.error(parent, "raises supports one exception class or a literal tuple of classes, "
                                "and optional match= only")
@@ -1019,9 +1731,79 @@ class Generator:
                         if not (isinstance(parent, ast.Attribute) and parent.attr == "param"
                                 and isinstance(parent.ctx, ast.Load)):
                             self.error(node, "request is supported only as request.param of a parametrized fixture")
+        for function, receiver in self.unit_methods().items():
+            for node in ast.walk(function):
+                if not (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
+                        and node.value.id == receiver):
+                    continue
+                parent = parents.get(node)
+                called = isinstance(parent, ast.Call) and parent.func is node
+                if node.attr in UNIT_UNSUPPORTED or node.attr == "setUp":
+                    self.error(node, "unsupported unittest.TestCase use: " + node.attr)
+                if node.attr == "subTest":
+                    statement = parents.get(parent) if called else None
+                    if not (isinstance(statement, ast.withitem) and statement.optional_vars is None):
+                        self.error(node, "subTest is supported as `with self.subTest(...):` only")
+                    for value in parent.args + [kw.value for kw in parent.keywords]:
+                        if any(isinstance(part, (ast.Call, ast.Await, ast.Yield, ast.YieldFrom, ast.NamedExpr))
+                               for part in ast.walk(value)):
+                            self.error(node, "subTest arguments must be names, literals and attributes")
+                if node.attr in ("assertRaises", "assertRaisesRegex") and called:
+                    fixed = 1 if node.attr == "assertRaises" else 2
+                    if len(parent.args) < fixed or (len(parent.args) > fixed and not isinstance(
+                            parents.get(parent), ast.Expr)):
+                        self.error(parent, f"the callable form of {node.attr} must be a statement of its own")
+                    if len(parent.args) == fixed and any(kw.arg != "msg" for kw in parent.keywords):
+                        self.error(parent, f"{node.attr} supports an exception class"
+                                   + (" and a pattern" if fixed == 2 else "") + " only")
 
-    def typed_raises(self, function):
+    def unit_methods(self):
+        """Each method of a unittest case with the name of its receiver (`self`)."""
+        methods = {}
+        for info in self.infos.values():
+            if info.unit:
+                for statement in info.node.body:
+                    if isinstance(statement, ast.FunctionDef) and statement.args.args and not any(
+                            isinstance(dec, ast.Name) and dec.id in ("staticmethod", "classmethod")
+                            for dec in statement.decorator_list):
+                        methods[statement] = statement.args.args[0].arg
+        return methods
+
+    @staticmethod
+    def raises_block(context, callee, arguments, keywords, target, number):
+        """`with context [as target]: callee(*arguments)` for raises(E, callee, *arguments).
+
+        pytest evaluates the arguments before it calls the function, so one that calls
+        or computes something is bound first: only the call itself may raise E.
+        """
+        before = []
+
+        def simple(node):
+            return not any(isinstance(part, (ast.Call, ast.BinOp, ast.Subscript, ast.Await, ast.Yield, ast.YieldFrom,
+                                             ast.NamedExpr, ast.ListComp, ast.SetComp, ast.DictComp,
+                                             ast.GeneratorExp, ast.IfExp, ast.Compare, ast.BoolOp, ast.UnaryOp,
+                                             ast.JoinedStr)) for part in ast.walk(node))
+
+        def bound(node):
+            if isinstance(node, ast.Starred):
+                return ast.Starred(bound(node.value), ast.Load())
+            if simple(node):
+                return node
+            name = f"_pyn_argument_{number}_{len(before)}"
+            before.append(ast.Assign([ast.Name(name, ast.Store())], node))
+            return ast.Name(name, ast.Load())
+
+        callee = bound(callee)
+        arguments = [bound(argument) for argument in arguments]
+        keywords = [ast.keyword(kw.arg, bound(kw.value)) for kw in keywords]
+        call = ast.Expr(ast.Call(callee, arguments, keywords))
+        return [*before, ast.With([ast.withitem(context, target)], [call])]
+
+    def typed_raises(self, function, receiver=None):
         """`with pytest.raises(E) as info:` blocks to expand so info.value keeps class E.
+
+        In a unittest case (receiver names its `self`), `with self.assertRaises(E) as cm:`
+        blocks likewise, for cm.exception.
 
         The support module's context holds a BaseException, whose attributes compiled
         code cannot read. Where a function reads `info.value.attribute`, its block
@@ -1044,11 +1826,24 @@ class Generator:
                 continue
             call = node.items[0].context_expr
             target = node.items[0].optional_vars
-            if not (isinstance(call, ast.Call) and self.name(call.func) == "pytest.raises"
-                    and len(call.args) == 1 and isinstance(target, ast.Name)
+            if not (isinstance(call, ast.Call) and isinstance(target, ast.Name)):
+                continue
+            pattern = None
+            if (self.name(call.func) == "pytest.raises" and len(call.args) == 1
                     and all(kw.arg == "match" for kw in call.keywords) and len(call.keywords) <= 1):
+                allowed = {"value", "type", "typename", "match"}
+                if call.keywords:
+                    pattern = call.keywords[0].value
+            elif (receiver is not None and isinstance(call.func, ast.Attribute) and isinstance(call.func.value, ast.Name)
+                    and call.func.value.id == receiver and not call.keywords
+                    and (call.func.attr, len(call.args)) in {("assertRaises", 1), ("assertRaisesRegex", 2)}):
+                allowed = {"exception"}
+                if len(call.args) == 2:
+                    pattern = call.args[1]
+            else:
                 continue
             expected = call.args[0]
+            original = expected
             while isinstance(expected, ast.Attribute):
                 expected = expected.value
             name = target.id
@@ -1069,7 +1864,7 @@ class Generator:
                     continue
                 parent = parents.get(part)
                 if not (isinstance(parent, ast.Attribute) and isinstance(parent.ctx, ast.Load)
-                        and parent.attr in {"value", "type", "typename", "match"}):
+                        and parent.attr in allowed):
                     supported = False
                     break
                 outer = parents.get(parent)
@@ -1077,11 +1872,12 @@ class Generator:
                                                    and len(outer.args) == 1 and not outer.keywords):
                     supported = False
                     break
-                if (parent.attr == "value" and isinstance(outer, ast.Attribute) and outer.value is parent
-                        and isinstance(outer.ctx, ast.Load)):
+                if (parent.attr in ("value", "exception") and isinstance(outer, ast.Attribute)
+                        and outer.value is parent and isinstance(outer.ctx, ast.Load)):
                     fields = True
             if supported and fields:
-                names[name] = blocks[node] = self.counter
+                names[name] = self.counter
+                blocks[node] = (self.counter, original, pattern)
                 self.counter += 1
         return blocks, names
 
@@ -1163,11 +1959,29 @@ class Generator:
                     return ast.copy_location(ast.Name("_pyn_request_param", ast.Load()), node)
                 return self.generic_visit(node)
 
+        unit_methods = self.unit_methods()
+        unit_classes = {info.node for info in self.infos.values() if info.unit}
+        dropped = self.dropped
+
         class Rewrite(ast.NodeTransformer):
             def __init__(self):
                 self.scopes = []
                 # Per enclosing function: expanded raises blocks and their info names.
                 self.raises = []
+                # Per enclosing function: the name of a unittest case's self, or None.
+                self.receivers = []
+
+            def receiver(self, node):
+                """Whether an expression is the unittest case of the enclosing method."""
+                return (isinstance(node, ast.Name) and bool(self.receivers) and self.receivers[-1] is not None
+                        and node.id == self.receivers[-1])
+
+            def visit_Name(self, node):
+                if isinstance(node.ctx, ast.Load) and node.id == "__file__":
+                    return ast.copy_location(ast.Constant(generator.path), node)
+                if isinstance(node.ctx, ast.Load) and node.id == "__name__":
+                    return ast.copy_location(ast.Constant(generator.module), node)
+                return node
 
             def caught(self, node):
                 """The expansion number of `info` in info.value, or None."""
@@ -1177,14 +1991,16 @@ class Generator:
 
             def visit_Import(self, node):
                 for alias in node.names:
-                    if alias.name == "pytest":
-                        alias.asname = alias.asname or "pytest"
+                    if alias.name in ("pytest", "unittest"):
+                        alias.asname = alias.asname or alias.name
                         alias.name = "pytest_native_support"
                 return node
 
             def visit_ImportFrom(self, node):
-                if node.module == "pytest":
-                    node.names = [alias for alias in node.names if alias.name not in {"fixture", "mark", "param"}]
+                if node.module in ("pytest", "unittest") and not node.level:
+                    node.names = [alias for alias in node.names if alias.name not in {
+                        "fixture", "mark", "param", "skip", "skipIf", "skipUnless", "expectedFailure", "main"}
+                        or node.module == "pytest" and alias.name == "skip"]
                     node.module = "pytest_native_support"
                     return node if node.names else None
                 return node
@@ -1201,11 +2017,24 @@ class Generator:
                     node.decorator_list = []
                 if node in requests:
                     node = RequestParameter().visit(node)
-                self.raises.append(generator.typed_raises(node))
+                if node in unit_methods:
+                    receiver = unit_methods[node]
+                    if node.name == "setUp":
+                        # Fields a case assigns in setUp are declared as __init__ declares
+                        # them: the runner makes each test's object where unittest calls setUp.
+                        node.name = "__init__"
+                else:
+                    # (A nested function sees the method's self unless it binds the name.)
+                    receiver = self.receivers[-1] if self.receivers else None
+                    if receiver in {arg.arg for arg in ast.walk(node.args) if isinstance(arg, ast.arg)}:
+                        receiver = None
+                self.receivers.append(receiver)
+                self.raises.append(generator.typed_raises(node, receiver if node in unit_methods else None))
                 try:
                     return self.scoped(node, "function")
                 finally:
                     self.raises.pop()
+                    self.receivers.pop()
 
             def visit_AsyncFunctionDef(self, node):
                 return self.scoped(node, "other")
@@ -1216,23 +2045,62 @@ class Generator:
             def visit_ClassDef(self, node):
                 if node in classes:
                     node.decorator_list = []
-                return self.scoped(node, "other")
+                    node.body = [statement for statement in node.body if statement not in dropped] or [ast.Pass()]
+                self.receivers.append(None)
+                try:
+                    return self.scoped(node, "other")
+                finally:
+                    self.receivers.pop()
+
+            def visit_Expr(self, node):
+                call = node.value
+                if isinstance(call, ast.Call):
+                    block = self.callable_raises(call, None)
+                    if block is not None:
+                        return block
+                return self.generic_visit(node)
+
+            def visit_Assign(self, node):
+                if isinstance(node.value, ast.Call) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+                    block = self.callable_raises(node.value, node.targets[0])
+                    if block is not None:
+                        return block
+                return self.generic_visit(node)
+
+            def callable_raises(self, call, target):
+                """The with block of raises(E, function, ...) or self.assertRaises(E, function, ...)."""
+                fixed = 0
+                if generator.name(call.func) == "pytest.raises" and len(call.args) > 1:
+                    fixed = 1
+                elif (target is None and isinstance(call.func, ast.Attribute) and self.receiver(call.func.value)
+                        and call.func.attr in ("assertRaises", "assertRaisesRegex")):
+                    fixed = 1 if call.func.attr == "assertRaises" else 2
+                if not fixed or len(call.args) <= fixed:
+                    return None
+                context = ast.Call(call.func, call.args[:fixed], [])
+                block = generator.raises_block(context, call.args[fixed], call.args[fixed + 1:], call.keywords,
+                                               target, generator.counter)
+                generator.counter += 1
+                result = []
+                for statement in block:
+                    visited = self.visit(ast.fix_missing_locations(ast.copy_location(statement, call)))
+                    result += visited if isinstance(visited, list) else [visited]
+                return result
 
             def visit_With(self, node):
-                number = self.raises[-1][0].get(node) if self.raises and self.scopes[-1] == "function" else None
+                expansion = self.raises[-1][0].get(node) if self.raises and self.scopes[-1] == "function" else None
                 node = self.generic_visit(node)
-                if number is None:
+                if expansion is None:
                     return node
-                call = node.items[0].context_expr
-                expected = call.args[0]
+                number, expected, matched = expansion
                 value = ast.Name(f"_pyn_value_{number}", ast.Store())
                 error = f"_pyn_caught_{number}"
                 pattern = f"_pyn_match_{number}"
                 # pytest.raises(E, match=...) reads E and checks the pattern before the body.
                 before = [ast.Expr(expected)]
                 handler = [ast.Assign([value], ast.Name(error, ast.Load()))]
-                if call.keywords:
-                    before += [ast.Assign([ast.Name(pattern, ast.Store())], call.keywords[0].value),
+                if matched is not None:
+                    before += [ast.Assign([ast.Name(pattern, ast.Store())], matched),
                                ast.Expr(ast.Call(_attribute("check_pattern"), [ast.Name(pattern, ast.Load())], []))]
                     handler.append(ast.Expr(ast.Call(_attribute("match_exception"), [
                         ast.Name(pattern, ast.Load()),
@@ -1246,7 +2114,7 @@ class Generator:
                 number = self.caught(node.value)
                 if number is not None and isinstance(node.ctx, ast.Load) and node.attr != "match":
                     value = ast.Name(f"_pyn_value_{number}", ast.Load())
-                    if node.attr == "value":
+                    if node.attr in ("value", "exception"):
                         return ast.copy_location(value, node)
                     kind = ast.Call(ast.Name("type", ast.Load()), [value], [])
                     return ast.copy_location(kind if node.attr == "type" else ast.Attribute(kind, "__name__", ast.Load()),
@@ -1278,6 +2146,24 @@ class Generator:
                         and isinstance(node.args[0], ast.Tuple)):
                     node.func = _attribute("raises_any")
                     node.args = [ast.List(node.args[0].elts, ast.Load())]
+                function = node.func
+                if isinstance(function, ast.Attribute) and self.receiver(function.value):
+                    if function.attr == "subTest":
+                        # (Its message and parameters only label a subtest's report.)
+                        node.args, node.keywords = [], []
+                    elif function.attr in ("assertIsInstance", "assertNotIsInstance") and len(node.args) >= 2:
+                        function.attr = "assertTrue" if function.attr == "assertIsInstance" else "assertFalse"
+                        node.args = [ast.Call(ast.Name("isinstance", ast.Load()), node.args[:2], []), *node.args[2:]]
+                    elif (function.attr in ("assertRaises", "assertRaisesRegex") and node.args
+                            and isinstance(node.args[0], ast.Tuple)):
+                        function.attr += "Any"
+                        node.args[0] = ast.List(node.args[0].elts, ast.Load())
+                    elif function.attr in ("assertRaises", "assertRaisesRegex"):
+                        node.keywords = []
+                elif (isinstance(function, ast.Attribute) and function.attr == "setUp" and self.receivers
+                        and self.receivers[-1] is not None and isinstance(function.value, ast.Call)
+                        and isinstance(function.value.func, ast.Name) and function.value.func.id == "super"):
+                    function.attr = "__init__"
                 return node
 
             def visit_Assert(self, node):
@@ -1313,11 +2199,16 @@ class Generator:
                 placed = True
             # (Declarations a decorator evaluated report at the function or class.)
             output += [(line, node) for line in self.preludes.get(node, [])]
+            if node in self.dropped:
+                continue
             rewritten = Rewrite().visit(node)
-            if rewritten is not None:
-                output.append((ast.unparse(ast.fix_missing_locations(rewritten)), rewritten))
+            for statement in rewritten if isinstance(rewritten, list) else [rewritten]:
+                if statement is not None:
+                    output.append((ast.unparse(ast.fix_missing_locations(statement)), statement))
         if not placed:
             output += [(line, None) for line in imports]
+        # Named parameter tables are read here, after everything the module does at import.
+        output += [(line, None) for line in self.late]
         return output
 
     @staticmethod
@@ -1414,7 +2305,7 @@ class Generator:
 
         lines = [f"_pyn_teardown.mode = {mode}"] if mode else []
         lines.append("try:")
-        if test.owner is not None:
+        if test.owner is not None and not test.unit:
             lines.append(f"    _pyn_instance = {test.owner.name}()")
         indent = 1
         generators = []
@@ -1449,17 +2340,21 @@ class Generator:
         callee = ("_pyn_instance." if test.owner is not None else "") + function.name
         arguments = ", ".join(f"{name}={values[name]}"
                               for name in self.arguments(function, bound=test.owner is not None))
-        lines += [p + "_pyn_report.record(_pyn_id, 'setup', 'passed', '')", p + "try:",
-                  p + f"    {callee}({arguments})",
-                  p + "except _pyn_support.Skipped as _pyn_error:",
-                  p + "    _pyn_report.record(_pyn_id, 'call', 'skipped', str(_pyn_error))",
-                  p + "except _pyn_support.XFailed as _pyn_error:",
-                  p + "    _pyn_report.record(_pyn_id, 'call', 'xfailed', str(_pyn_error))",
-                  p + "except KeyboardInterrupt:", p + "    raise",
-                  p + "except BaseException as _pyn_error:", *failure("call", p), p + "else:"]
-        success = "failed" if xfail and xfail.strict else "xpassed" if xfail else "passed"
-        detail = "[XPASS(strict)] " + xfail.reason if xfail and xfail.strict else xfail.reason if xfail else ""
-        lines.append(p + f"    _pyn_report.record(_pyn_id, 'call', {success!r}, {detail!r})")
+        lines.append(p + "_pyn_report.record(_pyn_id, 'setup', 'passed', '')")
+        if test.unit:
+            lines += self.unit_call(test, callee, p)
+        else:
+            lines += [p + "try:",
+                      p + f"    {callee}({arguments})",
+                      p + "except _pyn_support.Skipped as _pyn_error:",
+                      p + "    _pyn_report.record(_pyn_id, 'call', 'skipped', str(_pyn_error))",
+                      p + "except _pyn_support.XFailed as _pyn_error:",
+                      p + "    _pyn_report.record(_pyn_id, 'call', 'xfailed', str(_pyn_error))",
+                      p + "except KeyboardInterrupt:", p + "    raise",
+                      p + "except BaseException as _pyn_error:", *failure("call", p), p + "else:"]
+            success = "failed" if xfail and xfail.strict else "xpassed" if xfail else "passed"
+            detail = "[XPASS(strict)] " + xfail.reason if xfail and xfail.strict else xfail.reason if xfail else ""
+            lines.append(p + f"    _pyn_report.record(_pyn_id, 'call', {success!r}, {detail!r})")
         matched = f", isinstance(_pyn_error, {xfail.raises})" if mode == 2 else ""
         for level, generator, name in reversed(generators):
             p = "    " * level
@@ -1482,6 +2377,37 @@ class Generator:
                   "except KeyboardInterrupt:", "    raise",
                   "except BaseException as _pyn_error:", *failure("setup", "")]
         return lines
+
+    def unit_call(self, test, callee, p):
+        """A unittest case's call phase, as TestCase.run orders it.
+
+        A decorated skip comes first. Otherwise the object is made, which runs setUp (see
+        Rewrite.visit_FunctionDef); then the test and tearDown run, each even if the
+        other fails, and only if setUp finished. pytest reports the first of their
+        failures as the call's and a second as the teardown's (UnitRun.finish).
+        """
+        marks = test.marks
+        expecting = any(mark.kind == "unit-xfail" for mark in marks)
+        skips = [mark for mark in marks if mark.kind == "unit-skip"]
+
+        def guarded(statement, q, expected=False):
+            return [q + "try:", q + "    " + statement,
+                    q + "except KeyboardInterrupt:", q + "    raise",
+                    q + "except BaseException as _pyn_error:",
+                    q + f"    _pyn_unit.raised(_pyn_error{', True' if expected else ''})"]
+
+        body = [*guarded(f"_pyn_instance = {test.owner.name}()", ""), "else:",
+                *guarded(f"{callee}()", "    ", expecting), *guarded("_pyn_instance.tearDown()", "    ")]
+        always = next((mark for mark in skips if mark.condition is True), None)
+        if always is not None:
+            body = [f"_pyn_unit.skip({always.reason!r})"]
+        elif skips:
+            chain = []
+            for index, mark in enumerate(skips):
+                chain += [f"{'elif' if index else 'if'} {mark.condition}:", f"    _pyn_unit.skip({mark.reason!r})"]
+            body = [*chain, "else:", *("    " + line for line in body)]
+        return [p + "_pyn_unit = _pyn_support.UnitRun()", *(p + line for line in body),
+                p + f"_pyn_unit.finish(_pyn_report, _pyn_id, {expecting}, _pyn_teardown)"]
 
     def wrapper(self, test, case_number, nodeid, label, values, fixture_values, parameter_marks, closure):
         """One case: skip marks, then its run, then the teardown of every scope ending with it.
@@ -1659,19 +2585,20 @@ def original_line(module: GeneratedModule, line: int) -> int | None:
 
 
 def generate(source: str, filename: str, operands: bool = True, selected=None, shared=None,
-             session_end: bool = True) -> GeneratedModule:
+             session_end: bool = True, path: str = "", module: str = "") -> GeneratedModule:
     """Collect and adapt one module, or reject unsupported collection explicitly.
 
     operands keeps comparison operands for assertion failures (Generator.captured);
     selected lists node-ID selectors (`name`, `name[id]`, `Class` or `Class::name`) to
     run, in order; shared holds the fixtures of the directory's conftest.py
-    (generate_conftest); session_end is false for every module but the last that runs.
+    (generate_conftest); session_end is false for every module but the last that runs;
+    path and module are what the test module reads as __file__ and __name__.
     """
-    return Generator(source, filename, operands, selected, shared, False, session_end).generate()
+    return Generator(source, filename, operands, selected, shared, False, session_end, path, module).generate()
 
 
-def generate_conftest(source: str, filename: str, operands: bool = True):
+def generate_conftest(source: str, filename: str, operands: bool = True, path: str = "", module: str = ""):
     """Adapt a conftest.py: its generated module, and its fixtures for generate(shared=)."""
-    generator = Generator(source, filename, operands, conftest=True)
+    generator = Generator(source, filename, operands, conftest=True, path=path, module=module)
     module = generator.generate()
     return module, generator.export()

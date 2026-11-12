@@ -231,19 +231,19 @@ class CollectionControls(TemporarySuite):
     def test_unsupported_test_shapes_fail_explicitly(self):
         sources = {
             "test_class_init": "class TestThings:\n    def __init__(self): pass\n    def test_one(self): pass\n",
-            "test_class_base": "class Base: pass\nclass TestThings(Base):\n    def test_one(self): pass\n",
+            "test_class_base": "from helper import Base\nclass TestThings(Base):\n    def test_one(self): pass\n",
             "nested_test_class": "class TestThings:\n    class TestInner:\n        def test_one(self): pass\n",
             "unittest_case": "import unittest\nclass Legacy(unittest.TestCase):\n    def runTest(self): pass\n",
             "xunit_method": "class TestThings:\n    def setup_method(self): pass\n    def test_one(self): pass\n",
             "async": "async def test_one(): pass\n",
             "custom_decorator": "def custom(f): return f\n@custom\ndef test_one(): pass\n",
-            "module_mark": "import pytest\npytestmark = pytest.mark.skip(reason='x')\ndef test_one(): pass\n",
+            "module_mark": "import pytest\npytestmark = pytest.mark.filterwarnings('error')\ndef test_one(): pass\n",
             "plugin": "pytest_plugins = ['something']\ndef test_one(): pass\n",
             "unknown_helper": "import pytest\ndef test_one():\n    pytest.warns(UserWarning)\n",
             "relative_import": "from . import helper\ndef test_one(): pass\n",
             "imported_test": "from helper import test_imported\n",
             "dynamic_namespace": "globals()['test_dynamic'] = lambda: None\n",
-            "file_observation": "def test_one():\n    assert __file__.endswith('test_suite.py')\n",
+            "file_observation": "__file__ = 'elsewhere.py'\ndef test_one(): pass\n",
         }
         for name, source in sources.items():
             with self.subTest(name=name), self.assertRaises(CollectionError):
@@ -498,7 +498,7 @@ class OriginalPytestParity(TemporarySuite):
     def test_named_fixtures_preserve_aliases_and_autouse_order(self):
         self.check_parity(FIXTURE_ALIASES)
 
-    def test_annotation_mutation_is_rejected_instead_of_false_pass(self):
+    def test_annotation_mutation_cannot_make_a_false_pass(self):
         path = self.source('''
             import pytest
             VALUES = [1]
@@ -509,13 +509,15 @@ class OriginalPytestParity(TemporarySuite):
             def test_value(value: mutate()):
                 assert value == 1
         ''')
+        # The test receives the changed value, as in pytest, and fails as it does there;
+        # the ID read from the source is the stale one, which the comparison reports.
         actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
-        self.assertEqual(actual.state, "collection-error")
-        self.assertIn("evaluated annotations", actual.error)
+        self.assertEqual(actual.state, "test-failed")
+        self.assertEqual(actual.cases, ["test_suite.py::test_value[1]"])
         expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
         self.assertEqual(expected.get("exit_code"), 1)
         self.assertEqual(expected["cases"], ["test_suite.py::test_value[2]"])
-        self.assertTrue(runner.compare([actual], expected))
+        self.assertIn("collected test IDs/order differ from pytest", runner.compare([actual], expected))
 
     def test_nested_shadow_cannot_make_direct_fixture_call_pass(self):
         path = self.source('''

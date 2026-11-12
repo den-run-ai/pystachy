@@ -961,8 +961,13 @@ class FormRejections(TemporarySuite):
     def test_unsupported_forms_are_collection_errors(self):
         fixture = "import pytest\n"
         cases = {
-            "class with a base": ("class Base: pass\nclass TestX(Base):\n    def test_a(self): pass\n", "base classes"),
-            "class keyword": ("class TestX(metaclass=type):\n    def test_a(self): pass\n", "base classes"),
+            "class with an imported base": ("from helper import Base\nclass TestX(Base):\n    def test_a(self): pass\n",
+                                            "imported or computed base classes"),
+            "class with two bases": ("class A: pass\nclass B: pass\nclass TestX(A, B):\n    def test_a(self): pass\n",
+                                     "several base classes"),
+            "helper class with an imported base": ("from helper import Base\nclass Suite(Base):\n"
+                                                   "    def test_a(self): pass\n", "cannot read"),
+            "class keyword": ("class TestX(metaclass=type):\n    def test_a(self): pass\n", "class keywords"),
             "__init__": ("class TestX:\n    def __init__(self): pass\n    def test_a(self): pass\n", "__init__"),
             "nested class": ("class TestX:\n    class TestY:\n        def test_a(self): pass\n", "nested"),
             "conditional class": ("if True:\n    class TestX:\n        def test_a(self): pass\n", "nested and conditional"),
@@ -971,9 +976,13 @@ class FormRejections(TemporarySuite):
             "method without self": ("class TestX:\n    def test_a(): pass\n", "require self"),
             "duplicate method": ("class TestX:\n    def test_a(self): pass\n    def test_a(self): pass\n", "duplicate"),
             "xunit method": ("class TestX:\n    def setup_method(self): pass\n    def test_a(self): pass\n", "xunit"),
-            "class pytestmark": (fixture + "class TestX:\n    pytestmark = pytest.mark.skip\n", "pytestmark"),
-            "unittest case": ("import unittest\nclass Case(unittest.TestCase):\n    def helper(self): pass\n", "unittest"),
-            "runTest": ("class Legacy:\n    def runTest(self): pass\n", "unittest"),
+            "pytestmark twice": (fixture + "pytestmark = pytest.mark.slow\npytestmark = pytest.mark.fast\n",
+                                 "assigned once"),
+            "pytestmark read": (fixture + "pytestmark = pytest.mark.slow\nMARKS = pytestmark\n", "pytestmark"),
+            "pytestmark filterwarnings": (fixture + "pytestmark = pytest.mark.filterwarnings('error')\n",
+                                          "unsupported marker: filterwarnings"),
+            "unittest runTest": ("import unittest\nclass Legacy(unittest.TestCase):\n    def runTest(self): pass\n",
+                                 "unsupported unittest.TestCase method: runTest"),
             "class attribute table": (fixture + "CASES = [1]\nclass TestX:\n    CASES = [2]\n"
                                       "    @pytest.mark.parametrize('n', CASES)\n    def test_a(self, n): pass\n",
                                       "cannot use its attributes: CASES"),
@@ -995,8 +1004,8 @@ class FormRejections(TemporarySuite):
             "scoped params": (fixture + "@pytest.fixture(scope='module', params=[1])\ndef value(request):\n"
                               "    return request.param\n", "must be function-scoped"),
             "ids without params": (fixture + "@pytest.fixture(ids=['a'])\ndef value(): return 1\n", "require params"),
-            "computed params": (fixture + "@pytest.fixture(params=range(2))\ndef value(request):\n"
-                                "    return request.param\n", "literal"),
+            "computed params": (fixture + "def cases(): return [1]\n@pytest.fixture(params=cases())\n"
+                                "def value(request):\n    return request.param\n", "a table the collector can read"),
             "request without params": (fixture + "@pytest.fixture\ndef value(request): return 1\n", "request.param"),
             "request node": (fixture + "@pytest.fixture(params=[1])\ndef value(request):\n"
                              "    return request.node\ndef test_a(value): pass\n", "request.param"),

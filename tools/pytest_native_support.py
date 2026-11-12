@@ -20,6 +20,10 @@ class Skipped(BaseException):
     """A test or fixture requested a skip."""
 
 
+# unittest.SkipTest, which pytest reports as it does its own skip.
+SkipTest = Skipped
+
+
 class XFailed(BaseException):
     """A test or fixture requested an expected failure."""
 
@@ -144,6 +148,11 @@ class Raises:
     def typename(self) -> str:
         return self.type.__name__
 
+    @property
+    def exception(self) -> BaseException:
+        """unittest's name for .value, on the context of assertRaises."""
+        return self.value
+
     def match(self, pattern: str) -> bool:
         """ExceptionInfo.match: search the raised exception's text, or fail the assertion."""
         _search(pattern, str(self.value))
@@ -239,6 +248,213 @@ def approx_equal(actual, expected: Approx) -> bool:
     return expected == actual
 
 
+def table_length(actual: int, expected: int, name: str) -> None:
+    """Stop a run whose parameter table is not the one the collector read from the source."""
+    if actual != expected:
+        unsupported("parameter table " + name + " has " + str(actual) + " rows where its source shows "
+                    + str(expected) + ": the module changes it while it is imported")
+
+
+# The outcomes of the running unittest case's subtests, in order.
+subtest_outcomes: list[str] = []
+subtest_details: list[str] = []
+
+
+class SubTest:
+    """`with self.subTest():` a block whose failure is reported while its test goes on."""
+
+    def __enter__(self) -> "SubTest":
+        return self
+
+    def __exit__(self, kind: type[BaseException] | None,
+                 value: BaseException | None, traceback: TracebackType | None) -> bool:
+        if value is None:
+            subtest_outcomes.append("passed")
+            subtest_details.append("")
+            return False
+        if isinstance(value, (KeyboardInterrupt, UnsupportedOperation)):
+            return False
+        if isinstance(value, Skipped):
+            subtest_outcomes.append("skipped")
+            subtest_details.append(str(value))
+        else:
+            subtest_outcomes.append("failed")
+            subtest_details.append(describe(value))
+        return True
+
+
+class TestCase:
+    """The part of unittest.TestCase that generated tests call; the runner drives its phases.
+
+    A test class's setUp becomes its __init__ (the collector renames it), so the fields
+    that setUp assigns are declared as any class's are. Assertions take values of any
+    types and compare them as unittest does.
+    """
+    maxDiff: int | None
+    longMessage: bool
+
+    def __init__(self) -> None:
+        pass
+
+    def setUp(self) -> None:
+        pass
+
+    def tearDown(self) -> None:
+        pass
+
+    def subTest(self) -> SubTest:
+        return SubTest()
+
+    def skipTest(self, reason: str = "") -> None:
+        raise Skipped(reason)
+
+    def fail(self, msg=None) -> None:
+        raise AssertionError("None" if msg is None else str(msg))
+
+    def _failure(self, standard: str, msg) -> None:
+        raise AssertionError(standard if msg is None else standard + " : " + str(msg))
+
+    def assertEqual(self, first, second, msg=None) -> None:
+        if not first == second:
+            self._failure(saferepr(first) + " != " + saferepr(second), msg)
+
+    def assertNotEqual(self, first, second, msg=None) -> None:
+        if not first != second:
+            self._failure(saferepr(first) + " == " + saferepr(second), msg)
+
+    def assertTrue(self, expr, msg=None) -> None:
+        if not expr:
+            self._failure(saferepr(expr) + " is not true", msg)
+
+    def assertFalse(self, expr, msg=None) -> None:
+        if expr:
+            self._failure(saferepr(expr) + " is not false", msg)
+
+    def assertIs(self, first, second, msg=None) -> None:
+        if first is not second:
+            self._failure(saferepr(first) + " is not " + saferepr(second), msg)
+
+    def assertIsNot(self, first, second, msg=None) -> None:
+        if first is second:
+            self._failure("unexpectedly identical: " + saferepr(first), msg)
+
+    def assertIsNone(self, obj, msg=None) -> None:
+        if obj is not None:
+            self._failure(saferepr(obj) + " is not None", msg)
+
+    def assertIsNotNone(self, obj, msg=None) -> None:
+        if obj is None:
+            self._failure("unexpectedly None", msg)
+
+    def assertIn(self, member, container, msg=None) -> None:
+        if member not in container:
+            self._failure(saferepr(member) + " not found in " + saferepr(container), msg)
+
+    def assertNotIn(self, member, container, msg=None) -> None:
+        if member in container:
+            self._failure(saferepr(member) + " unexpectedly found in " + saferepr(container), msg)
+
+    def assertGreater(self, a, b, msg=None) -> None:
+        if not a > b:
+            self._failure(saferepr(a) + " not greater than " + saferepr(b), msg)
+
+    def assertGreaterEqual(self, a, b, msg=None) -> None:
+        if not a >= b:
+            self._failure(saferepr(a) + " not greater than or equal to " + saferepr(b), msg)
+
+    def assertLess(self, a, b, msg=None) -> None:
+        if not a < b:
+            self._failure(saferepr(a) + " not less than " + saferepr(b), msg)
+
+    def assertLessEqual(self, a, b, msg=None) -> None:
+        if not a <= b:
+            self._failure(saferepr(a) + " not less than or equal to " + saferepr(b), msg)
+
+    def assertAlmostEqual(self, first, second, places: int | None = None, msg=None, delta=None) -> None:
+        if first == second:
+            return
+        if delta is not None and places is not None:
+            raise TypeError("specify delta or places not both")
+        difference = abs(first - second)
+        if delta is not None:
+            if difference <= delta:
+                return
+            self._failure(saferepr(first) + " != " + saferepr(second) + " within " + saferepr(delta) + " delta", msg)
+        elif round(difference, 7 if places is None else places) != 0:
+            self._failure(saferepr(first) + " != " + saferepr(second) + " within "
+                          + str(7 if places is None else places) + " places", msg)
+
+    def assertNotAlmostEqual(self, first, second, places: int | None = None, msg=None, delta=None) -> None:
+        if delta is not None and places is not None:
+            raise TypeError("specify delta or places not both")
+        difference = abs(first - second)
+        if delta is not None:
+            if not first == second and difference > delta:
+                return
+            self._failure(saferepr(first) + " == " + saferepr(second) + " within " + saferepr(delta) + " delta", msg)
+        elif first == second or round(difference, 7 if places is None else places) == 0:
+            self._failure(saferepr(first) + " == " + saferepr(second) + " within "
+                          + str(7 if places is None else places) + " places", msg)
+
+    def assertRegex(self, text: str, expected_regex: str, msg=None) -> None:
+        if re.search(expected_regex, text) is None:
+            self._failure("Regex didn't match: " + repr(expected_regex) + " not found in " + repr(text), msg)
+
+    def assertNotRegex(self, text: str, unexpected_regex: str, msg=None) -> None:
+        if re.search(unexpected_regex, text) is not None:
+            self._failure("Regex matched: " + repr(unexpected_regex) + " matches in " + repr(text), msg)
+
+    def assertSequenceEqual(self, seq1, seq2, msg=None) -> None:
+        # (Items compare by position: a list may equal a tuple here.)
+        equal = len(seq1) == len(seq2)
+        if equal:
+            for index in range(len(seq1)):
+                if not seq1[index] == seq2[index]:
+                    equal = False
+                    break
+        if not equal:
+            self._failure("Sequences differ: " + saferepr(seq1) + " != " + saferepr(seq2), msg)
+
+    def assertListEqual(self, list1, list2, msg=None) -> None:
+        self.assertEqual(list1, list2, msg)
+
+    def assertTupleEqual(self, tuple1, tuple2, msg=None) -> None:
+        self.assertEqual(tuple1, tuple2, msg)
+
+    def assertSetEqual(self, set1, set2, msg=None) -> None:
+        self.assertEqual(set1, set2, msg)
+
+    def assertDictEqual(self, d1, d2, msg=None) -> None:
+        self.assertEqual(d1, d2, msg)
+
+    def assertMultiLineEqual(self, first: str, second: str, msg=None) -> None:
+        self.assertEqual(first, second, msg)
+
+    def assertCountEqual(self, first, second, msg=None) -> None:
+        # The same items the same number of times, in any order.
+        remaining = list(second)
+        equal = True
+        for item in first:
+            if item in remaining:
+                remaining.remove(item)
+            else:
+                equal = False
+        if not equal or remaining:
+            self._failure("Element counts were not equal: " + saferepr(first) + " != " + saferepr(second), msg)
+
+    def assertRaises(self, expected: type[BaseException]) -> Raises:
+        return Raises([expected], None)
+
+    def assertRaisesRegex(self, expected: type[BaseException], expected_regex: str) -> Raises:
+        return Raises([expected], expected_regex)
+
+    def assertRaisesAny(self, expected: list[type[BaseException]]) -> Raises:
+        return Raises(expected, None)
+
+    def assertRaisesRegexAny(self, expected: list[type[BaseException]], expected_regex: str) -> Raises:
+        return Raises(expected, expected_regex)
+
+
 def _quote(text: str) -> str:
     """Encode one JSON string without making report records dynamic values."""
     result = '"'
@@ -281,7 +497,7 @@ class Report:
     def record(self, nodeid: str, phase: str, outcome: str, detail: str = "") -> None:
         if self.closed:
             raise RuntimeError("native test report is closed")
-        if phase not in ("setup", "call", "teardown"):
+        if phase not in ("setup", "subtest", "call", "teardown"):
             raise ValueError("invalid native test phase: " + phase)
         if outcome not in ("passed", "failed", "error", "skipped", "xfailed", "xpassed"):
             raise ValueError("invalid native test outcome: " + outcome)
@@ -333,6 +549,9 @@ class Teardown:
         self.xfail_count = 0
         self.matched = 0
         self.scope_errors: list[BaseException] = []
+        # A unittest case's second failure, which pytest reports in place of the teardown's.
+        self.override = ""
+        self.override_detail = ""
 
     def skipped(self, reason: str) -> None:
         self.skips += reason + "\n"
@@ -372,7 +591,10 @@ class Teardown:
             self._drain(session_finalizers)
 
     def record(self, report: Report, nodeid: str) -> None:
-        if self.errors or self.xfail_count > 1 or (self.xfail_count and self.skips):
+        if self.override:
+            report.record(nodeid, "teardown", "error" if self.override == "failed" else self.override,
+                          self.override_detail)
+        elif self.errors or self.xfail_count > 1 or (self.xfail_count and self.skips):
             # One failure, or pytest's group of several teardown exceptions.
             expected = self.mode == 1 or (self.mode == 2 and self.error_count == 1 and self.matched == 1
                                           and not self.skips and not self.xfails)
@@ -384,3 +606,58 @@ class Teardown:
             report.record(nodeid, "teardown", "xfailed", self.xfails)
         else:
             report.record(nodeid, "teardown", "passed", "")
+
+
+class UnitRun:
+    """What one unittest case's setUp, test and tearDown raised, as pytest reports it.
+
+    pytest keeps each failure, error and skip that unittest reports. The first becomes
+    the call's outcome and a second the teardown's; later ones are not reported.
+    """
+
+    def __init__(self) -> None:
+        self.outcomes: list[str] = []
+        self.details: list[str] = []
+        self.expected = False
+        self.expected_detail = ""
+
+    def skip(self, reason: str) -> None:
+        self.outcomes.append("skipped")
+        self.details.append(reason)
+
+    def raised(self, error: BaseException, expecting: bool = False) -> None:
+        if isinstance(error, Skipped):
+            self.skip(str(error))
+        elif isinstance(error, XFailed):
+            self.outcomes.append("xfailed")
+            self.details.append(str(error))
+        elif expecting:
+            # (unittest.expectedFailure: reported only if nothing else goes wrong.)
+            self.expected = True
+            self.expected_detail = describe(error)
+        else:
+            self.outcomes.append("failed")
+            self.details.append(describe(error))
+
+    def finish(self, report: Report, nodeid: str, expecting: bool, teardown: Teardown) -> None:
+        failed_subtest = False
+        for index in range(len(subtest_outcomes)):
+            if subtest_outcomes[index] != "passed":
+                failed_subtest = True
+            report.record(nodeid, "subtest", subtest_outcomes[index], subtest_details[index])
+        subtest_outcomes.clear()
+        subtest_details.clear()
+        if expecting and not self.outcomes and not failed_subtest:
+            if self.expected:
+                self.outcomes.append("xfailed")
+                self.details.append(self.expected_detail)
+            else:
+                self.outcomes.append("failed")
+                self.details.append("Unexpected success")
+        if self.outcomes:
+            report.record(nodeid, "call", self.outcomes[0], self.details[0])
+        else:
+            report.record(nodeid, "call", "passed", "")
+        if len(self.outcomes) > 1:
+            teardown.override = self.outcomes[1]
+            teardown.override_detail = self.details[1]

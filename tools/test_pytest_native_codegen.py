@@ -19,8 +19,8 @@ class CodegenControls(unittest.TestCase):
         with self.assertRaisesRegex(CollectionError, message):
             generate(source, "test_input.py")
 
-    def execute(self, source):
-        generated = generate(source, "test_input.py")
+    def run_program(self, generated):
+        """Run generated source under CPython; the process, with its report text."""
         with tempfile.TemporaryDirectory() as directory:
             program = Path(directory) / "suite.py"
             report = Path(directory) / "report.jsonl"
@@ -29,10 +29,16 @@ class CodegenControls(unittest.TestCase):
                 [sys.executable, str(program), str(report)], capture_output=True, text=True,
                 env={**os.environ, "PYTHONPATH": str(TOOLS)}, timeout=20,
             )
-            self.assertEqual(process.returncode, 0, process.stderr + process.stdout)
-            events = [json.loads(line) for line in report.read_text().splitlines()]
-            self.assertTrue(events[-1]["complete"])
-            return generated, events
+            process.report = report.read_text() if report.exists() else ""
+            return process
+
+    def execute(self, source):
+        generated = generate(source, "test_input.py")
+        process = self.run_program(generated)
+        self.assertEqual(process.returncode, 0, process.stderr + process.stdout)
+        events = [json.loads(line) for line in process.report.splitlines()]
+        self.assertTrue(events[-1]["complete"])
+        return generated, events
 
     def test_xunit_hooks_never_disappear(self):
         for hook in ("setup_module", "setupModule", "teardown_module", "teardownModule",
@@ -41,15 +47,36 @@ class CodegenControls(unittest.TestCase):
                 self.rejected(f"def {hook}():\n    assert False\ndef test_ok():\n    pass\n", "xunit")
 
     def test_import_time_helper_cannot_change_named_case_count(self):
-        self.rejected("""import pytest
+        # The collector reads one row from the source; pytest would collect two. The
+        # program checks the table it finds and stops before any test can pass.
+        for position in ("before", "after"):
+            with self.subTest(position=position):
+                call = "mutate()\n"
+                source = ("import pytest\nVALUES = [1]\ndef mutate():\n    VALUES.append(2)\n"
+                          + (call if position == "before" else "")
+                          + "@pytest.mark.parametrize('value', VALUES)\ndef test_value(value):\n    assert value == 1\n"
+                          + (call if position == "after" else ""))
+                generated = generate(source, "test_input.py")
+                self.assertIn("table_length(len(VALUES), 1, 'VALUES')", generated.source)
+                process = self.run_program(generated)
+                self.assertNotEqual(process.returncode, 0)
+                self.assertIn("parameter table VALUES has 2 rows where its source shows 1", process.stderr)
+                self.assertNotIn('"complete"', process.report)
+
+    def test_named_tables_are_read_after_import_as_pytest_reads_them(self):
+        # pytest iterates a table when it collects, after the module's import: a value a
+        # helper changed in between is the one the test receives.
+        generated, events = self.execute("""import pytest
 VALUES = [1]
 def mutate():
-    VALUES.append(2)
-mutate()
+    VALUES[0] = 2
 @pytest.mark.parametrize('value', VALUES)
 def test_value(value):
-    assert value == 1
-""", "static module initialization")
+    assert value == 2
+mutate()
+""")
+        self.assertEqual([event["outcome"] for event in events[:-1]], ["passed"] * 3)
+        self.assertGreater(generated.source.index("_pyn_param_0 = VALUES[0]"), generated.source.index("mutate()\n"))
 
     def test_named_parameter_rebinding_and_mutation_are_rejected(self):
         for alteration in ("VALUES = [2, 3]", "VALUES[0] = 2", "VALUES += [2]"):
@@ -69,7 +96,7 @@ mutate()
 @pytest.mark.skipif(SKIP, reason='conditional')
 def test_should_fail():
     assert False
-""", "static module initialization")
+""", "cannot be rebound through globals: SKIP")
 
     def test_named_fixture_options_are_protected(self):
         self.rejected("""import pytest
@@ -83,7 +110,7 @@ def broken():
     assert False
 def test_ok():
     pass
-""", "static module initialization")
+""", "cannot be rebound through globals: AUTO")
 
     def test_conditional_test_assignments_are_rejected(self):
         self.rejected("""def helper():
@@ -264,18 +291,21 @@ def test_walrus():
     assert make_value == 1
 """)
 
-    def test_evaluated_annotations_cannot_mutate_named_parameter_tables(self):
+    def test_evaluated_annotations_that_mutate_named_tables_run_as_in_pytest(self):
         prefix = """import pytest
 VALUES = [1]
 def mutate():
     VALUES[0] = 2
     return int
 """
+        # An annotation evaluated at the definition changes the table before pytest
+        # collects it; the program reads the table after the import too.
         for signature in ("def test_value(value: mutate()):", "def test_value(value) -> mutate():"):
             with self.subTest(signature=signature):
                 source = prefix + "@pytest.mark.parametrize('value', VALUES)\n" + signature
-                source += "\n    assert value == 1\n"
-                self.rejected(source, "evaluated annotations")
+                source += "\n    assert value == 2\n"
+                _, events = self.execute(source)
+                self.assertEqual([event["outcome"] for event in events[:-1]], ["passed"] * 3)
         # Postponed annotations are strings under the pinned CPython and cannot
         # run mutate() during collection. Keep that supported source unchanged.
         self.execute("from __future__ import annotations\n" + prefix
@@ -314,7 +344,7 @@ def test_value(same): pass
 VALUES = [pytest.param(1)]
 @pytest.mark.parametrize('value', VALUES)
 def test_value(value): pass
-""", "literal")
+""", "pytest.param rows must be written in the decorator's own table")
         self.rejected("import pytest\ndef test_value():\n    pytest.param(1)\n", "unsupported pytest use")
 
 
@@ -336,9 +366,8 @@ def test_value(value): pass
              "literal"),
             ("import pytest\n@pytest.mark.usefixtures('missing')\ndef test_a(): pass\n",
              "unknown or unsupported fixture: missing"),
-            ("def test_a(): pass\nif __name__ == '__main__':\n    pass\nelse:\n    pass\n",
-             "module metadata"),
-            ("def test_a(): pass\nprint(__name__)\n", "module metadata"),
+            ("def test_a(): pass\n__name__ = 'other'\n", "module metadata"),
+            ("def test_a(): pass\nprint(__spec__)\n", "module metadata"),
         ):
             with self.subTest(source=source):
                 self.rejected(source, message)
