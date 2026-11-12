@@ -362,8 +362,8 @@ class UnionProof:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
                     self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
-                if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) > 0:
-                    # An indexed slot of a tuple whose items are all of one union type (a fixed
+                if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) == 2:
+                    # An item slot of a tuple whose items are all of one union type (a fixed
                     # tuple's, or a tuple[U, ...]'s past its length) holds a box of that union:
                     # container typing is its own contract, as for a list's items (list.get), so
                     # an item read from the slot has its members. A length read is no union read.
@@ -371,7 +371,7 @@ class UnionProof:
                     owner = self.native.get(i.a[0].v, "")
                     owner = owner[4:-1] if is_opt(owner) else owner
                     items = targs(owner) if owner.startswith("tuple[") or owner.startswith("vtuple[") else []
-                    if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]):
+                    if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]) and self.item_slot(i, owner.startswith("vtuple["), len(items)):
                         self.typebase("MU:%t" + str(i.r[0]), items[0])
         # Backward relevance for boxed values and forward/backward transport closure for
         # tags and bits. Literals never become tainted: the same integer spelling in an
@@ -539,6 +539,22 @@ class UnionProof:
             self.full.sort()
         self.domains[t] = ts
         return ts
+
+    def item_slot(self, i: Ins, vtuple: bool, n: int) -> bool:
+        # Does mach.addr i address an item's slot, as gen_seq_item's addresses do: words, at
+        # an index of a fixed tuple's n items, or past a runtime-length tuple's length word
+        # (index + 1)? Not its length word, nor bytes. Whether the item index is below the
+        # length is the loop's test (Loop.idx), as a list.load's index is its caller's.
+        if i.s != "int":
+            return False
+        k = i.a[1].v
+        if not vtuple:
+            return not k.startswith("-") and (k.startswith("%") or proof_number(k, 0, n - 1) >= 0)
+        d = self.defs[k] if k in self.defs else None
+        if d is None or d.op != "scalar.bin" or d.s != "add" or d.t != "int" or len(d.a) != 2:
+            return False
+        x = d.a[0].v if d.a[1].v == "1" else d.a[1].v if d.a[0].v == "1" else ""
+        return x.startswith("%") or proof_number(x, 0, 1 << 62) >= 0
 
     def length_read(self, v: str) -> bool:
         # Is an integer machine load from v the length word of a tuple[T, ...] that may be None
