@@ -280,6 +280,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         elif ci.exc != "" and m != "__init__" and m != "__str__" and m != "__repr__":
             self.line = ci.methods[m].node.line
             self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
+    seen: dict[str, str] = {}  # (the secondary base whose method of each name comes first)
     for r in ci.roles:
         role = self.classes[r]
         # (a generic secondary base's methods leave out the annotations that name its type
@@ -288,6 +289,12 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         for method in role.methods:
             original = role.methods[method]
             if r not in b.roles:
+                if method not in b.methods and method in seen and seen[method] != r and method in ci.methods and ci.methods[method].cls == ci.name:
+                    # (also where the class's own overrides both: a Callable of its bound method
+                    # would differ by the base it is read through, adapter's method families)
+                    self.line = ci.node.line
+                    self.bad_class(ci, f"secondary bases {short(seen[method])} and {short(r)} both declare method '{method}' (not supported, also where {short(ci.name)} overrides it)")
+                seen[method] = seen.get(method, r)
                 if method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
                     # (also another secondary base's: CPython's method resolution order picks one)
                     self.line = ci.node.line
