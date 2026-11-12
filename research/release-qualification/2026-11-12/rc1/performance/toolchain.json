@@ -1,0 +1,22 @@
+{
+  "clang": {
+    "path": "/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin/clang",
+    "sha256": "0a3c55936ac43954fbe4914e6e73b577ca9e35e75d89ef13d3e28c187f41ca1a",
+    "version": "Debian clang version 19.1.7 (3+b1)\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin\n"
+  },
+  "opt": {
+    "path": "/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin/opt",
+    "sha256": "6d32545b2590f82c9b2d5021b8c13236225b1241728ffb123f77956940f9f87a",
+    "version": "Debian LLVM version 19.1.7\n  Optimized build.\n  Default target: x86_64-pc-linux-gnu\n  Host CPU: znver4\n"
+  },
+  "llvm-link": {
+    "path": "/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin/llvm-link",
+    "sha256": "79362d49d7a10ef05ffcb1403b87d26b88106d2f863797b9eea21948ffc9e1c1",
+    "version": "Debian LLVM version 19.1.7\n  Optimized build.\n"
+  },
+  "llvm-as": {
+    "path": "/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin/llvm-as",
+    "sha256": "b160dc936a8c7b81fee9acbded6334c40e2c6134e7d22061003cc102e3b589e7",
+    "version": "Debian LLVM version 19.1.7\n  Optimized build.\n"
+  }
+}

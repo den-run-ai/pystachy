@@ -1,0 +1,174 @@
+{
+  "base": "0b13a2121014d8256954c6af50339ff0de8dac62",
+  "candidate": "897d96b27fff99d8ed3a531181e10ed1f9465800",
+  "compiler_changes": [
+    "a310860cff3e24b10b0a7ec9198323f9e7d96ecb",
+    "7d0cf73e874db87600556e92b370091a1f396706"
+  ],
+  "test_changes": [
+    "e82f8870c9fd9a7b9add054d0284c40cfffc617c",
+    "897d96b27fff99d8ed3a531181e10ed1f9465800"
+  ],
+  "upstream_fix_commits": [
+    "b27908f43e8cd7f6af763d747d89c25b0fb2aad2",
+    "e7ec9bb889a57d0f03c3297a45ae95e0bcddbb59"
+  ],
+  "cpython": "3.13.16",
+  "llvm": "19",
+  "native": [
+    {
+      "mode": "normal",
+      "exit": 0,
+      "seconds": 4.735,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-fix-review/native-normal.log",
+      "cases": [
+        "tests/programs/exceptions/exc_classvar_field_flagged.py",
+        "tests/programs/exceptions/exc_classvar_field_hasattr.py",
+        "tests/programs/exceptions/exc_classvar_field_identity.py",
+        "tests/programs/exceptions/exc_classvar_field_promoting.py",
+        "tests/programs/exceptions/exc_classvar_field_read.py",
+        "tests/programs/exceptions/exc_classvar_field_siblings.py",
+        "tests/programs/exceptions/exc_classvar_field_write.py",
+        "tests/programs/containers/list_empty_tuple_strs.py",
+        "tests/programs/generics/generic_empty_default_list.py"
+      ]
+    },
+    {
+      "mode": "stress",
+      "exit": 0,
+      "seconds": 4.387,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-fix-review/native-stress.log",
+      "cases": [
+        "tests/programs/exceptions/exc_classvar_field_flagged.py",
+        "tests/programs/exceptions/exc_classvar_field_hasattr.py",
+        "tests/programs/exceptions/exc_classvar_field_identity.py",
+        "tests/programs/exceptions/exc_classvar_field_promoting.py",
+        "tests/programs/exceptions/exc_classvar_field_read.py",
+        "tests/programs/exceptions/exc_classvar_field_siblings.py",
+        "tests/programs/exceptions/exc_classvar_field_write.py",
+        "tests/programs/containers/list_empty_tuple_strs.py",
+        "tests/programs/generics/generic_empty_default_list.py"
+      ]
+    }
+  ],
+  "negative_and_boundary": [
+    {
+      "kind": "main negative controls",
+      "mode": "normal",
+      "exit": 1,
+      "seconds": 17.033,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-fix-review/negative-normal.log"
+    },
+    {
+      "kind": "main negative controls",
+      "mode": "stress",
+      "exit": 1,
+      "seconds": 3.232,
+      "log": "/workspace/scratch/2cf34574fa6e/rc-fix-review/negative-stress.log"
+    },
+    {
+      "kind": "boundary",
+      "name": "identity_probe",
+      "mode": "normal",
+      "backend": "jit",
+      "exit": 0,
+      "matches": true,
+      "stdout": "True True\nTrue True True\n",
+      "expected": "True True\nTrue True True\n",
+      "stderr": ""
+    },
+    {
+      "kind": "boundary",
+      "name": "identity_probe",
+      "mode": "normal",
+      "backend": "aot",
+      "exit": 0,
+      "matches": true,
+      "stdout": "True True\nTrue True True\n",
+      "expected": "True True\nTrue True True\n",
+      "stderr": ""
+    },
+    {
+      "kind": "boundary",
+      "name": "identity_probe",
+      "mode": "stress",
+      "backend": "jit",
+      "exit": 0,
+      "matches": true,
+      "stdout": "True True\nTrue True True\n",
+      "expected": "True True\nTrue True True\n",
+      "stderr": ""
+    },
+    {
+      "kind": "boundary",
+      "name": "identity_probe",
+      "mode": "stress",
+      "backend": "aot",
+      "exit": 0,
+      "matches": true,
+      "stdout": "True True\nTrue True True\n",
+      "expected": "True True\nTrue True True\n",
+      "stderr": ""
+    },
+    {
+      "kind": "boundary",
+      "name": "promoting_probe",
+      "mode": "normal",
+      "backend": "jit",
+      "exit": 0,
+      "matches": true,
+      "stdout": "40564819207303340847894502572032 1237940039285380274899124224\n1298074214633706907132624082305024 40564819207303340847894502572032\n",
+      "expected": "40564819207303340847894502572032 1237940039285380274899124224\n1298074214633706907132624082305024 40564819207303340847894502572032\n",
+      "stderr": ""
+    },
+    {
+      "kind": "boundary",
+      "name": "promoting_probe",
+      "mode": "normal",
+      "backend": "aot",
+      "exit": 0,
+      "matches": true,
+      "stdout": "40564819207303340847894502572032 1237940039285380274899124224\n1298074214633706907132624082305024 40564819207303340847894502572032\n",
+      "expected": "40564819207303340847894502572032 1237940039285380274899124224\n1298074214633706907132624082305024 40564819207303340847894502572032\n",
+      "stderr": ""
+    },
+    {
+      "kind": "boundary",
+      "name": "promoting_probe",
+      "mode": "stress",
+      "backend": "jit",
+      "exit": 0,
+      "matches": true,
+      "stdout": "40564819207303340847894502572032 1237940039285380274899124224\n1298074214633706907132624082305024 40564819207303340847894502572032\n",
+      "expected": "40564819207303340847894502572032 1237940039285380274899124224\n1298074214633706907132624082305024 40564819207303340847894502572032\n",
+      "stderr": ""
+    },
+    {
+      "kind": "boundary",
+      "name": "promoting_probe",
+      "mode": "stress",
+      "backend": "aot",
+      "exit": 0,
+      "matches": true,
+      "stdout": "40564819207303340847894502572032 1237940039285380274899124224\n1298074214633706907132624082305024 40564819207303340847894502572032\n",
+      "expected": "40564819207303340847894502572032 1237940039285380274899124224\n1298074214633706907132624082305024 40564819207303340847894502572032\n",
+      "stderr": ""
+    }
+  ],
+  "selected_ir": {
+    "cases": 230,
+    "intended_differences": 7,
+    "new_rejections": 0,
+    "note": "Both numeric regression files were added after the 230-case selected audit; they passed the later native boundary executions."
+  },
+  "not_run": [
+    "full corpus IR audit",
+    "three-stage bootstrap",
+    "full verification matrix"
+  ],
+  "notes": [
+    "No broad Lean proof changes included.",
+    "GC fixtures use64 retained strings and48 large short-lived allocations; before-fix normal runs still SIGSEGV.",
+    "Original independent base/descendant class-default override rejection preserved."
+  ]
+}

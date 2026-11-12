@@ -1,0 +1,8 @@
+{
+  "normalization": "Remove module identifier and source filename metadata only",
+  "identical_runtime_ir": true,
+  "normalized_sha256": {
+    "main": "d2173f7a7f8b17438b8c5cf6f8b5c6fceb6b2d2160cc0421f81ddc4dbb042793",
+    "candidate": "d2173f7a7f8b17438b8c5cf6f8b5c6fceb6b2d2160cc0421f81ddc4dbb042793"
+  }
+}

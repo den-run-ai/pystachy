@@ -1,0 +1,13 @@
+{
+  "reviewed_commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+  "source_tree": "01d87ffc6e82fb4a84e7a5100154c99903801894",
+  "source_unchanged_since": "4a70f04d9191409fc3d6f3f8603ede3c3124ee41",
+  "baseline": "0b13a2121014d8256954c6af50339ff0de8dac62",
+  "cases": 32,
+  "fixture_oracle_comparisons": 30,
+  "hosted_python": "CPython3.13.16",
+  "ircheck": true,
+  "llvm_as": "LLVM19.1.7",
+  "native_execution": false,
+  "review_findings": []
+}

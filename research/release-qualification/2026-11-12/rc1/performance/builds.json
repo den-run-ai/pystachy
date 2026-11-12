@@ -1,0 +1,64 @@
+[
+  {
+    "label": "main",
+    "commit": "0b13a2121014d8256954c6af50339ff0de8dac62",
+    "source_tree": "45db0456489f238f9a5091c0fc5f420a203992ea",
+    "command": [
+      "/workspace/scratch/2cf34574fa6e/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "pystachy.py",
+      "build",
+      "bench/pyperformance/float.py",
+      "-o",
+      "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+      "--emit-ir",
+      "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main.ll"
+    ],
+    "cwd": "/workspace/scratch/2cf34574fa6e/rc-perf-main",
+    "environment": {
+      "PYSTACHY_HOME": "/workspace/scratch/2cf34574fa6e/rc-perf-main",
+      "PYSTACHY_CACHE": "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/main-cache",
+      "PYSTACHY_LLVM": "/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin",
+      "PYSTACHY_AOT_OPT": "2",
+      "PYSTACHY_OPT": "",
+      "PYSTACHY_CFLAGS": "",
+      "PYSTACHY_IRCHECK": "1",
+      "PYSTACHY_TIMING": "1"
+    },
+    "started": "2026-11-12T20:51:47.254394+00:00",
+    "status": 0,
+    "stderr": "pystachy-timing\tprogram.cache_lookup\t0.000007422\npystachy-timing\tprogram.load\t0.005344471\npystachy-timing\tprogram.prepare\t0.001467489\npystachy-timing\tprogram.discover\t0.003750965\npystachy-timing\tprogram.analysis\t0.000902518\npystachy-timing\tprogram.optimize\t0.001243992\npystachy-timing\tprogram.finalize\t0.000084297\npystachy-timing\tprogram.lower\t0.000810821\npystachy-timing\tprogram.attempt\t0.014076491\npystachy-timing\tprogram.frontend\t0.014214449\npystachy-timing\truntime.cache_lookup\t0.974526242\npystachy-timing\truntime.load\t0.206100055\npystachy-timing\truntime.prepare\t0.043869997\npystachy-timing\truntime.discover\t0.101641590\npystachy-timing\truntime.analysis\t0.034826905\npystachy-timing\truntime.optimize\t0.024064084\npystachy-timing\truntime.finalize\t0.004499273\npystachy-timing\truntime.lower\t0.021485943\npystachy-timing\truntime.frontend\t0.440854388\npystachy-timing\truntime.c\t3.309108488\npystachy-timing\truntime.link_optimize\t2.949843463\npystachy-timing\truntime.llvm_build\t6.259105902\npystachy-timing\tprogram.llvm_link\t0.048594568\npystachy-timing\tprogram.llvm_optimize\t0.492699547\npystachy-timing\tprogram.late_inline\t0.051881335\npystachy-timing\tprogram.codegen\t0.414615015\npystachy-timing\tprogram.link\t0.049191326\npystachy-timing\tdriver.total\t8.932937782\n",
+    "input_sha256": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+    "binary_sha256": "df6ddfd955c0e9a66b43d3e2b98fce30bc0f66ac5e42dc8744137c26c6eccac7"
+  },
+  {
+    "label": "candidate",
+    "commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+    "source_tree": "01d87ffc6e82fb4a84e7a5100154c99903801894",
+    "command": [
+      "/workspace/scratch/2cf34574fa6e/toolchains/python/cpython-3.13.16-linux-x86_64-gnu/bin/python3.13",
+      "pystachy.py",
+      "build",
+      "bench/pyperformance/float.py",
+      "-o",
+      "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+      "--emit-ir",
+      "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate.ll"
+    ],
+    "cwd": "/workspace/scratch/2cf34574fa6e/rc-perf-candidate",
+    "environment": {
+      "PYSTACHY_HOME": "/workspace/scratch/2cf34574fa6e/rc-perf-candidate",
+      "PYSTACHY_CACHE": "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/candidate-cache",
+      "PYSTACHY_LLVM": "/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin",
+      "PYSTACHY_AOT_OPT": "2",
+      "PYSTACHY_OPT": "",
+      "PYSTACHY_CFLAGS": "",
+      "PYSTACHY_IRCHECK": "1",
+      "PYSTACHY_TIMING": "1"
+    },
+    "started": "2026-11-12T20:51:56.850677+00:00",
+    "status": 0,
+    "stderr": "pystachy-timing\tprogram.cache_lookup\t0.000007951\npystachy-timing\tprogram.load\t0.005560829\npystachy-timing\tprogram.prepare\t0.001417483\npystachy-timing\tprogram.discover\t0.003786719\npystachy-timing\tprogram.analysis\t0.000900426\npystachy-timing\tprogram.optimize\t0.001346297\npystachy-timing\tprogram.finalize\t0.000086209\npystachy-timing\tprogram.lower\t0.000823600\npystachy-timing\tprogram.attempt\t0.014387073\npystachy-timing\tprogram.frontend\t0.014478260\npystachy-timing\truntime.cache_lookup\t0.944666282\npystachy-timing\truntime.load\t0.207119064\npystachy-timing\truntime.prepare\t0.044404663\npystachy-timing\truntime.discover\t0.100244112\npystachy-timing\truntime.analysis\t0.031301462\npystachy-timing\truntime.optimize\t0.025795946\npystachy-timing\truntime.finalize\t0.004606263\npystachy-timing\truntime.lower\t0.019486008\npystachy-timing\truntime.frontend\t0.437156739\npystachy-timing\truntime.c\t3.152553462\npystachy-timing\truntime.link_optimize\t3.431090036\npystachy-timing\truntime.llvm_build\t6.583767385\npystachy-timing\tprogram.llvm_link\t0.056894071\npystachy-timing\tprogram.llvm_optimize\t0.445811264\npystachy-timing\tprogram.late_inline\t0.042849046\npystachy-timing\tprogram.codegen\t0.376990699\npystachy-timing\tprogram.link\t0.042688359\npystachy-timing\tdriver.total\t9.119262263\n",
+    "input_sha256": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+    "binary_sha256": "b1fdd149cf06ea8848d71a174721649c13c9983e67a196706b42d0b44c881377"
+  }
+]

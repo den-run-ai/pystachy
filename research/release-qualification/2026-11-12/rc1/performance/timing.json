@@ -1,0 +1,633 @@
+{
+  "started": "2026-11-12T20:56:11.184401+00:00",
+  "cpu": 3,
+  "allowed_cpus": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "repetitions": 11,
+  "metric": "benchmark stderr seconds line; seconds inside float main's loop region",
+  "workload": {
+    "source": "bench/pyperformance/float.py",
+    "args": [
+      "10"
+    ],
+    "points_per_loop": 100000
+  },
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "machine": "x86_64",
+  "cpuinfo": "processor\t: 0\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 0\ncpu cores\t: 9\napicid\t\t: 0\ninitial apicid\t: 0\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 1\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 1\ncpu cores\t: 9\napicid\t\t: 1\ninitial apicid\t: 1\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 2\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 2\ncpu cores\t: 9\napicid\t\t: 2\ninitial apicid\t: 2\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 3\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 3\ncpu cores\t: 9\napicid\t\t: 3\ninitial apicid\t: 3\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 4\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 4\ncpu cores\t: 9\napicid\t\t: 4\ninitial apicid\t: 4\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 5\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 5\ncpu cores\t: 9\napicid\t\t: 5\ninitial apicid\t: 5\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 6\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 6\ncpu cores\t: 9\napicid\t\t: 6\ninitial apicid\t: 6\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 7\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 7\ncpu cores\t: 9\napicid\t\t: 7\ninitial apicid\t: 7\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\nprocessor\t: 8\nvendor_id\t: AuthenticAMD\ncpu family\t: 25\nmodel\t\t: 17\nmodel name\t: AMD EPYC 9V74 80-Core Processor\nstepping\t: 1\nmicrocode\t: 0x1000065\ncpu MHz\t\t: 2596.140\ncache size\t: 1024 KB\nphysical id\t: 0\nsiblings\t: 9\ncore id\t\t: 8\ncpu cores\t: 9\napicid\t\t: 8\ninitial apicid\t: 8\nfpu\t\t: yes\nfpu_exception\t: yes\ncpuid level\t: 28\nwp\t\t: yes\nflags\t\t: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw topoext cpuid_fault vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx512_bf16 clzero xsaveerptr arat npt nrip_save tsc_scale vmcb_clean flushbyasid pausefilter pfthreshold v_vmsave_vmload avx512vbmi umip avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid fsrm arch_capabilities\nbugs\t\t: sysret_ss_attrs null_seg spectre_v1 spectre_v2 spec_store_bypass srso spectre_v2_user tsa\nbogomips\t: 5192.28\nTLB size\t: 3584 4K pages\nclflush size\t: 64\ncache_alignment\t: 64\naddress sizes\t: 46 bits physical, 48 bits virtual\npower management:\n\n",
+  "before": {
+    "/proc/loadavg": "0.08 0.64 0.58 1/572 5\n",
+    "/proc/stat": "cpu  75551 0 21367 4724542 2091 0 935 5649 0 0\ncpu0 6442 0 2148 527489 65 0 277 510 0 0\ncpu1 15591 0 2850 516473 629 0 193 1034 0 0\ncpu2 10227 0 2699 522335 665 0 157 666 0 0\ncpu3 6635 0 2255 526871 101 0 84 602 0 0\ncpu4 6697 0 2012 527252 94 0 39 539 0 0\ncpu5 11507 0 2567 521534 185 0 36 730 0 0\ncpu6 7167 0 2356 526353 124 0 90 583 0 0\ncpu7 5730 0 2286 528041 109 0 38 484 0 0\ncpu8 5551 0 2191 528190 115 0 16 496 0 0\nintr 4044458 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 1 1 1 32649 0 100 0 219847 0 1 1 35606 19026 1 22624 19005 0 2655 4896 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 5458693\nbtime 1794511602\nprocesses 53304\nprocs_running 1\nprocs_blocked 0\nsoftirq 1441098 0 167823 1136 107994 232157 0 4073 398874 25574 503467\n",
+    "/sys/fs/cgroup/cpu.stat": null,
+    "/sys/fs/cgroup/cpu.max": null,
+    "/sys/devices/system/cpu/cpu3/cpufreq/scaling_governor": null,
+    "/sys/devices/system/cpu/cpu3/cpufreq/scaling_cur_freq": null
+  },
+  "warmups": [
+    {
+      "label": "main",
+      "repetition": 0,
+      "warmup": true,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.1259509010005786,
+      "wall_seconds": 0.129522301,
+      "user_seconds": 0.056459999999999996,
+      "system_seconds": 0.07266299999999999,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 0,
+      "warmup": true,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.039711985000394634,
+      "wall_seconds": 0.04353296,
+      "user_seconds": 0.03129099999999999,
+      "system_seconds": 0.011797000000000002,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 2,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 1,
+      "warmup": true,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.040169203999539604,
+      "wall_seconds": 0.04377206,
+      "user_seconds": 0.035391000000000006,
+      "system_seconds": 0.00791,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 1,
+      "warmup": true,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.04542590400069457,
+      "wall_seconds": 0.049332252,
+      "user_seconds": 0.036721000000000004,
+      "system_seconds": 0.012162000000000006,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    }
+  ],
+  "samples": [
+    {
+      "label": "main",
+      "repetition": 0,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.046260932000222965,
+      "wall_seconds": 0.050325339,
+      "user_seconds": 0.029974,
+      "system_seconds": 0.019834000000000004,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 0,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.039377031000185525,
+      "wall_seconds": 0.043240996,
+      "user_seconds": 0.027138999999999996,
+      "system_seconds": 0.015582999999999986,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 1,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.03945148299953871,
+      "wall_seconds": 0.043174906,
+      "user_seconds": 0.042587000000000014,
+      "system_seconds": 0.0,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 1,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.04551792300026136,
+      "wall_seconds": 0.049634563,
+      "user_seconds": 0.04497599999999996,
+      "system_seconds": 0.0041190000000000115,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 2,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.045462219000000914,
+      "wall_seconds": 0.049201791,
+      "user_seconds": 0.03632099999999999,
+      "system_seconds": 0.01242299999999999,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 2,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.03904811600023095,
+      "wall_seconds": 0.042810969,
+      "user_seconds": 0.03481500000000004,
+      "system_seconds": 0.007555000000000006,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 3,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.04035885800021788,
+      "wall_seconds": 0.044522885,
+      "user_seconds": 0.02399499999999999,
+      "system_seconds": 0.02004699999999998,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 3,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.04549110199968709,
+      "wall_seconds": 0.049417212,
+      "user_seconds": 0.04078399999999999,
+      "system_seconds": 0.00804000000000002,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 4,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.045149728000069445,
+      "wall_seconds": 0.049107064,
+      "user_seconds": 0.044516,
+      "system_seconds": 0.004141000000000006,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 4,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.040099789000123565,
+      "wall_seconds": 0.044506335,
+      "user_seconds": 0.02784700000000001,
+      "system_seconds": 0.016129999999999978,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 5,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.041810532999988936,
+      "wall_seconds": 0.046232883,
+      "user_seconds": 0.041788999999999965,
+      "system_seconds": 0.0039919999999999956,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 5,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.04612768100014364,
+      "wall_seconds": 0.050205857,
+      "user_seconds": 0.03315400000000002,
+      "system_seconds": 0.016444000000000014,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 6,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.04700642300031177,
+      "wall_seconds": 0.051831069,
+      "user_seconds": 0.02756000000000003,
+      "system_seconds": 0.023396999999999973,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 2,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 6,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.04114127600041684,
+      "wall_seconds": 0.045088001,
+      "user_seconds": 0.032353999999999994,
+      "system_seconds": 0.012280000000000013,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 7,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.03936174799946457,
+      "wall_seconds": 0.043090444,
+      "user_seconds": 0.038706999999999936,
+      "system_seconds": 0.003906999999999994,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 2,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 7,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.04563116299959802,
+      "wall_seconds": 0.0496394,
+      "user_seconds": 0.04450100000000001,
+      "system_seconds": 0.004621000000000042,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 2,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 8,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.04559803300071508,
+      "wall_seconds": 0.049887959,
+      "user_seconds": 0.04105800000000004,
+      "system_seconds": 0.008384999999999976,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 2,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 8,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.05591203500080155,
+      "wall_seconds": 0.060184355,
+      "user_seconds": 0.024221999999999966,
+      "system_seconds": 0.03550700000000001,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 2,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 9,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.041690242999720795,
+      "wall_seconds": 0.04599459,
+      "user_seconds": 0.038076,
+      "system_seconds": 0.007453999999999961,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 9,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.044327139999950305,
+      "wall_seconds": 0.048133103,
+      "user_seconds": 0.03967300000000007,
+      "system_seconds": 0.007982000000000045,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "main",
+      "repetition": 10,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.main",
+        "10"
+      ],
+      "timed_seconds": 0.046369884999876376,
+      "wall_seconds": 0.050468203,
+      "user_seconds": 0.045877999999999974,
+      "system_seconds": 0.0040719999999999645,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "label": "candidate",
+      "repetition": 10,
+      "warmup": false,
+      "command": [
+        "taskset",
+        "-c",
+        "3",
+        "/workspace/scratch/2cf34574fa6e/rc-perf-evidence/float.candidate",
+        "10"
+      ],
+      "timed_seconds": 0.039992816999983916,
+      "wall_seconds": 0.044055071,
+      "user_seconds": 0.04360199999999992,
+      "system_seconds": 0.0,
+      "voluntary_context_switches": 2,
+      "involuntary_context_switches": 1,
+      "status": 0,
+      "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    }
+  ],
+  "after": {
+    "/proc/loadavg": "0.08 0.64 0.58 1/572 31\n",
+    "/proc/stat": "cpu  75649 0 21401 4725593 2091 0 935 5652 0 0\ncpu0 6442 0 2149 527618 65 0 277 510 0 0\ncpu1 15592 0 2850 516604 629 0 193 1034 0 0\ncpu2 10228 0 2699 522466 665 0 157 667 0 0\ncpu3 6728 0 2285 526876 101 0 84 605 0 0\ncpu4 6698 0 2013 527384 94 0 39 539 0 0\ncpu5 11507 0 2567 521666 185 0 36 730 0 0\ncpu6 7167 0 2356 526485 124 0 90 583 0 0\ncpu7 5732 0 2286 528171 109 0 38 484 0 0\ncpu8 5551 0 2192 528320 115 0 16 497 0 0\nintr 4046224 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 1 1 1 32649 0 100 0 219847 0 1 1 35606 19026 1 22625 19006 0 2655 4896 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\nctxt 5459907\nbtime 1794511602\nprocesses 53330\nprocs_running 1\nprocs_blocked 0\nsoftirq 1442466 0 168001 1136 107999 232157 0 4073 399186 25574 504340\n",
+    "/sys/fs/cgroup/cpu.stat": null,
+    "/sys/fs/cgroup/cpu.max": null,
+    "/sys/devices/system/cpu/cpu3/cpufreq/scaling_governor": null,
+    "/sys/devices/system/cpu/cpu3/cpufreq/scaling_cur_freq": null
+  },
+  "finished": "2026-11-12T20:56:12.504931+00:00",
+  "results": {
+    "main": {
+      "median_ms": 45.59803300071508,
+      "min_ms": 44.327139999950305,
+      "max_ms": 47.00642300031177,
+      "mad_ms": 0.4483050006456324,
+      "mean_ms": 45.7220208182579,
+      "stdev_ms": 0.705954566689487,
+      "samples_ms": [
+        46.260932000222965,
+        45.51792300026136,
+        45.462219000000914,
+        45.49110199968709,
+        45.149728000069445,
+        46.12768100014364,
+        47.00642300031177,
+        45.63116299959802,
+        45.59803300071508,
+        44.327139999950305,
+        46.369884999876376
+      ]
+    },
+    "candidate": {
+      "median_ms": 40.099789000123565,
+      "min_ms": 39.04811600023095,
+      "max_ms": 55.91203500080155,
+      "mad_ms": 0.7380410006589955,
+      "mean_ms": 41.658539000061204,
+      "stdev_ms": 4.8219627818984145,
+      "samples_ms": [
+        39.377031000185525,
+        39.45148299953871,
+        39.04811600023095,
+        40.35885800021788,
+        40.099789000123565,
+        41.810532999988936,
+        41.14127600041684,
+        39.36174799946457,
+        55.91203500080155,
+        41.690242999720795,
+        39.992816999983916
+      ]
+    }
+  },
+  "median_comparison": {
+    "candidate_time_reduction_percent": 12.05807276929092,
+    "speedup_ratio": 1.1371140381954272
+  },
+  "pairs": {
+    "speedup_ratios": [
+      1.174820214353007,
+      1.1537696314430963,
+      1.1642615228794144,
+      1.1271652433634645,
+      1.125934303542852,
+      1.103255033848907,
+      1.1425611349496188,
+      1.1592768441131915,
+      0.8155316292827007,
+      1.0632497392794562,
+      1.1594553341890126
+    ],
+    "candidate_faster": 10,
+    "median_speedup": 1.1425611349496188
+  }
+}

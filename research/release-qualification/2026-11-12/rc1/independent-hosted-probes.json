@@ -1,0 +1,384 @@
+[
+  {
+    "case": "dynany_classmethod_defaults.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.165
+  },
+  {
+    "case": "dynany_classmethod_defaults.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.129
+  },
+  {
+    "case": "dynany_classmethod_defaults.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.15
+  },
+  {
+    "case": "exc_classvar_field_flagged.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.104
+  },
+  {
+    "case": "exc_classvar_field_flagged.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.096
+  },
+  {
+    "case": "exc_classvar_field_flagged.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.077
+  },
+  {
+    "case": "exc_classvar_field_hasattr.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.079
+  },
+  {
+    "case": "exc_classvar_field_hasattr.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.08
+  },
+  {
+    "case": "exc_classvar_field_hasattr.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.103
+  },
+  {
+    "case": "exc_classvar_field_identity.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.082
+  },
+  {
+    "case": "exc_classvar_field_identity.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.079
+  },
+  {
+    "case": "exc_classvar_field_identity.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.089
+  },
+  {
+    "case": "exc_classvar_field_promoting.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.074
+  },
+  {
+    "case": "exc_classvar_field_promoting.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.083
+  },
+  {
+    "case": "exc_classvar_field_promoting.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.076
+  },
+  {
+    "case": "exc_classvar_field_read.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.083
+  },
+  {
+    "case": "exc_classvar_field_read.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.091
+  },
+  {
+    "case": "exc_classvar_field_read.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.084
+  },
+  {
+    "case": "exc_classvar_field_siblings.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.086
+  },
+  {
+    "case": "exc_classvar_field_siblings.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.095
+  },
+  {
+    "case": "exc_classvar_field_siblings.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.081
+  },
+  {
+    "case": "exc_classvar_field_write.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.077
+  },
+  {
+    "case": "exc_classvar_field_write.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.112
+  },
+  {
+    "case": "exc_classvar_field_write.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.076
+  },
+  {
+    "case": "generic_empty_default_list.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.086
+  },
+  {
+    "case": "generic_empty_default_list.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.087
+  },
+  {
+    "case": "generic_empty_default_list.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.1
+  },
+  {
+    "case": "list_empty_tuple_strs.base.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.085
+  },
+  {
+    "case": "list_empty_tuple_strs.dynamic.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.096
+  },
+  {
+    "case": "list_empty_tuple_strs.dynamic_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    },
+    "seconds": 0.084
+  },
+  {
+    "case": "exception_identity_classmethod.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    }
+  },
+  {
+    "case": "exception_identity_classmethod_big.py",
+    "oracle_status": 0,
+    "oracle_stderr": "",
+    "compile_status": 0,
+    "compile_diagnostic": "",
+    "assembly": {
+      "status": 0,
+      "diagnostic": ""
+    }
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "main": {
+    "constructor_symbol_lines": [
+      "0000000000002c50 t m.Point.__init__"
+    ],
+    "constructor_disassembly_mentions": [
+      "    27a8: e8 a3 04 00 00               \tcallq\t0x2c50 <m.Point.__init__>",
+      "    2828: e8 23 04 00 00               \tcallq\t0x2c50 <m.Point.__init__>",
+      "0000000000002c50 <m.Point.__init__>:",
+      "    2c60: 0f 85 9b 00 00 00            \tjne\t0x2d01 <m.Point.__init__+0xb1>",
+      "    2c7d: 7a 76                        \tjp\t0x2cf5 <m.Point.__init__+0xa5>",
+      "    2c9e: 74 55                        \tje\t0x2cf5 <m.Point.__init__+0xa5>",
+      "    2cb0: 75 62                        \tjne\t0x2d14 <m.Point.__init__+0xc4>",
+      "    2cc1: 7a 32                        \tjp\t0x2cf5 <m.Point.__init__+0xa5>",
+      "    2cce: 74 25                        \tje\t0x2cf5 <m.Point.__init__+0xa5>"
+    ]
+  },
+  "candidate": {
+    "constructor_symbol_lines": [],
+    "constructor_disassembly_mentions": []
+  }
+}

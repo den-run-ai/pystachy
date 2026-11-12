@@ -1,0 +1,104 @@
+FAIL exc_classvar_field_flagged (jit)
+1,4c1
+< changed base
+< AttributeError 'Base' object has no attribute 'label'
+< AttributeError 'Plain' object has no attribute 'label'
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+AttributeError: 'Sub' object has no attribute 'label'
+FAIL exc_classvar_field_flagged (aot)
+1,4c1
+< changed base
+< AttributeError 'Base' object has no attribute 'label'
+< AttributeError 'Plain' object has no attribute 'label'
+< [exit 0]
+---
+> [exit 1]
+  stderr: want none (CPython wrote none), got:
+AttributeError: 'Sub' object has no attribute 'label'
+FAIL exc_classvar_field_hasattr (jit)
+1c1
+< True True True
+---
+> False False True
+FAIL exc_classvar_field_hasattr (aot)
+1c1
+< True True True
+---
+> False False True
+FAIL exc_classvar_field_read (jit)
+1,5c1
+< SUB 11 sub True 10 base True 1
+< CHANGED 21 CHANGED 21 changed True 20 base True 1
+< changed 20 CHANGED 21
+< own True 20 OWN 21
+< [exit 0]
+---
+> [exit 139]
+  stderr: want none (CPython wrote none), got:
+Segmentation fault
+FAIL exc_classvar_field_read (aot)
+1,5c1
+< SUB 11 sub True 10 base True 1
+< CHANGED 21 CHANGED 21 changed True 20 base True 1
+< changed 20 CHANGED 21
+< own True 20 OWN 21
+< [exit 0]
+---
+> [exit 139]
+  stderr: want none (CPython wrote none), got:
+Segmentation fault
+FAIL exc_classvar_field_siblings (jit)
+1,4c1
+< sub sub sub other
+< SUB CHANGED SUB CHANGED SUB CHANGED OTHER CHANGED
+< sub again sub again own other changed
+< [exit 0]
+---
+> [exit 139]
+  stderr: want none (CPython wrote none), got:
+Segmentation fault
+FAIL exc_classvar_field_siblings (aot)
+1,4c1
+< sub sub sub other
+< SUB CHANGED SUB CHANGED SUB CHANGED OTHER CHANGED
+< sub again sub again own other changed
+< [exit 0]
+---
+> [exit 139]
+  stderr: want none (CPython wrote none), got:
+Segmentation fault
+FAIL exc_classvar_field_write (jit)
+1,2c1,2
+< base kept changed
+< assigned changed
+---
+> changed changed
+> changed changed
+FAIL exc_classvar_field_write (aot)
+1,2c1,2
+< base kept changed
+< assigned changed
+---
+> changed changed
+> changed changed
+FAIL list_empty_tuple_strs (jit)
+Binary files tests/programs/containers/list_empty_tuple_strs.out and /tmp/pystachy-tests.bKFtL4/list_empty_tuple_strs.jit differ
+  stderr: want none (CPython wrote none), got:
+OSError: [Errno 14] Bad address
+FAIL list_empty_tuple_strs (aot)
+Binary files tests/programs/containers/list_empty_tuple_strs.out and /tmp/pystachy-tests.bKFtL4/list_empty_tuple_strs.aot differ
+  stderr: want none (CPython wrote none), got:
+OSError: [Errno 14] Bad address
+FAIL generic_empty_default_list (jit)
+Binary files tests/programs/generics/generic_empty_default_list.out and /tmp/pystachy-tests.bKFtL4/generic_empty_default_list.jit differ
+  stderr: want none (CPython wrote none), got:
+OSError: [Errno 14] Bad address
+FAIL generic_empty_default_list (aot)
+Binary files tests/programs/generics/generic_empty_default_list.out and /tmp/pystachy-tests.bKFtL4/generic_empty_default_list.aot differ
+  stderr: want none (CPython wrote none), got:
+OSError: [Errno 14] Bad address
+selected 7 cases
+0 passed, 14 failed

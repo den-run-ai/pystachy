@@ -1,0 +1,71 @@
+ruff check
+All checks passed!
+ruff check --no-force-exclude bench/pyperformance/pytest/*.py
+All checks passed!
+/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python tools/runtime_roots.py
+68 static pointer stores: 0 GC root problems
+shellcheck -s sh -S warning tests/cache.sh tests/corpus.sh tests/prepare_path.sh tests/record.sh tests/run.sh tests/verify.sh tests/ffi/run.sh tools/abi_check.sh tools/check_cpu_buffers.sh tools/check_ir.sh tools/coverage.sh tools/docker_smoke.sh tools/irsame.sh tools/runtime_coverage.sh tools/setup.sh tools/shard_cases.sh tools/variants.sh bench/run.sh
+"/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin/"clang -fsyntax-only -Wall -Wextra -Werror runtime.c tools/dictprobe.c tools/listprobe.c tools/eqprobe.c tools/fileprobe.c tools/selectprobe.c tools/weakrefprobe.c tools/boxprobe.c tools/unicodeprobe.c tools/bytescanprobe.c tools/floatprobe.c pyext.c pyembed.c
+"/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin/"clang -fsyntax-only -Wall -Wextra -Werror -DPYX_ABI3T pyext.c
+"/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin/"clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=18 lljit.c
+"/workspace/scratch/2cf34574fa6e/toolchains/debian/root/usr/lib/llvm-19/bin/"clang -fsyntax-only -Wall -Wextra -Werror -std=c11 -D_GNU_SOURCE -DLLVM_VERSION_MAJOR=21 lljit.c
+/workspace/scratch/2cf34574fa6e/toolchains/dev/bin/python tools/check_runtime.py
+list.find: pys_list_find has effect wL in runtime.c, which RUNTIME leaves out
+list.index: pys_list_index has effect wL in runtime.c, which RUNTIME leaves out
+list.index_as: pys_list_index_as has effect wL in runtime.c, which RUNTIME leaves out
+list.count: pys_list_count has effect wL in runtime.c, which RUNTIME leaves out
+list.minmax: pys_list_minmax has effect wL in runtime.c, which RUNTIME leaves out
+dict.has: pys_dict_has has effect wD in runtime.c, which RUNTIME leaves out
+dict.getitem: pys_dict_getitem has effect wD in runtime.c, which RUNTIME leaves out
+dict.get: pys_dict_get has effect wD in runtime.c, which RUNTIME leaves out
+dict.getbox: pys_dict_getbox has effect wD in runtime.c, which RUNTIME leaves out
+dict.copy: pys_dict_copy has effect wD in runtime.c, which RUNTIME leaves out
+dict.from: pys_dict_from has effect wD in runtime.c, which RUNTIME leaves out
+dict.eq_find: pys_dict_eq_find has effect wD in runtime.c, which RUNTIME leaves out
+dict.eq_find: pys_dict_eq_find has effect wD in runtime.c, which RUNTIME leaves out
+dict.find: pys_dict_find has effect wD in runtime.c, which RUNTIME leaves out
+dict.entry: pys_dict_entry has effect wD in runtime.c, which RUNTIME leaves out
+dict.big_find: pys_dict_big_find has effect wD in runtime.c, which RUNTIME leaves out
+dict.big_entry: pys_dict_big_entry has effect wD in runtime.c, which RUNTIME leaves out
+dict.update_pairs_big: pys_dict_update_pairs_big has effect wL in runtime.c, which RUNTIME leaves out
+dict.bkey_get: pys_dict_bkey_get has effect wD in runtime.c, which RUNTIME leaves out
+dict.bkey_getbox: pys_dict_bkey_getbox has effect wD in runtime.c, which RUNTIME leaves out
+dict.update_pairs: pys_dict_update_pairs has effect wL in runtime.c, which RUNTIME leaves out
+dict.fromkeys: pys_dict_fromkeys has effect wL in runtime.c, which RUNTIME leaves out
+dict.fromkeys_dict: pys_dict_fromkeys_dict has effect wD in runtime.c, which RUNTIME leaves out
+set.has: pys_set_has has effect wD in runtime.c, which RUNTIME leaves out
+set.copy: pys_set_copy has effect wD in runtime.c, which RUNTIME leaves out
+set.update_list: pys_set_update_list has effect wL in runtime.c, which RUNTIME leaves out
+set.or: pys_set_or has effect wD in runtime.c, which RUNTIME leaves out
+set.or: pys_set_or has effect wD in runtime.c, which RUNTIME leaves out
+set.and: pys_set_and has effect wD in runtime.c, which RUNTIME leaves out
+set.and: pys_set_and has effect wD in runtime.c, which RUNTIME leaves out
+set.and_list: pys_set_and_list has effect wD in runtime.c, which RUNTIME leaves out
+set.and_list: pys_set_and_list has effect wL in runtime.c, which RUNTIME leaves out
+set.isub_list: pys_set_isub_list has effect wL in runtime.c, which RUNTIME leaves out
+set.sub: pys_set_sub has effect wD in runtime.c, which RUNTIME leaves out
+set.sub: pys_set_sub has effect wD in runtime.c, which RUNTIME leaves out
+set.sub_list: pys_set_sub_list has effect wD in runtime.c, which RUNTIME leaves out
+set.sub_list: pys_set_sub_list has effect wL in runtime.c, which RUNTIME leaves out
+set.sub_dict: pys_set_sub_dict has effect wD in runtime.c, which RUNTIME leaves out
+set.sub_dict: pys_set_sub_dict has effect wD in runtime.c, which RUNTIME leaves out
+set.xor: pys_set_xor has effect wD in runtime.c, which RUNTIME leaves out
+set.xor: pys_set_xor has effect wD in runtime.c, which RUNTIME leaves out
+set.xor_list: pys_set_xor_list has effect wD in runtime.c, which RUNTIME leaves out
+set.xor_list: pys_set_xor_list has effect wL in runtime.c, which RUNTIME leaves out
+set.xor_dict: pys_set_xor_dict has effect wD in runtime.c, which RUNTIME leaves out
+set.xor_dict: pys_set_xor_dict has effect wD in runtime.c, which RUNTIME leaves out
+set.ixor_list: pys_set_ixor_list has effect wL in runtime.c, which RUNTIME leaves out
+set.cmp: pys_set_cmp has effect wD in runtime.c, which RUNTIME leaves out
+set.cmp: pys_set_cmp has effect wD in runtime.c, which RUNTIME leaves out
+set.le_list: pys_set_le_list has effect wD in runtime.c, which RUNTIME leaves out
+set.le_list: pys_set_le_list has effect wL in runtime.c, which RUNTIME leaves out
+set.ge_list: pys_set_ge_list has effect wD in runtime.c, which RUNTIME leaves out
+set.ge_list: pys_set_ge_list has effect wL in runtime.c, which RUNTIME leaves out
+set.isdisjoint: pys_set_isdisjoint has effect wD in runtime.c, which RUNTIME leaves out
+set.isdisjoint: pys_set_isdisjoint has effect wD in runtime.c, which RUNTIME leaves out
+set.isdisjoint_list: pys_set_isdisjoint_list has effect wD in runtime.c, which RUNTIME leaves out
+set.isdisjoint_list: pys_set_isdisjoint_list has effect wL in runtime.c, which RUNTIME leaves out
+set.big_has: pys_set_big_has has effect wD in runtime.c, which RUNTIME leaves out
+672 RUNTIME entries, 70 exception classes: 57 problems
+make: *** [Makefile:372: check-runtime] Error 1
