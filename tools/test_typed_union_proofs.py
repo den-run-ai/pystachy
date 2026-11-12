@@ -988,7 +988,9 @@ class UnionProofTests(unittest.TestCase):
                 with self.subTest(owner=owner, guarded=guarded):
                     item = W if W in owner else x
                     c = Case("tuple_slot_union", [owner, "int"])
-                    address = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), ("%a1", "int")])
+                    # (gen_seq_item's address: a runtime-length tuple's item past its length word)
+                    index = c.op("scalar.bin", "int", "add", [("%a1", "int"), ("1", "int")]) if "vtuple[" in owner else "%a1"
+                    address = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), (index, "int")])
                     bits = c.op("mach.load", "int", a=[(address, "%ptr")])
                     value = c.op("slot.unpack", item, a=[(bits, "%slot")])
                     if guarded:
@@ -1009,6 +1011,41 @@ class UnionProofTests(unittest.TestCase):
                         else:
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
+
+    def test_tuple_slot_union_reads_need_item_addresses(self):
+        # Only an item's slot holds a box of the items' union: not a runtime-length tuple's length
+        # word (index 0, or an index not past it as gen_seq_item's index + 1 is), nor bytes, nor a
+        # literal index past a fixed tuple's items. The first of each pair is the valid control.
+        x = "union[float,str]"
+        vt, ft = "vtuple[" + x + "]", "tuple[" + x + "," + x + "]"
+        cases = [(vt, "int", ["%a1", "1"], True), (vt, "int", None, False), (vt, "int", ["0"], False),
+                 (vt, "int", ["-1", "1"], False), (vt, "int", ["%a1", "2"], False), (vt, "%byte", ["%a1", "1"], False),
+                 (ft, "int", ["1"], True), (ft, "int", ["2"], False), (ft, "%byte", ["1"], False), (ft, "int", ["-1"], False)]
+        for owner, stride, index, valid in cases:
+            with self.subTest(owner=owner, stride=stride, index=index):
+                c = Case("tuple_item_address", [owner, "int"])
+                if index is None:
+                    at = "%a1"
+                elif len(index) == 2:
+                    at = c.op("scalar.bin", "int", "add", [(index[0], "int"), (index[1], "int")])
+                else:
+                    at = index[0]
+                address = c.op("mach.addr", "%ptr", stride, [("%a0", "%ptr"), (at, "int")])
+                bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                value = c.op("slot.unpack", x, a=[(bits, "%slot")])
+                c.guard(value=value, member="float", typ=x)
+                c.block("hit")
+                c.payload(value=value, member="float", typ=x)
+                c.ret()
+                c.block("miss")
+                c.payload(value=value, member="str", typ=x)
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if valid:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
 
     def test_optional_runtime_tuple_length_read_is_no_tag_read(self):
         # The length word of a tuple[T, ...] | None, read without a null test in a function that
