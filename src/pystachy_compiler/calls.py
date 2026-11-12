@@ -48,6 +48,12 @@ from src.pystachy_compiler.utils import (
     unopt,
 )
 
+# str methods that only read their str, returning a bool or an int and keeping no reference to it:
+# a call of one on a str local that an append owns leaves it owned (Gen.str_append), so a loop that
+# appends and tests what it built (s += c, then s.endswith(...)) is linear, as CPython's is
+STR_PEEKS = ["startswith", "endswith", "find", "rfind", "index", "rindex", "count", "isdigit", "isalpha", "isalnum",
+             "isspace", "isupper", "islower", "istitle", "isascii", "isdecimal", "isnumeric"]
+
 
 def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
     f = n.kids[0]
@@ -214,7 +220,12 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             if f.s == "copy" and len(args) == 0:
                 return self.refl_dict_copy(f.kids[0])  # (vars(x).copy(): reflection.py)
             self.err(VARS_USES)
-        o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
+        if f.kids[0].kind == "name" and f.s in STR_PEEKS and self.owns(f.kids[0].s):
+            self.appending = True  # (a str that str_append owns stays owned: the method only reads it, as len() does)
+            o = self.read(f.kids[0])
+            self.appending = False
+        else:
+            o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
