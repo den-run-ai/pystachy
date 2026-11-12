@@ -120,6 +120,16 @@ def copy_dict(value: dict[str, JSONValue]) -> dict[str, JSONValue]:
 
 
 def _pretty(value: JSONValue, level: int, out: list[str]) -> None:
+    # Scalars are written here: an encoder call per leaf dominated large results.
+    if value is None:
+        out.append("null")
+        return
+    if isinstance(value, bool):
+        out.append("true" if value else "false")
+        return
+    if isinstance(value, int):
+        out.append(str(value))
+        return
     if isinstance(value, list):
         if not value:
             out.append("[]")

@@ -180,6 +180,10 @@ def run_result(
     """
     workspace = resolve_workspace(working_dir)
     host = Host()
+    transport_problem = host.http.mode_problem()
+    if transport_problem:
+        workspace.cleanup()
+        raise UsageError(transport_problem)
 
     def run_log(event: dict[str, JSONValue]) -> None:
         """Append one JSON event to AGENT_RUN_LOG. Never fails the run."""

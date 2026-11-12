@@ -6,8 +6,9 @@ those, so this module provides the same operations from the small surface every
 runtime shares: ``os``, ``os.path``, ``open()`` and ``os.system()``.
 
 Processes run through POSIX ``sh`` with their output captured in a private
-scratch directory; HTTP goes through ``curl``. Both adapters are used unchanged
-on CPython, PyPy, mypyc and Pystachy, so one differential run covers them all.
+scratch directory, on every runtime alike. HTTP is sent in-process by
+``native_http`` and falls back to ``curl`` behind a proxy or where the stream
+libraries are missing.
 This is not a sandbox: commands run with the launching user's permissions.
 """
 
@@ -18,6 +19,8 @@ import shutil
 import sys
 import tempfile
 import time
+
+from native_http import HttpClient, HttpReply
 
 PROCESS_TERMINATION_GRACE = "0.2"  # seconds between TERM and KILL on timeout
 
@@ -372,15 +375,6 @@ class CapturedProcess:
         self.timed_out = timed_out
 
 
-class HttpReply:
-    """One HTTP exchange: a status and body, or a transport ``error``."""
-
-    def __init__(self, status: int, text: str, error: str) -> None:
-        self.status = status
-        self.text = text
-        self.error = error
-
-
 class HostProbe:
     def __init__(self, system: str, machine: str, found: list[str]) -> None:
         self.system = system
@@ -396,6 +390,9 @@ class Host:
         self._sequence = 0
         self._timeout_tool = ""
         self._timeout_checked = False
+        self._signal_reset = ""
+        self._signal_checked = False
+        self.http = HttpClient()
 
     def scratch(self) -> str:
         if not self._scratch:
@@ -403,6 +400,7 @@ class Host:
         return self._scratch
 
     def cleanup(self) -> None:
+        self.http.close()
         if self._scratch:
             remove_tree(self._scratch)
             self._scratch = ""
@@ -424,6 +422,25 @@ class Host:
                 self._timeout_tool = find_on_path("timeout") or find_on_path("gtimeout")
         return self._timeout_tool
 
+    def signal_reset(self) -> str:
+        """A command prefix that gives the command the default SIGPIPE, or ``""``.
+
+        Every runtime here ignores SIGPIPE and ``os.system`` passes that on, so
+        ``producer | head`` would report "Broken pipe" where ``askme.py``'s
+        ``subprocess`` child stops quietly. A shell cannot undo an inherited
+        ignore; GNU ``env`` or ``perl`` can.
+        """
+        if not self._signal_checked:
+            self._signal_checked = True
+            override = os.environ.get("ASKME_NATIVE_SIGNAL_RESET", "")
+            if override == "none":
+                self._signal_reset = ""
+            elif run_command("env --default-signal=PIPE true 2>/dev/null") == 0:
+                self._signal_reset = "env --default-signal=PIPE "
+            elif find_on_path("perl"):
+                self._signal_reset = "perl -e '$SIG{PIPE}=\"DEFAULT\";exec @ARGV;exit 127' "
+        return self._signal_reset
+
     def run_shell(self, command: str, timeout: int, cwd: str) -> CapturedProcess:
         """Run ``/bin/sh -c command`` in ``cwd`` with captured output and a deadline.
 
@@ -444,10 +461,12 @@ class Host:
             + " || exit 1; "
         )
         tool = self.timeout_tool()
+        reset = self.signal_reset()
         if tool:
             script = (
                 prefix
                 + "exec "
+                + reset
                 + shell_quote(tool)
                 + " -k "
                 + PROCESS_TERMINATION_GRACE
@@ -461,6 +480,7 @@ class Host:
             # shell. Without job control it cannot signal the whole group.
             script = (
                 prefix
+                + reset
                 + "/bin/sh -c "
                 + shell_quote(command)
                 + " & child=$!; ( sleep "
@@ -484,12 +504,20 @@ class Host:
         return CapturedProcess(code, stdout, stderr, timed_out)
 
     def http_post(self, url: str, body: str, headers: list[str], timeout: int) -> HttpReply:
-        """POST ``body`` with curl. Headers travel in a private file, never argv."""
+        """POST ``body`` in-process, or with curl where that cannot serve the request.
+
+        The in-process client keeps each origin's connection open. curl remains
+        for proxies and for machines without the stream libraries; its headers
+        travel in a private file, never argv.
+        """
         if not (url.startswith("http://") or url.startswith("https://")):
             return HttpReply(0, "", f"Invalid URL {url!r}: only http:// and https:// are supported")
         for header in headers:
             if "\r" in header or "\n" in header or "\x00" in header:
                 return HttpReply(0, "", "invalid header value")
+        direct = self.http.post(url, body, headers, timeout)
+        if direct is not None:
+            return direct
         request_path = self._file("request")
         header_path = self._file("headers")
         reply_path = self._file("reply")

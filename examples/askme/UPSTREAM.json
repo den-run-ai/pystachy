@@ -1,12 +1,17 @@
 {
   "repository": "https://github.com/den-run-ai/askme",
-  "commit": "572c26284acc32dcac59095611237c464df8c22c",
+  "commit": "2373cf8235e91507faf4e089cd99a8d8dfdfbac2",
   "pull_request": "https://github.com/den-run-ai/askme/pull/130",
   "files": [
     {
+      "path": "UPSTREAM_LICENSE",
+      "source_path": "LICENSE",
+      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
+    },
+    {
       "path": "askme_native.py",
       "source_path": "native/askme_native.py",
-      "sha256": "3c5f6500ea192697f0c5e628de07e13c5cbd8e2aebff7bc15346cbaf8deb76d1"
+      "sha256": "80833bc7be07da5f1eecc0e8ac2692234b503c8027a9dece870c8cb5bac9eaf7"
     },
     {
       "path": "native_actions.py",
@@ -14,14 +19,29 @@
       "sha256": "2d9a3c3e4e99e837ae9e39b942563cdf50d5d68f9894d27dbce16507911e63bc"
     },
     {
+      "path": "native_ffi_net.py",
+      "source_path": "native/native_ffi_net.py",
+      "sha256": "01e809e82deb0f37d6a5dad91a66db5b7950d18f421708c34e5845124c65081f"
+    },
+    {
+      "path": "native_ffi_tls.py",
+      "source_path": "native/native_ffi_tls.py",
+      "sha256": "48a471484c1e6e377693171925d8643254f8c82020af29fe9a8b0b23389a4d2f"
+    },
+    {
       "path": "native_host.py",
       "source_path": "native/native_host.py",
-      "sha256": "0e7267532628f6588950a6720ea78f2b7f81c6cfdf5f56642f495f6dc0d6b7f1"
+      "sha256": "e77c2956d578a4274b78dcfaadb6952a4051ee07fa3c54e8ae279803282c5952"
+    },
+    {
+      "path": "native_http.py",
+      "source_path": "native/native_http.py",
+      "sha256": "f489af27c628bcd105293389685f0c8935ade49567b0b26595fb1d104716634e"
     },
     {
       "path": "native_json.py",
       "source_path": "native/native_json.py",
-      "sha256": "8d5991df51f56d8480a2c132baae192e63d80aa1607e7492ba7689a0279519fa"
+      "sha256": "3ff9ddcab53f5cb4910f101a6800365a88ca621ab2e95bb99d1d10341ae143fb"
     },
     {
       "path": "native_llm.py",
@@ -42,6 +62,11 @@
       "path": "native_state.py",
       "source_path": "native/native_state.py",
       "sha256": "88d3ca4b102eb45015ffdd37b9394c57190c71b9158105a21be546125606221a"
+    },
+    {
+      "path": "native_std_net.py",
+      "source_path": "native/native_std_net.py",
+      "sha256": "92be714b3cc5986ae82bb22f5cedb6fb291cf27de9be7e4f85ba799d0b50e02b"
     },
     {
       "path": "scenarios/compile_repair.json",
@@ -132,11 +157,6 @@
       "path": "scenarios/write_pressure.json",
       "source_path": "native/scenarios/write_pressure.json",
       "sha256": "0b566607ad0d331e07445df460d6deffc4475e881d81306f872bf7a4ac4f91c0"
-    },
-    {
-      "path": "UPSTREAM_LICENSE",
-      "source_path": "LICENSE",
-      "sha256": "802da1c331ccd90b667bd3d356dce67f71b499d9974846a2bbf75d97a7f261e9"
     }
   ]
 }
