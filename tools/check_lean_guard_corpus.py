@@ -16,12 +16,15 @@ import time
 
 import check_lean_boundary as boundary
 import check_lean_corpus as corpus
+import check_lean_fields as fields
 import check_lean_guards as guards
 
 ROOT = Path(__file__).resolve().parent.parent
 COUNT_KEYS = ("union_reads", "removed_checks", "proved_union_reads", "proved_removed_checks")
 # Obligations on union payload bits beyond inventoried reads (check_lean_guards.normalize).
 PAYLOAD_KEYS = ("payload_obligations", "proved_payload_obligations")
+# Field initialization of objects under construction (check_lean_fields).
+FIELD_KEYS = ("field_obligations", "proved_field_obligations")
 
 
 def failed(program, error):
@@ -45,10 +48,15 @@ def validate_record(record):
         boundary.require(all(type(record.get(key)) is int and record[key] >= 0 for key in PAYLOAD_KEYS)
                          and record["proved_payload_obligations"] <= record["payload_obligations"],
                          "invalid payload obligation counts")
+    if complete and any(key in record for key in FIELD_KEYS):
+        boundary.require(all(type(record.get(key)) is int and record[key] >= 0 for key in FIELD_KEYS)
+                         and record["proved_field_obligations"] <= record["field_obligations"],
+                         "invalid field obligation counts")
     if record["status"] == "accepted":
         boundary.require(complete and record["union_reads"] == record["proved_union_reads"]
                          and record["removed_checks"] == record["proved_removed_checks"]
-                         and record.get("payload_obligations", 0) == record.get("proved_payload_obligations", 0),
+                         and record.get("payload_obligations", 0) == record.get("proved_payload_obligations", 0)
+                         and record.get("field_obligations", 0) == record.get("proved_field_obligations", 0),
                          "accepted record omitted obligations")
 
 
@@ -59,16 +67,17 @@ def summarize(programs, records, seconds):
         validate_record(record)
     status = max((r["status"] for r in records), key=boundary.SEVERITY.index)
     counts = {key: sum(r[key] for r in records if r["inventory_complete"]) for key in COUNT_KEYS}
-    counts.update({key: sum(r.get(key, 0) for r in records if r["inventory_complete"]) for key in PAYLOAD_KEYS})
+    counts.update({key: sum(r.get(key, 0) for r in records if r["inventory_complete"]) for key in PAYLOAD_KEYS + FIELD_KEYS})
     counts.update({key: sum(r["status"] == key for r in records) for key in boundary.SEVERITY})
     counts["programs"] = len(records)
     counts["uninventoried_programs"] = sum(not r["inventory_complete"] for r in records)
     counts["vacuous_programs"] = sum(r["status"] == "accepted" and r["inventory_complete"]
                                      and r["union_reads"] == 0 and r["removed_checks"] == 0
-                                     and r.get("payload_obligations", 0) == 0 for r in records)
+                                     and r.get("payload_obligations", 0) == 0
+                                     and r.get("field_obligations", 0) == 0 for r in records)
     return {"status": status, "totals": counts, "programs": records,
             "inventory_complete": counts["uninventoried_programs"] == 0,
-            "seconds": seconds, "limitations": guards.LIMITATIONS}
+            "seconds": seconds, "limitations": guards.LIMITATIONS, "field_limitations": fields.LIMITATIONS}
 
 
 def check_program(program, checker, timeout):
@@ -91,8 +100,11 @@ def check_program(program, checker, timeout):
                 return failed(program, report.get("diagnostics", []))
             snapshot, digest = boundary.read_snapshot(output / "typed-after.json", boundary.MAX_PROGRAM_BYTES)
             report, _ = guards.check_all(snapshot, checker)
-            return dict(report, program=program, inventory_complete=True, snapshot_sha256=digest,
-                        seconds=round(time.monotonic() - started, 2))
+            field_results, _ = fields.check_all(snapshot, checker)
+            field_report = fields.program_report(field_results)
+            status = max(report["status"], field_report["field_status"], key=boundary.SEVERITY.index)
+            return dict(report, **field_report, status=status, program=program, inventory_complete=True,
+                        snapshot_sha256=digest, seconds=round(time.monotonic() - started, 2))
         except (ValueError, KeyError, OSError, subprocess.SubprocessError, RecursionError) as error:
             return failed(program, str(error))
 

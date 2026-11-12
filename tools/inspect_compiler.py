@@ -400,6 +400,15 @@ class Observer:
                        "tagged": info.tag != 0} for name, info in sorted(gen.classes.items())}
 
     @staticmethod
+    def class_layouts(gen) -> dict:
+        # Each class's struct as field.addr indexes it: its fields (a name beginning with a
+        # space is hidden storage), then each "is assigned" flag (fl_fields) and identity box.
+        # A field read tests its flag unless it has none or no read finds it unassigned
+        # (fsure), which check_lean_fields.py's obligations rely on.
+        return {name: {"fields": list(info.fields), "flags": dict(info.fflag), "sure": sorted(info.fsure)}
+                for name, info in sorted(gen.classes.items())}
+
+    @staticmethod
     def boundary_function(gen, fn) -> dict:
         operations, calls = Counter(), Counter()
         for block in fn.blocks:
@@ -770,6 +779,7 @@ class Observer:
                     snapshot["dynamic_types"] = self.dynamic_types(self.gen)
                     snapshot["classes"] = self.classes(self.gen)
                     if self.guard_evidence:
+                        snapshot["class_layouts"] = self.class_layouts(self.gen)
                         snapshot["union_tags"] = dict(self.gen.utags)
                         snapshot["nullcheck_evidence"] = self.nullcheck_evidence
                         snapshot["guard_inventory"] = {"nullcheck_passes": len(self.nullcheck_evidence),

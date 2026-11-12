@@ -512,6 +512,19 @@ class GuardCorpusAccountingTests(unittest.TestCase):
             summarize(["p.py"], [self.record(status="rejected", payload_obligations=1,
                                              proved_payload_obligations=2)], 0)
 
+    def test_field_obligations_are_counted_and_not_vacuous(self):
+        from check_lean_guard_corpus import summarize
+        record = self.record(union_reads=0, proved_union_reads=0, removed_checks=0, proved_removed_checks=0,
+                             field_obligations=4, proved_field_obligations=4)
+        report = summarize(["p.py"], [record], 0)
+        self.assertEqual(report["totals"]["vacuous_programs"], 0)
+        self.assertEqual(report["totals"]["proved_field_obligations"], 4)
+        with self.assertRaisesRegex(ValueError, "omitted obligations"):
+            summarize(["p.py"], [self.record(field_obligations=4, proved_field_obligations=3)], 0)
+        with self.assertRaisesRegex(ValueError, "invalid field obligation counts"):
+            summarize(["p.py"], [self.record(status="rejected", field_obligations=1,
+                                             proved_field_obligations=2)], 0)
+
     def test_unsupported_write_only_program_is_not_vacuous(self):
         from check_lean_guard_corpus import summarize
         record = self.record(status="unsupported", union_reads=0, proved_union_reads=0,

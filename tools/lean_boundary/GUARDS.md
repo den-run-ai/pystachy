@@ -22,13 +22,17 @@ Lean's existing certificate checkers:
   When identical check keys occur more than once and only some disappear, the
   removed locations are ambiguous: their validated count remains inventoried,
   but the pass record is explicitly unsupported and receives no proof credit.
+- **Field initialization** (`tools/check_lean_fields.py`): every field that a class's
+  code reads without testing its "is assigned" flag is assigned before that code can
+  see an object under construction (see [Field initialization](#field-initialization)).
 
 The adapter does not call the compiler's `UnionProof`, `Values`, dominator
 solver or nullcheck proof. It reuses the boundary adapter's structural validation,
 certificate inference and executable checker, and builds a separate normalized
 graph. Certificates are untrusted; Lean checks each edge and obligation.
-`PystachyGuards.lean` specializes the existing safety theorem to nonnullness and
-exact member agreement. `GuardAudit.lean` audits all three public corollaries.
+`PystachyGuards.lean` specializes the existing safety theorem to nonnullness,
+exact member agreement and assigned fields. `GuardAudit.lean` audits all four
+public corollaries.
 
 ## Removed checks through memory
 
@@ -147,6 +151,51 @@ or pair load is that box, which also proves the return domains of functions that
 one. IR operand types, container item types, the inspection record and these runtime
 semantics are trusted; payload checks prove member agreement, not numeric ranges.
 
+## Field initialization
+
+`flow.gen_fl_fields` decides which fields of a class get an "is assigned" flag: a read of a
+field without one (or whose flag only `hasattr` tests) loads it unchecked, so the field must
+hold a value wherever such a read can run. `inspect_compiler.py --guard-evidence` records each
+class's struct (`class_layouts`): its fields, then its flags and identity boxes, a class's
+struct being a prefix of each subclass's. A class's view is what its code and its bases' code
+reads unchecked (unflagged fields, a tagged class's class word, an exception's hidden fields);
+an object is complete once every field of its class's view is assigned.
+
+`check_lean_fields.py` follows each object under construction (an allocation of a class, or a
+parameter a contract covers) by a tag on each value and private slot that may hold it, and
+each of its fields by a location that a store sets. In the finite-tag model, Lean requires
+the field `set` at each unchecked read of such an object, at each escape (any use but a field
+access, a private slot, a comparison, a join or a call a contract covers) for its whole
+view, at each call for the callee's pre-condition (and, where the callee lets the argument
+escape, the fields the parameter's class cannot see), and at each return for the function's
+post-condition. Contracts cover every `__init__`'s self and each parameter that a call passes
+a possibly incomplete object in, such as `super().m(...)` before `super().__init__()`; they
+are inferred as a greatest fixed point and each function is then checked separately, and a
+function Lean rejects gives its callers none, so its calls are escapes, as for return domains.
+A value's possible objects at each site come from the previous pass's facts, which a payload
+asserts (Lean's guards narrow only the tested value), and an allocation that runs again needs
+its previous object complete, else the values still holding it may not be used. Where a
+loaded flag (as `hasattr` loads one) is true, its field was stored: a flag is set only after
+its field (`setfield`), which each flag store of an object under construction must show.
+Objects that compiled code did not make here (parameters, loads from memory, call results)
+are complete: the function that allocated each let it escape only once complete.
+
+[`examples/field_init.py`](examples/field_init.py) has class attribute defaults, a field
+assigned on one path, a list built in a loop, an object join, a tagged hierarchy whose
+calls dispatch on the class word, `super().fmt(...)` before `super().__init__()`, a field
+that only `hasattr` tests, a dataclass factory and an exception subclass's class variable
+shadowing its base's field.
+[`test_lean_fields.py`](../test_lean_fields.py) corrupts its IR: an `__init__` that forgets
+a field, an object no `__init__` was given, a class default not stored, a class word not
+stored, a loop's object escaping into the next before its `__init__`, a read before the
+field's store, a flag set before its field and a base whose code reads the shadowed field
+unflagged must each be rejected.
+The class layouts, the classes table, the IR's operand views and typed memory are trusted, as
+are that only compiled allocations make objects of the program's classes and that complete
+objects' flags are set only after their fields; a closure that captures an object under
+construction and a raw access other than its class word count as escapes (conservatively),
+and functions beyond the boundary adapter's bounds are unsupported.
+
 ## Run
 
 Build `tools/lean_boundary` with the pinned Lean toolchain, then:
@@ -172,9 +221,10 @@ rejection is an investigation target; it does not establish a compiler bug.
 ## Supported abstraction and boundaries
 
 The bounded CI selection exercises twenty-nine inventoried union reads, fifty-two
-payload obligations, three proved union return domains and twenty-two removed null checks
-in `examples/union_guards.py`, `examples/union_effects.py`, `examples/union_split.py`,
-`examples/null_guards.py` and `examples/null_reloads.py`.
+payload obligations, three proved union return domains, twenty-five removed null checks
+and 106 field obligations in `examples/union_guards.py`, `examples/union_effects.py`,
+`examples/union_split.py`, `examples/null_guards.py`, `examples/null_reloads.py` and
+`examples/field_init.py`.
 This small gate does not claim complete-corpus acceptance. Programs whose union values
 come from memory, containers or unproved callees remain investigation targets rather
 than qualifying examples until those representations are proved.

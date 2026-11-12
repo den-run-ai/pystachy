@@ -13,6 +13,7 @@ the model does not establish that the exporter or runtime implements that model.
 | Integer storage | Low-word, tuple-tail, narrowing and complete stack-copy obligations | Exported representations, fresh allocation and stack ABI |
 | Null-check removal | Removed checks are redundant in the captured before-pass graph, including through fields, globals, closure cells and box payloads | Whole-pass equivalence, box immutability across calls, runtime effect contracts and the classes table |
 | Closed unions | Inventoried tag/payload reads have nonnull/member guards, across writes and calls where no compiled code may write a union box, through joins and proved return domains; payload bits are read, boxed and stored in split locals only as their box's member | Reconstruction from other tag sources, memory/container provenance, parameter domains, split slot records, IR operand/item types and box immutability's typed-memory and runtime ABI |
+| Field initialization | Each field a class's code reads without an "is assigned" flag test is assigned before that code can see an object under construction, through `__init__` and other calls by inferred contracts | Class layouts, that only compiled allocations make objects of the program's classes and set flags after fields, and closures or raw accesses of objects under construction (escapes) |
 
 All accepted certificates are checked by Lean. Mutation controls exercise the
 Python adapters, including lost inventories, exceptional edges and forged facts.
