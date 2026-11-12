@@ -7,7 +7,7 @@ from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
-from src.pystachy_compiler.coroutines import has_async
+from src.pystachy_compiler.coroutines import has_async, is_async
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS, one_nums_intact
 from src.pystachy_compiler.module import Mod
@@ -384,7 +384,8 @@ def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
     for b in st.kids[0].kids:
         if b.kind == "def":
             ps = b.kids[0].kids
-            deco = b.kids[3].s if len(b.kids) == 4 and len(b.kids[3].kids) == 0 else ""
+            d = 4 if is_async(b) else 3  # (where its decorators start: an async def's keyword is no decorator)
+            deco = b.kids[d].s if len(b.kids) == d + 1 and len(b.kids[d].kids) == 0 else ""
             static = deco == "staticmethod"
             # @x.setter or @x.deleter on def x after @property def x, once each; @Base.x.setter
             # in a subclass (see accessor and inherit)
@@ -394,7 +395,7 @@ def gen_class_problem(self, m: Mod, st: Node, exc: bool) -> str:
                 props[b.s + deco[deco.rfind(".") :]] = True
             elif deco == "property":
                 props[b.s] = True
-            if len(b.kids) > 3 and ((not static and deco != "classmethod" and deco != "property" and not acc) or (b.s.startswith("__") and b.s.endswith("__"))) and not self.stub(m, b):
+            if len(b.kids) > d and ((not static and deco != "classmethod" and deco != "property" and not acc) or (b.s.startswith("__") and b.s.endswith("__"))) and not self.stub(m, b):
                 return f"method {b.s}() has a decorator"  # (an @overload stub's calls are the error: see declare_fn)
             if len(ps) == 0 and not static:
                 return f"method {b.s}() has no {'cls' if deco != '' else 'self'} parameter"
