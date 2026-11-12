@@ -61,9 +61,8 @@ linked input before the attribute edit. That edit is separately timed and exclud
 from backend totals. This is an isolated LLVM policy screen; adopting a different
 C declaration still requires a new native bootstrap and correctness validation.
 
-`--shapes tuple` is an excluded-path control, not a claim that tuple-item lists
-receive this optimization. `tools/test_typed_list_constants.py` provides a
-deterministic initialization-instruction bound; the CPython-recorded literal
-fixtures and `tools/listprobe.c` cover fresh storage, aliases, order, exact scalar
-bits, atomic payloads and collection. Performance evidence supplements those
-checks and does not replace them.
+`--shapes tuple` is an excluded-path control: tuple-item lists do not receive
+this optimization. `tools/test_typed_list_constants.py` provides a deterministic
+initialization-instruction bound; the CPython-recorded literal fixtures and
+`tools/listprobe.c` cover fresh storage, aliases, order, exact scalar bits,
+atomic payloads and collection.

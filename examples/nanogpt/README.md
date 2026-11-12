@@ -30,14 +30,15 @@ build/nanogpt build/nanogpt-fixtures/batched_bias.weights \
   build/nanogpt-fixtures/batched_bias.input --last
 ```
 
-The exporter creates deterministic random fixtures for validation. It is not a
-pretrained model downloader. Exported files can be copied to a machine without
-PyTorch or Python and read by the standalone executable. The runner defaults to
-`--last`; `--full` returns every position. With `--loss`, the loss covers the
-returned positions. Replace `run.py` with `run_blas.py` to select the optional
-`libblas.so.3` backend, with each block's bias folded into its BLAS product.
-That library must provide the documented LP64 ABI. Ubuntu's default
-`libblas.so.3` is the reference BLAS, 2.5 times slower than OpenBLAS on the
+The exporter creates deterministic random fixtures for validation; it does not
+download pretrained models. Exported files can be copied to a machine without
+PyTorch or Python and read by the standalone executable.
+
+The runner defaults to `--last`; `--full` returns every position. With `--loss`,
+the loss covers the returned positions. Replace `run.py` with `run_blas.py` to
+select the optional `libblas.so.3` backend, with each block's bias folded into
+its BLAS product. That library must provide the documented LP64 ABI. Ubuntu's
+default `libblas.so.3` is the reference BLAS, 2.5 times slower than OpenBLAS on the
 benchmark model below; [install OpenBLAS](../ndarray/README.md#optional-native-blas-matrix-multiplication)
 to make it the provider.
 
@@ -76,27 +77,28 @@ python3 tools/check_nanogpt.py --upstream-model /path/to/nanoGPT/model.py \
 python3 -m unittest discover -s tools -p test_check_nanogpt.py
 ```
 
+The checker compares every logit and the loss against the pinned upstream
+PyTorch model in float64, for one-token, batched, multiple-head and bias-free
+cases. Normal tests include independent upstream numeric references,
+causal-prefix and batch-isolation checks, tied-weight mutation and malformed-file
+rejection; these pass JIT/AOT with GC on every allocation.
+
+Inference timings separate full forward plus loss from the upstream
+last-position optimization. Export/reference work, compilation, process wall
+time, weight loading and warm operation timings are recorded separately.
+`--fixtures` reuses a hash-checked export without importing PyTorch.
+
 The optional `--blas-symbol` selects an explicitly named LP64 `dgemm` symbol.
 It cannot detect or convert an ILP64 ABI. The checker binds the selected library
 in a temporary module, without changing the example's default. Common BLAS thread
 environment variables request one thread; verify the selected provider honors
-them. Export/reference work, compilation, process wall
-time, weight loading and warm operation timings are recorded separately.
-`--fixtures` reuses a hash-checked export without importing PyTorch.
+them. The checker's BLAS tiers pass `ndarray_blas.linear`.
 
-The checker compares every logit and the loss against the pinned upstream
-PyTorch model in float64, for one-token, batched, multiple-head and bias-free
-cases. Inference timings separate full forward plus loss from the upstream
-last-position optimization. Normal tests include independent upstream numeric
-references, causal-prefix and batch-isolation checks, tied-weight mutation and
-malformed-file rejection; these pass JIT/AOT with GC on every allocation.
-
-The checker's BLAS tiers pass `ndarray_blas.linear`. Without PyTorch,
-`make blas-check` runs [`blas_parity.py`](blas_parity.py): the BLAS backend, with
-and without the folded bias, against the scalar one for full and last-position
-logits, the loss and every gradient, under CPython, JIT, AOT and GC stress,
-after the adapter's own checks. CI runs it against Ubuntu's OpenBLAS and against
-the reference BLAS.
+Without PyTorch, `make blas-check` runs [`blas_parity.py`](blas_parity.py): the
+BLAS backend, with and without the folded bias, against the scalar one for full
+and last-position logits, the loss and every gradient, under CPython, JIT, AOT and
+GC stress, after the adapter's own checks. CI runs it against Ubuntu's OpenBLAS
+and against the reference BLAS.
 
 ## Native training
 
@@ -130,13 +132,15 @@ still applies its optimizer state and weight-decay rules.
 
 The checker defaults to two successive training steps (`--training-steps 0`
 disables them), comparing every gradient, updated parameter and both optimizer
-moment vectors to upstream PyTorch. Tests also compare directional finite
-differences across every parameter and reject invalid optimizer inputs. Timing
-separates forward/backward from the optimizer. PyTorch lazily initializes moments
-inside its first optimizer step; the native constructor initializes them before
-the timer. First-step optimizer timings therefore include different setup work;
-use the later step for a steady-state comparison. Two steps establish bounded
-update parity, not training convergence or stable long-run throughput.
+moment vectors to upstream PyTorch. Two steps establish bounded update parity,
+not training convergence or stable long-run throughput. Tests also compare
+directional finite differences across every parameter and reject invalid
+optimizer inputs.
+
+Timing separates forward/backward from the optimizer. PyTorch lazily initializes
+moments inside its first optimizer step; the native constructor initializes them
+before the timer. First-step optimizer timings therefore include different setup
+work; use the later step for a steady-state comparison.
 
 <a id="paired-measurement-after-the-array-and-blas-work"></a>
 
@@ -184,8 +188,9 @@ The measurements before alpha.4, on several builds and hosts, are on
 [this page as of alpha.4](https://github.com/den-run-ai/pystachy/blob/9c8bc74648aa7c7e6a1b9d8f9dbbfeb1f2908ad3/examples/nanogpt/README.md#recorded-inference-performance):
 the paired comparison of the array and BLAS work at `d97a60c`, an earlier CPU result and a
 folded-bias experiment. Their data stay in [`results/`](results/). Their reference rows used
-CPython 3.12.3 and PyTorch 2.14.1, so they are not comparable with this table. To time the
-reference tiers:
+CPython 3.12.3 and PyTorch 2.14.1, so they are not comparable with this table.
+
+To time the reference tiers:
 
 ```sh
 python3 tools/check_nanogpt.py --upstream-model /path/to/nanoGPT/model.py \
@@ -197,7 +202,9 @@ python3 tools/check_nanogpt.py --upstream-model /path/to/nanoGPT/model.py \
 
 ## Reusing autodiff components
 
-The existing microGPT port already uses the scalar reverse-mode engine that
+The present example uses explicit analytic backward and does not provide general
+automatic or higher-order differentiation. The existing microGPT port already
+uses the scalar reverse-mode engine that
 [micrograd recommends as its successor](https://github.com/karpathy/micrograd#training-a-gpt).
 Its local derivatives and reverse graph traversal are useful for scalar examples.
 Expanding matrix products into individual scalar graph nodes would discard the
@@ -208,15 +215,12 @@ gradient rules, especially broadcasting reductions, reshapes, transposes and
 matrix products. Its current package wraps NumPy dynamically and is not a drop-in
 native dependency. A future typed tensor tape could record whole ndarray
 operations and reuse this example's validated backward kernels, keeping matrix
-products in BLAS. The present example uses explicit analytic backward and does
-not provide general automatic or higher-order differentiation. No Autograd or
-micrograd code is vendored here; any future source adaptation must retain the
-upstream MIT notices.
+products in BLAS. No Autograd or micrograd code is vendored here; any future
+source adaptation must retain the upstream MIT notices.
 
 This example does not implement GPU execution, mixed precision, distributed
 training, dropout, the upstream data pipeline or direct `.pt` checkpoint
-loading. It demonstrates native execution and supplies bounded correctness and
-performance checks; it is not a replacement for the complete upstream project.
+loading.
 
 Upstream-derived architecture and references are MIT licensed; see [LICENSE](LICENSE)
 and the repository's third-party notices.

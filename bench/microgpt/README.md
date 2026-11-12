@@ -26,8 +26,7 @@ https://raw.githubusercontent.com/karpathy/makemore/988aa59/names.txt
 Its SHA-256 is `0a30b5557f192f32ab962680889aac5f6fda0f4cecf40a6d0b5694f58ea8cc4d`.
 It contains 32,033 names, giving 27 tokens including BOS and 4,192 parameters.
 The dataset is supplied separately; the benchmark never downloads it. Custom
-text datasets are accepted and identified by their recorded hash; the published
-snapshot uses the exact file above.
+text datasets are accepted and identified by their recorded hash.
 
 ## Reproduce
 
@@ -64,17 +63,20 @@ Timers separate initialization, forward, backward, Adam and inference. They
 exclude numerical snapshots and progress output. AOT build and whole-process
 wall times are reported separately. Snapshot allocations can shift later garbage
 collection work between phases, so phase times describe the instrumented workload.
-JIT runs follow the AOT build and can reuse
-the runtime cache. Repetitions rotate tier order. Timings are advisory on shared
-hosts, and the benchmark imposes no performance threshold. Raw results include
-source/data hashes, compiler revision, settings, timings and validation failures.
+
+JIT runs follow the AOT build and can reuse the runtime cache. Repetitions rotate
+tier order. Timings are advisory on shared hosts, and the benchmark imposes no
+performance threshold. Raw results include source/data hashes, compiler revision,
+settings, timings and validation failures.
 
 ## Measured snapshot
 
-On 3 November 2026, with v0.1.0-alpha.4 (`9c8bc746`), CPython 3.13.18 and LLVM 18.1.3, on a
-shared 4-vCPU Intel Xeon @ 2.10 GHz VM, every process pinned to one CPU. These are medians of
-three fresh processes per tier: **100 training steps / 744 training tokens**, then five
-generated names, with the original 1000-step learning-rate schedule.
+This snapshot was measured on 3 November 2026 with v0.1.0-alpha.4 (`9c8bc746`),
+CPython 3.13.18 and LLVM 18.1.3, on a shared 4-vCPU Intel Xeon @ 2.10 GHz VM, with
+every process pinned to one CPU. The table gives medians of three fresh processes
+per tier: **100 training steps / 744 training tokens**, then five generated names,
+with the original 1000-step learning-rate schedule. These workload-prefix
+measurements do not cover full 1000-step convergence.
 
 | Tier | Training | Five-name inference | Process wall | Training speedup vs original CPython |
 |---|---:|---:|---:|---:|
@@ -89,6 +91,10 @@ AOT is **9.90x** faster than the adapted CPython baseline for training and
 the runtime cache already available. JIT wall time includes its per-process
 compilation. Phase medians need not sum to the median total.
 
+Backward propagation remains the largest AOT phase (0.503 s median, about 54%
+of training); forward computation takes 0.392 s and Adam 0.038 s. No dedicated
+profile yet attributes those costs to individual runtime operations.
+
 All 12 processes passed elementwise checks of 25,252 floating-point values plus
 exact document, vocabulary, token-count and generated-name checks, and every tier
 matched the original program exactly. Generated names were `eri`, `eren`,
@@ -99,10 +105,6 @@ matched the original program exactly. Generated names were `eri`, `eren`,
 The [recorded results](results/alpha4-linux-x86_64-2026-11-03.json) retain each run's
 phase totals, validation errors, provenance and reference digest. Rerunning the
 controller produces the full reference vectors and individual step timings.
-These are workload-prefix measurements, not a full 1000-step convergence claim.
-Backward propagation remains the largest AOT phase (0.503 s median, about 54%
-of training); forward computation takes 0.392 s and Adam 0.038 s. No dedicated
-profile yet attributes those costs to individual runtime operations.
 
 A separate AOT run with `PYSTACHY_GC=stats` reported 46 collections, a 57.2 MiB
 peak managed heap and 13.8 MiB live at the last collection. These are runtime
@@ -126,23 +128,24 @@ not comparable with this table: that host's CPython took 15.152 s for the same t
 | Object `**` | Explicit `__pow__` calls | Bounded numeric-exponent support in [PR #638](https://github.com/den-run-ai/pystachy/pull/638); the benchmark works independently of it. |
 | Two attention generators capturing rebound loop locals | Eager comprehensions with the same products and edge order | More precise capture/lifetime analysis. |
 
-Changing child tuples to lists and two generators to lists changes allocation
-behavior. The benchmark therefore reports adapted CPython as well as original
-CPython. The adapter is deliberately specific to this model: its sums are
-nonempty, and its concrete operator signatures do not provide the original
-class's complete general-purpose scalar/object API.
+Changing child tuples and two generators to lists changes allocation behavior,
+which is why the benchmark also reports adapted CPython. The adapter is
+deliberately specific to this model: its sums are nonempty, and its concrete
+operator signatures do not provide the original class's complete general-purpose
+scalar/object API.
 
 ## Direct tuple materialization research
 
 The bounded experiment for [#898](https://github.com/den-run-ai/pystachy/issues/898)
 compares main at `f7103067545b43cdcd8ce20dc66b1571425b3a8d` with compiler source
 `1d452c39e6f9752fdfd521e74b0cfdfa8e86f7d1`. The benchmark adaptation is unchanged.
-Derivative tuples are constructed in their final runtime-length representation
-using `vtuple.make`, which retains native typed operands and has one semantic
-result. Existing fixed tuples are read directly into the final representation;
-compatible tuple displays can avoid constructing a fixed tuple first. Literal
-constant tuples retain their existing identity path. `Value` nodes and their
-child lists retain their graph representation.
+
+The candidate compiler constructs derivative tuples in their final runtime-length
+representation using `vtuple.make`, which retains native typed operands and has
+one semantic result. Existing fixed tuples are read directly into the final
+representation; compatible tuple displays can avoid constructing a fixed tuple
+first. Literal constant tuples retain their existing identity path. `Value` nodes
+and their child lists retain their graph representation.
 
 The [structural report](results/direct-tuples-ir-linux-x86_64-2026-11-07.json)
 counts static sites after Pystachy's typed-IR passes:
@@ -182,12 +185,11 @@ coordinated compiler builds or tests ran during these pairs.
 | Training total | 943.57 ms | 900.17 ms | 1.048x |
 | Five-name inference | 13.45 ms | 12.83 ms | 1.048x |
 
-Training ranges overlap: 0.895–1.028 s before and 0.799–0.982 s after. One of the
-five pairs is slower after the change. Forward execution improves in the median,
-while backward and Adam medians regress slightly; the measured overall training
-difference is inconclusive at this sample size on a shared host. The structural
-simplification is established independently of the timing result. No build-time,
-allocated-byte, or full 1000-step convergence improvement is claimed.
+The measured overall training difference is inconclusive at this sample size on a
+shared host. Training ranges overlap: 0.895–1.028 s before and 0.799–0.982 s
+after, and one of the five pairs is slower after the change. Forward execution
+improves in the median, while backward and Adam medians regress slightly. The
+structural simplification is established independently of the timing result.
 
 All ten alternating AOT processes match the original CPython reference exactly:
 25,252 floating-point values per process, plus exact documents, vocabulary,
@@ -195,8 +197,6 @@ token counts and generated names. Maximum absolute numerical error is zero.
 The [alternating report](results/direct-tuples-alternating-linux-x86_64-2026-11-07.json)
 retains execution order, every run's phase totals and comparisons, source and
 binary hashes, build commands, and the small comparison driver's exact source.
-Full reference vectors and individual step timers can be regenerated with the
-existing controller.
 
 Earlier [baseline](results/direct-tuples-before-linux-x86_64-2026-11-07.json) and
 [candidate](results/direct-tuples-after-linux-x86_64-2026-11-07.json) reports each
@@ -205,7 +205,6 @@ exploratory training medians are 1.117 → 0.884 s for JIT and 1.086 → 0.809 s
 AOT. These reports ran in separate blocks, and another test briefly overlapped
 the measurement window. The apparent 1.26x/1.34x gains are therefore not reliable
 estimates; the alternating AOT follow-up above is the primary timing evidence.
-The controller's snapshots can also shift later collection work between phases.
 
 To reproduce the full four-tier reports, use the command in **Reproduce** with
 `--compiler 'python3.13 /path/to/before/pystachy.py'` and then the corresponding

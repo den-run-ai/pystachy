@@ -6,14 +6,17 @@ and diagnostic bytes, writes large artifacts directly to files, and delivers
 at most one 4096-byte ASCII JSON completion record at a time. Completed jobs still
 occupy their admission slot until the record is acknowledged. Every child has a
 private process group; failure/deadline cleanup kills owned groups and reaps direct
-children. Admission allows one or two compiler jobs. The per-job timeout must be
-finite, positive and at most 900 seconds (default 120), including completion
+children.
+
+Admission allows one or two compiler jobs. The per-job timeout must be finite,
+positive and at most 900 seconds (default 120), including completion
 acknowledgment. Invalid CLI limits fail before validation work or output creation.
 Record construction, transfer and decoding count toward the deadline. The
 coordinator rechecks all active jobs after constructing records and immediately
 before accepting an acknowledgment or admitting queued work. Synchronous work
 such as artifact hashing can delay noticing a timeout, but cannot turn an expired
 completion into success.
+
 During `run_batch`, SIGINT/SIGTERM request cancellation at safe points,
 including immediately after each child is registered. Cleanup finishes before
 `SystemExit(128 + signal number)` propagates (130 for SIGINT, 143 for SIGTERM);
@@ -86,10 +89,9 @@ python3.13 examples/comm/benchmark.py --native build/comm/bench_workload \
 ```
 
 These measure 256-byte record ownership/copy/completion, and two-rank float64 sum
-with one rank copied back to Python. They are not a NumPy/BLAS or distributed
-scoring comparison. All variants call the same C backend; the CPython twin builds
-ctypes arrays and copies lists back, while native Pystachy passes native arrays.
-Consequently a large local API speedup can mainly reflect bridge overhead.
+with one rank copied back to Python. All variants call the same C backend; the
+CPython twin builds ctypes arrays and copies lists back, while native Pystachy
+passes native arrays.
 
 ## mypyc
 
@@ -166,8 +168,8 @@ The [local API benchmark](results/local-api.json), excluding imports/startup:
 | 20 two-rank reductions, 65,536 doubles/rank | 301 ms | 13.2 ms | 301 ms |
 
 The native bridge is much cheaper (about 45x for the small record calls), but
-CPython/mypyc use the ctypes twin and the same C collectives. This is bridge/API
-cost, not a claim of a faster collective algorithm or faster numerical scoring.
+CPython/mypyc use the ctypes twin and the same C collectives, so the difference is
+bridge/API cost rather than a faster collective algorithm or numerical scoring.
 
 [Whole-compiler mypyc validation](mypyc_compiler.md) compiles all 55 unchanged
 compiler modules and reproduces full self-compiler IR exactly. It also runs
@@ -184,7 +186,7 @@ multi-mode live-pipe tests, file ownership/GC probes, workflow-budget checks and
 lint pass. The open-pipe runtime correction is tracked separately in #1151.
 
 Full local repository verification, optimized full-compiler mypyc measurements,
-LeakSanitizer and non-Linux execution remain unrun. No draft is merged by this
-evaluation. Result files retain all samples and input hashes; the duplicate
-after-run hash map is replaced by `inputs_verified_unchanged` only after equality
-was checked when preserving reports.
+LeakSanitizer and non-Linux execution remain unrun. Result files retain all
+samples and input hashes; the duplicate after-run hash map is replaced by
+`inputs_verified_unchanged` only after equality was checked when preserving
+reports.

@@ -11,9 +11,8 @@ review and validation history.
 
 Use two clean checkouts with freshly built native `./pystachy` compilers. Build
 them separately before timing, and keep other builds and heavy tests off the
-host during the measurement. The recorded run uses CPython 3.13.16 and LLVM
-18.1.3 on Linux x86-64. `PYSTACHY_LLVM` is mandatory so both builds and runs use
-the intended matching toolchain.
+host during the measurement. `PYSTACHY_LLVM` is mandatory so both builds and runs
+use the intended matching toolchain.
 
 From the candidate checkout, after building both checkouts:
 
@@ -59,9 +58,10 @@ individual paired samples, build outputs and GC observations are retained.
 ## Recorded comparison
 
 The [complete report](benchmark.json) compares baseline `f7103067545b43cdcd8ce20dc66b1571425b3a8d`
-with the integrated migration and bounds optimization. The final native compiler
-was freshly bootstrapped; the report records the measured source identities and
-hashes. Later additions of this README and result files do not change those inputs.
+with the integrated migration and bounds optimization, using CPython 3.13.16 and
+LLVM 18.1.3 on Linux x86-64. The final native compiler was freshly bootstrapped;
+the report records the measured source identities and hashes. Later additions of
+this README and result files do not change those inputs.
 
 | Workload | AOT after / C | JIT after / C |
 |---|---:|---:|
@@ -79,13 +79,17 @@ alternating pairs pinned to CPU 8 on a shared host. They describe these workload
 and this toolchain, not a universal parity or statistical-significance claim.
 Individual samples and their variation are available in the report.
 
-The combined benchmark executable changes from **114,024 to 114,552 bytes** (**+528 bytes; +0.46%**). Numeric/scalar workloads report the same **0.4 MiB** managed-heap peak; float-list reductions report **0.6 MiB** in both versions. The ASCII workload reports **38.0 → 34.4 MiB**, and Unicode **6.1 → 6.0 MiB**.
+The combined benchmark executable changes from 114,024 to 114,552 bytes
+(+528 bytes; +0.46%).
 
 GC observations come from one separate AOT process per case/version. They cover
 the entire program, including input setup, and report managed-heap peaks rounded
-to 0.1 MiB. They do not measure RSS, JIT memory or allocation counts. Numeric
-helpers preserve their successful-path allocation-free implementations; the ASCII
-helper fills one exact-sized string instead of growing an intermediate buffer.
+to 0.1 MiB; they do not measure RSS, JIT memory or allocation counts.
+Numeric/scalar workloads report the same 0.4 MiB managed-heap peak; float-list
+reductions report 0.6 MiB in both versions. The ASCII workload reports
+38.0 → 34.4 MiB, and Unicode 6.1 → 6.0 MiB. Numeric helpers preserve their
+successful-path allocation-free implementations; the ASCII helper fills one
+exact-sized string instead of growing an intermediate buffer.
 
 ## Independent numeric contract
 

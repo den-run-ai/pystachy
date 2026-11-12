@@ -31,17 +31,17 @@ CPython-hosted and the candidate was self-hosted.
 | BPE encode, ms per corpus | 11.925 [10.905, 13.067] | 12.038 [10.290, 13.157] | 0.991x |
 | BPE driver, process seconds | 2.181 [2.014, 2.456] | 2.165 [1.933, 2.280] | 1.007x |
 
-The microbenchmarks scan 320 descending values/keys for 30,000 rounds (9.6 million
-visits). They deliberately update minima frequently. Direct minimum improved in
-all seven pairs; rank lookup improved in six, with overlapping overall ranges.
-These are representation microbenchmarks.
+The representation microbenchmarks scan 320 descending values/keys for 30,000
+rounds (9.6 million visits) and deliberately update minima frequently. Direct
+minimum improved in all seven pairs; rank lookup improved in six, with
+overlapping overall ranges.
 
-**The full BPE consumer showed no demonstrated speedup.** The driver trains a
+**The full BPE consumer showed no speedup.** The driver trains a
 1,024-token vocabulary on the pinned Frankenstein introduction, then performs
 100 encodes and 100 decodes. Its encode ranges overlap substantially and pair
 directions reverse. Training/decode timing variations are retained in the raw
 file and are not attributed to this change. No allocation-byte or dynamic
-allocation counts, JIT performance, or general tokenizer speedup are established.
+allocation counts or JIT performance are established.
 
 Every warmup and timed native run matched CPython's complete output. BPE first
 compares the adapted source with unchanged upstream kernels under CPython, then
@@ -98,5 +98,4 @@ and 58 hosted IR checks before the unbound-only test addition.
 Full `make verify` and an exact-main full-corpus `irsame` were not run for this
 branch. It merged on 2026-11-07 with v0.3.0-alpha.1
 ([#1131](https://github.com/den-run-ai/pystachy/pull/1131) through
-[#1139](https://github.com/den-run-ai/pystachy/pull/1139)), whose main CI covered it;
-the BPE timings above establish no tokenizer speedup.
+[#1139](https://github.com/den-run-ai/pystachy/pull/1139)), whose main CI covered it.

@@ -58,7 +58,6 @@ alone does not establish a better policy for every workload.
 
 The [evaluation's remaining candidates](https://github.com/den-run-ai/pystachy/blob/a2cb8a3638d715577a7ab1cd1e4a0d6b01b6cdf2/docs/reports/allocator-prototype.md#6-follow-ups)
 include avoiding a redundant clear for pointer-free arrays written in full and
-internalizing runtime globals in AOT builds. The first requires an audit of readers
-of spare list capacity; the second concerns AOT builds, where the JIT's exported
-fast-path globals constrain optimization. The historical measurements provide comparison cases, not
-performance thresholds.
+internalizing runtime globals in AOT builds, where the JIT's exported fast-path globals
+constrain optimization. The first requires an audit of readers of spare list capacity.
+The historical measurements provide comparison cases, not performance thresholds.

@@ -62,8 +62,8 @@ inside the workspace; this is not a sandbox for the configured check command.
 The typed JSON codec uses nodes plus integer child indices, preserves numeric
 lexemes, validates UTF-8, and decodes surrogate pairs. It does not implement
 CPython's `json` API or use `Any`. The initial process adapter uses external
-`sh`, `timeout`, `mktemp`, `mv`, `chmod`, and `rm`; no `requests`, `subprocess`,
-embedded CPython, scalar-union prototype, or pending compiler PR is required.
+`sh`, `timeout`, `mktemp`, `mv`, `chmod`, and `rm`; no `requests`, `subprocess`
+or embedded CPython is required.
 
 ## HTTP mode
 
@@ -98,7 +98,6 @@ python3 examples/agent/http_smoke.py -- build/askme-mini
 The smoke driver requires CPython; the compiled agent consists only of
 `agent.py` and `wire_json.py`. Visible-check success supports this run's
 completion, not independent patch acceptance or a model-quality result.
-Live model/provider behavior has not been qualified, and no end-to-end agent
-speedup is claimed. This is a portability and packaging showcase; model/tool
-latency usually dominates. Native process/HTTP adapters and another typed tool
-domain are useful follow-ups.
+Live model/provider behavior has not been qualified. This is a portability and
+packaging showcase; model/tool latency usually dominates. Native process/HTTP
+adapters and another typed tool domain remain follow-ups.

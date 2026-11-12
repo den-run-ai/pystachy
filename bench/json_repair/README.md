@@ -17,6 +17,7 @@ against pristine upstream `ace9b23c`, on a shared 4-vCPU Linux x86-64 VM (Intel 
 and five measured batches each, pinned to one CPU. Values are medians of process medians.
 [All 330 processes, commands and source manifests](results/release-candidate-2026-11-02.json)
 are retained.
+
 Port changes merged on 4 November moved several of these workloads; a
 [9 November research re-measurement](https://github.com/den-run-ai/pystachy/blob/eed2912f204688c0b5244c04c72f480f9c98ef1f/research/status-20261109/json-repair/json-repair-remeasure-2026-11-09.json)
 on another host recorded them. The table remains the latest committed release measurement.
@@ -71,10 +72,9 @@ scaling at both ends; values are AOT's speedup over upstream:
 
 To repeat the campaign, build the probes as in [Reproduce](#reproduce) and run
 `tools/json_repair_bench.py` with a variants file like the one in
-[Paired timings](#paired-timings). The evidence file lists every
-command, argument and source hash. Its `callgrind_counts` also compare whole-process AOT
-instruction counts of the nine workloads with those of `c3aaa068`, less a stack-bounds
-fallback that only Valgrind triggers.
+[Paired timings](#paired-timings). The evidence file's `callgrind_counts` compare
+whole-process AOT instruction counts of the nine workloads with those of `c3aaa068`, less
+a stack-bounds fallback that only Valgrind triggers.
 
 <a id="earlier-prototype-measurement"></a>
 <a id="earlier-measurement"></a>
@@ -91,8 +91,8 @@ and [28 October accumulator report](https://github.com/den-run-ai/pystachy/blob/
 are preserved in Git history. The latter measured a **65% PyPy mixed-workload slowdown**
 after 20 warmup batches, and a **40% increase in CPython `tracemalloc` peak bytes** at
 8,000 escaped fragments (35,083 → 49,234 bytes). Retained traced bytes were unchanged;
-this is not a native retained-heap measurement. These historical tradeoffs were not
-remeasured by the alpha.4 campaign. Raw evidence remains in
+this is not a native retained-heap measurement. The alpha.4 campaign did not remeasure
+these tradeoffs. Raw evidence remains in
 [typing/scaling](results/typing-and-scaling.json),
 [incremental escape state](results/incremental-escape-state.json),
 [native escape state](results/native-incremental-escape-state.json) and
@@ -168,10 +168,12 @@ python3.13 tools/json_repair_bench.py /tmp/variants.json --cpu 0 \
 The runner rotates process order, requires identical complete-output witnesses and
 retains raw batches, commands and source/executable hashes. It reports medians of
 process medians and rejects changed sources, failed processes or invalid timings.
+
 Each `source` must be the checkout supplying the consumed sources. For CPython/PyPy,
 use absolute script paths and set `PYTHONPATH` to the parser path in the variant's `env`.
 Inherited `PYSTACHY_*` and Python import overrides are cleared, so required JIT LLVM/cache
 settings also belong there.
+
 Pinning does not isolate a shared host. Keep memory/instruction profiling separate
 from ordinary timings; see the historical reports for attribution commands.
 

@@ -21,7 +21,6 @@ The first two cases share `ml.py`, the next three share `text.py`, and the numer
 cases share `identity.py`. The graph case uses `tools/dynany_bench.py graph-smoke 4000`.
 Compilation is measured once per source file, while every mode has its own execution
 samples. This keeps the suite small without mixing unrelated loop timings.
-The general `fannkuch` and `nbody` proxies are replaced by these more relevant cases.
 
 For a quick standalone correctness run, use Python 3.13 or a native compiler:
 
@@ -39,7 +38,7 @@ pyperformance; the **pyperf runner is not used**. Measurement and warning rules 
 documented in [testing](../../docs/testing.md#continuous-integration).
 
 Numeric-copy/global cases use six million iterations and a runtime seed of 123 so the native
-loops are long enough to exercise the existing 5 ms warning floor. The paired harness
+loops are long enough to exercise the 5 ms warning floor. The paired harness
 records timing; peak RSS and retained-memory costs require separate measurements.
 
 `graph_copy` retains the graph-processing workload that exposed #821's historical
@@ -66,10 +65,12 @@ PYSTACHY_GC_STRESS_PROGRAM=1 ./pystachy run tools/dynany_iteration_bench.py gene
 Replace `generator` or `object` with `list` or `range` for the other modes. Normal output
 separates construction and processing CPU nanoseconds; `smoke` prints a deterministic
 checksum/count line to stdout and processing CPU seconds to stderr. Use a separate untimed
-`PYSTACHY_GC=stats` run for memory evidence. The maintained unit checks include empty,
-one-item and multi-item inputs plus a negative control for eager production. These modes
-are not default `perf_smoke.py` base/head cases: the baseline does not support all four
-paths, so no before/after speedup or timing threshold is claimed.
+`PYSTACHY_GC=stats` run for memory evidence.
+
+The maintained unit checks include empty, one-item and multi-item inputs plus a negative
+control for eager production. These modes are not default `perf_smoke.py` base/head cases:
+the baseline does not support all four paths, so they report no before/after speedup and
+set no timing threshold.
 
 ## Retained JSON decoder controls
 
@@ -88,13 +89,14 @@ build/json_decode strings 3000
 ```
 
 The default is `numeric 3000`; `N` counts individual loads. The timed loop discards
-results, exercising the typed `JSONValue` decoder inside an opt-in program, just
-like the adapted pyperformance workload. A separate untimed load into `Any` prints
-the full parsed result to stdout. Compare every stdout byte with CPython; the single
-`seconds` line on stderr measures only the loop. The output check covers the dynamic
-adapter separately and does not prove each discarded typed result was inspected.
-Use the differential JSON suite for that contract. These standalone controls do not
-expand the default CI performance matrix.
+results, exercising the typed `JSONValue` decoder inside an opt-in program, as the
+adapted pyperformance workload does. A separate untimed load into `Any` prints the
+full parsed result to stdout. Compare every stdout byte with CPython; the single
+`seconds` line on stderr measures only the loop.
+
+The output check covers the dynamic adapter separately and does not prove each
+discarded typed result was inspected; use the differential JSON suite for that
+contract. These standalone controls do not expand the default CI performance matrix.
 
 For a paired AOT instruction comparison, build both revisions from clean, identified
 checkouts with the same toolchain and input. First clear inherited `PYSTACHY_*`

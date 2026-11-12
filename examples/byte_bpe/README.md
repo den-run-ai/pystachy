@@ -15,9 +15,9 @@ Its different protocol is not a before/after compiler speedup.
 
 The implementation is Shantanu Jain's
 [pyperformance 1.14.0 byte-BPE benchmark](https://github.com/python/pyperformance/blob/2ab96f98f98274d07ebfdfd66e4f021723179706/pyperformance/data-files/benchmarks/bm_bpe_tokeniser/run_benchmark.py),
-derived from OpenAI's educational tiktoken code. It is a useful companion to
-[Sebastian Raschka's tokenizer teaching examples](https://github.com/rasbt/LLMs-from-scratch/tree/main/ch02/05_bpe-from-scratch).
-It is not a port of Raschka's own implementation or a performance comparison with
+derived from OpenAI's educational tiktoken code. It complements
+[Sebastian Raschka's tokenizer teaching examples](https://github.com/rasbt/LLMs-from-scratch/tree/main/ch02/05_bpe-from-scratch)
+but is not a port of Raschka's own implementation or a performance comparison with
 production Rust tiktoken. This example does not load GPT-2/tiktoken vocabularies,
 implement special tokens, or persist a model between processes.
 
@@ -98,19 +98,20 @@ executable, rejects failed commands and malformed timings, bounds subprocess gro
 and marks incomplete or failed reports accordingly. Native correctness cases cover
 merge ties, overlaps, unseen Unicode, whitespace, all 256 bytes, malformed UTF-8 and
 rejection behavior. They run in the existing differential corpus; the bounded
-pyperformance workload runs in its existing job. No extra CI jobs are added.
+pyperformance workload runs in its existing job.
 
 The full stage workload uses the unchanged **31,206-byte** Frankenstein fixture and
 a **1,024-entry** vocabulary. It trains once, encodes 50 times and decodes 200 times
 per process. Timings exclude corpus I/O, output comparison and full-state printing.
 Each stage's reported time is per operation. Wall time, time outside the stage
 timers, build time, peak RSS, sample ranges, toolchain and source hashes are separate.
+Shared-host timings are advisory; no timing threshold is a test gate.
+
 JIT RSS includes compilation. The report retains `wait4`'s process-family maximum,
 which can include the launcher's pre-exec memory high-water mark. On Linux it also
 samples the executable's `VmHWM` every approximately 5 ms after its command is
 installed; this is the runtime memory comparison for CPython and AOT, excludes
-child processes, and can miss a final brief peak. Shared-host timings are advisory;
-no timing threshold is a test gate.
+child processes, and can miss a final brief peak.
 
 The suite's `bench_bpe_tokeniser()` timer instead preserves upstream's composite
 training/encoding loop. Its independent untimed correctness pass trains again, so

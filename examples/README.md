@@ -25,7 +25,7 @@ The extra requirements below are in addition to the compiler and its build toolc
 | [montecarlo](montecarlo/README.md) | Seeded sampling with `random` | [App corpus](../tests/programs/apps/example_montecarlo.py) | None |
 | [nanogpt](nanogpt/README.md) | CPU float64 inference and analytic training | [Inference](../tests/programs/apps/example_nanogpt.py) and [training](../tests/programs/apps/example_nanogpt_training.py) in the app corpus; BLAS parity | PyTorch for offline export/upstream checks; optional LP64 BLAS at runtime |
 | [ndarray](ndarray/README.md) | Float64 arrays, views, broadcasting and fused expressions | [App corpus](../tests/programs/apps/example_ndarray.py), [edges](../tests/programs/apps/example_ndarray_edges.py), [elementwise](../tests/programs/apps/example_ndarray_elementwise.py) and [upstream cases](../tests/programs/apps/example_ndarray_upstream.py); BLAS checks | NumPy for reference checks; optional LP64 BLAS at runtime |
-| [netio](netio/README.md) | Optional native TCP, socket pairs and scalable readiness | `make netio-check`: stdlib oracle, JIT/AOT, GC stress and high descriptors | C compiler; Linux verified, macOS backend unexecuted |
+| [netio](netio/README.md) | Optional native TCP, socket pairs and scalable readiness | `make netio-check`: stdlib oracle, JIT/AOT, GC stress and high descriptors | C compiler; Linux and macOS ARM64 checked in CI |
 | [package](package/README.md) | Build and consume a source wheel with a port dependency | [Package smoke](../tools/package_smoke.py) in packaging and distribution CI | `uv`; see [packaging requirements](../tools/requirements-packaging.txt) |
 | [route](route/README.md) | Pattern matching and cached event classifications | [App corpus](../tests/programs/apps/example_route.py) and [empty traces](../tests/programs/apps/example_route_empty.py) | None |
 | [suggest](suggest/README.md) | Spelling suggestions with `difflib` | [App corpus](../tests/programs/apps/example_suggest.py) | None |
@@ -61,8 +61,8 @@ python3 tools/pytest_native_suites.py --suite byte_bpe --mode aot
 See the [native pytest contract](../docs/pytest-native.md) for supported syntax.
 These suites add individual assertion outcomes. The broader checks below retain
 their recorded output, process-exit, installation and external-backend coverage.
-Timing drivers continue to validate complete output before comparing speed;
-pytest execution times are not replacements for benchmark measurements.
+Timing drivers validate complete output before comparing speed; pytest
+execution times are not replacements for benchmark measurements.
 
 The app corpus compares JIT and AOT execution with recorded CPython output and
 exit status. From the repository root, run all example fixtures with:

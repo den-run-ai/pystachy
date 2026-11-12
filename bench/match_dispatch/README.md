@@ -53,11 +53,11 @@ cache preparation; it is not a paired build-performance comparison. Avoid heavy
 parallel jobs while measuring. A small ratio or a span crossing one is not
 evidence of a reliable performance advantage on a shared host.
 
-These are original, focused microbenchmarks, not upstream pyperformance scores.
-The typed dataclass baseline accesses fields directly; CPython's `match` still
-performs its class-pattern protocol. The comparison describes each language
-form under the stated static input contract, rather than general dynamic class
-matching. No new performance claim is made without measured results.
+These are original, focused microbenchmarks, not upstream pyperformance scores,
+and no measured results are recorded here. The typed dataclass baseline accesses
+fields directly, while CPython's `match` still performs its class-pattern
+protocol. The comparison describes each language form under the stated static
+input contract, rather than general dynamic class matching.
 
 ## Optional pyperf process measurements
 
