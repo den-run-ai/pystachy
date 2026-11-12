@@ -1,0 +1,22 @@
+() 0 True  ValueError()
+True
+('',)  ValueError('')
+(3, 'message', None, True) 3 True ('message', None) (3, 'message', None, True) ValueError(3, 'message', None, True)
+True True (1000,)
+True True True
+True 2000 (1000, 'changed')
+True
+[1, 'two', 3]
+(1000, 'extra') 1000 True
+True (None,)
+('key',) (2, 'missing')
+() (None,) (False,)
+()
+(1000,) True
+('list index out of range',) True
+("invalid literal for int() with base 10: 'bad'",) True
+()
+('',)
+(1000,) True
+'ValueError' object has no attribute 'value'
+[exit 0]

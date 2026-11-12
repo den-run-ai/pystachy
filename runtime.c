@@ -7781,12 +7781,60 @@ struct Exc {                           /* GC-allocated, 16-byte aligned (exc_all
   Str *msg;                            /* str(e) of a builtin exception; NULL for a user object */
   void *obj;                           /* the user exception object, or NULL */
   I code, has_code;                    /* SystemExit: its status (has_code 0: msg is a code's str, status 1) */
-  Str *args;                           /* repr(e) is the class's name and (args); NULL: made from msg */
+  Str *args;                           /* repr text, NULL for msg, or ExcArgs (negative length marker) */
   Str *detail;                         /* uncaught: "kind: detail", even when empty; NULL: msg (pys_exc_detail) */
   struct Exc *cause;                   /* e.__cause__ (raise ... from c, PEP 479's RuntimeError), or NULL; set
                                           only in a program that reads it (pys_exc_setcause) */
 };
 _Static_assert(offsetof(Exc, ue) == 0, "a landing pad's pointer is the Exc");
+/* Only a program that reads exception payloads stores these records. Exc's legacy
+   layout and constructors stay unchanged. A real Str has a nonnegative length;
+   this prefix discriminates an owned payload without tagging pointers. The GC
+   scans values and the optional interior pointer to a user object's payload field,
+   keeping both the tuple and that object alive across reinitialization. */
+typedef struct { I marker; Str *text; VTuple *values; VTuple **source; } ExcArgs;
+static const VTuple exc_empty_args = {0};
+VTuple *pys_exc_emptyargs(void) { return (VTuple *)&exc_empty_args; }
+_Static_assert(offsetof(ExcArgs, marker) == offsetof(Str, len), "exception payload discriminator");
+_Static_assert(_Alignof(ExcArgs) >= _Alignof(Str), "exception payload prefix alignment");
+static int exc_has_payload(Str *s) {
+  I marker;
+  if (!s) return 0;
+  memcpy(&marker, s, sizeof marker);  /* inspect the common prefix without type-punning a Str */
+  return marker == -1;
+}
+static ExcArgs *exc_payload(Exc *e) {
+  if (exc_has_payload(e->args)) return (ExcArgs *)e->args;
+  ExcArgs *p = pys_alloc(sizeof *p); p->marker = -1; p->text = e->args; e->args = (Str *)p;
+  return p;
+}
+void pys_exc_setargs(Exc *e, VTuple *args) { ExcArgs *p = exc_payload(e); p->values = args; p->source = 0; }
+void pys_exc_argref(Exc *e, VTuple **args) { ExcArgs *p = exc_payload(e); p->source = args; p->values = 0; }
+VTuple *pys_exc_args(Exc *e) {
+  if (!e) pys_fail("AttributeError: 'NoneType' object has no attribute 'args'");
+  ExcArgs *p = exc_has_payload(e->args) ? (ExcArgs *)e->args : 0;
+  if (p && p->source) return *p->source;
+  if (p && p->values) return p->values;
+  Str *text = p ? p->text : e->args;
+  /* Native KeyError keys and structured runtime errors have already lost their
+     original values. Do not parse their repr, guess str versus bytes, or invent
+     numeric identity. Explicit constructors install real payloads above. */
+  if (e->obj || text || e->has_code || !strcmp(e->kind->s, "KeyError"))
+    pys_fail("NotImplementedError: this runtime exception has no retained argument values");
+  I n = e->msg && e->msg->len ? 1 : 0;
+  VTuple *args = n ? pys_alloc(sizeof(VTuple) + sizeof(I)) : pys_exc_emptyargs();
+  if (n) args->len = 1;
+  if (n) args->a[0] = (I)dstr(e->msg);
+  pys_exc_setargs(e, args);
+  return args;
+}
+Dyn *pys_exc_value(Exc *e) {
+  if (!e) pys_fail("AttributeError: 'NoneType' object has no attribute 'value'");
+  if (e->obj) pys_fail("NotImplementedError: inherited StopIteration.value of a user exception is not supported");
+  if (strcmp(e->kind->s, "StopIteration")) failf("AttributeError: '%s' object has no attribute 'value'", e->kind->s);
+  VTuple *args = pys_exc_args(e);
+  return args->len ? (Dyn *)args->a[0] : DNONE;
+}
 #define PYS_EXC 0x5059535441434859ULL  /* the header's exception_class: "PYSTACHY" */
 #define XCLS(e) (*(ExcClass **)(e)->obj)
 static _Noreturn void throw_(Exc *e);
@@ -7841,7 +7889,8 @@ Str *pys_exc_repr(Exc *e) {            /* CPython's: the class's name without it
   Buf b = {0}; Str *m = e->msg; int n; const char *k = exc_name(e, &n);
   put(&b, k, n);
   put(&b, "(", 1);
-  if (e->args) put(&b, e->args->s, e->args->len);
+  Str *args = exc_has_payload(e->args) ? ((ExcArgs *)e->args)->text : e->args;
+  if (args) put(&b, args->s, args->len);
   else if (e->has_code || !strcmp(e->kind->s, "KeyError")) put(&b, m->s, m->len);   /* a KeyError's message is its key's repr */
   else if (m->len) repr_str(&b, m);
   put(&b, ")", 1); return done(&b);

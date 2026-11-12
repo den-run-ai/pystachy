@@ -1,4 +1,4 @@
-# error: the attributes of an exception (e.args) are not supported; str(e) and repr(e) are
+# error: reading exception args requires dynamic Any (# pystachy: dynamic-any)
 try:
     print(int("x"))
 except ValueError as e:

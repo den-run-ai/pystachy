@@ -752,6 +752,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_match as exceptions_exc_match,
     gen_exc_object as exceptions_exc_object,
     gen_exc_of as exceptions_exc_of,
+    gen_exc_read as exceptions_exc_read,
     gen_exc_vals as exceptions_exc_vals,
     gen_exc_str_args as exceptions_exc_str_args,
     gen_exc_value as exceptions_exc_value,
@@ -1555,6 +1556,7 @@ class Gen:
         # the program reads an exception's __cause__ (generators.reads_cause): raise ... from c
         # and PEP 479's RuntimeError record it (pys_exc_setcause)
         self.causeread = False
+        self.excargs = False  # actual exception arguments, enabled by a payload read
         self.stmtexpr: Node | None = None  # the expression of the expression statement being compiled
         self.mcall: Node | None = None  # the call o.m(...) whose method Gen.method is compiling (close())
         self.coros = False  # a generator function was lowered: the module declares LLVM's coroutine intrinsics
@@ -4050,6 +4052,9 @@ class Gen:
 
     def exc_of(self, v: Val) -> Val:
         return exceptions_exc_of(self, v)
+
+    def exc_read(self, v: Val, name: str, exact: str = "") -> Val:
+        return exceptions_exc_read(self, v, name, exact)
 
     def exc_brepr(self, o: Val) -> Val:
         return exceptions_exc_brepr(self, o)

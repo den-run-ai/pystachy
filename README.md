@@ -157,6 +157,9 @@ behavioral differences are listed as [deviations from CPython](https://github.co
 | Syntax | Comprehensions, f-strings, `with`, `try`/`except`/`finally`, `:=`, bounded `match` | Mapping and general sequence/class patterns; `except*` |
 | Runtime | Modules and packages, automatic memory management | Native threads, `__del__` finalizers, `eval` and `exec` |
 
+Opt-in [exception payloads](https://github.com/den-run-ai/pystachy/blob/main/docs/language/semantics.md#exception-payloads)
+retain supported `e.args` values and builtin `StopIteration.value`.
+
 An `int` is a checked 64-bit value: overflow raises `OverflowError`. A module can
 opt in to experimental [arbitrary-precision integers](https://github.com/den-run-ai/pystachy/blob/main/docs/python-int.md)
 or [runtime-typed `Any` values](https://github.com/den-run-ai/pystachy/blob/main/docs/dynamic-any.md).

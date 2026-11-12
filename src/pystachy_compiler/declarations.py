@@ -1688,6 +1688,8 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         xs = EXCFIELDS.split()
         for x in xs if exc_derives(ci.exc, "SystemExit") else xs[:3]:
             self.add_field(ci, " " + x[: x.find(":")], x[x.find(":") + 1 :])
+        if self.excargs:
+            self.add_field(ci, " payload", "vtuple[dyn]")
     dc = self.is_dc(ci.name) and ci.name not in self.nts
     kwmode = ci.kwonly  # (@dataclass(kw_only=True), or after _: KW_ONLY)
     kwseen = False

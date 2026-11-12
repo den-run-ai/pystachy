@@ -1079,6 +1079,8 @@ RUNTIME: dict[str, str] = {
     "exc.user": "exc:%ptr|A|", "exc.obj": "%ptr:exc||", "exc.id": "%ptr:exc||", "exc.ostr": "str:%ptr|U|", "exc.orepr": "str:%ptr|U|",
     "exc.brepr": "str:%ptr,str|A|", "exc.cls": "str:%ptr|A|", "exc.name": "str:exc|A|", "exc.type": "str:exc|A|",
     "exc.setcause": "None:exc,exc|wO|", "exc.cause": "exc:exc|rO|", "exc.errcls": "str:int|A|",
+    "exc.emptyargs": "vtuple[dyn]:||", "exc.setargs": "None:exc,vtuple[dyn]|A wO|", "exc.argref": "None:exc,%ptr|A wO|",
+    "exc.args": "vtuple[dyn]:exc|R A rO wO|", "exc.value": "dyn:exc|R A rO wO|",
     # exception classes as values: class objects (runtime.c's exceptions)
     "exc.proto": "exc:str,%ptr|A I|", "exc.canon": "exc:exc|A I|", "exc.sub": "int:exc,exc,str||", "exc.module": "str:exc|A|", "exc.setmodule": "None:%ptr,str|R I|",
     "exc.ctor": "%ptr:exc,%ptr||", "exc.make": "exc:exc,int,str,str,int,int|R A|",

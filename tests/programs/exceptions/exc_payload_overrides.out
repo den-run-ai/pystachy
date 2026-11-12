@@ -1,0 +1,15 @@
+args property
+(7, 8)
+args property
+(7, 8)
+args property
+(7, 8)
+args method args method
+value property
+42
+value property
+42
+value method value method
+(10,) 11
+(14,) (12, 13)
+[exit 0]

@@ -602,7 +602,44 @@ values](#exception-classes-as-values)).
 `UnicodeEncodeError(...)` (of a str, whose characters `start` and `end` count) take CPython's
 five arguments and give its message, which names the byte or character at `start` or the range
 to `end`. `ImportError`, `AttributeError` and `NameError` accept their supported keyword
-arguments. Exception attributes such as `args` are unsupported; `__cause__` is supported.
+arguments. `__cause__` is supported.
+
+### Exception payloads
+
+A module opting in to [dynamic `Any`](../dynamic-any.md) can read `e.args` as a
+runtime-length tuple of `Any` values. Explicit builtin and user exception constructors
+retain the arguments under the existing dynamic storage rules: scalar identities, program
+objects and supported mutable aliases are preserved; native tuple identity has the existing
+dynamic boundary limitation. Repeated reads return the same tuple. A user exception's `super().__init__()`
+replaces that tuple, including through an alias caught as a builtin exception.
+`OSError`'s optional filename is excluded from `args`, as in CPython. Builtin
+`StopIteration.value` reads its first argument, or `None` for no argument.
+Explicit user properties and methods named `args` or `value` retain their
+ordinary lookup, including through a concrete user exception catch. A read through
+builtin exception storage is rejected when the program defines a user exception
+override of that name: its erased class cannot select the override. Catch the
+concrete user exception class to retain its lookup. Inherited payload reads through
+a user base class have the same restriction when a subclass overrides that name.
+A directly named constructor has a known class and remains supported.
+
+Payload retention is enabled only by a payload read; other programs keep the existing
+exception layout and constructor path. When enabled, every reachable explicit exception
+argument must fit dynamic storage. Bytes, exception objects and unsupported typed
+containers cannot be retained. A sole unpacked tuple argument is rejected where the
+constructor would need to preserve that original tuple's identity; pass its items
+explicitly. Assigning `args` and inherited `StopIteration.value` on user exception classes
+remain unsupported.
+
+Message-only native runtime failures retain their message string when `args` is read.
+Raw native `KeyError` keys and structured runtime failures such as errno errors do not yet
+retain their original values: their accessor raises `NotImplementedError`, rather than
+recovering values from formatted text. The existing eager `str`/`repr` formatting and
+extension-module exception conversion have their existing
+[limits](compatibility.md#exception-contents).
+
+Coverage: [values and identity](../../tests/programs/exceptions/exc_args_values.py),
+[user exception reinitialization](../../tests/programs/exceptions/exc_args_user.py),
+and the [runtime payload boundary](../../tests/deviations/exc_args_runtime_payload.py).
 
 ### Control flow
 

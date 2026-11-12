@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import cached_run, diagnostics, program_cache
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedExceptionArgs, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
@@ -126,11 +126,13 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     idfull = False
     idtry = True
     slice_eh = False
+    exception_args = False
     while True:
         attempt = timing_start()
         g = Gen()
         g.ext = ext
         g.eh = slice_eh
+        g.excargs = exception_args
         g.libdir = dirs[-1] if len(dirs) > 0 else ""
         g.prefix = os.path.realpath(dirs[-1] + "/..") if len(dirs) > 0 else ""
         g.hints = hints
@@ -149,6 +151,8 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         except Rejoin as retry:
             if isinstance(retry, NeedSliceEH):
                 slice_eh = True
+            elif isinstance(retry, NeedExceptionArgs):
+                exception_args = True
             elif g.idevent != "" and not idfull:
                 if idtry and len(g.idhint) > 0:
                     idtry = False  # retry today's dependency closure before full tracking

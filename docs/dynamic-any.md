@@ -521,6 +521,21 @@ Coverage: `dynany_iteration.py`, `dynany_iter_builtins.py`, `dynany_iter_range.p
 `dynany_generator_*.py` in `tests/programs/inference/`. The
 [iteration benchmark](../bench/smoke/README.md) checks laziness and checksums before timing.
 
+## Exception payloads
+
+`e.args` gives a runtime-length tuple of `Any` values and builtin `StopIteration.value`
+gives its first argument, or `None`. Explicit constructors retain original objects, including
+numeric identity and mutable aliases admitted by dynamic storage. Reads require this
+module's opt-in; exception values themselves still cannot be boxed as `Any`.
+Programs with no payload reads keep the ordinary exception construction path.
+
+All reachable explicit argument values must be boxable when this feature is used. Bytes,
+exception-valued arguments, unsupported native containers and sole unpacked argument tuples
+that require tuple identity are rejected. Native message-only failures expose their real
+message. Runtime missing-key and structured errno failures whose original payload was not
+retained raise `NotImplementedError` at the read. See the
+[complete contract and fixtures](language/semantics.md#exception-payloads).
+
 ## Operations
 
 ### Supported operations

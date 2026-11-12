@@ -1069,6 +1069,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if o.t == "exc" and n.s == "__cause__" and self.causeread:
             # (raise ... from c's c, or the StopIteration of PEP 479's RuntimeError; else None)
             return Val(self.rt("pys_exc_cause", "ptr", [f"ptr {o.v}"]), "opt[exc]")
+        if (n.s == "args" or n.s == "value") and (unopt(o.t) == "exc" or (o.t in self.classes and self.classes[o.t].exc != "" and n.s not in self.classes[o.t].ftypes and n.s not in self.classes[o.t].methods)):
+            return self.exc_read(o, n.s, self.exc_class(tc))
         if unopt(o.t) == "exctype" and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
             # (an exception class's class object: its name, qualified name and module)
             o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{n.s}'")

@@ -19,6 +19,8 @@ also applies to compiled library functions. Ports that opt in to
 and [iteration](../docs/dynamic-any.md#iteration) contracts, including
 [class values, type-keyed registries, generic calls and annotated factories](../docs/dynamic-any.md#class-values-and-type-keyed-registries).
 That protocol support alone does not establish whole-module compatibility.
+Opt-in ports can also read [bounded exception payloads](../docs/language/semantics.md#exception-payloads),
+retaining original argument values under the dynamic storage rules.
 
 ## Module guide
 
