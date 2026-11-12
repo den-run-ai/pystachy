@@ -1,0 +1,48 @@
+CalledProcessError Command '['sh', '-c', 'echo out; echo err >&2; exit 3']' returned non-zero exit status 3. 3 ['sh', '-c', 'echo out; echo err >&2; exit 3'] b'out\n' b'out\n' b'err\n'
+err
+CalledProcessError Command 'exit 2' returned non-zero exit status 2. 2 exit 2 None None None
+CalledProcessError Command '['sh', '-c', 'exit 9']' returned non-zero exit status 9.
+CalledProcessError Command '['sh', '-c', 'echo partial; echo e >&2; exit 5']' returned non-zero exit status 5. b'partial\ne\n' None
+0
+-9 Command '['sh', '-c', 'kill -9 $$']' died with <Signals.SIGKILL: 9>.
+-15 Command '['sh', '-c', 'kill -15 $$']' died with <Signals.SIGTERM: 15>.
+-13 Command '['sh', '-c', 'kill -13 $$']' died with <Signals.SIGPIPE: 13>.
+-6 Command '['sh', '-c', 'kill -6 $$']' died with <Signals.SIGABRT: 6>.
+-14 Command '['sh', '-c', 'kill -14 $$']' died with <Signals.SIGALRM: 14>.
+Command 'x' died with unknown signal 63.
+Command '['a', 'b c']' returned non-zero exit status 1. b'o' b'o' b'e' True True
+b'changed'
+CalledProcessError Command '['sh', '-c', 'echo o; exit 4']' returned non-zero exit status 4. b'o\n' None
+CompletedProcess(args=['x', 'y'], returncode=1, stdout=b'made') ['x', 'y'] 1 b'made' None
+CalledProcessError Command '['x', 'y']' returned non-zero exit status 1. b'made' None
+CompletedProcess(args='x y', returncode=0)
+Command '['sleep', '1']' timed out after 2.5 seconds ['sleep', '1'] 2.5 b'so far' b'so far' None True
+None Command 'sleep 1' timed out after 3 seconds
+FileNotFoundError [Errno 2] No such file or directory: 'pystachy-no-such-program'
+FileNotFoundError [Errno 2] No such file or directory: '/nonexistent/dir/program'
+PermissionError [Errno 13] Permission denied: './'
+PermissionError [Errno 13] Permission denied: '/dev/null'
+PermissionError [Errno 13] Permission denied: ''
+FileNotFoundError [Errno 2] No such file or directory: '/nonexistent/dir'
+NotADirectoryError [Errno 20] Not a directory: '/dev/null'
+FileNotFoundError [Errno 2] No such file or directory: 'pystachy-no-such-program'
+127
+IndexError list index out of range
+ValueError stdin and input arguments may not both be used.
+ValueError stdout and stderr arguments may not be used with capture_output.
+ValueError illegal environment variable name
+ValueError embedded null byte
+ValueError embedded null byte
+SubprocessError Cannot disambiguate when both text and universal_newlines are supplied but different. Pass one or the other.
+(b'once', None)
+ValueError Cannot send input after starting communication
+(b'once', None)
+OSError [Errno 9] Bad file descriptor
+OSError [Errno 9] Bad file descriptor
+OverflowError Python int too large to convert to C int
+OverflowError Python int too large to convert to C int
+OSError [Errno 9] Bad file descriptor
+ValueError STDOUT can only be used for stderr
+None
+True
+[exit 0]

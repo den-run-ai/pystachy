@@ -42,9 +42,10 @@ to check that the probes exist and that their test suites execute them.
 
 
 A compiled program cannot import `queue`, `asyncio`, `concurrent.futures`,
-`multiprocessing`, `subprocess`, `contextvars`, `selectors`, `socket` or `signal`;
+`multiprocessing`, `contextvars`, `selectors`, `socket` or `signal`;
 use the hosted interfaces for those operations. Native process control provides
-`os.system()` and `os.execv()`, with no `fork`, pipe or spawn. `_thread` and
+[`subprocess`](../lib/compatibility.md#subprocess), `os.system()` and `os.execv()`, with no
+`os.fork()` or `os.pipe()`. `_thread` and
 `threading` run only on the owner thread: importing them does not enable
 `Thread.start()`.
 

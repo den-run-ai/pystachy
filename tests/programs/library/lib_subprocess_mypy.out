@@ -1,0 +1,15 @@
+True b'/' False
+/usr/bin/python3.13
+PythonExecutableInferenceError failed to find a Python executable matching version 3.9, perhaps try --python-executable, or --no-site-packages?
+PythonExecutableInferenceError failed to find a Python executable matching version 3.9, perhaps try --python-executable, or --no-site-packages?
+(['/usr/lib/python3'], [1])
+
+b'err\n'
+b'out\n'
+CalledProcessError Command '['sh', '-c', 'echo out; echo err >&2; exit 2']' returned non-zero exit status 2.
+OSError [Errno 2] No such file or directory: '/nonexistent/python'
+-15
+installing types-requests
+base:
+3 True
+[exit 0]

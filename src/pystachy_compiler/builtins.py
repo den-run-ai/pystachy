@@ -325,6 +325,37 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if bsig[1] == "bool":
             return self.num_cmp('!=', Val(self.rt(bsig[0], "i64", bvs), "int"), Val('0', "int"))
         return Val(self.rt(bsig[0], rtt(bsig[1]), bvs), bsig[1])
+    if name.startswith("__pys_proc_"):
+        # lib/subprocess.py's child processes, in that module only: what CPython's asks of
+        # _posixsubprocess.fork_exec(), os and select (runtime.c's pys_proc_*)
+        if self.curfn.mod != "subprocess" or not lib_source(self.curfn.node.line, self.libdir, "subprocess.py"):
+            self.err(f"name '{name}' is not defined")
+        psigs: dict[str, str] = {
+            "__pys_proc_pipe": "pys_proc_pipe:list[int]:", "__pys_proc_devnull": "pys_proc_devnull:int:",
+            "__pys_proc_fork_exec": "pys_proc_fork_exec:int:list[str],list[str],list[str],str,int,int,int,int",
+            "__pys_proc_wait": "pys_proc_wait:int:int,int", "__pys_proc_kill": "pys_proc_kill:None:int,int",
+            "__pys_proc_read": "pys_proc_read:bytes:int,int", "__pys_proc_write": "pys_proc_write:int:int,bytes,int,int",
+            "__pys_proc_close": "pys_proc_close:None:int", "__pys_proc_ready": "pys_proc_ready:int:int,int,int,float",
+            "__pys_proc_signame": "pys_proc_signame:str:int", "__pys_proc_encoding": "pys_io_defenc:str:",
+        }
+        if name not in psigs or any([a.kind in ["kw", "starred", "dstar"] for a in args]):
+            self.err(f"name '{name}' is not defined")
+        psig = psigs[name].split(":")
+        pts = psig[2].split(",") if psig[2] != "" else []
+        if len(args) != len(pts):
+            self.err(f"invalid arguments to private process primitive {name}")
+        pvs: list[str] = []
+        for j in range(len(args)):
+            v = self.expr(args[j], pts[j])
+            if pts[j] == "int":
+                v = self.as_int(v)
+            if v.t != pts[j]:
+                self.err(f"invalid argument to private process primitive {name}: expected {typestr(pts[j])}, got {typestr(v.t)}")
+            pvs.append(("i64 " if pts[j] == "int" else "double " if pts[j] == "float" else "ptr ") + v.v)
+        if psig[1] == "None":
+            self.rt(psig[0], "void", pvs)
+            return Val("null", "None")
+        return Val(self.rt(psig[0], rtt(psig[1]), pvs), psig[1])
     if name.startswith("__pys_mpz_"):
         # Only the shipped wrapper can create or consume these opaque pointers.
         # Using int for the handle would hide references from numeric containers.

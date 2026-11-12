@@ -1,0 +1,24 @@
+['sh', '-c', 'read x; echo got $x; exit 2'] True None None
+b'got line\n' None 2 2 2
+(b'got line\n', None)
+TimeoutExpired Command '['sleep', '30']' timed out after 0.05 seconds ['sleep', '30'] 0.05 None None None
+None
+-15 -15 -15
+-15
+-9
+-14
+TimeoutExpired Command '['sh', '-c', 'echo first; echo e1 >&2; exec sleep 30']' timed out after 2 seconds b'first\n' b'e1\n' 2
+(b'first\n', b'e1\n') -9
+6
+(b'through cat', None)
+0
+TimeoutExpired Command '['sh', '-c', 'exec sleep 30']' timed out after 0.25 seconds None None ['sh', '-c', 'exec sleep 30']
+True
+TimeoutExpired Command 'exec sleep 30' timed out after 0.1 seconds None 0.1
+TimeoutExpired Command '['sleep', '30']' timed out after 1 seconds 1
+TimeoutExpired Command '['sleep', '30']' timed out after 0.1 seconds
+TimeoutExpired Command '['sleep', '30']' timed out after -1 seconds
+b'member\n'
+b'leader\n'
+True
+[exit 0]
