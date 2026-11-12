@@ -11,13 +11,18 @@ when it fits, or zero and a pointer to its digits when it does not. A promoting
 tuple item instead stores `INT64_MIN` as a marker for both large values and
 `INT64_MIN` itself. Its trailing pointer distinguishes those cases.
 
-The checks address three different obligations:
+The checks address four different obligations:
 
 | Operation | Required evidence |
 |---|---|
 | Use a promoting integer's low word as a number | Its digit pointer is null, or the use belongs to a precisely recognized representation-preserving operation. |
 | Read a tuple item's trailing digit slot | The corresponding item is the marker, and its source representation permits that read. |
 | Cross between plain and promoting tuple views | Plain-to-promoting excludes the marker; promoting-to-plain excludes a non-null digit pointer. Nested mixed tuples retain each item's own representation. |
+| Decode a promoting container's slot word (an int list's item, an int dict's value or key, an int set's element) | The word is the int only on an edge where it is not the marker (a set's word: greater than `INT64_MIN + 1`); otherwise the container's digits give it. The word has no other use. |
+
+A container decode's obligation is a plain tuple view's `ordinary` payload
+(`accepted_plain_view`): where the word is not the marker, it is the int. The
+runtime helper that reads the container's digits on the marker path is trusted.
 
 For optional tuples, a fit fact means either the tuple is absent or its item
 fits. A null branch may establish the absent case, while every present branch
@@ -58,7 +63,8 @@ retained obligation; batching does not relax the checker resource limits.
 
 The Python adapter and exporter remain trusted: these proofs do not establish
 their correspondence to the compiler or LLVM. Runtime integer canonicalization,
-container read contracts, pointer lifetime and the implementation of integer
+the digits that container helpers (`list.big_at` and the dict and set helpers) return,
+other container read contracts, pointer lifetime and the implementation of integer
 operations also remain trusted. Tuple construction must finish on fresh storage
 before the tuple escapes; the adapter does not prove allocation freshness or
 general heap aliasing. Arithmetic fit claims use the separate
@@ -105,6 +111,22 @@ user programs.
 Raw low-word uses and trailing reads are reported separately from deduplicated
 normalized proof obligations. An incomplete normalization increments
 `unclassified_functions`; a successful run must report zero.
+
+Breaking each marker or fit guard alone (its condition made opaque) in the
+functions Lean accepts, over cached inspections of the selection (2026-11-12,
+compiler at b27908f4), found that Lean accepted 263 of 339 broken marker guards
+in the first seven programs (a function compiled alike counted once): 261
+tested a list item's or dict entry's slot word, without which a large int reads
+as `INT64_MIN`, and two a constant tuple's items. With the container-decode
+obligation, breaking
+one marker guard, chosen at random, in each of the 520 such functions of at most
+200 blocks, Lean rejects 513; the other seven test a constant tuple's items,
+which the inspection records as not the marker. The 44 of 563 broken fit guards
+that Lean accepted in those seven programs re-test, as sampled, values already
+shown to fit (made with null digits, or tested earlier). The cached selection
+proves all 18,074 obligations, 2,820 of them container decodes, in 1,664
+functions; `make check-lean-storage`, compiling the 168 selected programs
+afresh, proves all 18,123 in 1,671 functions.
 
 CI reuses the pinned Lean archive and existing verification jobs, with two
 workers and a separate `lean-storage.json` artifact: PR `opt-in` and full-run
