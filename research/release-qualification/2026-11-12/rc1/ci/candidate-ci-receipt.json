@@ -1,0 +1,197 @@
+{
+  "artifact_pages": 1,
+  "artifacts_listed": 75,
+  "attempt": 1,
+  "combined_reports": {
+    "aarch64": {
+      "checks": 58,
+      "group": "all",
+      "groups": 35,
+      "max_verification_seconds": 396.019,
+      "profile": "full",
+      "result": "pass",
+      "sha256": "d745a07e782cb836df351d077a80110d13a2c6c16ee79da3cf387f261a1f2eb6"
+    },
+    "x86_64": {
+      "checks": 58,
+      "group": "all",
+      "groups": 35,
+      "max_verification_seconds": 670.132,
+      "profile": "full",
+      "result": "pass",
+      "sha256": "99f1f814dab2ca142d45322741d8c20d0c26efc784ecd227d444fb278cd5b0a8"
+    }
+  },
+  "conclusion": "success",
+  "cpu_profiles": {
+    "aarch64": {
+      "(unknown)": 1,
+      "neoverse-n2": 34
+    },
+    "x86_64": {
+      "(unknown)": 2,
+      "graniterapids": 6,
+      "icelake-server": 5,
+      "sapphirerapids": 3,
+      "znver3": 10,
+      "znver4": 9
+    }
+  },
+  "event": "workflow_dispatch",
+  "files": [
+    {
+      "bytes": 36537,
+      "path": "full-ci-audit.json",
+      "sha256": "f4bf448dbad7d57a1cbbafcd6db31e64878de25ed9b5c94defc24b1a9a9ba8c5"
+    },
+    {
+      "bytes": 744044,
+      "path": "final-run-jobs-artifacts.json",
+      "sha256": "1ee2f562a41c88242a49199a4dcf360447b9964738498778fb51239109778b63"
+    },
+    {
+      "bytes": 28022,
+      "path": "x86_64-gc-contracts-subset.json",
+      "sha256": "b3ef1a066367222d021a383314290de18506aef5e421929583c9bb05a56d6166"
+    },
+    {
+      "bytes": 28126,
+      "path": "aarch64-gc-contracts-subset.json",
+      "sha256": "c18ddc700a758b8a5d0fa19b873245e95784a6ce30ccb346228a1ed557af63e8"
+    },
+    {
+      "bytes": 2074468,
+      "path": "combined/aarch64-verification/verification.json",
+      "sha256": "d745a07e782cb836df351d077a80110d13a2c6c16ee79da3cf387f261a1f2eb6"
+    },
+    {
+      "bytes": 2074258,
+      "path": "combined/x86_64-verification/verification.json",
+      "sha256": "99f1f814dab2ca142d45322741d8c20d0c26efc784ecd227d444fb278cd5b0a8"
+    },
+    {
+      "bytes": 3999,
+      "path": "archives/aarch64-verification-bootstrap.zip",
+      "sha256": "7991113b0f5b9644063f2455b2698591f588e1a3997db128afba22f7a718414f"
+    },
+    {
+      "bytes": 34079,
+      "path": "archives/aarch64-verification-contracts.zip",
+      "sha256": "8b521e862c1984a33323bf79c8e98074b9662ce0c87ab92b2891a39d9459e935"
+    },
+    {
+      "bytes": 45689,
+      "path": "archives/aarch64-verification-gc-aot-0.zip",
+      "sha256": "5eb00ec02ae3c9e52c15758fff8804feb61c71f6887851801ff1b3a4af9c32ce"
+    },
+    {
+      "bytes": 45447,
+      "path": "archives/aarch64-verification-gc-aot-1.zip",
+      "sha256": "986002e39462dca49e2f68d691bde2bb4e108f3ec5d1217320442a72d1e34257"
+    },
+    {
+      "bytes": 46042,
+      "path": "archives/aarch64-verification-gc-aot-2.zip",
+      "sha256": "acaf9c1fef229aa72f5a7d60e328794ca17febe9b25786b4f9d7c9e9318cd4e6"
+    },
+    {
+      "bytes": 45062,
+      "path": "archives/aarch64-verification-gc-ir-0.zip",
+      "sha256": "4c697bf59e6282d40bb4c9984bcab6bf9ad385be0c7e7b8cecb6e5838f8a33d9"
+    },
+    {
+      "bytes": 45283,
+      "path": "archives/aarch64-verification-gc-ir-1.zip",
+      "sha256": "7fe646af8d5e9953498c5474648e40903e261866e29e02914606e5148dd320d3"
+    },
+    {
+      "bytes": 61363,
+      "path": "archives/aarch64-verification-gc-jit-0.zip",
+      "sha256": "a9ecc9cfb9241ba57d3a4a5dcef465597c7b58656e58aa4ad2eef2963cf09d85"
+    },
+    {
+      "bytes": 60857,
+      "path": "archives/aarch64-verification-gc-jit-1.zip",
+      "sha256": "ea47dcda3b1ef56363b0f613a847a1213e6c84b07218fb268345244e88fc0ac6"
+    },
+    {
+      "bytes": 5148,
+      "path": "archives/aarch64-verification-gc-self.zip",
+      "sha256": "e55e9edccfc308cb10dc8df9e4b6d3dcbb55d9902c3ac993eb23e01b987b6997"
+    },
+    {
+      "bytes": 117715,
+      "path": "archives/aarch64-verification.zip",
+      "sha256": "0915514c158dc7600c6c09d6f72056125aa10818ae31084064771f6bfd4de4dc"
+    },
+    {
+      "bytes": 3998,
+      "path": "archives/x86_64-verification-bootstrap.zip",
+      "sha256": "228071dd0fc2518762bcb56da1145e58850b2170fb3491e1f86adf797dd045eb"
+    },
+    {
+      "bytes": 35338,
+      "path": "archives/x86_64-verification-contracts.zip",
+      "sha256": "4798dcd154ea9ae51f46aa07c8d505107a2892645658a937c1d3f019be8e30b3"
+    },
+    {
+      "bytes": 45889,
+      "path": "archives/x86_64-verification-gc-aot-0.zip",
+      "sha256": "37ec299e295c9ba0717f302ef162ed0427f710b4d3fd7810fefe7a98b041afcc"
+    },
+    {
+      "bytes": 45541,
+      "path": "archives/x86_64-verification-gc-aot-1.zip",
+      "sha256": "bb0ffcc8313cf84ee6102e9cc170b2a192eb11d0aed55f62305a6245f5a44a37"
+    },
+    {
+      "bytes": 46164,
+      "path": "archives/x86_64-verification-gc-aot-2.zip",
+      "sha256": "5b93085cb30e6024e62f6ce8997975cbfdd84c6c552a38a380a1204c56679059"
+    },
+    {
+      "bytes": 45396,
+      "path": "archives/x86_64-verification-gc-ir-0.zip",
+      "sha256": "54e2aa3c34d8867b1e99a968ad500b38ee81f9edc26cdf9d46d6a8d03c3a7086"
+    },
+    {
+      "bytes": 45583,
+      "path": "archives/x86_64-verification-gc-ir-1.zip",
+      "sha256": "dbf0a23ebda9c8758804ee2b645ef096ed47a1ce928c1fe45db949db83539627"
+    },
+    {
+      "bytes": 61392,
+      "path": "archives/x86_64-verification-gc-jit-0.zip",
+      "sha256": "7d0bf35d36431070d16d4786fee00843f81010fc44a3e3655cef8bac2e2d882a"
+    },
+    {
+      "bytes": 103681,
+      "path": "archives/x86_64-verification-gc-jit-1.zip",
+      "sha256": "b63c2c56c0864cf4a93196108924e62e56a29a930da659c18656042c0a8e21d2"
+    },
+    {
+      "bytes": 5145,
+      "path": "archives/x86_64-verification-gc-self.zip",
+      "sha256": "f59ff3c45e430598635bb3071aa61603fc35a05a851e4ff502d5b3f141f6e9a1"
+    },
+    {
+      "bytes": 117836,
+      "path": "archives/x86_64-verification.zip",
+      "sha256": "dccbaf4de40131f19cf88493466a035350624dc38f34e009cd3b63337ffc2329"
+    }
+  ],
+  "gc_and_contracts": "All eight GC groups per architecture and contracts/probes passed; unchanged full-profile subset validator passed 10 groups and 30 checks per architecture. Runtime ABI/GC-root controls and generated ASan controls ran successfully on x86.",
+  "job_conclusions": {
+    "skipped": 1,
+    "success": 73
+  },
+  "job_pages": 1,
+  "jobs_fetched": 74,
+  "limits": "One manual full candidate run, with mixed runner CPUs; this does not establish the required repeated PR/main/Variants headroom acceptance or gc-self source-size scaling. Exact merged-main qualification remains separate.",
+  "maximum_job_cpu": "znver3",
+  "maximum_job_seconds": 717,
+  "run_id": 43307321551,
+  "source_commit": "886ed9153e954b387f2afd39578a21168771ae6e",
+  "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "url": "https://github.com/den-run-ai/pystachy/actions/runs/43307321551"
+}

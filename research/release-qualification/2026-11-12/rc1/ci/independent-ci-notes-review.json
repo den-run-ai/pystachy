@@ -1,0 +1,91 @@
+{
+  "reviewer": "rc_pr_triage (independent of CI workflow author rc_ci_audit)",
+  "recorded_at": "2026-11-12T21:41:51.334289+00:00",
+  "repository": "den-run-ai/pystachy",
+  "pull_request": 1389,
+  "worktree": "/workspace/scratch/2cf34574fa6e/pystachy-rc",
+  "base_commit": "0b13a2121014d8256954c6af50339ff0de8dac62",
+  "reviewed_commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+  "reviewed_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "corresponding_pr_head": "886ed9153e954b387f2afd39578a21168771ae6e",
+  "method": "Read-only source/diff review, static workflow expansion and harness plan parsing. No new runtime tests or builds; existing 90 targeted controls and hosted Lint supplied by root.",
+  "reviewed_changed_paths": [
+    ".github/workflows/ci.yml",
+    ".github/workflows/coverage.yml",
+    "tests/verify.sh",
+    "tools/merge_verification.py",
+    "tools/test_merge_verification.py",
+    "tools/test_verify_shards.py",
+    "tools/test_workflow_limits.py",
+    "tools/test_verification_shared_workflows.py",
+    "tools/check_ir.sh",
+    "docs/testing.md",
+    "docs/releases/v0.4.0-rc.1.md",
+    "VERSION"
+  ],
+  "reviewed_unchanged_dependencies": [
+    "tools/test_runtime_asan.py",
+    "tools/setup.sh",
+    "tools/pr_variants.py",
+    "tools/coverage.sh",
+    "tools/coverage_report.py",
+    "tests/corpus.sh",
+    "tools/shard_cases.sh",
+    ".github/workflows/release.yml",
+    ".github/workflows/install.yml",
+    "tools/release.py",
+    "docs/install.md"
+  ],
+  "result": "No blocking or actionable findings in the frozen RC.1 CI/headroom changes and release-note scope.",
+  "findings": [],
+  "checks": {
+    "pr_plan": {
+      "total_rows": 19,
+      "rows": {
+        "ci/bootstrap": 1,
+        "ci/verification": 11,
+        "ci/pr-variants": 2,
+        "ci/qualification_skipped_row": 1,
+        "ci/verify": 1,
+        "dco": 1,
+        "lint": 1,
+        "description": 1
+      },
+      "unchanged": true,
+      "aot_workers": 4,
+      "jit_variant_workers": 2
+    },
+    "limits": {
+      "changed": false,
+      "PYSTACHY_JOBS": 4,
+      "job_timeout_minutes_max": 15,
+      "gc_self_subprocess_timeout_minutes": 10
+    },
+    "full_plan": {
+      "groups_per_architecture": 34,
+      "architectures": [
+        "x86_64",
+        "aarch64"
+      ],
+      "verification_rows": 68,
+      "python_free_shards": 4,
+      "ubsan_shards": 5,
+      "workflow_matches_harness": true,
+      "aliases_and_all_plan_complete": true
+    },
+    "independent_rebuilds": "Every full Python-free and UBSan shard independently rebuilds its required compiler/runtime. No-Python PATH, private sanitizer runtime caches, both JIT/AOT modes and IR identity checks retained.",
+    "aggregate": "All declared groups, exact shard identities/counts, common source/toolchain/bootstrap identities and full-suite check totals remain required. Tests include missing new reports and incorrect-count mutations.",
+    "asan": "Only full-run x86 destination changes from contracts to gc-jit-0. PR safety-1 is unchanged. Test source, private caches, AOT O0/O2, extension, runtime AOT/JIT, GC, both link orders and instrumented/uninstrumented controls are unchanged; LLVM setup, compiler-rt install, ordinary step failure and aggregate job requirements remain fail-closed.",
+    "coverage": "Only hosted corpus partition count changes from eight to ten. JIT/AOT and FFI/IR/cache/unit inventory, independent hosted caches, report completeness and 15-minute cap remain intact.",
+    "notes": "Included compiler fixes, alpha features, deferred scope, experimental opt-ins and platform limits agree with source and release/install tooling. docs/testing.md explicitly leaves repeated headroom evidence pending."
+  },
+  "known_nonclaims": [
+    "A passing exact-head CI run does not close #1178/#1179 repeated representative znver3 headroom requirements.",
+    "The candidate single-run gc-self result does not establish #1181 at-most-linear source-size scaling; no source-size sweep or narrow qualified WIP solution is established.",
+    "Shard redistribution and the float runtime repair do not establish #1180 summed-corpus AOT build-cost acceptance.",
+    "Public native, Docker and PyPI artifact qualification/publication remain separate release gates.",
+    "Local LLVM19 runtime effect diagnostics also occurred on baseline; this review does not claim all local lint/runtime controls passed.",
+    "Newly discovered pre-existing #1392 IntEnum exit status behavior is outside frozen RC.1. Keep it explicit in qualification/publication handoff until a separate correction is qualified.",
+    "The isolated #1392 follow-up review and its literal-reflection finding do not apply to this frozen tree."
+  ]
+}

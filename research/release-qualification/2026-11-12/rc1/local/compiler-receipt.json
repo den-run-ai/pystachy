@@ -1,0 +1,21 @@
+{
+  "source_commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+  "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "remote_equivalent_commit": "886ed9153e954b387f2afd39578a21168771ae6e",
+  "clean_worktree": true,
+  "binary_version_stdout": "pystachy v0.4.0-rc.1 (commit unknown)",
+  "compiler": "CPython 3.13.16 / LLVM 19.1.7",
+  "compiler_fixed_point_lines": 914514,
+  "runtime_fixed_point_lines": 21214,
+  "sha256": {
+    "pystachy": "71c801e56ffba5f13ad70a284259544aa09e2c902c1a404633e0287188fc4693",
+    "build/pystachy2": "71c801e56ffba5f13ad70a284259544aa09e2c902c1a404633e0287188fc4693",
+    "build/stage1.ll": "701584fe055cd89e0f34589714f52b71fa9861911181c7b2c456d844eafc8b51",
+    "build/stage2.ll": "701584fe055cd89e0f34589714f52b71fa9861911181c7b2c456d844eafc8b51",
+    "build/stage3.ll": "701584fe055cd89e0f34589714f52b71fa9861911181c7b2c456d844eafc8b51",
+    "build/rt1.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+    "build/rt2.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830",
+    "build/rt3.ll": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830"
+  },
+  "scope": "Receipt recorded after the completed bootstrap from retained artifacts; it is not a contemporaneous sealed CI bundle. The source remained frozen and clean throughout root validation."
+}

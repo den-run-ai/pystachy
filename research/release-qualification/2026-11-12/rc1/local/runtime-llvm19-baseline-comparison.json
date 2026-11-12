@@ -1,0 +1,12 @@
+{
+  "baseline_source": "0b13a2121014d8256954c6af50339ff0de8dac62",
+  "candidate_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "llvm": "19.1.7",
+  "baseline_status": 1,
+  "baseline_diagnostics": 57,
+  "candidate_diagnostics": 57,
+  "diagnostics_identical": true,
+  "diagnostics_sha256": "58066a522a11e6f51fc793c42cb8dc139e767ab1fabe7d6b431fb62206f52c80",
+  "qualified_hosted_lint_run": 43304014306,
+  "qualified_hosted_llvm": "18"
+}
