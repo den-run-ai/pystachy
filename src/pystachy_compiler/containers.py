@@ -822,6 +822,10 @@ def gen_hash_desc(self, t: str) -> str:
         return "?" + self.hash_desc(unopt(t))
     if is_tuple(t) and len(targs(t)) <= 9:
         return "T" + str(len(targs(t))) + "".join(["J" if x == BIG else self.hash_desc(x) for x in targs(t)])  # (desc's J)
+    if is_fset(t):
+        # (desc's F, of its elements' hash descriptors: an H in them runs the program's __eq__ where
+        # two frozensets compare, key_fx)
+        return "F" + self.hash_desc(held(selem(t)))
     return self.desc(t, "==")
 
 def gen_key_fx(self, kt: str) -> str:
@@ -836,7 +840,7 @@ def gen_key_repr(self, t: str) -> bool:
     u = unopt(t)
     if u in self.classes:
         return len([c for c in self.hash_classes(u) if "__repr__" in c.methods]) > 0
-    return is_tuple(u) and any(self.key_repr(x) for x in targs(u))
+    return (is_tuple(u) and any(self.key_repr(x) for x in targs(u))) or (is_fset(u) and self.key_repr(selem(u)))
 
 def gen_dkey(self, k: Val, kt: str) -> Val:
     # a key to look up in a dict whose keys have type kt: one that may be None stays optional
