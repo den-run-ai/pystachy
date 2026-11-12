@@ -32,7 +32,7 @@ from src.pystachy_compiler.specs import (
     TYPING,
     UNSUPPORTED,
 )
-from src.pystachy_compiler.syntax import Node, dc_args, has_kind, mentions, mk, names_in
+from src.pystachy_compiler.syntax import NOKIDS, Node, dc_args, has_kind, mentions, mk, names_in
 from src.pystachy_compiler.utils import (
     RtFn,
     clone,
@@ -802,6 +802,19 @@ def gen_abc_class(self, c: str) -> bool:
         c = self.classes[c].base
     return False
 
+def tv_attrs(e: Node) -> list[Node]:
+    # the attribute reads in expression e (C.Missing), outermost first
+    out: list[Node] = []
+    todo = [e]
+    while len(todo) > 0:
+        n = todo.pop()
+        if n.kind == "attr":
+            out.append(n)
+        for k in n.kids:
+            todo.append(k)
+    return out
+
+
 def tv_reads(st: Node) -> list[Node]:
     # the names that TypeVar statement st's constraints and bound read, as qualified (Loader.qexpr)
     out: list[Node] = []
@@ -813,6 +826,45 @@ def tv_reads(st: Node) -> list[Node]:
         for k in n.kids:
             todo.append(k)
     return out
+
+
+# typing's names that TypeVar's bound may not be plain (typing._type_check's TypeError)
+BOUND_FORMS = "Annotated ClassVar Concatenate Final Generic Literal NotRequired Optional Protocol ReadOnly Required TypeGuard TypeIs Union Unpack".split()
+
+
+def gen_bound_problem(self, x: Node) -> str:
+    # the TypeError CPython's TypeVar raises for bound x (typing._type_check): a plain special
+    # form (Union), Generic or Protocol, a subscript of ClassVar, Final, Generic or Protocol, or
+    # a tuple; else ""
+    if x.kind == "tuple":
+        return "Bound must be a type. Got a tuple"
+    b = x.kids[0] if x.kind == "index" else x
+    p = self.imported_ref(b) if b.kind == "name" or b.kind == "attr" else ""
+    nm = p[p.rfind(".") + 1 :]
+    if not (p.startswith("typing.") or p.startswith("typing_extensions.")) or nm not in BOUND_FORMS:
+        return ""
+    if x.kind == "index":
+        return f"typing.{nm}[...] is not valid as type argument" if nm in ["ClassVar", "Final", "Generic", "Protocol"] else ""
+    return f"Plain <class 'typing.{nm}'> is not valid as type argument" if nm == "Generic" or nm == "Protocol" else f"Plain typing.{nm} is not valid as type argument"
+
+
+def gen_class_binds(self, c: str, nm: str) -> bool:
+    # does class c's body, or a base's (derives: also secondary bases), bind nm (a def, a class,
+    # an assignment, also annotated); type gives every class its dunder attributes (__name__, ...),
+    # and an exception class's attributes come from a builtin class too
+    if nm.startswith("__") and nm.endswith("__"):
+        return True
+    for k in self.classes:
+        if not self.derives(c, k):
+            continue
+        if self.classes[k].exc != "":
+            return True
+        for d in self.classes[k].node.kids[0].kids:
+            if (d.kind == "def" or d.kind == "class" or d.kind == "subclass") and d.s == nm:
+                return True
+            if (d.kind == "assign" or d.kind == "annassign") and len([t for t in (d.kids[:-1] if d.kind == "assign" else d.kids[:1]) if t.kind == "name" and t.s == nm]) > 0:
+                return True
+    return False
 
 
 def gen_program(self, mods: list[Mod]) -> str:
@@ -1108,6 +1160,16 @@ def gen_program(self, mods: list[Mod]) -> str:
             if rd.chk and rd.s in self.gflag and rd.s in self.classes:
                 self.line = st.line
                 self.err(f"class '{shown(rd.s)}' may not be defined where this TypeVar reads it through its module (as during a circular import): not supported (CPython raises AttributeError if it is not)")
+        for a in st.kids[1].kids[2:] if self.imported_ref(st.kids[1].kids[0]) == "typing.TypeVar" else NOKIDS:
+            # (what TypeVar checks of its bound, typing._type_check; and attributes of a class
+            # that it does not bind, CPython's AttributeError: Loader.qexpr leaves C.Missing so)
+            why = self.bound_problem(a.kids[0]) if a.kind == "kw" and a.s == "bound" else ""
+            for ra in tv_attrs(a.kids[0] if a.kind == "kw" else a) if why == "" and (a.kind != "kw" or a.s == "bound") else NOKIDS:
+                if ra.kids[0].kind == "name" and ra.kids[0].s in self.classes and not self.class_binds(ra.kids[0].s, ra.s):
+                    why = f"type object '{short(ra.kids[0].s)}' has no attribute '{ra.s}'"
+            if why != "":
+                self.line = st.line
+                self.err(f"{why} (CPython evaluates a TypeVar's constraints and bound when the assignment runs)")
     for nm in self.gflag:
         if nm in self.funcs or nm in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")
