@@ -1,0 +1,912 @@
+"""Original-pytest parity for unittest cases, class inheritance, computed tables and layouts."""
+import importlib.util
+import json
+import os
+import shlex
+import sys
+import textwrap
+import unittest
+from unittest.mock import patch
+
+import pytest_native as runner
+from pytest_native_codegen import CollectionError, adapt_helper, generate, generate_conftest
+from test_pytest_native import TemporarySuite
+
+NATIVE = os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER", "")
+
+
+
+UNITTEST = '''
+import unittest
+
+import pytest
+
+LOG: list[str] = []
+
+
+class Base(unittest.TestCase):
+    def setUp(self):
+        LOG.append("setUp")
+        self.value = 3
+        self.names = ["a", "b"]
+
+    def tearDown(self):
+        LOG.append("tearDown")
+
+    def test_zeta(self):
+        self.assertEqual(self.value, 3)
+
+    def test_alpha(self):
+        self.assertTrue(self.names)
+        self.assertIn("a", self.names)
+
+
+class Derived(Base):
+    def test_middle(self):
+        self.assertIn(self.value, [3])
+        self.assertIsInstance(self.value, int)
+        self.assertNotIsInstance(self.names, int)
+
+    def test_fail(self):
+        self.assertEqual(1, 2)
+
+    def test_error(self):
+        raise KeyError("k")
+
+    def test_skip(self):
+        self.skipTest("later")
+
+    @unittest.skip("decorated")
+    def test_skip_decorated(self):
+        raise RuntimeError("never")
+
+    @unittest.skipIf(True, "cond")
+    def test_skip_if(self):
+        raise RuntimeError("never")
+
+    @unittest.skipIf(len(LOG) > 1000, "runtime cond")
+    def test_skip_if_runtime(self):
+        self.assertLess(1, 2)
+
+    @unittest.skipUnless(True, "cond")
+    def test_skip_unless(self):
+        pass
+
+    @unittest.expectedFailure
+    def test_expected(self):
+        self.assertEqual(1, 2)
+
+    @unittest.expectedFailure
+    def test_unexpected(self):
+        pass
+
+    def test_sub_pass(self):
+        for i in range(3):
+            with self.subTest(i=i):
+                self.assertLess(i, 3)
+
+    def test_sub_fail(self):
+        for i in range(3):
+            with self.subTest(i=i):
+                self.assertLess(i, 1)
+        LOG.append("after subtests")
+
+    def test_pytest_skip(self):
+        pytest.skip("pytest skip in unittest")
+
+    def test_pytest_fail(self):
+        pytest.fail("pytest fail")
+
+    def test_raises(self):
+        with self.assertRaises(ValueError) as cm:
+            int("x")
+        self.assertIn("invalid", str(cm.exception))
+        self.assertRaises(ValueError, int, "y")
+        with self.assertRaisesRegex(ValueError, "invalid"):
+            int("z")
+        with self.assertRaises((KeyError, ValueError)):
+            int("w")
+
+    def test_numbers(self):
+        self.assertAlmostEqual(0.1 + 0.2, 0.3)
+        self.assertAlmostEqual(1.0, 1.05, delta=0.1)
+        self.assertNotAlmostEqual(1.0, 2.0)
+        self.assertGreater(2, 1)
+        self.assertLessEqual(1, 1)
+        self.assertNotEqual("a", "b")
+        self.assertIsNone(None)
+        empty: list[int] = []
+        self.assertFalse(empty)
+        self.assertCountEqual([1, 2, 2], [2, 1, 2])
+        self.assertSequenceEqual([1, 2], [1, 2])
+        self.assertDictEqual({"a": 1}, {"a": 1})
+        self.assertRegex("hello", "ell")
+
+
+class TearDownFails(unittest.TestCase):
+    def tearDown(self):
+        raise RuntimeError("teardown")
+
+    def test_pass(self):
+        pass
+
+    def test_fail(self):
+        self.fail("body")
+
+    def test_skip(self):
+        self.skipTest("s")
+
+
+class SetUpFails(unittest.TestCase):
+    def setUp(self):
+        raise RuntimeError("setup")
+
+    def tearDown(self):
+        LOG.append("tearDown after failed setUp")
+
+    def test_one(self):
+        pass
+
+
+class SetUpSkips(unittest.TestCase):
+    def setUp(self):
+        raise unittest.SkipTest("setup skip")
+
+    def test_one(self):
+        pass
+
+
+@unittest.skip("whole class")
+class SkippedClass(unittest.TestCase):
+    def test_one(self):
+        raise RuntimeError("never")
+
+
+class NotNamedTest(unittest.TestCase):
+    def test_b(self):
+        pass
+
+    def test_a(self):
+        pass
+
+    def helper(self):
+        pass
+
+
+@pytest.fixture(autouse=True)
+def auto():
+    LOG.append("auto+")
+    yield
+    LOG.append("auto-")
+
+
+def test_plain_last():
+    assert "after subtests" in LOG
+    assert "tearDown after failed setUp" not in LOG
+    assert LOG[:4] == ["auto+", "setUp", "tearDown", "auto-"]
+'''
+
+
+TABLES = '''
+import itertools
+import os
+
+import pytest
+
+SIZES = [1, 2, 3]
+NAMES = ("a", "b")
+PAIRS = {"one": 1, "two": 2}
+DOUBLED = [n * 2 for n in SIZES]
+GRID = list(itertools.product(SIZES[:2], NAMES))
+LABELS = [f"case{n}" for n in range(3)]
+MUTATED = [1, 2]
+HERE = os.path.dirname(__file__)
+
+
+class Point:
+    def __init__(self, x: int, y: int) -> None:
+        self.x = x
+        self.y = y
+
+
+def make(n: int) -> Point:
+    return Point(n, n + 1)
+
+
+POINTS = [Point(1, 2), Point(3, 4)]
+
+
+def change():
+    MUTATED[1] = 2
+
+
+@pytest.mark.parametrize("n", range(3))
+def test_range(n):
+    assert n in (0, 1, 2)
+
+
+@pytest.mark.parametrize("n", DOUBLED)
+def test_named_comprehension(n):
+    assert n % 2 == 0
+
+
+@pytest.mark.parametrize(("n", "name"), GRID)
+def test_product(n, name):
+    assert n in SIZES and name in NAMES
+
+
+@pytest.mark.parametrize("key, value", sorted(PAIRS.items()))
+def test_items(key, value):
+    assert PAIRS[key] == value
+
+
+@pytest.mark.parametrize("key", PAIRS)
+def test_dict_keys(key):
+    assert key in ("one", "two")
+
+
+@pytest.mark.parametrize("point", [Point(1, 2), make(5)])
+def test_objects(point):
+    assert point.y == point.x + 1
+
+
+@pytest.mark.parametrize("point", POINTS)
+def test_named_objects(point):
+    assert point.y == point.x + 1
+
+
+@pytest.mark.parametrize("point, total", [(make(n), n * 2 + 1) for n in SIZES])
+def test_comprehension_of_objects(point, total):
+    assert point.x + point.y == total
+
+
+@pytest.mark.parametrize("kind", [ValueError, KeyError, make])
+def test_named_values(kind):
+    assert kind is not None
+
+
+@pytest.mark.parametrize("n", SIZES + [10, 20], ids=LABELS + ["ten", None])
+def test_joined(n):
+    assert n > 0
+
+
+@pytest.mark.parametrize("n", [1, 2, 3], ids=[None, "two", 3])
+def test_mixed_ids(n):
+    assert n > 0
+
+
+@pytest.mark.parametrize("value", MUTATED)
+def test_reads_the_table_after_import(value):
+    assert value in (1, 2)
+
+
+change()
+
+
+@pytest.mark.parametrize("n", [x for x in range(10) if x % 3 == 0])
+def test_filtered(n):
+    assert n % 3 == 0
+
+
+@pytest.mark.parametrize("text", ["a" * 3, "x" + "y", 2 ** 4, -1, 1.5 * 2])
+def test_folded(text):
+    assert text is not None
+
+
+def test_module_metadata():
+    assert __name__ == "test_tables"
+    assert os.path.basename(__file__) == "test_tables.py"
+    assert os.path.isdir(HERE)
+'''
+
+
+MARKS = '''
+import sys
+
+import pytest
+
+pytestmark = [pytest.mark.slow, pytest.mark.skipif(sys.platform == "nonesuch", reason="never")]
+
+LOG: list[str] = []
+
+
+@pytest.fixture
+def noted():
+    LOG.append("noted")
+
+
+class Problem(Exception):
+    def __init__(self, code: int) -> None:
+        super().__init__("problem " + str(code))
+        self.code = code
+
+
+def explode(code: int, scale: int = 1) -> None:
+    raise Problem(code * scale)
+
+
+def quiet() -> None:
+    pass
+
+
+class TestMarked:
+    pytestmark = pytest.mark.usefixtures("noted")
+
+    def test_fixture_ran(self):
+        assert LOG == ["noted"]
+
+
+class TestSkippedByAttribute:
+    pytestmark = [pytest.mark.skip(reason="class attribute")]
+
+    def test_never(self):
+        assert False
+
+
+def test_callable_raises():
+    pytest.raises(Problem, explode, 3)
+    pytest.raises(Problem, explode, 3, scale=2)
+    info = pytest.raises(Problem, explode, 4)
+    assert "problem 4" in str(info.value)
+
+
+def test_callable_raises_misses():
+    pytest.raises(Problem, quiet)
+
+
+def test_callable_arguments_run_before_the_call():
+    def argument() -> int:
+        raise Problem(1)
+
+    # pytest evaluates the arguments first: their exception is the test's own.
+    pytest.raises(Problem, explode, argument())
+'''
+
+
+INHERIT = '''
+import pytest
+
+LOG: list[str] = []
+
+
+@pytest.fixture
+def noted():
+    LOG.append("noted")
+
+
+class Shared:
+    limit = 10
+
+    @pytest.fixture
+    def base(self) -> int:
+        return 5
+
+    def test_shared(self, base):
+        assert base < self.limit
+
+    def test_overridden(self):
+        assert False
+
+    def test_inherited_as_is(self):
+        assert self.limit >= 10
+
+
+@pytest.mark.usefixtures("noted")
+class TestFirst(Shared):
+    @pytest.mark.parametrize("scale", [1, 2])
+    def test_own(self, base, scale):
+        assert base * scale <= self.limit
+        assert LOG[-1] == "noted"
+
+    def test_overridden(self):
+        assert self.limit
+
+
+class TestSecond(TestFirst):
+    limit = 100
+
+    @pytest.fixture
+    def base(self) -> int:
+        return 50
+
+    def test_last(self, base):
+        assert base == 50
+
+
+class Helper:
+    def test_not_collected(self):
+        assert False
+'''
+
+
+WARNS = '''
+import unittest
+import warnings
+
+import pytest
+
+
+def old(value: int) -> int:
+    warnings.warn("old thing " + str(value), DeprecationWarning)
+    return value
+
+
+def loud() -> None:
+    warnings.warn("careful", UserWarning)
+
+
+def quiet() -> int:
+    return 1
+
+
+def test_warns():
+    with pytest.warns(DeprecationWarning):
+        assert old(2) == 2
+    with pytest.warns(DeprecationWarning, match="thing 3") as record:
+        old(3)
+    assert len(record) == 1
+    assert "old thing 3" in str(record[0].message)
+    with pytest.warns((UserWarning, DeprecationWarning)):
+        loud()
+    with pytest.warns():
+        loud()
+    with pytest.deprecated_call():
+        old(1)
+
+
+def test_did_not_warn():
+    with pytest.warns(UserWarning):
+        quiet()
+
+
+def test_wrong_class():
+    with pytest.warns(UserWarning):
+        old(1)
+
+
+def test_match_misses():
+    with pytest.warns(DeprecationWarning, match="nothing"):
+        old(1)
+
+
+def test_exception_propagates():
+    with pytest.raises(ZeroDivisionError):
+        with pytest.warns(UserWarning):
+            quiet() // 0
+
+
+class Case(unittest.TestCase):
+    def test_assert_warns(self):
+        with self.assertWarns(DeprecationWarning):
+            old(1)
+        with self.assertWarnsRegex(UserWarning, "care"):
+            loud()
+
+    def test_assert_warns_fails(self):
+        with self.assertWarns(UserWarning):
+            quiet()
+'''
+
+
+XUNIT = '''
+import pytest
+
+LOG: list[str] = []
+
+
+@pytest.fixture(autouse=True)
+def module_auto():
+    LOG.append("module+")
+    yield
+    LOG.append("module-")
+
+
+@pytest.fixture(scope="module")
+def wide():
+    LOG.append("wide+")
+    yield 1
+    LOG.append("wide-")
+
+
+class TestHooks:
+    def setup_method(self, method):
+        LOG.append("setup_method")
+        self.items = [1, 2]
+        self.total = 0
+
+    def teardown_method(self, method=None):
+        LOG.append("teardown_method")
+
+    @pytest.fixture(autouse=True)
+    def class_auto(self):
+        LOG.append("class+ " + str(len(self.items)))
+        yield
+        LOG.append("class-")
+
+    def test_order(self, wide):
+        assert LOG == ["wide+", "module+", "setup_method", "class+ 2"]
+        self.total = sum(self.items)
+        assert self.total == 3
+
+    def test_fresh_object(self):
+        assert self.total == 0
+        assert LOG[-6:] == ["class-", "teardown_method", "module-", "module+", "setup_method", "class+ 2"]
+
+
+class TestDerived(TestHooks):
+    def setup_method(self, method):
+        super().setup_method(method)
+        self.extra = "x"
+
+    def test_inherited_hooks(self):
+        assert self.extra == "x" and self.items == [1, 2]
+
+
+class TestSetupFails:
+    def setup_method(self):
+        raise RuntimeError("no setup")
+
+    def teardown_method(self):
+        LOG.append("never")
+
+    def test_never_runs(self):
+        assert False
+
+
+class TestTeardownFails:
+    def teardown_method(self):
+        raise RuntimeError("no teardown")
+
+    def test_passes(self):
+        pass
+
+    def test_fails(self):
+        assert False
+
+
+class TestNoseNames:
+    def setup(self):
+        LOG.append("nose setup")
+
+    def teardown(self):
+        LOG.append("nose teardown")
+
+    def test_plain_methods(self):
+        assert "never" not in LOG
+        assert "nose setup" not in LOG
+'''
+
+
+PACKAGES = {
+    'conftest.py': 'import pytest\n\nLOG: list[str] = []\n\n\n@pytest.fixture(autouse=True)\ndef outer_auto():\n    LOG.append("outer+")\n    yield\n    LOG.append("outer-")\n\n\n@pytest.fixture\ndef size() -> int:\n    return 2\n\n\n@pytest.fixture(scope="session")\ndef shared_log() -> list[str]:\n    return LOG\n',
+    'extra/flat_helper.py': 'def where() -> str:\n    return __file__\n',
+    'extra/test_flat.py': 'import flat_helper\n\n\ndef test_outer_conftest_only(size, shared_log):\n    assert size == 2\n    assert shared_log[-1] == "outer+"\n    assert flat_helper.where().endswith("flat_helper.py")\n',
+    'shapes/__init__.py': 'def area(width: int, height: int) -> int:\n    return width * height\n',
+    'tests/__init__.py': '',
+    'tests/conftest.py': 'import pytest\n\n\n@pytest.fixture(autouse=True)\ndef inner_auto(shared_log):\n    shared_log.append("inner+")\n    yield\n    shared_log.append("inner-")\n\n\n@pytest.fixture\ndef size() -> int:\n    return 5\n\n\n@pytest.fixture\ndef doubled(size) -> int:\n    return size * 2\n',
+    'tests/data/sizes.txt': '3\n4\n',
+    'tests/helpers.py': 'import os\n\nDATA = os.path.join(os.path.dirname(__file__), "data", "sizes.txt")\n\n\ndef read_sizes() -> list[int]:\n    with open(DATA) as handle:\n        return [int(line) for line in handle.read().split()]\n',
+    'tests/test_area.py': 'from shapes import area\n\nfrom . import helpers\nfrom .helpers import read_sizes\n\n\ndef test_data_file():\n    assert read_sizes() == [3, 4]\n    assert helpers.DATA.endswith("sizes.txt")\n\n\ndef test_nearer_conftest_wins(size, doubled, shared_log):\n    assert area(size, doubled) == 50\n    assert shared_log[-2:] == ["outer+", "inner+"]\n\n\ndef test_module_name():\n    assert __name__ == "tests.test_area"\n',
+    'tests/unit/__init__.py': '',
+    'tests/unit/test_deep.py': 'import pytest\n\nfrom .. import helpers\nfrom ..helpers import read_sizes\nfrom ..test_area import area\n\n\n@pytest.fixture\ndef size() -> int:\n    return 7\n\n\ndef test_module_fixture_overrides_conftest(size, doubled):\n    assert (size, doubled) == (7, 14)\n\n\ndef test_parent_package():\n    assert sum(read_sizes()) == 7\n    assert area(1, 2) == 2\n    assert helpers.read_sizes()[0] == 3\n',
+}
+
+
+IMPORTED = {
+    'flat/base.py': 'import unittest\n\n\nclass Base(unittest.TestCase):\n    def setUp(self):\n        self.items = [1, 2]\n\n    def check(self, total: int) -> None:\n        self.assertEqual(sum(self.items), total)\n',
+    'flat/test_flat_unit.py': 'from base import Base\n\n\nclass FlatCase(Base):\n    def test_total(self):\n        self.check(3)\n\n    def test_fails(self):\n        self.check(4)\n',
+    'tests/__init__.py': 'import unittest\n\n\nclass CalTestCase(unittest.TestCase):\n    def setUp(self):\n        self.epoch = 100\n\n    def assertAllPositive(self, seq):\n        for item in seq:\n            self.assertGreater(item, 0)\n\n    def reflexive(self, value: int) -> int:\n        return value\n\n\nclass SharedCases(CalTestCase):\n    def test_shared_one(self):\n        self.assertEqual(self.reflexive(self.epoch), 100)\n\n    def test_shared_two(self):\n        self.assertGreater(self.epoch, 1)\n',
+    'tests/test_coptic.py': 'from . import CalTestCase, SharedCases\n\n\nclass TestCoptic(CalTestCase):\n    def setUp(self):\n        super().setUp()\n        self.leap = 1839\n\n    def test_epoch(self):\n        self.assertEqual(self.epoch + self.leap, 1939)\n\n    def test_sequence(self):\n        self.assertAllPositive([1, 2, 3])\n\n\nclass TestMore(SharedCases):\n    def test_own(self):\n        self.assertEqual(self.epoch, 100)\n',
+}
+
+
+SUITES = {
+    "unit": (UNITTEST, "test-failed"),
+    "tables": (TABLES, "passed"),
+    "marks": (MARKS, "test-failed"),
+    "inherit": (INHERIT, "passed"),
+    "warns": (WARNS, "test-failed"),
+    "xunit": (XUNIT, "test-failed"),
+}
+
+
+@unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
+class StyleParity(TemporarySuite):
+    def files(self, files):
+        for name, text in files.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+        return runner.discover([self.root], self.root)
+
+    def run_paths(self, paths, mode):
+        results = runner.run_suite(paths, self.root, self.work / mode, mode, shlex.split(NATIVE), sys.executable, 300)
+        expected = runner.oracle(paths, self.root, self.work / "oracle", sys.executable, 120)
+        self.assertEqual(runner.compare(results, expected), [], results[0].error + results[0].stderr + json.dumps(
+            runner.outcome_differences(results, expected), indent=2))
+        return results, expected
+
+    def suites(self, mode):
+        """Every suite as one program, as one pytest session runs them."""
+        paths = sorted(self.source(source, f"test_{name}.py") for name, (source, _) in SUITES.items())
+        results, expected = self.run_paths(paths, mode)
+        self.assertEqual({result.path: result.state for result in results},
+                         {f"test_{name}.py": state for name, (_, state) in SUITES.items()})
+        return results, expected
+
+    def outcomes(self, results):
+        return {(event["nodeid"], event["phase"]): event["outcome"] for result in results
+                for event in result.events if event["phase"] != "subtest"}
+
+    def test_suites_match_pytest(self):
+        results, expected = self.suites("python")
+        cases = expected["cases"]
+        self.assertEqual(len(cases), 105)
+        outcomes = self.outcomes(results)
+        # unittest sorts a case's methods, inherited ones too, and runs setUp, the test
+        # and tearDown in the call phase; a second failure is the teardown's.
+        derived = [case.split("::")[2] for case in cases if case.startswith("test_unit.py::Derived::")]
+        self.assertEqual(derived, sorted(derived))
+        self.assertIn("test_alpha", derived)
+        self.assertEqual(outcomes["test_unit.py::Derived::test_expected", "call"], "xfailed")
+        self.assertEqual(outcomes["test_unit.py::Derived::test_unexpected", "call"], "failed")
+        self.assertEqual(outcomes["test_unit.py::Derived::test_skip_decorated", "call"], "skipped")
+        self.assertEqual(outcomes["test_unit.py::Derived::test_skip_if_runtime", "call"], "passed")
+        self.assertEqual(outcomes["test_unit.py::SkippedClass::test_one", "setup"], "skipped")
+        self.assertEqual(outcomes["test_unit.py::SetUpFails::test_one", "call"], "failed")
+        self.assertEqual(outcomes["test_unit.py::TearDownFails::test_pass", "call"], "failed")
+        self.assertEqual(outcomes["test_unit.py::TearDownFails::test_pass", "teardown"], "passed")
+        self.assertEqual(outcomes["test_unit.py::TearDownFails::test_fail", "teardown"], "error")
+        self.assertEqual(outcomes["test_unit.py::TearDownFails::test_skip", "call"], "skipped")
+        subtests = [(event["nodeid"].rsplit("::", 1)[1], event["outcome"]) for result in results
+                    for event in result.events if event["phase"] == "subtest"]
+        self.assertEqual(subtests, [("test_sub_fail", "passed"), ("test_sub_fail", "failed"),
+                                    ("test_sub_fail", "failed"), *[("test_sub_pass", "passed")] * 3])
+        # A failed subtest is reported apart: its test's own call passes.
+        self.assertEqual(outcomes["test_unit.py::Derived::test_sub_fail", "call"], "passed")
+        self.assertEqual(runner.outcome_counts(results)["subtests passed"], 4)
+        # Computed tables: pytest's IDs for values, names and objects.
+        for case in ("test_range[2]", "test_named_comprehension[6]", "test_product[2-b]", "test_items[two-2]",
+                     "test_dict_keys[one]", "test_objects[point1]", "test_named_objects[point0]",
+                     "test_comprehension_of_objects[point2-7]", "test_named_values[ValueError]",
+                     "test_named_values[make]", "test_joined[case2]", "test_joined[ten]", "test_joined[20]",
+                     "test_mixed_ids[1]", "test_mixed_ids[two]", "test_mixed_ids[3]", "test_filtered[9]",
+                     "test_folded[aaa]", "test_folded[16]", "test_folded[-1]", "test_folded[3.0]"):
+            self.assertIn("test_tables.py::" + case, cases)
+        # Marks from pytestmark, in the module and in a class.
+        self.assertEqual(outcomes["test_marks.py::TestSkippedByAttribute::test_never", "setup"], "skipped")
+        self.assertEqual(outcomes["test_marks.py::test_callable_raises_misses", "call"], "failed")
+        self.assertEqual(outcomes["test_marks.py::test_callable_arguments_run_before_the_call", "call"], "failed")
+        # A base class's tests come first; a helper class and the base itself are not collected.
+        self.assertEqual([case.split("::", 1)[1] for case in cases if case.startswith("test_inherit.py::")], [
+            "TestFirst::test_shared", "TestFirst::test_inherited_as_is", "TestFirst::test_own[1]",
+            "TestFirst::test_own[2]", "TestFirst::test_overridden", "TestSecond::test_shared",
+            "TestSecond::test_inherited_as_is", "TestSecond::test_own[1]", "TestSecond::test_own[2]",
+            "TestSecond::test_overridden", "TestSecond::test_last"])
+        failed = {nodeid.split("::", 1)[1] for (nodeid, phase), outcome in outcomes.items()
+                  if nodeid.startswith("test_warns.py") and outcome == "failed"}
+        self.assertEqual(failed, {"test_did_not_warn", "test_wrong_class", "test_match_misses",
+                                  "test_exception_propagates", "Case::test_assert_warns_fails"})
+        self.assertEqual(outcomes["test_xunit.py::TestSetupFails::test_never_runs", "setup"], "error")
+        self.assertEqual(outcomes["test_xunit.py::TestTeardownFails::test_passes", "teardown"], "error")
+
+    def test_packages_nested_directories_and_layered_conftest(self):
+        paths = self.files(PACKAGES)
+        tree = runner.layout(paths, self.root)
+        self.assertEqual([tree.modules[path] for path in paths], ["test_flat", "tests.test_area", "tests.unit.test_deep"])
+        self.assertEqual(tree.packages, [self.root / "tests"])
+        results, expected = self.run_paths(paths, "python")
+        self.assertEqual([result.state for result in results], ["passed"] * 3, results[0].error + results[0].stderr)
+        self.assertEqual(expected["cases"][-1], "tests/unit/test_deep.py::test_parent_package")
+        self.assertEqual(len(expected["cases"]), 6)
+
+    def test_imported_base_classes_and_cases(self):
+        results, expected = self.run_paths(self.files(IMPORTED), "python")
+        self.assertEqual([result.state for result in results], ["test-failed", "passed"])
+        # pytest collects a unittest case in the module that imports it, under the name bound there.
+        self.assertIn("tests/test_coptic.py::SharedCases::test_shared_one", expected["cases"])
+        self.assertIn("tests/test_coptic.py::TestMore::test_shared_two", expected["cases"])
+        self.assertEqual(len(expected["cases"]), 9)
+
+    def test_forms_only_cpython_runs(self):
+        # The collector follows pytest here; the compiler does not build these classes.
+        path = self.source("""
+            class Shared:
+                def test_kept(self):
+                    assert True
+                def test_hidden(self):
+                    assert False
+            class TestHides(Shared):
+                test_hidden = None
+            def test_local_classes_are_not_collected():
+                class TestLocal:
+                    def test_inner(self) -> int:
+                        return 1
+                assert TestLocal().test_inner() == 1
+        """, "test_python_only.py")
+        results, expected = self.run_paths([path], "python")
+        self.assertEqual(expected["cases"], ["test_python_only.py::TestHides::test_kept",
+                                             "test_python_only.py::test_local_classes_are_not_collected"])
+        self.assertEqual(results[0].state, "passed")
+
+    def test_an_id_the_source_does_not_show_is_reported(self):
+        # The value is read after import, as pytest reads it; the ID was read from the source.
+        path = self.source("""
+            import pytest
+            VALUES = [1, 2]
+            def change():
+                VALUES[0] = 10
+            @pytest.mark.parametrize("value", VALUES)
+            def test_value(value):
+                assert value in (10, 2)
+            change()
+        """, "test_stale.py")
+        result = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 60)
+        expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 60)
+        self.assertEqual(result.state, "passed", result.error + result.stderr)
+        self.assertEqual(result.cases[0], "test_stale.py::test_value[1]")
+        self.assertEqual(expected["cases"][0], "test_stale.py::test_value[10]")
+        self.assertIn("collected test IDs/order differ from pytest", runner.compare([result], expected))
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_jit_suites_under_gc_stress(self):
+        # A unittest case's object and a module's parameter tables must survive each test.
+        with patch.dict(os.environ, {"PYSTACHY_GC_STRESS_PROGRAM": "1", "PYSTACHY_IRCHECK": "1"}):
+            results, _ = self.suites("jit")
+        self.assertTrue(results[0].assertion_operands, results[0].operand_build_error)
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_aot_packages(self):
+        results, _ = self.run_paths(self.files(PACKAGES), "aot")
+        self.assertEqual([result.state for result in results], ["passed"] * 3, results[0].error + results[0].stderr)
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_jit_imported_base_classes(self):
+        results, _ = self.run_paths(self.files(IMPORTED), "jit")
+        self.assertEqual([result.state for result in results], ["test-failed", "passed"])
+
+
+class StyleRejections(TemporarySuite):
+    def test_unsupported_forms_are_collection_errors(self):
+        unit = "import unittest\nimport pytest\nclass Case(unittest.TestCase):\n"
+        forms = {
+            "setUpClass": (unit + "    @classmethod\n    def setUpClass(cls): pass\n", "method: setUpClass"),
+            "addCleanup": (unit + "    def test_a(self):\n        self.addCleanup(print)\n", "use: addCleanup"),
+            "test id": (unit + "    def test_a(self):\n        print(self.id())\n", "use: id"),
+            "setUp call": (unit + "    def setUp(self): pass\n    def test_a(self):\n        self.setUp()\n", "use: setUp"),
+            "subTest name": (unit + "    def test_a(self):\n        with self.subTest() as sub:\n            pass\n",
+                             "subTest is supported as"),
+            "subTest call": (unit + "    def test_a(self):\n        with self.subTest(n=len('a')):\n            pass\n",
+                             "subTest arguments"),
+            "assertRaises value": (unit + "    def test_a(self):\n        x = self.assertRaises(ValueError, int, 'x')\n",
+                                   "callable form of assertRaises"),
+            "assertRaises keyword": (unit + "    def test_a(self):\n        with self.assertRaises(ValueError, foo=1):\n"
+                                     "            pass\n", "assertRaises supports"),
+            "assertWarns value": (unit + "    def test_a(self):\n        self.assertWarns(UserWarning, print)\n",
+                                  "assertWarns is supported as"),
+            "fixture": (unit + "    @pytest.fixture\n    def value(self): return 1\n", "fixtures defined in a unittest"),
+            "arguments": (unit + "    def test_a(self, value): pass\n", "take no arguments"),
+            "parametrize": (unit + "    @pytest.mark.parametrize('n', [1])\n    def test_a(self): pass\n",
+                            "cannot be parametrized"),
+            "pytest xfail": (unit + "    @pytest.mark.xfail\n    def test_a(self): pass\n", "use unittest.expectedFailure"),
+            "skip arguments": (unit + "    @unittest.skipIf(True)\n    def test_a(self): pass\n", "a condition and a reason"),
+            "__init__": (unit + "    def __init__(self): pass\n", "method: __init__"),
+            "setup_method": (unit + "    def setup_method(self): pass\n", "method: setup_method"),
+            "mock": ("from unittest import mock\n", "unsupported unittest import: mock"),
+            "unittest.mock": ("import unittest.mock\n", "unsupported unittest import"),
+            "unittest call": ("import unittest\nunittest.main()\n", "unsupported unittest use: unittest.main"),
+            "decorator on a function": ("import unittest\n@unittest.skip('x')\ndef test_a(): pass\n",
+                                        "unittest decorators are supported"),
+            "nested case": ("import unittest\nif True:\n    class Case(unittest.TestCase):\n        pass\n",
+                            "nested and conditional"),
+            "table from a call": ("import pytest\ndef cases(): return [1]\n@pytest.mark.parametrize('n', cases())\n"
+                                  "def test_a(n): pass\n", "a table the collector can read"),
+            "table bound twice": ("import pytest\nCASES = [1]\nCASES = [2]\n@pytest.mark.parametrize('n', CASES)\n"
+                                  "def test_a(n): pass\n", "one literal binding: CASES"),
+            "table of a set": ("import pytest\n@pytest.mark.parametrize('n', {1, 2})\ndef test_a(n): pass\n",
+                               "a table the collector can read"),
+            "empty range": ("import pytest\n@pytest.mark.parametrize('n', range(0))\ndef test_a(n): pass\n",
+                            "nonempty table"),
+            "ids of objects": ("import pytest\n@pytest.mark.parametrize('n', [1], ids=[object()])\ndef test_a(n): pass\n",
+                               "literal"),
+            "warns value": ("import pytest\ndef test_a():\n    record = pytest.warns(UserWarning)\n",
+                            "one context of a with"),
+            "warns with raises": ("import pytest\ndef test_a():\n    with pytest.warns(UserWarning), "
+                                  "pytest.raises(ValueError):\n        pass\n", "one context of a with"),
+            "warns keyword": ("import pytest\ndef test_a():\n    with pytest.warns(UserWarning, other=1):\n        pass\n",
+                              "match= only"),
+            "raises callable value": ("import pytest\ndef test_a():\n    print(pytest.raises(ValueError, int, 'x'))\n",
+                                      "statement of its own"),
+            "relative import": ("from . import helpers\ndef test_a(): pass\n", "to be a package"),
+            "hook": ("def pytest_collection_modifyitems(items): pass\n", "unsupported pytest hook"),
+            "self-requesting override": ("import pytest\n@pytest.fixture\ndef tmp_path(tmp_path): return tmp_path\n",
+                                         "requests the fixture it overrides"),
+        }
+        for name, (source, message) in forms.items():
+            with self.subTest(form=name), self.assertRaisesRegex(CollectionError, message):
+                generate(source, "test_suite.py")
+        # A report-only hook is dropped from a conftest.py; one that changes collection is not.
+        module, _ = generate_conftest("def pytest_report_header(config):\n    return 'x'\nVALUE = 1\n", "conftest.py")
+        self.assertNotIn("pytest_report_header", module.source)
+        with self.assertRaisesRegex(CollectionError, "unsupported pytest hook: pytest_addoption"):
+            generate_conftest("def pytest_addoption(parser): pass\n", "conftest.py")
+
+    def test_layouts_pytest_cannot_import_are_rejected(self):
+        first = self.source("def test_a(): pass\n", "a/test_same.py")
+        second = self.source("def test_b(): pass\n", "b/test_same.py")
+        with self.assertRaisesRegex(CollectionError, "two test modules would be imported as test_same"):
+            runner.layout([first, second], self.root)
+        # As packages they have different names.
+        self.source("", "a/__init__.py")
+        self.source("", "b/__init__.py")
+        self.assertEqual(list(runner.layout([first, second], self.root).modules.values()),
+                         ["a.test_same", "b.test_same"])
+        self.source("", "__init__.py")
+        with self.assertRaisesRegex(CollectionError, "--root is inside a package"):
+            runner.layout([first], self.root)
+
+    def test_imported_base_class_limits(self):
+        self.source("", "tests/__init__.py")
+        self.source("""
+            import unittest
+            class Decorated(unittest.TestCase):
+                @unittest.skip("x")
+                def test_a(self): pass
+            class Plain(unittest.TestCase):
+                def check(self): pass
+        """, "tests/base.py")
+        cases = {
+            "from .base import Decorated\nclass Mine(Decorated):\n    pass\n": "decorated methods of an imported base",
+            "from .base import Plain\nclass Mine(Plain):\n    def test_a(self):\n        self.check()\n": "",
+            "from library import Other\nclass TestMine(Other):\n    def test_a(self): pass\n":
+                "imported or computed base classes",
+        }
+        for index, (source, message) in enumerate(cases.items()):
+            path = self.source(source, f"tests/test_{index}.py")
+            result = runner.run_suite([path], self.root, self.work, "python", [], sys.executable, 60)[0]
+            with self.subTest(source=source):
+                if message:
+                    self.assertEqual(result.state, "collection-error")
+                    self.assertIn(message, result.error)
+                else:
+                    self.assertEqual(result.state, "passed", result.error + result.stderr)
+
+
+class HelperModules(unittest.TestCase):
+    def test_modules_that_need_nothing_are_unchanged(self):
+        source = "# a comment\nVALUE = 1\n\n\ndef twice(n: int) -> int:\n    return n * 2\n"
+        self.assertEqual(adapt_helper(source, "helpers.py"), source)
+
+    def test_helpers_are_adapted_without_being_collected(self):
+        adapted = adapt_helper(textwrap.dedent("""
+            # pystachy: any
+            import os
+            import unittest
+            import pytest
+            HERE = os.path.dirname(__file__)
+            class Base(unittest.TestCase):
+                def setUp(self):
+                    super().setUp()
+                    self.value = 1
+                def check(self):
+                    with self.subTest(value=self.value):
+                        self.assertIsInstance(self.value, int)
+            @pytest.fixture
+            def unused():
+                return 1
+            if __name__ == "__main__":
+                unittest.main()
+        """), "tests/base.py", "/project/tests/base.py", "tests.base")
+        self.assertIn("# pystachy: any", adapted)
+        self.assertIn("import pytest_native_support as unittest", adapted)
+        self.assertIn("HERE = os.path.dirname('/project/tests/base.py')", adapted)
+        self.assertIn("def __init__(self):\n        super().__init__()\n        self.value = 1", adapted)
+        self.assertIn("with self.subTest():", adapted)
+        self.assertIn("self.assertTrue(isinstance(self.value, int))", adapted)
+        self.assertNotIn("@pytest.fixture", adapted)
+        self.assertNotIn("unittest.main", adapted)
+        compile(adapted, "base.py", "exec")
+
+
+if __name__ == "__main__":
+    unittest.main()

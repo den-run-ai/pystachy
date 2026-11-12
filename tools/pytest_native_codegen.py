@@ -103,6 +103,7 @@ class ClassInfo:
     usefixtures: list[str] = field(default_factory=list)
     tests: dict[str, Test] = field(default_factory=dict)  # (its own test methods)
     names: set[str] = field(default_factory=set)  # (every name its body binds)
+    hooks: dict[str, ast.FunctionDef] = field(default_factory=dict)  # (setup_method, teardown_method)
 
 
 SCOPES = {"function": 0, "class": 1, "module": 2, "session": 3}
@@ -116,7 +117,11 @@ WARNS = {"pytest.warns": 1, "pytest.deprecated_call": 0}
 UNIT_WARNS = {"assertWarns": 1, "assertWarnsRegex": 2}
 XUNIT_MODULE = {"setup_module", "setupModule", "teardown_module", "teardownModule",
                 "setup_function", "teardown_function", "setUpModule", "tearDownModule"}
-XUNIT_CLASS = {"setup_method", "teardown_method", "setup_class", "teardown_class", "setup", "teardown"}
+XUNIT_CLASS = {"setup_class", "teardown_class"}
+# A test class's per-test hooks, which run as a fixture of the class would (INSTANCE).
+XUNIT_METHOD = {"setup_method", "teardown_method"}
+# Where a class with those hooks makes its object, in a test's fixture order.
+INSTANCE = "<instance>"
 # unittest.TestCase machinery the runner does not drive.
 UNIT_UNSUPPORTED = {"setUpClass", "tearDownClass", "run", "debug", "runTest", "__init__", "__new__",
                     "__call__", "addCleanup", "doCleanups", "addClassCleanup", "doClassCleanups",
@@ -1531,8 +1536,26 @@ class Generator:
             if statement.name in members:
                 self.error(statement, "duplicate method in a test class: " + statement.name)
             members.add(statement.name)
-            if info.unit and statement.name in UNIT_UNSUPPORTED:
+            if info.unit and (statement.name in UNIT_UNSUPPORTED or statement.name in XUNIT_METHOD):
                 self.error(statement, "unsupported unittest.TestCase method: " + statement.name)
+            if statement.name in XUNIT_METHOD:
+                # pytest passes the test method; the runner has no such object to pass.
+                arguments = statement.args
+                extra = arguments.args[1:]
+                if (isinstance(statement, ast.AsyncFunctionDef) or statement.decorator_list or arguments.vararg
+                        or arguments.kwarg or arguments.kwonlyargs or arguments.posonlyargs
+                        or len(arguments.args) not in (1, 2) or self.is_generator(statement)):
+                    self.error(statement, f"{statement.name} must be a plain method of (self) or (self, method)")
+                # (It may be handed on to super()'s hook, which the runner calls without it too.)
+                passed = {argument for part in ast.walk(statement) if isinstance(part, ast.Call)
+                          and isinstance(part.func, ast.Attribute) and part.func.attr in XUNIT_METHOD
+                          and isinstance(part.func.value, ast.Call) and isinstance(part.func.value.func, ast.Name)
+                          and part.func.value.func.id == "super" for argument in part.args}
+                if extra and any(isinstance(part, ast.Name) and part.id == extra[0].arg and part not in passed
+                                 for part in ast.walk(statement)):
+                    self.error(statement, f"the method argument of {statement.name} is unsupported")
+                info.hooks[statement.name] = statement
+                continue
             if statement.name in ("__init__", "__new__"):
                 # pytest warns and collects nothing from such a class.
                 self.error(statement, "test classes cannot define __init__ or __new__")
@@ -1753,12 +1776,23 @@ class Generator:
                 fixtures.update(self.class_fixtures.get(ancestor.node.name, {}))
         return fixtures
 
+    def hooked(self, owner, name=None):
+        """Whether a test class defines or inherits setup_method or teardown_method (or the one named)."""
+        if owner is None:
+            return False
+        return any(hook in ancestor.hooks for ancestor in self.infos[owner].mro
+                   for hook in ([name] if name else XUNIT_METHOD))
+
     def visible(self, owner):
         """The fixtures a test of this class (or of the module) can request, by name."""
         fixtures = dict(BUILTIN_FIXTURES)
         fixtures.update(self.shared)
         fixtures.update(self.fixtures)
         fixtures.update(self.own_fixtures(owner))
+        if self.hooked(owner):
+            # setup_method and teardown_method run as one fixture of the class: its setup
+            # makes the test's object (Rewrite makes setup_method the class's __init__).
+            fixtures[INSTANCE] = Fixture(None, [], self.hooked(owner, "teardown_method"), True, origin="instance")
         return fixtures
 
     def closure(self, test, direct):
@@ -1775,6 +1809,9 @@ class Generator:
         if test.owner is not None:
             groups.append(self.own_fixtures(test.owner))
         for index, group in enumerate(groups):
+            if test.owner is not None and index == len(groups) - 1 and self.hooked(test.owner) and not test.unit:
+                # pytest registers a class's setup_method ahead of the class's own fixtures.
+                names.append(INSTANCE)
             # (A fixture that a nearer file, the module or the class overrides is theirs.)
             names += sorted((name for name, fixture in group.items() if fixture.autouse
                              and not any(name in later for later in groups[index + 1:])),
@@ -1918,6 +1955,12 @@ class Generator:
                         if not (isinstance(parent, ast.Attribute) and parent.attr == "param"
                                 and isinstance(parent.ctx, ast.Load)):
                             self.error(node, "request is supported only as request.param of a parametrized fixture")
+        if any(info.hooks for info in self.infos.values()):
+            for node in ast.walk(self.tree):
+                if isinstance(node, ast.Attribute) and node.attr in XUNIT_METHOD and not (
+                        isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Name)
+                        and node.value.func.id == "super" and isinstance(parents.get(node), ast.Call)):
+                    self.error(node, f"{node.attr} may be called through super() only")
         for function, receiver in self.unit_methods().items():
             for node in ast.walk(function):
                 if not (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
@@ -2159,7 +2202,7 @@ class Generator:
                 return self.generic_visit(node)
 
         unit_methods = self.unit_methods()
-        unit_classes = {info.node for info in self.infos.values() if info.unit}
+        hooks = {hook for info in self.infos.values() for hook in info.hooks.values()}
         dropped = self.dropped
 
         class Rewrite(ast.NodeTransformer):
@@ -2220,6 +2263,11 @@ class Generator:
                         decorator.func if isinstance(decorator, ast.Call) else decorator)]
                 if node in requests:
                     node = RequestParameter().visit(node)
+                if node in hooks:
+                    # (The runner calls these hooks itself, without the test method.)
+                    node.args.args = node.args.args[:1]
+                    if node.name == "setup_method":
+                        node.name = "__init__"
                 if node in unit_methods:
                     receiver = unit_methods[node]
                     if node.name == "setUp":
@@ -2420,6 +2468,13 @@ class Generator:
                         and self.receivers[-1] is not None and isinstance(function.value, ast.Call)
                         and isinstance(function.value.func, ast.Name) and function.value.func.id == "super"):
                     function.attr = "__init__"
+                elif (isinstance(function, ast.Attribute) and function.attr in XUNIT_METHOD and hooks
+                        and isinstance(function.value, ast.Call) and isinstance(function.value.func, ast.Name)
+                        and function.value.func.id == "super"):
+                    # super().setup_method(method), in a class whose hooks the runner calls.
+                    node.args, node.keywords = [], []
+                    if function.attr == "setup_method":
+                        function.attr = "__init__"
                 return node
 
             def visit_Assert(self, node):
@@ -2564,13 +2619,27 @@ class Generator:
 
         lines = [f"_pyn_teardown.mode = {mode}"] if mode else []
         lines.append("try:")
-        if test.owner is not None and not test.unit:
+        if test.owner is not None and not test.unit and INSTANCE not in order:
             lines.append(f"    _pyn_instance = {test.owner.name}()")
         indent = 1
         generators = []
         values = dict(values)
+        made = INSTANCE not in order
         for index, name in enumerate(order):
             fixture = fixtures[name]
+            if name == INSTANCE:
+                # setup_method (the class's __init__ here) runs at this point of the setup.
+                p = "    " * indent
+                lines.append(p + f"_pyn_instance = {test.owner.name}()")
+                if fixture.generator:
+                    lines.append(p + "try:")
+                    generators.append((indent, None, name))
+                    indent += 1
+                made = True
+                continue
+            if not made and fixture.call.startswith("_pyn_instance."):
+                self.error(test.function, f"fixture {name} of the test class is set up before the class's "
+                           "setup_method, by a fixture outside the class")
             arguments = [f"{dependency}={values[dependency]}" for dependency in fixture.dependencies]
             if fixture.named:
                 arguments.insert(0, repr(label))
@@ -2617,12 +2686,16 @@ class Generator:
         matched = f", isinstance(_pyn_error, {xfail.raises})" if mode == 2 else ""
         for level, generator, name in reversed(generators):
             p = "    " * level
-            lines += [p + "finally:", p + "    try:", p + "        try:",
-                      p + f"            next({generator})", p + "        except StopIteration:",
-                      p + "            pass", p + "        else:", p + "            try:",
-                      p + f"                {generator}.close()", p + "            finally:",
-                      p + f"                raise RuntimeError({('fixture ' + name + ' yielded more than once')!r})",
-                      p + "    except _pyn_support.Skipped as _pyn_error:",
+            lines += [p + "finally:", p + "    try:"]
+            if generator is None:
+                lines.append(p + "        _pyn_instance.teardown_method()")
+            else:
+                lines += [p + "        try:",
+                          p + f"            next({generator})", p + "        except StopIteration:",
+                          p + "            pass", p + "        else:", p + "            try:",
+                          p + f"                {generator}.close()", p + "            finally:",
+                          p + f"                raise RuntimeError({('fixture ' + name + ' yielded more than once')!r})"]
+            lines += [p + "    except _pyn_support.Skipped as _pyn_error:",
                       p + "        _pyn_teardown.skipped(str(_pyn_error))",
                       p + "    except _pyn_support.XFailed as _pyn_error:",
                       p + "        _pyn_teardown.xfailed(str(_pyn_error))",

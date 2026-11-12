@@ -241,7 +241,7 @@ class CollectionControls(TemporarySuite):
             "test_class_base": "from helper import Base\nclass TestThings(Base):\n    def test_one(self): pass\n",
             "nested_test_class": "class TestThings:\n    class TestInner:\n        def test_one(self): pass\n",
             "unittest_case": "import unittest\nclass Legacy(unittest.TestCase):\n    def runTest(self): pass\n",
-            "xunit_method": "class TestThings:\n    def setup_method(self): pass\n    def test_one(self): pass\n",
+            "xunit_class": "class TestThings:\n    def setup_class(cls): pass\n    def test_one(self): pass\n",
             "async": "async def test_one(): pass\n",
             "custom_decorator": "def custom(f): return f\n@custom\ndef test_one(): pass\n",
             "module_mark": "import pytest\npytestmark = pytest.mark.filterwarnings('error')\ndef test_one(): pass\n",

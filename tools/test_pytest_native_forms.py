@@ -1025,7 +1025,11 @@ class FormRejections(TemporarySuite):
             "static test": ("class TestX:\n    @staticmethod\n    def test_a(): pass\n", "unsupported test decorator"),
             "method without self": ("class TestX:\n    def test_a(): pass\n", "require self"),
             "duplicate method": ("class TestX:\n    def test_a(self): pass\n    def test_a(self): pass\n", "duplicate"),
-            "xunit method": ("class TestX:\n    def setup_method(self): pass\n    def test_a(self): pass\n", "xunit"),
+            "xunit class hook": ("class TestX:\n    def setup_class(cls): pass\n    def test_a(self): pass\n", "xunit"),
+            "xunit method argument": ("class TestX:\n    def setup_method(self, method):\n        print(method)\n"
+                                      "    def test_a(self): pass\n", "method argument of setup_method"),
+            "xunit method call": ("class TestX:\n    def setup_method(self): pass\n"
+                                  "    def test_a(self):\n        self.setup_method()\n", "through super"),
             "pytestmark twice": (fixture + "pytestmark = pytest.mark.slow\npytestmark = pytest.mark.fast\n",
                                  "assigned once"),
             "pytestmark read": (fixture + "pytestmark = pytest.mark.slow\nMARKS = pytestmark\n", "pytestmark"),
