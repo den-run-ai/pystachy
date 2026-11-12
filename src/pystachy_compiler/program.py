@@ -174,7 +174,7 @@ def gen_generic_subclass(self, st: Node) -> str:
             return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
         xs = b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]]
         args: list[str] = []
-        if self.typevar_in(xs, []) == "":
+        if self.typevar_in(xs, []) == "" or len(own) == 0:
             t = self.generic_ann(g, b.kids[1])
             if t.startswith("!"):
                 return t[1:]
