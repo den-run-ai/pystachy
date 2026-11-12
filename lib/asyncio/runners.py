@@ -1,20 +1,17 @@
 __all__ = ('Runner', 'run')
 
-import contextvars
-import enum
-import functools
-import threading
-import signal
-from . import coroutines
+from types import TracebackType
+
 from . import events
 from . import exceptions
+from . import futures
 from . import tasks
-from . import constants
 
-class _State(enum.Enum):
-    CREATED = "created"
-    INITIALIZED = "initialized"
-    CLOSED = "closed"
+
+# Pystachy port: the states are _State's values, str constants (no enum)
+_CREATED = "created"
+_INITIALIZED = "initialized"
+_CLOSED = "closed"
 
 
 class Runner:
@@ -46,119 +43,81 @@ class Runner:
 
     # Note: the class is final, it is not intended for inheritance.
 
-    def __init__(self, *, debug=None, loop_factory=None):
-        self._state = _State.CREATED
+    # Pystachy port: no loop_factory (but None), contexts or SIGINT handler
+    def __init__(self, *, debug: bool | None = None, loop_factory=None) -> None:
+        if loop_factory is not None:
+            raise NotImplementedError("Runner(loop_factory=...) is not supported")
+        self._state: str = _CREATED
         self._debug = debug
-        self._loop_factory = loop_factory
-        self._loop = None
-        self._context = None
+        self._loop: events.AbstractEventLoop | None = None
         self._interrupt_count = 0
         self._set_event_loop = False
 
-    def __enter__(self):
+    def __enter__(self) -> "Runner":
         self._lazy_init()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None) -> None:
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         """Shutdown and close event loop."""
-        if self._state is not _State.INITIALIZED:
+        if self._state != _INITIALIZED:
             return
+        loop = self._loop
+        assert loop is not None
         try:
-            loop = self._loop
             _cancel_all_tasks(loop)
-            loop.run_until_complete(loop.shutdown_asyncgens())
-            loop.run_until_complete(
-                loop.shutdown_default_executor(constants.THREAD_JOIN_TIMEOUT))
         finally:
             if self._set_event_loop:
                 events.set_event_loop(None)
             loop.close()
             self._loop = None
-            self._state = _State.CLOSED
+            self._state = _CLOSED
 
-    def get_loop(self):
+    def get_loop(self) -> events.AbstractEventLoop:
         """Return embedded event loop."""
         self._lazy_init()
-        return self._loop
+        loop = self._loop
+        assert loop is not None
+        return loop
 
     def run(self, coro, *, context=None):
         """Run a coroutine inside the embedded event loop."""
-        if not coroutines.iscoroutine(coro):
-            raise ValueError("a coroutine was expected, got {!r}".format(coro))
-
+        # Pystachy port: coro's type is a coroutine's (Task's annotation checks it)
         if events._get_running_loop() is not None:
             # fail fast with short traceback
             raise RuntimeError(
                 "Runner.run() cannot be called from a running event loop")
 
         self._lazy_init()
+        loop = self._loop
+        assert loop is not None
 
-        if context is None:
-            context = self._context
-        task = self._loop.create_task(coro, context=context)
-
-        if (threading.current_thread() is threading.main_thread()
-            and signal.getsignal(signal.SIGINT) is signal.default_int_handler
-        ):
-            sigint_handler = functools.partial(self._on_sigint, main_task=task)
-            try:
-                signal.signal(signal.SIGINT, sigint_handler)
-            except ValueError:
-                # `signal.signal` may throw if `threading.main_thread` does
-                # not support signals (e.g. embedded interpreter with signals
-                # not registered - see gh-91880)
-                sigint_handler = None
-        else:
-            sigint_handler = None
+        task = tasks._create_task(loop, coro, None)
 
         self._interrupt_count = 0
-        try:
-            return self._loop.run_until_complete(task)
-        except exceptions.CancelledError:
-            if self._interrupt_count > 0:
-                uncancel = getattr(task, "uncancel", None)
-                if uncancel is not None and uncancel() == 0:
-                    raise KeyboardInterrupt()
-            raise  # CancelledError
-        finally:
-            if (sigint_handler is not None
-                and signal.getsignal(signal.SIGINT) is sigint_handler
-            ):
-                signal.signal(signal.SIGINT, signal.default_int_handler)
+        return loop.run_until_complete(task)
 
-    def _lazy_init(self):
-        if self._state is _State.CLOSED:
+    def _lazy_init(self) -> None:
+        if self._state == _CLOSED:
             raise RuntimeError("Runner is closed")
-        if self._state is _State.INITIALIZED:
+        if self._state == _INITIALIZED:
             return
-        if self._loop_factory is None:
-            self._loop = events.new_event_loop()
-            if not self._set_event_loop:
-                # Call set_event_loop only once to avoid calling
-                # attach_loop multiple times on child watchers
-                events.set_event_loop(self._loop)
-                self._set_event_loop = True
-        else:
-            self._loop = self._loop_factory()
-        if self._debug is not None:
-            self._loop.set_debug(self._debug)
-        self._context = contextvars.copy_context()
-        self._state = _State.INITIALIZED
-
-    def _on_sigint(self, signum, frame, main_task):
-        self._interrupt_count += 1
-        if self._interrupt_count == 1 and not main_task.done():
-            main_task.cancel()
-            # wakeup loop if it is blocked by select() with long timeout
-            self._loop.call_soon_threadsafe(lambda: None)
-            return
-        raise KeyboardInterrupt()
+        loop = events.new_event_loop()
+        self._loop = loop
+        if not self._set_event_loop:
+            # Call set_event_loop only once to avoid calling
+            # attach_loop multiple times on child watchers
+            events.set_event_loop(loop)
+            self._set_event_loop = True
+        debug = self._debug
+        if debug is not None:
+            loop.set_debug(debug)
+        self._state = _INITIALIZED
 
 
-def run(main, *, debug=None, loop_factory=None):
+def run(main, *, debug: bool | None = None, loop_factory=None):
     """Execute the coroutine and return the result.
 
     This function runs the passed coroutine, taking care of
@@ -196,7 +155,7 @@ def run(main, *, debug=None, loop_factory=None):
         return runner.run(main)
 
 
-def _cancel_all_tasks(loop):
+def _cancel_all_tasks(loop: events.AbstractEventLoop) -> None:
     to_cancel = tasks.all_tasks(loop)
     if not to_cancel:
         return
@@ -204,14 +163,28 @@ def _cancel_all_tasks(loop):
     for task in to_cancel:
         task.cancel()
 
-    loop.run_until_complete(tasks.gather(*to_cancel, return_exceptions=True))
+    # Pystachy port: a future done once they are, for gather(*to_cancel, return_exceptions=True)
+    loop.run_until_complete(_all_done(loop, to_cancel))
 
     for task in to_cancel:
         if task.cancelled():
             continue
-        if task.exception() is not None:
-            loop.call_exception_handler({
-                'message': 'unhandled exception during asyncio.run() shutdown',
-                'exception': task.exception(),
-                'task': task,
-            })
+        exc = task.exception()
+        if exc is not None:
+            loop.call_exception_handler(
+                'unhandled exception during asyncio.run() shutdown', exc)
+
+
+def _all_done(loop: events.AbstractEventLoop, fs: list[futures._FutureBase]) -> futures.Future[None]:
+    # Pystachy port: a Future[None] done once all of fs are
+    outer: futures.Future[None] = futures.Future(loop=loop)
+    left = [len(fs)]
+
+    def one() -> None:
+        left[0] -= 1
+        if left[0] == 0 and not outer.done():
+            outer.set_result(None)
+
+    for f in fs:
+        f._add_callback(one)
+    return outer

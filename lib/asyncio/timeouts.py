@@ -1,10 +1,9 @@
-import enum
-
 from types import TracebackType
-from typing import final, Optional, Type
+from typing import Optional
 
 from . import events
 from . import exceptions
+from . import futures
 from . import tasks
 
 
@@ -15,15 +14,15 @@ __all__ = (
 )
 
 
-class _State(enum.Enum):
-    CREATED = "created"
-    ENTERED = "active"
-    EXPIRING = "expiring"
-    EXPIRED = "expired"
-    EXITED = "finished"
+# Pystachy port: the states are _State's values, str constants (no enum)
+_CREATED = "created"
+_ENTERED = "active"
+_EXPIRING = "expiring"
+_EXPIRED = "expired"
+_EXITED = "finished"
 
 
-@final
+# Pystachy port: not decorated @final (a class decorator is not supported)
 class Timeout:
     """Asynchronous context manager for cancelling overdue coroutines.
 
@@ -38,11 +37,12 @@ class Timeout:
         - If `when < loop.time()`, the timeout will trigger on the next
           iteration of the event loop.
         """
-        self._state = _State.CREATED
+        self._state: str = _CREATED
 
-        self._timeout_handler: Optional[events.TimerHandle] = None
-        self._task: Optional[tasks.Task] = None
+        self._timeout_handler: Optional[events.Handle] = None
+        self._task: Optional[futures._FutureBase] = None
         self._when = when
+        self._cancelling = 0
 
     def when(self) -> Optional[float]:
         """Return the current deadline."""
@@ -50,17 +50,18 @@ class Timeout:
 
     def reschedule(self, when: Optional[float]) -> None:
         """Reschedule the timeout."""
-        if self._state is not _State.ENTERED:
-            if self._state is _State.CREATED:
+        if self._state != _ENTERED:
+            if self._state == _CREATED:
                 raise RuntimeError("Timeout has not been entered")
             raise RuntimeError(
-                f"Cannot change state of {self._state.value} Timeout",
+                f"Cannot change state of {self._state} Timeout",
             )
 
         self._when = when
 
-        if self._timeout_handler is not None:
-            self._timeout_handler.cancel()
+        handler = self._timeout_handler
+        if handler is not None:
+            handler.cancel()
 
         if when is None:
             self._timeout_handler = None
@@ -73,74 +74,66 @@ class Timeout:
 
     def expired(self) -> bool:
         """Is timeout expired during execution?"""
-        return self._state in (_State.EXPIRING, _State.EXPIRED)
+        return self._state in (_EXPIRING, _EXPIRED)
 
     def __repr__(self) -> str:
         info = ['']
-        if self._state is _State.ENTERED:
-            when = round(self._when, 3) if self._when is not None else None
+        if self._state == _ENTERED:
+            w = self._when
+            when = str(round(w, 3)) if w is not None else "None"
             info.append(f"when={when}")
         info_str = ' '.join(info)
-        return f"<Timeout [{self._state.value}]{info_str}>"
+        return f"<Timeout [{self._state}]{info_str}>"
 
     async def __aenter__(self) -> "Timeout":
-        if self._state is not _State.CREATED:
+        if self._state != _CREATED:
             raise RuntimeError("Timeout has already been entered")
         task = tasks.current_task()
         if task is None:
             raise RuntimeError("Timeout should be used inside a task")
-        self._state = _State.ENTERED
+        self._state = _ENTERED
         self._task = task
-        self._cancelling = self._task.cancelling()
+        self._cancelling = task.cancelling()
         self.reschedule(self._when)
         return self
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> Optional[bool]:
-        assert self._state in (_State.ENTERED, _State.EXPIRING)
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        assert self._state in (_ENTERED, _EXPIRING)
 
-        if self._timeout_handler is not None:
-            self._timeout_handler.cancel()
+        handler = self._timeout_handler
+        if handler is not None:
+            handler.cancel()
             self._timeout_handler = None
 
-        if self._state is _State.EXPIRING:
-            self._state = _State.EXPIRED
-
-            if self._task.uncancel() <= self._cancelling and exc_type is not None:
+        if self._state == _EXPIRING:
+            self._state = _EXPIRED
+            task = self._task
+            assert task is not None
+            if task.uncancel() <= self._cancelling and exc_val is not None:
                 # Since there are no new cancel requests, we're
                 # handling this.
-                if issubclass(exc_type, exceptions.CancelledError):
+                # Pystachy port: no exception contexts, which CPython's
+                # _insert_timeout_error() would chain
+                if isinstance(exc_val, exceptions.CancelledError):
                     raise TimeoutError from exc_val
-                elif exc_val is not None:
-                    self._insert_timeout_error(exc_val)
-                    if isinstance(exc_val, ExceptionGroup):
-                        for exc in exc_val.exceptions:
-                            self._insert_timeout_error(exc)
-        elif self._state is _State.ENTERED:
-            self._state = _State.EXITED
+        elif self._state == _ENTERED:
+            self._state = _EXITED
 
         return None
 
     def _on_timeout(self) -> None:
-        assert self._state is _State.ENTERED
-        self._task.cancel()
-        self._state = _State.EXPIRING
+        assert self._state == _ENTERED
+        task = self._task
+        assert task is not None
+        task.cancel()
+        self._state = _EXPIRING
         # drop the reference early
         self._timeout_handler = None
-
-    @staticmethod
-    def _insert_timeout_error(exc_val: BaseException) -> None:
-        while exc_val.__context__ is not None:
-            if isinstance(exc_val.__context__, exceptions.CancelledError):
-                te = TimeoutError()
-                te.__context__ = te.__cause__ = exc_val.__context__
-                exc_val.__context__ = te
-                break
-            exc_val = exc_val.__context__
 
 
 def timeout(delay: Optional[float]) -> Timeout:

@@ -1,0 +1,12 @@
+taskgroup ['b', 'a'] A B
+cancel True
+cancelled True True
+wait_for timed out
+timeout
+failed boom True ValueError('boom')
+lock [1, -1, 2, -2, 3, -3] False
+event False False
+waiter woke
+queue [0, 1, 2] True
+callbacks ['soon', 'later']
+[exit 0]

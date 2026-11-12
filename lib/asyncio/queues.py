@@ -1,18 +1,19 @@
+# Pystachy port: Queue, generic in the type of its items, which an annotation names
+# (q: asyncio.Queue[int] = asyncio.Queue()); no PriorityQueue or LifoQueue
+# (lib/compatibility.md#asyncio)
 __all__ = (
     'Queue',
-    'PriorityQueue',
-    'LifoQueue',
     'QueueFull',
     'QueueEmpty',
     'QueueShutDown',
 )
 
-import collections
-import heapq
-from types import GenericAlias
+from typing import Generic, TypeVar
 
+from . import futures
 from . import locks
-from . import mixins
+
+T = TypeVar("T")
 
 
 class QueueEmpty(Exception):
@@ -30,7 +31,7 @@ class QueueShutDown(Exception):
     pass
 
 
-class Queue(mixins._LoopBoundMixin):
+class Queue(Generic[T]):
     """A queue, useful for coordinating producer and consumer coroutines.
 
     If maxsize is less than or equal to zero, the queue size is infinite.
@@ -42,51 +43,44 @@ class Queue(mixins._LoopBoundMixin):
     interrupted between calling qsize() and doing an operation on the Queue.
     """
 
-    def __init__(self, maxsize=0):
+    def __init__(self, maxsize: int = 0) -> None:
+        self._bound = locks._LoopBound()
         self._maxsize = maxsize
 
         # Futures.
-        self._getters = collections.deque()
+        # Pystachy port: lists for the deques
+        self._getters: list[futures.Future[None]] = []
         # Futures.
-        self._putters = collections.deque()
+        self._putters: list[futures.Future[None]] = []
         self._unfinished_tasks = 0
         self._finished = locks.Event()
         self._finished.set()
-        self._init(maxsize)
+        self._queue: list[T] = []
         self._is_shutdown = False
 
-    # These three are overridable in subclasses.
+    def _get(self) -> T:
+        return self._queue.pop(0)
 
-    def _init(self, maxsize):
-        self._queue = collections.deque()
-
-    def _get(self):
-        return self._queue.popleft()
-
-    def _put(self, item):
+    def _put(self, item: T) -> None:
         self._queue.append(item)
 
-    # End of the overridable methods.
-
-    def _wakeup_next(self, waiters):
+    def _wakeup_next(self, waiters: list[futures.Future[None]]) -> None:
         # Wake up the next waiter (if any) that isn't cancelled.
         while waiters:
-            waiter = waiters.popleft()
+            waiter = waiters.pop(0)
             if not waiter.done():
                 waiter.set_result(None)
                 break
 
-    def __repr__(self):
-        return f'<{type(self).__name__} at {id(self):#x} {self._format()}>'
+    # Pystachy port: no __repr__ (id() of an object is not supported): the default repr, which
+    # gives the object's address, but not _format()'s state
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'<{type(self).__name__} {self._format()}>'
 
-    __class_getitem__ = classmethod(GenericAlias)
-
-    def _format(self):
+    def _format(self) -> str:
         result = f'maxsize={self._maxsize!r}'
-        if getattr(self, '_queue', None):
+        if self._queue:
             result += f' _queue={list(self._queue)!r}'
         if self._getters:
             result += f' _getters[{len(self._getters)}]'
@@ -98,20 +92,20 @@ class Queue(mixins._LoopBoundMixin):
             result += ' shutdown'
         return result
 
-    def qsize(self):
+    def qsize(self) -> int:
         """Number of items in the queue."""
         return len(self._queue)
 
     @property
-    def maxsize(self):
+    def maxsize(self) -> int:
         """Number of items allowed in the queue."""
         return self._maxsize
 
-    def empty(self):
+    def empty(self) -> bool:
         """Return True if the queue is empty, False otherwise."""
         return not self._queue
 
-    def full(self):
+    def full(self) -> bool:
         """Return True if there are maxsize items in the queue.
 
         Note: if the Queue was initialized with maxsize=0 (the default),
@@ -122,7 +116,7 @@ class Queue(mixins._LoopBoundMixin):
         else:
             return self.qsize() >= self._maxsize
 
-    async def put(self, item):
+    async def put(self, item: T) -> None:
         """Put an item into the queue.
 
         Put an item into the queue. If the queue is full, wait until a free
@@ -133,19 +127,15 @@ class Queue(mixins._LoopBoundMixin):
         while self.full():
             if self._is_shutdown:
                 raise QueueShutDown
-            putter = self._get_loop().create_future()
+            putter: futures.Future[None] = futures.Future(loop=self._bound._get_loop())
             self._putters.append(putter)
             try:
                 await putter
-            except:
+            except BaseException:
                 putter.cancel()  # Just in case putter is not done yet.
-                try:
+                if putter in self._putters:
                     # Clean self._putters from canceled putters.
                     self._putters.remove(putter)
-                except ValueError:
-                    # The putter could be removed from self._putters by a
-                    # previous get_nowait call or a shutdown call.
-                    pass
                 if not self.full() and not putter.cancelled():
                     # We were woken up by get_nowait(), but can't take
                     # the call.  Wake up the next in line.
@@ -153,7 +143,7 @@ class Queue(mixins._LoopBoundMixin):
                 raise
         return self.put_nowait(item)
 
-    def put_nowait(self, item):
+    def put_nowait(self, item: T) -> None:
         """Put an item into the queue without blocking.
 
         If no free slot is immediately available, raise QueueFull.
@@ -169,7 +159,7 @@ class Queue(mixins._LoopBoundMixin):
         self._finished.clear()
         self._wakeup_next(self._getters)
 
-    async def get(self):
+    async def get(self) -> T:
         """Remove and return an item from the queue.
 
         If queue is empty, wait until an item is available.
@@ -180,19 +170,15 @@ class Queue(mixins._LoopBoundMixin):
         while self.empty():
             if self._is_shutdown and self.empty():
                 raise QueueShutDown
-            getter = self._get_loop().create_future()
+            getter: futures.Future[None] = futures.Future(loop=self._bound._get_loop())
             self._getters.append(getter)
             try:
                 await getter
-            except:
+            except BaseException:
                 getter.cancel()  # Just in case getter is not done yet.
-                try:
+                if getter in self._getters:
                     # Clean self._getters from canceled getters.
                     self._getters.remove(getter)
-                except ValueError:
-                    # The getter could be removed from self._getters by a
-                    # previous put_nowait call, or a shutdown call.
-                    pass
                 if not self.empty() and not getter.cancelled():
                     # We were woken up by put_nowait(), but can't take
                     # the call.  Wake up the next in line.
@@ -200,7 +186,7 @@ class Queue(mixins._LoopBoundMixin):
                 raise
         return self.get_nowait()
 
-    def get_nowait(self):
+    def get_nowait(self) -> T:
         """Remove and return an item from the queue.
 
         Return an item if one is immediately available, else raise
@@ -217,7 +203,7 @@ class Queue(mixins._LoopBoundMixin):
         self._wakeup_next(self._putters)
         return item
 
-    def task_done(self):
+    def task_done(self) -> None:
         """Indicate that a formerly enqueued task is complete.
 
         Used by queue consumers. For each get() used to fetch a task,
@@ -237,7 +223,7 @@ class Queue(mixins._LoopBoundMixin):
         if self._unfinished_tasks == 0:
             self._finished.set()
 
-    async def join(self):
+    async def join(self) -> None:
         """Block until all items in the queue have been gotten and processed.
 
         The count of unfinished tasks goes up whenever an item is added to
@@ -249,7 +235,7 @@ class Queue(mixins._LoopBoundMixin):
         if self._unfinished_tasks > 0:
             await self._finished.wait()
 
-    def shutdown(self, immediate=False):
+    def shutdown(self, immediate: bool = False) -> None:
         """Shut-down the queue, making queue gets and puts raise QueueShutDown.
 
         By default, gets will only raise once the queue is empty. Set
@@ -271,39 +257,10 @@ class Queue(mixins._LoopBoundMixin):
                 self._finished.set()
         # All getters need to re-check queue-empty to raise ShutDown
         while self._getters:
-            getter = self._getters.popleft()
+            getter = self._getters.pop(0)
             if not getter.done():
                 getter.set_result(None)
         while self._putters:
-            putter = self._putters.popleft()
+            putter = self._putters.pop(0)
             if not putter.done():
                 putter.set_result(None)
-
-
-class PriorityQueue(Queue):
-    """A subclass of Queue; retrieves entries in priority order (lowest first).
-
-    Entries are typically tuples of the form: (priority number, data).
-    """
-
-    def _init(self, maxsize):
-        self._queue = []
-
-    def _put(self, item, heappush=heapq.heappush):
-        heappush(self._queue, item)
-
-    def _get(self, heappop=heapq.heappop):
-        return heappop(self._queue)
-
-
-class LifoQueue(Queue):
-    """A subclass of Queue that retrieves most recently added entries first."""
-
-    def _init(self, maxsize):
-        self._queue = []
-
-    def _put(self, item):
-        self._queue.append(item)
-
-    def _get(self):
-        return self._queue.pop()
