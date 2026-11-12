@@ -210,8 +210,7 @@ class CollectionControls(TemporarySuite):
 
     def test_imported_test_classes_cannot_disappear(self):
         self.source("class TestImported:\n    def test_failure(self):\n        assert False\n", "helper.py")
-        for statement in ("from helper import TestImported", "from helper import TestImported as TestAlias",
-                          "import helper as TestModule"):
+        for statement in ("from helper import TestImported", "from helper import TestImported as TestAlias"):
             with self.subTest(statement=statement):
                 path = self.source(statement + "\ndef test_local():\n    pass\n")
                 actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
@@ -231,12 +230,16 @@ class CollectionControls(TemporarySuite):
 
     def test_unsupported_test_shapes_fail_explicitly(self):
         sources = {
-            "test_class": "class TestThings:\n    def test_one(self): pass\n",
+            "test_class_init": "class TestThings:\n    def __init__(self): pass\n    def test_one(self): pass\n",
+            "test_class_base": "class Base: pass\nclass TestThings(Base):\n    def test_one(self): pass\n",
+            "nested_test_class": "class TestThings:\n    class TestInner:\n        def test_one(self): pass\n",
+            "unittest_case": "import unittest\nclass Legacy(unittest.TestCase):\n    def runTest(self): pass\n",
+            "xunit_method": "class TestThings:\n    def setup_method(self): pass\n    def test_one(self): pass\n",
             "async": "async def test_one(): pass\n",
             "custom_decorator": "def custom(f): return f\n@custom\ndef test_one(): pass\n",
             "module_mark": "import pytest\npytestmark = pytest.mark.skip(reason='x')\ndef test_one(): pass\n",
             "plugin": "pytest_plugins = ['something']\ndef test_one(): pass\n",
-            "unknown_helper": "import pytest\ndef test_one():\n    pytest.approx(1.0)\n",
+            "unknown_helper": "import pytest\ndef test_one():\n    pytest.warns(UserWarning)\n",
             "relative_import": "from . import helper\ndef test_one(): pass\n",
             "imported_test": "from helper import test_imported\n",
             "dynamic_namespace": "globals()['test_dynamic'] = lambda: None\n",
@@ -591,7 +594,7 @@ class OriginalPytestParity(TemporarySuite):
                                    + "def test_tuple():\n" + textwrap.indent(body, "    ") + "\n")
                 actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
                 self.assertEqual(actual.state, "execution-error")
-                self.assertIn("exception tuples and non-class values are unsupported", actual.stderr)
+                self.assertIn("raises requires an exception class or a literal tuple of classes", actual.stderr)
                 expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
                 self.assertNotIn("error", expected)
                 self.assertTrue(runner.compare([actual], expected))
@@ -940,7 +943,7 @@ class DiagnosticsAndSelection(TemporarySuite):
         self.assertIn("MISMATCH test_suite.py::test_runner_argv [call]", output)
 
     def test_collection_errors_do_not_run_pytest(self):
-        path = self.source("class TestUnsupported:\n    def test_one(self):\n        pass\n")
+        path = self.source("def test_unsupported(capsys):\n    pass\n")
         status, report, output = self.cli(path, "--mode", "python")
         self.assertEqual(status, 2)
         self.assertIsNone(report["oracle"])

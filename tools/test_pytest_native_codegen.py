@@ -349,7 +349,11 @@ def test_value(value): pass
                   "class Holder:\n    assert 1 + 1 == 2\n"
                   "def test_a(): pass\n"
                   "@pytest.mark.parametrize('x', [1, 2])\ndef test_p(x):\n    assert x in (1, 2)\n")
+        # As pytest does, a selector contained in another one is dropped: test_p covers test_p[2].
         generated = generate(source, "test_input.py", selected=["test_p[2]", "test_a", "test_p"])
+        self.assertEqual(generated.cases, ["test_input.py::test_a", "test_input.py::test_p[1]",
+                                           "test_input.py::test_p[2]"])
+        generated = generate(source, "test_input.py", selected=["test_p[2]", "test_a", "test_p[1]", "test_p[2]"])
         self.assertEqual(generated.cases, ["test_input.py::test_p[2]", "test_input.py::test_a",
                                            "test_input.py::test_p[1]"])
         # Only function bodies take operand temporaries; a class body keeps a plain message.

@@ -14,13 +14,15 @@ import json
 import keyword
 import os
 from pathlib import Path
+import re
 import shlex
+import shutil
 import subprocess
 import sys
 import textwrap
 import time
 
-from pytest_native_codegen import CollectionError, generate
+from pytest_native_codegen import CollectionError, generate, generate_conftest, original_line
 
 TOOLS = Path(__file__).resolve().parent
 REPO = TOOLS.parent
@@ -108,9 +110,27 @@ def outcome_counts(results: list[Result]) -> dict[str, int]:
     return counts
 
 
+def compiler_command(text: str) -> list[str]:
+    """Split a compiler command, making relative program and script paths absolute.
+
+    The compiler runs from --root, where `./pystachy` would name another file.
+    """
+    command = shlex.split(text)
+    for index, part in enumerate(command):
+        relative = not os.path.isabs(part) and not part.startswith("-") and Path(part).is_file()
+        if relative and (os.sep in part or part.endswith(".py") if index else os.sep in part):
+            command[index] = str(Path(part).resolve())
+    return command
+
+
 def discover(paths: list[Path], root: Path) -> list[Path]:
-    """Select test modules without importing them or silently ignoring conftest."""
+    """Select test modules without importing them or silently ignoring conftest.
+
+    A conftest.py is read only in the directory the selected tests share (run_suite);
+    elsewhere under --root it would add fixtures that this runner does not load.
+    """
     files: set[Path] = set()
+    conftests: set[Path] = set()
     for path in paths:
         path = path.resolve()
         if not path.exists():
@@ -126,10 +146,16 @@ def discover(paths: list[Path], root: Path) -> list[Path]:
                 dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS)
                 base = Path(directory)
                 if "conftest.py" in names:
-                    raise CollectionError(f"conftest.py is not supported: {base / 'conftest.py'}")
+                    conftests.add(base)
                 for name in sorted(names):
                     if name.endswith(".py") and (name.startswith("test_") or name.endswith("_test.py")):
                         files.add(base / name)
+    directories = {path.parent for path in files}
+    shared = next(iter(directories)) if len(directories) == 1 else None
+    for directory in sorted(conftests):
+        if directory != shared:
+            raise CollectionError("conftest.py is supported only in the directory of the selected tests: "
+                                  f"{directory / 'conftest.py'}")
     checked: set[Path] = set()
     for path in sorted(files):
         for parent in path.parents:
@@ -138,8 +164,9 @@ def discover(paths: list[Path], root: Path) -> list[Path]:
             checked.add(parent)
             if (parent / "__init__.py").exists():
                 raise CollectionError(f"test packages are not supported: {parent / '__init__.py'}")
-            if (parent / "conftest.py").exists():
-                raise CollectionError(f"conftest.py is not supported: {parent / 'conftest.py'}")
+            if (parent / "conftest.py").exists() and parent != shared:
+                raise CollectionError("conftest.py is supported only in the directory of the selected tests: "
+                                      f"{parent / 'conftest.py'}")
             for name in CONFIGS:
                 if (parent / name).exists():
                     raise CollectionError(f"pytest configuration is not supported: {parent / name}")
@@ -237,51 +264,92 @@ def environment(paths: list[Path]) -> dict[str, str]:
     return env
 
 
+def translate(text: str, sources: dict[str, tuple[str, object]]) -> str:
+    """Name the test source line beside each generated line in compiler diagnostics.
+
+    sources maps a generated file to its test file's name and GeneratedModule.
+    """
+    def original(match):
+        name, module = sources[match.group(1)]
+        line = original_line(module, int(match.group(2)))
+        return match.group(0) if line is None else f"{name}:{line} [{match.group(0)}]"
+    if not sources:
+        return text
+    pattern = "(" + "|".join(re.escape(generated) for generated in sorted(sources, key=len, reverse=True)) + r"):(\d+)"
+    return re.sub(pattern, original, text)
+
+
 def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: list[str],
               python: str, timeout: float, selections: dict[Path, list[str]] | None = None) -> list[Result]:
     """Preflight every module, import all of them, then execute in one process.
 
     Per-file processes would lose pytest's shared imported-module state and could
     turn a failing suite green. Empty modules must be imported too. selections holds
-    node-ID selectors by module (parse_targets).
+    node-ID selectors by module (parse_targets). The conftest.py of the tests'
+    directory supplies fixtures to every module.
     """
-    results = []
-    generated_modules = []
-    texts = []
+    results = [Result(path=path.relative_to(root).as_posix()) for path in paths]
     if len({path.parent for path in paths}) > 1:
-        return [Result(path=path.relative_to(root).as_posix(), error=(
-            "selected tests must share one source directory; source-aware imports across "
-            "directories are not supported")) for path in paths]
-    for path in paths:
-        name = path.relative_to(root).as_posix()
-        result = Result(path=name)
-        results.append(result)
-        try:
-            text = path.read_text()
-            generated = generate(text, name, selected=selections.get(path) if selections else None)
-            result.cases = generated.cases
-            generated_modules.append(generated)
-            texts.append(text)
-            result.state = "collected"
-        except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
-            result.error = str(error)
-    if any(result.state == "collection-error" for result in results):
         for result in results:
-            if result.state == "collected":
-                result.state = "collection-error"
-                result.error = "suite aborted before execution because another module failed collection"
+            result.error = ("selected tests must share one source directory; source-aware imports across "
+                            "directories are not supported")
         return results
     if not results:
         return []
+    conftest = paths[0].parent / "conftest.py"
+    conftest_name = conftest.relative_to(root).as_posix() if conftest.is_file() else ""
+    texts: list[str] = []
+
+    def build(operands: bool):
+        """Every module's generated source, or the collection errors on results."""
+        shared = None
+        modules = []
+        if conftest_name:
+            try:
+                module, shared = generate_conftest(conftest.read_text(), conftest_name, operands)
+                modules.append(module)
+            except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
+                for result in results:
+                    result.error = str(error)
+                return None
+        generated = []
+        for index, (path, result) in enumerate(zip(paths, results)):
+            try:
+                if len(texts) <= index:
+                    texts.append(path.read_text())
+                generated.append(generate(texts[index], result.path, operands,
+                                          selections.get(path) if selections else None, shared, False))
+                result.cases = generated[-1].cases
+                result.state = "collected"
+            except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
+                result.error = str(error)
+        if any(result.state == "collection-error" for result in results):
+            for result in results:
+                if result.state == "collected":
+                    result.state = "collection-error"
+                    result.error = "suite aborted before execution because another module failed collection"
+            return None
+        # The last module with cases ends the session scope in its last case.
+        last = max((index for index, module in enumerate(generated) if module.cases), default=None)
+        if last is not None:
+            generated[last] = generate(texts[last], results[last].path, operands,
+                                       selections.get(paths[last]) if selections else None, shared, True)
+        return modules + generated
+
+    instrumented = build(True)
+    if instrumented is None:
+        return results
     identity = "\n".join(result.path for result in results)
     suite_work = work / hashlib.sha256(identity.encode()).hexdigest()[:16]
     names = module_names(paths)
+    generated_names = (["conftest"] if conftest_name else []) + names
     if suite_work.is_dir():
         # Earlier runners wrote suite.py there, which a test's own `import suite` found first.
-        for stale in [suite_work / "suite.py", suite_work / "suite", *suite_work.glob("_pyn_module_*.py")]:
-            if stale.name.removesuffix(".py") not in names:
+        for stale in [suite_work / "suite.py", suite_work / "suite", suite_work / "conftest.py",
+                      suite_work / "pytest_native_fixtures.py", *suite_work.glob("_pyn_module_*.py")]:
+            if stale.name.removesuffix(".py") not in generated_names:
                 stale.unlink(missing_ok=True)
-    imports = []
+    imports = ["import conftest"] if conftest_name else []
     calls = []
     reports = []
     for index, name in enumerate(names):
@@ -292,6 +360,12 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
                   "    if _pyn_code == 1:", "        _pyn_failed = True"]
     count = sum(len(result.cases) for result in results)
     marker = suite_work / "started"
+    temporary = suite_work / "tmp"
+    builtin = any(module.builtin_fixtures for module in instrumented)
+    if builtin:
+        # tmp_path directories live under one directory that this run owns and removes.
+        imports = ["import pytest_native_fixtures as _pyn_fixtures",
+                   f"_pyn_fixtures.tmp_base[0] = {str(temporary)!r}", *imports]
     # The marker is written before any test module's code runs: without it, a failed
     # native command never started the program, and nothing observable happened.
     driver = "\n".join(["import sys", f"open({str(marker)!r}, 'w').close()", *imports, "",
@@ -301,22 +375,36 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     source = suite_work / "_pyn_suite.py"
     write_changed(source, driver)
     write_changed(suite_work / "pytest_native_support.py", (TOOLS / "pytest_native_support.py").read_text())
+    if builtin:
+        write_changed(suite_work / "pytest_native_fixtures.py", (TOOLS / "pytest_native_fixtures.py").read_text())
     env = environment([suite_work, *dict.fromkeys(path.parent for path in paths), root])
     # Suite-level cost/output is attached to the first result, not multiplied by
     # the number of modules. The JSON records this execution model explicitly.
     first = results[0]
+    origins = ([conftest_name] if conftest_name else []) + [result.path for result in results]
 
-    def plain_sources():
-        return [generate(text, result.path, operands=False,
-                         selected=selections.get(path) if selections else None).source
-                for text, result, path in zip(texts, results, paths)]
+    def sources_of(modules):
+        # The compiler names generated lines; translate() shows the test's own beside them.
+        if mode == "python":
+            return {}
+        return {str(suite_work / (name + ".py")): (origin, module)
+                for name, origin, module in zip(generated_names, origins, modules)}
 
-    def attempt(sources):
-        for name, text in zip(names, sources):
-            write_changed(suite_work / (name + ".py"), text)
+    def attempt(modules):
+        for name, module in zip(generated_names, modules):
+            write_changed(suite_work / (name + ".py"), module.source)
         for report in reports:
             report.unlink(missing_ok=True)
         marker.unlink(missing_ok=True)
+        shutil.rmtree(temporary, ignore_errors=True)
+        if builtin:
+            temporary.mkdir(parents=True)
+        try:
+            return execute_suite()
+        finally:
+            shutil.rmtree(temporary, ignore_errors=True)
+
+    def execute_suite():
         if mode == "python":
             command = [python, str(source)]
         elif mode == "jit":
@@ -348,19 +436,21 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     # Assertion operands add code that the compiler may not accept (an operand's repr or
     # its temporary's type). Such a build is retried once with plain assertions, which
     # runs no test code twice, and the choice is kept until the instrumented code changes.
-    instrumented = [module.source for module in generated_modules]
-    fingerprint = hashlib.sha256("\0".join([shlex.join(compiler), *instrumented]).encode()).hexdigest()
+    used = instrumented
+    fingerprint = hashlib.sha256("\0".join([shlex.join(compiler), *(module.source for module in instrumented)])
+                                 .encode()).hexdigest()
     plain_record = suite_work / "plain-assertions"
     plain = None
     if mode != "python" and plain_record.is_file() and plain_record.read_text() == fingerprint:
-        plain = plain_sources()
+        plain = used = build(False)
         first.assertion_operands = False
-    status, value = attempt(plain if plain is not None else instrumented)
+    status, value = attempt(used)
     if status in ("build-failed", "not-started") and plain is None:
-        plain = plain_sources()
-        if plain != instrumented:
+        plain = build(False)
+        if [module.source for module in plain] != [module.source for module in instrumented]:
             first.assertion_operands = False
-            first.operand_build_error = (value.stderr or value.stdout)[-4000:]
+            first.operand_build_error = translate(value.stderr or value.stdout, sources_of(instrumented))[-4000:]
+            used = plain
             status, value = attempt(plain)
             if status not in ("build-failed", "not-started"):
                 plain_record.write_text(fingerprint)
@@ -372,13 +462,14 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
             result.state = "compile-error" if status == "build-error" else "execution-error"
             result.error = value
         return results
+    sources = sources_of(used)
     if status == "build-failed":
         for result in results:
             result.state, result.exit_code = "compile-error", value.returncode
-        first.stdout, first.stderr = value.stdout, value.stderr
+        first.stdout, first.stderr = value.stdout, translate(value.stderr, sources)
         return results
     ran = value
-    first.stdout, first.stderr = ran.stdout, ran.stderr
+    first.stdout, first.stderr = ran.stdout, translate(ran.stderr, sources)
     for result, report in zip(results, reports):
         try:
             records = report.read_text().splitlines()
@@ -431,6 +522,9 @@ def pytest_sessionfinish(session, exitstatus):
 
 def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: float,
            selections: dict[Path, list[str]] | None = None) -> dict:
+    # pytest reads the conftest.py that discover() allows: the one beside the tests.
+    # --confcutdir keeps those above --root out, as --noconftest does without one.
+    conftest = bool(paths) and (paths[0].parent / "conftest.py").is_file()
     write_changed(work / "_pyn_oracle.py", ORACLE_PLUGIN)
     write_changed(work / "empty.ini", "[pytest]\n")
     report = work / "oracle.jsonl"
@@ -441,7 +535,8 @@ def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: floa
     for key in ("PYTEST_ADDOPTS", "PYTEST_PLUGINS"):
         env.pop(key, None)
     command = [python, "-m", "pytest", "-q", "-p", "_pyn_oracle", "-p", "no:cacheprovider",
-               "--noconftest", "--rootdir", str(root), "-c", str(work / "empty.ini"),
+               *(["--confcutdir", str(root)] if conftest else ["--noconftest"]),
+               "--basetemp", str(work / "oracle-tmp"), "--rootdir", str(root), "-c", str(work / "empty.ini"),
                *([f"{path}::{selector}" for path in paths for selector in selections[path]]
                  if selections else [str(path) for path in paths])]
     start = time.perf_counter()
@@ -549,6 +644,7 @@ def main(argv: list[str] | None = None) -> int:
     args.hosted_default = args.compiler is None
     if args.compiler is None:
         args.compiler = shlex.join([sys.executable, str(REPO / "pystachy.py")])
+    args.compiler = shlex.join(compiler_command(args.compiler))
     try:
         with lock_work_directory(args.work_dir.resolve()):
             return execute(args)

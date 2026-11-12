@@ -127,6 +127,8 @@ def main(argv=None):
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
+    # The compiler runs from each suite's own directory, so a relative path is resolved here.
+    args.compiler = shlex.join(runner.compiler_command(args.compiler))
     try:
         selected = select(args.suite, args.group)
         modes = args.mode or ["jit", "aot"]
