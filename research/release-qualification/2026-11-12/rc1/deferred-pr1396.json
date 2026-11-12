@@ -1,0 +1,25 @@
+{
+  "repository": "den-run-ai/pystachy",
+  "inspected_at_utc": "2026-11-12 21:45:05 UTC",
+  "pull_request": 1396,
+  "url": "https://github.com/den-run-ai/pystachy/pull/1396",
+  "head_sha": "6ff28926398a7bb9cc7c28b2378e4beae2d1a404",
+  "base_sha": "693f25297be60bb514c7d5c6f79d1849582b8c3b",
+  "base_ref": "claude/gifted-sagan-tyh3gm-index-protocol",
+  "decision": "defer from frozen RC.1",
+  "scope": "Dynamic-Any typed sequence indexing and range index protocol compatibility",
+  "reason": "Newly opened draft depends on the unqualified #1367 stack, changes an experimental opt-in path, and explicitly lacks full make verify. No evidence establishes a regression caused by the frozen RC.1 tree.",
+  "evidence_reviewed": [
+    "current PR body",
+    "all seven changed-file patches",
+    "current reviews and review threads (both empty)"
+  ],
+  "tests_by_this_triage": "No execution performed; this record is a scope and qualification decision, not behavioral validation.",
+  "author_report": {
+    "compiler_comparison_cases": 4458,
+    "focused_cases": 785,
+    "full_verify": "not run"
+  },
+  "candidate_head": "886ed9153e954b387f2afd39578a21168771ae6e",
+  "candidate_unchanged": true
+}

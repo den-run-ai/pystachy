@@ -4,6 +4,8 @@ Candidate: `886ed9153e954b387f2afd39578a21168771ae6e`, tree `64f1fb7295efd254010
 
 Source integration, independent review and evidence adjudication used ChatGPT. [PR #1389](https://github.com/den-run-ai/pystachy/pull/1389) tracks the current candidate, required reviews and remaining release qualification.
 
+The candidate was merged as `30822255ee7ee704e0e780e01cd8c23357ba13ab`, preserving the exact tested tree and both parents. Fresh Codex review completed without findings on `886ed915`; all 97 current check records (94 successful, three expected conditional skips), the commit status and unresolved-thread inventory were checked immediately before the expected-head merge. All four preserved source PRs are now merged. [merge-receipt.json](merge-receipt.json) records this boundary; exact merged-main release qualification remains separate.
+
 ## Frozen corrections
 
 | Correction | Provenance | Retained IR cases |
@@ -39,7 +41,11 @@ Pinned CPython 3.13.16 and LLVM 19.1.7 produced three identical compiler stages 
 
 For the original float workload, 11 alternating AOT pairs pinned to CPU 3 on an AMD EPYC 9V74 yielded median times of **45.598 ms versus 40.100 ms**, a 12.06% reduction. All 22 outputs matched CPython; the candidate was faster in ten pairs. The slow 55.912 ms sample is retained.
 
-Program IR differs by one alwaysinline attribute, the candidate removes the constructor call/symbol, and runtime IR is identical after module/source-filename metadata removal. [Commands and raw samples](performance/) retain build identities and load observations. This evidence covers Linux x86-64 with LLVM 19; it does not independently re-establish #1300's historical pre-regression baseline or other-platform results.
+Program IR differs by one alwaysinline attribute, the candidate removes the constructor call/symbol, and runtime IR is identical after module/source-filename metadata removal. [Commands and raw samples](performance/) retain build identities and load observations. This first campaign compares current main with the candidate on Linux x86-64 with LLVM 19.
+
+A separate [historical-baseline campaign](historical-float/qualification.md) supplies #1300's required comparison with pre-#1268 `0ec827ac`. One fixed set of 15 alternating CPU-pinned pairs, using the byte-identical original workload and each clean source's hosted compiler, produced medians of 42.484454 ms versus 42.134673 ms. The candidate is 0.823% faster by this metric, meeting the stated within-5% criterion. Both binaries match CPython output and have no constructor symbol or call in native code; the deterministic IR fixture retains the checked/copied-loop invariant.
+
+All samples remain in the record, including a 176.387793 ms candidate outlier with approximately 175.620 ms child CPU time. Its cause is unassigned; all-sample means are 42.788819 ms versus 51.694442 ms. No sample was filtered and no resampling was performed. This establishes the issue's median recovery threshold on this host and toolchain, without a broader tail-performance claim.
 
 ## CI and release requirements
 

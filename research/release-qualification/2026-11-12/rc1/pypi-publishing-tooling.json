@@ -1,0 +1,25 @@
+{
+  "candidate_remote_source": "886ed9153e954b387f2afd39578a21168771ae6e",
+  "candidate_local_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "approved_workflow_ref": "release/pypi-v0.2.0",
+  "approved_source": "6e5544cfa3eecb8329e4f4cb19d2e0ac3e99b1bf",
+  "tools": {
+    "tools/pypi_release.py": {
+      "identical": true,
+      "sha256": "9823c0c02fc92fc6d71d4f78d3b5843c0340b615b7b7b4f01b81cb3be8076428"
+    },
+    "tools/release_gate.py": {
+      "identical": true,
+      "sha256": "6f6e87f914070fc502553a8012a3641d163c26deff426bad6f9e6c07e6c2b563"
+    }
+  },
+  "pypi_jobs": {
+    "pypi-build": {
+      "identical": true
+    },
+    "pypi-publish": {
+      "identical": true
+    }
+  },
+  "scope": "Publishing tooling comparison only; no distributions built or published by this check. Workflow source selects package input from the requested version tag. Existing environment restrictions remain unchanged."
+}

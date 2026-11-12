@@ -1,0 +1,68 @@
+{
+  "reviewed_candidate": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+  "candidate_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "candidate_full_ci": {
+    "run_id": 43307321551,
+    "head": "886ed9153e954b387f2afd39578a21168771ae6e",
+    "conclusion": "success",
+    "role": "Candidate evidence only; exact merged-main gates remain separate."
+  },
+  "issues": [
+    {
+      "number": 1333,
+      "url": "https://github.com/den-run-ai/pystachy/issues/1333",
+      "current_state": "open",
+      "closure_advice": "Eligible to close only after exact merged-main full gates succeed and evidence links are attached.",
+      "acceptance_mapping": "Seven regression programs cover base methods, typed parameters, handlers, deep inheritance, changed defaults, instance writes, missing fields and hasattr, plus sibling defaults, numeric identity and promoting integers. Retained pinned CPython controls, normal/stressed native JIT/AOT, current-head independent review, and the 4464-case IR campaign with seven specifically reviewed exception deltas support the candidate correction.",
+      "evidence": [
+        "rc-safety-review-evidence/review-summary.json",
+        "rc-native-checks/compiler-receipt.json",
+        "rc-native-checks/normal.log",
+        "rc-native-checks/stress.log",
+        "rc-ci-audit/rc1-retained/retained-exception-review.json",
+        "rc-ci-audit/rc1-retained/adjudication.json",
+        "rc-ci-audit/rc1-full-ci/candidate-ci-receipt.json"
+      ],
+      "nonclaims": [
+        "Does not merge or qualify broader #1278 proof work.",
+        "Mutating overridden base-class defaults remains outside the documented contract."
+      ]
+    },
+    {
+      "number": 1358,
+      "url": "https://github.com/den-run-ai/pystachy/issues/1358",
+      "current_state": "open",
+      "closure_advice": "Eligible to close only after exact merged-main full gates succeed and regression evidence is attached.",
+      "acceptance_mapping": "Selected #1363 fix returns None for all-None union-call branches. tests/programs/library/time_sleep_union.py covers both int and float arms and their None return. Its pinned CPython3.13.16 output matches the recording, and the candidate full native/GC gates passed.",
+      "evidence": [
+        "rc-narrow-evidence/pinned-oracle.json",
+        "rc-native-checks/normal.log",
+        "rc-native-checks/stress.log",
+        "rc-ci-audit/rc1-full-ci/candidate-ci-receipt.json"
+      ],
+      "nonclaims": [
+        "The asyncio workaround can be dropped by deferred #1279; actually changing that WIP is not an RC feature requirement.",
+        "Adding phi-void rejection to the compiler IR checker is explicitly deferred in #1363."
+      ]
+    },
+    {
+      "number": 1300,
+      "url": "https://github.com/den-run-ai/pystachy/issues/1300",
+      "current_state": "open",
+      "closure_advice": "Keep open after merging unless the stated same-host pinned interleaved candidate-versus-0ec827ac within-5-percent recovery criterion is supported by retained evidence. Full CI alone is insufficient.",
+      "acceptance_mapping": "The cause and repair are supported: candidate removes the Point.__init__ out-of-line symbol/calls; deterministic tests/ir/listguard_inline.inline covers marked/unmarked/uncopied paths. Independent 11-pair LLVM19 result is main0b13 median45.598033ms versus candidate7c759 median40.099789ms (12.058% lower). This compares current main, not pre-#1268 0ec827ac.",
+      "author_report": "#1336 reports LLVM18 medians0ec827ac35.03ms versus PR34.68ms, 11 pinned interleaved runs; this is author-reported evidence, not an independent recovery-threshold reproduction on the combined candidate.",
+      "evidence": [
+        "rc-perf-evidence/timing.json",
+        "rc-perf-evidence/builds.json",
+        "rc-perf-evidence/inlining.json",
+        "rc-perf-evidence/outputs.json"
+      ],
+      "nonclaims": [
+        "No cross-toolchain comparison of LLVM19 timings against historical LLVM18 timings.",
+        "No all-platform or total compilation-cost claim."
+      ]
+    }
+  ],
+  "mutations": "No issue/PR state changes or comments posted by this review."
+}

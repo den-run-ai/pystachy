@@ -1,0 +1,260 @@
+{
+  "issue": "https://github.com/den-run-ai/pystachy/issues/1300",
+  "sources": [
+    {
+      "label": "old",
+      "path": "/workspace/scratch/2cf34574fa6e/rc-float-1300/source-old",
+      "local_commit": "0ec827ac34837cc917627e1ce594c484db6e9227",
+      "source_tree": "165fadd2f153404ce2619dee5b0983ae223e7ed8",
+      "input": "bench/pyperformance/float.py",
+      "input_sha256": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0"
+    },
+    {
+      "label": "rc1",
+      "path": "/workspace/scratch/2cf34574fa6e/rc-float-1300/source-rc1",
+      "local_commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+      "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+      "input": "bench/pyperformance/float.py",
+      "input_sha256": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+      "published_candidate_commit": "886ed9153e954b387f2afd39578a21168771ae6e",
+      "merged_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "identity_note": "Local 7c759487, published candidate 886ed915 and merged 30822255 have the same complete source tree 64f1fb7295efd25401052d61a22823681e5669ab; GitHub API separately verifies the latter two."
+    }
+  ],
+  "timing_started": "2026-11-12T22:00:45.656386+00:00",
+  "timing_finished": "2026-11-12T22:00:47.416817+00:00",
+  "metric": "float benchmark stderr seconds line; internal loop-region elapsed time",
+  "workload": {
+    "source": "bench/pyperformance/float.py",
+    "args": [
+      "10"
+    ],
+    "points_per_loop": 100000
+  },
+  "cpu": 3,
+  "acceptance": {
+    "maximum_rc1_over_old_median_ratio": 1.05,
+    "discarded_samples": 0,
+    "method": "Median of all 15 RC1 samples divided by the median of all 15 baseline samples; no outlier removal or additional sampling",
+    "rc1_over_old_median_ratio": 0.9917668472049718,
+    "rc1_change_percent": -0.8233152795028231,
+    "within_five_percent": true
+  },
+  "results": {
+    "old": {
+      "median_ms": 42.48445400116907,
+      "min_ms": 40.49200000008568,
+      "max_ms": 46.698006000951864,
+      "mad_ms": 1.491959001214127,
+      "mean_ms": 42.78881900027045,
+      "stdev_ms": 1.987746116951679,
+      "samples_ms": [
+        43.349973999283975,
+        41.476186001091264,
+        40.57879500032868,
+        40.99249499995494,
+        41.488033000860014,
+        40.97671199997421,
+        44.87083999993047,
+        46.698006000951864,
+        46.24669199984055,
+        43.16173000006529,
+        41.87145700052497,
+        42.851006001001224,
+        42.48445400116907,
+        40.49200000008568,
+        44.29390499899455
+      ]
+    },
+    "rc1": {
+      "median_ms": 42.134672999964096,
+      "min_ms": 39.651412998864544,
+      "max_ms": 176.38779300068563,
+      "mad_ms": 1.3272619999042945,
+      "mean_ms": 51.69444219997482,
+      "stdev_ms": 34.651167643711894,
+      "samples_ms": [
+        43.125131000124384,
+        41.796819999945,
+        40.097959999911836,
+        41.764271998545155,
+        39.651412998864544,
+        40.90396799983864,
+        39.828720000514295,
+        176.38779300068563,
+        42.134672999964096,
+        49.24833199947898,
+        43.056573000285425,
+        51.2009140002192,
+        42.34134800026368,
+        40.41678100111312,
+        43.46193499986839
+      ]
+    }
+  },
+  "native_constructor_symbols": {
+    "old": [],
+    "rc1": []
+  },
+  "raw_ir_constructor_lines": {
+    "old": [
+      "  call void @m.Point.__init__(ptr %t17, i64 %t18)",
+      "define internal void @m.Point.__init__(ptr nonnull %a0, i64 %a1) {"
+    ],
+    "rc1": [
+      "  call void @m.Point.__init__(ptr %t17, i64 %t18)",
+      "  call void @m.Point.__init__(ptr %t52, i64 %t53) alwaysinline",
+      "define internal void @m.Point.__init__(ptr nonnull %a0, i64 %a1) {"
+    ]
+  },
+  "full_output_cpython_parity": true,
+  "measured_samples": 30,
+  "warmups": 4,
+  "resampled": false,
+  "largest_rc1_sample": {
+    "label": "rc1",
+    "repetition": 7,
+    "warmup": false,
+    "command": [
+      "taskset",
+      "-c",
+      "3",
+      "/workspace/scratch/2cf34574fa6e/rc-float-1300/float.rc1",
+      "10"
+    ],
+    "started": "2026-11-12T22:00:46.497836+00:00",
+    "finished": "2026-11-12T22:00:46.680396+00:00",
+    "wall_seconds": 0.182394164,
+    "timed_seconds": 0.17638779300068563,
+    "user_seconds": 0.13224799999999992,
+    "system_seconds": 0.043371999999999994,
+    "voluntary_context_switches": 2,
+    "involuntary_context_switches": 4,
+    "status": 0,
+    "stdout": "float 10 100000 <Point: x=0.8944271890997864, y=1.0, z=0.4472135954456972>\n",
+    "stderr": "seconds 0.17638779300068563\n",
+    "stdout_sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+  },
+  "tail_cause": "unassigned; retained CPU-time record does not justify a scheduler-only explanation",
+  "fixture_hashes": {
+    "tests/ir/listguard_inline.inline": "719531b7c0be174df2e05f8bf840e441e82e204d03646d3b24bb15072264a2f3",
+    "tests/ir/listguard_inline.py": "9e73ec96bada815c421fd1853620adc7ef98ec513a57c851876b46b2fa02039a"
+  },
+  "files": [
+    {
+      "path": "build.old.log",
+      "bytes": 1251,
+      "sha256": "de22c4c537053dd5cbe86399a09189917b03dfa9f84a0fb9b6f097ae4ca8ff9a"
+    },
+    {
+      "path": "build.py",
+      "bytes": 5288,
+      "sha256": "5f9656c745d56aa1b40d53cdf64de5795da60fe620d6c549d66ac8b8ec8b43c8"
+    },
+    {
+      "path": "build.rc1.log",
+      "bytes": 1251,
+      "sha256": "53a1dac861a8f9656f40dfc8a75563ae403c47213e44c84825e7085f624b8a3d"
+    },
+    {
+      "path": "builds.json",
+      "bytes": 6793,
+      "sha256": "daea8564c2ebf232ad9b95b52e9928e05643c2b396d374cf8a965cefbf28aa24"
+    },
+    {
+      "path": "disassembly.old.txt",
+      "bytes": 828137,
+      "sha256": "0704eafb33ea3934d7eda89cf8cb720dc53c3e9737c777df93d4b8c14c77870a"
+    },
+    {
+      "path": "disassembly.rc1.txt",
+      "bytes": 831960,
+      "sha256": "acd9a383b7976612c0d60c5a76873ce7e580e2b3e2ddc800fb2829afa1cc99e4"
+    },
+    {
+      "path": "float.old",
+      "bytes": 96192,
+      "sha256": "0bd49e18a177d774672587058e61ce0d992fd6b4cf0047c66b6883caa610740b"
+    },
+    {
+      "path": "float.old.ll",
+      "bytes": 21977,
+      "sha256": "49b7dfafe7f17bb8928f6620147d383b619ec392611970e2869d802878dee4ae"
+    },
+    {
+      "path": "float.rc1",
+      "bytes": 96192,
+      "sha256": "b1fdd149cf06ea8848d71a174721649c13c9983e67a196706b42d0b44c881377"
+    },
+    {
+      "path": "float.rc1.ll",
+      "bytes": 23374,
+      "sha256": "6d75f77f7a70b125a14935f6a38b2338a64bec4180d9d6a68c161669c502fbbf"
+    },
+    {
+      "path": "inlining.json",
+      "bytes": 615,
+      "sha256": "c0b0828f9721746b9a32146c4e9573438256dd4f192161a5fd80713a8ba9a12d"
+    },
+    {
+      "path": "measure.py",
+      "bytes": 5530,
+      "sha256": "e3f2f8b4aa5d0633232d4df5550983024cac15e739b89e9c95d7da852793e381"
+    },
+    {
+      "path": "merged-source-identity.json",
+      "bytes": 2929,
+      "sha256": "8b0a6728ed0060f2af781e3a30567417da635b0da36eebbb4fc00702dfb3a3b8"
+    },
+    {
+      "path": "output.cpython.txt",
+      "bytes": 75,
+      "sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "path": "output.old.txt",
+      "bytes": 75,
+      "sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "path": "output.rc1.txt",
+      "bytes": 75,
+      "sha256": "f3f09d1ccfe5d26be85d50dd99c36ca1af4d7fe4f308bfe2bbec91d296ad654c"
+    },
+    {
+      "path": "outputs.json",
+      "bytes": 1181,
+      "sha256": "a9ee5ff90f86d75949dd90c0b59afe037a5fc51f9f0aa5ec6545a268ebbfd482"
+    },
+    {
+      "path": "qualification.md",
+      "bytes": 4125,
+      "sha256": "a5b0b0c0ad5559716ba92f6b18d64c93f056bf7178ce68bd2bb1c87dcbd3b870"
+    },
+    {
+      "path": "sources.json",
+      "bytes": 1079,
+      "sha256": "b517f7f23a87a2778ebc240bcc5aa4fb38d5bbe1580977e6713b67c96cf427a5"
+    },
+    {
+      "path": "symbols.old.txt",
+      "bytes": 8769,
+      "sha256": "5a2014c23a24987fb9c761decb975e7f69a8187d5cab14384e5a2bb0f367b4a8"
+    },
+    {
+      "path": "symbols.rc1.txt",
+      "bytes": 8769,
+      "sha256": "d2774897da08937fd811e4326ae01b291557cbb8e6e0b61e83850be1982fd7c6"
+    },
+    {
+      "path": "timing.json",
+      "bytes": 50580,
+      "sha256": "f2af1e6df0307511de2a5df56312a1f5a11603016cf51397fd0ce0cceb2a9ccc"
+    },
+    {
+      "path": "toolchain.json",
+      "bytes": 3687,
+      "sha256": "1a0f3fd869a1c1a1eb398d201dca127cd5902c685832a7b481ff18174423f1fa"
+    }
+  ]
+}
