@@ -439,7 +439,9 @@ coroutine object, the handle of an LLVM coroutine with the same promise, and run
 body. Its type is `coro[Y,None,R]` (shown as `Coroutine[Y, None, R]`): `R` is the return
 annotation or what its returns return, and `Y` is what its awaits yield to the code that runs
 it with `send()` and `throw()`. `Y` is `None` until an await of something that yields another
-type decides it, so an `async def` is a template whose first call compiles it. A recursive
+type decides it, so an `async def` is a template whose first call compiles it. An await of
+something that yields `None` or `T | None` makes a `Y` of `T` into `T | None`, and an await that
+yields `T` passes it on as `T | None` where `Y` is that. A recursive
 call compiled before that decision (`FnInfo.ysure`) makes a later change of `Y` a `yield:`
 hint: the program is compiled again with that `Y` from the start (`Rejoin`), as joins are. An
 await of a coroutine of the recursion being compiled passes its yields through unchanged.

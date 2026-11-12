@@ -391,8 +391,11 @@ def gen_coro_yields(self, yi: str, callee: FnInfo | None, what: str) -> str:
         t = yi if not f.ynone or self.optional(yi) == yi else self.optional(yi)
         if t == "":
             self.err(f"{short(f.name)}() awaits {what}, which yields {typestr(yi)}, and an awaitable that may yield None: a {typestr(yi)} cannot be None")
-    elif self.widens(yi, y):
-        return y
+    elif self.widens(yi, y) or self.optional(yi) == y:
+        return y  # (Y holds what it yields: await_words converts a T into Y, T | None)
+    elif self.optional(y) == yi:
+        f.ynone = True  # (what yields Y | None: Y holds None now, as for an await that yields None)
+        t = yi
     else:
         self.err(f"{short(f.name)}() yields {typestr(y)} to the code that runs it, but awaits {what}, which yields {typestr(yi)}")
     if t != y:

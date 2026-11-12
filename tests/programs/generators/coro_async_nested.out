@@ -1,0 +1,17 @@
+inner o-inner1 1
+inner o-inner1 2
+exit o-inner1
+inner o-inner2 1
+inner o-inner2 2
+exit o-inner2
+exit o
+suspensions 9
+inner p-inner1 1
+inner p-inner1 2
+exit p-inner1
+inner p-inner2 1
+inner p-inner2 2
+exit p-inner2
+exit p
+p:p-inner1p-inner2
+[exit 0]
