@@ -426,7 +426,7 @@ def enum_new(d: Node, cname: str, kind: str) -> list[Node]:
     return [made[0], value[0] if len(value) > 0 else made[0]]
 
 
-def enum_new_value(d: Node, parts: list[Node], cname: str, member: str, items: list[Node], env: dict[str, list[str]], count: int, line: int) -> list[Node]:
+def enum_new_value(d: Node, parts: list[Node], cname: str, member: str, items: list[Node], env: dict[str, list[str]], consts: dict[str, list[str]], count: int, line: int) -> list[Node]:
     # (enum) the _value_ that __new__ d of enum class cname (parts: enum_new's) gives member, whose
     # value's items are items, the count-th name of the class: [its literal], as the body computes
     # it from its parameters (the items, or their defaults), len(cls.__members__) and the names
@@ -437,8 +437,10 @@ def enum_new_value(d: Node, parts: list[Node], cname: str, member: str, items: l
         fail(f"{cname}.__new__() takes {len(ps)} positional argument{'s' if len(ps) != 1 else ''} but {len(items) + 1} were given (enum member {cname}.{member})", line)
     env2: dict[str, list[str]] = {}
     nodes: dict[str, Node] = {}
-    for k in env:
-        env2[k] = env[k]
+    for k in consts:
+        # (the names the function's body reads are the module's constants: a class body's
+        # names, the members before, are no names of a function in it)
+        env2[k] = consts[k]
     env2["__pys_count"] = ["int", str(count)]
     for i in range(1, len(ps)):
         x = items[i - 1] if i - 1 < len(items) else ps[i].kids[1]
@@ -697,7 +699,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                             fail(f"enum class {st.s}'s members' values have items of two types, {ptypes[j]} and {it}, where __new__() takes them: Pystachy's take one type each", s.line)
                         if j >= len(ptypes):
                             ptypes.append(it)
-                    given = enum_new_value(news[0], newparts, st.s, nm, items, env, len(mnames), s.line)
+                    given = enum_new_value(news[0], newparts, st.s, nm, items, env, consts, len(mnames), s.line)
                     if len(given) > 0:
                         v = given[0]
                         lit = enum_literal(v)
