@@ -167,6 +167,37 @@ def gen_exc_base(self, b: Node) -> str:
         return "OSError" if s == "IOError" or s == "EnvironmentError" else s
     return ""
 
+def gen_gbase_link(self, name: str) -> None:
+    # generic class name with a base (Gen.gbases), declared: the base an ordinary class of the
+    # program declared before it, or a generic class whose specialization by name's type variables
+    # each specialization of name derives from (templates.py's gspec_link). An imported module's
+    # class that cannot be one is an error where the program uses it (bad_class)
+    ci = self.classes[name]
+    b = self.gbases[name]
+    self.line = ci.node.line
+    base = b.s if b.kind == "name" else b.kids[0].s
+    why = ""
+    if b.kind == "name" and (base not in self.classes or base in self.tparams or base in self.tmpl or self.classes[base].exc != "" or self.is_dc(base) or base in self.nts or self.classes[base].role != "" or self.classes[base].isrole):
+        why = f"a generic class's base must be an ordinary class of the program declared before it, or a generic class's G[T] of its type variables: {short(base)} is not"
+    elif len(ci.node.kids) > 1 or self.is_dc(name):
+        why = "a generic class with a base and a decorator is not supported"
+    elif "__init__" not in self.body_names(ci.node) or (base in self.tparams and "__init__" not in self.body_names(self.classes[base].node)):
+        why = f"a generic class with a base needs an __init__ of its own, whose arguments bind its type variables, as its generic base does ({short(name if '__init__' not in self.body_names(ci.node) else base)})"
+    for c in [name, base] if why == "" else []:
+        for st in self.classes[c].node.kids[0].kids if c in self.tparams else []:
+            if why == "" and (st.kind == "assign" or st.kind == "annassign") and st.kids[0].kind == "name":
+                self.line = st.line
+                why = f"a class attribute of a generic class in a hierarchy is not supported: assign it in __init__ ({short(c)}.{st.kids[0].s})"
+    if why != "":
+        self.bad_class(ci, why)
+        self.unsupported[name] = ci.bad
+        return
+    ci.base = base  # (a generic base's template: derives and isinstance() see it; gspec_link)
+    self.gtagged[name] = True
+    if base in self.tparams:
+        self.gtagged[base] = True
+
+
 def gen_inherit(self, ci: ClassInfo) -> None:
     # a class has the methods of its base that it does not define: the same
     # functions, compiled for the base (its objects begin as the base's do), but for a class
@@ -291,6 +322,8 @@ def gen_derives(self, c: str, base: str) -> bool:
         if c == base:
             return True
         info = self.classes[c]
+        if info.origin == base and info.tag > 0:
+            return True  # (a specialization of generic class base in a hierarchy, gspec_link)
         if info.role != "" and info.role == base:
             return True
         if info.excsecond != "" and exc_derives(info.excsecond, base):
@@ -864,10 +897,20 @@ def gen_program(self, mods: list[Mod]) -> str:
             elif st.kind == "subclass" and len(st.kids) == 2 and len(self.generic_base(st.kids[1])) > 0:
                 m.body.kids[i] = st.kids[0]  # class C(Generic[T]): a class whose objects bind T (see bind)
                 self.tparams[st.s] = self.generic_base(st.kids[1])
+            elif st.kind == "subclass" and len(st.kids) == 3 and st.kids[1].kind == "name" and len(self.generic_base(st.kids[2])) > 0:
+                m.body.kids[i] = st.kids[0]  # class C(Base, Generic[T]): its specializations derive from Base (gspec_link)
+                self.tparams[st.s] = self.generic_base(st.kids[2])
+                self.gbases[st.s] = st.kids[1]
+            elif st.kind == "subclass" and len(st.kids) == 2 and len(self.generic_parent(st.kids[1])) > 0:
+                m.body.kids[i] = st.kids[0]  # class C(G[T]): of generic class G, with C's type variables (gspec_link)
+                self.tparams[st.s] = self.generic_parent(st.kids[1])
+                self.gbases[st.s] = st.kids[1]
             elif st.kind == "subclass" and st.kids[1].kind == "typeparams" and self.class_params(st) == "":
                 m.body.kids[i] = st.kids[0]  # class C[T]: as class C(Generic[T]) (see class_params)
                 self.tparams[st.s] = st.kids[1].s.split()
                 self.pep695[st.s] = True
+                if len(st.kids) == 3:
+                    self.gbases[st.s] = st.kids[2]  # (class C[T](Base), class C[T](G[T]): gspec_link)
             elif self.typevar_def(st):
                 self.typevars.append(st.kids[0].s)
                 m.body.kids[i] = mk("pass", "", st.line, [])
@@ -943,12 +986,16 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.dc_options(self.classes[st.s])
     for m in mods:
         self.any_variables(m.body, False)
+    for name in [x for x in self.gbases]:
+        self.gbase_link(name)
     # Only ordinary inheritance hierarchies need a runtime class tag. Keeping unrelated
     # classes unchanged preserves their compact layout, including dataclasses and tuples.
     for ci in self.classes.values():
         if ci.exc == "" and ci.base in self.classes:
-            ci.tag = 1
-            self.classes[ci.base].tag = 1
+            # (a generic class with a base has no objects: its specializations take tags as they
+            # are made, gspec_link)
+            ci.tag = 1 if ci.name not in self.gtagged else 0
+            self.classes[ci.base].tag = 1 if ci.base not in self.gtagged else 0
             if ci.role != "" and ci.role != self.classes[ci.base].role:
                 self.classes[ci.role].tag = 1
                 self.classes[ci.role].isrole = True
@@ -964,6 +1011,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         if ci.tag != 0:
             tag += 1
             ci.tag = tag
+    self.ntag = tag
     self.cm_exits()  # (decided while the class templates are classes too: see cm_exits)
     grow = True
     while grow:
@@ -1120,6 +1168,7 @@ def gen_program(self, mods: list[Mod]) -> str:
         self.mfile[m.name] = m.path[2:] if m.path.startswith("./") else m.path
     timing_end(phase + ".prepare", started)
     started = timing_start()
+    self.gspec_replay()  # (the specializations of hierarchies an earlier pass made late: templates.py)
     self.compiling = True
     self.modlevel = True
     for m in mods:

@@ -17,9 +17,12 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.syntax import Node, mentions, mk
 from src.pystachy_compiler.utils import (
     clone,
+    cret,
+    cyield,
     elem,
     gelem,
     is_callable,
+    is_coro,
     is_dict,
     is_gen,
     is_list,
@@ -110,6 +113,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
             s.tvars = self.bind(c, ts, given)  # (before its fields, which its type variables may type)
             if int_lists():
                 s.tvars = {x: promoted(s.tvars[x]) for x in s.tvars}  # (as above: an int that an item binds, list[T] of a list[int])
+        if c in self.gtagged:
+            self.gspec_link(s, t)  # (a class of a hierarchy: its tag, base and fields)
         if named:
             fi.ptypes = [name] + self.named_params(c, init.node)
         elif c in self.tparams:
@@ -200,6 +205,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                 self.lib = False
                 g.mod = s.mod
                 s.methods[g.name] = g  # (x.setter: a property's setter)
+        if s.base in self.classes:
+            self.inherit(s)  # (the methods of its base that it does not define)
         s.hook = t.hook
         if c in self.cnts:
             self.dc_methods(s)  # (its __repr__)
@@ -222,6 +229,8 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         self.specdone[doing] = name
         if canonical != "":
             self.specdone[canonical] = name
+        if c in self.gtagged and self.compiling:
+            self.gspec_late(c, ts, given, named, lits, doing)
         return name
     finally:
         for request in owned:
@@ -231,6 +240,90 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         self.lib = lib
         while len(self.making) > depth:
             self.making.pop()
+
+
+def gen_gspec_link(self, s: ClassInfo, t: ClassInfo) -> None:
+    # specialization s of generic class t, whose objects are of a hierarchy (Gen.gtagged): its
+    # class tag, its base (t's ordinary base, or the specialization of t's generic base that s's
+    # type variables name, class Task(Future[T])), and the base's fields first (fl_fields lays out
+    # its flags after them, as for any subclass); without a base, its tag first
+    self.ntag += 1
+    s.tag = self.ntag
+    g = self.gbases.get(t.name, None)
+    if g is not None and g.kind == "index":
+        gc = g.kids[0].s
+        xs = g.kids[1].kids if g.kids[1].kind == "tuple" else [g.kids[1]]
+        given: dict[str, str] = {}
+        for i in range(len(xs)):
+            given[self.tparams[gc][i]] = self.ann(xs[i])
+        s.base = self.specialize(gc, [], given, True, {})
+    elif g is not None:
+        s.base = t.base
+    own = [x for x in s.fields]
+    s.fields = []
+    s.fpos = {}
+    if s.base in self.classes:
+        b = self.classes[s.base]
+        self.declare_fields(b)  # (an annotation may name the specialization before the base's own declaration)
+        fdefault: dict[str, Node] = {}
+        for x in t.fdefault:
+            fdefault[x] = t.fdefault[x]
+        for x in b.fields:
+            s.fpos[x] = len(s.fields)
+            s.fields.append(x)
+            s.ftypes[x] = b.ftypes[x]
+            if x in b.fdefault:
+                fdefault[x] = b.fdefault[x]
+        s.fdefault = fdefault
+    else:
+        s.fpos[" class"] = 0
+        s.fields.append(" class")
+        s.ftypes[" class"] = "int"
+    for x in own:
+        if x not in s.fpos:
+            s.fpos[x] = len(s.fields)
+            s.fields.append(x)
+
+
+def gen_gspec_late(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node], doing: str) -> None:
+    # a specialization of generic class c of a hierarchy, made as code compiles: code compiled
+    # before it may have dispatched on its base's objects without it. The next pass makes it
+    # before any code compiles (a "gspec:" hint that gspec_replay replays, as Rejoin's joins)
+    key = "gspec:" + doing
+    if key in self.hints:
+        return  # (replayed, as this pass began)
+    for x in ts + [given[k] for k in given]:
+        w = ""
+        for ch in x + " ":
+            if ch in "[](),| ;=~>*?":
+                if w in self.classes and self.classes[w].origin != "":
+                    self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, whose type arguments are other specializations ({typestr(x)}) is not supported where it is first made in code (name it in an annotation that precedes that code)")
+                w = ""
+            else:
+                w += ch
+        if "fn[" in x:
+            self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, for a function's type ({typestr(x)}) is not supported where it is first made in code")
+    if len(lits) > 0:
+        self.err(f"a specialization of {short(c)}, a generic class of a hierarchy, on literal arguments is not supported")
+    if self.final:
+        self.err(f"internal error: a specialization of {short(c)} made after code that dispatches on its base (see gspec_late)")
+    self.newhints[key] = "\x1e".join([c, "1" if named else "0", "\x1f".join(ts), "\x1f".join([k + "=" + given[k] for k in given])])
+
+
+def gen_gspec_replay(self) -> None:
+    # the specializations of a hierarchy's generic classes that an earlier pass made as code
+    # compiled (gspec_late): made again before any code compiles, in the order they were found
+    for key in self.hints:
+        if not key.startswith("gspec:"):
+            continue
+        parts = self.hints[key].split("\x1e")
+        c = parts[0]
+        ts = parts[2].split("\x1f") if parts[2] != "" else []
+        given: dict[str, str] = {}
+        for kv in parts[3].split("\x1f") if parts[3] != "" else []:
+            given[kv[: kv.find("=")]] = kv[kv.find("=") + 1 :]
+        self.line = self.classes[c].node.line
+        self.specialize(c, ts, given, parts[1] == "1", {})
 
 
 def promoted(t: str) -> str:
@@ -532,6 +625,15 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         # (a generator, where the annotation is Iterable[T], Iterator[T] or Generator[T, S, R]:
         # what it yields binds T; the rest of Generator[...] binds nothing)
         return self.match(xs[0], gelem(t), tv, tvs)
+    if base == "coroutine" and is_coro(t) and len(xs) == 3:
+        # (a coroutine, where the annotation is Coroutine[Y, S, R]: what it yields binds Y, and what
+        # it returns R; nothing sends it another value than None)
+        why = self.match(xs[0], cyield(t), tv, tvs)
+        r = self.parse_expr(xs[2].s) if xs[2].kind == "str" else xs[2]
+        if why == "" and cret(t) == "None" and r.kind == "name" and r.s in tvs and r.s not in tv and r.s not in self.tvtuples:
+            tv[r.s] = "None"  # (a coroutine that returns None binds R to None, as Box(None) binds T: bind)
+            return ""
+        return why if why != "" else self.match(xs[2], cret(t), tv, tvs)
     if (base == "iterable" or base == "iterator") and len(xs) == 1:
         if t == "tuple[]":
             return ""  # (no items bind T; the context can still give it)

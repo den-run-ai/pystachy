@@ -622,6 +622,7 @@ from src.pystachy_compiler.declarations import (
     gen_join as declarations_join,
     gen_none_items as declarations_none_items,
     gen_nt_base as declarations_nt_base,
+    gen_generic_parent as declarations_generic_parent,
     gen_nt_class as declarations_nt_class,
     gen_nt_defaults as declarations_nt_defaults,
     gen_nt_dflt_display as declarations_nt_dflt_display,
@@ -1109,6 +1110,7 @@ from src.pystachy_compiler.program import (
     gen_exc_base as program_exc_base,
     gen_hook as program_hook,
     gen_inherit as program_inherit,
+    gen_gbase_link as program_gbase_link,
     gen_accessor as program_accessor,
     gen_class_ref as program_class_ref,
     gen_dc_options as program_dc_options,
@@ -1206,6 +1208,9 @@ from src.pystachy_compiler.templates import (
     gen_match_items as templates_match_items,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
+    gen_gspec_link as templates_gspec_link,
+    gen_gspec_late as templates_gspec_late,
+    gen_gspec_replay as templates_gspec_replay,
     gen_literal_class as templates_literal_class,
     gen_literal_args as templates_literal_args,
     gen_lit_context as templates_lit_context,
@@ -1644,6 +1649,13 @@ class Gen:
         # which the arguments of the call that makes an object bind (see bind)
         self.tparams: dict[str, list[str]] = {}
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
+        # generic classes with a base (templates.py's gspec_link): the base each names, an ordinary
+        # class (class C(Base, Generic[T]), class C[T](Base)) or a generic class's C[T] of its own
+        # type variables (class Task(Future[T])); those and the generic classes they name, whose
+        # specializations are classes of a hierarchy (with a class tag, ntag counting them)
+        self.gbases: dict[str, Node] = {}
+        self.gtagged: dict[str, bool] = {}
+        self.ntag = 0
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
         self.taliases: dict[str, Node] = {}
@@ -4889,6 +4901,21 @@ class Gen:
 
     def tests(self, ns: list[Node], p: str) -> bool:
         return calls_tests(self, ns, p)
+
+    def gspec_link(self, s: ClassInfo, t: ClassInfo) -> None:
+        return templates_gspec_link(self, s, t)
+
+    def gspec_late(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node], doing: str) -> None:
+        return templates_gspec_late(self, c, ts, given, named, lits, doing)
+
+    def gspec_replay(self) -> None:
+        return templates_gspec_replay(self)
+
+    def gbase_link(self, name: str) -> None:
+        return program_gbase_link(self, name)
+
+    def generic_parent(self, n: Node) -> list[str]:
+        return declarations_generic_parent(self, n)
 
     def specialize(self, c: str, ts: list[str], given: dict[str, str], named: bool, lits: dict[str, Node]) -> str:
         return templates_specialize(self, c, ts, given, named, lits)

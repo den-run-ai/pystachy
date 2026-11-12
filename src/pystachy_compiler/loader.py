@@ -1195,6 +1195,8 @@ class Loader:
                 m.kinds[st.s] = "f" if k == "def" else "c"
                 if k == "subclass" and (len(st.kids) == 2 or st.kids[1].kind == "typeparams") and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
                     m.cbases[st.s] = st.kids[1]
+                elif k == "subclass" and len(st.kids) == 3 and st.kids[2].kind == "index" and "__class_getitem__" not in top_bindings(st.kids[0].kids[0].kids):
+                    m.cbases[st.s] = st.kids[2]  # (class C(Base, Generic[T]): generic_class)
                 for x in st.kids[0].kids if k == "class" else st.kids[0].kids[0].kids if k == "subclass" else []:
                     if x.kind == "assign" and len(x.kids) == 2 and x.kids[0].kind == "name" and x.kids[0].s == "__class_getitem__":
                         v = x.kids[1]
@@ -1897,6 +1899,8 @@ class Loader:
         if base is None or base.kind != "index":
             return False
         g = base.kids[0]
+        if g.kind == "name" and m is self.dm and (m.kinds.get(g.s, "") == "c" or m.kinds.get(g.s, "").startswith("a:")) and g.s != name:
+            return self.generic_class(g)  # (class Task(Future[T]) of a generic class Future)
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
             return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"

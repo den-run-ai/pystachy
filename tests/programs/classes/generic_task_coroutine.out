@@ -1,0 +1,5 @@
+['future PENDING', 'task PENDING', 'task PENDING', 'task PENDING']
+quiet ran
+42 HI None [True, True, True, True]
+['future FINISHED', 'task FINISHED', 'task FINISHED', 'task FINISHED']
+[exit 0]

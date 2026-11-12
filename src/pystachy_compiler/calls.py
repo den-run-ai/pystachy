@@ -1378,6 +1378,12 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     if len(vals) == 0:
         self.unreachable()
     result = Val("null", "None") if t == "None" else Val(self.phi(ph), t)
+    made = [g for g in insts if g is not None]
+    if is_gen(t) and len(vals) > 1 and len(made) == len(vals) and all(g.node is made[0].node and g.ret == t for g in made):
+        # (each arm called one generator method, inherited, as Future.__await__ of a Future[T] and a
+        # Task[T]: a new generator, as a direct call's, which await and a loop own: call_fn)
+        self.gencall = result.v
+        self.gencallf = made[0]
     if self.idhere() and numeric_identity(t):
         identity = Ins("phi", "dyn", "")
         for i in range(len(vals)):

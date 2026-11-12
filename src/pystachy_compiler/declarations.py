@@ -527,8 +527,8 @@ def gen_class_params(self, st: Node) -> str:
     tp = st.kids[1]
     names = tp.s.split()  # (each a name of its own, see Loader.qren)
     kinds = [x.s.replace("=", "") for x in tp.kids]
-    if len(st.kids) > 2:
-        return "a generic class (class C[T]) with a base class is not supported"
+    if len(st.kids) > 3 or (len(st.kids) == 3 and st.kids[2].kind != "name" and not (st.kids[2].kind == "index" and st.kids[2].kids[0].kind == "name" and st.kids[2].kids[0].s in self.tparams)):
+        return "a generic class (class C[T]) with a base class is only supported with one base: an ordinary class, or a generic class's G[T] of its own type parameters"
     if "**" in kinds:
         return f"ParamSpec type parameters (**{short(names[kinds.index('**')])}) are not supported"
     if kinds.count("*") > 1:
@@ -1902,6 +1902,20 @@ def gen_generic_base(self, n: Node) -> list[str]:
             return []
         out.append(v.s)
     return out if len([v for v in out if v in self.tvtuples]) < 2 else []
+
+def gen_generic_parent(self, n: Node) -> list[str]:
+    # the type variables of a class's base n when it is G[T, U] of a generic class G declared
+    # before, each a TypeVar named once (class Task(Future[T]), whose own type variables they
+    # are); else []
+    if n.kind != "index" or n.kids[0].kind != "name" or n.kids[0].s not in self.tparams:
+        return []
+    out: list[str] = []
+    for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+        if x.kind != "name" or x.s not in self.typevars or x.s in self.tvtuples or x.s in out:
+            return []
+        out.append(x.s)
+    return out if len(out) == len(self.tparams[n.kids[0].s]) else []
+
 
 def gen_nt_base(self, n: Node) -> bool:
     # does a class's base n name typing.NamedTuple
