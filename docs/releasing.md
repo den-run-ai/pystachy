@@ -91,10 +91,22 @@ per paragraph or list item and 700 words outside tables and code. A retried publ
 keeps an existing draft's notes.
 
 To correct published notes, merge the edited `docs/releases/VERSION.md` into `main`, then
-run the [Release notes workflow](../.github/workflows/release-notes.yml) from `main` for
-that version. It replaces the published text above `## Release assets` and keeps that
-section, the tag and the assets unchanged. With `source` set to `reflow`, it only joins the
+run from a `main` checkout:
+
+```sh
+gh release view VERSION --json body,isDraft,isPrerelease,tagName > published.json
+python3 tools/release_notes.py refresh --version VERSION --current published.json \
+  --output release-notes.md
+gh release edit VERSION --notes-file release-notes.md
+```
+
+`refresh` replaces the published text above `## Release assets` and keeps that section,
+adding the prerelease sentence if it is missing. With `--source reflow`, it only joins the
 wrapped lines of the published text, for versions whose notes are not maintained here.
+The tag and assets stay unchanged. GitHub requires a token authorized to modify workflows
+to edit a release whose tag commit has different workflow files from the default branch,
+so Actions' `GITHUB_TOKEN` cannot make this edit; use a maintainer's `gh` login with the
+`workflow` scope (`gh auth refresh -s workflow`).
 
 Keep the current version's notes in the source tree: they are a required packaging input.
 Older published notes are available on [GitHub Releases](https://github.com/den-run-ai/pystachy/releases)
