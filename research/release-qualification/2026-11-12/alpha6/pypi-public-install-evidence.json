@@ -1,0 +1,25 @@
+{
+  "status": "passed",
+  "exit_code": 0,
+  "public_wheel_sha256": "2fa743d550c39467f7b14fdd843f194596eb19e96fb9601cc1856a5fead8c04f",
+  "python": "CPython 3.13.16",
+  "llvm": "Debian clang/LLVM 19.1.7",
+  "uv": "0.13.6",
+  "os_architecture": "Linux x86_64",
+  "fresh_environment_per_manager": true,
+  "outside_checkout": true,
+  "pip_passed": true,
+  "uv_tool_passed": true,
+  "checks": [
+    "Installed version with LLVM unavailable",
+    "JIT output equals pinned CPython",
+    "AOT output equals pinned CPython with empty PATH",
+    "External runtime cache and native JIT-runner cache",
+    "Uninstall removes executable"
+  ],
+  "script": "tools/compiler_install_smoke.py",
+  "script_source_commit": "0b13a2121014d8256954c6af50339ff0de8dac62",
+  "script_sha256": "b6379200a7b86bad7713918e20751b39724e656bd750358e3dcccd5aed35a2a7",
+  "raw_log_sha256": "205921a0847320c5634ffa9909a74741cb4e6a9267b1305021b416a2f1986444",
+  "source_binding": "Public wheel bytes equal the verified workflow artifact; SOURCE.json binds that artifact to the release source. Installed version output alone does not embed the source commit."
+}
