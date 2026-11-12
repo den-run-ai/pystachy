@@ -435,10 +435,11 @@ def gen_gen_none_end(self) -> None:
     # the generator ends without a value here (return, or the end of its code): the value of a
     # yield from that delegates to it is None, which its return type must hold. An unannotated
     # one returning a reference type R elsewhere returns R | None (the same null pointer); one
-    # returning a number would need a box: an error
+    # returning a number would need a box: an error, but for an async def's, which the next pass
+    # compiles returning R | None from the start (ret_widen)
     f = self.curfn
     r = f.gret
-    if r != "" and r != "None" and self.optional(r) != r and (not f.gretinfer or not self.none_null(r)):
+    if r != "" and r != "None" and self.optional(r) != r and (not f.gretinfer or not self.none_null(r)) and not (f.aio and f.gretinfer and self.optional(r) != "" and self.ret_widen(f, self.optional(r))):
         self.err(f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere: return a value on every path, or annotate it async def {short(f.name)}(...) -> {typestr(r)} | None" if f.aio else f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere: annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]" if not f.gretinfer else f"{short(f.name)}() returns {typestr(r)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, {typestr(f.gsend)}, {typestr(r)} | None]")
     self.fn.gnone = True
 
@@ -465,7 +466,7 @@ def gen_gen_return(self, n: Node) -> None:
         elif r == "":
             if "?" in v.t:
                 self.err(f"cannot infer what {short(f.name)}() returns from {typestr(v.t)}; annotate it " + (f"async def {short(f.name)}(...) -> R" if f.aio else f"Generator[Y, {typestr(f.gsend)}, R]"))
-            if self.fn.gnone and self.optional(v.t) != v.t and not self.none_null(v.t):
+            if self.fn.gnone and self.optional(v.t) != v.t and not self.none_null(v.t) and not (f.aio and self.optional(v.t) != "" and self.ret_widen(f, self.optional(v.t))):
                 self.err(f"{short(f.name)}() returns {typestr(v.t)} and ends without a value elsewhere: return a value on every path, or annotate it async def {short(f.name)}(...) -> {typestr(v.t)} | None" if f.aio else f"{short(f.name)}() returns {typestr(v.t)} and ends without a value elsewhere, which the value of yield from cannot hold: return a value on every path, or annotate it Generator[Y, {typestr(f.gsend)}, {typestr(v.t)} | None]")
             f.gret = v.t
             if f.aio:

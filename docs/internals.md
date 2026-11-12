@@ -471,6 +471,24 @@ coroutine. A twin's body is covered by a landing block that turns a `StopIterati
 into `RuntimeError: coroutine raised StopIteration` (PEP 479), as its coroutine would; its
 mark is past every unwind action, which the handler that takes the exception runs.
 
+Once `Symtable` has checked a module, `Parser.module` rewrites each `async with` and `async for`
+of an `async def` (`desugar_async`) as the statements PEP 492 gives for it: a `try` statement
+whose bare `except` clause awaits `__aexit__(type, value, tb)` and re-raises unless that is
+true, and whose `finally` block awaits `__aexit__(None, None, None)` unless the clause ran; a
+`while` loop whose `try` statement awaits `__anext__()` and ends the loop on
+`StopAsyncIteration`, binding the target in its `else` block, so that a `StopAsyncIteration`
+from the target or the body propagates. Every later pass sees ordinary statements. The manager,
+the iterator and their flags are locals named `__pys_aw<k>_*`. The implicit awaits are `await`
+nodes whose `s` names them (`aenter`, `aexit`, `aexitnone`, `aiter`, `anext`); `await_protocol`
+checks the protocol first, as CPython does (`__aexit__` before `__aenter__()` runs), raising
+CPython's `TypeError`s, then awaits the call through `await_expr` with CPython's message for a
+result that is no awaitable. `__aiter__`, `__anext__`, `__aenter__` and `__aexit__` infer an
+omitted return annotation, as `__iter__` and `__next__` do. An `async def` whose inferred return
+type is a number and that also ends without a value returns `R | None` from the next pass on
+(a `cret:` hint, `ret_widen`), where a function's returns convert in place (`reopt`); so does the
+end of its twin, as a bare `return` does, where a function ending without a value raises
+`RuntimeError` ([deviations](language/compatibility.md)).
+
 <a id="whole-program-optimization"></a>
 <a id="two-tiers"></a>
 

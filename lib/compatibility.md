@@ -1019,7 +1019,7 @@ arguments. `closing(thing)`, `nullcontext()`, `nullcontext(value)`, `suppress(A,
 - `ExitStack`, `redirect_stdout`, `redirect_stderr`, `chdir` and the async managers
   (`asynccontextmanager`, `aclosing`, `AsyncExitStack`, `AbstractAsyncContextManager`) are not
   ported: the subset has no list of managers of different classes, no assignable `sys.stdout`,
-  no `os.getcwd()` and no `async def`.
+  no `os.getcwd()` and no async generators (which `asynccontextmanager` decorates).
 
 ## Numbers and randomness
 

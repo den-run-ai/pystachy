@@ -1,0 +1,14 @@
+TypeError: 'NoEnter' object does not support the asynchronous context manager protocol
+TypeError: 'NoExit' object does not support the asynchronous context manager protocol (missed __aexit__ method)
+TypeError: 'async with' received an object from __aenter__ that does not implement __await__: int
+body
+TypeError: 'async with' received an object from __aexit__ that does not implement __await__: int
+TypeError: 'NoneType' object does not support the asynchronous context manager protocol
+TypeError: 'int' object does not support the asynchronous context manager protocol
+TypeError: 'NoneType' object does not support the asynchronous context manager protocol
+TypeError: 'async for' requires an object with __aiter__ method, got NoAiter
+TypeError: 'async for' received an object from __aiter__ that does not implement __anext__: int
+TypeError: 'async for' received an invalid object from __anext__: int
+TypeError: 'async for' requires an object with __aiter__ method, got NoneType
+TypeError: 'async for' requires an object with __aiter__ method, got list
+[exit 0]

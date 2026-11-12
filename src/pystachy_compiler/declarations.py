@@ -1272,7 +1272,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     # iter(x), its own object or another iterator object: its return is inferred, as an
     # unannotated one's is (an iterator class's __next__ gives the items)
     selfiter = cls != "" and d.s == "__iter__" and d.kids[1].kind != "noann" and self.iter_item(d.kids[1]) is not None and other_return(d.kids[2]) and not f.gen
-    protocol = cls != "" and (d.s == "__iter__" or d.s == "__next__") and d.kids[1].kind == "noann" and d not in held
+    protocol = cls != "" and d.s in ["__iter__", "__next__", "__aiter__", "__anext__", "__aenter__", "__aexit__"] and d.kids[1].kind == "noann" and d not in held
     if not f.gen and ((d.kids[1].kind == "noann" and (cls == "" or template_ok(d.s))) or selfiter or protocol) and not f.extern and not f.export and not f.pyexport and has_value_return(d.kids[2]):
         # The declared parameter types still coerce every call. Reuse return
         # inference even when all parameter types are already concrete.

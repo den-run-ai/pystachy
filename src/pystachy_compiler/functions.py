@@ -425,6 +425,10 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.throw(e)
     if not self.term and f.ret == "dyn":
         self.ret_(Val(self.rtdata("pys_dyn_none_box"), "dyn"))  # (None, as a dynamic value: dynamic.py)
+    if not self.term and f.direct and f.infer and f.ret != "" and f.ret != "None" and f.ret not in self.classes and not is_opt(f.ret) and self.optional(f.ret) != "":
+        # (the twin of an async def returns what its coroutine does: R | None, which ends without a
+        # value here, as a bare return does; coroutines.py, ret_widen)
+        self.reopt(self.optional(f.ret))
     if not self.term:
         if f.ret == "None" or (f.infer and f.ret in self.classes) or is_opt(f.ret) or (self.retann and f.ret != "" and self.optional(f.ret) == f.ret and self.ann_none(f.node.kids[1], [])):
             # (a template's function that ends without a return, or one returning T | None: None;

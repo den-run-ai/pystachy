@@ -1,0 +1,99 @@
+yielded enter-1-A
+yielded enter-2-A
+yielded enter-1-B
+yielded enter-2-B
+yielded managers A B
+yielded exit-1-B
+yielded exit-2-B
+yielded exit-1-A
+yielded exit-2-A
+result None
+yielded enter-1-A
+yielded enter-2-A
+yielded enter-1-C
+yielded enter-2-C
+yielded managers A C
+yielded exit-1-C
+yielded exit-2-C
+yielded exit-1-A
+yielded exit-2-A
+assertRaises ZeroDivisionError
+assertRaisesRegex TypeError 'CM2' object does not support the asynchronous context manager protocol (missed __aexit__ method)
+assertIs False False
+assertRaisesRegex TypeError 'CM3' object does not support the asynchronous context manager protocol
+assertIs False False
+assertRaisesRegex TypeError 'CM4' object does not support the asynchronous context manager protocol
+assertIs False False
+assertRaises AssertionError
+assertRaisesRegex TypeError 'async with' received an object from __aenter__ that does not implement __await__: int
+assertRegex 'async with' received an object from __aexit__ that does not implement __await__: int
+assertRaisesRegex TypeError 'async with' received an object from __aexit__ that does not implement __await__: int
+assertEqual 1 1
+assertRaisesRegex TypeError 'async with' received an object from __aexit__ that does not implement __await__: int
+assertEqual 2 2
+assertRaisesRegex TypeError 'async with' received an object from __aexit__ that does not implement __await__: int
+assertEqual 3 3
+assertRaisesRegex TypeError 'async with' received an object from __aexit__ that does not implement __await__: int
+assertEqual 4 4
+assertRaises ZeroDivisionError
+assertEqual 1 1
+ZeroDivisionError division by zero
+NotImplementedError
+assertIs CM12 CM12
+result None
+assertRaises ZeroDivisionError
+assertEqual 1 1
+yielded 100
+yielded 200
+yielded 300
+yielded 400
+yielded 500
+yielded 600
+yielded 700
+yielded 800
+yielded 900
+yielded 1000
+result None
+assertEqual 1 1
+assertEqual True
+yielded 100
+yielded 200
+result None
+assertEqual 2 2
+assertEqual ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', 'end']
+yielded 100
+yielded 200
+yielded 300
+yielded 400
+yielded 500
+yielded 600
+yielded 700
+yielded 800
+yielded 900
+yielded 1000
+result None
+assertEqual 3 3
+assertEqual ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', 'what?', 'end']
+assertRaisesRegex TypeError 'async for' requires an object with __aiter__ method, got tuple
+assertRaisesRegex TypeError 'async for' received an object from __aiter__ that does not implement __anext__: I3
+assertRaisesRegex TypeError 'async for' received an invalid object from __anext__: tuple
+result None
+assertEqual 111011 111011
+result None
+assertEqual 333033 333033
+result None
+assertEqual 20555255 20555255
+assertRaises ZeroDivisionError
+assertEqual 0 0
+assertRaises ZeroDivisionError
+assertEqual 0 0
+assertRaises StopAsyncIteration 42
+result end
+result [1, 41]
+result [1, 41]
+result {1: 'a', 41: 'a'}
+result {0: 1, 1: 41}
+result ['a', 'b', 'c']
+result [10, 20, 30]
+result [10, 20]
+[exit 0]

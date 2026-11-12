@@ -16,16 +16,21 @@ free-threaded CPython, and how the design compares with other implementations. T
 | A coroutine awaited again | `RuntimeError: cannot reuse already awaited coroutine`; one suspended where something else awaits it, `RuntimeError: coroutine is being awaited already` |
 | `c.send(None)`, `c.throw(e)`, `c.close()` | Run, throw into or close `c` as a generator's methods do, through each await (PEP 380). A finished coroutine's `send()` and `throw()` raise `RuntimeError: cannot reuse already awaited coroutine`; a `StopIteration` that leaves one is `RuntimeError: coroutine raised StopIteration` |
 | `Coroutine[Y, None, R]` | An annotation of a variable, parameter or field that holds coroutines (`typing`'s or `collections.abc`'s) |
+| `async with A() as a, B() as b:` | Awaits `__aenter__()`, then `__aexit__()` as the block ends: with the exception that leaves it (`type, value, tb`), which a true result suppresses, or with `None, None, None` where the block ends, `break`s, `continue`s or `return`s (PEP 492) |
+| `async for x in it: ... else: ...` | Calls `it.__aiter__()` once, then awaits its `__anext__()` for each item until that raises `StopAsyncIteration`, which ends the loop as exhaustion does (its `else` block runs) |
+| An object without the protocol | CPython 3.13's `TypeError`s, such as `'X' object does not support the asynchronous context manager protocol (missed __aexit__ method)`, checked before `__aenter__()` runs, and `'async for' received an invalid object from __anext__: int` |
 
 Nested `async def`s, `async def` methods and `@types.coroutine` generator functions compile
 too. A driver loop such as pyperformance's `coroutines` benchmark runs unchanged:
 [`bench/pyperformance/coroutines.py`](../bench/pyperformance/coroutines.py) adds only the
 runner. [`tests/programs/upstream/upstream_coroutines.py`](../tests/programs/upstream/upstream_coroutines.py)
-adapts 16 of CPython 3.13.16's `test_coroutines.py` cases, and lists those it leaves out.
+and [`upstream_coroutines_with_for.py`](../tests/programs/upstream/upstream_coroutines_with_for.py)
+adapt 39 of CPython 3.13.16's `test_coroutines.py` cases, and list those they leave out.
 
 Not supported yet, each an error as the program compiles:
 
-- `async for`, `async with`, asynchronous comprehensions and async generators;
+- asynchronous comprehensions (`[x async for x in it]`) and async generators (an `async def`
+  that yields); `await` in an ordinary comprehension compiles;
 - the `asyncio` module, which is not shipped (CPython can run a compiled
   [extension](concurrency.md#process-pools-today) from its own event loop);
 - `send()` of a value other than `None`, `await` of a generator held in a variable, and an
@@ -65,6 +70,11 @@ awaiting frame for each value it yields up the chain; there the twins do not app
 noisy shared-host timings (the five AOT runs took 0.014 s to 0.024 s);
 [`tools/bench_pyperformance.py`](../tools/bench_pyperformance.py) `--benchmarks coroutines`
 measures the current tree.
+
+`async with` and `async for` compile to the `try` and `while` statements that PEP 492 gives
+for them, whose implicit awaits are ordinary awaits of `__aenter__()`, `__aexit__()` and
+`__anext__()`: they cost what those awaits cost, and a coroutine suspended in one keeps its own
+exception state while others run.
 
 ## Threads, parallelism and free-threading
 

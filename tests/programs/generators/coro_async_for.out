@@ -1,0 +1,20 @@
+aiter
+yielded next
+item 1
+yielded next
+yielded next
+item 3
+yielded next
+loop else 6
+aiter
+yielded next
+yielded next
+pair 1 v1
+pair 2 v2
+pair 3 v3
+the body's StopAsyncIteration propagates
+aiter
+yielded next
+empty
+done
+[exit 0]

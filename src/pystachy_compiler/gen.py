@@ -981,6 +981,8 @@ from src.pystachy_compiler.generators import (
 from src.pystachy_compiler.coroutines import (
     gen_await_dead as coroutines_await_dead,
     gen_await_handle as coroutines_await_handle,
+    gen_await_expr as coroutines_await_expr,
+    gen_await_protocol as coroutines_await_protocol,
     gen_await_value as coroutines_await_value,
     gen_await_words as coroutines_await_words,
     gen_awaits_direct as coroutines_awaits_direct,
@@ -989,6 +991,7 @@ from src.pystachy_compiler.coroutines import (
     gen_direct_await as coroutines_direct_await,
     gen_coro_declare as coroutines_coro_declare,
     gen_coro_hinted as coroutines_coro_hinted,
+    gen_ret_widen as coroutines_ret_widen,
     gen_yield_change as coroutines_yield_change,
     gen_coro_deco as coroutines_coro_deco,
     gen_coro_method as coroutines_coro_method,
@@ -3466,6 +3469,12 @@ class Gen:
     def await_dead(self, want: str) -> Val:
         return coroutines_await_dead(self, want)
 
+    def await_protocol(self, n: Node, want: str) -> Val:
+        return coroutines_await_protocol(self, n, want)
+
+    def await_expr(self, x: Node, want: str, bad: str) -> Val:
+        return coroutines_await_expr(self, x, want, bad)
+
     def await_handle(self, v: Val, yi: str, r: str, callee: FnInfo | None, what: str) -> Val:
         return coroutines_await_handle(self, v, yi, r, callee, what)
 
@@ -3480,6 +3489,9 @@ class Gen:
 
     def coro_hinted(self, g: FnInfo) -> None:
         return coroutines_coro_hinted(self, g)
+
+    def ret_widen(self, f: FnInfo, t: str) -> bool:
+        return coroutines_ret_widen(self, f, t)
 
     def yield_change(self, f: FnInfo, t: str, relayout: bool, why: str) -> None:
         return coroutines_yield_change(self, f, t, relayout, why)

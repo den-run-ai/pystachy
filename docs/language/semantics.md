@@ -267,7 +267,9 @@ awaitable (a coroutine, a `@types.coroutine` generator, or an object whose `__aw
 generator method) to its return, passing what it yields on to the code that runs the
 coroutine, and gives what it returns. `send(None)`, `throw()` and `close()` reach through each
 await as through `yield from`, with CPython's errors for a coroutine awaited twice, awaited
-while suspended elsewhere, resumed after it finished, or awaited when it is no awaitable. See
+while suspended elsewhere, resumed after it finished, or awaited when it is no awaitable.
+`async with` awaits its manager's `__aenter__()` and `__aexit__()`, and `async for` awaits
+`__anext__()` until `StopAsyncIteration`, as PEP 492 specifies. See
 [coroutines](../coroutines.md) for the supported forms, their limits and costs.
 
 <a id="context-managers"></a>

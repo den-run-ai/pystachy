@@ -13,7 +13,7 @@ return. See docs/internals.md#coroutines.
 """
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names
-from src.pystachy_compiler.diagnostics import int_program
+from src.pystachy_compiler.diagnostics import int_program, shown
 from src.pystachy_compiler.ir import FnInfo, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, GENCLEAN, GENDONE, GENEXC, GENSTATE, TYPESMOD
@@ -63,10 +63,103 @@ def definition_time(n: Node) -> list[Node]:
     return out
 
 
+def desugar_async(body: list[Node], aio: bool, tmps: list[int]) -> None:
+    # (Parser.module, once Symtable has checked the module) each async with and async for statement
+    # of statements body, of an async def's own code (aio), becomes the statements PEP 492 gives
+    # for it. Their implicit awaits are await nodes of their own kinds (s, see await_protocol), so
+    # that the compiler's analyses and code see ordinary assignments, try and while statements.
+    # The locals that hold the manager, the iterator and their state are named __pys_aw<k>_*,
+    # k counting those of the async def (tmps)
+    i = 0
+    while i < len(body):
+        st = body[i]
+        if aio and st.kind == "async" and len(st.kids) == 1 and st.kids[0].kind == "with":
+            new = st.kids[0].kids[-1].kids
+            for it in reversed(st.kids[0].kids[:-1]):
+                # (async with A as a, B as b: is async with A as a: async with B as b:)
+                new = async_with(it, new, st.line, tmps)
+            body[i : i + 1] = new
+            continue  # (its block's statements are there, which may hold more)
+        if aio and st.kind == "async" and len(st.kids) == 1 and st.kids[0].kind == "for":
+            body[i : i + 1] = async_for(st.kids[0], st.line, tmps)
+            continue
+        desugar_walk(st, aio, tmps)
+        i += 1
+
+
+def desugar_walk(n: Node, aio: bool, tmps: list[int]) -> None:
+    # the blocks of code n, whose async statements desugar_async rewrites where n is of an async
+    # def's own code (aio)
+    if n.kind == "def":
+        aio = is_async(n)
+        tmps = [0]
+    elif n.kind == "class" or n.kind == "subclass" or n.kind == "lambda":
+        aio = False
+    if n.kind == "block":
+        desugar_async(n.kids, aio, tmps)
+        return
+    for k in n.kids:
+        desugar_walk(k, aio, tmps)
+
+
+def async_with(it: Node, body: list[Node], line: int, tmps: list[int]) -> list[Node]:
+    # async with E as T: body (item it), as PEP 492 specifies it:
+    #     mgr = E; value = await (checked) mgr.__aenter__(); hit = False
+    #     try: T = value; body
+    #     except: hit = True; if not await mgr.__aexit__(type, value, tb): raise
+    #     finally: if not hit: await mgr.__aexit__(None, None, None)
+    k = str(tmps[0])
+    tmps[0] += 1
+    mgr = "__pys_aw" + k + "_mgr"
+    hit = "__pys_aw" + k + "_hit"
+    out = [mk("assign", "", line, [mk("name", mgr, line, []), it.kids[0]])]
+    enter = mk("await", "aenter", line, [mk("name", mgr, line, [])])
+    pre: list[Node] = []
+    if len(it.kids) == 2:
+        val = "__pys_aw" + k + "_val"
+        out.append(mk("assign", "", line, [mk("name", val, line, []), enter]))
+        pre.append(mk("assign", "", line, [it.kids[1], mk("name", val, line, [])]))
+    else:
+        out.append(mk("expr", "", line, [enter]))
+    out.append(mk("assign", "", line, [mk("name", hit, line, []), mk("False", "", line, [])]))
+    suppress = mk("unary", "not", line, [mk("await", "aexit", line, [mk("name", mgr, line, [])])])
+    handler = mk("block", "", line, [mk("assign", "", line, [mk("name", hit, line, []), mk("True", "", line, [])]), mk("if", "", line, [suppress, mk("block", "", line, [mk("raise", "", line, [])]), mk("block", "", line, [])])])
+    normal = mk("expr", "", line, [mk("await", "aexitnone", line, [mk("name", mgr, line, [])])])
+    fin = mk("block", "finally", line, [mk("if", "", line, [mk("unary", "not", line, [mk("name", hit, line, [])]), mk("block", "", line, [normal]), mk("block", "", line, [])])])
+    out.append(mk("try", "", line, [mk("block", "", line, pre + body), mk("except", "", line, [mk("omit", "", line, []), handler]), fin]))
+    return out
+
+
+def async_for(f: Node, line: int, tmps: list[int]) -> list[Node]:
+    # async for T in E: body [else: rest] (for statement f), as PEP 492 specifies it:
+    #     it = (checked) E.__aiter__(); running = True
+    #     while running:
+    #         try: value = await (checked) it.__anext__()
+    #         except StopAsyncIteration: running = False
+    #         else: T = value; body
+    #     [else: rest]
+    k = str(tmps[0])
+    tmps[0] += 1
+    it = "__pys_aw" + k + "_it"
+    run = "__pys_aw" + k + "_run"
+    val = "__pys_aw" + k + "_val"
+    out = [mk("assign", "", line, [mk("name", it, line, []), mk("await", "aiter", line, [f.kids[1]])])]
+    out.append(mk("assign", "", line, [mk("name", run, line, []), mk("True", "", line, [])]))
+    step = mk("block", "", line, [mk("assign", "", line, [mk("name", val, line, []), mk("await", "anext", line, [mk("name", it, line, [])])])])
+    stop = mk("except", "", line, [mk("name", "StopAsyncIteration", line, []), mk("block", "", line, [mk("assign", "", line, [mk("name", run, line, []), mk("False", "", line, [])])])])
+    each = mk("block", "else", line, [mk("assign", "", line, [f.kids[0], mk("name", val, line, [])])] + f.kids[2].kids)
+    loop = mk("while", "", line, [mk("name", run, line, []), mk("block", "", line, [mk("try", "", line, [step, stop, each])])])
+    if len(f.kids) > 3:
+        loop.kids.append(f.kids[3])  # (its else block)
+    out.append(loop)
+    return out
+
+
 def await_sites(n: Node, out: list[Node]) -> bool:
     # the awaits of code n (outside the functions, classes and lambdas it defines, but in their
-    # defaults and decorators, which run here), in out; False where it also holds an async for,
-    # an async with or an asynchronous comprehension, which await implicitly
+    # defaults and decorators, which run here), in out; False where it also holds an asynchronous
+    # comprehension, which awaits implicitly (desugar_async's implicit awaits are of a name, which
+    # no async def's twin is: awaits_direct)
     if n.kind == "def" or n.kind == "lambda":
         for e in definition_time(n):
             if not await_sites(e, out):
@@ -147,7 +240,7 @@ def gen_awaits_direct(self, f: FnInfo, nos: dict[str, bool]) -> bool:
     if not await_sites(f.node.kids[2], sites):
         return False
     for a in sites:
-        name = direct_name(a.kids[0])
+        name = direct_name(a.kids[0]) if a.s == "" else ""  # (an implicit await: desugar_async)
         if name == "" or name in own or name not in nos or not nos[name]:
             return False
     return True
@@ -323,12 +416,27 @@ def gen_yield_change(self, f: FnInfo, t: str, relayout: bool, why: str) -> None:
     self.coro_settle(f)
 
 
+def gen_ret_widen(self, f: FnInfo, t: str) -> bool:
+    # async def f, being compiled, whose return type R is inferred, returns a number R and ends
+    # without a value elsewhere: the next pass compiles it returning t (R | None, a box) from the
+    # start (a "cret:" hint, as yield_change's, Rejoin). False on the last pass (an error then)
+    if self.final or self.drying > 0:
+        return False
+    self.newhints["cret:" + self.fnkey(f)] = t
+    return True
+
+
 def gen_coro_hinted(self, g: FnInfo) -> None:
     # the instance g of an async def, before it compiles: Y from an earlier pass's hint (see
-    # yield_change), else None
+    # yield_change), else None; R | None where an earlier pass found it ends without a value
+    # too (ret_widen), else its annotation or what its returns decide
     h = self.hints.get("yield:" + self.fnkey(g), "")
     if h != "":
         g.ayield = h
+        self.coro_settle(g)
+    h = self.hints.get("cret:" + self.fnkey(g), "")
+    if h != "" and g.gretinfer:
+        g.gret = h
         self.coro_settle(g)
 
 
@@ -340,6 +448,8 @@ def gen_await_value(self, n: Node, want: str) -> Val:
     f = self.curfn
     if not f.aio and not f.direct:
         self.err("'await' outside async function")
+    if n.s != "":
+        return self.await_protocol(n, want)  # (an implicit await of async with or async for)
     x = n.kids[0]
     g = self.direct_await(x)
     if g is not None:
@@ -356,6 +466,75 @@ def gen_await_value(self, n: Node, want: str) -> Val:
         return self.call_fn(self.coro_twin(g), [], x.kids[1:], want)
     if f.direct:
         self.err(f"internal error: await in {short(f.name)}(), which coro_analyze found never suspends, is not of a call of an async def that never suspends")
+    return self.await_expr(x, want, "")
+
+
+def gen_await_protocol(self, n: Node, want: str) -> Val:
+    # an implicit await of async with or async for (desugar_async, by n.s): of mgr.__aenter__()
+    # (aenter, which first checks that the manager mgr, n's operand, has __aenter__ and
+    # __aexit__, as CPython looks both up before it calls __aenter__), of mgr.__aexit__(type,
+    # value, tb) for the exception the except clause around it handles (aexit), of
+    # mgr.__aexit__(None, None, None) (aexitnone), of it.__anext__() (anext); or, awaiting
+    # nothing, of iterator E.__aiter__() (aiter, E n's operand), which must have __anext__.
+    # Where the objects do not support the protocol, CPython 3.13's TypeErrors
+    line = n.line
+    o = self.expr(n.kids[0], "")
+    t = unopt(o.t)
+    ms = self.classes[t].methods if t in self.classes else {}
+    nomgr = "'NoneType' object does not support the asynchronous context manager protocol"
+    if n.s == "aiter":
+        nomgr = "'async for' requires an object with __aiter__ method, got NoneType"
+    elif n.s == "anext":
+        nomgr = "'async for' received an object from __aiter__ that does not implement __anext__: NoneType"
+    if t in self.classes:
+        # (an object of a class may be None: CPython's error is NoneType's then)
+        o = self.unwrap(o, "TypeError: " + nomgr)
+        self.notnone(o, "TypeError: " + nomgr)
+    if n.s == "aiter":
+        if "__aiter__" not in ms:
+            self.raise_("TypeError", self.sconst(f"'async for' requires an object with __aiter__ method, got {tname(t)}"))
+            return self.await_dead(want)
+        it = self.expr(mk("call", "", line, [mk("attr", "__aiter__", line, [self.vnode(o)])]), "")
+        u = unopt(it.t)
+        if u in self.classes:
+            it = self.unwrap(it, "TypeError: 'async for' received an object from __aiter__ that does not implement __anext__: NoneType")
+            self.notnone(it, "TypeError: 'async for' received an object from __aiter__ that does not implement __anext__: NoneType")
+        if u not in self.classes or "__anext__" not in self.classes[u].methods:
+            self.raise_("TypeError", self.sconst(f"'async for' received an object from __aiter__ that does not implement __anext__: {tname(u)}"))
+            return self.await_dead(want)
+        return it
+    if n.s == "anext":
+        if "__anext__" not in ms:
+            self.raise_("TypeError", self.sconst(f"'async for' received an object from __aiter__ that does not implement __anext__: {tname(t)}"))
+            return self.await_dead(want)
+        call = mk("call", "", line, [mk("attr", "__anext__", line, [self.vnode(o)])])
+        return self.await_expr(call, want, "'async for' received an invalid object from __anext__: ")
+    nomgr = f"'{tname(t)}' object does not support the asynchronous context manager protocol"
+    if "__aenter__" not in ms:
+        self.raise_("TypeError", self.sconst(nomgr))
+        return self.await_dead(want)
+    if "__aexit__" not in ms:
+        self.raise_("TypeError", self.sconst(nomgr + " (missed __aexit__ method)"))
+        return self.await_dead(want)
+    if n.s == "aenter":
+        call = mk("call", "", line, [mk("attr", "__aenter__", line, [self.vnode(o)])])
+        return self.await_expr(call, want, "'async with' received an object from __aenter__ that does not implement __await__: ")
+    args = [mk("None", "", line, []), mk("None", "", line, []), mk("None", "", line, [])]
+    if n.s == "aexit":
+        # (as with_cm's __exit__: the exception's class object and the exception, and None or,
+        # where __aexit__ declares that type, an object of TracebackType)
+        f = ms["__aexit__"]
+        tt = f.ptypes[3] if len(f.ptypes) > 3 else ""
+        tb = self.vnode(self.new_obj(tt)) if tt in self.classes and shown(tt) == "_pystachy_types.TracebackType" else args[2]
+        args = [mk("excinfo", "type", line, []), mk("excinfo", "value", line, []), tb]
+    call = mk("call", "", line, [mk("attr", "__aexit__", line, [self.vnode(o)])] + args)
+    return self.await_expr(call, want, "'async with' received an object from __aexit__ that does not implement __await__: ")
+
+
+def gen_await_expr(self, x: Node, want: str, bad: str) -> Val:
+    # the await of expression x's value (await_value), in the async def being compiled; bad, where
+    # it is an implicit await (await_protocol): CPython's TypeError for a value that is not
+    # awaitable, but for the name of its type, which ends it
     self.gencall = ""
     # (an empty display, which only raises the TypeError below, takes an item type of its own)
     v = self.expr(x, "list[int]" if x.kind == "list" and len(x.kids) == 0 else "dict[int,int]" if x.kind == "dict" and len(x.kids) == 0 else "")
@@ -373,7 +552,7 @@ def gen_await_value(self, n: Node, want: str) -> Val:
         self.err("await of a generator held in a variable is not supported: await the call of its @types.coroutine generator function")
     if v.t in self.classes and "__await__" in self.classes[v.t].methods:
         self.gencall = ""
-        it = self.expr(mk("call", "", n.line, [mk("attr", "__await__", n.line, [self.vnode(v)])]), "")
+        it = self.expr(mk("call", "", x.line, [mk("attr", "__await__", x.line, [self.vnode(v)])]), "")
         own = self.gencallf if self.gencall != "" and it.v == self.gencall else None
         self.gencall = ""
         if is_gen(it.t) and own is not None and own.awaitable:
@@ -389,7 +568,7 @@ def gen_await_value(self, n: Node, want: str) -> Val:
             self.raise_("TypeError", self.sconst("__await__() returned a coroutine"))
             return self.await_dead(want)
         self.err(f"await of {short(v.t)} is supported where its __await__ is a generator method (one that yields), not where it returns {typestr(it.t)}")
-    self.raise_("TypeError", self.sconst(f"object {tname(v.t)} can't be used in 'await' expression"))
+    self.raise_("TypeError", self.sconst(bad + tname(v.t) if bad != "" else f"object {tname(v.t)} can't be used in 'await' expression"))
     return self.await_dead(want)
 
 

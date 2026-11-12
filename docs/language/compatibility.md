@@ -361,8 +361,7 @@ See [generator semantics](semantics.md#generators).
 
 See [coroutines](../coroutines.md).
 
-- **Statements and expressions:** `async for`, `async with`, asynchronous comprehensions and
-  async generators.
+- **Statements and expressions:** asynchronous comprehensions and async generators.
 - **Awaitables:** a generator held in a variable (await the call of its `@types.coroutine`
   function); an `__await__` that returns an iterator object instead of yielding; a coroutine's
   own `__await__()`.

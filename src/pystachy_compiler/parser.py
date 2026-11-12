@@ -2,6 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import CPYSTACK, MAXNEST, TOODEEP, fail
 from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, big_key, debug_text, string_end, utf8
+from src.pystachy_compiler.coroutines import desugar_async
 from src.pystachy_compiler.scope import Symtable
 from src.pystachy_compiler.syntax import (
     AUGOPS,
@@ -316,6 +317,7 @@ class Parser:
         st.tparams = self.tparams
         st.tpx = self.tpx
         st.check(body, doc)
+        desugar_async(body, False, [0])  # (async with and async for, once checked as CPython does)
         return mk("block", "doc" if doc else "", 1, body)  # (with its docstring: Loader.docstring())
 
     def private_types(self, line: int, cls: str, only: list[str]) -> None:
