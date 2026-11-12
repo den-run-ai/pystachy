@@ -677,6 +677,26 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         boundary.require(len(op["targets"]) == len(op["operands"]) and len(set(op["targets"])) == len(op["targets"]),
                          "malformed phi")
         return dict(zip(op["targets"], (a["value"] for a in op["operands"]), strict=True))
+    def looked_up(tag_op, payload_op):
+        """The member of a dict lookup's split optional (gen_uparts): presence num.cast(raw >= 0)
+        and payload dict.val_or_zero(d, raw) of one dict.find(d, key), d a dict of that scalar
+        member; the payload is the value the lookup found exactly where presence is 1."""
+        if (tag_op is None or payload_op is None or tag_op["op"] != "num.cast" or len(tag_op["operands"]) != 1
+                or payload_op["op"] != "rt" or payload_op["text"] != "dict.val_or_zero"
+                or len(payload_op["operands"]) != 2):
+            return None
+        test = producers.get(tag_op["operands"][0]["value"])
+        raw = payload_op["operands"][1]["value"]
+        lookup = producers.get(raw)
+        receiver = types.get(payload_op["operands"][0]["value"], "")
+        if (test is None or test["op"] != "num.cmp" or test["text"] != ">="
+                or [a["value"] for a in test["operands"]] != [raw, "0"] or lookup is None
+                or lookup["op"] != "rt" or lookup["text"] != "dict.find" or not lookup["operands"]
+                or canonical(lookup["operands"][0]["value"]) != canonical(payload_op["operands"][0]["value"])
+                or not receiver.startswith("dict[") or not receiver.endswith("]")):
+            return None
+        member = "member:" + targs(receiver)[1]
+        return member if member in SCALAR_MEMBERS else None
     def pair_source(tag, payload, decode):
         if tag in decode:
             return ("literal", decode[tag], payload)
@@ -684,6 +704,9 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         if source is not None:
             return ("copy", source)
         tag_op, payload_op = producers.get(tag), producers.get(payload)
+        found = looked_up(tag_op, payload_op)
+        if found is not None and decode.get("1") in {found, PRESENT}:
+            return ("tags", sorted([NULL, found]))
         if (tag_op is None or payload_op is None or tag_op["op"] != "phi" or payload_op["op"] != "phi"
                 or blocks_of[tag] != blocks_of[payload] or set(tag_op["targets"]) != set(payload_op["targets"])):
             raise boundary.Unsupported("split union store of parts of no one box")
@@ -877,6 +900,8 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 kind == "rt" and op["text"] in {"ubox", "ubox_opt"} and position == 1):
             return None
         typ = op["type"] if kind in {"slot.unpack", "select"} else operand["type"]
+        if typ.startswith("*") and typ not in GENERIC_WORDS:
+            typ = typ[1:]  # (an encoded *element word, as a list write takes it: typed-ir.md)
         if kind == "rt" and op["text"] == "box" and position == 0:
             # (a scalar box of the bits, its member that of its uses: each an opt[K] or a K box)
             typed = {a["type"] for block in fn["blocks"] for use in block["operations"] for a in use["operands"]
@@ -893,6 +918,9 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
         """dst, a virtual box or pair phi, gets what a pair writes (pair_source), then target."""
         if what[0] == "copy":
             return ("node", {"op": "copy", "dst": dst, "src": what[1], "next": target})
+        if what[0] == "tags":
+            return ("node", {"op": "havoc", "dst": dst, "next": (
+                "node", {"op": "guard", "value": dst, "tags": what[1], "yes": target, "no": stop})})
         _, member, payload = what
         if member == PRESENT:
             # (an opt[None] split's value: the member of its bits, known unless unsupported)
@@ -923,6 +951,9 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                 after = ("node", {"op": "copy", "dst": word, "src": location, "next": after})
                 continue
             kinds = None if location is not None else static_kinds(value)
+            if kinds is not None and (value.lstrip("-").isdigit() or value in {"true", "false"}):
+                # (a word literal is the bits of whichever member the phi's type names)
+                kinds = [kind for kind in kinds if kind == "member:" + producers[word]["type"]] or kinds
             after = ("node", {"op": "havoc", "dst": word, "next": after if kinds is None else (
                 "node", {"op": "guard", "value": word, "tags": kinds, "yes": after, "no": stop})})
         for tag in reversed(list(pair_phis.get(target, {}))):

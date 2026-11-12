@@ -452,6 +452,20 @@ class GuardTests(unittest.TestCase):
                 self.assertEqual(report["proved_union_reads"], 0)
 
 
+class PlaceholderSlotTests(unittest.TestCase):
+    def test_resolved_placeholder_slot_types(self):
+        # (a local's slot keeps the type it had when made; its accesses name the resolved one)
+        for declared, used in (("list[?]", "*list[int]"), ("dict[?,?]", "*dict[str,int]"),
+                               ("opt[None]", "*str"), ("opt[None]", "*opt[int]"),
+                               ("opt[None]", "*opt[union[int,str]]")):
+            self.assertTrue(boundary.resolved_container(declared, used), (declared, used))
+        for declared, used in (("list[?]", "*dict[str,int]"), ("list[int]", "*list[str]"),
+                               ("list[?]", "list[int]"), ("opt[None]", "*int"), ("opt[None]", "*dyn"),
+                               ("opt[None]", "*opt[dyn]"), ("opt[None]", "*union[int,str]"),
+                               ("opt[None]", "*opt[?]"), ("opt[None]", "*%slot")):
+            self.assertFalse(boundary.resolved_container(declared, used), (declared, used))
+
+
 class GuardCorpusAccountingTests(unittest.TestCase):
     def record(self, **updates):
         return {"program": "p.py", "status": "accepted", "inventory_complete": True,

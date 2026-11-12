@@ -99,17 +99,20 @@ was traced to the compiler's IR and found guarded; no union read was found to be
 the conservative inventory derives from union values through memory and arithmetic, the
 rest raw union transport (361), generators (24) and dynamic tag reconstruction (21).
 
-With payload bits and split locals modeled, a sweep on 2026-11-12 over the same 288
-programs, inspected again to record split slots, proved 2,428 of the 8,916 union reads
-(no read the previous rules proved was lost), 302 of 316 return domains and 8,805 of
-10,467 payload obligations. 87 of the 173 functions with split locals, in 77 programs,
-are fully proved; every one of the others fails a union read of a value loaded from memory
-or returned by an unproved function. Checked alone, without the union reads, 10,410 of
-12,752 payload obligations are proved: each of the 237 rejected functions lacks facts
-about a box loaded from memory (215) or keeps a superset that a boolean phi with more than
-one use does not narrow (22); none reads, boxes or stores bits as a member its tag
-excludes. One payload, a dictionary value whose member the IR does not name, and
-generators remain unsupported.
+With payload bits and split locals modeled, a sweep of all 2,416 programs on 2026-11-12,
+inspected again to record split slots, proved the same 135,958 removals, 2,428 of the
+8,916 union reads (no read the previous rules proved was lost), 302 of 316 return domains
+and 8,949 of 10,617 payload obligations (8,809 of 10,471 in the 288 programs with union
+records), with no checker error. 87 of the 173 functions with split locals, in 77
+programs, are fully proved; every one of the others fails a union read of a value loaded
+from memory or returned by an unproved function. Checked alone, without the union reads,
+10,420 of the 288 programs' 12,757 payload obligations are proved: each of the 236
+rejected functions lacks facts about a box loaded from memory (215) or keeps a superset
+that a boolean phi with more than one use does not narrow (21); none reads, boxes or
+stores bits as a member its tag excludes. Elsewhere, an "is assigned" flag and a None test
+of a box phi beside its split pair are not correlated with presence (three functions);
+one payload, a dictionary value whose member the IR does not name, and generators remain
+unsupported.
 
 ## Payload bits and split locals
 
@@ -123,14 +126,17 @@ the member a literal tag stands for (union tags; for an optional scalar 0 for No
 for its value; for a None-first local, `opt[None]`, the member of the bits stored with 1),
 and its payload must be that member's bits; or the box both parts were read of
 (`union.tag` and `union.raw`, or one pair load); or each edge's pair, for a phi of tags and
-a phi of payloads. A pair load gives its tag value a copy of the virtual box, which its tag
+a phi of payloads; or, for a dictionary lookup's optional, None or the dictionary's scalar
+value member, its presence `found >= 0` and its payload `dict.val_or_zero` of one
+`dict.find`. A pair load gives its tag value a copy of the virtual box, which its tag
 tests narrow, with the virtual box while it is unchanged.
 
 Payload bits are what `union.payload` and `union.raw` read of a box, a pair load's payload,
 and what `slot.pack` and phis make of them; their member is the box's (whose tag never
 changes), the pair load's or, for a phi, each edge's. Every other use reads them as a
 member and is an obligation: `slot.unpack` and a typed select as their type, an operand as
-its annotated type, a scalar box as the type all its uses give it. A use with no member
+its annotated type (an encoded `*element` as its element), a scalar box as the type all its
+uses give it; on a phi's edge a word literal is the bits of the phi's own type. A use with no member
 type is unsupported. A `ubox` with a literal tag requires bits of that member: a word
 literal holds an int's or a bool's, a value of its type (a `slot.pack` operand's, a fixed
 tuple's item or a proved dynamic payload, as their text names it, a list's encoded item or
@@ -165,7 +171,7 @@ rejection is an investigation target; it does not establish a compiler bug.
 
 ## Supported abstraction and boundaries
 
-The bounded CI selection exercises twenty-nine inventoried union reads, forty-seven
+The bounded CI selection exercises twenty-nine inventoried union reads, fifty-two
 payload obligations, three proved union return domains and twenty-two removed null checks
 in `examples/union_guards.py`, `examples/union_effects.py`, `examples/union_split.py`,
 `examples/null_guards.py` and `examples/null_reloads.py`.
@@ -180,9 +186,10 @@ whose test is removed, and phis that swap their boxes in a loop, are rejected.
 [`test_lean_union_split.py`](../test_lean_union_split.py) corrupts `union_split.py`:
 float bits stored with an int tag, swapped tag phi edges, a test of the other member, a
 missing test, an optional's payload read where it is None, an int word stored as a float,
-a box of float bits made with an int tag and an int payload formatted as a float are
-rejected; a split pair the inspection did not record, a tag store without its payload
-store and a box made of a tag and bits of different sources are refused.
+a box of float bits made with an int tag, `next()`'s None appended to a `list[int]` and an
+int payload formatted as a float are rejected; a split pair the inspection did not record, a
+tag store without its payload store, a box made of a tag and bits of different sources and a
+lookup's presence set where it missed are refused.
 
 Union domain facts come only from parameter declarations, modeled private-slot copies,
 literal-tag `ubox`/`ubox_opt` construction, split locals' virtual boxes and boxes made

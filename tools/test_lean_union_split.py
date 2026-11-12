@@ -81,7 +81,8 @@ class UnionSplitTests(unittest.TestCase):
         return boundary.run_checker(CHECKER, boundary.encode(candidate), metadata)
 
     def test_example_proves_every_split_payload(self):
-        for name, typ in (("accumulate", "union[float,int]"), ("maybe", "opt[int]"), ("bump", "union[float,int]")):
+        for name, typ in (("accumulate", "union[float,int]"), ("maybe", "opt[int]"), ("bump", "union[float,int]"),
+                          ("lookup", "opt[int]"), ("total", "opt[int]"), ("drain.1", "opt[int]")):
             self.assertEqual([record["type"] for record in self.function(self.snapshot, name)["split_unions"]], [typ])
         report, code = guards.check_all(self.sample(), CHECKER)
         self.assertEqual(code, 0, report)
@@ -139,6 +140,11 @@ class UnionSplitTests(unittest.TestCase):
             box["operands"][0]["value"] = self.tags["int"]
             return "bump"
 
+        def appended_when_none(snapshot):  # next()'s None appended to a list[int] as an int
+            test, _ = self.tag_test(self.function(snapshot, "drain.1"))
+            test["text"] = "!=" if test["text"] == "==" else "=="
+            return "drain.1"
+
         def read_as_other_member(snapshot):  # an int payload formatted as a float
             function = self.function(snapshot, "describe")
             show = next(op for _, _, op in self.operations(function) if op["op"] == "rt" and op["text"] == "str.int")
@@ -146,7 +152,7 @@ class UnionSplitTests(unittest.TestCase):
             return "describe"
 
         for corruption in (literal_tag, swapped_phi, other_member, no_test, none_payload, int_word_as_float,
-                           boxed_with_other_tag, read_as_other_member):
+                           boxed_with_other_tag, appended_when_none, read_as_other_member):
             with self.subTest(corruption=corruption.__name__):
                 snapshot = self.sample()
                 name = corruption(snapshot)
@@ -167,14 +173,20 @@ class UnionSplitTests(unittest.TestCase):
                        and not op["operands"][0]["value"].isdigit())
             box["operands"][1]["value"] = box["operands"][0]["value"]
 
-        for change, message in ((unrecorded, "without their inspection record"),
-                                (unpaired, "without its payload"),
-                                (untyped, "dynamic union reconstruction")):
+        def missed_lookup(function):
+            # (presence set where the lookup missed: no longer its payload's)
+            test = next(op for _, _, op in self.operations(function) if op["op"] == "num.cmp" and op["text"] == ">=")
+            test["text"] = "<"
+
+        for change, name, message in ((unrecorded, "accumulate", "without their inspection record"),
+                                      (unpaired, "accumulate", "without its payload"),
+                                      (untyped, "accumulate", "dynamic union reconstruction"),
+                                      (missed_lookup, "lookup", "parts of no one box")):
             with self.subTest(change=change.__name__):
                 snapshot = self.sample()
-                change(self.function(snapshot, "accumulate"))
+                change(self.function(snapshot, name))
                 with self.assertRaisesRegex(boundary.Unsupported, message):
-                    self.lean(snapshot, "accumulate")
+                    self.lean(snapshot, name)
 
 
 if __name__ == "__main__":

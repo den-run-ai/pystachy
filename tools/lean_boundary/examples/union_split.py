@@ -31,5 +31,32 @@ def describe(value: int | float) -> str:
     return "float " + str(value)
 
 
+def lookup(values: dict[str, int], key: str) -> int:
+    found = values.get(key)
+    if found is None:
+        return -1
+    return found + 7
+
+
+def total(xs: list[int]) -> int:
+    value: int | None = None
+    result = 0
+    for x in xs:
+        value = None if x < 0 else x
+        result += 23 if value is None else value
+    return result
+
+
+def drain(it) -> list[int]:
+    out: list[int] = []
+    while True:
+        x = next(it, None)
+        if x is None:
+            break
+        out.append(x)
+    return out
+
+
 print(accumulate(5), accumulate(4), maybe(True, 7), maybe(False, 7))
 print(describe(bump(3)), describe(bump(2.5)), describe(accumulate(3)))
+print(lookup({"a": 1}, "a"), lookup({"a": 1}, "b"), total([1, -2, 3]), drain(iter([5, 6])))

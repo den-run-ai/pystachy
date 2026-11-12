@@ -304,13 +304,14 @@ def resolved_container(declared, used):
     """A local whose type inference resolved after its slot was made, which keeps the
     placeholder while its accesses name the resolved type: an empty container's (list[?],
     dict[?,?]: a container of that kind) or a local first assigned None (specs.NONEVAR: an
-    optional object). Each lowers to a pointer, and neither is a dyn or union value."""
+    optional object or optional union: a box pointer or null). Each lowers to a pointer, and
+    none is a dyn value."""
     if not used.startswith("*") or "?" in used:
         return False
     resolved = used[1:]
     if declared == "opt[None]":
         return not (resolved in {"int", "float", "bool", "int+", "%byte", "%i32", "%slot", "dyn", "None"}
-                    or resolved.startswith(("union[", "opt[union[", "opt[dyn")))
+                    or resolved.startswith(("union[", "opt[dyn")))
     return "?" in declared and any(declared.startswith(kind) and resolved.startswith(kind)
                                    for kind in CONTAINER_KINDS)
 
