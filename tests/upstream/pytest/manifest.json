@@ -87,6 +87,34 @@
       "local": "tests/upstream/ports/cpython/Lib/textwrap.py",
       "sha256": "30f3d833950d53e168cc021961574b553f56aed84458712b2eb29c6495843d46",
       "upstream": "https://github.com/python/cpython/blob/cbc944f4bc59639a444dd971c737788ba2283a91/Lib/textwrap.py"
+    },
+    "mypy/mypyc/codegen/__init__.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypyc/codegen/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "mypy/mypyc/codegen/literals.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypyc/codegen/literals.py",
+      "sha256": "fcc5d72c8f014750d62eedcbb72b9b1420bf4bc3a14a8c2123a8df30c1ce0620"
+    },
+    "mypy/mypyc/test/test_literals.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypyc/test/test_literals.py",
+      "sha256": "a98f311a15059798dc744e6bafbe10f16aeaf7c97abd36c1566bc3ffc0ee0540"
+    },
+    "mypy/mypy/__init__.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypy/__init__.py",
+      "sha256": "e32a78dea340659d15881a559f9e8173b300e07d943177b459354f7643833fa9"
+    },
+    "mypy/mypy/stubinfo.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypy/stubinfo.py",
+      "sha256": "3f43e35d240c0b81ca6e136650078d559b71b311d1577b97e54b627c36c7eceb"
+    },
+    "mypy/mypy/test/__init__.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypy/test/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "mypy/mypy/test/teststubinfo.py": {
+      "url": "https://raw.githubusercontent.com/python/mypy/1231cf158a9cab0c41f613f3d8070c1332632f29/mypy/test/teststubinfo.py",
+      "sha256": "85ecbe5ad94f321d44601729d9efd950b3ca4688a34ff2a9419546b93f956b25"
     }
   },
   "suites": {
@@ -237,7 +265,10 @@
       ],
       "selected": [
         "TestMultiMode.test_basics",
-        "TestFMean.test_special_values"
+        "TestFMean.test_special_values",
+        "TestFMean.test_weights",
+        "TestLinearRegression.test_constant_input_error",
+        "TestLinearRegression.test_proportional"
       ],
       "inventory": [
         "ApproxEqualExactTest.test_exactly_equal_absolute",
@@ -643,10 +674,7 @@
         "statistics.variance"
       ],
       "exclusion_reason": "Outside this bounded native pytest qualification; no claim of complete upstream suite coverage. Existing upstream checks remain independent.",
-      "exclusions": {
-        "TestFMean.test_weights": "Probed on alpha.3 (c5cebb8b): original and adapted CPython pass; native rejects its local StatisticsError exception-class alias: 'an except clause needs exception classes: a name, or a tuple of names'. Kept outside this selection until generalized local exception aliases are supported.",
-        "TestLinearRegression.test_proportional": "Probed on alpha.3 (c5cebb8b): original and adapted CPython pass; native rejects lib/statistics.py:1542 with 'expected int, got float' while compiling linear_regression(list[int], list[int], bool). Original integer inputs remain unchanged; this case is not qualified."
-      },
+      "exclusions": {},
       "reference_modules": {
         "statistics": "cpython/Lib/statistics.py"
       }
@@ -683,6 +711,73 @@
       "exclusion_reason": "Outside this bounded native pytest qualification; no claim of complete upstream suite coverage. Existing upstream checks remain independent.",
       "reference_modules": {
         "mypyc.namegen": "mypy/mypyc/namegen.py"
+      }
+    },
+    "mypyc-literals": {
+      "source": "mypy/mypyc/test/test_literals.py",
+      "files": [
+        "mypy/LICENSE",
+        "mypy/mypyc/__init__.py",
+        "mypy/mypyc/codegen/__init__.py",
+        "mypy/mypyc/codegen/literals.py",
+        "mypy/mypyc/test/__init__.py",
+        "mypy/mypyc/test/test_literals.py"
+      ],
+      "original_imports": [
+        "mypy"
+      ],
+      "adapted_imports": [
+        "mypy"
+      ],
+      "selected": [
+        "TestLiterals.test_encode_bytes_values",
+        "TestLiterals.test_encode_str_values",
+        "TestLiterals.test_format_str_literal"
+      ],
+      "inventory": [
+        "TestLiterals.test_encode_bytes_values",
+        "TestLiterals.test_encode_int_values",
+        "TestLiterals.test_encode_str_values",
+        "TestLiterals.test_format_str_literal",
+        "TestLiterals.test_frozenset_encoding_is_deterministic",
+        "TestLiterals.test_frozenset_literal_index_is_deterministic",
+        "TestLiterals.test_literal_sort_key_is_total_over_types",
+        "TestLiterals.test_literal_sort_key_with_frozenset",
+        "TestLiterals.test_nested_frozenset_literal_index_is_deterministic",
+        "TestLiterals.test_simple_literal_index",
+        "TestLiterals.test_tuple_literal"
+      ],
+      "exclusion_reason": "Observed native compilation gaps at the pinned compiler: bytes % int formatting and integers beyond 64 bits (test_encode_int_values); float, complex, object-tuple and frozenset dict keys in the Literals class (five methods); runtime-length tuples and lists of unrelated values in literal_sort_key (two methods). Original unittest passes all eleven.",
+      "reference_modules": {
+        "mypyc.codegen.literals": "mypy/mypyc/codegen/literals.py"
+      }
+    },
+    "mypy-stubinfo": {
+      "source": "mypy/mypy/test/teststubinfo.py",
+      "files": [
+        "mypy/LICENSE",
+        "mypy/mypy/__init__.py",
+        "mypy/mypy/stubinfo.py",
+        "mypy/mypy/test/__init__.py",
+        "mypy/mypy/test/teststubinfo.py"
+      ],
+      "original_imports": [
+        "mypy"
+      ],
+      "adapted_imports": [
+        "mypy"
+      ],
+      "selected": [
+        "TestStubInfo.test_period_in_top_level",
+        "TestStubInfo.test_stub_distribution_name"
+      ],
+      "inventory": [
+        "TestStubInfo.test_period_in_top_level",
+        "TestStubInfo.test_stub_distribution_name"
+      ],
+      "exclusion_reason": "Outside this bounded native pytest qualification; no claim of complete upstream suite coverage. Existing upstream checks remain independent.",
+      "reference_modules": {
+        "mypy.stubinfo": "mypy/mypy/stubinfo.py"
       }
     }
   }

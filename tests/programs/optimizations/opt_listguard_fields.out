@@ -1,0 +1,6 @@
+[3, 4] 4
+7
+read bound [5, 6] 6
+write bound 8
+empty 8
+[exit 0]

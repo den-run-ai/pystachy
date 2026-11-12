@@ -35,15 +35,15 @@ def verification_plan(event: str, base: str, commit: str, head: str) -> str:
 
 
 def require_jobs(event: str, plan: str, arm_plan: str, results: list[str]) -> None:
-    if plan != arm_plan or plan not in ("docs", "code"):
-        raise ValueError(f"Missing or inconsistent CI plans: {plan!r}, {arm_plan!r}")
     pr = event == "pull_request"
+    if plan not in ("docs", "code") or arm_plan != ("" if pr else plan):
+        raise ValueError(f"Missing or inconsistent CI plans: {plan!r}, {arm_plan!r}")
     if plan == "docs" and not pr:
         raise ValueError("Only a pull request can use the documentation-only plan")
-    expected = ["success", "success", "success" if pr else "skipped", "success" if pr else "skipped"]
+    expected = ["success", "success", "success" if pr else "skipped", "skipped" if pr else "success"]
     if plan == "docs":
         expected = ["success", "skipped", "skipped", "skipped"]
-    for name, result, wanted in zip(("bootstrap", "verification", "pr-variants", "distribution"),
+    for name, result, wanted in zip(("bootstrap", "verification", "pr-variants", "qualification"),
                                     results, expected, strict=True):
         if result != wanted:
             raise ValueError(f"{plan} plan requires {name}={wanted}, got {result!r}")
