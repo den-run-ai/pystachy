@@ -3060,14 +3060,17 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
     self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.s), "str"))
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
     if len(n.kids) > 1:
-        gen_enum_init(self, o, n.kids[0])
+        gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     return o
 
 
-def gen_enum_init(self, o: Val, v: Node) -> None:
+def gen_enum_init(self, o: Val, v: Node, count: list[Node]) -> None:
     # the __init__ of member o's enum class, called as EnumType calls it once the member has its
-    # _name_ and _value_: with the items of its value v where that is a tuple, else with v
-    items = v.kids if v.kind == "tuple" else [v]
+    # _name_ and _value_: with the items of its value v where that is a tuple, else with v. One
+    # that the Loader made of the class's __new__ (enum_new_init) takes the value as written,
+    # which the _value_ may differ from, after the number of names before it (count) where its
+    # body asks for that
+    items = count + (v.kids if v.kind == "tuple" else [v])
     self.init_result(self.call_fn(self.classes[o.t].methods["__init__"], [o], items, direct=True))
 
 
@@ -3083,7 +3086,7 @@ def gen_enum_alias(self, n: Node, want: str) -> Val:
         o = self.new_obj(ci.name)
         self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.kids[1].s), "str"))
         self.setfield(o, self.field(o, "_value_"), "_value_", v)
-        gen_enum_init(self, o, n.kids[0])
+        gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     self.class_default(ci, n.s)
     t = ci.ftypes[n.s]
     return Val(self.mload(t, ci.fglob[n.s]), t)

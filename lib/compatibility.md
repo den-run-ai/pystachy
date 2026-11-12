@@ -702,6 +702,21 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   name and value by then, with the items of the value (a tuple's, else the value), and for an
   alias before its object is dropped, as `EnumType` calls it; a parameter without an annotation
   takes the type of its item ([test](../tests/programs/library/lib_enum_init.py)).
+- A `__new__` of the class, in the form CPython's documentation gives one, makes the members of
+  their values' items: it makes the member with `object.__new__(cls)` (`int.__new__(cls, v)` in
+  an `IntEnum`, `str.__new__(cls, v)` in a `StrEnum`), may assign `_value_` and attributes, and
+  returns the member in its last statement. The compiler computes each member's `_value_` from
+  the value's items, `len(cls.__members__)` and literals, with `int`'s and `str`'s operators,
+  so a member's value may differ from the value written (`inspect`'s `_ParameterKind`, `http`'s
+  `HTTPStatus`); the rest of the body runs for each member, aliases included. An enum class
+  without members hands its `__new__` to the classes deriving from it (the documentation's
+  `AutoNumber`) ([test](../tests/programs/library/lib_enum_new.py)).
+- `@_simple_enum(etype)` makes an enum class of a class statement without bases, as one
+  deriving from `etype` ([test](../tests/programs/library/lib_enum_simple.py)). As in CPython,
+  a name bound to `auto()` in such a body has no value that a later member can read.
+  `@global_enum` binds each member's name in the module and makes `repr()` the module's name
+  and the member's, and an `Enum`'s `str()` the member's name
+  ([test](../tests/programs/library/lib_enum_global.py)).
 - The class as a value is an object of `EnumType`: `C(value)` finds the member with that value
   (or returns a member it is given, also one held through a base class's type, such as `Enum` or
   `Flag`: [test](../tests/programs/library/lib_enum_base_lookup.py),
@@ -762,15 +777,19 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   supported.
 - These are compile-time errors: `ReprEnum` as a base; other mixin types
   (`class C(float, Enum)`) and keywords; members of other values or types, `_ignore_`, `_order_`
-  and private names; `__new__` and `_generate_next_value_`; `__init__` in a flag class or in
-  an enum class without members, or with arguments its members' values do not give; an enum
+  and private names; a `__new__` of another form (`*args`, a `_value_` the compiler cannot
+  compute, an `IntEnum` member made of another int than its `_value_`), with an `__init__`, in a
+  flag class or under `@_simple_enum(Enum)`; `_generate_next_value_`; `__init__` in a flag class or in
+  an enum class without members, or with arguments its members' values do not give;
+  `@_simple_enum` with `boundary=` or `use_args=`, `auto()` in a flag class it makes and
+  `@global_enum` of a flag class; an enum
   class that derives from an enum class of another module, or from one with members (CPython's
   `TypeError`); a class statement in an `if` or `try` statement, or whose base is imported in
   one ([test](../tests/errors/library/lib_enum_conditional.py),
   [test](../tests/errors/library/lib_enum_try_import.py)); the functional API (`Enum("Color", "RED GREEN")`); reassigning a member
   (CPython's `AttributeError`); `reversed()` of an enum class, and an enum class without
-  members as a value. `enum.property`, `member`, `nonmember`, `verify`, `global_enum` and the
-  other helpers are not provided.
+  members as a value. `enum.property`, `member`, `nonmember`, `verify` and the other helpers
+  are not provided.
 
 ### `heapq`
 

@@ -1,0 +1,11 @@
+[<Precedence.NAMED_EXPR: 1>, <Precedence.TUPLE: 2>, <Precedence.YIELD: 3>, <Precedence.TEST: 4>, <Precedence.OR: 5>] 3 5 3 4
+<Precedence.TEST: 4> 4 2 True True 5
+[<Safe.safe: 0>, <Safe.unsafe: -1>, <Safe.unknown: 7>] 7 Safe.unsafe Safe.safe <Safe.unsafe: -1> Safe.safe
+[<Key.CALLS: 'calls'>, <Key.TIME: 'time'>, <Key.NAME: 'name'>] True name calls True ['CALLS', 'TIME', 'T', 'NAME']
+[<Perm.R: 4>, <Perm.W: 2>, <Perm.X: 1>] Perm.RW Perm.R|X Perm.W Perm.W|X <Perm.X: 1> 3
+200 <Status.OK: 200> OK Request fulfilled, document follows False
+103 <Status.EARLY_HINTS: 103> Early Hints  False
+404 <Status.NOT_FOUND: 404> Not Found Nothing matches the given URI True
+Not Found 201 ['ONE=1', 'TWO=2'] Derived.TWO Derived
+<enum 'Precedence'> <enum 'Safe'> True Precedence 3
+[exit 0]
