@@ -1,6 +1,7 @@
 """Bounded structural patterns lowered to ordinary typed branches."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import Val
+from src.pystachy_compiler.specs import RANGEC
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import clone, elem, is_dict, is_list, is_set, is_tuple, is_union, is_vtuple, targs, typestr, unopt
 
@@ -286,7 +287,7 @@ def pattern_static(self, node: Node) -> int:
         return 1 if seq_fits(t, node) else 0
     if never_sequence(t):
         return 0
-    if is_list(t) or is_vtuple(t):
+    if is_list(t) or is_vtuple(t) or t == RANGEC:
         return -1  # (a length test where it runs: pattern_expr)
     self.err(f"sequence patterns require a tuple or list subject, got {typestr(t)}")
     return -1
@@ -306,6 +307,8 @@ def pattern_type(self, node: Node) -> str:
             return elem(parent)
         if is_vtuple(parent):
             return targs(parent)[0]
+        if parent == RANGEC:
+            return "int"
         return ""
     return self.static_type(node)
 
@@ -339,15 +342,16 @@ def pattern_expr(self, node: Node) -> Val:
             return Val("false", "bool")  # (as pattern_static decides where it knows the type)
         if is_tuple(value.t):
             return Val("true" if seq_fits(value.t, node) else "false", "bool")
-        if not is_list(value.t) and not is_vtuple(value.t):
+        if not is_list(value.t) and not is_vtuple(value.t) and value.t != RANGEC:
             self.err(f"sequence patterns require a tuple or list subject, got {typestr(value.t)}")
         n, star, late = pattern_seq(node)
-        if late:
+        if late and is_list(value.t):
             # (CPython unpacks a list's items before it matches any: a nested pattern reading its
             # item after an earlier subpattern's __eq__ ran could see the list changed since)
             self.err("a nested sequence or class pattern in a pattern of a list subject is not supported: "
                      "CPython takes the items before matching any; capture the item and match it in a nested match, or use *_")
-        length = Val(self.list_len(value), "int") if is_list(value.t) else Val(self.mload("int", value.v), "int")
+        # (a range, immutable as a tuple is, has its length from its class's __len__)
+        length = Val(self.list_len(value), "int") if is_list(value.t) else self.objlen(value) if value.t == RANGEC else Val(self.mload("int", value.v), "int")
         return self.expr(mk("cmp", ">=" if star else "==", node.line, [self.vnode(length), mk("int", str(n), node.line, [])]), "bool")
     if k == "matchstar":
         # *rest's new list: the subject's items between the before items before it and the after

@@ -72,8 +72,8 @@ such pattern.
 A class body rejects a `match` statement as it rejects an `if` statement there. Dataclass
 patterns require a concrete subject type; dynamic `Any` and union subjects are rejected
 rather than treated as mismatches.
-A sequence pattern decides a fixed tuple's length during compilation and tests a list's, or a
-runtime-length tuple's, where the match runs. `*rest` captures a new list of the items between
+A sequence pattern decides a fixed tuple's length during compilation and tests a list's, a
+runtime-length tuple's or a `range`'s where the match runs. `*rest` captures a new list of the items between
 those before and after it, and `*_` captures nothing. A dict, set, string, bytes or scalar subject,
 including a promoting integer, matches no sequence pattern. As in CPython, a list's items are
 taken before any subpattern runs, or each just before its subpattern after a `*_`; a nested

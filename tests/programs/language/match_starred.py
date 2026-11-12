@@ -1,7 +1,7 @@
-# Starred sequence patterns and list subjects (#1305): a list's length is tested where the match
-# runs, a fixed tuple's where it compiles; *rest captures a new list of the items between those
-# before and after it, and *_ captures nothing; a dict, set, str or scalar subject matches no
-# sequence pattern
+# Starred sequence patterns and list subjects (#1305): a list's, runtime-length tuple's or range's
+# length is tested where the match runs, a fixed tuple's where it compiles; *rest captures a new
+# list of the items between those before and after it, and *_ captures nothing; a dict, set, str
+# or scalar subject matches no sequence pattern
 def describe(xs: list[int]) -> str:
     match xs:
         case []:
@@ -91,6 +91,20 @@ def runtime_length(value: tuple[int, ...]) -> str:
 
 
 print(runtime_length(()), runtime_length((1,)), runtime_length((1, 2)), runtime_length((1, 2, 3, 4)))
+
+
+def ranged(r: range) -> str:
+    match r:
+        case []:
+            return "empty"
+        case [x]:
+            return f"one {x}"
+        case [first, *rest, last]:
+            return f"{first} {rest} {last}"
+    return "unreachable"
+
+
+print(ranged(range(0)), ranged(range(3, 4)), ranged(range(5)), ranged(range(2, 10, 3)))
 
 
 def mixed(value: tuple[int, str, str]) -> str:
