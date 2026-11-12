@@ -612,7 +612,16 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             l2 = self.label()
             self.cbr("true" if hv.v in self.nn else self.ptr_cmp('!=', hv, Val('null', 'None')).v, l1, l2)
             self.place(l1)
-            fv = self.mem_load(Val(self.fgep(hv, self.classes[hv.t].fflag[args[1].s]), "*bool")).v
+            ci = self.classes[hv.t]
+            fv = self.mem_load(Val(self.fgep(hv, ci.fflag[args[1].s]), "*bool")).v
+            shadows = self.exc_shadows(ci, args[1].s)
+            if len(shadows) > 0:
+                # (or the object is of a class whose class variable shadows the field: getfield)
+                cls = self.mem_load(Val(self.fgep(hv, ci.fpos[" cls"]), "*str")).v
+                for x in shadows:
+                    self.xcls[x.name] = True
+                    match = self.ptr_cmp('==', Val(cls, "str"), Val(f"@x.{x.name}", "str")).v
+                    fv = self.scalar('or', [Val(fv, 'bool'), Val(match, 'bool')])
             e1 = self.cur
             self.br(l2)
             self.place(l2)
