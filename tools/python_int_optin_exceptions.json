@@ -608,6 +608,22 @@
       "diagnostic": "lib/operator.py:176: error: 'is' between ints is not supported in python-int modules yet (compiling operator.indexOf(IteratingSequenceClass, int) for the call at tests/programs/upstream/upstream_iter_classes.py:359)",
       "reason": "operator.indexOf tests integer identity before equality; is between promoting ints is explicitly unsupported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/containers/tuple_runtime_joins.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/containers/tuple_runtime_joins.py:24: error: pick() returns both tuple[int,int] and tuple[int] (each function has one return type) (compiling pick(int+) for the call at tests/programs/containers/tuple_runtime_joins.py:36)",
+      "reason": "Runtime-length tuples hold 64-bit ints, not promoting ints: tuples of promoting ints of other lengths do not join into one, so pick() returning (n, n), (n,) and () stays rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/containers/tuple_runtime_joins.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/containers/tuple_runtime_joins.py:24: error: pick() returns both tuple[int,int] and tuple[int] (each function has one return type) (compiling pick(int+) for the call at tests/programs/containers/tuple_runtime_joins.py:36)",
+      "reason": "Runtime-length tuples hold 64-bit ints, not promoting ints: tuples of promoting ints of other lengths do not join into one, so pick() returning (n, n), (n,) and () stays rejected.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     }
   ]
 }
