@@ -1303,7 +1303,13 @@ def gen_augassign(self, n: Node) -> None:
         if bnd[2] != "1":
             av.append(f"i64 {bnd[2]}")
         cur = Val(self.rt("pys_list_slice" if bnd[2] == "1" else "pys_list_slice_step", "ptr", av), o.t)
-        self.slice_store(o, bnd, self.inplace(op, cur, n.kids[1]))
+        value = self.inplace(op, cur, n.kids[1])
+        again = [raw[j] if raw[j].startswith("?") and values[int(raw[j][1:])].t != "dyn" else bnd[j] for j in range(3)]
+        if again[0].startswith("?") or again[1].startswith("?") or again[2].startswith("?"):
+            # (a bound that is an object: CPython's store asks it for its __index__() again,
+            # after the right operand has run)
+            self.slice_dyn(again, values)
+        self.slice_store(o, again, value)
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
         sub = "TypeError: 'NoneType' object is not subscriptable"
