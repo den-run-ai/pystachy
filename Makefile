@@ -33,12 +33,16 @@ test-py:
 .PHONY: test-pytest-native test-pytest-workloads test-pytest-upstream test-pytest-json-upstream
 
 # Hosted collection/oracle and real native execution; no compiler bootstrap needed.
+# The runner's own tests, its failure controls and the bundled upstream methods build
+# many small programs: CI gives them its verified native compiler. The examples always
+# run with the hosted compiler, the runner's default.
+PYTEST_NATIVE_COMPILER ?= $(PY) $(CURDIR)/pystachy.py
 test-pytest-native:
-	PYSTACHY_PYTEST_NATIVE_COMPILER="$(PY) $(CURDIR)/pystachy.py" $(PY) -m unittest discover -s tools -p 'test_pytest_native*.py'
+	PYSTACHY_PYTEST_NATIVE_COMPILER="$(PYTEST_NATIVE_COMPILER)" $(PY) -m unittest discover -s tools -p 'test_pytest_native*.py'
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode jit --compare --json build/pytest-native/examples.json
 	PYTHONPATH="$(CURDIR)/ports" PYSTACHY_PATH="$(CURDIR)/ports" $(PY) tools/pytest_native.py examples/pytest_native --mode aot --compare --work-dir build/pytest-native-aot --json build/pytest-native-aot/examples.json
-	$(PY) tools/pytest_native_controls.py --compiler "$(PY) $(CURDIR)/pystachy.py" --json build/pytest-controls.json
-	$(PY) tools/pytest_native_upstream.py --suite fnmatch --suite textwrap --compiler "$(PY) $(CURDIR)/pystachy.py" --json build/pytest-upstream-bundled.json
+	$(PY) tools/pytest_native_controls.py --compiler "$(PYTEST_NATIVE_COMPILER)" --json build/pytest-controls.json
+	$(PY) tools/pytest_native_upstream.py --suite fnmatch --suite textwrap --compiler "$(PYTEST_NATIVE_COMPILER)" --json build/pytest-upstream-bundled.json
 
 # Complete optional upstream qualification uses only explicitly fetched pinned
 # sources. The bundled fnmatch/textwrap subset above remains offline in CI.

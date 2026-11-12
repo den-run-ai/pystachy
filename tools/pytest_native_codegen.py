@@ -1869,6 +1869,9 @@ class Generator:
                       for dec in holder.decorator_list for item in ast.walk(dec)}
         # (`pytestmark = ...` statements are declarations too.)
         decorators.update(item for statement in self.dropped for item in ast.walk(statement))
+        # A parameter annotated with one of pytest's types (monkeypatch: pytest.MonkeyPatch)
+        # is typed by the value the runner passes: Rewrite removes the annotation.
+        decorators.update(item for annotation in self.pytest_annotations() for item in ast.walk(annotation))
         method_fixtures = {fixture.function.name for fixtures in self.class_fixtures.values()
                            for fixture in fixtures.values()}
         monkeypatch = all("monkeypatch" not in fixtures for fixtures in
@@ -1993,6 +1996,20 @@ class Generator:
                     if len(parent.args) == fixed and any(kw.arg != "msg" for kw in parent.keywords):
                         self.error(parent, f"{node.attr} supports an exception class"
                                    + (" and a pattern" if fixed == 2 else "") + " only")
+
+    def pytest_annotations(self):
+        """Annotations of test and fixture parameters, and their returns, that name pytest."""
+        found = []
+        own = set(ast.walk(self.tree))
+        for function in self.declared_functions():
+            if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)) or function not in own:
+                continue
+            arguments = function.args.posonlyargs + function.args.args + function.args.kwonlyargs
+            for annotation in [argument.annotation for argument in arguments] + [function.returns]:
+                if annotation is not None and any(self.name(part).startswith("pytest")
+                                                  for part in ast.walk(annotation)):
+                    found.append(annotation)
+        return found
 
     def unit_methods(self):
         """Each method of a unittest case with the name of its receiver (`self`)."""
@@ -2203,6 +2220,7 @@ class Generator:
 
         unit_methods = self.unit_methods()
         hooks = {hook for info in self.infos.values() for hook in info.hooks.values()}
+        hints = set(self.pytest_annotations())
         dropped = self.dropped
 
         class Rewrite(ast.NodeTransformer):
@@ -2257,6 +2275,11 @@ class Generator:
             def visit_FunctionDef(self, node):
                 if node in declarations:
                     node.decorator_list = []
+                    for argument in node.args.posonlyargs + node.args.args + node.args.kwonlyargs:
+                        if argument.annotation in hints:
+                            argument.annotation = None
+                    if node.returns in hints:
+                        node.returns = None
                 elif generator.helper:
                     # (A helper's fixtures and marks are not collected; only its code is kept.)
                     node.decorator_list = [decorator for decorator in node.decorator_list if not generator.name(

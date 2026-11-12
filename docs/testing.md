@@ -423,8 +423,11 @@ Missing modules/results, empty suites, skips, xfails and failed builds fail this
 check. These tests supplement the exact CLI, FFI, upstream-reference and timing
 contracts below; they do not replace those distinct observations.
 
-The x86-64 `hosted` job also runs `make test-pytest-native` with the hosted compiler
-and pinned original pytest oracle. This covers collection, fixture lifecycle,
+The x86-64 `hosted` job also runs `make test-pytest-native` with the pinned original
+pytest oracle. Its examples build with the hosted compiler in JIT and AOT; the
+runner's own tests, failure controls and bundled upstream methods use the job's
+verified compiler (`PYTEST_NATIVE_COMPILER`), which keeps the job within its bound.
+This covers collection, fixture lifecycle, unittest cases, package layouts,
 JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
 methods. The existing job runs once on code PRs, main pushes and manual runs;
 documentation-only PRs retain their lightweight plan. Its artifact includes both

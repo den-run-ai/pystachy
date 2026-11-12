@@ -278,10 +278,14 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-pytest-workloads PYTEST_WORKLOAD_COMPILER=build/verify/pystachy2 PYTEST_WORKLOAD_ARGS='--group examples'
 
-      # Retain the hosted compiler and original pytest oracle without using Lint's budget.
+      # Retain the hosted compiler and original pytest oracle without using Lint's budget:
+      # the examples build with the hosted compiler, and the runner's own tests, controls
+      # and upstream methods with the verified one, which keeps the job within its bound.
       - name: Generated native pytest runner parity
         if: matrix.group == 'hosted' && matrix.machine == 'x86_64'
-        run: make test-pytest-native
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"
 
       # tools/setup.sh installs both of Ubuntu's LP64 libblas.so.3 providers: OpenBLAS
       # (libopenblas0-pthread), checked on one thread, and the reference BLAS (libblas3).

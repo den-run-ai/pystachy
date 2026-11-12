@@ -577,6 +577,33 @@ class TestNoseNames:
 '''
 
 
+HINTS = '''
+from pathlib import Path
+
+import pytest
+
+TOKENS = {"b": [2], "a": [1]}
+
+
+@pytest.fixture(params=sorted(TOKENS))
+def token(request: pytest.FixtureRequest) -> list[int]:
+    return TOKENS[request.param]
+
+
+@pytest.fixture
+def home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
+    monkeypatch.setenv("PYN_HOME", str(tmp_path))
+    return tmp_path
+
+
+def test_annotated_fixtures(token: list[int], home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+    assert os.environ["PYN_HOME"] == str(home)
+    assert token in ([1], [2])
+    monkeypatch.setenv("PYN_OTHER", "1")
+'''
+
+
 PACKAGES = {
     'conftest.py': 'import pytest\n\nLOG: list[str] = []\n\n\n@pytest.fixture(autouse=True)\ndef outer_auto():\n    LOG.append("outer+")\n    yield\n    LOG.append("outer-")\n\n\n@pytest.fixture\ndef size() -> int:\n    return 2\n\n\n@pytest.fixture(scope="session")\ndef shared_log() -> list[str]:\n    return LOG\n',
     'extra/flat_helper.py': 'def where() -> str:\n    return __file__\n',
@@ -607,6 +634,7 @@ SUITES = {
     "inherit": (INHERIT, "passed"),
     "warns": (WARNS, "test-failed"),
     "xunit": (XUNIT, "test-failed"),
+    "hints": (HINTS, "passed"),
 }
 
 
@@ -641,7 +669,7 @@ class StyleParity(TemporarySuite):
     def test_suites_match_pytest(self):
         results, expected = self.suites("python")
         cases = expected["cases"]
-        self.assertEqual(len(cases), 105)
+        self.assertEqual(len(cases), 107)
         outcomes = self.outcomes(results)
         # unittest sorts a case's methods, inherited ones too, and runs setUp, the test
         # and tearDown in the call phase; a second failure is the teardown's.
@@ -688,6 +716,9 @@ class StyleParity(TemporarySuite):
         self.assertEqual(failed, {"test_did_not_warn", "test_wrong_class", "test_match_misses",
                                   "test_exception_propagates", "Case::test_assert_warns_fails"})
         self.assertEqual(outcomes["test_xunit.py::TestSetupFails::test_never_runs", "setup"], "error")
+        # Parameters annotated with pytest's own types take the values the runner passes.
+        self.assertIn("test_hints.py::test_annotated_fixtures[b]", cases)
+        self.assertNotIn("pytest.MonkeyPatch", generate(HINTS, "test_hints.py").source)
         self.assertEqual(outcomes["test_xunit.py::TestTeardownFails::test_passes", "teardown"], "error")
 
     def test_packages_nested_directories_and_layered_conftest(self):

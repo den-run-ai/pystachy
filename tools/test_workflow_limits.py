@@ -352,7 +352,9 @@ class LimitTests(unittest.TestCase):
         probes = [step for step in steps if "make test-pytest-native" in step.get("run", "")]
         self.assertEqual(len(probes), 1)
         probe = probes[0]
-        self.assertEqual(probe["run"], "make test-pytest-native")
+        # The runner's own tests use the job's verified compiler; its examples the hosted one.
+        self.assertEqual(probe["run"], 'make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"')
+        self.assertEqual(probe["env"], {"PYSTACHY_HOME": "${{ github.workspace }}"})
         self.assertEqual(probe["if"], "matrix.group == 'hosted' && matrix.machine == 'x86_64'")
         self.assertNotIn("continue-on-error", probe)
         self.assertNotIn("continue-on-error", job)
