@@ -951,7 +951,11 @@ false where it raises `AttributeError`, as in CPython.
 
 Fields come from class-body annotations or assignments to `self` in `__init__`. Their types
 can be inferred from parameters, literals, constructors, declared function or method results,
-function values, and supported container displays and operations. A field that `__init__`
+function values, and supported container displays and operations. A list or set display
+takes its first item's type (`{"if", "else"}` is a `set[str]`). A class attribute read
+through an ordinary class declared earlier (`Branch.BOOL`, `Color.RED`), or through a
+subclass that inherits it, has its declared or inferred type; a generic class's, a
+NamedTuple's `_fields` and a method need an annotation. A field that `__init__`
 sets to `None` takes `T | None` from the first other value the program gives it, or holds
 only `None` (see [optional values](#optional-values-and-narrowing)). When specializing a class
 template, a field can also use an ordinary generic function's inferred return type if its
@@ -967,8 +971,9 @@ classes and `dataclasses.replace()`. Explicit method calls such as `obj.__init__
 
 A class-body default is a class attribute, read by instances until they assign their own
 value. Later changes to the class attribute affect those instances. Unannotated class-body
-assignments infer their type, except in dataclasses and NamedTuples, where annotations are
-required. Supported subclasses also inherit their base's fields and class attributes.
+assignments infer their type as fields do, except in dataclasses and NamedTuples, where
+annotations are required. Supported subclasses also inherit their base's fields and class
+attributes.
 
 A class attribute may hold a function (`encode = enc`, as CPython's `encodings` modules bind
 their codec functions). It is read and called through its class or a subclass

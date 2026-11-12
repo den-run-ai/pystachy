@@ -1,0 +1,4 @@
+100 101 branch ['bool', 'is_error', 'extra'] ['bool', 'is_error', 'extra'] True [100, 101, 0] [100, 101] 7
+Color.GREEN GREEN 2 True True False
+5 101 Color.RED Color.GREEN 1 1
+[exit 0]
