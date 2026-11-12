@@ -1419,14 +1419,16 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             # (the callee never observes this argument's object: numeric_proof, as its null
             # companion below says; read it as an operand, without snapshots)
             self.fn.scalar_reads = True
+        # (a sentinel parameter's argument is a T, or the sentinel itself: declare_fn)
+        pt = f.sentann[f.params[j]] if f.params[j] in f.sentinels and not (e.kind == "name" and e.s == f.sentinels[f.params[j]]) else f.ptypes[j]
         try:
-            arg = self.expr(e, f.ptypes[j] if f.ptypes[j] != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
+            arg = self.expr(e, pt if pt != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
         finally:
             self.fn.scalar_reads = held
         passing = self.fn.idpass
         self.fn.idpass = self.id_move(e)
         try:
-            vals[j] = self.pcoerce(arg, f.ptypes[j], f, j)
+            vals[j] = self.pcoerce(arg, pt, f, j)
         finally:
             self.fn.idpass = passing
         if self.curfn.cmpops and self.term and vals[j].v == "undef":

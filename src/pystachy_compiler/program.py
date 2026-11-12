@@ -4,7 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.callbacks import specialize_callbacks
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
-from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin, top_bindings
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -941,6 +941,14 @@ def gen_program(self, mods: list[Mod]) -> str:
                 self.dc_options(self.classes[st.s])
     for m in mods:
         self.any_variables(m.body, False)
+    for m in mods:
+        # the sentinels, NAME = object() (also NAME: Final[Any] = object()), that nothing else binds:
+        # a parameter annotated T whose default is one is a sentinel parameter (declare_fn)
+        counts = top_bindings(m.body.kids)
+        for st in m.body.kids:
+            v = st.kids[-1] if (st.kind == "assign" and len(st.kids) == 2) or (st.kind == "annassign" and len(st.kids) == 3) else None
+            if v is not None and st.kids[0].kind == "name" and v.kind == "call" and len(v.kids) == 1 and v.kids[0].kind == "name" and v.kids[0].s == "object" and counts.get(st.kids[0].s, 0) == 1 and short(st.kids[0].s) not in m.fnglobal:
+                self.sentinelglobals[st.kids[0].s] = True
     # Only ordinary inheritance hierarchies need a runtime class tag. Keeping unrelated
     # classes unchanged preserves their compact layout, including dataclasses and tuples.
     for ci in self.classes.values():

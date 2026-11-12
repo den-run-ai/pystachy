@@ -526,6 +526,14 @@ def gen_class_params(self, st: Node) -> str:
             self.tvdefaults[names[i]] = True
     return ""
 
+def gen_sentinel_param(self, p: Node) -> bool:
+    # is parameter p annotated with a type that cannot hold the sentinel that its default names, a
+    # module's object() (sentinelglobals): then only that sentinel is an object() p can be given
+    if p.kind != "param" or p.kids[0].kind == "noann" or p.kids[1].kind != "name" or p.kids[1].s not in self.sentinelglobals:
+        return False
+    t = self.vtype(p.kids[0])
+    return t != "" and not t.startswith("!") and t != "dyn" and "dyn[" not in t and OBJECTC not in t and "object" != unopt(t)
+
 def gen_alias_value(self, name: str) -> Node:
     # the value of type alias name: a type statement's, or that an assignment binds
     st = self.taliases[name]
@@ -1246,7 +1254,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # a method's are too, as M2 makes them (but its self or cls; see template_ok), and a
         # class template's __init__; an annotation that names a class template types nothing
         own = cls != "" and i == 0 and f.deco != "staticmethod"
-        if (cls == "" or ((template_ok(d.s) or init) and not own)) and ((ps[i].kind == "param" and (ps[i].kids[0].kind == "noann" or self.tmpl_ann(ps[i].kids[0]))) or ps[i].kind == "starparam" or ps[i].kind == "dstarparam"):
+        if (cls == "" or ((template_ok(d.s) or init) and not own)) and ((ps[i].kind == "param" and (ps[i].kids[0].kind == "noann" or self.tmpl_ann(ps[i].kids[0]) or self.sentinel_param(ps[i]))) or ps[i].kind == "starparam" or ps[i].kind == "dstarparam"):
             f.generic = True
     if (cls == "" or template_ok(d.s)) and d.kids[1].kind != "noann" and self.tmpl_ann(d.kids[1]) and not (cls in self.classes and self.classes[cls].origin != ""):
         f.generic = True  # (-> Box: what it returns is one of the class's specializations)
@@ -1320,6 +1328,13 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             f.ptypes.append("")  # (it names a class template: any of its specializations, see tmpl_ann)
             if self.callable_pat(p.kids[0]) != "":
                 f.pats[len(f.params) - 1] = p.kids[0]
+        elif self.sentinel_param(p) and f.generic and (cls == "" or template_ok(d.s) or init):
+            # p: T = S of a module's sentinel S = object(), as mypy's Bogus[...] = _dummy: a template
+            # parameter that is a T (call_fn coerces a given argument to it) or S itself, where a
+            # call leaves it out; p is S decides each specialization's branch (static)
+            f.ptypes.append("")
+            f.sentinels[p.s] = p.kids[1].s
+            f.sentann[p.s] = self.vtype(p.kids[0])
         elif self.lib and self.ann_problem(p.kids[0], False) != "":
             bad = f"{cls + '.' if cls != '' else ''}{d.s}() is not supported: parameter '{p.s}': {self.ann_problem(p.kids[0], False)}"
             f.ptypes.append("")  # (any type: the def statement evaluates its default, see hoist)
