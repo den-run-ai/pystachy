@@ -1,0 +1,52 @@
+enter a
+True
+begin gen
+enter b
+a b GEN 1 1 text
+exit b None True
+closed
+end gen
+callback two 0
+callback one 1
+exit a None True
+0 True
+--
+enter a
+enter b
+enter c
+exit c ValueError False
+exit b ValueError False
+exit a None True
+after suppression
+enter a
+enter b
+exit b ValueError False
+exit a KeyError False
+KeyError 'b'
+callback first 0
+callback last 0
+ValueError invalid literal for int() with base 10: 'x'
+--
+True True
+lambda True
+fn True
+exit pushed None True
+called True
+fn False
+swallow 3
+--
+enter x
+enter y
+['x', 'y']
+closed the first
+exit y None True
+exit x None True
+enter again
+exit again None True
+enter inner
+callback outer 0
+exit inner None True
+enter ok
+exit ok IndexError False
+IndexError string index out of range
+[exit 0]

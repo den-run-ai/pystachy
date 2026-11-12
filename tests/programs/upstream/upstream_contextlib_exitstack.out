@@ -1,0 +1,22 @@
+TestExitStack.test_no_resources
+TestExitStack.test_callback
+_expect_exc ZeroDivisionError
+_expect_exc ZeroDivisionError
+_expect_exc ZeroDivisionError
+_suppress_exc
+_expect_ok
+_expect_ok
+TestExitStack.test_push
+TestExitStack.test_enter_context
+TestExitStack.test_close
+TestExitStack.test_pop_all
+ZeroDivisionError division by zero
+TestExitStack.test_exit_raise
+TestExitStack.test_exit_suppress
+TestExitStack.test_exit_exception_non_suppressing
+TestExitStack.test_body_exception_suppress
+TestExitStack.test_exit_exception_chaining_suppress
+TestExitStack.test_excessive_nesting
+UniqueException new exception
+TestExitStack.test_dont_reraise_RuntimeError
+[exit 0]
