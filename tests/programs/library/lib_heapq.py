@@ -1,4 +1,4 @@
-# CPython's own Lib/heapq.py (lib/heapq.py, whose heap functions are unmodified), compiled for each
+# CPython's Lib/heapq.py, with heap functions adapted to its C accelerator, compiled for each
 # element type it is used with: ints, floats, strings, tuples and objects ordered by __lt__
 # (nlargest() and nsmallest(): tests/programs/library/lib_heapq_topk.py)
 import heapq

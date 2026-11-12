@@ -1,0 +1,6 @@
+guard 3
+pattern 100
+global pattern 8
+global guard 3
+global result 3
+[exit 0]

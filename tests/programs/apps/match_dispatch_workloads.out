@@ -1,0 +1,13 @@
+[7, 5, 15, 0, -4]
+3 -4
+invalid command: scale:0
+invalid command: reset:1
+invalid command: unknown:3
+expected command:value
+mixed literal 1230
+mixed tuple 430
+mixed dataclass 430
+skewed literal 526
+skewed tuple -162
+skewed dataclass -162
+[exit 0]
