@@ -37,6 +37,16 @@ GraalPy. What had to change is what static typing forces:
   union does not hold `bytes` (`unions.py`: `gen_umember_problem`, `gen_value_union`,
   `gen_ueq_type`). Letting unions hold `bytes` would remove this deviation.
 
+Effect on mypy 2.4.1, by `tools/import_sweep.py` on a trial tree (main `0b13a21` with the open
+PRs #1275, #1276, #1288, #1342, #1344, #1347, #1351, #1356, #1365, #1371 and #1385; raw result in
+[results/mypy-sweep-2026-11-12-with-subprocess.json](results/mypy-sweep-2026-11-12-with-subprocess.json)):
+30 of 242 modules import, one more (`mypy.git`), and none stops at `subprocess`, where 79 did.
+Those 79 now stop at a `Final` field without a type (`mypy/nodes.py:3863`, 49), at
+`concurrent.futures` (`mypy/build.py:29`, 18), at `inspect` (9), and one each at `ast` and
+`__file__`. The first errors overall: `Final` fields without a type 111 (`mypy/nodes.py:3863`
+86, `mypyc/ir/ops.py:1461` 25), `inspect` 41, `concurrent.futures` 18, the annotation of
+`mypy/util.py:374` 9, `ast` 5.
+
 ## `inspect` here: not yet
 
 mypy needs `inspect` in one place that blocks 35 modules at import, `mypyc/ir/func_ir.py`: a
