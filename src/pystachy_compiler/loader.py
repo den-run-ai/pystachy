@@ -3558,6 +3558,7 @@ class Loader:
         # of it is (Node.mchk, which Gen.decorate tests where CPython evaluates the decorator)
         root = d.s[: d.s.find(".")] if "." in d.s else d.s
         k = self.kind(m, root) if root not in loc else ""
+        marker = k[2:] + d.s[len(root):] if k.startswith("b:") else ""
         q = k[2:] if k.startswith("a:") and root == d.s else "abc$" + d.s[len(root) + 1 :] if k == "m:abc" and "." in d.s else ""
         if not fn and len(d.kids) == 0 and q in ABSTRACT_DECOS:
             # (a method's @abstractmethod, or one of the decorators deprecated for it, as abc's:
@@ -3584,6 +3585,14 @@ class Loader:
                 self.qexpr(m, c.kids[0], loc)
             for a in c.kids[1:]:
                 self.qexpr(m, a, loc)
+        if len(d.kids) == 0 and marker in ["typing.final", "typing.override"]:
+            # Resolve before discarding the marker: a class-local or rebound import
+            # of the same spelling is an ordinary decorator. The compiler removes
+            # these only from supported function/class objects (typing_forms).
+            d.kind = "typingmarker"
+            d.pyname = d.s
+            d.s = marker
+            d.mchk = self.fragile_chk(m, root, loc)
 
     def qstmts(self, m: Mod, body: list[Node], loc: dict[str, bool], cls: bool) -> None:
         for st in body:

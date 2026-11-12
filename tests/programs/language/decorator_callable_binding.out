@@ -1,0 +1,5 @@
+ordered 2 ['evaluate outer', 'evaluate inner', 'default', 'apply inner', 'apply outer', 'call outer:2', 'call inner:2', 'call outer:1', 'call inner:1', 'call outer:0', 'call inner:0']
+mutual 0 1 ['evaluate even', 'apply even', 'evaluate odd', 'apply odd', 'call even:3', 'call odd:2', 'call even:1', 'call odd:0', 'call odd:3', 'call even:2', 'call odd:1', 'call even:0']
+before binding name 'recursive' is not defined
+after binding 3
+[exit 0]

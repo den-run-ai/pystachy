@@ -2,8 +2,8 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
-from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
-from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown
+from src.pystachy_compiler.analysis import captured_reads, collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, int_program, shown
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, short
@@ -305,6 +305,7 @@ def gen_has(self, t: str, a: str) -> int:
     # hasattr(x, a) for x of static type t: 1 or 0; for an object's own attribute -1 (true
     # unless it is None), or -2 for a field __init__ may leave unassigned (its flag says).
     # The builtin types have CPython 3.13's attributes.
+    self.typing_marker_check(t, a)
     if a in HASATTR["any"].split():
         return 1
     if t == "None":
@@ -958,6 +959,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             if x is not None:
                 return self.refl_type_attr(x, n.s)
         c = n.kids[0].s if n.kids[0].kind == "name" and n.kids[0].s not in self.ltype else ""
+        self.typing_marker_check(c, n.s)
         if c in self.classes and n.s == "__class__" and self.dyn_policy(n.line):
             return self.refl_type_value(self.expr(n.kids[0], ""))
         if c in self.xmods and n.s == "__module__":
@@ -987,6 +989,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
+        self.typing_marker_check(o.t, n.s)
         if self.reference_union(o.t):
             # Share getattr's exact-class arms, including property calls and
             # missing-field errors, without boxing any native field storage.
@@ -3151,6 +3154,21 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
     comp_names(n, names)
     if comp_unbound(n, names) != "":
         self.err(comp_unbound(n, names))
+    captures: dict[str, bool] = {}
+    for j in range(len(n.kids)):
+        if j != 2:  # the outer iterable still sees the surrounding scope
+            captured_reads(n.kids[j], {}, captures)
+    cells = self.cells
+    planned = self.compcells
+    self.cells = dict(cells)
+    self.compcells = {}
+    for nm in names:
+        if nm in captures and nm not in self.compcells:
+            # One shared cell per evaluation, not per iteration. Its scanned
+            # payload and optional identity word use ordinary closure layout;
+            # module comprehensions can create identity-tracking closures too.
+            big = int_program()
+            self.compcells[nm] = self.rt("pys_alloc", "ptr", [("i64 23" if big else "i64 15") if dynamic_program() else ("i64 15" if big else "i64 8")])
     saved: list[str] = []
     held: list[int] = []
     boxes: list[str] = []
@@ -3186,6 +3204,8 @@ def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: 
     self.for_(mk("for", "comp" if written else "", n.line, [n.kids[1], n.kids[2], mk("block", "", n.line, body)]), own, arg)
     self.narrowed = self.forget_walrus(pre, [n])
     self.compshare = share
+    self.cells = cells
+    self.compcells = planned
     et = self.lct.pop()
     self.lcs.pop()
     self.lcsoft.pop()

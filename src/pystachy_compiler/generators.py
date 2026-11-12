@@ -801,9 +801,15 @@ def gen_hidden_loop(self, loop: Node, own: list[str], names: list[str]) -> None:
         boxes.append(self.idbox.get(nm, ""))
     pre = self.narrowed
     share = self.compshare
+    cells = self.cells
+    planned = self.compcells
     self.compshare = {}
+    self.cells = dict(cells)
+    self.compcells = {}
     self.for_(loop, own)
     self.compshare = share
+    self.cells = cells
+    self.compcells = planned
     self.narrowed = pre
     for i in range(len(names)):
         nm = names[i]

@@ -524,6 +524,8 @@ class Frame:
         self.gdecl: dict[str, bool] = {}
         self.assigned: dict[str, bool] = {}
         self.compvars: dict[str, int] = {}
+        self.compcells: dict[str, str] = {}
+        self.compshare: dict[str, str] = {}
         self.loops: list[Loop] = []
         self.exits: list[Exit] = []
         self.wdepth: list[int] = []

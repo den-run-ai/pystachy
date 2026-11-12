@@ -501,9 +501,11 @@ See [object protocols](semantics.md#object-protocols) and
 - **Function values:** mixing functions without a `Callable` annotation; `Callable[..., R]`;
   keyword calls, wrong arity or incompatible return types through `Callable`; printing
   functions, including inside containers; comparing containers of functions.
-- **Closures:** capturing possibly unassigned or later-unbound enclosing variables, or
-  comprehension variables; a decorated nested function capturing its own name; nested
-  classes. An undecorated nested function may reference itself.
+- **Closures:** capturing possibly unassigned or later-unbound enclosing variables;
+  capturing a comprehension variable before its binding clause, or changing a captured
+  comprehension variable to an incompatible type in a later clause; a decorated nested
+  function capturing its own name; nested classes. An undecorated nested function may
+  reference itself.
 
 ### Classes, dataclasses and NamedTuples
 
@@ -521,7 +523,9 @@ See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
   class or a different receiver.
 - **Methods and hooks:** using or assigning `cls` as a value; static/class decorators on special
   methods; `C.m(o)` outside ordinary inheritance; decorators beyond staticmethod, classmethod,
-  property/setter/deleter, dataclass and overload. Defining or inheriting `__new__`,
+  property/setter/deleter, dataclass, overload and typing's `final`/`override` markers.
+  Inspecting marker attributes or name tables of marked classes is unsupported.
+  Defining or inheriting `__new__`,
   `__getattr__`, `__getattribute__`, `__setattr__` or `__delattr__`, or a base defining
   `__init_subclass__`, is rejected.
 - **Properties and attributes:** getter decorators, duplicate/misnamed setters or deleters,

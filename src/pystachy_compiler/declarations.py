@@ -841,6 +841,36 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
     defs: dict[str, bool] = {}
     for i in range(len(body)):
         st = body[i]
+        target = st.kids[0] if st.kind == "subclass" else st
+        start = 3 if target.kind == "def" else 1
+        decos = target.kids[start:] if target.kind in ["def", "class"] else []
+        if any(d.kind == "typingmarker" for d in decos):
+            # final/override return the object unchanged. Their marker attributes
+            # remain unsupported, and convey no dispatch or inheritance promise.
+            # Another decorator might return an object with effectful __setattr__;
+            # only the existing builtin descriptors and dataclass are safe here.
+            safe = True
+            for d in decos:
+                known = d.s in ["staticmethod", "classmethod", "property"] or self.imported(d.s) in ["dataclasses.dataclass", "typing.overload"]
+                known = known or ("." in d.s and d.s[d.s.rfind(".") + 1:] in ["setter", "deleter"])
+                if d.kind != "typingmarker" and not known:
+                    safe = False
+            if not safe:
+                # Preserve the older unused-declaration checks (for example a
+                # final sentinel made by object.__new__), instead of rejecting
+                # previously accepted imports or erasing an observable setattr.
+                for d in decos:
+                    if d.kind == "typingmarker":
+                        d.kind = "deco"
+                        d.s = d.pyname
+            # The parameter/body header retains the decorator binding reads, in
+            # evaluation order. hoist/closure and hoist_class execute them before
+            # defaults or the class body, even when an optional import failed.
+            if safe:
+                checks = [d.mchk for d in reversed(decos) if d.kind == "typingmarker" and d.mchk != ""]
+                target.kids[0].mchk = ";".join(checks)
+                self.typemarkers[target.line] = " ".join("__" + d.s[7:] + "__" for d in decos if d.kind == "typingmarker")
+                target.kids = target.kids[:start] + [d for d in decos if d.kind != "typingmarker"]
         stub = self.stub(m, st)
         self.line = st.line
         if stub and st.s in defs:
@@ -892,6 +922,22 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
                 k.kids[1].kids = self.typing_forms(m, k.kids[1].kids, False)
         out.append(st)
     return out if len(out) < len(body) else body
+
+def gen_typing_marker_check(self, t: str, a: str) -> None:
+    # Marker attributes do not have storage. Reject their inspection, including
+    # inherited markers and name-table reflection, instead of reporting absence.
+    if a != "" and a not in ["__final__", "__override__"]:
+        return
+    c = unopt(t)
+    while c in self.classes:
+        ci = self.classes[c]
+        origin = self.classes[ci.origin] if ci.origin in self.classes else ci
+        marks = self.typemarkers.get(origin.node.line, "")
+        if marks != "" and (a == "" or a in marks.split()):
+            self.err("inspection of typing final/override marker attributes is not supported")
+        c = ci.base
+    if t == "dyn" and any(a == "" or a in marks.split() for marks in self.typemarkers.values()):
+        self.err("inspection of typing final/override marker attributes through Any is not supported")
 
 def gen_stub(self, m: Mod, st: Node) -> bool:
     # is st a def decorated with typing.overload
@@ -1154,6 +1200,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     if cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and (deco == "staticmethod" or deco == "classmethod"):
         f.deco = deco  # (a method that takes no self, or its class as cls)
     f.prop = cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and deco == "property"
+    propann = d.kids[1]  # (a generic class's later specializations still need the explicit Any marker)
     if f.prop:
         for st in self.classes[cls].node.kids[0].kids:
             if st is d:
@@ -1190,7 +1237,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
-    if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
+    if (cls == "" or template_ok(d.s) or init) and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each
         # call, as a TypeVar's is. A parameter takes its argument's type (*args and **kwargs
         # those of each call's), the return what the function returns; no value is boxed, so
@@ -1349,9 +1396,9 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         elif d.s.startswith("__") and d.s.endswith("__"):
             bad = f"@property on the special method {d.s} is not supported"
         elif d.kids[1].kind == "noann" and d not in held:
-            if self.dyn_policy(d.line) and not f.gen:
-                # Opt-in getters infer through the same function instances as
-                # ordinary methods. They had no accepted implicit None ABI to
+            if (self.dyn_policy(d.line) or "" in f.anys) and not f.gen:
+                # Explicit Any and opt-in getters infer through the same instances
+                # as ordinary methods. They had no accepted implicit None ABI to
                 # preserve, so a recursive return must be genuinely inferred.
                 f.void_default = False
             else:
@@ -1415,6 +1462,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             held[i].kids[1] = anns[i]
         else:
             held[i].kids[0] = anns[i]
+    if f.prop and "" in f.anys and not self.dyn_policy(d.line):
+        d.kids[1] = propann
     return f
 
 def gen_iter_ann(self, n: Node) -> str:
