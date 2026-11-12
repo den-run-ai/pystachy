@@ -8,7 +8,7 @@ import sys
 import tempfile
 import unittest
 
-from pytest_native_codegen import CollectionError, generate
+from pytest_native_codegen import CollectionError, generate, generate_conftest, match_expression
 
 
 TOOLS = Path(__file__).resolve().parent
@@ -325,12 +325,71 @@ def second(): return 2
 def test_value(same): pass
 """, "duplicate fixture name")
 
+    def test_expressions_follow_pytests_grammar(self):
+        names = {"alpha", "beta"}
+        for text, expected in (("", True), ("alpha", True), ("gamma", False), ("not gamma", True),
+                               ("alpha and beta", True), ("alpha and gamma", False), ("gamma or beta", True),
+                               ("not (alpha or gamma)", False), ("not alpha or beta", True),
+                               ("not not alpha", True), ("gamma or alpha and gamma", False),
+                               ("(gamma or alpha) and beta", True)):
+            with self.subTest(text=text):
+                self.assertIs(match_expression(text, "-m")(lambda name: name in names), expected)
+        for text in ("(", ")", "alpha and", "or alpha", "alpha beta", "alpha(x=1)", "a=b", "not"):
+            with self.subTest(text=text), self.assertRaisesRegex(CollectionError, "unsupported -k expression"):
+                match_expression(text, "-k")
+        # (pytest's names may hold brackets, dots, colons and dashes.)
+        self.assertTrue(match_expression("test_a[1-x] or a.b::c", "-k")(lambda name: name == "test_a[1-x]"))
+
+    def test_mark_names_stand_for_their_marks(self):
+        source = ("import pytest\nslow = pytest.mark.slow\nskipped = pytest.mark.skip(reason='later')\n"
+                  "cases = pytest.mark.parametrize('n', [1, 2])\nparametrize = pytest.mark.parametrize\n"
+                  "@slow\n@cases\ndef test_a(n): pass\n@skipped\ndef test_b(): pass\n"
+                  "@parametrize('n', [3])\ndef test_c(n): pass\n")
+        module = generate(source, "test_suite.py")
+        self.assertEqual(module.cases, ["test_suite.py::test_a[1]", "test_suite.py::test_a[2]",
+                                        "test_suite.py::test_b", "test_suite.py::test_c[3]"])
+        # (The statements that named the marks are not in the program.)
+        self.assertNotIn("pytest.mark", module.source)
+        self.assertEqual(generate(source, "test_suite.py", markexpr="slow and parametrize").cases,
+                         module.cases[:2])
+        self.assertEqual(generate(source, "test_suite.py", keyword="test_b or 3").cases, module.cases[2:])
+        for bad, message in (
+                ("import pytest\nslow = pytest.mark.slow\nslow = pytest.mark.slow\n", "assigned once"),
+                ("import pytest\na = b = pytest.mark.slow\n", "assigned once"),
+                ("import pytest\ntest_mark = pytest.mark.slow\n", "dynamically assigning tests")):
+            with self.subTest(source=bad), self.assertRaisesRegex(CollectionError, message):
+                generate(bad + "def test_a(): pass\n", "test_suite.py")
+        with self.assertRaisesRegex(CollectionError, "one module-level name of a test module"):
+            generate_conftest("import pytest\nslow = pytest.mark.slow\n", "conftest.py")
+
+    def test_annotation_only_pytest_names_are_removed(self):
+        source = ("from __future__ import annotations\nfrom typing import TYPE_CHECKING\nimport pytest\n"
+                  "from pytest import MonkeyPatch\nfrom _pytest.fixtures import SubRequest\n"
+                  "if TYPE_CHECKING:\n    from _pytest.config import Config\n    from os import PathLike\n"
+                  "@pytest.fixture\ndef value(request: SubRequest) -> int:\n    return 1\n"
+                  "def helper(patch: MonkeyPatch, config: Config | None = None) -> None:\n"
+                  "    patch.setenv('A', '1')\n"
+                  "def test_a(value: int, monkeypatch: MonkeyPatch) -> None:\n    helper(monkeypatch)\n")
+        module = generate(source, "test_suite.py")
+        for name in ("MonkeyPatch", "SubRequest", "Config", "_pytest", "request"):
+            self.assertNotIn(name, module.source)
+        # (An import the block makes for other annotations stays.)
+        self.assertIn("from os import PathLike", module.source)
+        for bad, message in (
+                ("from pytest import MonkeyPatch\ndef test_a():\n    MonkeyPatch()\n", "unsupported pytest use"),
+                ("from _pytest.monkeypatch import MonkeyPatch, notset\ndef test_a(): pass\n",
+                 "unsupported import from _pytest.monkeypatch"),
+                ("import pytest\n@pytest.fixture\ndef value(request):\n    return request.node\n"
+                 "def test_a(value): pass\n", "request.param")):
+            with self.subTest(source=bad), self.assertRaisesRegex(CollectionError, message):
+                generate(bad, "test_suite.py")
+
     def test_parameter_sets_reject_dynamic_or_unknown_metadata(self):
         for row, message in (
             ("pytest.param(1, id=object())", "literal"),
             ("pytest.param(1, id=1)", "literal string"),
             ("pytest.param(1, marks=pytest.mark.usefixtures('first'))", "unsupported marker: usefixtures"),
-            ("pytest.param(1, marks=pytest.mark.filterwarnings('error'))", "unsupported marker: filterwarnings"),
+            ("pytest.param(1, marks=pytest.mark.filterwarnings('error::pkg.Custom'))", "built-in warning class"),
             ("pytest.param(1, marks=pytest.mark.slow(object()))", "literal"),
             ("pytest.param(1, marks=[])" + ", pytest.param(2, other=True)", "static marks"),
             ("pytest.param(1, marks=None)", "unsupported marker"),
@@ -360,8 +419,11 @@ def test_value(value): pass
              "literal"),
             ("import pytest\n@pytest.mark.usefixtures('first', other=1)\ndef test_a(): pass\n",
              "literal fixture names"),
-            ("import pytest\n@pytest.mark.filterwarnings('error')\ndef test_a(): pass\n",
-             "unsupported marker: filterwarnings"),
+            ("import pytest\n@pytest.mark.filterwarnings('error::pkg.Custom')\ndef test_a(): pass\n",
+             "built-in warning class"),
+            ("import pytest\n@pytest.mark.filterwarnings('error:::module')\ndef test_a(): pass\n",
+             "built-in warning class"),
+            ("import pytest\n@pytest.mark.filterwarnings\ndef test_a(): pass\n", "takes filter strings"),
             ("import pytest\ndef make(): return 1\n@pytest.mark.slow(make())\ndef test_a(): pass\n",
              "literal"),
             ("import pytest\n@pytest.mark.usefixtures('missing')\ndef test_a(): pass\n",

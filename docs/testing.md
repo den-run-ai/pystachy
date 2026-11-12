@@ -436,6 +436,7 @@ pytest oracle. Its examples run in JIT with the hosted compiler; their AOT build
 the runner's own tests, failure controls and bundled upstream methods use the job's
 verified compiler (`PYTEST_NATIVE_COMPILER`), which keeps the job within its bound.
 This covers collection, fixture lifecycle, unittest cases, package layouts,
+`conftest.py` hooks answered for by the comparison, `-k`/`-m` selection,
 JIT/AOT parity, GC stress, failure controls and the bundled upstream fnmatch/textwrap
 methods. The existing job runs once on code PRs, main pushes and manual runs;
 documentation-only PRs retain their lightweight plan. Its artifact includes both

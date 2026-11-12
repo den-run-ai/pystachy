@@ -338,7 +338,8 @@ class CollectionControls(TemporarySuite):
             "xunit_class": "class TestThings:\n    def setup_class(cls): pass\n    def test_one(self): pass\n",
             "async": "async def test_one(): pass\n",
             "custom_decorator": "def custom(f): return f\n@custom\ndef test_one(): pass\n",
-            "module_mark": "import pytest\npytestmark = pytest.mark.filterwarnings('error')\ndef test_one(): pass\n",
+            "module_mark": "import pytest\npytestmark = pytest.mark.filterwarnings('error::pkg.Custom')\n"
+                           "def test_one(): pass\n",
             "plugin": "pytest_plugins = ['something']\ndef test_one(): pass\n",
             "unknown_helper": "import pytest\ndef test_one():\n    pytest.warns(UserWarning)\n",
             "relative_import": "from . import helper\ndef test_one(): pass\n",

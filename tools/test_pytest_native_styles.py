@@ -647,6 +647,105 @@ CONFIGURED = {
 }
 
 
+# The configured project again, with a conftest.py whose session and collection hooks
+# pytest runs and the program leaves out, and tests named by marks and expressions.
+HOOKS = '''
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from _pytest.fixtures import SubRequest
+
+
+def pytest_addoption(parser):
+    parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "net: needs the network")
+
+
+def pytest_collection_modifyitems(config, items):
+    for item in items:
+        if "slow" in item.keywords:
+            item.add_marker(pytest.mark.net)
+
+
+def pytest_report_header(config):
+    return "sample " + str(eval("1 + 1"))
+
+
+@pytest.fixture
+def numbers(request: SubRequest) -> list[int]:
+    return [1, 2, 3]
+
+
+@pytest.fixture
+def home(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
+    monkeypatch.setenv("PYN_HOME", "/tmp/pyn")
+    yield "/tmp/pyn"
+'''
+
+SELECTED = '''
+import sys
+
+import pytest
+
+import lib
+
+slow = pytest.mark.slow
+quiet = pytest.mark.filterwarnings("ignore::DeprecationWarning")
+posix = pytest.mark.skipif(sys.platform == "win32", reason="posix only")
+cases = pytest.mark.parametrize("value", [1, 2])
+mark = pytest.mark
+
+
+@slow
+@quiet
+def test_alias_quiets_the_configured_error():
+    assert lib.old() == 1
+
+
+@mark.net
+def test_marker_registered_by_a_hook(numbers):
+    assert sum(numbers) == 6
+
+
+@cases
+def test_alias_table(value, home):
+    assert value > 0 and home != ""
+
+
+@posix
+def test_alias_condition():
+    assert True
+
+
+@pytest.mark.filterwarnings("error::UserWarning")
+def test_mark_overrides_the_configured_ignore():
+    with pytest.raises(UserWarning):
+        lib.noisy()
+
+
+@pytest.mark.filterwarnings("error::UserWarning")
+@pytest.mark.filterwarnings("ignore:harmless noise")
+def test_the_outer_mark_wins():
+    with pytest.raises(UserWarning):
+        lib.noisy()
+
+
+def test_recwarn(recwarn):
+    assert lib.old() == 1
+    assert len(recwarn) == 1
+    assert recwarn.pop(DeprecationWarning).category is DeprecationWarning
+    assert len(recwarn.list) == 0
+'''
+
 SUITES = {
     "unit": (UNITTEST, "test-failed"),
     "tables": (TABLES, "passed"),
@@ -809,7 +908,7 @@ class StyleParity(TemporarySuite):
         return status, error.getvalue(), json.loads(evidence.read_text()) if evidence.exists() else {}
 
     def check_configured(self, mode):
-        self.files(CONFIGURED, True)
+        self.files({**CONFIGURED, "tests/conftest.py": HOOKS, "tests/test_selected.py": SELECTED}, True)
         # (A caller that has not read the configuration must not run under it.)
         with self.assertRaisesRegex(CollectionError, "pytest configuration is not supported"):
             runner.discover([self.root], self.root)
@@ -822,6 +921,17 @@ class StyleParity(TemporarySuite):
         self.assertEqual(outcomes, {
             "test_imports_from_pythonpath": "passed", "test_strict_xpass_fails": "failed", "test_xfail": "xfailed",
             "test_deprecation_is_an_error": "failed", "test_expected_warning": "passed"})
+        # Names for marks, filterwarnings marks over the configuration's filters, and recwarn.
+        selected = {event["nodeid"].split("::")[1]: event["outcome"] for event in report["results"][1]["events"]
+                    if event["phase"] == "call"}
+        self.assertEqual(selected, dict.fromkeys([
+            "test_alias_quiets_the_configured_error", "test_marker_registered_by_a_hook", "test_alias_table[1]",
+            "test_alias_table[2]", "test_alias_condition", "test_mark_overrides_the_configured_ignore",
+            "test_the_outer_mark_wins", "test_recwarn"], "passed"))
+        # The hooks pytest ran are not in the program: its report names them.
+        self.assertEqual(report["results"][0]["hooks"], [
+            "tests/conftest.py: " + hook for hook in ("pytest_addoption", "pytest_configure",
+                                                       "pytest_collection_modifyitems")])
 
     def test_project_configuration_is_honored(self):
         self.check_configured("python")
@@ -831,11 +941,73 @@ class StyleParity(TemporarySuite):
         self.assertEqual(settings.filters, [("error", "", "DeprecationWarning"), ("ignore", "harmless", "UserWarning")])
         self.assertIn("addopts = --strict-markers", settings.ini)
 
+    def test_expressions_select_cases_as_pytest_does(self):
+        self.files({**CONFIGURED, "tests/conftest.py": HOOKS, "tests/test_selected.py": SELECTED}, True)
+        tests = str(self.root / "tests")
+
+        def chosen(*arguments):
+            status, error, report = self.run_cli("python", tests, *arguments)
+            self.assertEqual(report.get("qualification"), "pytest-matched", error)
+            return status, [case.split("::")[1] for result in report["results"] for case in result["cases"]]
+
+        self.assertEqual(chosen("-m", "slow"), (0, ["test_imports_from_pythonpath",
+                                                    "test_alias_quiets_the_configured_error"]))
+        self.assertEqual(chosen("-k", "alias and not table"), (0, ["test_alias_quiets_the_configured_error",
+                                                                   "test_alias_condition"]))
+        # -k reads a test's module and marks too, in any letter case; -m its marks by name.
+        self.assertEqual(len(chosen("-k", "TEST_SELECTED")[1]), 8)
+        self.assertEqual(chosen("-k", "filterwarnings or parametrize")[1], [
+            "test_alias_quiets_the_configured_error", "test_alias_table[1]", "test_alias_table[2]",
+            "test_mark_overrides_the_configured_ignore", "test_the_outer_mark_wins"])
+        self.assertEqual(chosen("-m", "not (slow or xfail or filterwarnings) and not parametrize", "-k", "selected")[1],
+                         ["test_marker_registered_by_a_hook", "test_alias_condition", "test_recwarn"])
+        self.assertEqual(chosen("-k", "table[2]")[1], ["test_alias_table[2]"])
+        self.assertEqual(chosen("-k", "no_such_test"), (5, []))
+        # Node IDs are chosen first; the expressions then choose among them.
+        status, error, report = self.run_cli("python", tests + "/test_selected.py::test_alias_table", "-k", "1")
+        self.assertEqual((status, report["results"][0]["cases"]), (0, ["tests/test_selected.py::test_alias_table[1]"]),
+                         error)
+        # The configuration's own -m applies, and the command line's replaces it.
+        (self.root / "pytest.ini").write_text("[pytest]\naddopts = -m slow\npythonpath = src\n"
+                                              "markers =\n    slow: takes a while\n")
+        (self.root / "pyproject.toml").unlink()
+        self.assertEqual(len(chosen()[1]), 2)
+        # The conftest.py hook marks the slow tests as net too, which the program cannot
+        # know: pytest selects three tests, the program one, and the run is an error.
+        status, error, report = self.run_cli("python", tests, "-m", "net")
+        self.assertEqual((status, report["qualification"]), (2, "pytest-mismatch"), error)
+        self.assertIn("tests/conftest.py: pytest_collection_modifyitems", error)
+        for expression in ("(", "a and", "not", "slow(a=1)", "a b"):
+            with self.subTest(expression=expression):
+                status, error, _ = self.run_cli("python", tests, "-k", expression)
+                self.assertEqual(status, 2)
+                self.assertIn("unsupported -k expression", error)
+
+    def test_hooks_need_the_comparison_that_answers_for_them(self):
+        files = {"conftest.py": "import pytest\n\n\ndef pytest_collection_modifyitems(items):\n"
+                                "    for item in items:\n        if 'slow' in item.keywords:\n"
+                                "            item.add_marker(pytest.mark.skip(reason='slow'))\n",
+                 "test_a.py": "import pytest\n\n\n@pytest.mark.slow\ndef test_slow():\n    assert True\n\n\n"
+                              "def test_fast():\n    assert True\n"}
+        self.files(files)
+        # pytest skips what the hook marks and the program runs it: the difference is an error.
+        status, error, report = self.run_cli("python", str(self.root))
+        self.assertEqual((status, report["qualification"]), (2, "pytest-mismatch"), error)
+        self.assertIn("does not run these conftest.py hooks", error)
+        self.assertIn("conftest.py: pytest_collection_modifyitems", error)
+        # Where the hook changes nothing that ran, the run is verified.
+        status, error, report = self.run_cli("python", str(self.root), "-k", "fast")
+        self.assertEqual((status, report["qualification"]), (0, "pytest-matched"), error)
+        # Without the comparison nothing answers for the hook.
+        status, error, report = self.run_cli("python", str(self.root), "--no-compare")
+        self.assertEqual(status, 2)
+        self.assertIn("pytest_collection_modifyitems is not run natively", report["results"][0]["error"])
+
     def test_configuration_the_runner_cannot_honor_is_rejected(self):
         path = self.source("def test_a(): pass\n", "tests/test_a.py")
         rejected = {
             "pyproject.toml": [('[tool.pytest.ini_options]\naddopts = "-n auto"\n', "addopts '-n'"),
-                               ('[tool.pytest.ini_options]\naddopts = "-m \'not slow\'"\n', "addopts '-m'"),
+                               ('[tool.pytest.ini_options]\naddopts = "-x"\n', "addopts '-x'"),
                                ('[tool.pytest.ini_options]\npython_files = "check_*.py"\n', "python_files"),
                                ('[tool.pytest.ini_options]\nasyncio_mode = "auto"\n', "asyncio_mode"),
                                ('[tool.pytest.ini_options]\nfilterwarnings = ["error::pkg.Custom"]\n',
@@ -951,11 +1123,23 @@ class StyleRejections(TemporarySuite):
         for name, (source, message) in forms.items():
             with self.subTest(form=name), self.assertRaisesRegex(CollectionError, message):
                 generate(source, "test_suite.py")
-        # A report-only hook is dropped from a conftest.py; one that changes collection is not.
-        module, _ = generate_conftest("def pytest_report_header(config):\n    return 'x'\nVALUE = 1\n", "conftest.py")
+        # A report-only hook is dropped from a conftest.py, whatever its body does.
+        module, _ = generate_conftest("def pytest_report_header(config):\n    return str(eval('1'))\nVALUE = 1\n",
+                                      "conftest.py")
         self.assertNotIn("pytest_report_header", module.source)
-        with self.assertRaisesRegex(CollectionError, "unsupported pytest hook: pytest_addoption"):
-            generate_conftest("def pytest_addoption(parser): pass\n", "conftest.py")
+        self.assertEqual(module.hooks, [])
+        # A session or collection hook is left out only while pytest's own run is compared.
+        hooks = "def pytest_addoption(parser): pass\ndef pytest_collection_modifyitems(items): pass\n"
+        with self.assertRaisesRegex(CollectionError, "pytest_addoption is not run natively"):
+            generate_conftest(hooks, "conftest.py")
+        module, _ = generate_conftest(hooks, "conftest.py", verified=True)
+        self.assertNotIn("def pytest_", module.source)
+        self.assertEqual(module.hooks, ["pytest_addoption", "pytest_collection_modifyitems"])
+        for source, message in (
+                ("def pytest_generate_tests(metafunc): pass\n", "unsupported pytest hook: pytest_generate_tests"),
+                ("def pytest_configure(config): pass\nHOOK = pytest_configure\n", "is used by other code")):
+            with self.subTest(source=source), self.assertRaisesRegex(CollectionError, message):
+                generate_conftest(source, "conftest.py", verified=True)
 
     def test_layouts_pytest_cannot_import_are_rejected(self):
         first = self.source("def test_a(): pass\n", "a/test_same.py")

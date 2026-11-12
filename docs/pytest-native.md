@@ -27,6 +27,19 @@ dropped: `path::test` covers `path::test[id]`, and a class covers its tests. Giv
 node IDs for every argument, with one module's IDs together. The module is still
 imported whole. The real pytest oracle runs the same selection.
 
+`-k EXPRESSION` and `-m EXPRESSION` then keep the cases that match, as pytest's
+options do: names joined by `and`, `or` and `not`, with parentheses. `-k` looks for
+each name, in any letter case, inside the test's name and ID, its class, module and
+directories, and its marks; `-m` matches the marks themselves (`slow`, `skip`,
+`parametrize` and so on). The collector decides this from the source, so a mark that
+a `conftest.py` hook or a plugin adds at run time is not seen: the comparison then
+reports the cases pytest selected and the program did not.
+
+```sh
+python3 tools/pytest_native.py tests -k "parse and not slow" --compiler ./pystachy
+python3 tools/pytest_native.py tests -m "not network" --compiler ./pystachy
+```
+
 Oracle comparison is enabled by default; `--compare` also selects it explicitly.
 It runs the **original** files in real CPython pytest, independently of
 the transformed programs. It compares collected test IDs/order and every
@@ -95,11 +108,12 @@ The runner reads the configuration pytest would use: the first of `pytest.toml`,
 silently ignored. Options that only shape pytest's report are accepted (`testpaths`,
 `minversion`, `log_*`, `junit_*`, and in `addopts` flags such as `-ra`, `-q`,
 `--tb=short`, `--color`). `xfail_strict`, `pythonpath`, `markers` with
-`--strict-markers`, and `filterwarnings` or `-W` entries made of an action, a
-message and a built-in warning class are honored, in the program and in the
-comparison's pytest alike. Any other option is an error that names it: `-m`, `-k`,
-`-n`, coverage and other plugins' options, changed `python_files`, `python_classes`
-or `python_functions`, and filters on a project's own warning class.
+`--strict-markers`, `-k` and `-m` in `addopts` (the command line's replace them),
+and `filterwarnings` or `-W` entries made of an action, a message and a built-in
+warning class are honored, in the program and in the comparison's pytest alike. Any
+other option is an error that names it: `-x`, `-n`, coverage and other plugins'
+options, changed `python_files`, `python_classes` or `python_functions`, and filters
+on a project's own warning class.
 
 Generated sources, executables and phase reports live in `--work-dir` (default
 `build/pytest-native`). The CLI locks that directory against concurrent runs;
@@ -189,13 +203,17 @@ This hosted tool currently targets Linux and macOS.
 - `@pytest.fixture(params=[...], ids=[...])` on function-scoped fixtures, read as
   `request.param`. Cases and IDs follow pytest: fixture parameters in the order of
   the test's fixture closure, then its `parametrize` marks; a directly parametrized
-  argument replaces a fixture of that name. Other uses of `request`, parametrized
-  wider scopes (pytest reorders tests around them) and `indirect=` are rejected.
+  argument replaces a fixture of that name. A fixture may also name `request` and
+  never read it. Other uses of `request`, parametrized wider scopes (pytest reorders
+  tests around them) and `indirect=` are rejected.
 - Built-in `tmp_path` (a new empty `pathlib.Path` directory per test, named as
-  pytest names it and removed after the run) and `monkeypatch` with `setenv`,
-  `delenv` and `undo`. Other `monkeypatch` methods patch objects at run time, which
-  compiled calls do not observe, and are rejected; `capsys`, `caplog` and the
-  remaining built-in fixtures are unsupported.
+  pytest names it and removed after the run), `monkeypatch` with `setenv`, `delenv`
+  and `undo`, and `recwarn` (the warnings raised since its setup: `len()`, indexing,
+  iteration, `.list`, `.pop(Class)` and `.clear()`). Other `monkeypatch` methods
+  patch objects at run time, which compiled calls do not observe, and are rejected.
+  `capsys` and `capfd` are unsupported: a compiled program cannot replace
+  `sys.stdout`, and the runtime has no `os.dup2` to redirect its descriptor.
+  `caplog` and the remaining built-in fixtures are unsupported too.
 - `pytest.raises(ExceptionClass, match="regex")` and a literal tuple
   `pytest.raises((A, B))` as a context manager, with `.value`, `.type`,
   `.typename` and `.match(regex)`. The callable form
@@ -231,15 +249,40 @@ This hosted tool currently targets Linux and macOS.
 - `@pytest.mark.usefixtures("name", ...)` with literal names, set up after autouse
   fixtures and before argument fixtures, nearest decorator first, as pytest does.
 - Marks that only label tests, such as `@pytest.mark.slow`, with literal arguments.
-  The isolated oracle loads no plugin that gives them meaning; `-m` selection is
-  not supported. `filterwarnings` and other marks with behavior are rejected.
+  The isolated oracle loads no plugin that gives them meaning; `-m` and `-k` select
+  by them. Other marks with behavior are rejected.
+- `@pytest.mark.filterwarnings("action:message:category")` with a built-in warning
+  class, on a test, a class or in `pytestmark`. The filters apply around the test's
+  setup, call and teardown, over the configuration's, in pytest's order: of two
+  marks that match one warning, the one further from the function wins. An `ignore`
+  of one of pytest's own warning classes is accepted and does nothing.
+- A module-level name for a mark, assigned once: `slow = pytest.mark.slow`,
+  `needs_posix = pytest.mark.skipif(sys.platform == "win32", reason="...")`,
+  `cases = pytest.mark.parametrize("n", [1, 2])`, and `parametrize =
+  pytest.mark.parametrize` or `mark = pytest.mark`. The mark is read where the name
+  is assigned. Names for marks in a `conftest.py` or imported from another module
+  are rejected.
 - `pytestmark = mark` or a list of marks, in a module or a test class, applied
   after the marks of each test and of its class.
 - `if __name__ == "__main__":` blocks without `else`, which never run in a module
   that pytest imports, are left out. Elsewhere `__name__` is the test module's
   name and `__file__` its original path: the compiler supports neither itself.
 - In a `conftest.py`, `pytest_report_header` and `pytest_terminal_summary`, which
-  only add text to pytest's report, are left out. Other hooks are rejected.
+  only add text to pytest's report, are left out.
+- In a `conftest.py`, the hooks pytest runs around the session and its collection:
+  `pytest_addoption`, `pytest_configure`, `pytest_unconfigure`,
+  `pytest_sessionstart`, `pytest_sessionfinish`, `pytest_collection_modifyitems`,
+  `pytest_collection_finish` and `pytest_ignore_collect`. **The program does not run
+  them.** pytest does, in the comparison, so a hook that skips, deselects, reorders
+  or marks a test that ran shows up as a difference and the run fails (exit 2, with
+  a note naming the hooks left out); where no outcome depended on them, the run is
+  verified as usual. With `--no-compare` nothing would answer for them, and such a
+  `conftest.py` is rejected. Other hooks (`pytest_generate_tests`,
+  `pytest_runtest_*`, `pytest_collect_file` and the rest) are always rejected.
+- `if TYPE_CHECKING:` imports of pytest's names, `from pytest import MonkeyPatch`
+  and `from _pytest.fixtures import SubRequest` and the like, where the names only
+  annotate parameters and returns: the runner removes those annotations, and a
+  parameter is typed by the value it is given.
 - Explicit per-source dynamic `Any` opt-in for supported open payloads. The runner
   itself stores metadata, statuses and exceptions in concrete types.
 
@@ -247,8 +290,8 @@ Unsupported source forms detected by the collector are errors, never implicit sk
 Imported fixtures are unsupported; the default oracle checks their observable
 collection and phase effects. The collector rejects test classes with `__init__`,
 several base classes or a base class it cannot read, async/generator tests,
-class- and module-level xunit hooks, `conftest.py` hooks that change collection or
-execution, tests in `conftest.py`, a class fixture named as a module one, pytest
+class- and module-level xunit hooks, `conftest.py` hooks other than those above,
+tests in `conftest.py`, a class fixture named as a module one, pytest
 configuration it cannot honor, custom decorators (including `unittest.mock.patch` and hypothesis),
 plugins, dynamic test creation and unsupported pytest APIs such as
 `pytest.importorskip`, `capsys` and `monkeypatch.setattr`. It also rejects

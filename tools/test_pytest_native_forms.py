@@ -1033,8 +1033,8 @@ class FormRejections(TemporarySuite):
             "pytestmark twice": (fixture + "pytestmark = pytest.mark.slow\npytestmark = pytest.mark.fast\n",
                                  "assigned once"),
             "pytestmark read": (fixture + "pytestmark = pytest.mark.slow\nMARKS = pytestmark\n", "pytestmark"),
-            "pytestmark filterwarnings": (fixture + "pytestmark = pytest.mark.filterwarnings('error')\n",
-                                          "unsupported marker: filterwarnings"),
+            "pytestmark filterwarnings": (fixture + "pytestmark = pytest.mark.filterwarnings('explode')\n",
+                                          "built-in warning class"),
             "unittest runTest": ("import unittest\nclass Legacy(unittest.TestCase):\n    def runTest(self): pass\n",
                                  "unsupported unittest.TestCase method: runTest"),
             "class attribute table": (fixture + "CASES = [1]\nclass TestX:\n    CASES = [2]\n"
@@ -1060,7 +1060,8 @@ class FormRejections(TemporarySuite):
             "ids without params": (fixture + "@pytest.fixture(ids=['a'])\ndef value(): return 1\n", "require params"),
             "computed params": (fixture + "def cases(): return [1]\n@pytest.fixture(params=cases())\n"
                                 "def value(request):\n    return request.param\n", "a table the collector can read"),
-            "request without params": (fixture + "@pytest.fixture\ndef value(request): return 1\n", "request.param"),
+            "request without params": (fixture + "@pytest.fixture\ndef value(request): return request.node.name\n",
+                                       "request.param"),
             "request node": (fixture + "@pytest.fixture(params=[1])\ndef value(request):\n"
                              "    return request.node\ndef test_a(value): pass\n", "request.param"),
             "request in a test": ("def test_a(request): pass\n", "unsupported fixture: request"),
@@ -1092,7 +1093,8 @@ class FormRejections(TemporarySuite):
         cases = {
             "test": ("def test_a(): pass\n", "cannot define tests"),
             "class": ("class TestX:\n    def test_a(self): pass\n", "cannot define tests"),
-            "hook": ("def pytest_configure(config): pass\n", "unsupported pytest hook"),
+            "hook": ("def pytest_configure(config): pass\n", "pytest_configure is not run natively"),
+            "collection hook": ("def pytest_generate_tests(metafunc): pass\n", "unsupported pytest hook"),
             "plugins": ("pytest_plugins = ['x']\n", "pytest_plugins"),
             "parameter marks": ("import pytest\n@pytest.fixture(params=[pytest.param(1, marks=pytest.mark.skip)])\n"
                                 "def value(request):\n    return request.param\n", "conftest.py fixture parameters"),
@@ -1133,7 +1135,8 @@ class FormRejections(TemporarySuite):
         path = self.source("def test_a(): pass\n")
         actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
         self.assertEqual(actual.state, "collection-error")
-        self.assertIn("unsupported pytest hook", actual.error)
+        # (run_module compares nothing with pytest, which such a hook needs.)
+        self.assertIn("pytest_collection_modifyitems is not run natively", actual.error)
 
 
 class RunnerDetails(TemporarySuite):

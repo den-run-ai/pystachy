@@ -32,6 +32,8 @@ class GeneratedModule:
     builtin_fixtures: bool = False
     # Generated line -> original line, for the compiler's diagnostics (line_map).
     lines: dict[int, int] = field(default_factory=dict)
+    # conftest.py hooks left out of the program, which the pytest comparison answers for.
+    hooks: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -50,6 +52,8 @@ class Parameter:
 
 @dataclass
 class Mark:
+    # skip, skipif, xfail, filterwarnings, unittest's unit-skip and unit-xfail, or label:
+    # a mark that only names its test (-m and -k read it), whose name is its reason.
     kind: str
     # True/False, or the name of a condition its decorator evaluated at import.
     condition: object
@@ -58,6 +62,8 @@ class Mark:
     run: bool = True
     # Source of xfail(raises=...): a class or a tuple of classes.
     raises: str | None = None
+    # A filterwarnings mark's (action, message regex, category) entries, as written.
+    filters: tuple = ()
 
 
 @dataclass
@@ -130,12 +136,26 @@ UNIT_UNSUPPORTED = {"setUpClass", "tearDownClass", "run", "debug", "runTest", "_
                     "failureException", "addTypeEqualityFunc"}
 # conftest.py hooks that only add text to pytest's own report: nothing a test can observe.
 REPORT_HOOKS = {"pytest_report_header", "pytest_terminal_summary"}
+# conftest.py hooks pytest runs around the session and its collection. The native program
+# does not run them: the comparison with pytest then shows whether an outcome depended on
+# one, so they are accepted only while that comparison is on (Generator.verified).
+VERIFIED_HOOKS = {"pytest_addoption", "pytest_configure", "pytest_unconfigure", "pytest_sessionstart",
+                  "pytest_sessionfinish", "pytest_collection_modifyitems", "pytest_collection_finish",
+                  "pytest_ignore_collect"}
+# pytest's classes as tests name them in annotations, which the runner removes: a
+# parameter is typed by the value the runner passes.
+PYTEST_TYPES = {"MonkeyPatch", "FixtureRequest", "SubRequest", "TempPathFactory", "CaptureFixture",
+                "LogCaptureFixture", "WarningsRecorder", "ExceptionInfo", "Config", "Parser", "Item",
+                "Session", "Metafunc", "MarkDecorator", "Mark", "Cache", "Pytester", "RecordedHookCall",
+                "FixtureDef", "TempdirFactory", "Function", "Module", "Class", "Package", "Collector",
+                "CallInfo", "TestReport", "CollectReport", "RaisesExc", "RaisesGroup"}
 UNITTEST_IMPORTS = {"TestCase", "SkipTest", "skip", "skipIf", "skipUnless", "expectedFailure", "main"}
 UNITTEST_MARKS = {"unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure"}
 MONKEYPATCH = {"setenv", "delenv", "undo"}
 BUILTIN_FIXTURES = {
     "tmp_path": Fixture(None, [], False, False, call="_pyn_fixtures.tmp_path", named=True, origin="builtin"),
     "monkeypatch": Fixture(None, [], True, False, call="_pyn_fixtures.monkeypatch", valued=True, origin="builtin"),
+    "recwarn": Fixture(None, [], True, False, call="_pyn_fixtures.recwarn", valued=True, origin="builtin"),
 }
 
 
@@ -242,6 +262,96 @@ def _bound_names(node):
     return names
 
 
+WARNING_CLASSES = {"Warning", "UserWarning", "DeprecationWarning", "PendingDeprecationWarning", "SyntaxWarning",
+                   "RuntimeWarning", "FutureWarning", "ImportWarning", "UnicodeWarning", "BytesWarning",
+                   "ResourceWarning", "EncodingWarning"}
+# The names -m matches: pytest's own marks by kind, labels by name.
+MARK_NAMES = {"skip", "skipif", "xfail", "filterwarnings", "label"}
+
+
+def warning_filter(text: str):
+    """(action, message regex, category) of a filterwarnings entry the program can apply, or None.
+
+    pytest's form is action:message:category:module:lineno. The program applies an
+    action, a message and a built-in warning class.
+    """
+    parts = [part.strip() for part in text.split(":")]
+    action, message, category = parts[0], (parts[1:2] or [""])[0], (parts[2:3] or [""])[0] or "Warning"
+    if (action not in {"error", "ignore", "always", "default", "module", "once"} or category not in WARNING_CLASSES
+            or any(parts[3:])):
+        return None
+    return action, message, category
+
+
+def match_expression(text: str, option: str):
+    """Compile pytest's -k or -m expression into a function of a name test.
+
+    The grammar is pytest's: names joined by `and`, `or` and `not`, with parentheses;
+    an empty expression matches everything. The result takes a function that says
+    whether one name matches (a substring of the test's names for -k, one of its
+    marks for -m).
+    """
+    tokens = re.findall(r"[()]|[^\s()]+", text)
+    position = 0
+
+    def bad():
+        return CollectionError(f"unsupported {option} expression: {text!r} (names, and, or, not and parentheses "
+                               "are supported)")
+
+    def peek():
+        return tokens[position] if position < len(tokens) else None
+
+    def primary():
+        nonlocal position
+        token = peek()
+        position += 1
+        if token == "not":
+            inner = primary()
+            return lambda match: not inner(match)
+        if token == "(":
+            inner = either()
+            if peek() != ")":
+                raise bad()
+            position += 1
+            return inner
+        if token is None or token in {")", "and", "or"} or not re.fullmatch(r"(?:\w|[:+\-.\[\]\\/])+", token):
+            raise bad()
+        return lambda match: match(token)
+
+    def both():
+        nonlocal position
+        left = primary()
+        while peek() == "and":
+            position += 1
+            left = (lambda first, second: lambda match: first(match) and second(match))(left, primary())
+        return left
+
+    def either():
+        nonlocal position
+        left = both()
+        while peek() == "or":
+            position += 1
+            left = (lambda first, second: lambda match: first(match) or second(match))(left, both())
+        return left
+
+    if not tokens:
+        return lambda match: True
+    result = either()
+    if position != len(tokens):
+        raise bad()
+    return result
+
+
+def _type_checking(node, names, modules):
+    """`if TYPE_CHECKING:` without else: imports for annotations, which never run."""
+    if not isinstance(node, ast.If) or node.orelse:
+        return False
+    test = node.test
+    return (isinstance(test, ast.Name) and test.id in names
+            or isinstance(test, ast.Attribute) and test.attr == "TYPE_CHECKING"
+            and isinstance(test.value, ast.Name) and test.value.id in modules)
+
+
 def _main_guard(node):
     """`if __name__ == "__main__":` without else: dead code in a module pytest imports."""
     if not isinstance(node, ast.If) or node.orelse:
@@ -333,9 +443,15 @@ class Generator:
     def __init__(self, source: str, filename: str, operands: bool = True, selected=None,
                  shared=None, conftest: bool = False, session_end: bool = True, path: str = "",
                  module: str = "", imports=None, package: bool = False, alias: str = "_pyn_conftest",
-                 helper: bool = False, resolve=None, strict: bool = False):
+                 helper: bool = False, resolve=None, strict: bool = False, verified: bool = False,
+                 keyword: str = "", markexpr: str = ""):
         self.source = source
+        # pytest's -k and -m: the cases to run among those the node IDs select.
+        self.keyword = match_expression(keyword, "-k")
+        self.markexpr = match_expression(markexpr, "-m")
         self.filename = filename
+        # The run is compared with pytest's, which answers for the hooks left out (VERIFIED_HOOKS).
+        self.verified = verified
         # pytest's xfail_strict setting: what an xfail mark without strict= means.
         self.strict = strict
         # resolve(path, level, module, name) -> (source, filename, path, module) of the module
@@ -373,6 +489,10 @@ class Generator:
         # pytest imports a test module under its own name, so a script guard never runs there.
         self.tree.body = [node for node in self.tree.body if not _main_guard(node)]
         self.aliases = {}
+        self.hooks = []
+        if conftest:
+            self.drop_hooks()
+        self.type_imports()
         self.constants = {}
         # Module-level names: every one bound; modules by their import name; classes,
         # functions and imported names by the __name__ their binding shows; and the
@@ -392,6 +512,13 @@ class Generator:
         self.metadata_constants = set()
         # `pytestmark = ...` statements, which become the marks of their tests.
         self.dropped = set()
+        # Module-level names for marks (`needs_x = pytest.mark.skipif(...)`): what
+        # decorations() makes of each.
+        self.mark_aliases = {}
+        # A filterwarnings mark is in use: wrappers need the warnings module.
+        self.warning_marks = False
+        # Fixtures that take request without reading it: the parameter is removed.
+        self.unused_requests = set()
         # Declarations that read a named parameter table, placed after the module's own code.
         self.late = []
         # Names a test class binds: pytest declarations there cannot use them, because
@@ -401,6 +528,54 @@ class Generator:
 
     def error(self, node, message):
         raise CollectionError(f"{self.filename}:{getattr(node, 'lineno', 1)}: {message}")
+
+    def drop_hooks(self):
+        """Leave out the hooks of a conftest.py that the native program does not run."""
+        hooks = [node for node in self.tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                 and node.name in REPORT_HOOKS | VERIFIED_HOOKS]
+        for node in hooks:
+            if node.name in VERIFIED_HOOKS:
+                if not self.verified:
+                    self.error(node, f"{node.name} is not run natively, and only the comparison with pytest "
+                               "shows that no outcome depends on it: run with that comparison (no --no-compare)")
+                self.hooks.append(node.name)
+        names = {node.name for node in hooks}
+        self.tree.body = [node for node in self.tree.body if node not in hooks]
+        for node in ast.walk(self.tree):
+            if isinstance(node, ast.Name) and node.id in names:
+                self.error(node, "a pytest hook that the native program leaves out is used by other code: "
+                           + node.id)
+
+    def type_imports(self):
+        """Take pytest's names out of `if TYPE_CHECKING:` blocks, where they only serve annotations."""
+        names = set()
+        modules = set()
+        for node in self.tree.body:
+            if isinstance(node, ast.ImportFrom) and node.module == "typing" and not node.level:
+                names.update(alias.asname or alias.name for alias in node.names if alias.name == "TYPE_CHECKING")
+            elif isinstance(node, ast.Import):
+                modules.update(alias.asname or alias.name for alias in node.names if alias.name == "typing")
+        body = []
+        for node in self.tree.body:
+            if not _type_checking(node, names, modules):
+                body.append(node)
+                continue
+            kept = []
+            for statement in node.body:
+                if isinstance(statement, ast.ImportFrom) and not statement.level and (
+                        statement.module == "pytest" or (statement.module or "").startswith("_pytest")):
+                    for alias in statement.names:
+                        if alias.name != "*":
+                            self.aliases[alias.asname or alias.name] = "pytest." + alias.name
+                elif isinstance(statement, ast.Import) and all(alias.name == "pytest" for alias in statement.names):
+                    for alias in statement.names:
+                        self.aliases[alias.asname or alias.name] = "pytest"
+                else:
+                    kept.append(statement)
+            if kept:
+                node.body = kept
+                body.append(node)
+        self.tree.body = body
 
     def name(self, node):
         if isinstance(node, ast.Name):
@@ -1032,11 +1207,28 @@ class Generator:
         name = self.name(call.func if call else decorator)
         kind = name.removeprefix("pytest.mark.")
         if name.startswith("pytest.mark.") and kind and kind not in SEMANTIC_MARKS:
-            # Labels such as slow/network change nothing without plugins or -m selection.
+            # Labels such as slow/network change nothing but what -m and -k select.
             # Their arguments still run where the decorator does, so they must be literals.
             for value in (call.args + [kw.value for kw in call.keywords]) if call else []:
                 self.constant(value)
-            return None
+            return Mark("label", True, kind)
+        if kind == "filterwarnings":
+            if call is None or call.keywords or not call.args:
+                self.error(decorator, "filterwarnings takes filter strings")
+            filters = []
+            for argument in call.args:
+                text = self.constant(argument, True)
+                parsed = warning_filter(text) if isinstance(text, str) else None
+                fields = [part.strip() for part in text.split(":")] if isinstance(text, str) else []
+                if (parsed is None and len(fields) >= 3 and fields[0] != "error"
+                        and fields[2].startswith(("pytest.", "_pytest."))):
+                    continue  # (pytest's own warnings: the native program raises none)
+                if parsed is None:
+                    self.error(decorator, "filterwarnings marks support an action, a message and a built-in "
+                               f"warning class: {text!r}")
+                filters.append(parsed)
+            self.warning_marks = True
+            return Mark("filterwarnings", True, "", filters=tuple(filters))
         raises = None
         if call is not None and kind == "xfail":
             expected = [kw for kw in call.keywords if kw.arg == "raises"]
@@ -1140,7 +1332,14 @@ class Generator:
         usefixtures = []
         for decorator in node.decorator_list:
             name = self.name(decorator.func if isinstance(decorator, ast.Call) else decorator)
-            if name in UNITTEST_MARKS:
+            if isinstance(decorator, ast.Name) and decorator.id in self.mark_aliases and (
+                    self.shadowed is None or decorator.id not in self.shadowed):
+                # (One mark, read where the name was assigned.)
+                named = self.mark_aliases[decorator.id]
+                parameters.extend(named[0])
+                marks.extend(named[1])
+                usefixtures.append(named[2])
+            elif name in UNITTEST_MARKS:
                 if not unit:
                     self.error(decorator, "unittest decorators are supported on unittest.TestCase classes and "
                                "their methods only")
@@ -1154,12 +1353,15 @@ class Generator:
                 parameter, setup = self.parameter(decorator, annotations)
                 parameters.append(parameter)
                 prelude.extend(setup)
-            elif name in {"pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail"}:
+                marks.append(Mark("label", True, "parametrize"))
+            elif name in {"pytest.mark.skip", "pytest.mark.skipif", "pytest.mark.xfail",
+                          "pytest.mark.filterwarnings"}:
                 marks.append(self.marker(decorator, prelude))
             elif name == "pytest.mark.usefixtures":
                 usefixtures.append(self.fixture_names(decorator))
-            elif name.startswith("pytest.mark.") and self.marker(decorator) is None:
-                continue  # (a label: see marker)
+                marks.append(Mark("label", True, "usefixtures"))
+            elif name.startswith("pytest.mark.") and name != "pytest.mark.":
+                marks.append(self.marker(decorator))  # (a label: see marker)
             else:
                 self.error(decorator, "unsupported test decorator")
         # pytest reads marks nearest the function first, as it applies them.
@@ -1294,6 +1496,28 @@ class Generator:
         self.infos[node] = info
         return info
 
+    def mark_alias(self, node, names, assigned):
+        """`slow = pytest.mark.slow` or `needs_x = pytest.mark.skipif(...)`: a name for a mark.
+
+        The mark is read here, where the statement runs, and the statement is left out
+        of the program: a decorator that is the name stands for the mark.
+        """
+        value = node.value
+        resolved = self.name(value.func if isinstance(value, ast.Call) else value)
+        if resolved != "pytest.mark" and not resolved.startswith("pytest.mark."):
+            return False
+        if len(names) != 1 or assigned.get(names[0]) != 1 or self.conftest or names[0].startswith(("test", "Test")):
+            self.error(node, "a pytest mark may be given one module-level name of a test module, assigned once")
+        if isinstance(value, ast.Call) and resolved != "pytest.mark":
+            holder = ast.copy_location(ast.ClassDef(names[0], [], [], [], [value]), node)
+            self.mark_aliases[names[0]] = self.decorations(holder, self.preludes.setdefault(node, []), {},
+                                                           method=False)
+        else:
+            # (pytest.mark itself, or a mark that takes its arguments where it decorates.)
+            self.aliases[names[0]] = resolved
+        self.dropped.add(node)
+        return True
+
     def marks_of(self, node, value, prelude, unit):
         """The marks of `pytestmark = mark` or `pytestmark = [mark, ...]`, first one nearest."""
         if isinstance(node, ast.Assign) and len(node.targets) != 1:
@@ -1334,11 +1558,17 @@ class Generator:
                     if not alias.name.isupper() and alias.name != "*":
                         self.named[alias.asname or alias.name] = alias.name
                 if node.module in ("pytest", "unittest") and not node.level:
-                    allowed = PYTEST_IMPORTS if node.module == "pytest" else UNITTEST_IMPORTS
+                    allowed = PYTEST_IMPORTS | PYTEST_TYPES if node.module == "pytest" else UNITTEST_IMPORTS
                     for alias in node.names:
                         if alias.name not in allowed:
                             self.error(node, f"unsupported {node.module} import: " + alias.name)
                         self.aliases[alias.asname or alias.name] = node.module + "." + alias.name
+                elif (node.module or "").startswith("_pytest") and not node.level and all(
+                        alias.name in PYTEST_TYPES for alias in node.names):
+                    # (Names for annotations, which the runner removes.)
+                    for alias in node.names:
+                        self.aliases[alias.asname or alias.name] = "pytest." + alias.name
+                    self.dropped.add(node)
                 elif (node.module or "").startswith(("_pytest", "unittest.")):
                     self.error(node, f"unsupported import from {node.module}")
             else:
@@ -1429,9 +1659,7 @@ class Generator:
                 method = parents.get(node) in classes
                 if node.name in XUNIT_MODULE or (method and node.name in XUNIT_CLASS):
                     self.error(node, "xunit setup/teardown hooks are unsupported; use fixtures")
-                if node.name in REPORT_HOOKS and node in direct and self.conftest:
-                    self.dropped.add(node)
-                elif node.name.startswith("_pyn_") or node.name.startswith("pytest_"):
+                if node.name.startswith("_pyn_") or node.name.startswith("pytest_"):
                     self.error(node, "reserved runner name or unsupported pytest hook: " + node.name)
                 if node.name.startswith("test") and node not in direct and not method:
                     # pytest collects module attributes and test classes' methods. A function
@@ -1476,6 +1704,8 @@ class Generator:
                 if any(name in self.aliases for name in names):
                     self.error(node, "rebinding pytest or dynamically assigning tests is unsupported")
                 if node.value is None:
+                    continue
+                if self.mark_alias(node, names, assigned):
                     continue
                 try:
                     value = self.constant(node.value)
@@ -1686,6 +1916,11 @@ class Generator:
             prelude.extend(setup)
         elif ids is not None:
             self.error(decorator, "fixture ids require params")
+        if request and parameter is None and not any(
+                isinstance(part, ast.Name) and part.id == "request" for part in ast.walk(node)):
+            # (A fixture that asks for request and never reads it.)
+            request = False
+            self.unused_requests.add(node)
         if request:
             if parameter is None:
                 self.error(node, "request is supported only as request.param of a parametrized fixture")
@@ -2000,11 +2235,10 @@ class Generator:
                                    + (" and a pattern" if fixed == 2 else "") + " only")
 
     def pytest_annotations(self):
-        """Annotations of test and fixture parameters, and their returns, that name pytest."""
+        """Annotations of functions' parameters, and their returns, that name pytest."""
         found = []
-        own = set(ast.walk(self.tree))
-        for function in self.declared_functions():
-            if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)) or function not in own:
+        for function in ast.walk(self.tree):
+            if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             arguments = function.args.posonlyargs + function.args.args + function.args.kwonlyargs
             for annotation in [argument.annotation for argument in arguments] + [function.returns]:
@@ -2224,6 +2458,7 @@ class Generator:
         hooks = {hook for info in self.infos.values() for hook in info.hooks.values()}
         hints = set(self.pytest_annotations())
         dropped = self.dropped
+        unused_requests = self.unused_requests
 
         class Rewrite(ast.NodeTransformer):
             def __init__(self):
@@ -2262,6 +2497,7 @@ class Generator:
                 if node.module in ("pytest", "unittest") and not node.level:
                     node.names = [alias for alias in node.names if alias.name not in {
                         "fixture", "mark", "param", "skip", "skipIf", "skipUnless", "expectedFailure", "main"}
+                        | (PYTEST_TYPES if node.module == "pytest" else set())
                         or node.module == "pytest" and alias.name == "skip"]
                     node.module = "pytest_native_support"
                     return node if node.names else None
@@ -2275,13 +2511,16 @@ class Generator:
                     self.scopes.pop()
 
             def visit_FunctionDef(self, node):
+                for argument in node.args.posonlyargs + node.args.args + node.args.kwonlyargs:
+                    if argument.annotation in hints:
+                        argument.annotation = None
+                if node.returns in hints:
+                    node.returns = None
+                if node in unused_requests:
+                    node.args.args = [argument for argument in node.args.args if argument.arg != "request"]
+                    node.args.kwonlyargs = [argument for argument in node.args.kwonlyargs if argument.arg != "request"]
                 if node in declarations:
                     node.decorator_list = []
-                    for argument in node.args.posonlyargs + node.args.args + node.args.kwonlyargs:
-                        if argument.annotation in hints:
-                            argument.annotation = None
-                    if node.returns in hints:
-                        node.returns = None
                 elif generator.helper:
                     # (A helper's fixtures and marks are not collected; only its code is kept.)
                     node.decorator_list = [decorator for decorator in node.decorator_list if not generator.name(
@@ -2525,8 +2764,9 @@ class Generator:
         output = []
         # Each entry: (text, the statement it came from or None).
         placed = False
-        if any(self.name(node) in WARNS or isinstance(node, ast.Attribute) and node.attr in UNIT_WARNS
-               for node in ast.walk(self.tree)):
+        if self.warning_marks or any(
+                self.name(node) in WARNS or isinstance(node, ast.Attribute) and node.attr in UNIT_WARNS
+                for node in ast.walk(self.tree)):
             imports.append("import warnings as _pyn_warnings")
         for node in self.tree.body:
             leading = (isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
@@ -2793,15 +3033,28 @@ class Generator:
                 guarded += [f"{'elif' if index else 'if'} _pyn_support.condition({mark.condition}):",
                             f"    _pyn_report.record(_pyn_id, 'setup', 'skipped', {mark.reason!r})"]
             body = [*guarded, "else:", *("    " + line for line in body)]
-        lines += ["    " + line for line in body]
         # A skipped last case still ends its scopes, in its own teardown.
-        lines.append("    _pyn_teardown.scopes(_pyn_ends)")
+        body.append("_pyn_teardown.scopes(_pyn_ends)")
+        filters = [entry for mark in marks if mark.kind == "filterwarnings" for entry in mark.filters]
+        if filters:
+            # pytest applies a test's filterwarnings marks around each of its phases, nearest
+            # mark first, so that a later one (its class's, its module's) takes precedence.
+            body = ["with _pyn_warnings.catch_warnings():",
+                    *(f"    _pyn_warnings.filterwarnings({action!r}, {message!r}, {category})"
+                      for action, message, category in filters),
+                    *("    " + line for line in body)]
+        lines += ["    " + line for line in body]
         if xfail and xfail.raises and not skip:
             lines += ["    for _pyn_error in _pyn_teardown.scope_errors:",
                       f"        if isinstance(_pyn_error, {xfail.raises}):",
                       "            _pyn_teardown.matched += 1"]
         lines.append("    _pyn_teardown.record(_pyn_report, _pyn_id)")
         return "\n".join(lines)
+
+    def chosen(self, names, labels):
+        """Whether -k and -m keep a case with those lower-case names and those marks."""
+        return (self.keyword(lambda name: any(name.lower() in word for word in names))
+                and self.markexpr(lambda name: name in labels))
 
     def select(self, keys):
         """The cases that node-ID selectors name, in pytest's order.
@@ -2835,6 +3088,7 @@ class Generator:
         wrappers = []
         keys = []
         owners = []
+        words = []
         for test in self.tests:
             function = test.function
             direct = [name for parameter in test.parameters for name in parameter.names]
@@ -2869,8 +3123,15 @@ class Generator:
                 cases.append(nodeid)
                 keys.append((parts, parametrization))
                 owners.append(test.owner)
+                labels = {mark.reason if mark.kind == "label" else mark.kind
+                          for mark in test.marks + marks if mark.kind in MARK_NAMES}
+                # What -k matches: the test's name, those of its class, module and
+                # directories, and its marks; -m matches the marks.
+                words.append(({name.lower() for name in [*self.filename.split("/"), *parts[:-1],
+                                                         function.name + (parametrization or ""), *labels]}, labels))
         # Node IDs select cases; every case's declarations still run at import.
         run = list(range(len(cases))) if self.selected is None else self.select(keys)
+        run = [index for index in run if self.chosen(*words[index])]
         chunks = self.transform_source()
         # Pragmas are comments and therefore absent from the AST. Preserve their
         # original opt-ins; the runner never opts the input into Any itself.
@@ -2904,7 +3165,7 @@ class Generator:
                     pass
             source += text + "\n\n"
         return GeneratedModule(source.rstrip("\n") + "\n", [cases[index] for index in run], self.builtins_used,
-                               lines)
+                               lines, self.hooks)
 
     def adapt(self):
         """This helper module's source for the generated program (adapt_helper)."""
@@ -2959,7 +3220,8 @@ def original_line(module: GeneratedModule, line: int) -> int | None:
 
 def generate(source: str, filename: str, operands: bool = True, selected=None, shared=None,
              session_end: bool = True, path: str = "", module: str = "", imports=None,
-             package: bool = False, resolve=None, strict: bool = False) -> GeneratedModule:
+             package: bool = False, resolve=None, strict: bool = False,
+             verified: bool = False, keyword: str = "", markexpr: str = "") -> GeneratedModule:
     """Collect and adapt one module, or reject unsupported collection explicitly.
 
     operands keeps comparison operands for assertion failures (Generator.captured);
@@ -2970,22 +3232,25 @@ def generate(source: str, filename: str, operands: bool = True, selected=None, s
     last that runs; path and module are what the test module reads as __file__ and
     __name__; package says its directory is one, where relative imports resolve;
     resolve finds the module of an imported base class (Generator.__init__); strict is
-    pytest's xfail_strict setting.
+    pytest's xfail_strict setting; verified says the run is compared with pytest's, which
+    a conftest.py needs for the hooks the program leaves out (VERIFIED_HOOKS); keyword
+    and markexpr are pytest's -k and -m expressions, which keep the cases they match.
     """
     return Generator(source, filename, operands, selected, shared, False, session_end, path, module, imports,
-                     package, resolve=resolve, strict=strict).generate()
+                     package, resolve=resolve, strict=strict, verified=verified, keyword=keyword,
+                     markexpr=markexpr).generate()
 
 
 def generate_conftest(source: str, filename: str, operands: bool = True, path: str = "", module: str = "",
                       shared=None, imports=None, package: bool = False, alias: str = "_pyn_conftest",
-                      resolve=None, strict: bool = False):
+                      resolve=None, strict: bool = False, verified: bool = False):
     """Adapt a conftest.py: its generated module, and its fixtures for generate(shared=).
 
     shared and imports name the conftest.py files above it, whose fixtures its own may
     request; other modules call its fixtures through alias.
     """
     generator = Generator(source, filename, operands, None, shared, True, True, path, module, imports, package,
-                          alias, resolve=resolve, strict=strict)
+                          alias, resolve=resolve, strict=strict, verified=verified)
     module = generator.generate()
     return module, generator.export()
 

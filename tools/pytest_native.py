@@ -24,7 +24,8 @@ import textwrap
 import time
 import tomllib
 
-from pytest_native_codegen import CollectionError, adapt_helper, generate, generate_conftest, original_line
+from pytest_native_codegen import (CollectionError, adapt_helper, generate, generate_conftest, match_expression,
+                                   original_line, warning_filter)
 
 TOOLS = Path(__file__).resolve().parent
 REPO = TOOLS.parent
@@ -42,9 +43,6 @@ QUIET_OPTIONS = {"-q": False, "--quiet": False, "-v": False, "-vv": False, "-vvv
                  "-s": False, "-l": False, "--showlocals": False, "--no-header": False, "--no-summary": False,
                  "--strict-config": False, "--disable-warnings": False, "--tb": True, "--color": True,
                  "--durations": True, "--durations-min": True, "-r": True, "--code-highlight": True}
-WARNING_CLASSES = {"Warning", "UserWarning", "DeprecationWarning", "PendingDeprecationWarning", "SyntaxWarning",
-                   "RuntimeWarning", "FutureWarning", "ImportWarning", "UnicodeWarning", "BytesWarning",
-                   "ResourceWarning", "EncodingWarning"}
 EXCLUDED_DIRS = {"build", "dist", "venv", ".venv", "__pycache__", "node_modules"}
 
 
@@ -64,6 +62,9 @@ class Result:
     # instrumented code failed; the suite then ran its plain assertions (first module).
     assertion_operands: bool = True
     operand_build_error: str = ""
+    # conftest.py hooks the program left out, as "path: name" (first module): the
+    # comparison with pytest answers for them.
+    hooks: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -78,17 +79,21 @@ class Settings:
     filters: list[tuple[str, str, str]] = field(default_factory=list)
     # The same options for the isolated pytest that the comparison runs.
     ini: list[str] = field(default_factory=list)
+    # The run is compared with pytest's: conftest.py hooks the program does not run are
+    # accepted only then (pytest_native_codegen.VERIFIED_HOOKS).
+    verified: bool = False
+    # pytest's -k and -m expressions: the cases to run among those collected.
+    keyword: str = ""
+    markexpr: str = ""
 
 
 def _warning_filter(text: str, source: Path) -> tuple[str, str, str]:
     """A filterwarnings entry (action:message:category) the compiled program can apply."""
-    parts = [part.strip() for part in text.split(":")]
-    action, message, category = parts[0], (parts[1:2] or [""])[0], (parts[2:3] or [""])[0] or "Warning"
-    if (action not in {"error", "ignore", "always", "default", "module", "once"} or category not in WARNING_CLASSES
-            or any(parts[3:])):
+    parsed = warning_filter(text)
+    if parsed is None:
         raise CollectionError(f"pytest configuration is not supported: filterwarnings {text!r} in {source} "
                               "(an action, a message and a built-in warning class are)")
-    return action, message, category
+    return parsed
 
 
 def configuration(paths: list[Path], root: Path) -> Settings:
@@ -186,6 +191,13 @@ def configuration(paths: list[Path], root: Path) -> Settings:
                         index += 1
                     elif option == "-r" and not attached:
                         index += 1
+                elif option in {"-k", "-m"} and not attached and index < len(arguments):
+                    text = arguments[index]
+                    index += 1
+                    if option == "-k":
+                        settings.keyword = text
+                    else:
+                        settings.markexpr = text
                 elif option == "--import-mode" and (attached or (arguments[index:index + 1] or [""])[0]) == "prepend":
                     index += not attached
                 else:
@@ -675,7 +687,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
                 shared, imports, package = context(conftest)
                 module, exported[conftest] = generate_conftest(
                     conftest.read_text(), name, operands, str(conftest), tree.modules[conftest], shared, imports,
-                    package, aliases[conftest], resolve, settings.xfail_strict)
+                    package, aliases[conftest], resolve, settings.xfail_strict, settings.verified)
                 modules.append(module)
             except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
                 for result in results:
@@ -687,7 +699,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
             shared, imports, package = context(path)
             return generate(texts[path], results[index].path, operands, selections.get(path) if selections else None,
                             shared, session_end, str(path), tree.modules[path], imports, package, resolve,
-                            settings.xfail_strict)
+                            settings.xfail_strict, settings.verified, settings.keyword, settings.markexpr)
 
         generated = []
         for index, (path, result) in enumerate(zip(paths, results)):
@@ -714,6 +726,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     instrumented = build(True)
     if instrumented is None:
         return results
+    results[0].hooks = [f"{name}: {hook}" for name, module in zip(conftest_names, instrumented)
+                        for hook in module.hooks]
     identity = "\n".join(result.path for result in results)
     suite_work = work / hashlib.sha256(identity.encode()).hexdigest()[:16]
     names = [tree.modules[path] for path in paths]
@@ -925,6 +939,8 @@ def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: floa
     command = [python, "-m", "pytest", "-q", "-p", "_pyn_oracle", "-p", "no:cacheprovider",
                *(["--confcutdir", str(root)] if conftest else ["--noconftest"]),
                "--basetemp", str(work / "oracle-tmp"), "--rootdir", str(root), "-c", str(work / "empty.ini"),
+               *(["-k", settings.keyword] if settings and settings.keyword else []),
+               *(["-m", settings.markexpr] if settings and settings.markexpr else []),
                *([f"{path}::{selector}" for path in paths for selector in selections[path]]
                  if selections else [str(path) for path in paths])]
     start = time.perf_counter()
@@ -1030,6 +1046,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="generated sources, programs and reports; one run at a time uses it")
     parser.add_argument("--compare", action=argparse.BooleanOptionalAction, default=True,
                         help="compare phase outcomes with real pytest (default); --no-compare is unverified")
+    parser.add_argument("-k", dest="keyword", metavar="EXPRESSION",
+                        help="run the cases whose names match, as pytest's -k: names, and, or, not, parentheses")
+    parser.add_argument("-m", dest="markexpr", metavar="EXPRESSION",
+                        help="run the cases whose marks match, as pytest's -m")
     parser.add_argument("--json", type=Path, help="write complete machine-readable evidence")
     parser.add_argument("--timeout", type=float, default=120,
                         help="seconds allowed for each build, run and pytest process (default: 120)")
@@ -1062,6 +1082,12 @@ def execute(args) -> int:
         paths = (list(selections) if selections is not None
                  else discover([Path(path) for path in args.paths], root, True))
         settings = configuration(paths, root)
+        settings.verified = args.compare
+        # (The command line's expressions replace the configuration's, as pytest's last option does.)
+        settings.keyword = settings.keyword if args.keyword is None else args.keyword
+        settings.markexpr = settings.markexpr if args.markexpr is None else args.markexpr
+        for option, text in (("-k", settings.keyword), ("-m", settings.markexpr)):
+            match_expression(text, option)
     except (CollectionError, OSError, UnicodeError) as error:
         print(f"collection error: {error}", file=sys.stderr)
         return 2
@@ -1115,6 +1141,9 @@ def execute(args) -> int:
         print(difference, file=sys.stderr)
     for mismatch in mismatches:
         print("MISMATCH " + mismatch, file=sys.stderr)
+    if differences and results and results[0].hooks:
+        print("note: the native program does not run these conftest.py hooks, which may explain a difference: "
+              + ", ".join(results[0].hooks), file=sys.stderr)
     if args.compare and reference is not None and not differences:
         print("pytest collection and phase outcomes match")
     if status == 5:
