@@ -209,8 +209,9 @@ def gen_iter_abc(self, st: Node) -> str:
     # defines the methods that abstract base requires, __iter__ and __next__ (__iter__): the base
     # then gives the class nothing it uses (its __iter__ mixin is the class's own); else ""
     b = st.kids[1]
-    r = self.typing_ref(b.kids[0] if b.kind == "index" else b)
-    if (r != "Iterator" and r != "Iterable") or len(st.kids[0].kids) != 1:
+    r = self.imported_ref(b.kids[0] if b.kind == "index" else b)  # (the import, not an annotation's name: a class base is evaluated)
+    r = r[r.rfind(".") + 1 :] if r in ["typing.Iterator", "typing.Iterable", "collections.abc.Iterator", "collections.abc.Iterable"] else ""
+    if r == "" or len(st.kids[0].kids) != 1 or (b.kind == "index" and not self.inert_subscript(b.kids[1])):
         return ""
     names: dict[str, bool] = {}
     name_nodes(b, names)
@@ -220,6 +221,24 @@ def gen_iter_abc(self, st: Node) -> str:
     if "__iter__" not in defs or (r == "Iterator" and "__next__" not in defs):
         return ""
     return r
+
+def gen_inert_subscript(self, n: Node) -> bool:
+    # can a class base's subscript n be left out where the class statement runs, as nothing of it
+    # can raise or run the program's code: type variables, builtin types the program does not
+    # rebind, typing's and collections.abc's names, strings (forward references), None and ...,
+    # and subscripts and tuples of those (set[T]); not a call, nor an attribute read through a
+    # module, which a circular import may not have bound yet
+    if n.kind == "name":
+        ref = self.imported_ref(n)
+        return n.s in self.typevars or ref.startswith("typing.") or ref.startswith("collections.abc.") or (n.s in ["int", "str", "float", "bool", "bytes", "object", "list", "dict", "set", "frozenset", "tuple", "type"] and not self.bound(n.s))
+    if n.kind == "str" or n.kind == "None" or n.kind == "ellipsis":
+        return True
+    if n.kind == "index" or n.kind == "tuple":
+        for k in n.kids:
+            if not self.inert_subscript(k):
+                return False
+        return True
+    return False
 
 def gen_iterabc_derived(self, c: str) -> bool:
     # does class c (or a specialization's origin) derive from a class whose base was collections.abc's
@@ -930,10 +949,11 @@ def gen_abstract_of(self, c: str) -> list[str]:
     return sorted(out)
 
 def gen_abc_class(self, c: str) -> bool:
-    # does class c derive from abc.ABC, or from a class whose statement passes metaclass=ABCMeta
+    # does class c derive from abc.ABC, or from a class whose statement passes metaclass=ABCMeta,
+    # or whose base was collections.abc's Iterator or Iterable (iter_abc): ABCMeta makes it
     while c in self.classes:
-        if c == "abc$ABC" or c in self.abcmeta:
-            return True
+        if c == "abc$ABC" or c in self.abcmeta or c in self.iterabc or self.classes[c].origin in self.iterabc:
+            return True  # (collections.abc's Iterator and Iterable are ABCMeta's too: iter_abc)
         c = self.classes[c].base
     return False
 

@@ -241,11 +241,13 @@ An iterator's type is its class. `Iterator[T]` and `Iterable[T]` annotations (`t
 such a parameter or return is compiled for each call's argument types, a class whose
 `__init__` takes one or calls `iter()` is a class template, and an annotated variable or field
 has its value's type. A `Generic[T]` class's `Iterable[T]` parameter binds `T` to the items.
-A class may derive from `Iterator[...]` or `Iterable[...]` (or the unsubscripted name) where it
-defines the methods that abstract base requires, `__iter__` and `__next__` (`__iter__`): it is
-then a class of its own, generic in the type variables the subscript names, as with
-`Generic[T]` (`class topsort(Iterator[set[T]])`). Reflection of its objects (`dir()`,
-`hasattr()` of the attributes `ABCMeta` and the base give it) is not supported
+A class may derive from `typing`'s or `collections.abc`'s `Iterator[...]` or `Iterable[...]` (or
+the unsubscripted name) where it defines the methods that abstract base requires, `__iter__` and
+`__next__` (`__iter__`), and the subscript names only types (no call or attribute of a module):
+it is then a class of its own, generic in the type variables the subscript names, as with
+`Generic[T]` (`class topsort(Iterator[set[T]])`). As `ABCMeta` makes it, its abstract methods
+keep its objects from being made. Reflection of its objects (`dir()`, `hasattr()` of the
+attributes `ABCMeta` and the base give it) is not supported
 ([test](../../tests/programs/classes/iterator_base.py)).
 
 ## Generators

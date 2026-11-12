@@ -1104,6 +1104,7 @@ from src.pystachy_compiler.program import (
     gen_generic_traits as program_generic_traits,
     gen_implicit_tparams as program_implicit_tparams,
     gen_iter_abc as program_iter_abc,
+    gen_inert_subscript as program_inert_subscript,
     gen_iterabc_derived as program_iterabc_derived,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
@@ -3733,6 +3734,9 @@ class Gen:
 
     def iterabc_derived(self, c: str) -> bool:
         return program_iterabc_derived(self, c)
+
+    def inert_subscript(self, n: Node) -> bool:
+        return program_inert_subscript(self, n)
 
     def exc_base(self, b: Node) -> str:
         return program_exc_base(self, b)
