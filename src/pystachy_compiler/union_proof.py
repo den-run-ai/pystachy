@@ -69,6 +69,13 @@ def proof_origin(v: str, fn: IFn, definitions: list[Ins | None], origins: list[i
     return -1
 
 
+def counted(t: str) -> bool:
+    # A native object whose first word is its int length (runtime.c's Str, Dict, Set and VTuple),
+    # also where the value may be None: reading it needs no union proof.
+    u = t[4:-1] if is_opt(t) else t
+    return u == "str" or u == "bytes" or u.startswith("dict[") or u.startswith("set[") or u.startswith("frozenset[") or u.startswith("vtuple[")
+
+
 def simple_union_proof(fn: IFn, utags: dict[str, int], at: dict[str, int] | None = None, successors: list[list[str]] | None = None, types: dict[str, list[str]] | None = None) -> bool:
     """Certify immutable parameter narrowing without allocating dataflow states.
 
@@ -412,6 +419,10 @@ class UnionProof:
                         self.memtypes[v] = elements[0]
             if v in self.memtypes:
                 self.base["MB:" + v] = [self.memtypes[v]]
+            elif counted(self.native.get(v, "")):
+                # len() loads the first word of a str, bytes, dict, set or tuple[T, ...]:
+                # its length, whatever the object holds and however a call changes it.
+                self.base["MB:" + v] = ["int"]
         # Facts matter only while their value or storage address can still be read.
         # Retaining completed selectors at every later join multiplies unrelated work.
         self.livevalues: dict[str, dict[str, bool]] = {}
@@ -634,6 +645,11 @@ class UnionProof:
             return
         if (op == "mem.load" or op == "mach.load"):
             addr = a[0].v
+            if op == "mach.load" and i.t == "int" and counted(self.native.get(addr, "")):
+                # The length word, also of a value that may be None: no union's tag.
+                if r in self.bitsneeded:
+                    s.copy("B:" + r, "MB:" + addr)
+                return
             if op == "mach.load" and i.t == "int" and ("U:" + addr in self.base or "U:" + addr in s.d):
                 u = self.box(s, addr)
                 if checking and "None" in s.dom(u):

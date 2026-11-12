@@ -976,6 +976,28 @@ class UnionProofTests(unittest.TestCase):
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
 
+    def test_length_word_load_is_an_int_payload(self):
+        # len() of a str, bytes, dict, set or tuple[T, ...] loads the object's first word.
+        # Boxing it as an int needs no tag proof, also where the object may be None;
+        # the same word boxed as a float, or read through an untyped pointer, stays rejected.
+        owners = ("str", "bytes", "dict[str,int]", "set[int]", "frozenset[str]", "vtuple[int]", "opt[bytes]", "opt[dict[str,int]]", "%ptr", "list[int]")
+        for owner in owners:
+            for tag in ("int", "float"):
+                with self.subTest(owner=owner, tag=tag):
+                    c = Case("length_word", [owner])
+                    c.g.runtime("pys_ubox")
+                    length = c.op("mach.load", "int", a=[("%a0", "%ptr")])
+                    c.op("rt", "%ptr", "ubox", [(str(c.g.utags[tag]), "int"), (length, "*T")])
+                    c.ret()
+                    errors = StringIO()
+                    with redirect_stderr(errors):
+                        if tag == "int" and owner != "%ptr" and owner != "list[int]":
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+                            self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
+
     def test_numeric_parser_small_and_large_bounds_agree(self):
         numbers = ("", "0", "00", "01", "9", "10", "99999", "100000", "262143",
                    "262144", "262145", "999999", "1000000", "9999999",
