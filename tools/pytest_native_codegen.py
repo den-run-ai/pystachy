@@ -118,6 +118,8 @@ UNIT_UNSUPPORTED = {"setUpClass", "tearDownClass", "run", "debug", "runTest", "_
                     "enterContext", "enterClassContext", "id", "shortDescription", "defaultTestResult",
                     "countTestCases", "assertWarns", "assertWarnsRegex", "assertLogs", "assertNoLogs",
                     "failureException", "addTypeEqualityFunc"}
+# conftest.py hooks that only add text to pytest's own report: nothing a test can observe.
+REPORT_HOOKS = {"pytest_report_header", "pytest_terminal_summary"}
 UNITTEST_IMPORTS = {"TestCase", "SkipTest", "skip", "skipIf", "skipUnless", "expectedFailure", "main"}
 UNITTEST_MARKS = {"unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure"}
 MONKEYPATCH = {"setenv", "delenv", "undo"}
@@ -128,6 +130,17 @@ BUILTIN_FIXTURES = {
 
 
 UNKNOWN = object()  # (what evaluate() returns for an expression it does not read)
+
+
+class _Unread:
+    """An item of a list, tuple or dict display that evaluate() does not read.
+
+    The display's length and a dict's keys are still known: sorted(TABLE) and
+    range(len(CASES)) are read where TABLE's values are objects.
+    """
+
+
+UNREAD = _Unread()
 # Builtins whose __name__ is their name: pytest names such a parameter value after it.
 BUILTIN_NAMES = {name for name, value in vars(builtins).items()
                  if callable(value) and getattr(value, "__name__", None) == name}
@@ -163,10 +176,15 @@ COMPARE = {ast.Eq: lambda a, b: a == b, ast.NotEq: lambda a, b: a != b, ast.Lt: 
            ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b}
 
 
-def _static(value, budget=None):
-    """Whether a value is plain data a literal could write: no objects, sets or generators."""
+def _static(value, budget=None, partial=False):
+    """Whether a value is plain data a literal could write: no objects, sets or generators.
+
+    partial also takes UNREAD items: the shape of a table of objects.
+    """
     budget = budget if budget is not None else [STATIC_LIMIT]
     budget[0] -= 1
+    if partial and value is UNREAD:
+        return True
     if budget[0] < 0 or not isinstance(value, STATIC_TYPES):
         return False
     if isinstance(value, int) and not isinstance(value, bool) and value.bit_length() > 4096:
@@ -174,14 +192,16 @@ def _static(value, budget=None):
     if isinstance(value, (str, bytes, range)):
         return len(value) <= STATIC_LIMIT
     if isinstance(value, (tuple, list)):
-        return all(_static(item, budget) for item in value)
+        return all(_static(item, budget, partial) for item in value)
     if isinstance(value, dict):
-        return all(_static(key, budget) and _static(item, budget) for key, item in value.items())
+        return all(_static(key, budget) and _static(item, budget, partial) for key, item in value.items())
     return True
 
 
 def _literal_node(value):
     """An expression that writes a static value; a float that has no literal by float()."""
+    if value is UNREAD:
+        return ast.Name("_pyn_unread", ast.Load())  # (described() finds no value for it)
     if isinstance(value, float) and (value != value or value in (math.inf, -math.inf)):
         return ast.Call(ast.Name("float", ast.Load()), [ast.Constant(str(value))], [])
     if isinstance(value, tuple):
@@ -350,6 +370,7 @@ class Generator:
         self.named = {}
         self.bindings = {}
         self.rebound = set()
+        self.unread = False
         self.fixtures = {}
         self.class_fixtures = {}
         self.tests = []
@@ -397,8 +418,10 @@ class Generator:
                 self.error(node, "expected a literal or an expression of earlier literal constants")
             return value
 
-    def evaluate(self, node, env=None, track=False):
+    def evaluate(self, node, env=None, track=False, partial=False):
         """The value of an expression over literals that runs no test code, else UNKNOWN.
+
+        partial allows a result with UNREAD items, which shows a table's rows.
 
         Reads literals, earlier constants, arithmetic, comparisons, subscripts, f-strings,
         comprehensions and calls of pure builtins and itertools functions (STATIC_CALLS):
@@ -434,6 +457,14 @@ class Generator:
                 bind(first.target, item, inner)
                 if all(run(condition, inner) for condition in first.ifs):
                     comprehension(generators[1:], inner, emit)
+
+        reading = set()
+
+        def item_of(node, scope):
+            try:
+                return run(node, scope)
+            except Unknown:
+                return UNREAD
 
         def call(node, scope):
             if any(keyword.arg is None for keyword in node.keywords) or any(
@@ -483,6 +514,16 @@ class Generator:
                     if track:
                         self.metadata_constants.add(node.id)
                     return self.constants[node.id]
+                if node.id in self.bindings and node.id not in reading:
+                    # A display of objects bound once: its shape, with UNREAD items.
+                    reading.add(node.id)
+                    try:
+                        value = run(self.bindings[node.id], {})
+                    finally:
+                        reading.discard(node.id)
+                    if track:
+                        self.metadata_constants.add(node.id)
+                    return value
                 raise Unknown
             if isinstance(node, (ast.Tuple, ast.List)):
                 items = []
@@ -490,12 +531,12 @@ class Generator:
                     if isinstance(item, ast.Starred):
                         items.extend(run(item.value, scope))
                     else:
-                        items.append(run(item, scope))
+                        items.append(item_of(item, scope))
                 return tuple(items) if isinstance(node, ast.Tuple) else items
             if isinstance(node, ast.Dict):
                 if any(key is None for key in node.keys):
                     raise Unknown
-                return {run(key, scope): run(value, scope) for key, value in zip(node.keys, node.values)}
+                return {run(key, scope): item_of(value, scope) for key, value in zip(node.keys, node.values)}
             if isinstance(node, ast.UnaryOp):
                 value = run(node.operand, scope)
                 if isinstance(node.op, ast.Not):
@@ -594,7 +635,7 @@ class Generator:
             raise
         except Exception:  # noqa: BLE001 (whatever the expression raises, it was not read)
             return UNKNOWN
-        return value if _static(value) else UNKNOWN
+        return value if _static(value, None, partial) else UNKNOWN
 
     def unroll(self, node):
         """A comprehension's element expression for each item of its literal iterables.
@@ -692,7 +733,11 @@ class Generator:
             self.metadata_constants.add(node.id)
             return self.expand(self.bindings[node.id], depth + 1)
         value = self.evaluate(node, None, True)
-        if value is UNKNOWN or isinstance(value, (bool, int, float, complex, type(None))):
+        if value is UNKNOWN:
+            # Its rows hold objects: the program makes the table, the collector counts it.
+            value = self.evaluate(node, None, True, True)
+            self.unread = True
+        if value is UNKNOWN or value is UNREAD or isinstance(value, (bool, int, float, complex, type(None))):
             return None
         return [_literal_node(item) for item in value]
 
@@ -791,6 +836,7 @@ class Generator:
         else:
             if isinstance(table, ast.Name) and table.id in self.rebound:
                 self.error(decorator, "parametrize constants require one literal binding: " + table.id)
+            self.unread = False
             rows = self.expand(table)
             if rows is None:
                 self.error(decorator, what + " needs a table the collector can read: a literal, range(), a "
@@ -810,6 +856,12 @@ class Generator:
                     self.late.append(f"{source.id} = list({table.id})")
                 # The collector read the table's length from syntax; the program checks it.
                 self.late.append(f"_pyn_support.table_length(len({source.id}), {len(rows)}, {table.id!r})")
+            elif self.unread:
+                # The table's expression runs once, where the decorator stood.
+                source = ast.Name(f"_pyn_table_{self.counter}", ast.Load())
+                self.counter += 1
+                prelude += [f"{source.id} = list({ast.unparse(table)})",
+                            f"_pyn_support.table_length(len({source.id}), {len(rows)}, {what!r})"]
         if not rows:
             self.error(decorator, what + " needs a nonempty table")
         if len(rows) > 10000:
@@ -893,7 +945,8 @@ class Generator:
                         annotation.value, str) else ast.unparse(annotation)
                     # Strings preserve CPython's annotation evaluation count.
                     declaration += ": " + repr(hint)
-                (prelude if source is None else self.late).append(f"{declaration} = {ast.unparse(expression)}")
+                (self.late if source is not None and isinstance(table, ast.Name) else prelude).append(
+                    f"{declaration} = {ast.unparse(expression)}")
                 variables.append(variable)
             result.append(variables)
             row_marks.append(marks)
@@ -1166,7 +1219,10 @@ class Generator:
             # (A package's __init__ may pass on a class of one of its modules.)
             info = other.external_info(original, depth + 1)
         else:
-            info = other.class_info(node)
+            try:
+                info = other.class_info(node)
+            except CollectionError:
+                return None  # (reported at the test class that derives from it)
             for ancestor in info.mro:
                 if ancestor.tests or ancestor.node not in other.class_nodes.values():
                     continue
@@ -1361,7 +1417,9 @@ class Generator:
                 method = parents.get(node) in classes
                 if node.name in XUNIT_MODULE or (method and node.name in XUNIT_CLASS):
                     self.error(node, "xunit setup/teardown hooks are unsupported; use fixtures")
-                if node.name.startswith("_pyn_") or node.name.startswith("pytest_"):
+                if node.name in REPORT_HOOKS and node in direct and self.conftest:
+                    self.dropped.add(node)
+                elif node.name.startswith("_pyn_") or node.name.startswith("pytest_"):
                     self.error(node, "reserved runner name or unsupported pytest hook: " + node.name)
                 if node.name.startswith("test") and node not in direct and not method:
                     # pytest collects module attributes and test classes' methods. A function
@@ -1419,7 +1477,8 @@ class Generator:
                 if node.name in seen or node.name in self.aliases:
                     self.error(node, "duplicate function or pytest binding: " + node.name)
                 seen.add(node.name)
-                self.declare(node, None, self.preludes.setdefault(node, []))
+                if node not in self.dropped:
+                    self.declare(node, None, self.preludes.setdefault(node, []))
             elif node in classes:
                 if node.name in seen or node.name in self.aliases:
                     self.error(node, "duplicate function or pytest binding: " + node.name)
