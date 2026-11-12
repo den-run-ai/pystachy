@@ -1,0 +1,6 @@
+0 w0 3 Stop(<Status.USAGE: 3>)
+1 w1 Plain.NINE Stop(<Plain.NINE: 9>)
+2 w2 None Stop(None)
+3 Quit(<Status.USAGE: 3>)
+end
+[exit 3]
