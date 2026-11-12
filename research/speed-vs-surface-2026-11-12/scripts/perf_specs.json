@@ -1,0 +1,209 @@
+{
+ "barnes_hut": {
+  "src": "bench/pyperformance/barnes_hut.py",
+  "args": [
+   "1"
+  ],
+  "kind": "pyperformance"
+ },
+ "bpe_tokeniser": {
+  "src": "bench/pyperformance/bpe_tokeniser.py",
+  "args": [
+   "1",
+   "1024",
+   "/tmp/claude-0/-home-user-pystachy/878ad953-6ea7-597d-82db-1ba899e22ec2/scratchpad/sweep/perfroot/bench/pyperformance/data/frankenstein_intro.txt"
+  ],
+  "kind": "pyperformance"
+ },
+ "chaos": {
+  "src": "bench/pyperformance/chaos.py",
+  "args": [
+   "10"
+  ],
+  "kind": "pyperformance"
+ },
+ "comprehensions": {
+  "src": "bench/pyperformance/comprehensions.py",
+  "args": [
+   "10000"
+  ],
+  "kind": "pyperformance"
+ },
+ "fannkuch": {
+  "src": "bench/pyperformance/fannkuch.py",
+  "args": [
+   "2"
+  ],
+  "kind": "pyperformance"
+ },
+ "float": {
+  "src": "bench/pyperformance/float.py",
+  "args": [
+   "10"
+  ],
+  "kind": "pyperformance"
+ },
+ "generators": {
+  "src": "bench/pyperformance/generators.py",
+  "args": [
+   "10"
+  ],
+  "kind": "pyperformance"
+ },
+ "go": {
+  "src": "bench/pyperformance/go.py",
+  "args": [
+   "4"
+  ],
+  "kind": "pyperformance"
+ },
+ "hexiom": {
+  "src": "bench/pyperformance/hexiom.py",
+  "args": [
+   "100"
+  ],
+  "kind": "pyperformance"
+ },
+ "json_dumps": {
+  "src": "bench/pyperformance/json_dumps.py",
+  "args": [
+   "20"
+  ],
+  "kind": "pyperformance"
+ },
+ "json_loads": {
+  "src": "bench/pyperformance/json_loads.py",
+  "args": [
+   "2000"
+  ],
+  "kind": "pyperformance"
+ },
+ "logging": {
+  "src": "bench/pyperformance/bm_logging.py",
+  "args": [
+   "32"
+  ],
+  "kind": "pyperformance"
+ },
+ "meteor_contest": {
+  "src": "bench/pyperformance/meteor_contest.py",
+  "args": [
+   "6"
+  ],
+  "kind": "pyperformance"
+ },
+ "nbody": {
+  "src": "bench/pyperformance/nbody.py",
+  "args": [
+   "10"
+  ],
+  "kind": "pyperformance"
+ },
+ "nqueens": {
+  "src": "bench/pyperformance/nqueens.py",
+  "args": [
+   "10"
+  ],
+  "kind": "pyperformance"
+ },
+ "pidigits": {
+  "src": "bench/pyperformance/pidigits.py",
+  "args": [
+   "4"
+  ],
+  "kind": "pyperformance"
+ },
+ "raytrace": {
+  "src": "bench/pyperformance/raytrace.py",
+  "args": [
+   "4"
+  ],
+  "kind": "pyperformance"
+ },
+ "regex_dna": {
+  "src": "bench/pyperformance/regex_dna.py",
+  "args": [
+   "4"
+  ],
+  "kind": "pyperformance"
+ },
+ "regex_effbot": {
+  "src": "bench/pyperformance/regex_effbot.py",
+  "args": [
+   "20"
+  ],
+  "kind": "pyperformance"
+ },
+ "regex_v8": {
+  "src": "bench/pyperformance/regex_v8.py",
+  "args": [
+   "20"
+  ],
+  "kind": "pyperformance"
+ },
+ "richards": {
+  "src": "bench/pyperformance/richards.py",
+  "args": [
+   "20"
+  ],
+  "kind": "pyperformance"
+ },
+ "richards_super": {
+  "src": "bench/pyperformance/richards_super.py",
+  "args": [
+   "20"
+  ],
+  "kind": "pyperformance"
+ },
+ "scimark": {
+  "src": "bench/pyperformance/scimark.py",
+  "args": [
+   "2"
+  ],
+  "kind": "pyperformance"
+ },
+ "spectral_norm": {
+  "src": "bench/pyperformance/spectral_norm.py",
+  "args": [
+   "10"
+  ],
+  "kind": "pyperformance"
+ },
+ "unpack_sequence": {
+  "src": "bench/pyperformance/unpack_sequence.py",
+  "args": [
+   "50000"
+  ],
+  "kind": "pyperformance"
+ },
+ "micro_fib": {
+  "src": "bench/fib.py",
+  "args": [],
+  "kind": "micro"
+ },
+ "micro_mandel": {
+  "src": "bench/mandel.py",
+  "args": [],
+  "kind": "micro"
+ },
+ "micro_nbody": {
+  "src": "bench/nbody.py",
+  "args": [],
+  "kind": "micro"
+ },
+ "micro_sieve": {
+  "src": "bench/sieve.py",
+  "args": [],
+  "kind": "micro"
+ },
+ "micro_spectral": {
+  "src": "bench/spectral.py",
+  "args": [],
+  "kind": "micro"
+ },
+ "micro_words": {
+  "src": "bench/words.py",
+  "args": [],
+  "kind": "micro"
+ }
+}

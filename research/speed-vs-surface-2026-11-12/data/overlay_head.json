@@ -1,0 +1,80 @@
+[
+{
+"order": 1,
+"group": "all methods",
+"outcome": "passing with Pystachy's own library",
+"methods": 397
+},
+{
+"order": 2,
+"group": "all methods",
+"outcome": "passing with CPython's pure-Python stdlib added",
+"methods": 391
+},
+{
+"order": 2.5,
+"group": "all methods",
+"outcome": "passing with every test opted in to dynamic Any",
+"methods": 397
+},
+{
+"order": 3,
+"group": "blocked by a missing library piece",
+"outcome": "total",
+"methods": 2429
+},
+{
+"order": 4,
+"group": "blocked by a missing library piece",
+"outcome": "pass once CPython's stdlib is added",
+"methods": 0
+},
+{
+"order": 5,
+"group": "now rejected inside CPython's library code",
+"outcome": "a module or name still missing",
+"methods": 708
+},
+{
+"order": 6,
+"group": "now rejected inside CPython's library code",
+"outcome": "dynamic model (generic bases, redefinitions, class-body statements)",
+"methods": 219
+},
+{
+"order": 7,
+"group": "now rejected inside CPython's library code",
+"outcome": "static typing (type not inferred)",
+"methods": 2
+},
+{
+"order": 8,
+"group": "still rejected in the test itself",
+"outcome": "a module or name still missing",
+"methods": 1323
+},
+{
+"order": 9,
+"group": "still rejected in the test itself",
+"outcome": "dynamic model (generic bases, redefinitions, class-body statements)",
+"methods": 141
+},
+{
+"order": 10,
+"group": "still rejected in the test itself",
+"outcome": "static typing (type not inferred)",
+"methods": 21
+},
+{
+"order": 11,
+"group": "still rejected in the test itself",
+"outcome": "unimplemented syntax",
+"methods": 8
+},
+{
+"order": 12,
+"group": "still rejected in the test itself",
+"outcome": "other",
+"methods": 7
+}
+]

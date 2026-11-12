@@ -1,0 +1,79 @@
+[
+{
+"rank": 1,
+"benchmark": "regex_dna",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 1506.2,
+"after_ms": 196.0,
+"time_ratio": 0.13,
+"change": "Faster: lib/re matcher work (#676, #680, #682, #683, #685)",
+"evidence": "interval of 32 merges, Oct 18 to 19; not bisected"
+},
+{
+"rank": 2,
+"benchmark": "regex_effbot",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 1032.1,
+"after_ms": 168.3,
+"time_ratio": 0.163,
+"change": "Faster: same lib/re work",
+"evidence": "same interval; not bisected"
+},
+{
+"rank": 3,
+"benchmark": "regex_v8",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 1046.9,
+"after_ms": 235.4,
+"time_ratio": 0.225,
+"change": "Faster: same lib/re work",
+"evidence": "same interval; not bisected"
+},
+{
+"rank": 4,
+"benchmark": "scimark",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 19.2,
+"after_ms": 10.1,
+"time_ratio": 0.525,
+"change": "Faster: likely field TBAA (#724) or tuple returns by value (#727)",
+"evidence": "same interval; not bisected"
+},
+{
+"rank": 5,
+"benchmark": "barnes_hut",
+"from_date": "2026-10-18",
+"to_date": "2026-10-19",
+"before_ms": 24.9,
+"after_ms": 13.4,
+"time_ratio": 0.538,
+"change": "Faster: likely field TBAA (#724) or tuple returns by value (#727)",
+"evidence": "same interval; not bisected"
+},
+{
+"rank": 6,
+"benchmark": "micro_words",
+"from_date": "2026-10-17",
+"to_date": "2026-10-18",
+"before_ms": 59.3,
+"after_ms": 77.7,
+"time_ratio": 1.31,
+"change": "Slower: Unicode code-point strings, stage 1 (#667)",
+"evidence": "bisected over 15 merges to a355c83f"
+},
+{
+"rank": 7,
+"benchmark": "float",
+"from_date": "2026-11-11",
+"to_date": "2026-11-11",
+"before_ms": 32.7,
+"after_ms": 43.5,
+"time_ratio": 1.328,
+"change": "Slower: listguard bounds-check hoisting with Lean checks (#1268)",
+"evidence": "bisected over 7 merges to b40ee875"
+}
+]

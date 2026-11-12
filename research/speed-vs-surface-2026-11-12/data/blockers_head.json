@@ -1,0 +1,92 @@
+[
+{
+"rank": 1,
+"message": "cannot import name 'member' from 'enum'",
+"category": "library",
+"methods": 724
+},
+{
+"rank": 2,
+"message": "a class inside a function is not supported",
+"category": "dynamic",
+"methods": 365
+},
+{
+"rank": 3,
+"message": "module 'configparser' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 288
+},
+{
+"rank": 4,
+"message": "cannot infer the type of field 'set'; annotate it (self.set: T = ...)",
+"category": "typing",
+"methods": 253
+},
+{
+"rank": 5,
+"message": "module 'pickle' is not supported: it is not a builtin module",
+"category": "dynamic",
+"methods": 238
+},
+{
+"rank": 6,
+"message": "module 'decimal' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 233
+},
+{
+"rank": 7,
+"message": "'match' statements are not supported",
+"category": "syntax",
+"methods": 216
+},
+{
+"rank": 8,
+"message": "unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class",
+"category": "dynamic",
+"methods": 177
+},
+{
+"rank": 9,
+"message": "cannot import name 'verify' from 'enum'",
+"category": "library",
+"methods": 151
+},
+{
+"rank": 10,
+"message": "module 'gc' is not supported: it is not a builtin module",
+"category": "dynamic",
+"methods": 141
+},
+{
+"rank": 11,
+"message": "module '_pyio' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 134
+},
+{
+"rank": 12,
+"message": "module 'locale' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 127
+},
+{
+"rank": 13,
+"message": "module 'pprint' is not supported: it is not a builtin module",
+"category": "library",
+"methods": 95
+},
+{
+"rank": 14,
+"message": "inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)",
+"category": "dynamic",
+"methods": 87
+},
+{
+"rank": 15,
+"message": "cannot import name 'TemporaryFile' from 'tempfile'",
+"category": "library",
+"methods": 87
+}
+]
