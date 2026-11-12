@@ -54,6 +54,7 @@ its numbers as results for your build.
 | Inspect compiler stages or a diagnostic | [Compiler inspection](compiler-inspection.md): hosted prototype, pass diffs and structured diagnostics |
 | Work on runtime code or its ABI | [Runtime in the subset](runtime-in-subset.md) |
 | Choose a check or investigation tool | [Development tools](../tools/README.md), [testing and CI](testing.md) |
+| Write an issue, pull request, guide or release notes | [Writing guide](writing.md), [submission format](../CONTRIBUTING.md#issues-and-pull-requests) |
 | Prepare a release | [Release procedure](releasing.md), [published releases](https://github.com/den-run-ai/pystachy/releases) |
 
 Keep these guides focused on current behavior. Superseded designs, dated audit
