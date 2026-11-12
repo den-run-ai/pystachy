@@ -1202,6 +1202,10 @@ def gen_refine(self, name: str, t: str, glob: bool = False) -> None:
         if "?" in self.ret and name in self.qret.get(self.curfn.ll, "").split():
             self.adopt(t)  # the function returned it: so it returns t
     else:
+        if self.xtry.startswith("narrow:") and "union[" in t:
+            # (a union isinstance(x, (A, B)) narrowed x to would type the global's items for code
+            # outside the attempt: declined, see narrows)
+            self.err(f"'{short(name)}' would take a union that a narrowing made")
         for nm in [name] + self.twins(name):
             if nm == name or "?" in self.gtypes[nm]:
                 self.gtypes[nm] = t
