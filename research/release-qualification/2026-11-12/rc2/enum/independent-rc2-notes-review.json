@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "reviewer": "rc_pr_triage independent review",
+  "base_commit": "395227b75bb777401627c0296a18fe71388070e7",
+  "head_commit": "7edb23984c85d26d396f63c80506786d7b2bb2b1",
+  "head_tree": "b8e66da6dcb4426933fb1ad57b95b5faf2055b04",
+  "reviewed_paths": [
+    "VERSION",
+    "docs/releases/v0.4.0-rc.2.md"
+  ],
+  "notes_sha256": "d40ff1dffc6a9fd16b5bd6df3d348400c31f7c1c671f332f1fe856bb612d72a4",
+  "findings": [],
+  "checks": [
+    "Only VERSION and the new release notes are added after the reviewed correction.",
+    "Stored status, integer/mixed/flag/base/subclass coverage and noninteger message behavior agree with the source and retained case review.",
+    "The notes disclose construction-time formatting and lack of general dynamic-Any enum support.",
+    "Repeated headroom, GC scaling, wider composition and known unsupported boundaries remain explicit follow-ups.",
+    "Platform statements match the preceding RC1 scope; no broad macOS or manylinux qualification is claimed."
+  ],
+  "qualification_caveat": "The paragraph about compiler comparison and the full platform GC matrix describes separate qualification obligations, not evidence that the not-yet-run RC2 hosted matrix has already passed. Root must retain actual exact-head gates before publication."
+}

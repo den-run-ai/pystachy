@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "completed_utc": "2026-11-12T22:32:23.022739+00:00",
+  "status": "Locally qualified; ready for isolated RC.2 checkpoint and fresh source-pinned CI",
+  "full_release_qualification": false,
+  "source_commit": "395227b75bb777401627c0296a18fe71388070e7",
+  "source_tree": "066f5a791216fc721d734bb1e23bdd6194bce42f",
+  "branch": "followup/sys-exit-intenum-stored",
+  "clean_source_at_handoff": true,
+  "base_commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+  "base_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "toolchain": {
+    "python": "CPython 3.13.16",
+    "llvm": "19.1.7",
+    "architecture": "Linux x86_64"
+  },
+  "native_compiler_sha256": "cec4a5470dce6ad3cb6358b9b47552609b799e401fad1385e23a31a9af0571fc",
+  "qualification": {
+    "compiler_fixed_point_lines": 915570,
+    "runtime_fixed_point_lines": 21214,
+    "exact_native_output_checks_passed": 96,
+    "related_normal_checks_passed": 70,
+    "related_program_stress_checks_passed": 40,
+    "typed_ir_and_llvm_as_accepted": 2569,
+    "cpython_recordings_checked": 2336,
+    "documented_deviations_checked": 130,
+    "stdlib_copies_checked": 11,
+    "changed_python_files_linted": 22,
+    "retained_comparison_inputs": 4481,
+    "new_rejections": 0,
+    "new_acceptances": 0,
+    "invalid_compiler_results": 0,
+    "oracle_differences": 283,
+    "raw_difference_cases": 339,
+    "all_raw_differences_accounted": true,
+    "independent_exit_cases_reviewed": 14,
+    "independent_exit_review_findings": 0,
+    "enum_library_functions_accounted": 1249,
+    "verified_initial_payload_stores": 42
+  },
+  "known_boundaries": [
+    "Construction-time exception formatting still executes side-effecting __str__ eagerly; native-negative-controls.json records the full CPython mismatch explicitly.",
+    "LLVM19 check-runtime is not passing: its 57 findings and their diagnostic bytes match the retained baseline. Hosted LLVM18/final-tree qualification is outstanding.",
+    "Local baseline native receipt was recorded after bootstrap rather than as a contemporaneous sealed CI bundle.",
+    "Full follow-up CI, full GC/sanitizer/embedding/distribution matrices, alternate architectures and release artifacts are not qualified by this local report."
+  ],
+  "provenance_equivalence": {
+    "base_commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+    "upstream_pr_head": "78b7c5422b00d006013e3de4d1f3b77623b07122",
+    "returncode": 0,
+    "merged_tree": "7437c4e991bcd501ecf8a099e74be241b3232459",
+    "stderr": "",
+    "first_cherry_pick": "440b7a0966b6baa4e0ab7163ff6456d94cdf5770",
+    "first_cherry_pick_tree": "7437c4e991bcd501ecf8a099e74be241b3232459",
+    "matches": true
+  },
+  "raw_comparison": {
+    "directory": "ir-comparison",
+    "full_summary_sha256": "a98651895661deaad05b289c6966e2a822f24111f2f53e8d33c2133a3029ad72",
+    "inventory_sha256": "5def43c4d1b8b181d810ae87178044b66830c0fe6b3bd2fb061d844ce26b4a0f",
+    "normalization_sha256": "75c35dafbd7f3ba0788e849c943506e165b47b06e5ce2baeba2971b529c728e3",
+    "raw_ir_retention": "Lossless old/new.ll.gz for each case; uncompressed IR digests are in each result.json."
+  },
+  "artifacts": [
+    {
+      "path": "handoff-report.md",
+      "bytes": 12225,
+      "sha256": "856ca289516f08233f153c13f1e597972286a9ff8364a24817a6b146e92ad662"
+    },
+    {
+      "path": "source-provenance.json",
+      "bytes": 5587,
+      "sha256": "b407e86773bdc620572cc0341d617d33b055d8fcee0e3b2e9932b5c79280a60a"
+    },
+    {
+      "path": "provenance-merge-tree.json",
+      "bytes": 384,
+      "sha256": "4c84de793e5142eab248a9190187cc1906c49a768348bfc30b4c77a6a6442543"
+    },
+    {
+      "path": "rc2-source-object-equivalence.json",
+      "bytes": 1072,
+      "sha256": "5fe29cec6a310c0ff3f3beff38e3c13618d866443d1a01a00b161f7448f6a831"
+    },
+    {
+      "path": "native-bootstrap.json",
+      "bytes": 972,
+      "sha256": "a53569a09f544c95e141d88508ce341f2cc9a02335c49182b4100e5faa774c87"
+    },
+    {
+      "path": "native-bootstrap.log",
+      "bytes": 878,
+      "sha256": "e3e7c6614d8ac4f019f095810a53b462638080fb6b7c9fb327d2b5051f3f7c2f"
+    },
+    {
+      "path": "native-exit-matrix.json",
+      "bytes": 51373,
+      "sha256": "d9de266377a6cad6c9fa3287302be2acd456191b81af9e6d4261cc9893cf0b57"
+    },
+    {
+      "path": "native-exit-matrix.log",
+      "bytes": 1431,
+      "sha256": "e52bfd751ded75597c4fa99d37a304120edf60d4c156766e8d95676359565cc7"
+    },
+    {
+      "path": "related-native-tests.json",
+      "bytes": 4121,
+      "sha256": "cacef58d6b508b54fba27b210df2b7bf15cbc3110a0334b3385285d3a0a9d233"
+    },
+    {
+      "path": "related-normal.log",
+      "bytes": 38,
+      "sha256": "d970894843d7144e8466e186e7d273dcb4471399366115c7a10272687506c543"
+    },
+    {
+      "path": "related-gc-stress.log",
+      "bytes": 38,
+      "sha256": "47d1fee2427390430e5d1c7b59bc7960c29c63a09e140d0a86212ad243599a1f"
+    },
+    {
+      "path": "native-negative-controls.json",
+      "bytes": 7857,
+      "sha256": "9914467c458a97e1b0fe706183393885959ec177dcabce529bb9e843754a29fd"
+    },
+    {
+      "path": "upstream-negative-controls.json",
+      "bytes": 2865,
+      "sha256": "db15f040ecc14986f2e78fa752a3d61ca2018559a8f673f8f3c11769b2fd610d"
+    },
+    {
+      "path": "hidden-reflection-negative-native-5c.json",
+      "bytes": 641,
+      "sha256": "203e4221b78f3aba65eed821e5a06036596c147b64293778141f12852da3df62"
+    },
+    {
+      "path": "baseline-hidden-reflection.json",
+      "bytes": 818,
+      "sha256": "ac16f45e2e37132d0c4979f2cc05ee69bb488b8d5eab4b2b3ae8cd9663b185b8"
+    },
+    {
+      "path": "runtime-source-check.json",
+      "bytes": 5012,
+      "sha256": "25079277d087d5b14016a9300ae91ec134c8b33939ccf3db886a28cc6d216c25"
+    },
+    {
+      "path": "runtime-check-baseline-comparison.json",
+      "bytes": 659,
+      "sha256": "b0fd6a13500e802c9a5c41f3d7629702e76f943a3343a9bf2ae3e304ad9ff8d1"
+    },
+    {
+      "path": "runtime-source-check-missing-toolchain.json",
+      "bytes": 1929,
+      "sha256": "0e6031b7ea3219c14946df772905aa0b999d09c9a95ba96fb133b4a22b81d9f8"
+    },
+    {
+      "path": "check-ir.json",
+      "bytes": 215,
+      "sha256": "55428acc24bf2cabb68335b2365971abcbbb42dd3f9c77d4f1601a90b4613882"
+    },
+    {
+      "path": "check-ir.log",
+      "bytes": 86,
+      "sha256": "0115f2417242c6a4a459cbb889021933536dfebdda89b10f729eea3f9220feac"
+    },
+    {
+      "path": "check-recordings.json",
+      "bytes": 619,
+      "sha256": "c6423379182f5cb9ab51345d264d1a935c751a2fef77cee93c5a85b8bbe28e31"
+    },
+    {
+      "path": "check-recordings.log",
+      "bytes": 364,
+      "sha256": "30e43d2f08c3faaf1d554401cec548b085da2f4c32ba4d8bf8f1e38eeb4abf72"
+    },
+    {
+      "path": "check-recordings-missing-typing-extensions.json",
+      "bytes": 539,
+      "sha256": "ce44759dd0ce2f5e38381ab1e5d30cbb463d0327de4084a26294ada1dc46e841"
+    },
+    {
+      "path": "check-recordings-missing-typing-extensions.log",
+      "bytes": 2187,
+      "sha256": "8adf59f623350225dba2ea44383186e10385964b6d9064577181ac1f810e605a"
+    },
+    {
+      "path": "ruff-final.json",
+      "bytes": 1434,
+      "sha256": "525e072ecd40ccee8d56dfb4a2e20fe1977fb31120ee7e992ee3d7d3ebae2061"
+    },
+    {
+      "path": "ir-comparison-summary.json",
+      "bytes": 1318,
+      "sha256": "2913da4dcc50cbff19e55859ca6e3e73b10fe886046dfba6340bfa12d2b38862"
+    },
+    {
+      "path": "ir-adjudication.json",
+      "bytes": 127567,
+      "sha256": "8747599c84af3f7e2f20b6b8c57fbd63dbbe1b956a817a37e5c505a8a3b8442e"
+    },
+    {
+      "path": "layout-sizes.json",
+      "bytes": 9940,
+      "sha256": "ae4976d3b07f714c7c9447a9549b57137b295dc5a4f03a570d349de9e64e6ed2"
+    },
+    {
+      "path": "layout-function-review.json",
+      "bytes": 14332,
+      "sha256": "87477661e20a31e9701f99bc06f2b000f757c70c7b0e2396135309af2eb0038b"
+    },
+    {
+      "path": "independent-exit-review.json",
+      "bytes": 12880,
+      "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8"
+    },
+    {
+      "path": "compare_local_compilers.py",
+      "bytes": 10787,
+      "sha256": "cd97821cdced9d13abbda491eed8e8f0d53d77c9d5063d7a583b5e3dde27a2e7"
+    },
+    {
+      "path": "adjudicate_ir.py",
+      "bytes": 5916,
+      "sha256": "ad0cb23d5fe2cbd2b390e7c1a132d06be0ebed125261bf59fd976d666300cee1"
+    },
+    {
+      "path": "audit_layout_functions.py",
+      "bytes": 10227,
+      "sha256": "5f7763f1641f3bdd3b568966864df6252f4f65200833464438c26043ea85448a"
+    },
+    {
+      "path": "check_exit_matrix.py",
+      "bytes": 4181,
+      "sha256": "8eab7b58b26152ca1f766a0d6d287b2978c247e6ac65e9329be640d921d8218d"
+    },
+    {
+      "path": "check_negative_controls.py",
+      "bytes": 3455,
+      "sha256": "4f2b046bae153d931710974024f11bec4585785c568d72de8f1202f15cdfa403"
+    },
+    {
+      "path": "index_override.py",
+      "bytes": 208,
+      "sha256": "c7b0346fb1b6b723e63b92223db6b829fb6dc85c4e62b6f337f13f9bbd4a3b31"
+    },
+    {
+      "path": "stored_value_mutation.py",
+      "bytes": 147,
+      "sha256": "0411efbdb9d9db5cd4229514fabe3fbe0939ad782210dcf7ef71dfb35280bb78"
+    },
+    {
+      "path": "str_override_finally.py",
+      "bytes": 235,
+      "sha256": "392691cb699397ba6fc4716b08f2daeb42ecea4e8d9ee54f300d713b43eedcbd"
+    },
+    {
+      "path": "review_hidden_payload.py",
+      "bytes": 227,
+      "sha256": "a708404dfe9bc955d05f550de4e04133df7b342bb3e828684ab52aa9cf3b7b28"
+    },
+    {
+      "path": "hidden_payload_read_probes.py",
+      "bytes": 391,
+      "sha256": "cd1a8a5f98cb0e7b5aaccf539c44c0a8db349e78015ddce120afeef8e474b8c2"
+    }
+  ]
+}

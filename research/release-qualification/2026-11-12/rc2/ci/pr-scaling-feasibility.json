@@ -1,0 +1,126 @@
+{
+  "local_commit": "036bb27eb7dfc453ceec03e522cb3305b9b5c5b4",
+  "tree": "03bc768f519ba68f64357a289981e43153bf4c19",
+  "parent": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+  "base_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "branch": "ci/pr-scaling-headroom",
+  "checkout": "/workspace/scratch/2cf34574fa6e/rc-ci-pr-scaling",
+  "status": "locally committed; not pushed; no PR or CI dispatched",
+  "measured_run": 43304014521,
+  "measured_head": "886ed9153e954b387f2afd39578a21168771ae6e",
+  "measured_merge_commit": "f289455c8c49f1c94b5cd7d15a75a41ce867b860",
+  "measured_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "measured_profile": "pr",
+  "cpu": {
+    "benchmarks": "znver3",
+    "native-aot-3": "znver3"
+  },
+  "measured_job_seconds": {
+    "benchmarks": 721,
+    "native-aot-3": 453
+  },
+  "measured_scaling_1_seconds": 75.451,
+  "estimated_job_seconds": {
+    "benchmarks": 645.549,
+    "native-aot-3": 528.451
+  },
+  "estimate_limit": "Arithmetic transfer of one observed scaling step between two nominal znver3 workers in the same PR run; not a new measurement, runtime guarantee or repeated headroom acceptance. No timing improvement is estimated for other rows; Lint will execute the added regression test.",
+  "change": "PR plan only: scaling-1 moves from benchmarks to native-aot-3. Full/main plan is byte-identical; no workflow, worker, process, timeout, selected-case, sampling or check implementation changed.",
+  "validation": {
+    "changed_pr_groups": [
+      "native-aot-3",
+      "benchmarks"
+    ],
+    "all_pr_steps_unchanged": true,
+    "pr_step_multiset_unchanged": true,
+    "each_scaling_half_exactly_once": true,
+    "full_plan_byte_identical": true,
+    "full_plan_sha256": "9b8130a9a995b5f02522cc7a03de86ddf8eb81b4d4466dd1b88ef9612378cc9f",
+    "new_pr_groups": {
+      "native-aot-3": [
+        "bootstrap",
+        "tests-native-aot-3",
+        "scaling-1"
+      ],
+      "benchmarks": [
+        "bootstrap",
+        "benchmarks",
+        "example-cli",
+        "scaling-0"
+      ]
+    },
+    "tests": {
+      "merge_verification": {
+        "passed": 39,
+        "seconds": 59.196
+      },
+      "workflow_limits": {
+        "passed": 26,
+        "seconds": 1.152
+      },
+      "verify_shards": {
+        "passed": 7,
+        "seconds": 44.984
+      }
+    },
+    "ruff": "passed",
+    "shell_syntax": "passed",
+    "git_diff_check": "passed",
+    "prior_test_attempts": [
+      "An initial package-qualified unittest invocation could not import tools-local helper modules; the repository standalone script entry points then ran successfully.",
+      "The existing shard compiler double initially lacked the scaling invocation newly owned by native-aot-3. Extended the double and real-shell test to cover the stage and fatal scaling failure; rerun all seven shard tests passed."
+    ]
+  },
+  "files": [
+    {
+      "path": "archives.json",
+      "bytes": 2245,
+      "sha256": "f523f834f29279e6bb1aac0b3512d950e847fe44ec0dc60721fe2905b2b4d922"
+    },
+    {
+      "path": "full-plan-after.txt",
+      "bytes": 2114,
+      "sha256": "9b8130a9a995b5f02522cc7a03de86ddf8eb81b4d4466dd1b88ef9612378cc9f"
+    },
+    {
+      "path": "full-plan-before.txt",
+      "bytes": 2114,
+      "sha256": "9b8130a9a995b5f02522cc7a03de86ddf8eb81b4d4466dd1b88ef9612378cc9f"
+    },
+    {
+      "path": "plan-validation.json",
+      "bytes": 1290,
+      "sha256": "ec76d2cd54abb9aaa37acd244895b00fb26da08c49a02bc2c4d2cd70f411bc9d"
+    },
+    {
+      "path": "pr-plan-after.txt",
+      "bytes": 1374,
+      "sha256": "33ac4539389988aa3f1dc8e730ba93342049273f34b6d4fe8407ed72ed06d310"
+    },
+    {
+      "path": "pr-plan-before.txt",
+      "bytes": 1374,
+      "sha256": "dd30a3c163a95440806caacc66f9f67960087108160588a2ef5a1e4eaa86f49b"
+    },
+    {
+      "path": "pr-run-jobs-artifacts-source.json",
+      "bytes": 153711,
+      "sha256": "f1acbdafa183624cdff3a29485e466b8ae0f84c90d3f0ee7794038aa3578d524"
+    },
+    {
+      "path": "source-identity.json",
+      "bytes": 2839,
+      "sha256": "0587f160dc2d68842c55c9214cd5c36db239cbe6839f2b493e485aa48c45e43c"
+    },
+    {
+      "path": "x86_64-verification-benchmarks-43304014521.zip",
+      "bytes": 50240,
+      "sha256": "5c6fcef8a84d9ecc870ce9c48459701be398605b2c6c041a9c53a0362f28c2f2"
+    },
+    {
+      "path": "x86_64-verification-native-aot-3-43304014521.zip",
+      "bytes": 38839,
+      "sha256": "11ef8be5d1a3397b02d69e899ac9a627ef74ef8fc795316e50412e283d6e3ea9"
+    }
+  ]
+}

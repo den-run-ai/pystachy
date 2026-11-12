@@ -1,0 +1,3794 @@
+{
+  "oracle_summary": {
+    "kind": "local source-pinned differential audit; not a sealed CI bundle",
+    "workers": 2,
+    "seconds": 141.526775499,
+    "inputs_unchanged": true,
+    "case_count": 4481,
+    "completed": 4481,
+    "invalid": 0,
+    "new_rejections": 0,
+    "new_acceptances": 0,
+    "different": 283,
+    "raw_diagnostic_differences": 70,
+    "inputs": {
+      "old": {
+        "commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+        "tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+        "worktree_status": "",
+        "compiler_sha256": "71c801e56ffba5f13ad70a284259544aa09e2c902c1a404633e0287188fc4693"
+      },
+      "new": {
+        "commit": "395227b75bb777401627c0296a18fe71388070e7",
+        "tree": "066f5a791216fc721d734bb1e23bdd6194bce42f",
+        "worktree_status": "",
+        "compiler_sha256": "cec4a5470dce6ad3cb6358b9b47552609b799e401fad1385e23a31a9af0571fc"
+      }
+    },
+    "harness_sha256": "cd97821cdced9d13abbda491eed8e8f0d53d77c9d5063d7a583b5e3dde27a2e7"
+  },
+  "scope": "These are strict explanations of retained raw changes, not IR normalization: the original oracle differences and bytes remain intact.",
+  "classification_rule": "A path-only LLVM string change must have an exact own-checkout-home substitution, identical symbol/hash, and independently correct UTF-8 character count, byte count and both array bounds. The type-only rule permits only the three exact reviewed base enum type declarations.",
+  "categories": {
+    "checkout_path_literals_only": 237,
+    "base_enum_type_declarations_and_checkout_paths_only": 4,
+    "independently_reviewed_enum_exit_semantics": 14,
+    "reviewed_enum_layout_and_initialization": 14,
+    "raw_diagnostic_checkout_paths_only": 14,
+    "official_normalizer_accounts_for_diagnostic_paths": 56
+  },
+  "cases": [
+    {
+      "index": 4,
+      "path": "tests/programs/apps/byte_bpe.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c4135b96dc56784740e1c5a7d107b2d37e29499c67bea983cfc32c0ebf340d45"
+    },
+    {
+      "index": 11,
+      "path": "tests/programs/apps/example_linediff.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "f745e3a01ffb78327600c5c96abc677b1ca01f59168caea9774b020b5d18e01d"
+    },
+    {
+      "index": 12,
+      "path": "tests/programs/apps/example_mailmerge.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "6457d4e466a52fc1eeb731e25ed0219be5286e254bdf45ce89d454bdd47a496b"
+    },
+    {
+      "index": 14,
+      "path": "tests/programs/apps/example_montecarlo.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "33cbe417a1c51215e103534a57a8f967cb7790045b74953ce20a9282d3c31616"
+    },
+    {
+      "index": 21,
+      "path": "tests/programs/apps/example_route.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "6b3ee9d4c0206619b09c3e429461a57cd99cea15f2ef3db52980dc60dfe9b88c"
+    },
+    {
+      "index": 22,
+      "path": "tests/programs/apps/example_route_empty.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "791765414c88e5aefde1790859c866d6be57ccc9ac68405472d9653df563ca9e"
+    },
+    {
+      "index": 23,
+      "path": "tests/programs/apps/example_suggest.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "4d687045ee212f1451fe25c18fffe28f0abe2a7feb19b74da30adef20c8e0a8e"
+    },
+    {
+      "index": 25,
+      "path": "tests/programs/apps/example_urlstats.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "d82ec0b691af3d2b026e1f0872f5987305d076bde01d12433c5915ae24744b3b"
+    },
+    {
+      "index": 58,
+      "path": "tests/programs/apps/port_json_repair_cli.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "356bf45717e99e2fe544b887791a0b815ffaf22cc6f056427b2a3338e7da65e1"
+    },
+    {
+      "index": 77,
+      "path": "tests/programs/apps/port_roman_cli.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "75e72fbc69bc7f26cb51cd52e839772d08a35379b5d982717e0525cb7f5b0719"
+    },
+    {
+      "index": 78,
+      "path": "tests/programs/apps/port_roman_convert.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "971bfbfa311a1516567b4111334be0d59a86f4e2e77599ee74f28995baf00152"
+    },
+    {
+      "index": 79,
+      "path": "tests/programs/apps/port_roman_validate.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "f042a443878fcf0217ac719a7442d74f94abd6a089d7d552bee391c079b1cd33"
+    },
+    {
+      "index": 80,
+      "path": "tests/programs/apps/port_sgp4_api.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "202875f413cdfedadf59e16a2d55cd44ee5d79842bdd00185a4404c60346563d"
+    },
+    {
+      "index": 81,
+      "path": "tests/programs/apps/port_sgp4_verify.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1ab1b67602731c698dbc14ce90d35a1bfdb1a73f0eb9aa043f2221684d6230fa"
+    },
+    {
+      "index": 83,
+      "path": "tests/programs/apps/port_sortedcontainers_api.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "33e1a89c51e2ed0c736f8466cefca47ceaa8c59e4a233fbee02e35dd53380168"
+    },
+    {
+      "index": 84,
+      "path": "tests/programs/apps/port_sortedcontainers_index.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "780f174e6e023ce611300a527ae119cfd8ab34d65f1bf04c59eac87704e65bc8"
+    },
+    {
+      "index": 87,
+      "path": "tests/programs/apps/port_tomli_w_ini2toml.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "add17b576abc42540b347fe67670a7123b633a66b90db8327b6d07e0214205cd"
+    },
+    {
+      "index": 88,
+      "path": "tests/programs/apps/port_tomli_w_tables.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "892f8efe2def004e4dee0730834179f49cc81a01624478d410e661b881058e57"
+    },
+    {
+      "index": 89,
+      "path": "tests/programs/apps/port_tomli_w_values.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "33d2cce9e0f0a77cd63d07270d806c9c685e831bed8eba44bd760ac77474dd5b"
+    },
+    {
+      "index": 211,
+      "path": "tests/programs/classes/private_name_intrinsics.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "base_enum_type_declarations_and_checkout_paths_only",
+      "path_literal_changes": 1,
+      "base_type_changes": 3,
+      "ir_diff_sha256": "30ba885163a0a8cb35c4b826bb66f4cd6f59f29f36ab8fac05425338aeba81ca"
+    },
+    {
+      "index": 305,
+      "path": "tests/programs/containers/range_value.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "0958cc3ec7869175a4e64cebf7654f8a8557d9b40b1953d3d60105e9a71e6cdf"
+    },
+    {
+      "index": 345,
+      "path": "tests/programs/containers/tuple_runtime_regex.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "54fa634612fe07a0d10b5fe5784db63cecfddffdc482e12ebc423b0312563ab9"
+    },
+    {
+      "index": 391,
+      "path": "tests/programs/exceptions/exc_class_exit_enum.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 56,
+        "new": 56
+      },
+      "ir_diff_sha256": "f78931d9ab452e9e63cd5a3dace9b77b575ed0420f4783fa579a4816c2753c9c",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "SystemExit-derived Quit/Stop objects retain the existing message/args prefix and code/hc fields. Stop.__init__ initializes None as status 0 with hc=true, guards null before reading an enum tag, and sets hc/status from intlike-only tag arms. x.exit.Stop and x.exit.Quit still read those same code/hc slots; no conversion method is introduced."
+      }
+    },
+    {
+      "index": 435,
+      "path": "tests/programs/exceptions/exc_exit_enum_stored.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 52,
+        "new": 52
+      },
+      "ir_diff_sha256": "74919eaeba509c7d4cf6a91da63f5ff75abfb8500a34d6929cb4cbad17ecb1a2",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "Both base-typed direct sys.exit and stored SystemExit gain an intlike branch, preserving the alternate noninteger/None construction path and exception formatting. The final Quit(Status.FAILED) stores the immutable payload in existing code/hc fields and uses the unchanged subclass exit helper. No __index__ or __int__ call enters status selection."
+      }
+    },
+    {
+      "index": 495,
+      "path": "tests/programs/exceptions/exit_enum_member.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 16,
+        "new": 16
+      },
+      "ir_diff_sha256": "8f78d50a3e6a4aceb5539df8867986bca332be9a5c0715d66c4f57751d455aeb",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "Concrete Status.USAGE takes the existing null branch first, then loads the immutable Status slot 3 into pys_exc_exit. The previous message constructor on the nonnull member path is replaced; formatting remains in the existing EH form."
+      }
+    },
+    {
+      "index": 496,
+      "path": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 80,
+        "new": 80
+      },
+      "ir_diff_sha256": "e91445904e2b6c1b13763a8ef2e9191abb30a38e47b9ebe415d13b7eeca22a43",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "f.run adds status branches for IntEnum, computed/zero IntFlag, integer-mixin enums and base-typed views, including the stored SystemExit path. Concrete Status/Mixed payloads use slot 3 and Perm uses slot 5; tag-dispatch phis contain only intlike classes and a false/0 fallback. Plain Enum remains a message. Existing catch/finally dispatch remains; seven additional exit constructors correspond to the intended seven nonnull integer branches."
+      }
+    },
+    {
+      "index": 497,
+      "path": "tests/programs/exceptions/exit_enum_member_message.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 48,
+        "new": 48
+      },
+      "ir_diff_sha256": "907624ad5e9b89239e267d3992ea381ae5771557b7ffd7bb0ee120eb3a762769",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "Base Enum dispatch tests concrete intlike tags, loading the appropriate payload only on matching arms. Plain.NINE reaches the false/0 phi fallback and existing message construction, preserving status 1 and its text."
+      }
+    },
+    {
+      "index": 498,
+      "path": "tests/programs/exceptions/exit_enum_member_optional.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 17,
+        "new": 17
+      },
+      "ir_diff_sha256": "c779509801c6200f503076ff7f8fff7162134f700dc3b065dc9a4ccdbed28629",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "Optional Status first branches on null; None keeps status 0 without dereference. The nonnull path reads immutable slot 3 and constructs the integer exit status."
+      }
+    },
+    {
+      "index": 499,
+      "path": "tests/programs/exceptions/exit_enum_nonint_protocol.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 48,
+        "new": 48
+      },
+      "ir_diff_sha256": "fccfb0af340e6ed09d3a0a688addc651f882b75ff2785103e52b73c726255d8f",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "The same intlike tag dispatch excludes Plain despite its __index__/__int__ methods. No call to either conversion hook is emitted; the plain member retains its custom message route."
+      }
+    },
+    {
+      "index": 500,
+      "path": "tests/programs/exceptions/exit_enum_stored_mutated.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 17,
+        "new": 17
+      },
+      "ir_diff_sha256": "546134cd46f4e0257b6882d16f8740f4c779add8c07a7a945272a80e14141b2c",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "The declared FAILED member initializes mutable _value_ slot 4 and immutable payload slot 3 to 3; ALIAS reuses that member. The user mutation stores 9 only in slot 4, while exit loads slot 3. Alias identity is preserved."
+      }
+    },
+    {
+      "index": 501,
+      "path": "tests/programs/exceptions/exit_enum_stored_promoting.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 17,
+        "new": 17
+      },
+      "ir_diff_sha256": "8a7bd2ba4ca34083c4aea5e2705097de7ca5675868e4c4bf87967656385d8159",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "The accepted wide value 4611686018427387907 is stored as the same i64 in payload slot 3 and metadata slot 4 in this python-int module. Later metadata mutation writes only slot 4. Exit passes the stored i64 to the existing runtime status helper; no arbitrary-precision expansion or conversion-hook call is introduced."
+      }
+    },
+    {
+      "index": 502,
+      "path": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 59,
+        "new": 59
+      },
+      "ir_diff_sha256": "0e35c0e0d0dab25e5f411a7e7fa78dc1e4dae64b2c208bf98bc6b486b56e7708",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "Literal hidden-slot hasattr arms remain false and literal getattr evaluates the default once before returning it; dynamic reflection call targets are unchanged. The reflection helper changes only existing field offsets/TBAA and renumbered constants due to the inserted payload. No new reflected payload entry is introduced. Final sys.exit(Status.OK) reads the immutable zero payload."
+      }
+    },
+    {
+      "index": 503,
+      "path": "tests/programs/exceptions/exit_enum_stored_status.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 41,
+        "new": 41
+      },
+      "ir_diff_sha256": "a734e1c2f9006e2fe695488743d539992400d8d7c6d2dd2dcc3f4064b9ae7a04",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "Base-typed status() dispatch includes Status and other intlike enum classes, reads slot 3 on Status, and passes its stored 293 to the existing runtime status handling. Pure custom __str__ remains formatting, not status conversion; __index__/__int__ are not called."
+      }
+    },
+    {
+      "index": 504,
+      "path": "tests/programs/exceptions/exit_enum_stored_zero.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 16,
+        "new": 16
+      },
+      "ir_diff_sha256": "ccc61d6880ac5d760d18a045243d5f7760249fdef399eba031a40598a118028d",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "The SUCCESS alias shares the zero-valued member and the nonnull path loads immutable slot 3. Presence is tested by nullness/class, not integer truthiness, so zero remains a valid status despite conversion overrides."
+      }
+    },
+    {
+      "index": 505,
+      "path": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 59,
+        "new": 59
+      },
+      "ir_diff_sha256": "6d3c975f5026a338f2b8b9c2aba63b78f164c71c9a7d169c866cc77140f75690",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "Declared flag members initialize payload slot 5; computed member creation in _missing_ copies the same creation value to metadata slot 3 and payload slot 5. Later writes of 9/8 change only metadata. Base Enum dispatch selects Perm slot 5 for the combined member, preserving its creation value and alias identity."
+      }
+    },
+    {
+      "index": 506,
+      "path": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "independently_reviewed_enum_exit_semantics",
+      "definition_count": {
+        "old": 31,
+        "new": 31
+      },
+      "ir_diff_sha256": "39c77dbd5a714b6322d5b49542532427aa4b750a1707ddd44ca38ba345e2e919",
+      "review": {
+        "record": "independent-exit-review.json",
+        "sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8",
+        "result": "reviewed_no_finding",
+        "rationale": "Computed Perm(0) uses the same _missing_ initialization for payload slot 5. A metadata write of 9 changes slot 3 only. The nonnull exit path loads slot 5, keeping status zero and ignoring integer conversion overrides."
+      }
+    },
+    {
+      "index": 564,
+      "path": "tests/programs/generators/iter_review.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "99d76dcf2fc5943331f5973cbdf74434588b7fa9fa55a9a63f585d366925ce6e"
+    },
+    {
+      "index": 680,
+      "path": "tests/programs/imports/import_alias_ready_struct.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "537e5fa997f4f1c0d4202675ba93344b45ca789d6cb701a3b92ef90e4ada0524"
+    },
+    {
+      "index": 685,
+      "path": "tests/programs/imports/import_builtin_exc_alias_attr.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c535afe8df1af53440e19d087ddea430b4c9a741e450aa6c311ee9e082481c1a"
+    },
+    {
+      "index": 686,
+      "path": "tests/programs/imports/import_builtin_submodule.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "d906e55a1829278e1ab1594d009ebd9ddc6274bb0b94e46ef9cb950b6d3eb12f"
+    },
+    {
+      "index": 687,
+      "path": "tests/programs/imports/import_conditional_closures.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1ffcab18d94cd4d8cbb42c88ff4f81e5953ac579dcbbe72a1e00fe02d0044f9b"
+    },
+    {
+      "index": 689,
+      "path": "tests/programs/imports/import_conditional_function.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "4b16676ebbbd9405fd44edac68720ead25d518e7f8451bc231fc792b2f6eabb1"
+    },
+    {
+      "index": 690,
+      "path": "tests/programs/imports/import_conditional_nested_def.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "283cebb6cde03596ad7d35c75ac77e2490fbf7fc589a4484651221bd0a238342"
+    },
+    {
+      "index": 695,
+      "path": "tests/programs/imports/import_module_attr_same_name.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "0497d34a3e0fe2a91d52b11fb3724fd5ad79f6623a0e3436798ca8912fdd8684"
+    },
+    {
+      "index": 702,
+      "path": "tests/programs/imports/module_doc.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "0e42512b91938d142de3c1e982b7436180622389a88e55fe23e38a46178d2487"
+    },
+    {
+      "index": 1326,
+      "path": "tests/programs/language/walrus.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "7f177e9b0f19f55698ab284e20bfd270656c1bcb1b6c89bb08d5881310620689"
+    },
+    {
+      "index": 1361,
+      "path": "tests/programs/library/lib_argparse_argv.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "61c49e75c052aef15db8aa9bc4b79592ee0a4aee2a385f0addf109a062236031"
+    },
+    {
+      "index": 1362,
+      "path": "tests/programs/library/lib_argparse_choice_error.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5cd657d1f4251bf1e69a546f06fdabeee8c790236755f0ed91a43934768ac815"
+    },
+    {
+      "index": 1363,
+      "path": "tests/programs/library/lib_argparse_conversion.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "8516eaa67f0527466c11ea47916c8392117382e253956c3649d4da81376739b6"
+    },
+    {
+      "index": 1364,
+      "path": "tests/programs/library/lib_argparse_conversion_order.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5282f4cfe7602d2c61ccf922f94ec7e6dda027620eb150c85ce20480437b41f3"
+    },
+    {
+      "index": 1365,
+      "path": "tests/programs/library/lib_argparse_dest.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "664e8ff91d37242db1bf7fb000caf7ea155fd369e118230f8d76959b3677bd52"
+    },
+    {
+      "index": 1366,
+      "path": "tests/programs/library/lib_argparse_dormant.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "8b005e56a397d1f21256dc13545c675c80d97814181770223a85b5a71754cfca"
+    },
+    {
+      "index": 1367,
+      "path": "tests/programs/library/lib_argparse_equal_schemas.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1abe1e974bfefdc73b56baa00df85ff86ea360f365be0928e0293003ad062b4e"
+    },
+    {
+      "index": 1368,
+      "path": "tests/programs/library/lib_argparse_help.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5efc287a864e87b32352fab771c2faf30363b96500216fa93c59eca73f7fe049"
+    },
+    {
+      "index": 1369,
+      "path": "tests/programs/library/lib_argparse_missing_value.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5fc77ec9ad92aa24ea5fd4df2c778ff97495b1368925ff82e3965f420d844611"
+    },
+    {
+      "index": 1370,
+      "path": "tests/programs/library/lib_argparse_namespace.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "7de073fe1326d3a42e95af2d08d52b7467670f64fda30c40beaa09503413891d"
+    },
+    {
+      "index": 1371,
+      "path": "tests/programs/library/lib_argparse_nargs.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "0edf6b874156a9847f10d47c0e9a67281bc73ac521f4cff363d9d429989ee628"
+    },
+    {
+      "index": 1372,
+      "path": "tests/programs/library/lib_argparse_numeric_choices.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "ad8a4bfc5ef153fd79dfaeed322bbdd17c4801e358117da6e0e5b2d4e9333fe0"
+    },
+    {
+      "index": 1373,
+      "path": "tests/programs/library/lib_argparse_python_int.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "e4f2dec54a190150442c693238280bc4bfbf65619ba6afbc42bc54da8bc97ee2"
+    },
+    {
+      "index": 1374,
+      "path": "tests/programs/library/lib_argparse_python_int_eq.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "94cb18800dc86f2aa68413cf2ebc727c828f4fdd7687c6f67dab976fc1c7b65b"
+    },
+    {
+      "index": 1375,
+      "path": "tests/programs/library/lib_argparse_required.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c0a5e65c353703480bdf1282c62be173d866eaabad5b37b9fd2f8bff424499fb"
+    },
+    {
+      "index": 1376,
+      "path": "tests/programs/library/lib_argparse_schema_builtin_names.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "fd0ebea43433da826f18f6cea3b770391460c4fb1dd95eb864ca632cd4b61904"
+    },
+    {
+      "index": 1377,
+      "path": "tests/programs/library/lib_argparse_schema_numeric_choices.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1e795219b574699c50698a709185b3c9293fc591a36d89cb91f225bc8a38a03e"
+    },
+    {
+      "index": 1378,
+      "path": "tests/programs/library/lib_argparse_scopes.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "74945909217ec5e0ff8fead423776f1ea93cdad21c79c05ca5fa84f67d4dd580"
+    },
+    {
+      "index": 1379,
+      "path": "tests/programs/library/lib_argparse_shadow.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9a8ac8d0af4d04fdbdacb879bf633d8b43c900fc2a16f41feec303e647f60b15"
+    },
+    {
+      "index": 1380,
+      "path": "tests/programs/library/lib_argparse_token_abbrev.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b0a7649adcdbb763da5593dee94b50aec00caa2ec519ce09afe2059752c57fa4"
+    },
+    {
+      "index": 1381,
+      "path": "tests/programs/library/lib_argparse_token_unicode.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "202199d46b27dd25225d1d15f76f993e97010a30d8b849252d37678e9e131752"
+    },
+    {
+      "index": 1382,
+      "path": "tests/programs/library/lib_argparse_type_error.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "7a6f2a50120859cb0764969be928e6ab92167225c8d8676029306e1d450c24ba"
+    },
+    {
+      "index": 1383,
+      "path": "tests/programs/library/lib_argparse_unknown.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "4975cf8d8534e5f727f45985d6d5b9dce39b43e76ff95f31b4a41591747705cb"
+    },
+    {
+      "index": 1384,
+      "path": "tests/programs/library/lib_argparse_version.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1f49b9a65386a4aaf13ccaeae3f762955e7d0a03831b04b26de39359efe0c02d"
+    },
+    {
+      "index": 1389,
+      "path": "tests/programs/library/lib_bisect.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9200f4978f3d0387c6a077105658807abc3e2de06e418f6e96bcc434248c0784"
+    },
+    {
+      "index": 1421,
+      "path": "tests/programs/library/lib_datetime_datetime.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5c658b6bf2498bb19d1383e83ba7535108ad2d74bd5b1d510bfce506e6d70d8b"
+    },
+    {
+      "index": 1424,
+      "path": "tests/programs/library/lib_datetime_time.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "89151d3a48ab31b709dfd4557865af91eafe534d41f17c0c1db4003ad5b43c0e"
+    },
+    {
+      "index": 1426,
+      "path": "tests/programs/library/lib_difflib.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "06ef390f620dda90fbc183681f4b30442296370e1e372cdae7cbe0cf8f9e9c63"
+    },
+    {
+      "index": 1427,
+      "path": "tests/programs/library/lib_difflib_grouped.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "8ab592fb424fb3b533e4425b04ff9ef3d52a9296e6048726898082aaca494f86"
+    },
+    {
+      "index": 1428,
+      "path": "tests/programs/library/lib_difflib_unified.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "955ef016ae0d22b151e1ec981e0edc666b79d32613014206f0ce81182f5884bd"
+    },
+    {
+      "index": 1429,
+      "path": "tests/programs/library/lib_enum.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 167,
+        "new": 167
+      },
+      "ir_diff_sha256": "8c3e56bcd197e3add8855c6540fd4b1f259567927af58712a0935e210f0e5473",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 167,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 3
+      }
+    },
+    {
+      "index": 1430,
+      "path": "tests/programs/library/lib_enum_any.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 183,
+        "new": 183
+      },
+      "ir_diff_sha256": "767b830c72b1ede795296816e5b6df21fc34d6a6a51bb291a0aa6b99eb585a67",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 183,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 1
+      }
+    },
+    {
+      "index": 1431,
+      "path": "tests/programs/library/lib_enum_base_lookup.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 60,
+        "new": 60
+      },
+      "ir_diff_sha256": "a4e238dab40d7e681ec21564216a72de129ba77969316cbc6c2049aacb5109b5",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 60,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 0
+      }
+    },
+    {
+      "index": 1432,
+      "path": "tests/programs/library/lib_enum_flag.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "base_enum_type_declarations_and_checkout_paths_only",
+      "path_literal_changes": 1,
+      "base_type_changes": 3,
+      "ir_diff_sha256": "36895dd773ba951b63a977cc71a65dc3cea113b86aaf273c72ffc7302850da93"
+    },
+    {
+      "index": 1433,
+      "path": "tests/programs/library/lib_enum_flag_bits.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 76,
+        "new": 76
+      },
+      "ir_diff_sha256": "945c13a7610635d6329bcfe34dcf0f985b0debad23a31d2bdce9c41a5b268167",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 76,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 4
+      }
+    },
+    {
+      "index": 1434,
+      "path": "tests/programs/library/lib_enum_flag_numeric_lookup.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 55,
+        "new": 55
+      },
+      "ir_diff_sha256": "ff5fd61ec7e8f2510204df3ddf1f7be7e6eb337bb1f2d185644c6ec2e6f183e4",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 55,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 4
+      }
+    },
+    {
+      "index": 1435,
+      "path": "tests/programs/library/lib_enum_flag_width.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 83,
+        "new": 83
+      },
+      "ir_diff_sha256": "f87b7cf244deb144760fbef109f631e45dba1fa1127f186823e0e22136589995",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 83,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 8
+      }
+    },
+    {
+      "index": 1436,
+      "path": "tests/programs/library/lib_enum_format_str.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 76,
+        "new": 76
+      },
+      "ir_diff_sha256": "b47499699424390e9944f112b2afb95d63750a1d9ff303f89c989ef9113ee11c",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 76,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 5
+      }
+    },
+    {
+      "index": 1437,
+      "path": "tests/programs/library/lib_enum_import.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 58,
+        "new": 58
+      },
+      "ir_diff_sha256": "1cf4eac8000ee65b50d053e9714872ca54f09dbc39657a4ab36156bd887fb91e",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 58,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 2
+      }
+    },
+    {
+      "index": 1438,
+      "path": "tests/programs/library/lib_enum_intflag.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 98,
+        "new": 98
+      },
+      "ir_diff_sha256": "fb2eaeb2810c64d05b5c690ac144a754e3e35a481bc7859b55a854f6a8db016b",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 98,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 4
+      }
+    },
+    {
+      "index": 1439,
+      "path": "tests/programs/library/lib_enum_missing.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 38,
+        "new": 38
+      },
+      "ir_diff_sha256": "804f637406cc8da4aa22e8da416e10c72cd19e2b9e0d575b63eb11bda1e5b199",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 38,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 2
+      }
+    },
+    {
+      "index": 1440,
+      "path": "tests/programs/library/lib_enum_mixin.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 67,
+        "new": 67
+      },
+      "ir_diff_sha256": "67c2a9a5a2b0079bf4b22f446bb06e1ad68d2dceb8a14dd239dcb8a8213e127b",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 67,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 2
+      }
+    },
+    {
+      "index": 1441,
+      "path": "tests/programs/library/lib_enum_plain_isinstance.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 204,
+        "new": 204
+      },
+      "ir_diff_sha256": "d4dc9e3d64f320435b6a683fbc624f0ece8b10233443a171ce931994e633831b",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 204,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 0
+      }
+    },
+    {
+      "index": 1442,
+      "path": "tests/programs/library/lib_enum_reflected.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 34,
+        "new": 34
+      },
+      "ir_diff_sha256": "910292a3589522a6542f790d098e7945bd8b7066357093bbb7dc7e9c3318e796",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 34,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 2
+      }
+    },
+    {
+      "index": 1443,
+      "path": "tests/programs/library/lib_enum_values.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "reviewed_enum_layout_and_initialization",
+      "definition_count": {
+        "old": 50,
+        "new": 50
+      },
+      "ir_diff_sha256": "a2b856fea6bc0855d964bbef3ea8a56ecfd55dc80345ddd6a3e45da0621aa1fb",
+      "review": {
+        "record": "layout-function-review.json",
+        "functions_accounted": 50,
+        "globals_accounted": true,
+        "metadata_accounted": true,
+        "payload_stores_verified": 5
+      }
+    },
+    {
+      "index": 1444,
+      "path": "tests/programs/library/lib_flag_base_lookup.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "base_enum_type_declarations_and_checkout_paths_only",
+      "path_literal_changes": 1,
+      "base_type_changes": 3,
+      "ir_diff_sha256": "b4fc7e82da38cc4bbc996940536d3529a6c6d8fc2bb42e894a93ad93e4e7a7e8"
+    },
+    {
+      "index": 1445,
+      "path": "tests/programs/library/lib_fnmatch.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "a6b8de6b4659e3d7d73841d13f629ae6ae76aac99a8df0d7b55226edd562352e"
+    },
+    {
+      "index": 1446,
+      "path": "tests/programs/library/lib_fnmatch_raw_bytes.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "caacff4cbabf4eed74935952cb9a795efeea25f3e6fc0cc4a5daa31229218824"
+    },
+    {
+      "index": 1447,
+      "path": "tests/programs/library/lib_fnmatch_unicode_ranges.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "bf50f9360a40afc209f15355c606c4fc2e3c3c05e8f4cf07a3da63c62075d529"
+    },
+    {
+      "index": 1457,
+      "path": "tests/programs/library/lib_gettext.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "cd6b9640409147da702d7cd10cf1705f1ff7051cbd6aab5f87eb443f26bbc82f"
+    },
+    {
+      "index": 1458,
+      "path": "tests/programs/library/lib_glob.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "98dfcfbd2221a0f733b9e8f61a59f9248ee39c6a6861a99718aa8a47b1ec769f"
+    },
+    {
+      "index": 1461,
+      "path": "tests/programs/library/lib_html.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "e4699d544a3db9107e0e75661dbfd77686b7c0e77c54d02b67a6e963232126d9"
+    },
+    {
+      "index": 1462,
+      "path": "tests/programs/library/lib_html_entities.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b04bf36ebaa279b44c3a1a002e7a055ce7809dc8497233b9435f389c59064d62"
+    },
+    {
+      "index": 1463,
+      "path": "tests/programs/library/lib_html_parser.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "a62f75823ca12a714046a00fedc5be4ae4096a1d905d901ab0be368db169a5a1"
+    },
+    {
+      "index": 1464,
+      "path": "tests/programs/library/lib_html_parser_positions.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "6d343f5e3893bb7e3f1659359bfe22fa891d9b32681ec6090efaeebd6069d96f"
+    },
+    {
+      "index": 1477,
+      "path": "tests/programs/library/lib_itertools_gc.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c1c2d7a036a64810bc6d60584edb14f1dc5dd94e499160886a4b58fc024a2c4f"
+    },
+    {
+      "index": 1478,
+      "path": "tests/programs/library/lib_itertools_generators.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "7bf2763164e6b7e4caea6e65985bacd04ad625cfe18f63f99c4b9df128a99736"
+    },
+    {
+      "index": 1482,
+      "path": "tests/programs/library/lib_itertools_module.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "46832dd8a36dd5aec28ac4900b1cd0f9344cef975ece9eede51c78a95d90228c"
+    },
+    {
+      "index": 1483,
+      "path": "tests/programs/library/lib_itertools_range.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "98a23ddde31c14292b81a3f012963ad83b220ccd3ef6e84196c8308bfcd2f34e"
+    },
+    {
+      "index": 1485,
+      "path": "tests/programs/library/lib_itertools_terminating.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b660f18f27bcc6811464bfefc3f821d2e23ff2b1907b9f7c0d0d54fba1dce254"
+    },
+    {
+      "index": 1489,
+      "path": "tests/programs/library/lib_logging.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "fedd5a70bbf7fa4f08fbd2d9bd52987952960e9684db546027bbad10a36449a6"
+    },
+    {
+      "index": 1490,
+      "path": "tests/programs/library/lib_logging_config.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "56a800f477a89d36c9312b2a73fcca5144657599306f1cc9bf3cc5aef2cae7ff"
+    },
+    {
+      "index": 1491,
+      "path": "tests/programs/library/lib_logging_int_min.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "7bd61c39669f5e8e8e717efa4ad5e01000191febbc8606589748c8572e04ea82"
+    },
+    {
+      "index": 1492,
+      "path": "tests/programs/library/lib_logging_make_record.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "7cc60f2e330dd3e3da2b2fca392e94a0e4a0e29e23d9f171f6842e6d4af94d84"
+    },
+    {
+      "index": 1493,
+      "path": "tests/programs/library/lib_logging_stderr.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "16da23d4c7ca01385e61455fc1aca0ce799a81a8c1fe8952633821aeb1e66609"
+    },
+    {
+      "index": 1497,
+      "path": "tests/programs/library/lib_pathlib.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 3,
+      "ir_diff_sha256": "f71cfa503e3095f449bbee895cc3606ce674fd6120518e1d7cd7e8e4bdeecbf0"
+    },
+    {
+      "index": 1498,
+      "path": "tests/programs/library/lib_pathlib_glob_case.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "afed1e766ed546f62c4ff2b396d7b68ada8f8710365cbbc09576a7d4b6442809"
+    },
+    {
+      "index": 1500,
+      "path": "tests/programs/library/lib_random.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "451d80910b68fdf07036e29fa69f99c01714ff7e63d7c7e9e51f003603f5425f"
+    },
+    {
+      "index": 1501,
+      "path": "tests/programs/library/lib_random_distributions.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "4d3efc03dbd11382798748389accef7a03c05963111730e16c9866f7f7d961c6"
+    },
+    {
+      "index": 1502,
+      "path": "tests/programs/library/lib_random_sequences.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "7df732afd23759508dcb6e4f29b3ce592d08a1a46e2a52805378f11055de2a55"
+    },
+    {
+      "index": 1503,
+      "path": "tests/programs/library/lib_random_triangular_ints.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "134a2764da671ae60c044503898b09b8c298cde833c2bfdcde512191afa748be"
+    },
+    {
+      "index": 1504,
+      "path": "tests/programs/library/lib_re.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9c1a35dc5cc9a4b5172ceb1accea28a621705192fa93cc29a0b447e3acb92ce3"
+    },
+    {
+      "index": 1505,
+      "path": "tests/programs/library/lib_re_annotations.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "980d03f5bf5e82b4fa02c70b59e1454e619636560a018531a8d3f633d519cb2a"
+    },
+    {
+      "index": 1506,
+      "path": "tests/programs/library/lib_re_bounds.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "f4866b83469445e7bd916027a35b67a9db5948ca31e099fc34b55eac990d6237"
+    },
+    {
+      "index": 1507,
+      "path": "tests/programs/library/lib_re_branch_filter.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "61dc1e26d0449063cc038f5937d1b2611e9d4c4d97369f7c3185af9cf9c39be2"
+    },
+    {
+      "index": 1508,
+      "path": "tests/programs/library/lib_re_branch_runs.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "bc7f480929db9b41440ed9f8cf973c626c54a6f458c65677c61461a51326e136"
+    },
+    {
+      "index": 1509,
+      "path": "tests/programs/library/lib_re_cache.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "98ccd8e02271f3c324e97b51e8ddd8236c77cf9ae47e3c30275ac5ea6971736c"
+    },
+    {
+      "index": 1510,
+      "path": "tests/programs/library/lib_re_cache_churn.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1a823a3047f68967ecf971ec8037bf1bfc43a84473c2255561bd442fd017c2f5"
+    },
+    {
+      "index": 1511,
+      "path": "tests/programs/library/lib_re_charset.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "e1205237649978c3070269c718f38112893d16f939548ef13592573722e2b961"
+    },
+    {
+      "index": 1512,
+      "path": "tests/programs/library/lib_re_class_span.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "463f64b5e16f63487e629ed940b460a6f989bc0e8dfd97379f01e7e2552bce76"
+    },
+    {
+      "index": 1513,
+      "path": "tests/programs/library/lib_re_codepoints.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "88bb10b9225151d2273e1bd356071828050003300d4fe8b76d8342de6c558c9b"
+    },
+    {
+      "index": 1514,
+      "path": "tests/programs/library/lib_re_first.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9b1ac369be92ed9e0069153887357c62e4ed3e2a157e2d95c0a53ec6d2196e7e"
+    },
+    {
+      "index": 1515,
+      "path": "tests/programs/library/lib_re_flat.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "04294eda923b428c4b0e755d35d5404b2d8485a7522b2767ee8aebb57dd5fe52"
+    },
+    {
+      "index": 1516,
+      "path": "tests/programs/library/lib_re_groups.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5e43b45e00adf301aca3b8c7db626e073a5e2b93ac983bcfe8ebd4666abcace3"
+    },
+    {
+      "index": 1517,
+      "path": "tests/programs/library/lib_re_ignorecase_repeat.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "ef6f28b746bfe1075c91923c821a65eb088b6a3cf3117031499f10524d9917e0"
+    },
+    {
+      "index": 1518,
+      "path": "tests/programs/library/lib_re_inline_flags.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b954d720e19c9ac404a3cfde9acf612c1d187e977a28dfe349151a0b7264310e"
+    },
+    {
+      "index": 1519,
+      "path": "tests/programs/library/lib_re_lines.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "08c4e0178eccee38f4fd9628f9d25054f5af707a7c0626ef69628b2e8a854525"
+    },
+    {
+      "index": 1520,
+      "path": "tests/programs/library/lib_re_prefilter.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5f8742ce7a76cdcdf88cb87820fc35be435ae5f269099bbf2bc2288e1890d916"
+    },
+    {
+      "index": 1521,
+      "path": "tests/programs/library/lib_re_purge.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "d6065cebf67fd61f64874ce352f675ceb27304ffb45ce31f4cde1433ac66074b"
+    },
+    {
+      "index": 1522,
+      "path": "tests/programs/library/lib_re_raw_subject.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "48e334e6d55174bfcbc28927c8bc144a199185485ce262c0378799036123dc31"
+    },
+    {
+      "index": 1523,
+      "path": "tests/programs/library/lib_re_repeat_prefix.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c2dfdb09a9681b35b57429f3f461a149bf62216f937c351aa7d164e4bfe90805"
+    },
+    {
+      "index": 1524,
+      "path": "tests/programs/library/lib_re_reuse.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1b36b461f9a0b2760207dc17cc6b0d5981a4f67b8ea9bec8a6c079c8d0cf3139"
+    },
+    {
+      "index": 1525,
+      "path": "tests/programs/library/lib_re_unicode_memo.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "ec2f6fe636d69753d16cba6ab19d5776b1541bf91b172eb97fe68c6adb4bb783"
+    },
+    {
+      "index": 1526,
+      "path": "tests/programs/library/lib_re_utf8_overlong.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "32f98fe671e5d6f65a6f674d8e992b51ad92d2ff3644d5e2c73fd28d530ea208"
+    },
+    {
+      "index": 1530,
+      "path": "tests/programs/library/lib_shlex.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "4c8b9c5b41426a2086ba321b477c85c97ce52d522ef87312f80f890ceff37366"
+    },
+    {
+      "index": 1531,
+      "path": "tests/programs/library/lib_shlex_upstream.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c36539c4bcbe5f3cd3f0b33ed3f877d52bc89d757ac480e6205710386abfff6b"
+    },
+    {
+      "index": 1542,
+      "path": "tests/programs/library/lib_string.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c4fd4f65835139865f829c6a77ecadd3f03b61cbc8204133060b89c1fb327f06"
+    },
+    {
+      "index": 1543,
+      "path": "tests/programs/library/lib_string_formatter.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "d68b5d159027cc637440e28dca17eb0b75789027ebb2a4b2258c19dc815a8d5c"
+    },
+    {
+      "index": 1544,
+      "path": "tests/programs/library/lib_string_formatter_mixed.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "0d54d3e84edc6c7395208c389648380e4e63a433497e5587012c9116a35d6df7"
+    },
+    {
+      "index": 1545,
+      "path": "tests/programs/library/lib_string_formatter_subclass.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "180107a6a93bc54fac4ae53ed78b789552f783ebdff6e2f617ab43f0d47cd2a4"
+    },
+    {
+      "index": 1546,
+      "path": "tests/programs/library/lib_string_template_kwargs.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b3a509b2760864c2d52733bacef7ca44c2a838c1bb7e4e9eb52c3f4ec5b18f55"
+    },
+    {
+      "index": 1547,
+      "path": "tests/programs/library/lib_struct.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 4,
+      "ir_diff_sha256": "c1a3b9d9a2358f370fc74e27845bf7b121b25a4ca96bc972e891a03dddb45981"
+    },
+    {
+      "index": 1548,
+      "path": "tests/programs/library/lib_textwrap.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c9053d8738fa4d1e1573815afe3d80ec5d53ea013ccb32ef94c348db44d81c2a"
+    },
+    {
+      "index": 1549,
+      "path": "tests/programs/library/lib_textwrap_codepoints.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b0ccb32064a71650445e5eac11af4e8886c98f26b45360916ee32b516ce4a7b3"
+    },
+    {
+      "index": 1550,
+      "path": "tests/programs/library/lib_textwrap_whitespace.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "e9afaf8be7096714d5c1c4b977d371fbc76483f31c82397667ca111bf20342bc"
+    },
+    {
+      "index": 1553,
+      "path": "tests/programs/library/lib_threading.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "ec49a5e27f892826c26421678ca45777eec4dce9c9f58c9bd11e08e51d6355d1"
+    },
+    {
+      "index": 1555,
+      "path": "tests/programs/library/lib_tomllib.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "174d9c1f1cf1d90b3a301ddff15416a8e889ae54300f17d2b08220b5fe33908b"
+    },
+    {
+      "index": 1556,
+      "path": "tests/programs/library/lib_tomllib_boundary.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "a32a5536dc46f5533a72fe48e249f325fdf65df58b733c9c2773c6f380f546ad"
+    },
+    {
+      "index": 1557,
+      "path": "tests/programs/library/lib_tomllib_dynamic.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "70e506a2c9b8574d4530a767233ca700a30ff15b7dc05502afe04c652a498dc5"
+    },
+    {
+      "index": 1558,
+      "path": "tests/programs/library/lib_tomllib_flags.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "1c8f09ade1a8809849fb91fb7441cc9bd7e1143ab8cdd432925dbfbf87f8ae8e"
+    },
+    {
+      "index": 1559,
+      "path": "tests/programs/library/lib_tomllib_typed_callback.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "ebc18fb48e39e21810fa9c1a5f72c907ba3832cefee023002b111467f6b58f94"
+    },
+    {
+      "index": 1560,
+      "path": "tests/programs/library/lib_tomllib_uncaught.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "56bc49a4f126b8d028a8bc39083e6afe1e9f6a944073a9e52464a01632e6ddba"
+    },
+    {
+      "index": 1562,
+      "path": "tests/programs/library/lib_types_mappingproxy.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "a5184b0123781c711a848380388c4af03148dc7e37b2e69b9986e2419831c323"
+    },
+    {
+      "index": 1563,
+      "path": "tests/programs/library/lib_types_mappingproxy_opaque.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b23bae29022c43fa9590caf2cd59ba74cdfa516b9dee936d2542982d21939980"
+    },
+    {
+      "index": 1565,
+      "path": "tests/programs/library/lib_unicodedata_chars.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b4a186f22703f59a2650bf1b8b6d2bc493ea0255cacaa4e06149e6fd1d29943c"
+    },
+    {
+      "index": 1567,
+      "path": "tests/programs/library/lib_urllib_parse.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "cb2881d96a7686231fc00af7302108017220ab0c68ea0868199e9a5964dda88f"
+    },
+    {
+      "index": 1568,
+      "path": "tests/programs/library/lib_urllib_parse_cache.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "4b2318de54b29300c954d70edec095fa95a916bcd81d77e8393edf0cc8cad0b4"
+    },
+    {
+      "index": 1569,
+      "path": "tests/programs/library/lib_warnings.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "40a643c371751d65d1dbbc46624b9ff3ff75bee4b5aa782cbc27a215a66c7647"
+    },
+    {
+      "index": 1570,
+      "path": "tests/programs/library/lib_warnings_main_filter.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "302b4eeae93f746ef68bf81bf3d3ea89ee67679144c8441e80288d284fe87406"
+    },
+    {
+      "index": 1571,
+      "path": "tests/programs/library/lib_warnings_objects.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "42f7f27b2d64ce360cd3d0a6383b66fae29b2db8cf41d1819fcc4f0750e1837c"
+    },
+    {
+      "index": 1572,
+      "path": "tests/programs/library/lib_warnings_options.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "8f41800ce3058f0e74ad76ea73ec0f835a09ff4747a2b3e34d2f3ea655fc612f"
+    },
+    {
+      "index": 1573,
+      "path": "tests/programs/library/lib_warnings_skip_prefixes.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "bd81a275016b64dac405aa8825600fa9c20827e633809e61a3d2988372869280"
+    },
+    {
+      "index": 1574,
+      "path": "tests/programs/library/lib_weakref.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "da6beae8f84c471bbd92af1794c2d7025781ba081c276219da2a365975c5a116"
+    },
+    {
+      "index": 1575,
+      "path": "tests/programs/library/lib_weakref_callback.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "aceb907e3990745a82b02f5f5746e431630911b36c055353ca9285015ca71acf"
+    },
+    {
+      "index": 1576,
+      "path": "tests/programs/library/lib_weakref_callback_dead_ref.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "f2eb9456da35aa2f2d5524345fc38668445c77d9afde482e00297047875cb41e"
+    },
+    {
+      "index": 1577,
+      "path": "tests/programs/library/lib_weakref_callback_nested.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "25d3a6f9649259424988bd750327c045dabbe576b04e00a44282c34a78bc80a0"
+    },
+    {
+      "index": 1578,
+      "path": "tests/programs/library/lib_weakref_callback_order.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "d9cb6876147966aeadc6a603a507083f8afbd16aafcf3f230347b2b6525e50d5"
+    },
+    {
+      "index": 1579,
+      "path": "tests/programs/library/lib_weakref_callback_raise.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "dc6f5aeae42d459407addcdc2e2336bd48660ff5c9dc1704fd33cfdf8f965074"
+    },
+    {
+      "index": 1580,
+      "path": "tests/programs/library/lib_weakref_dead.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "ce7340550e5916ea73b4471cf604c831845fbdd7f4b8759119a6957281132a95"
+    },
+    {
+      "index": 1581,
+      "path": "tests/programs/library/lib_weakref_dead_eq.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "4e8822d12d9fa85b34bace1813cec9b9603fff55c8c791110a59ab66b751811e"
+    },
+    {
+      "index": 1582,
+      "path": "tests/programs/library/lib_weakref_eq.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "1aa40eccfa26efce2d3c90806312c8da3a1fda6d6c98882df568d9c9f4283005"
+    },
+    {
+      "index": 1583,
+      "path": "tests/programs/library/lib_weakref_module.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 4,
+      "ir_diff_sha256": "b4e5031ba68b51b7c443d98cf3dcecdf1837454715e1f1f3038ec6e72f3e88c9"
+    },
+    {
+      "index": 1584,
+      "path": "tests/programs/library/lib_weakref_star.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "77cbe8dd86965dcdf089cfb3101db8553d7ea72b916cce6d1444ff95fbe6b94a"
+    },
+    {
+      "index": 1585,
+      "path": "tests/programs/library/lib_weakref_transition.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1f5ad4567ffd5d553a50b704d89ae31ff3951439f98b0f372593ccdcc9cc70a9"
+    },
+    {
+      "index": 1597,
+      "path": "tests/programs/library/re_specialize.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9a07c3d3820545938a38b70e1f14f456141410baa6493abf15ebd4ccd89118c1"
+    },
+    {
+      "index": 1598,
+      "path": "tests/programs/library/re_specialize_recursion.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "670ca0f3cf08b7860c5ffb609e46481c88b270ef0e0806545a723059e7fde121"
+    },
+    {
+      "index": 1600,
+      "path": "tests/programs/library/sys_prefix.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "ac2fbd3968a93491d854e27088ad195f061b2b04c49381056cc00544354d3a4e"
+    },
+    {
+      "index": 1660,
+      "path": "tests/programs/numbers/mpz_cpython_long_bitops.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "bc411e87e15036507a9fd5dcb85316c09a70a65703172ad6072b706547359cdd"
+    },
+    {
+      "index": 1661,
+      "path": "tests/programs/numbers/mpz_cpython_long_division.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "dc5c0e38d89a880a52d4cd67ca80dcdeb5e67486f2771b88c48dac79d033cc7c"
+    },
+    {
+      "index": 1662,
+      "path": "tests/programs/numbers/mpz_cpython_text.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b746ae948c4c676c03c520ae8bbeefbaaf83b8ffc923f595748b4623901e9129"
+    },
+    {
+      "index": 1786,
+      "path": "tests/programs/optimizations/opt_alloc_held_cohort.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "20b6efb20d0cd3e5b6ccd3d6d72d11fb69820943e46f5844ed2b12843123bb2f"
+    },
+    {
+      "index": 1787,
+      "path": "tests/programs/optimizations/opt_alloc_held_fields.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "d2d88ba35d88928634165c147bbc8a4cc831412b6c36455e343ad13e15f52de1"
+    },
+    {
+      "index": 1788,
+      "path": "tests/programs/optimizations/opt_alloc_held_tuple.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "915216c2af78bf7ff223520e739270c3c2de00feaa7cae96cec103414c78cd5b"
+    },
+    {
+      "index": 1969,
+      "path": "tests/programs/reflection/reflect_formatter.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "96f6c6991e0bf690234cfe51f54c8cd84967e2b47238110fd6555859c7fbddc7"
+    },
+    {
+      "index": 1993,
+      "path": "tests/programs/reflection/types_generic_alias.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 3,
+      "ir_diff_sha256": "7b9af9c994479099a318da65ab0afa810ba0aa27748175d79172fe36c42c3ed9"
+    },
+    {
+      "index": 1994,
+      "path": "tests/programs/reflection/types_generic_alias_constants.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "8df423e43ed37cfca12c629127425d230952709e309af545636e744ab7f0e22b"
+    },
+    {
+      "index": 1995,
+      "path": "tests/programs/reflection/types_generic_alias_subscripts.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "a17b38c1e80676ac34a34f50b633850e6f47819ca610d1f3b5ead2dc80f466ae"
+    },
+    {
+      "index": 2161,
+      "path": "tests/programs/strings/unicode_library_codepoints.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "3bd10b08ad99e5625a14a263bedf228d56b18c0e1a752b174a55efb04eb25868"
+    },
+    {
+      "index": 2180,
+      "path": "tests/programs/upstream/upstream_argparse_options.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "a76e8c7ee522d83de2cff36d5e15b0631991086bddc6f966ad187e86fe1f3da8"
+    },
+    {
+      "index": 2186,
+      "path": "tests/programs/upstream/upstream_builtin_min_max_sum.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9d882f631fb3f08399281e53568854285fbc95ca60e6fd71ca60906d86812ad4"
+    },
+    {
+      "index": 2188,
+      "path": "tests/programs/upstream/upstream_builtin_zip_sorted.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "eb78655ec43f3fb4905f5469f546aab9a33fb23f7095bedcebdbabc9b33d3df3"
+    },
+    {
+      "index": 2194,
+      "path": "tests/programs/upstream/upstream_contextlib_locks.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "423d18d5f7f8ba9861db5f7d08ac748c61f82f06a33c27428c9ed55ac474ee08"
+    },
+    {
+      "index": 2195,
+      "path": "tests/programs/upstream/upstream_copy_extracted.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "274687cf4aa99cf611587d3f120e44b0ace4a0a4edada182b147e2a66e462c94"
+    },
+    {
+      "index": 2196,
+      "path": "tests/programs/upstream/upstream_copy_extracted_any.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "695b7d11cd1b50e75280613b8278c991d000173ac75125d68d47ed330ff417ba"
+    },
+    {
+      "index": 2200,
+      "path": "tests/programs/upstream/upstream_counter.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 3,
+      "ir_diff_sha256": "85aa21449bec54d5c06eab92498aec9f3f74a06af9f70076fee48191d1128a4d"
+    },
+    {
+      "index": 2208,
+      "path": "tests/programs/upstream/upstream_dict_methods.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "82bd9c87b61c098b94b096b146d6a68bc5ee953a6f6b72f5728ba63ecfadac48"
+    },
+    {
+      "index": 2212,
+      "path": "tests/programs/upstream/upstream_difflib_context.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "51e5ca9d8e124f1748bb02a32dd6425be93c96c74f20d0e88f8854981b1edbab"
+    },
+    {
+      "index": 2218,
+      "path": "tests/programs/upstream/upstream_float_format.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "d6391e8ea540072b87f3ae07df381880889a701eb8867a744e4e73aad22d8655"
+    },
+    {
+      "index": 2222,
+      "path": "tests/programs/upstream/upstream_fnmatch.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "a258d355a96cf51063ba50daf733096d29eb242bb44375682f7952bf2f96bd14"
+    },
+    {
+      "index": 2225,
+      "path": "tests/programs/upstream/upstream_functools_cache.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "728ca52243388de9322a94462f31a7d29b85a513d7e2e8ff5308d20d30870d36"
+    },
+    {
+      "index": 2228,
+      "path": "tests/programs/upstream/upstream_glob_escape.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "254d9a6463c7ec93872c182d706a0806aaf412b7b87693e0206e8db32cf83268"
+    },
+    {
+      "index": 2229,
+      "path": "tests/programs/upstream/upstream_heapq_extracted.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "ae7a704335612db660e6aba46bc5d2f206b3984a3272f2922ca053f5c02ad8c7"
+    },
+    {
+      "index": 2230,
+      "path": "tests/programs/upstream/upstream_html_parser.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "89ef83078faa59f499309e5bd5a977b49528592b0f4618a35c45318328224ef0"
+    },
+    {
+      "index": 2232,
+      "path": "tests/programs/upstream/upstream_int_arith.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "80efe5b0375bc6de6315d2e648ab2f03c3b9f5f39a0b149ad1b29dc17fcdd491"
+    },
+    {
+      "index": 2234,
+      "path": "tests/programs/upstream/upstream_int_format.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "0cb474df7030ee841a60824b063f6ea71a42bdb650d189f11ea6a51567488de7"
+    },
+    {
+      "index": 2240,
+      "path": "tests/programs/upstream/upstream_itertools.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "9833fdec426e42596d185ffd71231442ac0af8067ecf251c09c91f68fc9c1a9d"
+    },
+    {
+      "index": 2251,
+      "path": "tests/programs/upstream/upstream_math_sums.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "a7d077d718a064fa5dd942f654df58563fe828b1f16d05d30ba50e0abf06b71a"
+    },
+    {
+      "index": 2292,
+      "path": "tests/programs/upstream/upstream_ordered_dict.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 3,
+      "ir_diff_sha256": "d7547c15564f48938340e60808b9453154f371a7c726208a326910b890e29d74"
+    },
+    {
+      "index": 2293,
+      "path": "tests/programs/upstream/upstream_positional_only_arg_extracted.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c9db2ffc23eeda7fa1dcaa4d33b9beac3a4a42b089a0117665c8ea065b3e97b0"
+    },
+    {
+      "index": 2298,
+      "path": "tests/programs/upstream/upstream_random.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "74f0cae68fd004aaa1f7e7e7088493411f653bfd0a3de50bf8686ece212209f8"
+    },
+    {
+      "index": 2300,
+      "path": "tests/programs/upstream/upstream_re_errors.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9ca939274b5a58c2977208d1f7ef46d98673611cea0ef16f69fee68a2941c301"
+    },
+    {
+      "index": 2301,
+      "path": "tests/programs/upstream/upstream_re_flags.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "8a3d5772e9d043677036854ff561c6b4c88fe7eb67ddefa87ecbea10c73523a8"
+    },
+    {
+      "index": 2302,
+      "path": "tests/programs/upstream/upstream_re_match.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "98d59dfca773b131f8d8c7a53cf98dddbae3dcfd3326c0413f355d454714dfea"
+    },
+    {
+      "index": 2303,
+      "path": "tests/programs/upstream/upstream_re_sub.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "dffadbdda3360b53092ec08c90c3660687de6cfb519fe9ca29a0d78ae13de595"
+    },
+    {
+      "index": 2304,
+      "path": "tests/programs/upstream/upstream_re_tests.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "b16e6fc09c3772c12b697ee14799758fc718987bd4904b4b116d26746f943d99"
+    },
+    {
+      "index": 2305,
+      "path": "tests/programs/upstream/upstream_re_tests_perl.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "8678cd822813aeaa8b9e07b3d11fc9e4160cd2fe9ba400bfe4457edc76acae6f"
+    },
+    {
+      "index": 2315,
+      "path": "tests/programs/upstream/upstream_shlex_punctuation.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "97732a2dd7f78b31f09f40e59e64c5ba15fd201218a3299aeb8241dcebce6fe8"
+    },
+    {
+      "index": 2317,
+      "path": "tests/programs/upstream/upstream_slice_steps.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "098c78d1a0e3ba45b0e59a1e525c015191e9a54663dbbdaab4b55cd0ba771cf3"
+    },
+    {
+      "index": 2318,
+      "path": "tests/programs/upstream/upstream_sort_extracted.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "323e9dd45126f7ffc5c0a04ff1be4430bbb55c8640613a9548a93be88ef25c1d"
+    },
+    {
+      "index": 2321,
+      "path": "tests/programs/upstream/upstream_string_formatter.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "42fe6409da074e42c0e9ad0f0ec913bd2ca1baac8eaf3a5a2d875a77613a5bbd"
+    },
+    {
+      "index": 2324,
+      "path": "tests/programs/upstream/upstream_textwrap_field_rebind.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "d64f6e0744ae8beb2fa089f673ded6a4ac13908c2120f758e1bacffaa4465bd8"
+    },
+    {
+      "index": 2325,
+      "path": "tests/programs/upstream/upstream_textwrap_indent.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "433a56df22b8000c290d58bb0d1ab8610d67f23fae32d7ca8e51899dad8e2a29"
+    },
+    {
+      "index": 2326,
+      "path": "tests/programs/upstream/upstream_textwrap_layout.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "8d07182b4f655c0b6c1d4ef09eb91efa7247fcb7e838e70926f96a3236d73ccc"
+    },
+    {
+      "index": 2327,
+      "path": "tests/programs/upstream/upstream_textwrap_unicode.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5f201d273341d5ec99e833f33e00a190c6028fa6d8b4b715467a7fe15c3de3b1"
+    },
+    {
+      "index": 2328,
+      "path": "tests/programs/upstream/upstream_textwrap_wrap.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "2a7aa1c0090134fcf7681f1e70506a6cf24541fe687f7855d1c82a44d5501f2a"
+    },
+    {
+      "index": 2329,
+      "path": "tests/programs/upstream/upstream_tomllib_data.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "629e6aaaa8b24badf543f480132efb1cbd7ae819ae354a0e13a1b0fe7ab28e9d"
+    },
+    {
+      "index": 2330,
+      "path": "tests/programs/upstream/upstream_tomllib_misc.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 5,
+      "ir_diff_sha256": "4e32263f380ef8156e7afc953ae98c28be9f16cbaf8e1c4cfc8e02fe8a99fb98"
+    },
+    {
+      "index": 2337,
+      "path": "tests/programs/upstream/upstream_weakref.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "1aea46fee23468768157b08b78405d57e0c6b1bb4e05b74f56d50e4a10f51ff4"
+    },
+    {
+      "index": 2357,
+      "path": "tests/deviations/dynany_class_construct_deferred.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "e381847b3e7d23637801570c5fe48759de112c11018c7f115bb42d99579dcb9b"
+    },
+    {
+      "index": 2407,
+      "path": "tests/deviations/lib_datetime.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c139dfd1203a807d42a65d98c35a50a154d5fab007a6be78b754acdbdf62dfe9"
+    },
+    {
+      "index": 2408,
+      "path": "tests/deviations/lib_fnmatch_byte_boundaries.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "4b661837d9eda6066d132e3a71757e4d6c698816dbcbdf9222571466c6534e38"
+    },
+    {
+      "index": 2410,
+      "path": "tests/deviations/lib_html_parser_names.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "5d7a5f898568cbb96925865f41912bd077aec688f6cf60a1374ce71de811e84c"
+    },
+    {
+      "index": 2418,
+      "path": "tests/deviations/lib_itertools_hasattr.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1c0f4d3f2e8ca111e62869e6fed979a3a3328e821f768d0694090c767fd9d10c"
+    },
+    {
+      "index": 2419,
+      "path": "tests/deviations/lib_itertools_protocol.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "37c9b12d293db40f45e5551685aa58c56289290d9709baee6039ca26df98560e"
+    },
+    {
+      "index": 2422,
+      "path": "tests/deviations/lib_logging_exc_info.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "4fe7f7f27b42cf64e219021308b66e570618faf9f3493d5007494fc376cd8e66"
+    },
+    {
+      "index": 2423,
+      "path": "tests/deviations/lib_markupbase_constructor.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "7957c55738faa52bb76f1c6be176354e9e4c61c8dfeaf6d3daed2f2d3dc311e4"
+    },
+    {
+      "index": 2425,
+      "path": "tests/deviations/lib_pathlib_unsupported.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "019d9a11a5a572498a9d26cf46f9fbe24c37d6d5a524c3290db77a033c42edf6"
+    },
+    {
+      "index": 2426,
+      "path": "tests/deviations/lib_random.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "0b4cd3c9b051b2aa16b317d4dbb3c0f3b00da050b0db5858a9a88c75f2658c99"
+    },
+    {
+      "index": 2427,
+      "path": "tests/deviations/lib_re.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c043f030f9bb7fee69cfb0906fa81b0175e04bbe411024ccb787206701100eeb"
+    },
+    {
+      "index": 2428,
+      "path": "tests/deviations/lib_re_bounded_decoding.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "6db1917d9433e93303c6696c7ed306b824abcd5f218f8232515fefb5e9fd2b31"
+    },
+    {
+      "index": 2429,
+      "path": "tests/deviations/lib_re_cache_policy.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c900b08f9e9ffe3192eee8817d87f3de79b6d711aa8d2811ff72f6d633e47c87"
+    },
+    {
+      "index": 2430,
+      "path": "tests/deviations/lib_re_decoding.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "673495a0cf332a4157f4402f02eedf793abe4d33000256459ea907a92e650ca4"
+    },
+    {
+      "index": 2431,
+      "path": "tests/deviations/lib_re_purge_decoding.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "f6a48e88804956520dd58f91da89bf08e74f03615b860204a34e0803f4e44604"
+    },
+    {
+      "index": 2432,
+      "path": "tests/deviations/lib_re_release.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9583bac7952b7ff8d0551349bdfbf48df004bb9b4d6e45fb21ac59873dbd4903"
+    },
+    {
+      "index": 2433,
+      "path": "tests/deviations/lib_shlex.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "7252e9e4ad8b613f09abfb8702fcd9d794bba8ad02370c2aec04756640c0b3fe"
+    },
+    {
+      "index": 2436,
+      "path": "tests/deviations/lib_string.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "1c666f6664d63fe77d3d8a33b687f357877414acc6e3f54f501c266005e2156e"
+    },
+    {
+      "index": 2437,
+      "path": "tests/deviations/lib_string_formatter_fields.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "f7795974b8fae0a0ea5b5139b28e587ff7ccbda53294c2091d71a798b885bdb5"
+    },
+    {
+      "index": 2443,
+      "path": "tests/deviations/lib_types_mappingproxy_eq_other.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "0d5602084aaf25afe89b7396a0afb61034de2b8a30801352a43d27ddfd5f3e98"
+    },
+    {
+      "index": 2444,
+      "path": "tests/deviations/lib_urllib_parse.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "f7987cd0f67a4b1b6becc43eb5b302e76379a54d23e20971c85aa1158a899da2"
+    },
+    {
+      "index": 2445,
+      "path": "tests/deviations/lib_warnings_location.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "80e3dc6363c7610accece3d165aab33b1b51de865ac764f57a6daf7d9ecd4eff"
+    },
+    {
+      "index": 2446,
+      "path": "tests/deviations/lib_warnings_message_type.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "212fa29388a992a4014febbd0edf608bc770ee1ebd7802c087a9764cd5001cdb"
+    },
+    {
+      "index": 2447,
+      "path": "tests/deviations/lib_weakref_all.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "9c78ebe4d90043f282f79fc9d9a76264326cff864210cb973ced6c56e12794c5"
+    },
+    {
+      "index": 2455,
+      "path": "tests/deviations/python_int_limits.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "21ae2aada3cbfe624aff7f7d245b032494931ad41e3dc5d61e0b26db030c6653"
+    },
+    {
+      "index": 2466,
+      "path": "tests/deviations/threading_start.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "2409018772db124d8267e7b78925b984693365b902d33c783919c3181753b8f8"
+    },
+    {
+      "index": 2473,
+      "path": "bench/itertools_loops.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "c626dee0b9f8871615e766094d3b961bbc432718d3ac12a79055eaefc270b58d"
+    },
+    {
+      "index": 2486,
+      "path": "bench/pyperformance/bm_logging.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 2,
+      "ir_diff_sha256": "81efe7db0cfb1365197c250642a46a7cbfa177c70d749826e9ea0c20ed240052"
+    },
+    {
+      "index": 2487,
+      "path": "bench/pyperformance/bpe_tokeniser.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "6be67d3ab5f5e749708e6edd34b31fcee71892ff86ca974504134611a303416b"
+    },
+    {
+      "index": 2489,
+      "path": "bench/pyperformance/comprehensions.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "base_enum_type_declarations_and_checkout_paths_only",
+      "path_literal_changes": 1,
+      "base_type_changes": 3,
+      "ir_diff_sha256": "9bc9909e49fba596537835779f793ed8dba5036b3a78390076a351b94dbc4c78"
+    },
+    {
+      "index": 2496,
+      "path": "bench/pyperformance/json_loads.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "28cccf7189f4785c537f4fe44cc8bc3df8933c10d99389882959f3fb811c8037"
+    },
+    {
+      "index": 2497,
+      "path": "bench/pyperformance/meteor_contest.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "9330af8ee8fe0d9b0cd9a06e487f829ef53d308515ca89fb832fc12360229b72"
+    },
+    {
+      "index": 2502,
+      "path": "bench/pyperformance/regex_dna.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "e8f105a1fa347170f79c01f01cdd20412d2fc465ca8e69c621a77ae6591e5b80"
+    },
+    {
+      "index": 2503,
+      "path": "bench/pyperformance/regex_effbot.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "953b62cd5736277bf5065f9cbbcca0f532fc0b03a5411727d4165e4f980cf634"
+    },
+    {
+      "index": 2504,
+      "path": "bench/pyperformance/regex_v8.py",
+      "oracle_differences": [
+        "ir"
+      ],
+      "diagnostic_paths_only": false,
+      "category": "checkout_path_literals_only",
+      "path_literal_changes": 1,
+      "ir_diff_sha256": "287e12ad77ee28a14858a480b5246fc5bf422ebbdca60619b623bdb340cafe85"
+    },
+    {
+      "index": 3289,
+      "path": "tests/errors/inference/any_lru_cache.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3533,
+      "path": "tests/errors/library/json_decoder_override_return.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3563,
+      "path": "tests/errors/library/lib_collections_counter_float.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3593,
+      "path": "tests/errors/library/lib_collections_ordereddict_iterable.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3594,
+      "path": "tests/errors/library/lib_copy_bound_method.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3595,
+      "path": "tests/errors/library/lib_copy_callable_field.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3596,
+      "path": "tests/errors/library/lib_copy_class_union.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3597,
+      "path": "tests/errors/library/lib_copy_deep_order.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3598,
+      "path": "tests/errors/library/lib_copy_exception.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3599,
+      "path": "tests/errors/library/lib_copy_generator.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3600,
+      "path": "tests/errors/library/lib_copy_getstate.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3601,
+      "path": "tests/errors/library/lib_copy_library_base.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3602,
+      "path": "tests/errors/library/lib_copy_library_class.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3607,
+      "path": "tests/errors/library/lib_csv_namedtuple_row.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3608,
+      "path": "tests/errors/library/lib_csv_no_write.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3609,
+      "path": "tests/errors/library/lib_csv_row_not_iterable.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3614,
+      "path": "tests/errors/library/lib_datetime_strptime.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3616,
+      "path": "tests/errors/library/lib_datetime_utcnow.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3617,
+      "path": "tests/errors/library/lib_difflib_int_items.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3634,
+      "path": "tests/errors/library/lib_enum_missing_result.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3649,
+      "path": "tests/errors/library/lib_functools_builtin.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3650,
+      "path": "tests/errors/library/lib_functools_cmp_to_key_float_result.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3651,
+      "path": "tests/errors/library/lib_functools_cmp_to_key_mixed.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3653,
+      "path": "tests/errors/library/lib_functools_float.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3655,
+      "path": "tests/errors/library/lib_functools_lambda.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3656,
+      "path": "tests/errors/library/lib_functools_maxsize.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3659,
+      "path": "tests/errors/library/lib_functools_none.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3661,
+      "path": "tests/errors/library/lib_functools_partial_missing.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3664,
+      "path": "tests/errors/library/lib_functools_reduce_noncallable.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3665,
+      "path": "tests/errors/library/lib_functools_return.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3666,
+      "path": "tests/errors/library/lib_functools_star.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3667,
+      "path": "tests/errors/library/lib_functools_unannotated.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3674,
+      "path": "tests/errors/library/lib_gettext_lookup.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3675,
+      "path": "tests/errors/library/lib_gettext_ngettext.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3690,
+      "path": "tests/errors/library/lib_itertools_accumulate_initial.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3691,
+      "path": "tests/errors/library/lib_itertools_accumulate_type.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3692,
+      "path": "tests/errors/library/lib_itertools_batched_tuples.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3693,
+      "path": "tests/errors/library/lib_itertools_chain_mixed.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3694,
+      "path": "tests/errors/library/lib_itertools_combinations_objects.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3695,
+      "path": "tests/errors/library/lib_itertools_groupby_key_object.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3698,
+      "path": "tests/errors/library/lib_itertools_product_repeat_mixed.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3700,
+      "path": "tests/errors/library/lib_itertools_starmap_list.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3704,
+      "path": "tests/errors/library/lib_operator_attrgetter_missing.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3705,
+      "path": "tests/errors/library/lib_operator_attrgetter_names.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3708,
+      "path": "tests/errors/library/lib_operator_itemgetter_object.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3709,
+      "path": "tests/errors/library/lib_operator_methodcaller_variable.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3716,
+      "path": "tests/errors/library/lib_random_choices_k.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3718,
+      "path": "tests/errors/library/lib_random_randbytes.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3719,
+      "path": "tests/errors/library/lib_random_randrange_float.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3728,
+      "path": "tests/errors/library/lib_shlex_punctuation_list.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3729,
+      "path": "tests/errors/library/lib_statistics_correlation.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3730,
+      "path": "tests/errors/library/lib_statistics_harmonic_mean.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3731,
+      "path": "tests/errors/library/lib_statistics_kde.py",
+      "oracle_differences": [
+        "messages"
+      ],
+      "diagnostic_paths_only": true,
+      "category": "raw_diagnostic_checkout_paths_only"
+    },
+    {
+      "index": 3732,
+      "path": "tests/errors/library/lib_statistics_kde_random.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3733,
+      "path": "tests/errors/library/lib_statistics_mean.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3734,
+      "path": "tests/errors/library/lib_statistics_median_str.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3735,
+      "path": "tests/errors/library/lib_statistics_mode_float.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3737,
+      "path": "tests/errors/library/lib_statistics_quantiles_int.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3738,
+      "path": "tests/errors/library/lib_statistics_variance.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3747,
+      "path": "tests/errors/library/lib_urllib_parse_deprecated.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3748,
+      "path": "tests/errors/library/lib_urllib_parse_doseq_mixed.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3751,
+      "path": "tests/errors/library/lib_urllib_parse_not_sequence.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3752,
+      "path": "tests/errors/library/lib_urllib_parse_unquote_to_bytes.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3753,
+      "path": "tests/errors/library/lib_warnings_category_tuple.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3754,
+      "path": "tests/errors/library/lib_warnings_deprecated.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3757,
+      "path": "tests/errors/library/lib_warnings_skip_prefixes_mixed.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3802,
+      "path": "tests/errors/library/weakref_builtin.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3809,
+      "path": "tests/errors/library/weakref_nested.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3815,
+      "path": "tests/errors/library/weakref_slots.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    },
+    {
+      "index": 3978,
+      "path": "tests/errors/reflection/reflect_attrgetter_runtime.py",
+      "oracle_differences": [],
+      "diagnostic_paths_only": true,
+      "category": "official_normalizer_accounts_for_diagnostic_paths"
+    }
+  ],
+  "all_raw_differences_accounted": true,
+  "oracle_difference_cases": 283,
+  "raw_difference_cases": 339,
+  "unaccounted_cases": 0,
+  "independent_exit_review_sha256": "99a7eea6c7b5c3396cca00660831d5b0def89f573dc8d3c5a029bb92a425a4c8"
+}

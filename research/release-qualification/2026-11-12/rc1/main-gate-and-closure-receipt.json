@@ -1,0 +1,1046 @@
+{
+  "source": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "gates": [
+    {
+      "id": 43314382046,
+      "name": "CI",
+      "head_sha": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046",
+      "created_at": "2026-11-12T21:51:42Z",
+      "updated_at": "2026-11-12T22:34:36Z"
+    },
+    {
+      "id": 43314381833,
+      "name": "Installation",
+      "head_sha": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43314381833",
+      "created_at": "2026-11-12T21:51:42Z",
+      "updated_at": "2026-11-12T22:04:44Z"
+    },
+    {
+      "id": 43314381839,
+      "name": "Lint",
+      "head_sha": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43314381839",
+      "created_at": "2026-11-12T21:51:42Z",
+      "updated_at": "2026-11-12T22:03:23Z"
+    },
+    {
+      "id": 43314381825,
+      "name": "Packages",
+      "head_sha": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "html_url": "https://github.com/den-run-ai/pystachy/actions/runs/43314381825",
+      "created_at": "2026-11-12T21:51:42Z",
+      "updated_at": "2026-11-12T21:58:20Z"
+    }
+  ],
+  "full_ci": {
+    "total": 74,
+    "jobs": [
+      {
+        "id": 131518436355,
+        "name": "verify (bootstrap, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T21:51:45Z",
+        "completed_at": "2026-11-12T21:57:17Z",
+        "steps": []
+      },
+      {
+        "id": 131518436518,
+        "name": "verify (bootstrap, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T21:51:48Z",
+        "completed_at": "2026-11-12T21:57:13Z",
+        "steps": []
+      },
+      {
+        "id": 131521524234,
+        "name": "Bootstrap tier and native archive qualification",
+        "conclusion": "success",
+        "started_at": "2026-11-12T21:58:01Z",
+        "completed_at": "2026-11-12T22:02:26Z",
+        "steps": []
+      },
+      {
+        "id": 131521525637,
+        "name": "verify (ubsan-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:05:29Z",
+        "completed_at": "2026-11-12T22:12:41Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525653,
+        "name": "verify (python-free-3, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T21:58:22Z",
+        "completed_at": "2026-11-12T22:06:02Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525672,
+        "name": "verify (ubsan-4, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T21:59:17Z",
+        "completed_at": "2026-11-12T22:10:27Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525674,
+        "name": "verify (hosted, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:04:07Z",
+        "completed_at": "2026-11-12T22:16:00Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525686,
+        "name": "verify (native-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:59Z",
+        "completed_at": "2026-11-12T22:16:35Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525687,
+        "name": "verify (ubsan-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:00:53Z",
+        "completed_at": "2026-11-12T22:12:00Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525702,
+        "name": "verify (opt-off-2, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T21:59:04Z",
+        "completed_at": "2026-11-12T22:09:43Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525707,
+        "name": "verify (ubsan-2, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:02:16Z",
+        "completed_at": "2026-11-12T22:12:23Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525718,
+        "name": "verify (python-free-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:01:45Z",
+        "completed_at": "2026-11-12T22:09:38Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525735,
+        "name": "verify (native-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:03:24Z",
+        "completed_at": "2026-11-12T22:13:22Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525748,
+        "name": "verify (native-2, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:04:13Z",
+        "completed_at": "2026-11-12T22:10:03Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525756,
+        "name": "verify (opt-off-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:20Z",
+        "completed_at": "2026-11-12T22:16:14Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525768,
+        "name": "verify (python-free-2, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:52Z",
+        "completed_at": "2026-11-12T22:20:11Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525777,
+        "name": "verify (gc-ir-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:10:20Z",
+        "completed_at": "2026-11-12T22:16:57Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525788,
+        "name": "verify (gc-ir-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:11:05Z",
+        "completed_at": "2026-11-12T22:21:41Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525797,
+        "name": "verify (python-free-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:07Z",
+        "completed_at": "2026-11-12T22:19:28Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525813,
+        "name": "verify (opt-off-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:41Z",
+        "completed_at": "2026-11-12T22:20:04Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525830,
+        "name": "verify (ubsan-3, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:45Z",
+        "completed_at": "2026-11-12T22:16:59Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525875,
+        "name": "verify (gc-self, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:10:07Z",
+        "completed_at": "2026-11-12T22:15:16Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525899,
+        "name": "verify (python-free-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:02:40Z",
+        "completed_at": "2026-11-12T22:09:45Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525903,
+        "name": "verify (dynany-optin-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:24Z",
+        "completed_at": "2026-11-12T22:19:41Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525915,
+        "name": "verify (runtime-cache, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:06:05Z",
+        "completed_at": "2026-11-12T22:12:59Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525923,
+        "name": "verify (hosted, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:04:11Z",
+        "completed_at": "2026-11-12T22:10:37Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525931,
+        "name": "verify (gc-jit-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:48Z",
+        "completed_at": "2026-11-12T22:16:59Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525950,
+        "name": "verify (gc-aot-2, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:11:01Z",
+        "completed_at": "2026-11-12T22:21:06Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525978,
+        "name": "verify (gc-aot-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:10:40Z",
+        "completed_at": "2026-11-12T22:16:44Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525983,
+        "name": "verify (python-int-optin-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:45Z",
+        "completed_at": "2026-11-12T22:16:12Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521525986,
+        "name": "verify (scaling, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:58Z",
+        "completed_at": "2026-11-12T22:16:01Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526002,
+        "name": "verify (gc-jit-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:07:42Z",
+        "completed_at": "2026-11-12T22:18:22Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526032,
+        "name": "verify (benchmarks, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:10:30Z",
+        "completed_at": "2026-11-12T22:17:43Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526047,
+        "name": "verify (native-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:03:28Z",
+        "completed_at": "2026-11-12T22:09:06Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526071,
+        "name": "verify (opt-off-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T21:57:58Z",
+        "completed_at": "2026-11-12T22:04:07Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526092,
+        "name": "verify (python-int-optin-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:09:54Z",
+        "completed_at": "2026-11-12T22:20:10Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526109,
+        "name": "verify (python-free-3, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T21:58:36Z",
+        "completed_at": "2026-11-12T22:05:18Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526166,
+        "name": "verify (python-int-optin-2, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:10:06Z",
+        "completed_at": "2026-11-12T22:22:35Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526180,
+        "name": "verify (native-2, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:20:15Z",
+        "completed_at": "2026-11-12T22:26:19Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526193,
+        "name": "verify (opt-off-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:03:35Z",
+        "completed_at": "2026-11-12T22:09:43Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526195,
+        "name": "verify (gc-aot-0, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:16:02Z",
+        "completed_at": "2026-11-12T22:27:05Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526198,
+        "name": "verify (ubsan-3, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:05:01Z",
+        "completed_at": "2026-11-12T22:12:15Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526224,
+        "name": "verify (native-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:19:40Z",
+        "completed_at": "2026-11-12T22:25:28Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526230,
+        "name": "verify (dynany-optin-1, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:23:20Z",
+        "completed_at": "2026-11-12T22:34:01Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526277,
+        "name": "verify (dynany-optin-2, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:21:07Z",
+        "completed_at": "2026-11-12T22:28:14Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526328,
+        "name": "verify (gc-aot-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:24:14Z",
+        "completed_at": "2026-11-12T22:30:23Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526332,
+        "name": "verify (ubsan-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:12:20Z",
+        "completed_at": "2026-11-12T22:19:38Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526338,
+        "name": "verify (contracts, x86_64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:12:15Z",
+        "completed_at": "2026-11-12T22:23:05Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 131521526342,
+        "name": "verify (dynany-optin-2, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:12:28Z",
+        "completed_at": "2026-11-12T22:18:29Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526376,
+        "name": "verify (dynany-optin-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:12:05Z",
+        "completed_at": "2026-11-12T22:18:10Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526391,
+        "name": "verify (gc-aot-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:18:27Z",
+        "completed_at": "2026-11-12T22:24:07Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526400,
+        "name": "verify (ubsan-2, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:23:09Z",
+        "completed_at": "2026-11-12T22:30:34Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526428,
+        "name": "verify (python-free-2, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:18:34Z",
+        "completed_at": "2026-11-12T22:25:24Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526447,
+        "name": "verify (opt-off-2, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:18:56Z",
+        "completed_at": "2026-11-12T22:24:55Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526461,
+        "name": "verify (ubsan-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:12:46Z",
+        "completed_at": "2026-11-12T22:19:36Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526492,
+        "name": "verify (gc-jit-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:16:14Z",
+        "completed_at": "2026-11-12T22:19:56Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526502,
+        "name": "verify (gc-aot-2, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:16:54Z",
+        "completed_at": "2026-11-12T22:22:31Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526526,
+        "name": "verify (runtime-cache, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:19:33Z",
+        "completed_at": "2026-11-12T22:27:38Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526549,
+        "name": "verify (ubsan-4, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:15:21Z",
+        "completed_at": "2026-11-12T22:22:50Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526588,
+        "name": "verify (gc-ir-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:23:38Z",
+        "completed_at": "2026-11-12T22:29:18Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526600,
+        "name": "verify (python-free-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:16:57Z",
+        "completed_at": "2026-11-12T22:23:17Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526613,
+        "name": "verify (python-int-optin-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:19:43Z",
+        "completed_at": "2026-11-12T22:26:14Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526642,
+        "name": "verify (dynany-optin-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:22:50Z",
+        "completed_at": "2026-11-12T22:28:51Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526718,
+        "name": "verify (python-int-optin-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:16:19Z",
+        "completed_at": "2026-11-12T22:22:32Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526763,
+        "name": "verify (gc-self, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:24:22Z",
+        "completed_at": "2026-11-12T22:29:24Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521526864,
+        "name": "native JIT and variants (worker ${{ matrix.worker }})",
+        "conclusion": "skipped",
+        "started_at": "2026-11-12T21:57:18Z",
+        "completed_at": "2026-11-12T21:57:17Z",
+        "steps": []
+      },
+      {
+        "id": 131521526908,
+        "name": "verify (gc-jit-1, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:13:27Z",
+        "completed_at": "2026-11-12T22:16:52Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521527047,
+        "name": "verify (gc-ir-0, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:13:08Z",
+        "completed_at": "2026-11-12T22:18:37Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521531635,
+        "name": "verify (benchmarks, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:25:29Z",
+        "completed_at": "2026-11-12T22:33:13Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521531674,
+        "name": "verify (scaling, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:25:00Z",
+        "completed_at": "2026-11-12T22:26:49Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131521531764,
+        "name": "verify (contracts, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:24:38Z",
+        "completed_at": "2026-11-12T22:32:02Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 131521531795,
+        "name": "verify (python-int-optin-2, aarch64)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:25:33Z",
+        "completed_at": "2026-11-12T22:32:40Z",
+        "steps": [
+          {
+            "name": "Require C, embedding and extension FFI coverage",
+            "conclusion": "skipped"
+          }
+        ]
+      },
+      {
+        "id": 131541595911,
+        "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:34:04Z",
+        "completed_at": "2026-11-12T22:34:32Z",
+        "steps": [
+          {
+            "name": "Require complete verification reports",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require every verification group",
+            "conclusion": "success"
+          },
+          {
+            "name": "Upload combined verification report",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 131541596090,
+        "name": "make verify (Linux ARM64, LLVM 18, Python 3.13)",
+        "conclusion": "success",
+        "started_at": "2026-11-12T22:34:04Z",
+        "completed_at": "2026-11-12T22:34:35Z",
+        "steps": [
+          {
+            "name": "Require complete verification reports",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require every verification group",
+            "conclusion": "success"
+          },
+          {
+            "name": "Upload combined verification report",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "closed_issues": [
+    {
+      "issue": 1333,
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/issues/1333",
+      "body": "## Problem\n\nA base-typed read of an exception field can segfault when a subclass shadows that field with a mutable class attribute. The regression in #1278 exits with SIGSEGV in native JIT and AOT on both alpha.5 (`b2182a4f`) and alpha.6 candidate `6e02b36b`; pinned CPython 3.13.16 completes normally.\n\n## Scope\n\n#1389 merged this isolated correction at `30822255` for RC.1. Normal/stressed JIT/AOT, retained IR comparison, fresh review and all required exact-main gates passed.\n\nQualify the isolated compiler correction [b27908f4](https://github.com/den-run-ai/pystachy/commit/b27908f43e8cd7f6af763d747d89c25b0fb2aad2) and its three regression programs separately from #1278's broader Lean work. It supplies shared assignment flags and subclass-selected class-attribute fallbacks. The current evidence establishes a pre-existing accepted-program crash; new class-value handlers bind a generic exception and do not directly introduce this projection. Refs #1186. Investigation assisted by ChatGPT.\n\n## Done when\n\nBefore RC.1, the isolated fix matches pinned CPython for base methods, typed parameters, handlers, deep inheritance, changed defaults, instance writes, missing fields and `hasattr`; normal and stressed JIT/AOT, all affected IR differences, current-head review and required CI pass on merged main."
+    },
+    {
+      "issue": 1358,
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/issues/1358",
+      "body": "## Problem\n\nA builtin call whose union argument's members all give `None` is joined with an LLVM `phi void`. On main `1ab0b93` (hosted compiler), CPython prints `slept 0.001` for:\n\n```python\nimport time\n\nLIMIT = 24 * 3600\n\n\ndef wait(t: float) -> None:\n    timeout = t\n    if timeout > LIMIT:\n        timeout = LIMIT  # int | float\n    time.sleep(timeout)\n    print(\"slept\", timeout)\n\n\nwait(0.001)\n```\n\nPystachy calls `pys_sleep` and `pys_sleep_int` per member, then emits `%t38 = phi void [null, %L28], [null, %L35]`, which LLVM's `opt` rejects (\"void type only allowed for function results\"). `PYSTACHY_IRCHECK=1` accepts the IR. `abs()`, `math.sqrt()` and `float()` of the same local compile. #1279's `lib/asyncio` works around it with [`float(MAXIMUM_SELECT_TIMEOUT)`](https://github.com/den-run-ai/pystachy/blob/916ef7b75da6f5d5e3853c877fdc1a0fd014920d/lib/asyncio/base_events.py#L339).\n\n## Scope\n\n#1363 merged through #1389 at `30822255` for RC.1. Its regression and all required exact-main gates passed.\n\n[`gen_usplit`](https://github.com/den-run-ai/pystachy/blob/1ab0b934183e17bca517372181151f725f5e7ba5/src/pystachy_compiler/union_arithmetic.py#L80-L116) builds the phi without the `None` result that other joins return early. The IR check could also reject `phi void`. Found while porting `asyncio` with Claude Code (AI) assistance. Refs #1279.\n\n## Done when\n\nThe program above matches CPython in the JIT and AOT, a regression lives in `tests/programs/`, and the `asyncio` workaround can be dropped."
+    },
+    {
+      "issue": 1300,
+      "state": "closed",
+      "url": "https://github.com/den-run-ai/pystachy/issues/1300",
+      "body": "## Problem\n\nThe `float` pyperformance port runs 37% slower in AOT since #1268: 32.92 ms at its first parent `0ec827ac`, 43.62 ms at its merge `b40ee875` and 45.11 ms on main `8434a911` (CPython: 508.7 ms). Medians of 15 interleaved runs pinned to one CPU of an idle host.\n\n## Scope\n\n#1336 merged through #1389 as `30822255`. The historical median recovery threshold and all required exact-main gates passed.\n\nInstructions rose only 1.4%; page faults and peak RSS are unchanged. listguard versions `for i in range(n): points[i] = Point(i)` into checked and unchecked loops, so `Point.__init__` gets a second call site and LLVM stops inlining it. With the compiler before #1268, one never-executed extra `Point(0)` call alone gives the same out-of-line constructor and 34.06 to 44.76 ms. Any small callee in a versioned loop is exposed; versioning after inlining, or keeping such callees inlined, would avoid it. [Evidence](https://github.com/den-run-ai/pystachy/blob/4ad35048/research/speed-vs-surface-2026-11-12/followup/README.md#regressions-reproduced-on-main)\n\n## Done when\n\n`float` AOT is within 5% of `0ec827ac` in the same pinned interleaved comparison, with listguard's checks and proofs kept. A deterministic IR or call-count check fails when a versioned loop leaves such a constructor out of line. Prepared with Claude Code assistance."
+    }
+  ],
+  "closure_comment_ids": {
+    "1300": 6837900480,
+    "1333": 6837894845,
+    "1358": 6837895617
+  },
+  "native_release_dispatch": {
+    "run_id": 43321775172,
+    "source": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+    "version": "v0.4.0-rc.1",
+    "pypi": "off",
+    "workflow_ref": "main"
+  },
+  "limits": "One release run does not establish repeated znver3 headroom or linear GC compiler scaling."
+}

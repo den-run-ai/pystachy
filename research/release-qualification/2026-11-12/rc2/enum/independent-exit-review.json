@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "reviewer": "rc_pr_triage independent review",
+  "reviewed_utc": "2026-11-12T22:29:13.116371+00:00",
+  "source_identities": {
+    "old": {
+      "commit": "7c75948747090c7d6a0a0bf76f9aecee8de90a15",
+      "tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+      "worktree_status": "",
+      "compiler_sha256": "71c801e56ffba5f13ad70a284259544aa09e2c902c1a404633e0287188fc4693"
+    },
+    "new": {
+      "commit": "395227b75bb777401627c0296a18fe71388070e7",
+      "tree": "066f5a791216fc721d734bb1e23bdd6194bce42f",
+      "worktree_status": "",
+      "compiler_sha256": "cec4a5470dce6ad3cb6358b9b47552609b799e401fad1385e23a31a9af0571fc"
+    }
+  },
+  "scope": "Read-only source and retained raw IR review of 14 exit-specific semantic cases. No native executions or new compiler comparison performed for this review. Layout and path-only classifications for the remainder belong to the separate rc_fix_review report.",
+  "reviewed_paths": [
+    "src/pystachy_compiler/exceptions.py",
+    "src/pystachy_compiler/declarations.py",
+    "src/pystachy_compiler/expressions.py",
+    "src/pystachy_compiler/gen.py",
+    "src/pystachy_compiler/reflection.py",
+    "lib/compatibility.md"
+  ],
+  "findings": [],
+  "conclusion": "The 14 exit semantic changes match the intended integer-enum correction. No unexpected conversion calls, unguarded payload read, noninteger status branch, reflection exposure, or exception-field interaction was found.",
+  "cross_cutting_checks": [
+    "All 28 retained old/new IR bytes match recorded SHA-256; both versions accepted and emitted valid IR for every reviewed case.",
+    "No emitted call/invoke to __index__ or __int__ occurs in the reviewed old/new IR.",
+    "Null guards precede new payload/tag reads. Noninteger fallbacks remain message based; zero is not used as a presence predicate.",
+    "Concrete and dynamic dispatch use the class-specific field position; IntFlag prefix layout differs from IntEnum and is respected.",
+    "Only enum_member and enum_new initialize the internal payload. Public mutation still targets _value_; internal access uses mem_load/mem_store rather than named lookup.",
+    "The reflection correction restores baseline absence/default behavior for the exact internal slot without broad hidden-name policy changes."
+  ],
+  "nonclaims": [
+    "Construction-time exception str/repr formatting remains a documented pre-existing behavior; this review does not claim CPython lazy formatting or freedom from side effects in custom __str__.",
+    "No general dynamic-Any integer-enum support, arbitrary-precision enum range expansion, or general mutable-enum semantics were added.",
+    "No review or requalification of the other 4,467 inventory cases is claimed here. The sibling retained classification owns those cases.",
+    "Hosted exact-head gates and release publication remain separate requirements."
+  ],
+  "cases": [
+    {
+      "index": 391,
+      "path": "tests/programs/exceptions/exc_class_exit_enum.py",
+      "source_sha256": "e89914a79667cd319d7b46835fed2c2515b7391b4d34c807de8673e6f099d025",
+      "result": "reviewed_no_finding",
+      "rationale": "SystemExit-derived Quit/Stop objects retain the existing message/args prefix and code/hc fields. Stop.__init__ initializes None as status 0 with hc=true, guards null before reading an enum tag, and sets hc/status from intlike-only tag arms. x.exit.Stop and x.exit.Quit still read those same code/hc slots; no conversion method is introduced.",
+      "old_ir_sha256": "78edc927f7b6226fe66d3ac20e46d9a2f528181ee23e602785c2b5a7580c78c8",
+      "new_ir_sha256": "afc829145cc6a7448a81851f5809ffcb94375cff259049aeabfdc015802a77c1"
+    },
+    {
+      "index": 435,
+      "path": "tests/programs/exceptions/exc_exit_enum_stored.py",
+      "source_sha256": "562cee6a1b442d66ec88e8d70a3a28e58505e50d70d9a444026996dad1bd61c8",
+      "result": "reviewed_no_finding",
+      "rationale": "Both base-typed direct sys.exit and stored SystemExit gain an intlike branch, preserving the alternate noninteger/None construction path and exception formatting. The final Quit(Status.FAILED) stores the immutable payload in existing code/hc fields and uses the unchanged subclass exit helper. No __index__ or __int__ call enters status selection.",
+      "old_ir_sha256": "5ef5e686a1e753195a21e58a4ade5ec3529f2d1a9a821a5c9419f344b212b260",
+      "new_ir_sha256": "b901572d5037c838b3b3a47f5273b18142548e8b908fcff26203a2c78c94987d"
+    },
+    {
+      "index": 495,
+      "path": "tests/programs/exceptions/exit_enum_member.py",
+      "source_sha256": "8bf3542adb3494417c9183241f0fa1b8ca8ea7599e5acbe375a6e36c3e9fe7f6",
+      "result": "reviewed_no_finding",
+      "rationale": "Concrete Status.USAGE takes the existing null branch first, then loads the immutable Status slot 3 into pys_exc_exit. The previous message constructor on the nonnull member path is replaced; formatting remains in the existing EH form.",
+      "old_ir_sha256": "7a45b87d7c80d68284036518e24fea7199ae0b54539f803316eccfde62f6676d",
+      "new_ir_sha256": "bb1c00ea7ba282a97437ad639f22be99b69fc635e4995180d1830be352ef2aed"
+    },
+    {
+      "index": 496,
+      "path": "tests/programs/exceptions/exit_enum_member_caught.py",
+      "source_sha256": "3fc403c985f6ccfb230765c16f66be755585132297e1cc0b0f797b96fea201fe",
+      "result": "reviewed_no_finding",
+      "rationale": "f.run adds status branches for IntEnum, computed/zero IntFlag, integer-mixin enums and base-typed views, including the stored SystemExit path. Concrete Status/Mixed payloads use slot 3 and Perm uses slot 5; tag-dispatch phis contain only intlike classes and a false/0 fallback. Plain Enum remains a message. Existing catch/finally dispatch remains; seven additional exit constructors correspond to the intended seven nonnull integer branches.",
+      "old_ir_sha256": "df56aba5c8dd0d0e806538231f2e40aa6be4410a60a925424b7ea8c1d746d7b1",
+      "new_ir_sha256": "5921b8e3daeb702e7a494e2805e9afcafd8b2d73e60472f98f67889345a60ecd"
+    },
+    {
+      "index": 497,
+      "path": "tests/programs/exceptions/exit_enum_member_message.py",
+      "source_sha256": "1a536158b7a12b083ddbaf419b1a7bd26f5f3bcc5530edda4a6d094f33854fbc",
+      "result": "reviewed_no_finding",
+      "rationale": "Base Enum dispatch tests concrete intlike tags, loading the appropriate payload only on matching arms. Plain.NINE reaches the false/0 phi fallback and existing message construction, preserving status 1 and its text.",
+      "old_ir_sha256": "5d4682deae67b081a7f09f1f3506c6c538bb12a291272a7dfe1060fb1b369ee8",
+      "new_ir_sha256": "dfc7488851046e91563dc70080ae891a72a3bad1ec2286b708a6406ea40606a6"
+    },
+    {
+      "index": 498,
+      "path": "tests/programs/exceptions/exit_enum_member_optional.py",
+      "source_sha256": "339e05f1e0aa28f204879c064c439f1d1fe0e653a204a5f39bbd0f5b29888783",
+      "result": "reviewed_no_finding",
+      "rationale": "Optional Status first branches on null; None keeps status 0 without dereference. The nonnull path reads immutable slot 3 and constructs the integer exit status.",
+      "old_ir_sha256": "d4c64a0b1c9fa4c8bfb2063c10cc48516c6e1ab2c1b1072809cf4110d52a3a2f",
+      "new_ir_sha256": "7f83d6201c41f4e6e299419d84fb2c29ab6ebe4063129be35a04118c349a00f7"
+    },
+    {
+      "index": 499,
+      "path": "tests/programs/exceptions/exit_enum_nonint_protocol.py",
+      "source_sha256": "435b2b12dac30159073ba8724024d0fb1359a13ee5f8e5d2f43459a57b33c938",
+      "result": "reviewed_no_finding",
+      "rationale": "The same intlike tag dispatch excludes Plain despite its __index__/__int__ methods. No call to either conversion hook is emitted; the plain member retains its custom message route.",
+      "old_ir_sha256": "fbc69e2c3adf699070336bc12f00dca6cec21626f7ebc714620279914f1bb2c2",
+      "new_ir_sha256": "a7c0d6bdc2e41d4ea0a4194666d3347ee90191aa041088afb1109bfd34e5fa0e"
+    },
+    {
+      "index": 500,
+      "path": "tests/programs/exceptions/exit_enum_stored_mutated.py",
+      "source_sha256": "52cf172c04f141d07cc101c868c6c2f4aa03174f3b6b4a0136a276ca9747f481",
+      "result": "reviewed_no_finding",
+      "rationale": "The declared FAILED member initializes mutable _value_ slot 4 and immutable payload slot 3 to 3; ALIAS reuses that member. The user mutation stores 9 only in slot 4, while exit loads slot 3. Alias identity is preserved.",
+      "old_ir_sha256": "5e0af7d80532197a4f4a5508630df82a01287919e05fe46ec4dc69ad71a6a24e",
+      "new_ir_sha256": "9787c860abe684a17d0f697c787308827a72051836918c6bf5b983846d58497c"
+    },
+    {
+      "index": 501,
+      "path": "tests/programs/exceptions/exit_enum_stored_promoting.py",
+      "source_sha256": "b4d0cdbb73bbbe253fbde52d2064b5a536d2734596c290c3f56d5e9b1d4615af",
+      "result": "reviewed_no_finding",
+      "rationale": "The accepted wide value 4611686018427387907 is stored as the same i64 in payload slot 3 and metadata slot 4 in this python-int module. Later metadata mutation writes only slot 4. Exit passes the stored i64 to the existing runtime status helper; no arbitrary-precision expansion or conversion-hook call is introduced.",
+      "old_ir_sha256": "df99ffb858d0a14954af8a08632abf5fc98d6fc6f101e7f5844a2586718bb9ca",
+      "new_ir_sha256": "2411f66ab8a1963b900f570548b5f01d44ed32f265b0b35226e21e1b619187ad"
+    },
+    {
+      "index": 502,
+      "path": "tests/programs/exceptions/exit_enum_stored_reflection.py",
+      "source_sha256": "f30217d34de02b4309122f06d1d6a55da07850daa516dbcd6477522e808683ff",
+      "result": "reviewed_no_finding",
+      "rationale": "Literal hidden-slot hasattr arms remain false and literal getattr evaluates the default once before returning it; dynamic reflection call targets are unchanged. The reflection helper changes only existing field offsets/TBAA and renumbered constants due to the inserted payload. No new reflected payload entry is introduced. Final sys.exit(Status.OK) reads the immutable zero payload.",
+      "old_ir_sha256": "5f273e1b963cf7d92ea09cb96d6213fe9960c0074a03bdd33e258668b3dc51e1",
+      "new_ir_sha256": "aacd86c077623d1fff9ee44baab2a68e58a99537ae9d3f0036dbaa39fc71d792"
+    },
+    {
+      "index": 503,
+      "path": "tests/programs/exceptions/exit_enum_stored_status.py",
+      "source_sha256": "29085dda5cb3e98a0fa26a0b26c75e9fec0efdd552edba3409359239f834a454",
+      "result": "reviewed_no_finding",
+      "rationale": "Base-typed status() dispatch includes Status and other intlike enum classes, reads slot 3 on Status, and passes its stored 293 to the existing runtime status handling. Pure custom __str__ remains formatting, not status conversion; __index__/__int__ are not called.",
+      "old_ir_sha256": "eb08bebf59176325ab4fc771b3d58bc00666cd96f0f27d5497ad55ca4e5e87b1",
+      "new_ir_sha256": "16f17676a4355dd25af26a53767100523bcd0dbb8685ac4dd43efaef7fc7e42f"
+    },
+    {
+      "index": 504,
+      "path": "tests/programs/exceptions/exit_enum_stored_zero.py",
+      "source_sha256": "3da8c7661a155cbbeef2006cb9a190ba9a106a794671fd83c44386a00471dd62",
+      "result": "reviewed_no_finding",
+      "rationale": "The SUCCESS alias shares the zero-valued member and the nonnull path loads immutable slot 3. Presence is tested by nullness/class, not integer truthiness, so zero remains a valid status despite conversion overrides.",
+      "old_ir_sha256": "b10662e7c6b91f858586027bc30be50f375c87bd555a109688d7929143751564",
+      "new_ir_sha256": "ed039f1e180b0acb7498501d53d687e5926d786eeae5c2e2527364daba5c02b5"
+    },
+    {
+      "index": 505,
+      "path": "tests/programs/exceptions/exit_intflag_stored_mutated.py",
+      "source_sha256": "476268647294a5b2fd694d41abf44b2287f24442e1d48a851677aa379eb7fc67",
+      "result": "reviewed_no_finding",
+      "rationale": "Declared flag members initialize payload slot 5; computed member creation in _missing_ copies the same creation value to metadata slot 3 and payload slot 5. Later writes of 9/8 change only metadata. Base Enum dispatch selects Perm slot 5 for the combined member, preserving its creation value and alias identity.",
+      "old_ir_sha256": "36191bed3884441dacb12359e038009b7f5bade20836c5995e360d3c6f6443e1",
+      "new_ir_sha256": "816c94c0aab7e560ea6189267abb19dc6f5f10262858a7d8b7eeaaca4021856d"
+    },
+    {
+      "index": 506,
+      "path": "tests/programs/exceptions/exit_intflag_stored_zero.py",
+      "source_sha256": "aceb3e33a466cc3e81a765d0b247992cf1d3ad0d09ec47c49d8a280201a9d6ac",
+      "result": "reviewed_no_finding",
+      "rationale": "Computed Perm(0) uses the same _missing_ initialization for payload slot 5. A metadata write of 9 changes slot 3 only. The nonnull exit path loads slot 5, keeping status zero and ignoring integer conversion overrides.",
+      "old_ir_sha256": "d85a4bfa50f927efaa13d8b3b9b5d7969d4418c6febd9c40e14568df9b505473",
+      "new_ir_sha256": "78aec9d8f9c1bc13d9fa59f1e7a9c8e54399ba0b9f5c1ec9d50a370cbc2befa3"
+    }
+  ]
+}

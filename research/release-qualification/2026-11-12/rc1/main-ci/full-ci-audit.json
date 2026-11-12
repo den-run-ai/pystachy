@@ -1,0 +1,1975 @@
+{
+  "all_jobs_under_15_minutes": true,
+  "all_successful_jobs_at_most_12_minutes": false,
+  "artifact_count": 75,
+  "artifact_pages_fetched": 1,
+  "combined": {
+    "aarch64": {
+      "ci": {
+        "critical_path_seconds": 714.335,
+        "groups": [
+          {
+            "group": "bootstrap",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-bootstrap/verification.json",
+            "seconds": 304.427,
+            "steps": 1
+          },
+          {
+            "group": "hosted",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-hosted/verification.json",
+            "seconds": 297.821,
+            "steps": 2
+          },
+          {
+            "group": "native-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-native-0/verification.json",
+            "seconds": 325.064,
+            "steps": 2
+          },
+          {
+            "group": "native-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-native-1/verification.json",
+            "seconds": 311.682,
+            "steps": 2
+          },
+          {
+            "group": "native-2",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-native-2/verification.json",
+            "seconds": 343.156,
+            "steps": 2
+          },
+          {
+            "group": "opt-off-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-opt-off-0/verification.json",
+            "seconds": 342.722,
+            "steps": 2
+          },
+          {
+            "group": "opt-off-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-opt-off-1/verification.json",
+            "seconds": 346.718,
+            "steps": 2
+          },
+          {
+            "group": "opt-off-2",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-opt-off-2/verification.json",
+            "seconds": 323.376,
+            "steps": 2
+          },
+          {
+            "group": "python-free-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-python-free-0/verification.json",
+            "seconds": 400.95,
+            "steps": 2
+          },
+          {
+            "group": "python-free-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-python-free-1/verification.json",
+            "seconds": 355.2,
+            "steps": 2
+          },
+          {
+            "group": "python-free-2",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-python-free-2/verification.json",
+            "seconds": 383.998,
+            "steps": 2
+          },
+          {
+            "group": "python-free-3",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-python-free-3/verification.json",
+            "seconds": 382.152,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-ubsan-0/verification.json",
+            "seconds": 393.673,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-ubsan-1/verification.json",
+            "seconds": 371.014,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-2",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-ubsan-2/verification.json",
+            "seconds": 391.674,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-3",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-ubsan-3/verification.json",
+            "seconds": 396.669,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-4",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-ubsan-4/verification.json",
+            "seconds": 409.908,
+            "steps": 2
+          },
+          {
+            "group": "gc-self",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-gc-self/verification.json",
+            "seconds": 273.263,
+            "steps": 2
+          },
+          {
+            "group": "gc-ir-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-gc-ir-0/verification.json",
+            "seconds": 309.668,
+            "steps": 2
+          },
+          {
+            "group": "gc-ir-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-gc-ir-1/verification.json",
+            "seconds": 312.903,
+            "steps": 2
+          },
+          {
+            "group": "gc-jit-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-gc-jit-0/verification.json",
+            "seconds": 193.405,
+            "steps": 2
+          },
+          {
+            "group": "gc-jit-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-gc-jit-1/verification.json",
+            "seconds": 181.086,
+            "steps": 2
+          },
+          {
+            "group": "gc-aot-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-gc-aot-0/verification.json",
+            "seconds": 338.22,
+            "steps": 2
+          },
+          {
+            "group": "gc-aot-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-gc-aot-1/verification.json",
+            "seconds": 317.706,
+            "steps": 2
+          },
+          {
+            "group": "gc-aot-2",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-gc-aot-2/verification.json",
+            "seconds": 310.512,
+            "steps": 2
+          },
+          {
+            "group": "runtime-cache",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-runtime-cache/verification.json",
+            "seconds": 247.896,
+            "steps": 2
+          },
+          {
+            "group": "dynany-optin-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-dynany-optin-0/verification.json",
+            "seconds": 330.994,
+            "steps": 2
+          },
+          {
+            "group": "dynany-optin-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-dynany-optin-1/verification.json",
+            "seconds": 328.9,
+            "steps": 2
+          },
+          {
+            "group": "dynany-optin-2",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-dynany-optin-2/verification.json",
+            "seconds": 332.975,
+            "steps": 2
+          },
+          {
+            "group": "python-int-optin-0",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-python-int-optin-0/verification.json",
+            "seconds": 342.552,
+            "steps": 2
+          },
+          {
+            "group": "python-int-optin-1",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-python-int-optin-1/verification.json",
+            "seconds": 364.544,
+            "steps": 2
+          },
+          {
+            "group": "python-int-optin-2",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-python-int-optin-2/verification.json",
+            "seconds": 398.139,
+            "steps": 3
+          },
+          {
+            "group": "contracts",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-contracts/verification.json",
+            "seconds": 353.051,
+            "steps": 22
+          },
+          {
+            "group": "benchmarks",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-benchmarks/verification.json",
+            "seconds": 209.702,
+            "steps": 3
+          },
+          {
+            "group": "scaling",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/aarch64-verification-scaling/verification.json",
+            "seconds": 85.156,
+            "steps": 3
+          }
+        ],
+        "max_group_seconds": 409.908,
+        "runner_seconds": 11310.876,
+        "timing_scope": "verification only; bootstrap then parallel groups; excludes queue, setup and artifact transfer"
+      },
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/combined/aarch64-verification/verification.json",
+      "sha256": "d6ae65e0a833cdaae8090e54bf3407aceebb796242592856478bcfe2fc9cc402",
+      "source_hashes_verified": 59,
+      "sources": {
+        "corpus_cases": 4361,
+        "mode_checks": 4607,
+        "rejection_tests": 1910,
+        "suite_checks": 7058,
+        "syntax_cases": 254
+      },
+      "summary": {
+        "failed": 0,
+        "passed": 58,
+        "seconds": 714.335,
+        "steps": 58
+      },
+      "toolchain": {
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin",
+        "python": "Python 3.13.16"
+      }
+    },
+    "x86_64": {
+      "ci": {
+        "critical_path_seconds": 1029.158,
+        "groups": [
+          {
+            "group": "bootstrap",
+            "platform": {
+              "cpu": "sapphirerapids",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-bootstrap/verification.json",
+            "seconds": 307.535,
+            "steps": 1
+          },
+          {
+            "group": "hosted",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-hosted/verification.json",
+            "seconds": 530.101,
+            "steps": 2
+          },
+          {
+            "group": "native-0",
+            "platform": {
+              "cpu": "(unknown)",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-native-0/verification.json",
+            "seconds": 373.296,
+            "steps": 2
+          },
+          {
+            "group": "native-1",
+            "platform": {
+              "cpu": "znver4",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-native-1/verification.json",
+            "seconds": 568.601,
+            "steps": 2
+          },
+          {
+            "group": "native-2",
+            "platform": {
+              "cpu": "(unknown)",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-native-2/verification.json",
+            "seconds": 329.855,
+            "steps": 2
+          },
+          {
+            "group": "opt-off-0",
+            "platform": {
+              "cpu": "graniterapids",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1014-aws"
+            },
+            "report": "build/ci-reports/x86_64-verification-opt-off-0/verification.json",
+            "seconds": 385.423,
+            "steps": 2
+          },
+          {
+            "group": "opt-off-1",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-opt-off-1/verification.json",
+            "seconds": 593.311,
+            "steps": 2
+          },
+          {
+            "group": "opt-off-2",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-opt-off-2/verification.json",
+            "seconds": 608.939,
+            "steps": 2
+          },
+          {
+            "group": "python-free-0",
+            "platform": {
+              "cpu": "znver4",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-python-free-0/verification.json",
+            "seconds": 448.806,
+            "steps": 2
+          },
+          {
+            "group": "python-free-1",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-python-free-1/verification.json",
+            "seconds": 588.238,
+            "steps": 2
+          },
+          {
+            "group": "python-free-2",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-python-free-2/verification.json",
+            "seconds": 588.75,
+            "steps": 2
+          },
+          {
+            "group": "python-free-3",
+            "platform": {
+              "cpu": "znver4",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-python-free-3/verification.json",
+            "seconds": 436.16,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-0",
+            "platform": {
+              "cpu": "graniterapids",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-ubsan-0/verification.json",
+            "seconds": 395.999,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-1",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-ubsan-1/verification.json",
+            "seconds": 628.443,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-2",
+            "platform": {
+              "cpu": "znver4",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-ubsan-2/verification.json",
+            "seconds": 570.929,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-3",
+            "platform": {
+              "cpu": "(unknown)",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-ubsan-3/verification.json",
+            "seconds": 391.081,
+            "steps": 2
+          },
+          {
+            "group": "ubsan-4",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-ubsan-4/verification.json",
+            "seconds": 634.719,
+            "steps": 2
+          },
+          {
+            "group": "gc-self",
+            "platform": {
+              "cpu": "(unknown)",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-gc-self/verification.json",
+            "seconds": 280.784,
+            "steps": 2
+          },
+          {
+            "group": "gc-ir-0",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-gc-ir-0/verification.json",
+            "seconds": 610.027,
+            "steps": 2
+          },
+          {
+            "group": "gc-ir-1",
+            "platform": {
+              "cpu": "(unknown)",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-gc-ir-1/verification.json",
+            "seconds": 375.399,
+            "steps": 2
+          },
+          {
+            "group": "gc-jit-0",
+            "platform": {
+              "cpu": "graniterapids",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1014-aws"
+            },
+            "report": "build/ci-reports/x86_64-verification-gc-jit-0/verification.json",
+            "seconds": 202.088,
+            "steps": 2
+          },
+          {
+            "group": "gc-jit-1",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-gc-jit-1/verification.json",
+            "seconds": 246.466,
+            "steps": 2
+          },
+          {
+            "group": "gc-aot-0",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-gc-aot-0/verification.json",
+            "seconds": 632.693,
+            "steps": 2
+          },
+          {
+            "group": "gc-aot-1",
+            "platform": {
+              "cpu": "(unknown)",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-gc-aot-1/verification.json",
+            "seconds": 341.363,
+            "steps": 2
+          },
+          {
+            "group": "gc-aot-2",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-gc-aot-2/verification.json",
+            "seconds": 570.425,
+            "steps": 2
+          },
+          {
+            "group": "runtime-cache",
+            "platform": {
+              "cpu": "(unknown)",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-runtime-cache/verification.json",
+            "seconds": 212.666,
+            "steps": 2
+          },
+          {
+            "group": "dynany-optin-0",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-dynany-optin-0/verification.json",
+            "seconds": 588.052,
+            "steps": 2
+          },
+          {
+            "group": "dynany-optin-1",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-dynany-optin-1/verification.json",
+            "seconds": 606.675,
+            "steps": 2
+          },
+          {
+            "group": "dynany-optin-2",
+            "platform": {
+              "cpu": "graniterapids",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1014-aws"
+            },
+            "report": "build/ci-reports/x86_64-verification-dynany-optin-2/verification.json",
+            "seconds": 379.872,
+            "steps": 2
+          },
+          {
+            "group": "python-int-optin-0",
+            "platform": {
+              "cpu": "znver4",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-python-int-optin-0/verification.json",
+            "seconds": 581.65,
+            "steps": 2
+          },
+          {
+            "group": "python-int-optin-1",
+            "platform": {
+              "cpu": "(unknown)",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-python-int-optin-1/verification.json",
+            "seconds": 365.993,
+            "steps": 2
+          },
+          {
+            "group": "python-int-optin-2",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-python-int-optin-2/verification.json",
+            "seconds": 721.623,
+            "steps": 3
+          },
+          {
+            "group": "contracts",
+            "platform": {
+              "cpu": "znver3",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-contracts/verification.json",
+            "seconds": 515.897,
+            "steps": 22
+          },
+          {
+            "group": "benchmarks",
+            "platform": {
+              "cpu": "znver4",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-benchmarks/verification.json",
+            "seconds": 188.675,
+            "steps": 3
+          },
+          {
+            "group": "scaling",
+            "platform": {
+              "cpu": "sapphirerapids",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            },
+            "report": "build/ci-reports/x86_64-verification-scaling/verification.json",
+            "seconds": 102.396,
+            "steps": 3
+          }
+        ],
+        "max_group_seconds": 721.623,
+        "runner_seconds": 15902.93,
+        "timing_scope": "verification only; bootstrap then parallel groups; excludes queue, setup and artifact transfer"
+      },
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/combined/x86_64-verification/verification.json",
+      "sha256": "98e2472fc3befb70904f1039cc1f72a0497a60a33632d264c2d8a0cf930dada6",
+      "source_hashes_verified": 59,
+      "sources": {
+        "corpus_cases": 4361,
+        "mode_checks": 4607,
+        "rejection_tests": 1910,
+        "suite_checks": 7058,
+        "syntax_cases": 254
+      },
+      "summary": {
+        "failed": 0,
+        "passed": 58,
+        "seconds": 1029.158,
+        "steps": 58
+      },
+      "toolchain": {
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin",
+        "python": "Python 3.13.16"
+      }
+    }
+  },
+  "conclusion": "success",
+  "cpu_profiles": {
+    "aarch64": {
+      "neoverse-n2": 35
+    },
+    "x86_64": {
+      "(unknown)": 8,
+      "graniterapids": 4,
+      "sapphirerapids": 2,
+      "znver3": 15,
+      "znver4": 6
+    }
+  },
+  "event": "push",
+  "headroom_limit": "One exact-main push pass with mixed and some unknown CPU profiles. The python-int-optin-2 x86 job took 749 seconds on znver3, above the 12-minute target. This does not establish repeated PR/main/Variants headroom acceptance or gc-self source-size scaling.",
+  "job_counts": {
+    "skipped": 1,
+    "success": 73
+  },
+  "job_pages_fetched": 1,
+  "jobs": [
+    {
+      "completed_at": "2026-11-12T22:22:35Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "python-int-optin-2",
+      "job_id": 131521526166,
+      "job_seconds": 749.0,
+      "machine": "x86_64",
+      "name": "verify (python-int-optin-2, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:10:06Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526166",
+      "verification_seconds": 721.623
+    },
+    {
+      "completed_at": "2026-11-12T22:16:00Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "hosted",
+      "job_id": 131521525674,
+      "job_seconds": 713.0,
+      "machine": "x86_64",
+      "name": "verify (hosted, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:04:07Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525674",
+      "verification_seconds": 530.101
+    },
+    {
+      "completed_at": "2026-11-12T22:10:27Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "ubsan-4",
+      "job_id": 131521525672,
+      "job_seconds": 670.0,
+      "machine": "x86_64",
+      "name": "verify (ubsan-4, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T21:59:17Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525672",
+      "verification_seconds": 634.719
+    },
+    {
+      "completed_at": "2026-11-12T22:12:00Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "ubsan-1",
+      "job_id": 131521525687,
+      "job_seconds": 667.0,
+      "machine": "x86_64",
+      "name": "verify (ubsan-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:00:53Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525687",
+      "verification_seconds": 628.443
+    },
+    {
+      "completed_at": "2026-11-12T22:27:05Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "gc-aot-0",
+      "job_id": 131521526195,
+      "job_seconds": 663.0,
+      "machine": "x86_64",
+      "name": "verify (gc-aot-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:16:02Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526195",
+      "verification_seconds": 632.693
+    },
+    {
+      "completed_at": "2026-11-12T22:23:05Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "contracts",
+      "job_id": 131521526338,
+      "job_seconds": 650.0,
+      "machine": "x86_64",
+      "name": "verify (contracts, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:12:15Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526338",
+      "verification_seconds": 515.897
+    },
+    {
+      "completed_at": "2026-11-12T22:34:01Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "dynany-optin-1",
+      "job_id": 131521526230,
+      "job_seconds": 641.0,
+      "machine": "x86_64",
+      "name": "verify (dynany-optin-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:23:20Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526230",
+      "verification_seconds": 606.675
+    },
+    {
+      "completed_at": "2026-11-12T22:18:22Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "gc-jit-1",
+      "job_id": 131521526002,
+      "job_seconds": 640.0,
+      "machine": "x86_64",
+      "name": "verify (gc-jit-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:07:42Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526002",
+      "verification_seconds": 246.466
+    },
+    {
+      "completed_at": "2026-11-12T22:09:43Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "opt-off-2",
+      "job_id": 131521525702,
+      "job_seconds": 639.0,
+      "machine": "x86_64",
+      "name": "verify (opt-off-2, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T21:59:04Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525702",
+      "verification_seconds": 608.939
+    },
+    {
+      "completed_at": "2026-11-12T22:21:41Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "gc-ir-0",
+      "job_id": 131521525788,
+      "job_seconds": 636.0,
+      "machine": "x86_64",
+      "name": "verify (gc-ir-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:11:05Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525788",
+      "verification_seconds": 610.027
+    },
+    {
+      "completed_at": "2026-11-12T22:20:04Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "opt-off-1",
+      "job_id": 131521525813,
+      "job_seconds": 623.0,
+      "machine": "x86_64",
+      "name": "verify (opt-off-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:41Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525813",
+      "verification_seconds": 593.311
+    },
+    {
+      "completed_at": "2026-11-12T22:19:28Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "python-free-1",
+      "job_id": 131521525797,
+      "job_seconds": 621.0,
+      "machine": "x86_64",
+      "name": "verify (python-free-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:07Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525797",
+      "verification_seconds": 588.238
+    },
+    {
+      "completed_at": "2026-11-12T22:20:11Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "python-free-2",
+      "job_id": 131521525768,
+      "job_seconds": 619.0,
+      "machine": "x86_64",
+      "name": "verify (python-free-2, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:52Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525768",
+      "verification_seconds": 588.75
+    },
+    {
+      "completed_at": "2026-11-12T22:19:41Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "dynany-optin-0",
+      "job_id": 131521525903,
+      "job_seconds": 617.0,
+      "machine": "x86_64",
+      "name": "verify (dynany-optin-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:24Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525903",
+      "verification_seconds": 588.052
+    },
+    {
+      "completed_at": "2026-11-12T22:20:10Z",
+      "conclusion": "success",
+      "cpu": "znver4",
+      "group": "python-int-optin-0",
+      "job_id": 131521526092,
+      "job_seconds": 616.0,
+      "machine": "x86_64",
+      "name": "verify (python-int-optin-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:54Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526092",
+      "verification_seconds": 581.65
+    },
+    {
+      "completed_at": "2026-11-12T22:12:23Z",
+      "conclusion": "success",
+      "cpu": "znver4",
+      "group": "ubsan-2",
+      "job_id": 131521525707,
+      "job_seconds": 607.0,
+      "machine": "x86_64",
+      "name": "verify (ubsan-2, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:02:16Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525707",
+      "verification_seconds": 570.929
+    },
+    {
+      "completed_at": "2026-11-12T22:21:06Z",
+      "conclusion": "success",
+      "cpu": "znver3",
+      "group": "gc-aot-2",
+      "job_id": 131521525950,
+      "job_seconds": 605.0,
+      "machine": "x86_64",
+      "name": "verify (gc-aot-2, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:11:01Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525950",
+      "verification_seconds": 570.425
+    },
+    {
+      "completed_at": "2026-11-12T22:13:22Z",
+      "conclusion": "success",
+      "cpu": "znver4",
+      "group": "native-1",
+      "job_id": 131521525735,
+      "job_seconds": 598.0,
+      "machine": "x86_64",
+      "name": "verify (native-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:03:24Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525735",
+      "verification_seconds": 568.601
+    },
+    {
+      "completed_at": "2026-11-12T22:27:38Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "runtime-cache",
+      "job_id": 131521526526,
+      "job_seconds": 485.0,
+      "machine": "aarch64",
+      "name": "verify (runtime-cache, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:19:33Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526526",
+      "verification_seconds": 247.896
+    },
+    {
+      "completed_at": "2026-11-12T22:09:38Z",
+      "conclusion": "success",
+      "cpu": "znver4",
+      "group": "python-free-0",
+      "job_id": 131521525718,
+      "job_seconds": 473.0,
+      "machine": "x86_64",
+      "name": "verify (python-free-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:01:45Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525718",
+      "verification_seconds": 448.806
+    },
+    {
+      "completed_at": "2026-11-12T22:33:13Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "benchmarks",
+      "job_id": 131521531635,
+      "job_seconds": 464.0,
+      "machine": "aarch64",
+      "name": "verify (benchmarks, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:25:29Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521531635",
+      "verification_seconds": 209.702
+    },
+    {
+      "completed_at": "2026-11-12T22:06:02Z",
+      "conclusion": "success",
+      "cpu": "znver4",
+      "group": "python-free-3",
+      "job_id": 131521525653,
+      "job_seconds": 460.0,
+      "machine": "x86_64",
+      "name": "verify (python-free-3, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T21:58:22Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525653",
+      "verification_seconds": 436.16
+    },
+    {
+      "completed_at": "2026-11-12T22:22:50Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "ubsan-4",
+      "job_id": 131521526549,
+      "job_seconds": 449.0,
+      "machine": "aarch64",
+      "name": "verify (ubsan-4, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:15:21Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526549",
+      "verification_seconds": 409.908
+    },
+    {
+      "completed_at": "2026-11-12T22:30:34Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "ubsan-2",
+      "job_id": 131521526400,
+      "job_seconds": 445.0,
+      "machine": "aarch64",
+      "name": "verify (ubsan-2, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:23:09Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526400",
+      "verification_seconds": 391.674
+    },
+    {
+      "completed_at": "2026-11-12T22:32:02Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "contracts",
+      "job_id": 131521531764,
+      "job_seconds": 444.0,
+      "machine": "aarch64",
+      "name": "verify (contracts, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:24:38Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521531764",
+      "verification_seconds": 353.051
+    },
+    {
+      "completed_at": "2026-11-12T22:19:38Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "ubsan-0",
+      "job_id": 131521526332,
+      "job_seconds": 438.0,
+      "machine": "aarch64",
+      "name": "verify (ubsan-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:12:20Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526332",
+      "verification_seconds": 393.673
+    },
+    {
+      "completed_at": "2026-11-12T22:16:59Z",
+      "conclusion": "success",
+      "cpu": "(unknown)",
+      "group": "ubsan-3",
+      "job_id": 131521525830,
+      "job_seconds": 434.0,
+      "machine": "x86_64",
+      "name": "verify (ubsan-3, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:45Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525830",
+      "verification_seconds": 391.081
+    },
+    {
+      "completed_at": "2026-11-12T22:12:15Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "ubsan-3",
+      "job_id": 131521526198,
+      "job_seconds": 434.0,
+      "machine": "aarch64",
+      "name": "verify (ubsan-3, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:05:01Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526198",
+      "verification_seconds": 396.669
+    },
+    {
+      "completed_at": "2026-11-12T22:17:43Z",
+      "conclusion": "success",
+      "cpu": "znver4",
+      "group": "benchmarks",
+      "job_id": 131521526032,
+      "job_seconds": 433.0,
+      "machine": "x86_64",
+      "name": "verify (benchmarks, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:10:30Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526032",
+      "verification_seconds": 188.675
+    },
+    {
+      "completed_at": "2026-11-12T22:12:41Z",
+      "conclusion": "success",
+      "cpu": "graniterapids",
+      "group": "ubsan-0",
+      "job_id": 131521525637,
+      "job_seconds": 432.0,
+      "machine": "x86_64",
+      "name": "verify (ubsan-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:05:29Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525637",
+      "verification_seconds": 395.999
+    },
+    {
+      "completed_at": "2026-11-12T22:16:59Z",
+      "conclusion": "success",
+      "cpu": "graniterapids",
+      "group": "gc-jit-0",
+      "job_id": 131521525931,
+      "job_seconds": 431.0,
+      "machine": "x86_64",
+      "name": "verify (gc-jit-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:48Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525931",
+      "verification_seconds": 202.088
+    },
+    {
+      "completed_at": "2026-11-12T22:28:14Z",
+      "conclusion": "success",
+      "cpu": "graniterapids",
+      "group": "dynany-optin-2",
+      "job_id": 131521526277,
+      "job_seconds": 427.0,
+      "machine": "x86_64",
+      "name": "verify (dynany-optin-2, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:21:07Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526277",
+      "verification_seconds": 379.872
+    },
+    {
+      "completed_at": "2026-11-12T22:32:40Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "python-int-optin-2",
+      "job_id": 131521531795,
+      "job_seconds": 427.0,
+      "machine": "aarch64",
+      "name": "verify (python-int-optin-2, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:25:33Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521531795",
+      "verification_seconds": 398.139
+    },
+    {
+      "completed_at": "2026-11-12T22:09:45Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "python-free-0",
+      "job_id": 131521525899,
+      "job_seconds": 425.0,
+      "machine": "aarch64",
+      "name": "verify (python-free-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:02:40Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525899",
+      "verification_seconds": 400.95
+    },
+    {
+      "completed_at": "2026-11-12T22:16:14Z",
+      "conclusion": "success",
+      "cpu": "graniterapids",
+      "group": "opt-off-0",
+      "job_id": 131521525756,
+      "job_seconds": 414.0,
+      "machine": "x86_64",
+      "name": "verify (opt-off-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:20Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525756",
+      "verification_seconds": 385.423
+    },
+    {
+      "completed_at": "2026-11-12T22:12:59Z",
+      "conclusion": "success",
+      "cpu": "(unknown)",
+      "group": "runtime-cache",
+      "job_id": 131521525915,
+      "job_seconds": 414.0,
+      "machine": "x86_64",
+      "name": "verify (runtime-cache, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:06:05Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525915",
+      "verification_seconds": 212.666
+    },
+    {
+      "completed_at": "2026-11-12T22:25:24Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "python-free-2",
+      "job_id": 131521526428,
+      "job_seconds": 410.0,
+      "machine": "aarch64",
+      "name": "verify (python-free-2, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:18:34Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526428",
+      "verification_seconds": 383.998
+    },
+    {
+      "completed_at": "2026-11-12T22:19:36Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "ubsan-1",
+      "job_id": 131521526461,
+      "job_seconds": 410.0,
+      "machine": "aarch64",
+      "name": "verify (ubsan-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:12:46Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526461",
+      "verification_seconds": 371.014
+    },
+    {
+      "completed_at": "2026-11-12T22:05:18Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "python-free-3",
+      "job_id": 131521526109,
+      "job_seconds": 402.0,
+      "machine": "aarch64",
+      "name": "verify (python-free-3, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T21:58:36Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526109",
+      "verification_seconds": 382.152
+    },
+    {
+      "completed_at": "2026-11-12T22:16:57Z",
+      "conclusion": "success",
+      "cpu": "(unknown)",
+      "group": "gc-ir-1",
+      "job_id": 131521525777,
+      "job_seconds": 397.0,
+      "machine": "x86_64",
+      "name": "verify (gc-ir-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:10:20Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525777",
+      "verification_seconds": 375.399
+    },
+    {
+      "completed_at": "2026-11-12T22:16:35Z",
+      "conclusion": "success",
+      "cpu": "(unknown)",
+      "group": "native-0",
+      "job_id": 131521525686,
+      "job_seconds": 396.0,
+      "machine": "x86_64",
+      "name": "verify (native-0, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:59Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525686",
+      "verification_seconds": 373.296
+    },
+    {
+      "completed_at": "2026-11-12T22:26:14Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "python-int-optin-1",
+      "job_id": 131521526613,
+      "job_seconds": 391.0,
+      "machine": "aarch64",
+      "name": "verify (python-int-optin-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:19:43Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526613",
+      "verification_seconds": 364.544
+    },
+    {
+      "completed_at": "2026-11-12T22:16:12Z",
+      "conclusion": "success",
+      "cpu": "(unknown)",
+      "group": "python-int-optin-1",
+      "job_id": 131521525983,
+      "job_seconds": 387.0,
+      "machine": "x86_64",
+      "name": "verify (python-int-optin-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:45Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525983",
+      "verification_seconds": 365.993
+    },
+    {
+      "completed_at": "2026-11-12T22:10:37Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "hosted",
+      "job_id": 131521525923,
+      "job_seconds": 386.0,
+      "machine": "aarch64",
+      "name": "verify (hosted, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:04:11Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525923",
+      "verification_seconds": 297.821
+    },
+    {
+      "completed_at": "2026-11-12T22:23:17Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "python-free-1",
+      "job_id": 131521526600,
+      "job_seconds": 380.0,
+      "machine": "aarch64",
+      "name": "verify (python-free-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:16:57Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526600",
+      "verification_seconds": 355.2
+    },
+    {
+      "completed_at": "2026-11-12T22:22:32Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "python-int-optin-0",
+      "job_id": 131521526718,
+      "job_seconds": 373.0,
+      "machine": "aarch64",
+      "name": "verify (python-int-optin-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:16:19Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526718",
+      "verification_seconds": 342.552
+    },
+    {
+      "completed_at": "2026-11-12T22:04:07Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "opt-off-1",
+      "job_id": 131521526071,
+      "job_seconds": 369.0,
+      "machine": "aarch64",
+      "name": "verify (opt-off-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T21:57:58Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526071",
+      "verification_seconds": 346.718
+    },
+    {
+      "completed_at": "2026-11-12T22:30:23Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "gc-aot-0",
+      "job_id": 131521526328,
+      "job_seconds": 369.0,
+      "machine": "aarch64",
+      "name": "verify (gc-aot-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:24:14Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526328",
+      "verification_seconds": 338.22
+    },
+    {
+      "completed_at": "2026-11-12T22:09:43Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "opt-off-0",
+      "job_id": 131521526193,
+      "job_seconds": 368.0,
+      "machine": "aarch64",
+      "name": "verify (opt-off-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:03:35Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526193",
+      "verification_seconds": 342.722
+    },
+    {
+      "completed_at": "2026-11-12T22:18:10Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "dynany-optin-0",
+      "job_id": 131521526376,
+      "job_seconds": 365.0,
+      "machine": "aarch64",
+      "name": "verify (dynany-optin-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:12:05Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526376",
+      "verification_seconds": 330.994
+    },
+    {
+      "completed_at": "2026-11-12T22:16:44Z",
+      "conclusion": "success",
+      "cpu": "(unknown)",
+      "group": "gc-aot-1",
+      "job_id": 131521525978,
+      "job_seconds": 364.0,
+      "machine": "x86_64",
+      "name": "verify (gc-aot-1, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:10:40Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525978",
+      "verification_seconds": 341.363
+    },
+    {
+      "completed_at": "2026-11-12T22:26:19Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "native-2",
+      "job_id": 131521526180,
+      "job_seconds": 364.0,
+      "machine": "aarch64",
+      "name": "verify (native-2, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:20:15Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526180",
+      "verification_seconds": 343.156
+    },
+    {
+      "completed_at": "2026-11-12T22:16:01Z",
+      "conclusion": "success",
+      "cpu": "sapphirerapids",
+      "group": "scaling",
+      "job_id": 131521525986,
+      "job_seconds": 363.0,
+      "machine": "x86_64",
+      "name": "verify (scaling, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:09:58Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525986",
+      "verification_seconds": 102.396
+    },
+    {
+      "completed_at": "2026-11-12T22:18:29Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "dynany-optin-2",
+      "job_id": 131521526342,
+      "job_seconds": 361.0,
+      "machine": "aarch64",
+      "name": "verify (dynany-optin-2, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:12:28Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526342",
+      "verification_seconds": 332.975
+    },
+    {
+      "completed_at": "2026-11-12T22:28:51Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "dynany-optin-1",
+      "job_id": 131521526642,
+      "job_seconds": 361.0,
+      "machine": "aarch64",
+      "name": "verify (dynany-optin-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:22:50Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526642",
+      "verification_seconds": 328.9
+    },
+    {
+      "completed_at": "2026-11-12T22:24:55Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "opt-off-2",
+      "job_id": 131521526447,
+      "job_seconds": 359.0,
+      "machine": "aarch64",
+      "name": "verify (opt-off-2, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:18:56Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526447",
+      "verification_seconds": 323.376
+    },
+    {
+      "completed_at": "2026-11-12T22:10:03Z",
+      "conclusion": "success",
+      "cpu": "(unknown)",
+      "group": "native-2",
+      "job_id": 131521525748,
+      "job_seconds": 350.0,
+      "machine": "x86_64",
+      "name": "verify (native-2, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:04:13Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525748",
+      "verification_seconds": 329.855
+    },
+    {
+      "completed_at": "2026-11-12T22:25:28Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "native-0",
+      "job_id": 131521526224,
+      "job_seconds": 348.0,
+      "machine": "aarch64",
+      "name": "verify (native-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:19:40Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526224",
+      "verification_seconds": 325.064
+    },
+    {
+      "completed_at": "2026-11-12T22:24:07Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "gc-aot-1",
+      "job_id": 131521526391,
+      "job_seconds": 340.0,
+      "machine": "aarch64",
+      "name": "verify (gc-aot-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:18:27Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526391",
+      "verification_seconds": 317.706
+    },
+    {
+      "completed_at": "2026-11-12T22:29:18Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "gc-ir-1",
+      "job_id": 131521526588,
+      "job_seconds": 340.0,
+      "machine": "aarch64",
+      "name": "verify (gc-ir-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:23:38Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526588",
+      "verification_seconds": 312.903
+    },
+    {
+      "completed_at": "2026-11-12T22:09:06Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "native-1",
+      "job_id": 131521526047,
+      "job_seconds": 338.0,
+      "machine": "aarch64",
+      "name": "verify (native-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:03:28Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526047",
+      "verification_seconds": 311.682
+    },
+    {
+      "completed_at": "2026-11-12T22:22:31Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "gc-aot-2",
+      "job_id": 131521526502,
+      "job_seconds": 337.0,
+      "machine": "aarch64",
+      "name": "verify (gc-aot-2, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:16:54Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526502",
+      "verification_seconds": 310.512
+    },
+    {
+      "completed_at": "2026-11-12T21:57:17Z",
+      "conclusion": "success",
+      "cpu": "sapphirerapids",
+      "group": "bootstrap",
+      "job_id": 131518436355,
+      "job_seconds": 332.0,
+      "machine": "x86_64",
+      "name": "verify (bootstrap, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T21:51:45Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131518436355",
+      "verification_seconds": 307.535
+    },
+    {
+      "completed_at": "2026-11-12T22:18:37Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "gc-ir-0",
+      "job_id": 131521527047,
+      "job_seconds": 329.0,
+      "machine": "aarch64",
+      "name": "verify (gc-ir-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:13:08Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521527047",
+      "verification_seconds": 309.668
+    },
+    {
+      "completed_at": "2026-11-12T21:57:13Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "bootstrap",
+      "job_id": 131518436518,
+      "job_seconds": 325.0,
+      "machine": "aarch64",
+      "name": "verify (bootstrap, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T21:51:48Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131518436518",
+      "verification_seconds": 304.427
+    },
+    {
+      "completed_at": "2026-11-12T22:15:16Z",
+      "conclusion": "success",
+      "cpu": "(unknown)",
+      "group": "gc-self",
+      "job_id": 131521525875,
+      "job_seconds": 309.0,
+      "machine": "x86_64",
+      "name": "verify (gc-self, x86_64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:10:07Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521525875",
+      "verification_seconds": 280.784
+    },
+    {
+      "completed_at": "2026-11-12T22:29:24Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "gc-self",
+      "job_id": 131521526763,
+      "job_seconds": 302.0,
+      "machine": "aarch64",
+      "name": "verify (gc-self, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:24:22Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526763",
+      "verification_seconds": 273.263
+    },
+    {
+      "completed_at": "2026-11-12T22:02:26Z",
+      "conclusion": "success",
+      "cpu": null,
+      "group": null,
+      "job_id": 131521524234,
+      "job_seconds": 265.0,
+      "machine": null,
+      "name": "Bootstrap tier and native archive qualification",
+      "profile": null,
+      "started_at": "2026-11-12T21:58:01Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521524234",
+      "verification_seconds": null
+    },
+    {
+      "completed_at": "2026-11-12T22:19:56Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "gc-jit-0",
+      "job_id": 131521526492,
+      "job_seconds": 222.0,
+      "machine": "aarch64",
+      "name": "verify (gc-jit-0, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:16:14Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526492",
+      "verification_seconds": 193.405
+    },
+    {
+      "completed_at": "2026-11-12T22:16:52Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "gc-jit-1",
+      "job_id": 131521526908,
+      "job_seconds": 205.0,
+      "machine": "aarch64",
+      "name": "verify (gc-jit-1, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:13:27Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526908",
+      "verification_seconds": 181.086
+    },
+    {
+      "completed_at": "2026-11-12T22:26:49Z",
+      "conclusion": "success",
+      "cpu": "neoverse-n2",
+      "group": "scaling",
+      "job_id": 131521531674,
+      "job_seconds": 109.0,
+      "machine": "aarch64",
+      "name": "verify (scaling, aarch64)",
+      "profile": "full",
+      "started_at": "2026-11-12T22:25:00Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521531674",
+      "verification_seconds": 85.156
+    },
+    {
+      "completed_at": "2026-11-12T22:34:35Z",
+      "conclusion": "success",
+      "cpu": null,
+      "group": null,
+      "job_id": 131541596090,
+      "job_seconds": 31.0,
+      "machine": null,
+      "name": "make verify (Linux ARM64, LLVM 18, Python 3.13)",
+      "profile": null,
+      "started_at": "2026-11-12T22:34:04Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131541596090",
+      "verification_seconds": null
+    },
+    {
+      "completed_at": "2026-11-12T22:34:32Z",
+      "conclusion": "success",
+      "cpu": null,
+      "group": null,
+      "job_id": 131541595911,
+      "job_seconds": 28.0,
+      "machine": null,
+      "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+      "profile": null,
+      "started_at": "2026-11-12T22:34:04Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131541595911",
+      "verification_seconds": null
+    },
+    {
+      "completed_at": "2026-11-12T21:57:17Z",
+      "conclusion": "skipped",
+      "cpu": null,
+      "group": null,
+      "job_id": 131521526864,
+      "job_seconds": -1.0,
+      "machine": null,
+      "name": "native JIT and variants (worker ${{ matrix.worker }})",
+      "profile": null,
+      "started_at": "2026-11-12T21:57:18Z",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43314382046/job/131521526864",
+      "verification_seconds": null
+    }
+  ],
+  "maximum_job_seconds": 749.0,
+  "run_attempt": 1,
+  "run_id": 43314382046,
+  "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab"
+}

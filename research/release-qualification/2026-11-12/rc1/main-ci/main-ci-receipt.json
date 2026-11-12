@@ -1,0 +1,214 @@
+{
+  "all_gc_groups_per_machine": 8,
+  "all_pages_complete": true,
+  "artifacts": 75,
+  "expected_skipped_jobs": 1,
+  "files": [
+    {
+      "artifact_id": 13990791569,
+      "artifact_name": "aarch64-verification",
+      "bytes": 117700,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-43314382046.zip",
+      "sha256": "ef79cbd63186768225d8814962d2eb7540ec2bda47d4f40cb9e85e6ba5c24d15"
+    },
+    {
+      "artifact_id": 13988550549,
+      "artifact_name": "aarch64-verification-bootstrap",
+      "bytes": 3999,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-bootstrap-43314382046.zip",
+      "sha256": "8f3dd1f3af81acc89509e1e1cd92b3a9890c5eea7d76099700e62676754e120c"
+    },
+    {
+      "artifact_id": 13990715932,
+      "artifact_name": "aarch64-verification-contracts",
+      "bytes": 34078,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-contracts-43314382046.zip",
+      "sha256": "a5d8af47f670bc8131048fecae8f77288b4d982d583404b0463dbdfa561d5ea8"
+    },
+    {
+      "artifact_id": 13989203977,
+      "artifact_name": "aarch64-verification-gc-aot-0",
+      "bytes": 45663,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-gc-aot-0-43314382046.zip",
+      "sha256": "fc19e051e2861ee5e7555bd885f682b9ae6fe35229ea819b66340b56f72166f1"
+    },
+    {
+      "artifact_id": 13988404662,
+      "artifact_name": "aarch64-verification-gc-aot-1",
+      "bytes": 45504,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-gc-aot-1-43314382046.zip",
+      "sha256": "45351e4d1bf54ccf0080221be125f09ee9a58d4919ea351afe1b865f29ee8695"
+    },
+    {
+      "artifact_id": 13989422486,
+      "artifact_name": "aarch64-verification-gc-aot-2",
+      "bytes": 45941,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-gc-aot-2-43314382046.zip",
+      "sha256": "3d4b944aef7645c4d58c5c062812cd907320b39dc945298b50a9dd9e34f5aa08"
+    },
+    {
+      "artifact_id": 13989666212,
+      "artifact_name": "aarch64-verification-gc-ir-0",
+      "bytes": 45159,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-gc-ir-0-43314382046.zip",
+      "sha256": "9cbc5c5cdcf7d2c12ba33a33495c055c6a66d5e58c11ab16d5fa11c0c9fd5367"
+    },
+    {
+      "artifact_id": 13989388705,
+      "artifact_name": "aarch64-verification-gc-ir-1",
+      "bytes": 45230,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-gc-ir-1-43314382046.zip",
+      "sha256": "b985e2a25e30cb617043a2473d16195e6bb0e8b036df5dec457a1217a44df5b1"
+    },
+    {
+      "artifact_id": 13989408067,
+      "artifact_name": "aarch64-verification-gc-jit-0",
+      "bytes": 61320,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-gc-jit-0-43314382046.zip",
+      "sha256": "2cdb343b923ba6a02857c2a34aee411a5f839d7b57251febe52d64b33c85c3e8"
+    },
+    {
+      "artifact_id": 13987909312,
+      "artifact_name": "aarch64-verification-gc-jit-1",
+      "bytes": 60808,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-gc-jit-1-43314382046.zip",
+      "sha256": "e2b9d84a8d5210be31dc569fd984176aeae608f3d6e3e6080661cdc3f5cda34a"
+    },
+    {
+      "artifact_id": 13989418378,
+      "artifact_name": "aarch64-verification-gc-self",
+      "bytes": 5153,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/aarch64-verification-gc-self-43314382046.zip",
+      "sha256": "c057a371a6406a57d37f4ac941345df7bf1ea3a42d70695f2c16ab0f3b436509"
+    },
+    {
+      "artifact_id": 13991151043,
+      "artifact_name": "x86_64-verification",
+      "bytes": 117854,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-43314382046.zip",
+      "sha256": "8936b364699a7a619e653f38dac21be58e713f3c919772c514cd8b9186e1f767"
+    },
+    {
+      "artifact_id": 13988535650,
+      "artifact_name": "x86_64-verification-bootstrap",
+      "bytes": 4005,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-bootstrap-43314382046.zip",
+      "sha256": "34800887946efec462469765ee4d646190c8ef24d5eff944186dbe70aed53a87"
+    },
+    {
+      "artifact_id": 13989167997,
+      "artifact_name": "x86_64-verification-contracts",
+      "bytes": 35325,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-contracts-43314382046.zip",
+      "sha256": "bbc6ede0c2ffa54acf48aa7403ad51c128a8a88a8059ac1ee8df1f9a7ea02cfe"
+    },
+    {
+      "artifact_id": 13989737902,
+      "artifact_name": "x86_64-verification-gc-aot-0",
+      "bytes": 45931,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-gc-aot-0-43314382046.zip",
+      "sha256": "8af60bbd2e8094d12752c34ab492cf831c0b2da33543c0f7c9a1fe02a09c30a7"
+    },
+    {
+      "artifact_id": 13987884241,
+      "artifact_name": "x86_64-verification-gc-aot-1",
+      "bytes": 45520,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-gc-aot-1-43314382046.zip",
+      "sha256": "d888f408754c0579cfbbebd28f191770a2c1be0b821bf33009b5989018d9eee1"
+    },
+    {
+      "artifact_id": 13989587330,
+      "artifact_name": "x86_64-verification-gc-aot-2",
+      "bytes": 46331,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-gc-aot-2-43314382046.zip",
+      "sha256": "5fbb762707217960adaa79fda41ee65f4d9a730876a9547eb3c2a79cb612b4fe"
+    },
+    {
+      "artifact_id": 13989332734,
+      "artifact_name": "x86_64-verification-gc-ir-0",
+      "bytes": 45522,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-gc-ir-0-43314382046.zip",
+      "sha256": "61480986a3ae72929a85c8ce9a2a7074b7bda2a012932b07ae8164a96dbf130e"
+    },
+    {
+      "artifact_id": 13989397587,
+      "artifact_name": "x86_64-verification-gc-ir-1",
+      "bytes": 45174,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-gc-ir-1-43314382046.zip",
+      "sha256": "7c07d32f023681442b931fd4db2a060441cbbfa644b25150a03b5beb897e23ea"
+    },
+    {
+      "artifact_id": 13988828571,
+      "artifact_name": "x86_64-verification-gc-jit-0",
+      "bytes": 61367,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-gc-jit-0-43314382046.zip",
+      "sha256": "487f99b19fa571dd880975474e4c566d0221652b5db23ec5ed0fec2b9b94f837"
+    },
+    {
+      "artifact_id": 13987769772,
+      "artifact_name": "x86_64-verification-gc-jit-1",
+      "bytes": 103657,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-gc-jit-1-43314382046.zip",
+      "sha256": "0591901a6e82fd2c20db260f846f9d4298a39663a5342e965cf6d423dbdcd22b"
+    },
+    {
+      "artifact_id": 13988708517,
+      "artifact_name": "x86_64-verification-gc-self",
+      "bytes": 5157,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-gc-self-43314382046.zip",
+      "sha256": "22d87a351dbef6b0380341baf87c83f779429a05e53e2a5a83768ea5732a636c"
+    },
+    {
+      "artifact_id": 13988879376,
+      "artifact_name": "x86_64-verification-python-int-optin-2",
+      "bytes": 4085710,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/archives/x86_64-verification-python-int-optin-2-43314382046.zip",
+      "sha256": "0ad8fec43e0a659f797bfd3a2bdbf55f3d2c06ecc6f8da44acacff092c3cee55"
+    },
+    {
+      "bytes": 718746,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/final-run-jobs-artifacts.json",
+      "sha256": "5e51dd1f486abd0e7f457b165cf0f6c01b2fc101de6bd2a56b8ff8eec1e056b3"
+    },
+    {
+      "bytes": 67230,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/full-ci-audit.json",
+      "sha256": "c629a2fbaadaf63b07bdd65d9bd50a8de6d3c151255dfc09ab85801f5695e79d"
+    },
+    {
+      "bytes": 7929,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/audit_full_ci.py",
+      "sha256": "f93d0459ecc98fdf9987797c716f65c35089e066eca43467fc8b4962a46ea0ce"
+    },
+    {
+      "bytes": 2074235,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/combined/x86_64-verification/verification.json",
+      "sha256": "98e2472fc3befb70904f1039cc1f72a0497a60a33632d264c2d8a0cf930dada6"
+    },
+    {
+      "bytes": 2074465,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/combined/aarch64-verification/verification.json",
+      "sha256": "d6ae65e0a833cdaae8090e54bf3407aceebb796242592856478bcfe2fc9cc402"
+    },
+    {
+      "bytes": 28021,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/x86_64-gc-contracts-subset.json",
+      "sha256": "ebf114d6a039729e7914310d3af1478989f4e15f87fb4a6da2ceab9d1435c72d"
+    },
+    {
+      "bytes": 28129,
+      "path": "/workspace/scratch/2cf34574fa6e/rc-ci-audit/rc1-main-ci/aarch64-gc-contracts-subset.json",
+      "sha256": "3cbbb25670a60a2a38d06f1fec7c54e6d791154ea49dd4793c9dcc9368f1a93f"
+    }
+  ],
+  "headroom_limit": "One exact-main push pass with mixed and some unknown CPU profiles. The python-int-optin-2 x86 job took 749 seconds on znver3, above the 12-minute target. This does not establish repeated PR/main/Variants headroom acceptance or gc-self source-size scaling.",
+  "independent_gc_contract_subset_groups_per_machine": 10,
+  "independent_gc_contract_subset_steps_per_machine": 30,
+  "jobs": 74,
+  "run_attempt": 1,
+  "run_id": 43314382046,
+  "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "status": "success",
+  "successful_jobs": 73
+}

@@ -1,0 +1,2658 @@
+{
+  "schema_version": 1,
+  "audited_utc": "2026-11-12T22:32:24.236781+00:00",
+  "source_commit": "30822255ee7ee704e0e780e01cd8c23357ba13ab",
+  "source_tree": "64f1fb7295efd25401052d61a22823681e5669ab",
+  "run_id": 43314381943,
+  "run_attempt": 1,
+  "result": "passed",
+  "event": "push",
+  "jobs": {
+    "producer": 1,
+    "workers": 24,
+    "successful": 25
+  },
+  "artifacts_retained": 25,
+  "decoded_job_logs_retained": 25,
+  "configurations": 7,
+  "logical_config_shards": 28,
+  "corpus_cases": 4361,
+  "checks_per_configuration": 7058,
+  "total_configuration_checks": 49406,
+  "max_job": {
+    "job_id": 131520986082,
+    "name": "variant opt-1 cflags-O0 (shard 0/4, JIT and AOT)",
+    "job_seconds": 566.0,
+    "started_at": "2026-11-12T21:56:21Z",
+    "completed_at": "2026-11-12T22:05:47Z",
+    "runner_name": "GitHub Actions 1000085754",
+    "runner_id": 1000085754,
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "cpu": null,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 1.0
+      },
+      {
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 2.0
+      },
+      {
+        "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 8.0
+      },
+      {
+        "name": "LLVM 18 toolchain",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 5.0
+      },
+      {
+        "name": "Download verified bootstrap",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 1.0
+      },
+      {
+        "name": "Validate and restore the native compiler",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 0.0
+      },
+      {
+        "name": "tools/variants.sh (make variants)",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 545.0
+      },
+      {
+        "name": "Upload the log",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 1.0
+      },
+      {
+        "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 0.0
+      },
+      {
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 0.0
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "seconds": 0.0
+      }
+    ]
+  },
+  "max_variant_execution": {
+    "variant": "opt-5",
+    "shard": 0,
+    "case_count": 1090,
+    "checks": 1763,
+    "modes": [
+      "jit",
+      "aot"
+    ],
+    "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-tupleiter,-listfast,-moduleints,-tupleret,-unionslots,-allocelide",
+    "execution_seconds": 466,
+    "job_id": 131520986212,
+    "artifact_id": 13989420058,
+    "log_sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af",
+    "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+    "cpu": null
+  },
+  "bootstrap": {
+    "artifact_id": 13987024316,
+    "zip_digest": "sha256:7fcd7970f2b31ef27556944a981e1467ea4a1d9f07219872fc7ff227762c3451",
+    "bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+    "manifest_source_hash": "10b115fe2fcfaca1668ca222456eb6cde7e8610047c64fdcb59d0012cd31e22a",
+    "producer_platform": {
+      "cpu": "(unknown)",
+      "machine": "x86_64",
+      "os": "Ubuntu 24.04.5 LTS",
+      "system": "Linux 7.0.0-1017-azure"
+    },
+    "toolchain": {
+      "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+      "llvm": "Ubuntu LLVM version 18.1.3",
+      "llvm_dir": "/usr/lib/llvm-18/bin",
+      "python": "Python 3.13.16"
+    }
+  },
+  "settings": {
+    "opt-1": "PYSTACHY_OPT=-listfast,-moduleints,-fieldtbaa,-tupleret,-unionslots,-nullcheck,-allocelide,-callbacks",
+    "opt-2": "PYSTACHY_OPT=-listget,-listguard,-dictfuse,-tupleiter,-unionslots,-nullcheck,-allocelide,-callbacks",
+    "opt-3": "PYSTACHY_OPT=-charslots,-listguard,-dictfuse,-tupleiter,-moduleints,-fieldtbaa,-tupleret,-callbacks",
+    "opt-4": "PYSTACHY_OPT=-charslots,-listget,-dictfuse,-tupleiter,-listfast,-fieldtbaa,-tupleret,-nullcheck,-allocelide",
+    "opt-5": "PYSTACHY_OPT=-charslots,-listget,-listguard,-tupleiter,-listfast,-moduleints,-tupleret,-unionslots,-allocelide",
+    "opt-6": "PYSTACHY_OPT=-charslots,-listget,-listguard,-dictfuse,-listfast,-moduleints,-fieldtbaa,-unionslots,-nullcheck,-callbacks",
+    "cflags-O0": "PYSTACHY_CFLAGS=-O0 PYSTACHY_JIT_LAUNCHER=lli"
+  },
+  "logical_shards": [
+    {
+      "variant": "cflags-O0",
+      "shard": 0,
+      "case_count": 1090,
+      "checks": 1763,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_CFLAGS=-O0 PYSTACHY_JIT_LAUNCHER=lli",
+      "execution_seconds": 132,
+      "job_id": 131520986082,
+      "artifact_id": 13988152309,
+      "log_sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "cflags-O0",
+      "shard": 1,
+      "case_count": 1090,
+      "checks": 1765,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_CFLAGS=-O0 PYSTACHY_JIT_LAUNCHER=lli",
+      "execution_seconds": 83,
+      "job_id": 131520986150,
+      "artifact_id": 13989230141,
+      "log_sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "cflags-O0",
+      "shard": 2,
+      "case_count": 1091,
+      "checks": 1764,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_CFLAGS=-O0 PYSTACHY_JIT_LAUNCHER=lli",
+      "execution_seconds": 91,
+      "job_id": 131520986100,
+      "artifact_id": 13988412342,
+      "log_sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "cflags-O0",
+      "shard": 3,
+      "case_count": 1090,
+      "checks": 1766,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_CFLAGS=-O0 PYSTACHY_JIT_LAUNCHER=lli",
+      "execution_seconds": 107,
+      "job_id": 131520986093,
+      "artifact_id": 13989445314,
+      "log_sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-1",
+      "shard": 0,
+      "case_count": 1090,
+      "checks": 1763,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-listfast,-moduleints,-fieldtbaa,-tupleret,-unionslots,-nullcheck,-allocelide,-callbacks",
+      "execution_seconds": 412,
+      "job_id": 131520986082,
+      "artifact_id": 13988152309,
+      "log_sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-1",
+      "shard": 1,
+      "case_count": 1090,
+      "checks": 1765,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-listfast,-moduleints,-fieldtbaa,-tupleret,-unionslots,-nullcheck,-allocelide,-callbacks",
+      "execution_seconds": 280,
+      "job_id": 131520986150,
+      "artifact_id": 13989230141,
+      "log_sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-1",
+      "shard": 2,
+      "case_count": 1091,
+      "checks": 1764,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-listfast,-moduleints,-fieldtbaa,-tupleret,-unionslots,-nullcheck,-allocelide,-callbacks",
+      "execution_seconds": 292,
+      "job_id": 131520986100,
+      "artifact_id": 13988412342,
+      "log_sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-1",
+      "shard": 3,
+      "case_count": 1090,
+      "checks": 1766,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-listfast,-moduleints,-fieldtbaa,-tupleret,-unionslots,-nullcheck,-allocelide,-callbacks",
+      "execution_seconds": 332,
+      "job_id": 131520986093,
+      "artifact_id": 13989445314,
+      "log_sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-2",
+      "shard": 0,
+      "case_count": 1090,
+      "checks": 1763,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-listget,-listguard,-dictfuse,-tupleiter,-unionslots,-nullcheck,-allocelide,-callbacks",
+      "execution_seconds": 449,
+      "job_id": 131520986305,
+      "artifact_id": 13988880676,
+      "log_sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-2",
+      "shard": 1,
+      "case_count": 1090,
+      "checks": 1765,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-listget,-listguard,-dictfuse,-tupleiter,-unionslots,-nullcheck,-allocelide,-callbacks",
+      "execution_seconds": 407,
+      "job_id": 131520986048,
+      "artifact_id": 13988616411,
+      "log_sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-2",
+      "shard": 2,
+      "case_count": 1091,
+      "checks": 1764,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-listget,-listguard,-dictfuse,-tupleiter,-unionslots,-nullcheck,-allocelide,-callbacks",
+      "execution_seconds": 443,
+      "job_id": 131520986103,
+      "artifact_id": 13987094543,
+      "log_sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-2",
+      "shard": 3,
+      "case_count": 1090,
+      "checks": 1766,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-listget,-listguard,-dictfuse,-tupleiter,-unionslots,-nullcheck,-allocelide,-callbacks",
+      "execution_seconds": 330,
+      "job_id": 131520986192,
+      "artifact_id": 13989245062,
+      "log_sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-3",
+      "shard": 0,
+      "case_count": 1090,
+      "checks": 1763,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listguard,-dictfuse,-tupleiter,-moduleints,-fieldtbaa,-tupleret,-callbacks",
+      "execution_seconds": 339,
+      "job_id": 131520986344,
+      "artifact_id": 13988028471,
+      "log_sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-3",
+      "shard": 1,
+      "case_count": 1090,
+      "checks": 1765,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listguard,-dictfuse,-tupleiter,-moduleints,-fieldtbaa,-tupleret,-callbacks",
+      "execution_seconds": 436,
+      "job_id": 131520986083,
+      "artifact_id": 13987808208,
+      "log_sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-3",
+      "shard": 2,
+      "case_count": 1091,
+      "checks": 1764,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listguard,-dictfuse,-tupleiter,-moduleints,-fieldtbaa,-tupleret,-callbacks",
+      "execution_seconds": 339,
+      "job_id": 131520986085,
+      "artifact_id": 13989005328,
+      "log_sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-3",
+      "shard": 3,
+      "case_count": 1090,
+      "checks": 1766,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listguard,-dictfuse,-tupleiter,-moduleints,-fieldtbaa,-tupleret,-callbacks",
+      "execution_seconds": 349,
+      "job_id": 131520986167,
+      "artifact_id": 13988516388,
+      "log_sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-4",
+      "shard": 0,
+      "case_count": 1090,
+      "checks": 1763,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-dictfuse,-tupleiter,-listfast,-fieldtbaa,-tupleret,-nullcheck,-allocelide",
+      "execution_seconds": 446,
+      "job_id": 131520986472,
+      "artifact_id": 13989136184,
+      "log_sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-4",
+      "shard": 1,
+      "case_count": 1090,
+      "checks": 1765,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-dictfuse,-tupleiter,-listfast,-fieldtbaa,-tupleret,-nullcheck,-allocelide",
+      "execution_seconds": 309,
+      "job_id": 131520986218,
+      "artifact_id": 13988820721,
+      "log_sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-4",
+      "shard": 2,
+      "case_count": 1091,
+      "checks": 1764,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-dictfuse,-tupleiter,-listfast,-fieldtbaa,-tupleret,-nullcheck,-allocelide",
+      "execution_seconds": 403,
+      "job_id": 131520986196,
+      "artifact_id": 13987633561,
+      "log_sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-4",
+      "shard": 3,
+      "case_count": 1090,
+      "checks": 1766,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-dictfuse,-tupleiter,-listfast,-fieldtbaa,-tupleret,-nullcheck,-allocelide",
+      "execution_seconds": 441,
+      "job_id": 131520986237,
+      "artifact_id": 13988336893,
+      "log_sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-5",
+      "shard": 0,
+      "case_count": 1090,
+      "checks": 1763,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-tupleiter,-listfast,-moduleints,-tupleret,-unionslots,-allocelide",
+      "execution_seconds": 466,
+      "job_id": 131520986212,
+      "artifact_id": 13989420058,
+      "log_sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-5",
+      "shard": 1,
+      "case_count": 1090,
+      "checks": 1765,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-tupleiter,-listfast,-moduleints,-tupleret,-unionslots,-allocelide",
+      "execution_seconds": 447,
+      "job_id": 131520986240,
+      "artifact_id": 13989605020,
+      "log_sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-5",
+      "shard": 2,
+      "case_count": 1091,
+      "checks": 1764,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-tupleiter,-listfast,-moduleints,-tupleret,-unionslots,-allocelide",
+      "execution_seconds": 290,
+      "job_id": 131520986213,
+      "artifact_id": 13986674870,
+      "log_sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-5",
+      "shard": 3,
+      "case_count": 1090,
+      "checks": 1766,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-tupleiter,-listfast,-moduleints,-tupleret,-unionslots,-allocelide",
+      "execution_seconds": 451,
+      "job_id": 131520986424,
+      "artifact_id": 13987574066,
+      "log_sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-6",
+      "shard": 0,
+      "case_count": 1090,
+      "checks": 1763,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-dictfuse,-listfast,-moduleints,-fieldtbaa,-unionslots,-nullcheck,-callbacks",
+      "execution_seconds": 356,
+      "job_id": 131520986188,
+      "artifact_id": 13987897099,
+      "log_sha256": "32cebda300c3a19cf49c844bda37e124ac36f2d3b2dc4a702da16e8d19d495af",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-6",
+      "shard": 1,
+      "case_count": 1090,
+      "checks": 1765,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-dictfuse,-listfast,-moduleints,-fieldtbaa,-unionslots,-nullcheck,-callbacks",
+      "execution_seconds": 336,
+      "job_id": 131520986383,
+      "artifact_id": 13989305843,
+      "log_sha256": "49b6c964072c5f11b43d225b03c0538dbb074a9f7eb77abfa8ef2d2c8d87b95a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-6",
+      "shard": 2,
+      "case_count": 1091,
+      "checks": 1764,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-dictfuse,-listfast,-moduleints,-fieldtbaa,-unionslots,-nullcheck,-callbacks",
+      "execution_seconds": 291,
+      "job_id": 131520986214,
+      "artifact_id": 13986594985,
+      "log_sha256": "dd80ffb176cefbed8c30e6cbcac800afe087625b507aac37e310c970d9202815",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    },
+    {
+      "variant": "opt-6",
+      "shard": 3,
+      "case_count": 1090,
+      "checks": 1766,
+      "modes": [
+        "jit",
+        "aot"
+      ],
+      "settings": "PYSTACHY_OPT=-charslots,-listget,-listguard,-dictfuse,-listfast,-moduleints,-fieldtbaa,-unionslots,-nullcheck,-callbacks",
+      "execution_seconds": 450,
+      "job_id": 131520986307,
+      "artifact_id": 13988557229,
+      "log_sha256": "18fed2b732769b8d91d1d8eec28a44958b36a9dd3a882e023eda52599e28ac3a",
+      "bootstrap_bundle_id": "c6d9f7463b87b5d771fe2c8a0c67cd0a64794bd00c282b022d42f3c0da98614a",
+      "cpu": null
+    }
+  ],
+  "job_timings": [
+    {
+      "job_id": 131518435917,
+      "name": "verified compiler producer",
+      "job_seconds": 273.0,
+      "started_at": "2026-11-12T21:51:45Z",
+      "completed_at": "2026-11-12T21:56:18Z",
+      "runner_name": "GitHub Actions 1000085729",
+      "runner_id": 1000085729,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 4.0
+        },
+        {
+          "name": "Verify compiler and runtime fixed points",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 254.0
+        },
+        {
+          "name": "Package verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986048,
+      "name": "variant opt-2 (shard 1/4, JIT and AOT)",
+      "job_seconds": 428.0,
+      "started_at": "2026-11-12T21:56:22Z",
+      "completed_at": "2026-11-12T22:03:30Z",
+      "runner_name": "GitHub Actions 1000085759",
+      "runner_id": 1000085759,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 408.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986082,
+      "name": "variant opt-1 cflags-O0 (shard 0/4, JIT and AOT)",
+      "job_seconds": 566.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:05:47Z",
+      "runner_name": "GitHub Actions 1000085754",
+      "runner_id": 1000085754,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 8.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 5.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 545.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986083,
+      "name": "variant opt-3 (shard 1/4, JIT and AOT)",
+      "job_seconds": 464.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:04:05Z",
+      "runner_name": "GitHub Actions 1000085753",
+      "runner_id": 1000085753,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 8.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 436.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986085,
+      "name": "variant opt-3 (shard 2/4, JIT and AOT)",
+      "job_seconds": 358.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:02:19Z",
+      "runner_name": "GitHub Actions 1000085761",
+      "runner_id": 1000085761,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 339.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986093,
+      "name": "variant opt-1 cflags-O0 (shard 3/4, JIT and AOT)",
+      "job_seconds": 462.0,
+      "started_at": "2026-11-12T21:57:13Z",
+      "completed_at": "2026-11-12T22:04:55Z",
+      "runner_name": "GitHub Actions 1000085767",
+      "runner_id": 1000085767,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 439.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986100,
+      "name": "variant opt-1 cflags-O0 (shard 2/4, JIT and AOT)",
+      "job_seconds": 400.0,
+      "started_at": "2026-11-12T22:00:58Z",
+      "completed_at": "2026-11-12T22:07:38Z",
+      "runner_name": "GitHub Actions 1000085784",
+      "runner_id": 1000085784,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 384.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986103,
+      "name": "variant opt-2 (shard 2/4, JIT and AOT)",
+      "job_seconds": 467.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:04:08Z",
+      "runner_name": "GitHub Actions 1000085751",
+      "runner_id": 1000085751,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 5.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 444.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986150,
+      "name": "variant opt-1 cflags-O0 (shard 1/4, JIT and AOT)",
+      "job_seconds": 396.0,
+      "started_at": "2026-11-12T21:56:22Z",
+      "completed_at": "2026-11-12T22:02:58Z",
+      "runner_name": "GitHub Actions 1000085762",
+      "runner_id": 1000085762,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 363.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986167,
+      "name": "variant opt-3 (shard 3/4, JIT and AOT)",
+      "job_seconds": 371.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:02:32Z",
+      "runner_name": "GitHub Actions 1000085765",
+      "runner_id": 1000085765,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 8.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 4.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 349.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986188,
+      "name": "variant opt-6 (shard 0/4, JIT and AOT)",
+      "job_seconds": 373.0,
+      "started_at": "2026-11-12T21:56:22Z",
+      "completed_at": "2026-11-12T22:02:35Z",
+      "runner_name": "GitHub Actions 1000085755",
+      "runner_id": 1000085755,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 356.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986192,
+      "name": "variant opt-2 (shard 3/4, JIT and AOT)",
+      "job_seconds": 350.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:02:11Z",
+      "runner_name": "GitHub Actions 1000085756",
+      "runner_id": 1000085756,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 5.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 330.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986196,
+      "name": "variant opt-4 (shard 2/4, JIT and AOT)",
+      "job_seconds": 420.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:03:21Z",
+      "runner_name": "GitHub Actions 1000085760",
+      "runner_id": 1000085760,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 403.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986212,
+      "name": "variant opt-5 (shard 0/4, JIT and AOT)",
+      "job_seconds": 487.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:04:28Z",
+      "runner_name": "GitHub Actions 1000085752",
+      "runner_id": 1000085752,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 5.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 466.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986213,
+      "name": "variant opt-5 (shard 2/4, JIT and AOT)",
+      "job_seconds": 325.0,
+      "started_at": "2026-11-12T21:56:22Z",
+      "completed_at": "2026-11-12T22:01:47Z",
+      "runner_name": "GitHub Actions 1000085758",
+      "runner_id": 1000085758,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 4.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 9.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 290.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986214,
+      "name": "variant opt-6 (shard 2/4, JIT and AOT)",
+      "job_seconds": 320.0,
+      "started_at": "2026-11-12T21:56:22Z",
+      "completed_at": "2026-11-12T22:01:42Z",
+      "runner_name": "GitHub Actions 1000085764",
+      "runner_id": 1000085764,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 5.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 291.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986218,
+      "name": "variant opt-4 (shard 1/4, JIT and AOT)",
+      "job_seconds": 324.0,
+      "started_at": "2026-11-12T21:56:49Z",
+      "completed_at": "2026-11-12T22:02:13Z",
+      "runner_name": "GitHub Actions 1000085766",
+      "runner_id": 1000085766,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 309.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986237,
+      "name": "variant opt-4 (shard 3/4, JIT and AOT)",
+      "job_seconds": 463.0,
+      "started_at": "2026-11-12T21:56:21Z",
+      "completed_at": "2026-11-12T22:04:04Z",
+      "runner_name": "GitHub Actions 1000085757",
+      "runner_id": 1000085757,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 5.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 441.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986240,
+      "name": "variant opt-5 (shard 1/4, JIT and AOT)",
+      "job_seconds": 467.0,
+      "started_at": "2026-11-12T22:00:21Z",
+      "completed_at": "2026-11-12T22:08:08Z",
+      "runner_name": "GitHub Actions 1000085782",
+      "runner_id": 1000085782,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 8.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 4.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 447.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986305,
+      "name": "variant opt-2 (shard 0/4, JIT and AOT)",
+      "job_seconds": 474.0,
+      "started_at": "2026-11-12T21:56:22Z",
+      "completed_at": "2026-11-12T22:04:16Z",
+      "runner_name": "GitHub Actions 1000085763",
+      "runner_id": 1000085763,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 8.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 3.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 449.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986307,
+      "name": "variant opt-6 (shard 3/4, JIT and AOT)",
+      "job_seconds": 469.0,
+      "started_at": "2026-11-12T21:57:16Z",
+      "completed_at": "2026-11-12T22:05:05Z",
+      "runner_name": "GitHub Actions 1000085768",
+      "runner_id": 1000085768,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 8.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 451.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986344,
+      "name": "variant opt-3 (shard 0/4, JIT and AOT)",
+      "job_seconds": 354.0,
+      "started_at": "2026-11-12T22:03:27Z",
+      "completed_at": "2026-11-12T22:09:21Z",
+      "runner_name": "GitHub Actions 1000085798",
+      "runner_id": 1000085798,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 6.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 339.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986383,
+      "name": "variant opt-6 (shard 1/4, JIT and AOT)",
+      "job_seconds": 359.0,
+      "started_at": "2026-11-12T22:03:00Z",
+      "completed_at": "2026-11-12T22:08:59Z",
+      "runner_name": "GitHub Actions 1000085795",
+      "runner_id": 1000085795,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 8.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 4.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 336.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986424,
+      "name": "variant opt-5 (shard 3/4, JIT and AOT)",
+      "job_seconds": 470.0,
+      "started_at": "2026-11-12T21:57:19Z",
+      "completed_at": "2026-11-12T22:05:09Z",
+      "runner_name": "GitHub Actions 1000085769",
+      "runner_id": 1000085769,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 7.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 452.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    },
+    {
+      "job_id": 131520986472,
+      "name": "variant opt-4 (shard 0/4, JIT and AOT)",
+      "job_seconds": 464.0,
+      "started_at": "2026-11-12T22:02:13Z",
+      "completed_at": "2026-11-12T22:09:57Z",
+      "runner_name": "GitHub Actions 1000085788",
+      "runner_id": 1000085788,
+      "labels": [
+        "ubuntu-24.04"
+      ],
+      "cpu": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 2.0
+        },
+        {
+          "name": "Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 8.0
+        },
+        {
+          "name": "LLVM 18 toolchain",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Download verified bootstrap",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Validate and restore the native compiler",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "tools/variants.sh (make variants)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 446.0
+        },
+        {
+          "name": "Upload the log",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 1.0
+        },
+        {
+          "name": "Post Run actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 0.0
+        }
+      ]
+    }
+  ],
+  "limits": {
+    "timeout_minutes": 15,
+    "PYSTACHY_JOBS": 4
+  },
+  "inventory_method": "Recomputed the four deterministic shards and exact checks from the clean source tree; each retained log and job summary matches the selected-case/check counts, modes, flags and shard. Artifacts do not contain individual case execution records.",
+  "cpu_evidence": "All 25 decoded job logs were scanned; no consumer CPU marker is available. Producer platform.cpu is '(unknown)' and is not attributed to consumers.",
+  "nonclaims": [
+    "One exact-main supplemental run, not a three-run znver3 headroom acceptance set.",
+    "Configuration completeness is bound by same-run source/restore plus deterministic inventory and exact retained counts, not per-case result JSON.",
+    "This supplemental run does not replace the full exact-main CI release gate or GC source-size scaling qualification.",
+    "The max job excludes queue waiting; complete created/start/completion metadata is retained separately."
+  ]
+}

@@ -1,4 +1,4 @@
-# RC.1 candidate qualification
+# RC.1 qualification and publication
 
 Candidate: `886ed9153e954b387f2afd39578a21168771ae6e`, tree `64f1fb7295efd25401052d61a22823681e5669ab`. Baseline: `0b13a2121014d8256954c6af50339ff0de8dac62`. The local integrated commit `7c75948747090c7d6a0a0bf76f9aecee8de90a15` has the identical candidate tree.
 
@@ -53,8 +53,14 @@ All samples remain in the record, including a 176.387793 ms candidate outlier wi
 
 [The full CI receipt](ci/candidate-ci-receipt.json) indexes source identity, all 74 jobs and retained report hashes. [The timing audit](ci/full-ci-audit.json) preserves the mixed CPU profiles. The longest job took 717 seconds on znver3; the znver3 GC self-compilation step took 295.764 seconds. These are single-run measurements, not the required repeated all-znver3 cohorts or a source-size scaling sweep. Independent review of the CI plans, failure propagation and release notes found no blocking issues.
 
-Release publication additionally requires CI, Installation, Lint and Packages on the exact merged-main commit, followed by tested-versus-public archive, Docker and PyPI verification. The candidate report is evidence for its stated source only. #1178, #1179 and #1181 remain open until their repeated-run headroom and GC scaling criteria are met.
+Exact merged-main qualification passed on `30822255ee7ee704e0e780e01cd8c23357ba13ab`: [CI](https://github.com/den-run-ai/pystachy/actions/runs/43314382046), [Installation](https://github.com/den-run-ai/pystachy/actions/runs/43314381833), [Lint](https://github.com/den-run-ai/pystachy/actions/runs/43314381839) and [Packages](https://github.com/den-run-ai/pystachy/actions/runs/43314381825). All runs passed on attempt 1 without cancellation or retry. Full CI contains 73 successful jobs and one expected PR-only skip; both architecture aggregates checked every report and verification group. Each official report contains 35 groups and 58 passing steps, with 59 source hashes checked, all eight GC groups and the contract probes per architecture. [The exact-main receipt](main-ci/main-ci-receipt.json) indexes the source-bound evidence.
+
+The longest exact-main worker took 749 seconds on znver3, exceeding the separate 12-minute headroom target while remaining within its unchanged 15-minute cap. The mixed CPU population is retained in the timing audit. [Variants](https://github.com/den-run-ai/pystachy/actions/runs/43314381943) passed all 25 jobs, seven configurations and 49,406 checks. Its CPU models are unavailable, so it does not qualify a znver3 headroom cohort. [Coverage](https://github.com/den-run-ai/pystachy/actions/runs/43314381949) and [Performance smoke](https://github.com/den-run-ai/pystachy/actions/runs/43314381889) also passed as supplemental evidence.
+
+The stated acceptance criteria for #1333, #1358 and #1300 are met on merged main; all three issues are closed with source-specific evidence. [The gate and closure receipt](main-gate-and-closure-receipt.json) records this boundary. #1178, #1179 and #1181 remain open until their repeated-run headroom and GC scaling criteria are met.
+
+Native and Docker publication started in [Release run 43321775172](https://github.com/den-run-ai/pystachy/actions/runs/43321775172), from the same exact main commit with tag `v0.4.0-rc.1` and PyPI disabled. Publication and tested-versus-public archive, Docker and PyPI verification remain pending at this checkpoint.
 
 ## Separate follow-up
 
-Review of newly opened #1392 confirmed a pre-existing IntEnum/IntFlag sys.exit status limitation on both the baseline and this frozen candidate. Its proposed repair also consults overridable or mutable enum state. A separate correction is under development and is not included in RC.1. The original proposal and follow-up must pass their own semantic, layout and GC qualification before inclusion in a later candidate. Existing eager exception formatting is a separately retained limitation.
+Review of newly opened #1392 confirmed a pre-existing IntEnum/IntFlag sys.exit status limitation on both the baseline and this frozen candidate. Its proposed repair also consults overridable or mutable enum state. A separate corrected implementation is locally qualified and checkpointed for RC.2; it is not included in RC.1. The original proposal and correction preserve separate source identities and must pass fresh full GC and platform qualification before the later candidate is merged. Existing eager exception formatting is a separately retained limitation.
