@@ -1,0 +1,21 @@
+@init._pystachy_types:
+@init._pystachy_mappingproxy:
+@init.types:
+@r.f.fib.sync.1:
+@f.fib.sync.1: noinline
+@f.pause.1: presplitcoroutine
+@f.waits.1: presplitcoroutine
+@f.main.1: presplitcoroutine
+@main.init:
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@pys.gen.drop:
+@pys.gen.drop.counted:
+@pys.recursion.check:
+@pys.recursion.enter:
+@pys.recursion.resume:
+@pys.recursion.leave: alwaysinline nounwind
+@pys.recursion.depth: alwaysinline nounwind
+@pys.recursion.restore: alwaysinline nounwind
+@main:

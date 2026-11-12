@@ -1,0 +1,28 @@
+yielded in except
+handling KeyError('k') KeyError('k')
+yielded in finally
+finally done
+returned
+enter m
+yielded in with m
+exit m False
+returned
+yielded loop 1
+yielded loop 2
+yielded loop 3
+numbers closed
+returned
+loop 1 loop 2
+numbers closed
+closed in_loop
+enter m
+in with m
+exit m True
+closed in_with
+200
+RecursionError (never suspends)
+returned
+RecursionError (suspends)
+bottom
+depth 50 returned
+[exit 0]

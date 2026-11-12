@@ -81,10 +81,11 @@ tests/programs/upstream/upstream_textwrap_wrap.py, tests/programs/upstream/upstr
 tests/programs/upstream/upstream_textwrap_indent.py and tests/programs/upstream/upstream_textwrap_unicode.py
 adapt that commit's Lib/test/test_textwrap.py. tests/programs/upstream/upstream_functools_cache.py
 adapts selected methods from Lib/test/test_functools.py, whose source SHA-256 is
-recorded in its header. tests/programs/upstream/upstream_contextlib.py and tests/programs/upstream/upstream_generators_protocol.py
-adapt selected cases of that commit's Lib/test/test_contextlib.py and
-Lib/test/test_generators.py. They preserve the upstream assertions for the supported
-cases and disclose adaptations and exclusions; the same PSF license applies.
+recorded in its header. tests/programs/upstream/upstream_contextlib.py, tests/programs/upstream/upstream_generators_protocol.py
+and tests/programs/upstream/upstream_coroutines.py adapt selected cases of that commit's
+Lib/test/test_contextlib.py, Lib/test/test_generators.py and Lib/test/test_coroutines.py.
+They preserve the upstream assertions for the supported cases and disclose adaptations and
+exclusions; the same PSF license applies.
 
 CPython's selected copyreg registration functions
 ------------------------------------------------

@@ -1,4 +1,5 @@
-# Adapted from CPython 3.13.16 Lib/test/test_coroutines.py, commit
+# Adapted from CPython 3.13.16 Lib/test/test_coroutines.py (SHA-256
+# 161fbe91f6a7c92cdc887a4c824e6c76b33eb7bae449e58203c6ef98960279e5), commit
 # cbc944f4bc59639a444dd971c737788ba2283a91: CoroutineTest's test_func_2, test_func_6,
 # test_func_12, test_func_14, test_func_15, test_func_16, test_func_17, test_func_19,
 # test_await_1, test_await_2, test_await_4, test_await_7, test_await_8, test_await_10,
