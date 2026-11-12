@@ -696,9 +696,9 @@ def gen_none_global_store(self, name: str, v: Val) -> str:
     # name = v, of a module global that only None has been given so far: v's type gives it its
     # type from here on, T | None, as a local's first value of another type does
     key = "g:" + name
-    if self.xtry.startswith("narrow:") and is_union(unopt(v.t)):
+    if self.xtry.startswith("narrow:") and "union[" in v.t:
         # (a union isinstance(x, (A, B)) narrowed x to would type the global for code outside
-        # the attempt: declined, see narrows)
+        # the attempt, also as a container's items ([x]): declined, see narrows)
         self.err(f"'{short(name)}' would take a union that a narrowing made")
     if key in self.nonereads:
         self.err(f"'{short(name)}' was read as None at {self.nonereads[key]}, where nothing seemed to give it another value; annotate it{self.where_def(name)} ({short(name)}: T | None = None)")

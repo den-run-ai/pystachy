@@ -1059,8 +1059,9 @@ joins discard refinements that no longer hold. Globals, fields and locals assign
 A tuple of derived classes, `isinstance(obj, (A, B))`, refines it to the union `A | B`, whose
 fields and methods are those every member declares. Where something the function does with that
 union does not compile (`hash(obj)`, or passing it where the base type is expected), or where
-the union would type storage outside the function (a module global's first value, or the items
-of an empty global list, dict or set), the function is compiled with the base type instead, as
+the union would type storage outside the function (the first value of a module global or field
+that only None has held, also as a list's items, or the items of an empty global list, dict or
+set), the function is compiled with the base type instead, as
 without the test. Functions whose return
 type is inferred, module code and programs that opt in to dynamic `Any` keep the base type.
 Exception-class narrowing retains its existing restrictions.
