@@ -35,9 +35,15 @@ issues instead of repeating them. For example: `Preserve list aliases across Any
 Include provenance/AI assistance in Change and failed, timed-out or unrun checks in
 Validation. Use `Refs #N` for partial work; closing keywords are for completed scope.
 
+Write as the [writing guide](docs/writing.md) describes: lead with the problem, keep
+numbers with their units and state each limit once. GitHub shows every newline in a body
+as a line break, so write each paragraph and list item on one line. Disclose AI
+assistance in a sentence; generated-by footers and session links are not accepted.
+
 The metadata workflow flags incomplete issues with `needs-description` and removes
-it after correction. PRs receive a `Submission format` commit status, refreshed on
-edits and pushes without rerunning compiler tests. Maintainers must require that
+it after correction; it also flags hard-wrapped paragraphs and tool footers. PRs
+receive a `Submission format` commit status, refreshed on edits and pushes without
+rerunning compiler tests. Maintainers must require that
 status in branch protection/rulesets to block merges. Issues cannot be blocked at
 creation; API-created issues use the same check as the web templates. The workflow
 starts after it lands on the default branch; it does not audit untouched older items.
@@ -49,7 +55,8 @@ keep raw experiments and evaluation dumps on a separate research branch. Do not
 merge `research/` directories or unapplied prototype patches into `main`.
 Promote useful checks into `tools/` and regression fixtures into their maintained
 test locations before merging. Keep documentation focused on current tasks, APIs
-and implementation contracts. Use Git history and commit-pinned PR links for
+and implementation contracts, and write it as the [writing guide](docs/writing.md)
+describes. Use Git history and commit-pinned PR links for
 superseded designs, chronological logs and one-off audit dumps; preserve those
 links wherever a current guide cites an earlier measurement. Keep reproducible
 benchmark inputs and results beside their workload, and keep the current version's
