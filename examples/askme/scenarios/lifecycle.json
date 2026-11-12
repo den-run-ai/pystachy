@@ -1,0 +1,163 @@
+{
+  "prompt": "Write poem.txt",
+  "args": [],
+  "env": {
+    "AGENT_STEP_POLICY": "lifecycle"
+  },
+  "files": {},
+  "exit_code": 0,
+  "replay": [
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"tasks\": [\"Write poem.txt\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"poem.txt\", \"content\": \"one\\n\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"poem.txt\", \"content\": \"two\\n\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "shell",
+                  "arguments": "{\"arg\": \"cat poem.txt\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    }
+  ]
+}

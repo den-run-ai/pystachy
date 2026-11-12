@@ -1,0 +1,258 @@
+{
+  "prompt": "Write answer.txt",
+  "args": [],
+  "env": {
+    "AGENT_FINAL_VALIDATE": "always"
+  },
+  "files": {},
+  "exit_code": 1,
+  "replay": [
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"tasks\": [\"Write answer.txt\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"answer.txt\", \"content\": \"41\\n\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"valid\": false, \"reason\": \"answer must be 42\", \"missing\": [\"42\", \"\", 7]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"tasks\": [\"Look at the workspace\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "tree",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"tasks\": [\"Check answer.txt\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "shell",
+                  "arguments": "{\"arg\": \"cat answer.txt\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"verdict\": \"wrong shape\"}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    }
+  ]
+}

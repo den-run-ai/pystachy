@@ -1,0 +1,83 @@
+{
+  "prompt": "Compile main.c with sh cc.sh and fix any build error",
+  "args": [],
+  "env": {},
+  "files": {
+    "cc.sh": "#!/bin/sh\n# A deterministic stand-in for a C compiler: it insists on <stdio.h>.\nif grep -q '#include <stdio.h>' \"$1\"; then\n  echo \"built $1\"\n  exit 0\nfi\necho \"$1:3:5: error: implicit declaration of function 'printf'\"\nexit 1\n",
+    "main.c": "int main(void) {\n    printf(\"hello\\n\");\n    return 0;\n}\n"
+  },
+  "exit_code": 0,
+  "replay": [
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"tasks\": [\"Build main.c with sh cc.sh main.c\", \"Add #include <stdio.h> to main.c\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "shell",
+                  "arguments": "{\"arg\": \"sh cc.sh main.c\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{\"reasoning\": \"built\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    }
+  ]
+}

@@ -1,0 +1,173 @@
+{
+  "prompt": "Write a.txt then b.txt then c.txt",
+  "args": [
+    "--max-tasks",
+    "2",
+    "--max-replans",
+    "1",
+    "--capability-profile",
+    "legacy-e4b-m1-16k-v1"
+  ],
+  "env": {
+    "ALLOW_SYSTEM_INSTALLS": "1",
+    "ALLOW_NETWORK": "0",
+    "AGENT_GOAL_CONTEXT_CHARS": "12",
+    "AGENT_REASONING_POLICY": "off"
+  },
+  "files": {},
+  "exit_code": 0,
+  "replay": [
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"tasks\": [\"Write a.txt\", \"Write b.txt\", \"Write c.txt\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"a.txt\", \"content\": {\"k\": [1, 2], \"note\": \"\\u00e9\"}}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{\"arg\": null, \"reasoning\": null}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"nested/dir/b.txt\", \"content\": [\"x\", {\"y\": null}]}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "tree",
+                  "arguments": "{\"arg\": null}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    }
+  ]
+}

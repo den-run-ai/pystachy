@@ -180,6 +180,7 @@ packages that need CPython at runtime.
 | [JSON repair](https://github.com/den-run-ai/pystachy/blob/main/examples/json_repair/README.md) | Repair malformed JSON through a native CLI or a CPython extension. |
 | [Byte BPE](https://github.com/den-run-ai/pystachy/blob/main/examples/byte_bpe/README.md) | Train a byte tokenizer and encode/decode Unicode text natively. |
 | [Coding agent](https://github.com/den-run-ai/pystachy/blob/main/examples/agent/README.md) | Run a typed tool loop and edit files from a native executable. |
+| [AskMe](https://github.com/den-run-ai/pystachy/blob/main/examples/askme/README.md) | Build a complete planning coding agent, checked against its Python reference. |
 | [nanoGPT](https://github.com/den-run-ai/pystachy/blob/main/examples/nanogpt/README.md) | Run inference and training without CPython, NumPy or PyTorch; BLAS is optional. |
 
 [All examples](https://github.com/den-run-ai/pystachy/blob/main/examples/README.md) lists the smaller tools, such as CSV statistics,

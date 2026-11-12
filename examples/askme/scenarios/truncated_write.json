@@ -1,0 +1,279 @@
+{
+  "prompt": "Write log.txt and list.txt",
+  "args": [],
+  "env": {},
+  "files": {},
+  "exit_code": 0,
+  "replay": [
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "{\"tasks\": [\"Write log.txt\", \"Write list.txt\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "askme_replay": {
+        "content_truncated": true,
+        "body": {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {
+                    "id": "call_0",
+                    "type": "function",
+                    "function": {
+                      "name": "write",
+                      "arguments": "{\"arg\": \"log.txt\", \"content\": \"first\\nsecond\\nthi\"}"
+                    }
+                  }
+                ]
+              },
+              "finish_reason": "tool_calls"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 310,
+            "completion_tokens": 42,
+            "total_tokens": 352
+          },
+          "model": "recorded-model"
+        }
+      }
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"log.txt\", \"content\": \"third\\n\", \"append\": true}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "askme_replay": {
+        "content_truncated": true,
+        "body": {
+          "choices": [
+            {
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {
+                    "id": "call_0",
+                    "type": "function",
+                    "function": {
+                      "name": "write",
+                      "arguments": "{\"arg\": \"list.txt\", \"content\": \"partial line with no newline\"}"
+                    }
+                  }
+                ]
+              },
+              "finish_reason": "tool_calls"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 310,
+            "completion_tokens": 42,
+            "total_tokens": 352
+          },
+          "model": "recorded-model"
+        }
+      }
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"list.txt\", \"content\": \"more\\n\", \"append\": true}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"list.txt\", \"content\": \"alpha\\nbeta\\n\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "done",
+                  "arguments": "{}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    }
+  ]
+}

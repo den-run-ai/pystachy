@@ -1,0 +1,125 @@
+{
+  "prompt": "Create note.txt",
+  "args": [
+    "--reasoning-policy",
+    "gated"
+  ],
+  "env": {
+    "LLM_BACKEND": "openrouter",
+    "OPENROUTER_API_KEY": "sk-recorded-not-a-real-key",
+    "OPENROUTER_MODEL": "vendor/requested-model",
+    "OPENROUTER_PROVIDER": "Parasail",
+    "OPENROUTER_ALLOW_FALLBACKS": "0",
+    "OPENROUTER_REQUIRE_PARAMETERS": "1",
+    "OPENROUTER_REASONING_EFFORT": "low",
+    "LLM_CAPABILITY_PROFILE": "legacy-e4b-m1-16k-v1"
+  },
+  "files": {},
+  "exit_code": 0,
+  "replay": [
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "thinking out loud, no JSON"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": "<think>plan it</think>{\"tasks\": [\"Create note.txt\"]}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 120,
+        "completion_tokens": 24,
+        "total_tokens": 144
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "call_0",
+                "type": "function",
+                "function": {
+                  "name": "write",
+                  "arguments": "{\"arg\": \"note.txt\", \"content\": \"not\\u00e9 \\u2713\\n\"}"
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 310,
+        "completion_tokens": 42,
+        "total_tokens": 352
+      },
+      "model": "recorded-model"
+    },
+    {
+      "choices": [
+        {
+          "message": {
+            "content": null,
+            "tool_calls": [
+              {
+                "function": {
+                  "name": "done",
+                  "arguments": {
+                    "reasoning": "ok"
+                  }
+                }
+              }
+            ]
+          },
+          "finish_reason": "tool_calls"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 9,
+        "completion_tokens": 3,
+        "total_tokens": 12,
+        "cost": 0.0002
+      },
+      "provider": "Fallback",
+      "openrouter_metadata": {
+        "endpoints": {
+          "available": [
+            {
+              "provider": "Other",
+              "model": "vendor/other"
+            },
+            {
+              "provider": "Parasail",
+              "model": "vendor/served-model",
+              "selected": true,
+              "attempt": 2
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
