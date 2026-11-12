@@ -208,6 +208,10 @@ explicit role:
   Loads and stores become copies or unknown assignments; a null store (an
   unbound local, or an identity box not made yet) is an unknown assignment. A
   stack tuple's register is a tuple value, not storage.
+- An operation names a slot's address by the slot's type. A container type whose items are
+  still unknown names the same slot (`list[?]` for `list[str]`: `x = []` has that type
+  until a use shows its items', and operations emitted before and after name one slot both
+  ways). No `?` stands for a whole type, so a `dyn` slot is named `dyn` alone.
 - A numeric parameter's identity companion (`%aidN`) also starts with an unknown
   tag, since the caller's box may be null. The compiler's numeric-identity
   predicate identifies the eligible parameters, including optional and joined
@@ -239,7 +243,10 @@ A short-circuit condition such as `flag and isinstance(x, str)` joins in a block
 that holds only a boolean `phi` and a branch on it. An edge into that join whose
 incoming value is known there (a constant, the branch condition that chose the
 edge, or a tag test) goes directly to the matching successor, through that
-test's guards. Other edges reach the join's branch, which is unconstrained.
+test's guards. The join's `phi` has that value on the edge, which may be what the
+next join takes from it: `a and b and isinstance(x, str) and f(x)` makes three
+joins, each fed the one before, and the edge goes through each in turn. Other
+edges reach the join's branch, which is unconstrained.
 Blocks and nodes that nothing reaches cannot run and are omitted. Facts about a
 location that no later node reads are not kept in the certificate. The report
 counts omitted blocks, threaded edges, paired guards and escaped slots.

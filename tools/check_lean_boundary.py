@@ -98,6 +98,36 @@ def name(value, what):
     return value
 
 
+def type_arguments(text):
+    """(name, arguments) of the type name[argument,...], and (text, None) of any other."""
+    start = text.find("[")
+    if start <= 0 or not text.endswith("]"):
+        return text, None
+    arguments, depth, begin = [], 0, start + 1
+    for index in range(start + 1, len(text) - 1):
+        if text[index] == "[":
+            depth += 1
+        elif text[index] == "]":
+            depth -= 1
+        elif text[index] == "," and depth == 0:
+            arguments.append(text[begin:index])
+            begin = index + 1
+    return text[:start], arguments + [text[begin:len(text) - 1]]
+
+
+def same_storage(first, second, inside=False):
+    """Do two type names name one storage? The same name does; so does a container's with
+    the items of an empty one still unknown ("?": the compiler gives x = [] the type list[?]
+    until a use shows its items' type, and operations emitted before and after that then name
+    one slot both ways). Only an argument may be unknown: no "?" stands for a whole type, so a
+    dyn slot is named dyn alone."""
+    if first == second or (inside and "?" in (first, second)):
+        return True
+    (name, arguments), (other, others) = type_arguments(first), type_arguments(second)
+    return (name == other and arguments is not None and others is not None and len(arguments) == len(others)
+            and all(same_storage(arguments[i], others[i], True) for i in range(len(arguments))))
+
+
 def unique_object(pairs):
     result = {}
     for key, value in pairs:
@@ -498,7 +528,9 @@ def normalize_snapshot(snapshot, function):
     def check_operand(operand, label, offset, predecessor=None):
         value = operand["value"]
         if value in slots:
-            require(operand["type"] in {"*" + slots[value], "%ptr", "%addr"}, "slot address has wrong type")
+            require(operand["type"] in {"%ptr", "%addr"} or (
+                operand["type"].startswith("*") and same_storage(operand["type"][1:], slots[value])),
+                "slot address has wrong type")
         elif value == "%idret":
             require(operand["type"] == "*dyn", "identity-return address has wrong type")
         elif value in identity_arguments:
@@ -577,7 +609,9 @@ def normalize_snapshot(snapshot, function):
     # A block that holds only a bool phi and a branch on it joins a short-circuit condition
     # ("flag and isinstance(x, str)"). An edge into it whose incoming value is known (a constant,
     # the branch condition that chose the edge, or a condition of its own block) goes straight
-    # to the matching successor, through that condition's guards.
+    # to the matching successor, through that condition's guards. The join's phi then has that
+    # value, which may be what the next join receives from it ("a and b and isinstance(x, str)
+    # and f(x)": three joins, each fed the one before): the edge goes on through each such join.
     joins = {}
     for block in live:
         operations = block["operations"]
@@ -588,7 +622,8 @@ def normalize_snapshot(snapshot, function):
             phi = operations[0]
             require(len(phi["operands"]) == len(phi["targets"]), "invalid phi")
             joins[block["label"]] = ({target: operand["value"] for operand, target
-                                      in zip(phi["operands"], phi["targets"])}, operations[1]["targets"])
+                                      in zip(phi["operands"], phi["targets"])}, operations[1]["targets"],
+                                     f"%t{phi['results'][0]}")
 
     nodes = []
     payloads = 0
@@ -630,25 +665,31 @@ def normalize_snapshot(snapshot, function):
                          "yes": ("node", {"op": "guard", "value": box, "tags": tags, "yes": yes, "no": stop}),
                          "no": ("node", {"op": "guard", "value": box, "tags": tags, "yes": stop, "no": no})})
 
-    def edge(state, target, known=None):
+    def edge(state, target, known=None, passed=()):
         # a reference to target, threaded through a short-circuit join when its value is known
-        # here; known is a branch condition and its value on this edge
+        # here; known is a branch condition and its value on this edge. A join that is left
+        # with a known value passes it on: its phi is that value in the join after it. passed
+        # holds the joins this edge has gone through (none twice: a cycle of joins is entered).
         nonlocal threaded
-        if target not in joins:
+        if target not in joins or target in passed:
             return target
-        incoming, (yes, no) = joins[target]
+        incoming, (yes, no), phi = joins[target]
         value = incoming.get(state["label"])
+        # (a join holds no other operation: the slots' pairs are as the edge found them)
+        beyond = {"label": target, "pairs": state["pairs"]}
+        passed = passed + (target,)
         if value in {"true", "false"}:
             outcome = value == "true"
         elif known is not None and value == known[0]:
             outcome = known[1]
         elif value in conditions:
             threaded += 1
-            return decide(state, conditions[value], yes, no)
+            return decide(state, conditions[value], edge(beyond, yes, (phi, True), passed),
+                          edge(beyond, no, (phi, False), passed))
         else:
             return target
         threaded += 1
-        return yes if outcome else no
+        return edge(beyond, yes if outcome else no, (phi, outcome), passed)
 
     # Tests of a box's tag: pys_dyn_isa and pys_dyn_role_isa (runtime.c), comparisons of its
     # DynType with a descriptor, the class number a DynType holds, and boolean combinations of
