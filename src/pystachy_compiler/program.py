@@ -162,6 +162,17 @@ def gen_subclass_problem(self, st: Node) -> str:
                     if d.kind == "def":
                         shadow[d.s] = True
                 c = self.classes[c].base
+        root = ""
+        first = ""
+        for secondary in secondaries:
+            # (traits of one class derive from one class of the primary chain, as mypy's do from
+            # Node: a trait of another class there would reorder CPython's method resolution order
+            # around the primary chain's classes between them, which inherit does not follow)
+            t = self.trait_root(primary, secondary) if self.classes[secondary].base != "" else ""
+            if t != "" and root != "" and t != root:
+                return f"traits {short(first)} and {short(secondary)} of one class derive from different classes of its primary base's chain, {short(root)} and {short(t)}: not supported"
+            first = secondary if t != "" and root == "" else first
+            root = t if t != "" else root
         ancestor = primary
         while ancestor in self.classes:
             info = self.classes[ancestor]
@@ -352,22 +363,29 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         generic = r in self.tparams
         for method in role.methods:
             original = role.methods[method]
-            if role.base != "" and self.on_chain(ci.base, original.cls):
+            if role.base != "" and self.on_chain(ci.base, self.declarer(r, method)):
                 continue  # (a trait's from a class of the primary chain, which the primary base has too)
             if r not in b.roles:
-                if method not in b.methods and method in seen and seen[method] != r and method in ci.methods and ci.methods[method].cls == ci.name:
+                # (the classes that define it, not FnInfo.cls: inherit copies a class method that
+                # uses cls for each class that inherits it)
+                own = self.declares(ci.name, method)
+                if method not in b.methods and method in seen and seen[method] != r and own:
                     # (also where the class's own overrides both: a Callable of its bound method
                     # would differ by the base it is read through, adapter's method families)
                     self.line = ci.node.line
                     self.bad_class(ci, f"secondary bases {short(seen[method])} and {short(r)} both declare method '{method}' (not supported, also where {short(ci.name)} overrides it)")
                 seen[method] = seen.get(method, r)
-                own = method in ci.methods and ci.methods[method].cls == ci.name
-                pm = b.methods[method].cls if method in b.methods else ""
+                pm = self.declarer(ci.base, method) if method in b.methods else ""
                 if role.base != "" and own:
                     pass  # (its own comes first, checked against the trait's below)
                 elif role.base != "" and pm != "" and self.derives(r, pm):
                     # (the primary base's is a class's that the trait derives from: the trait's comes
                     # first in CPython's method resolution order, after an earlier secondary base's)
+                    if method not in overrides and original.deco == "classmethod" and original.clsuse:
+                        # (its cls names the trait, where CPython's names the class: compiled for
+                        # the trait, as it is, it would read the trait's class attributes)
+                        self.line = ci.node.line
+                        self.bad_class(ci, f"class method '{method}' of trait {short(r)} uses cls where it overrides that of {short(pm)}: not supported")
                     if method not in overrides:
                         ci.methods[method] = original
                         overrides[method] = True
@@ -464,7 +482,22 @@ def gen_trait_root(self, primary: str, secondary: str) -> str:
     info = self.classes[secondary]
     if info.exc != "" or self.is_dc(secondary) or secondary in self.nts or len(info.roles) > 0 or not fieldless(info.node):
         return ""
-    return info.base if self.on_chain(primary, info.base) else ""
+    return info.base if info.base != primary and self.on_chain(primary, info.base) else ""  # (not primary itself: no consistent MRO)
+
+def gen_declarer(self, c: str, m: str) -> str:
+    # the class of c's primary chain whose own body defines method m (an inherited class method
+    # that uses cls is a copy of its declaration's, inherit), or ""
+    while c in self.classes:
+        if self.declares(c, m):
+            return c
+        c = self.classes[c].base
+    return ""
+
+def gen_declares(self, c: str, m: str) -> bool:
+    # does class c's own body define method m (an accessor x.setter: its def x)
+    nm = m[: m.find(".")] if "." in m else m
+    return len([d for d in self.classes[c].node.kids[0].kids if d.kind == "def" and d.s == nm]) > 0
+
 
 def gen_slotted_trait(self, cls: str, role: str) -> bool:
     # is secondary base role of class cls a trait (trait_root) whose classes up to cls's chain
