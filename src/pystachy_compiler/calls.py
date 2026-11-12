@@ -1421,9 +1421,9 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             self.fn.scalar_reads = True
         # (a sentinel parameter's argument is a T, or the sentinel itself: declare_fn; also as a
         # sentinel parameter of the caller's for the same sentinel that may hold it: only the
-        # sentinel can where its type is object's (store_name), and a dynamic value is tested at
-        # run time, as the caller's tests of it are)
-        sent = f.params[j] in f.sentinels and e.kind == "name" and (e.s == f.sentinels[f.params[j]] or (e.s in self.curfn.sentinels and self.curfn.sentinels[e.s] == f.sentinels[f.params[j]] and (self.static_type(e) == OBJECTC or self.static_type(e) == "dyn")))
+        # sentinel can where its type is object's (store_name), unless a closure assigns it (nlw),
+        # and a dynamic value is tested at run time, as the caller's tests of it are)
+        sent = f.params[j] in f.sentinels and e.kind == "name" and (e.s == f.sentinels[f.params[j]] or (e.s in self.curfn.sentinels and self.curfn.sentinels[e.s] == f.sentinels[f.params[j]] and ((self.static_type(e) == OBJECTC and e.s not in self.nlw) or self.static_type(e) == "dyn")))
         pt = f.sentann[f.params[j]] if f.params[j] in f.sentinels and not sent else f.ptypes[j]
         try:
             arg = self.expr(e, pt if pt != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
