@@ -159,8 +159,9 @@ def gen_class_value_isa(self, v: Val, t: str) -> str:
     self.place(box)
     rec = Val(self.mload("%ptr", self.maddr("%ptr", v.v, "1")), "%ptr")
     r = "false"
-    for k in self.class_value_kinds(clsof(t)):
-        if self.class_value_problem(k) == "":
+    for k in self.class_value_kinds(clsof(t)) + ["None"]:
+        # (NoneType's too, which type(x) of an x that is None gives a typed location)
+        if k == "None" or self.class_value_problem(k) == "":
             x = self.scalar_cmp("eq", rec, Val(self.refl_record(k), "%ptr"))
             r = x if r == "false" else self.scalar("or", [Val(r, "bool"), Val(x, "bool")])
     self.incoming(ph, r, self.cur)
@@ -303,12 +304,23 @@ def gen_class_value_isinst(self, v: Val, k: Val, known: bool) -> Val:
 
 def gen_class_value_issub(self, k: Val, t: Node) -> Val:
     # issubclass(k, t) of class object k: t names an ordinary class, or is a class object
+    named = t.kind == "name" and t.s in self.classes and t.s not in self.ltype
+    anyclass = t.kind == "name" and t.s == "object" and not self.bound("object")
+    # CPython evaluates both arguments before it checks either: the second is read, or
+    # evaluated, before a first that is None raises
+    o = Val("", "")
+    if named:
+        self.isinst_reads(t)
+    elif not anyclass:
+        o = self.expr(t, "")
+        if o.t.startswith("fn[b:") and o.t[5:-1] not in "int float bool str bytes bytearray list dict set frozenset tuple object type range complex memoryview slice".split():
+            # (a builtin function, such as len, is no class: CPython's TypeError)
+            self.err("issubclass() arg 2 must be a class, a tuple of classes, or a union")
     k = self.unwrap(k, "TypeError: issubclass() arg 1 must be a class")
     base = clsof(k.t)
     kinds = self.class_value_kinds(base)
-    if t.kind == "name" and t.s in self.classes and t.s not in self.ltype:
+    if named:
         # (a class named: the classes k may be that derive from it)
-        self.isinst_reads(t)
         if not self.class_value_named(t.s):
             return Val("false", "bool")  # (no ordinary class derives from an exception or enum class)
         if self.derives(base, t.s):
@@ -319,9 +331,8 @@ def gen_class_value_issub(self, k: Val, t: Node) -> Val:
                 isk = self.class_value_is(k, c)
                 out = isk if out.v == "false" else Val(self.scalar('or', [out, isk]), "bool")
         return out
-    if t.kind == "name" and t.s == "object" and not self.bound("object"):
+    if anyclass:
         return Val("true", "bool")  # (every class derives from object, NoneType too)
-    o = self.expr(t, "")
     if o.t == "exctype" or o.t.startswith("fn[b:"):
         return Val("false", "bool")  # (an exception class, or a builtin type such as int: no class k may be derives from one)
     if not is_clsval(unopt(o.t)):
@@ -427,6 +438,11 @@ def gen_class_value_call(self, c: Val, args: list[Node]) -> Val:
     return Val(self.phi(ph), base)
 
 
+# the names NoneType's class object has itself (dir(type(None))): a class attribute of such a
+# name is not read through a class object, which may be NoneType's (but __doc__, a str)
+NONETYPE_NAMES = "__bool__ __class__ __delattr__ __dir__ __doc__ __eq__ __format__ __ge__ __getattribute__ __getstate__ __gt__ __hash__ __init__ __init_subclass__ __le__ __lt__ __ne__ __new__ __reduce__ __reduce_ex__ __repr__ __setattr__ __sizeof__ __str__ __subclasshook__"
+
+
 def gen_class_value_attr(self, k: Val, name: str) -> Val:
     # k.name of class object k, a class attribute (a name the class body binds): that of the
     # class k is, which is C's unless a class deriving from C binds the name anew. NoneType's
@@ -438,8 +454,12 @@ def gen_class_value_attr(self, k: Val, name: str) -> Val:
     for c in kinds:
         if k.v == self.refl_record(c):
             return self.coerce(self.class_attr(mk("name", c, self.line, []), name), t)  # (the class a constant names)
+    if name in NONETYPE_NAMES.split() and not (name == "__doc__" and t == "str"):
+        self.err(f"reading {name} through a class object ({typestr(k.t)}) is not supported: the value may be NoneType's class object, which has its own {name}")
     end = self.label()
     ph = Ins("phi", t, "")
+    vals: list[Val] = []
+    edges: list[str] = []
     for c in kinds:
         hit = self.label()
         miss = self.label()
@@ -447,13 +467,24 @@ def gen_class_value_attr(self, k: Val, name: str) -> Val:
         self.place(hit)
         v = self.coerce(self.class_attr(mk("name", c, self.line, []), name), t)
         self.incoming(ph, v.v, self.cur)
+        vals.append(v)
+        edges.append(self.cur)
         self.br(end)
         self.place(miss)
-    self.raise_("AttributeError", self.sconst(f"type object 'NoneType' has no attribute '{name}'"))
-    if len(kinds) == 0:
-        return Val("undef", t)
+    if name == "__doc__":
+        # (NoneType's own, which CPython reads of the class object of None)
+        v = Val(self.sconst("The type of the None singleton."), "str")
+        self.incoming(ph, v.v, self.cur)
+        vals.append(v)
+        edges.append(self.cur)
+        self.br(end)
+    else:
+        self.raise_("AttributeError", self.sconst(f"type object 'NoneType' has no attribute '{name}'"))
+        if len(kinds) == 0:
+            return Val("undef", t)
     self.place(end)
-    return Val(self.phi(ph), t)
+    # (a number keeps the identity of the class attribute it is, as a read through the class does)
+    return self.numeric_phi(Val(self.phi(ph), t), vals, edges)
 
 
 def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str, resultsoft: bool) -> Val:
@@ -490,6 +521,8 @@ def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str,
     valued = t != "" and t != "None"
     end = self.label()
     ph = Ins("phi", t if valued else "int", "")
+    vals: list[Val] = []
+    edges: list[str] = []
     for c in kinds:
         hit = self.label()
         miss = self.label()
@@ -500,9 +533,13 @@ def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str,
         self.making.pop()
         if not self.term:
             if valued:
-                self.incoming(ph, self.coerce(r, t).v, self.cur)
+                r = self.coerce(r, t)
+                self.incoming(ph, r.v, self.cur)
+                vals.append(r)
+                edges.append(self.cur)
             self.br(end)
         self.place(miss)
     self.raise_("AttributeError", self.sconst(f"type object 'NoneType' has no attribute '{name}'"))
     self.place(end)
-    return Val(self.phi(ph), t) if valued else Val("null", "None")
+    # (a number that a call returns keeps its identity, as the call through the class does)
+    return self.numeric_phi(Val(self.phi(ph), t), vals, edges) if valued else Val("null", "None")
