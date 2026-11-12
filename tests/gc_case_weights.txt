@@ -1273,7 +1273,6 @@ default rejection 398
 29019 tests/errors/library/lib_statistics_harmonic_mean.py
 29037 tests/errors/library/lib_statistics_kde.py
 29220 tests/errors/library/lib_statistics_kde_random.py
-29106 tests/errors/library/lib_statistics_linear_regression.py
 28986 tests/errors/library/lib_statistics_mean.py
 29032 tests/errors/library/lib_statistics_median_str.py
 28856 tests/errors/library/lib_statistics_mode_float.py
