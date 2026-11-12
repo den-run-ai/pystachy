@@ -4097,7 +4097,12 @@ static uint64_t hval(I k, const char *d) {
     return 0x9E3779B97F4A7C15ULL;
   }
   if (*d == '?') d++;
-  if (*d == 'F') { uint64_t h = (uint64_t)hfset((Set *)k); return h ? h : 1; }   /* (of the hashes its table keeps: no code runs) */
+  if (*d == 'F') {   /* (of the hashes its table keeps: no code runs) */
+    /* where its elements' hashes are CPython's (an H<id> or A in its descriptor), so is its own,
+       in a table that keeps CPython's hashes (khash), 0 too: hcls takes it, as for a tuple's */
+    for (const char *c = d, *z = skip(d); c < z; c++) if (*c == 'H' || *c == 'A') return 0;
+    uint64_t h = (uint64_t)hfset((Set *)k); return h ? h : 1;
+  }
   if (*d != 'T') { Dict t = {.kind = *d == 's'}; return hsh(&t, k); }   /* (a P<id>'s: its address's) */
   uint64_t h = 0x27D4EB2F165667C5ULL; const char *e = d + 2;
   for (int i = 0; i < d[1] - '0'; i++) {
