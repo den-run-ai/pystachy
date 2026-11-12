@@ -6,6 +6,7 @@ The existing JSON repair process and agent loopback-HTTP checks run unchanged, a
 recorded JSON repair corpus is replayed through native JIT and AOT builds of the port.
 """
 import argparse
+from contextlib import nullcontext
 from dataclasses import dataclass
 import json
 import os
@@ -92,13 +93,14 @@ def detail(label, command, timeout, status, stdout, stderr):
             f"stdout={stdout!r}\nstderr={stderr!r}")
 
 
-def run(label, command, env, cwd, status=0, timeout=120):
+def run(label, command, env, cwd, status=0, timeout=120, process_scope=None):
     """Kill the whole owned process group on timeout, including a driver's children.
     status=None leaves the exit status to the caller."""
     try:
         with subprocess.Popen(command, env=env, cwd=cwd, stdin=subprocess.DEVNULL,
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              start_new_session=True) as process:
+                              start_new_session=True) as process, \
+                (process_scope(process) if process_scope is not None else nullcontext()):
             try:
                 stdout, stderr = process.communicate(timeout=timeout)
             except BaseException as exc:
