@@ -5,6 +5,9 @@ Measured on 11 November 2026 at Pystachy `b40ee87` (v0.4.0-alpha.4) against the 
 release the repository already pins, 2.4.1. On 12 November the import sweep and the
 probes gave the same counts at `6e02b36` (v0.4.0-alpha.6): 26 of 242 and 27 of 50.
 
+Tracked in [#1322](https://github.com/den-run-ai/pystachy/issues/1322) and its sub-issues
+#1323 to #1331.
+
 ## Proposal
 
 Compile upstream mypy, unmodified, into a Python-free executable with Pystachy; qualify
