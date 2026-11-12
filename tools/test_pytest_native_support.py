@@ -268,7 +268,8 @@ class NativeHelperTests(unittest.TestCase):
             env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
             if os.environ.get("PYSTACHY_LLVM"):
                 env["PYSTACHY_LLVM"] = os.environ["PYSTACHY_LLVM"]
-            env.update(PYSTACHY_PATH=str(TOOLS), PYSTACHY_CACHE=str(directory / "cache"),
+            # (A compiler outside the checkout, such as CI's verified one, finds lib/ through its home.)
+            env.update(PYSTACHY_PATH=str(TOOLS), PYSTACHY_CACHE=str(directory / "cache"), PYSTACHY_HOME=str(ROOT),
                        PYSTACHY_IRCHECK="1", PYTHONPATH=str(TOOLS), PYTHONDONTWRITEBYTECODE="1")
             expected = subprocess.run([sys.executable, str(source), str(directory / "python.jsonl")],
                                       env=env, capture_output=True, text=True, timeout=30)
