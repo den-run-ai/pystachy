@@ -4,7 +4,7 @@ Each suite keeps its own import directory and process. This is an explicit set
 of independent suites, not cross-directory pytest collection or a timing tool.
 """
 import argparse
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass
 import json
@@ -203,7 +203,11 @@ def run_selected(selected, modes, args):
         else:
             with ThreadPoolExecutor(max_workers=workers) as executor:
                 try:
-                    results = [item for lane_rows in executor.map(lane, range(workers)) for item in lane_rows]
+                    futures = [executor.submit(lane, index) for index in range(workers)]
+                    # A later worker can fail while an earlier worker is still
+                    # blocked in a subprocess. Observe that failure immediately;
+                    # inventory order is restored by the offset sort below.
+                    results = [item for future in as_completed(futures) for item in future.result()]
                 except BaseException:
                     # Cancel before the executor waits for workers, otherwise
                     # an interrupted coordinator could wait every suite timeout.

@@ -106,9 +106,18 @@ class WorkloadSuites(unittest.TestCase):
 
     def test_interruption_kills_owned_children_and_stops_queued_suites(self):
         barrier = threading.Barrier(2)
+        started = threading.Event()
         called = []
         exits = []
-        selected = [suites.Suite(name, name) for name in ("interrupt", "running", "queued")]
+        selected = [suites.Suite(name, name) for name in ("running", "interrupt", "queued")]
+        real_executor = suites.ThreadPoolExecutor
+
+        class OrderedStartExecutor(real_executor):
+            def submit(self, function, index):
+                future = super().submit(function, index)
+                if index == 0 and not started.wait(timeout=10):
+                    raise RuntimeError("first worker did not enter its child process")
+                return future
 
         def run(suite, mode, args):
             called.append(suite.name)
@@ -118,6 +127,10 @@ class WorkloadSuites(unittest.TestCase):
             @contextmanager
             def scope(process):
                 with args.process_scope(process):
+                    # Force the first submitted future to remain blocked while
+                    # a later future interrupts. Submission-order result reads
+                    # would hide cancellation until this child's timeout.
+                    started.set()
                     barrier.wait(timeout=10)
                     yield
 
@@ -129,7 +142,9 @@ class WorkloadSuites(unittest.TestCase):
 
         previous = signal.getsignal(signal.SIGTERM)
         args = SimpleNamespace(**vars(self.args), jobs=2)
-        with patch.object(suites, "run", side_effect=run), self.assertRaises(KeyboardInterrupt):
+        with patch.object(suites, "run", side_effect=run), \
+                patch.object(suites, "ThreadPoolExecutor", OrderedStartExecutor), \
+                self.assertRaises(KeyboardInterrupt):
             suites.run_selected(selected, ["python"], args)
         self.assertEqual(set(called), {"interrupt", "running"})
         self.assertEqual(exits, [-signal.SIGKILL])
