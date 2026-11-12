@@ -614,6 +614,9 @@ typed tuples from `divmod()`) are rejected: narrow first. So are a method call, 
 A comparison method whose parameter is such a union (`other: Money | int`) takes each member.
 No union with a class member is [inferred](#inferred-unions): annotate the variable, as in
 `total: int | Money = 0`. [`sum()` of objects](semantics.md#sums-of-objects) returns one.
+In a module that opts in to [promoting ints](../python-int.md#storage-boundaries), arithmetic
+whose result would join an object with a promoting int is rejected, as its other closed unions
+with one are; `sum()` of objects is not affected.
 
 ## Function and method templates
 
