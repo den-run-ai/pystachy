@@ -1,0 +1,247 @@
+--- mypy/errorcodes.py	2026-11-11 20:25:20.630081379 +0000
++++ mypy/errorcodes.py	2026-11-11 22:26:40.238529971 +0000
+@@ -11,7 +11,7 @@
+ from mypy_extensions import mypyc_attr
+ 
+ error_codes: dict[str, ErrorCode] = {}
+-sub_code_map: dict[str, set[str]] = defaultdict(set)
++sub_code_map: defaultdict[str, set[str]] = defaultdict(set)
+ 
+ 
+ @mypyc_attr(allow_interpreted_subclasses=True)
+--- mypy/nodes.py	2026-11-11 20:25:20.688769721 +0000
++++ mypy/nodes.py	2026-11-11 22:03:52.288719736 +0000
+@@ -3860,7 +3860,7 @@
+     # If defn is TypedDictType, stores information needed for delayed validation of inheritance.
+     typeddict_data: TypedDictData | None
+ 
+-    FLAGS: Final = [
++    FLAGS: Final[list[str]] = [
+         "is_abstract",
+         "is_enum",
+         "fallback_to_any",
+--- mypy/util.py	2026-11-11 20:25:20.847106623 +0000
++++ mypy/util.py	2026-11-12 00:39:41.282054065 +0000
+@@ -16,7 +16,7 @@
+ 
+ from mypy_extensions import i64
+ 
+-orjson: Any
++pass
+ try:
+     import orjson  # type: ignore[import-not-found, no-redef, unused-ignore]
+ except ImportError:
+@@ -371,53 +371,14 @@
+     return cur_mod_id + (("." + target) if target else ""), ok
+ 
+ 
+-fields_cache: Final[dict[type[object], list[str]]] = {}
+-
+-
+-def get_class_descriptors(cls: type[object]) -> Sequence[str]:
+-    import inspect  # Lazy import for minor startup speed win
+-
+-    # Maintain a cache of type -> attributes defined by descriptors in the class
+-    # (that is, attributes from __slots__ and C extension classes)
+-    if cls not in fields_cache:
+-        members = inspect.getmembers(
+-            cls, lambda o: inspect.isgetsetdescriptor(o) or inspect.ismemberdescriptor(o)
+-        )
+-        fields_cache[cls] = [x for x, y in members if x != "__weakref__" and x != "__dict__"]
+-    return fields_cache[cls]
++def get_class_descriptors(cls: object) -> Sequence[str]:
++    raise NotImplementedError("probe patch: class objects as values (#805)")
+ 
+ 
+ def replace_object_state(
+     new: object, old: object, copy_dict: bool = False, skip_slots: tuple[str, ...] = ()
+ ) -> None:
+-    """Copy state of old node to the new node.
+-
+-    This handles cases where there is __dict__ and/or attribute descriptors
+-    (either from slots or because the type is defined in a C extension module).
+-
+-    Assume that both objects have the same __class__.
+-    """
+-    if hasattr(old, "__dict__"):
+-        if copy_dict:
+-            new.__dict__ = dict(old.__dict__)
+-        else:
+-            new.__dict__ = old.__dict__
+-
+-    for attr in get_class_descriptors(old.__class__):
+-        if attr in skip_slots:
+-            continue
+-        try:
+-            if hasattr(old, attr):
+-                setattr(new, attr, getattr(old, attr))
+-            elif hasattr(new, attr):
+-                delattr(new, attr)
+-        # There is no way to distinguish getsetdescriptors that allow
+-        # writes from ones that don't (I think?), so we just ignore
+-        # AttributeErrors if we need to.
+-        # TODO: What about getsetdescriptors that act like properties???
+-        except AttributeError:
+-            pass
+-
++    raise NotImplementedError("probe patch: __dict__ and descriptors")
+ 
+ def is_sub_path_normabs(path: str, dir: str) -> bool:
+     """Given two paths, return if path is a sub-path of dir.
+--- mypyc/ir/ops.py	2026-11-11 20:25:21.371920817 +0000
++++ mypyc/ir/ops.py	2026-11-12 00:39:27.037102849 +0000
+@@ -1458,7 +1458,7 @@
+     LEFT_SHIFT: Final = 203
+     RIGHT_SHIFT: Final = 204
+ 
+-    op_str: Final = {
++    op_str: Final[dict[int, str]] = {
+         ADD: "+",
+         SUB: "-",
+         MUL: "*",
+@@ -1522,7 +1522,7 @@
+     ULE: Final = 108
+     UGE: Final = 109
+ 
+-    op_str: Final = {
++    op_str: Final[dict[int, str]] = {
+         EQ: "==",
+         NEQ: "!=",
+         SLT: "<",
+@@ -1535,8 +1535,8 @@
+         UGE: ">=",
+     }
+ 
+-    signed_ops: Final = {"==": EQ, "!=": NEQ, "<": SLT, ">": SGT, "<=": SLE, ">=": SGE}
+-    unsigned_ops: Final = {"==": EQ, "!=": NEQ, "<": ULT, ">": UGT, "<=": ULE, ">=": UGE}
++    signed_ops: Final[dict[str, int]] = {"==": EQ, "!=": NEQ, "<": SLT, ">": SGT, "<=": SLE, ">=": SGE}
++    unsigned_ops: Final[dict[str, int]] = {"==": EQ, "!=": NEQ, "<": ULT, ">": UGT, "<=": ULE, ">=": UGE}
+ 
+     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+         super().__init__(line)
+@@ -1573,7 +1573,7 @@
+     DIV: Final = 3
+     MOD: Final = 4
+ 
+-    op_str: Final = {ADD: "+", SUB: "-", MUL: "*", DIV: "/", MOD: "%"}
++    op_str: Final[dict[int, str]] = {ADD: "+", SUB: "-", MUL: "*", DIV: "/", MOD: "%"}
+ 
+     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+         super().__init__(line)
+@@ -1631,7 +1631,7 @@
+     LE: Final = 204
+     GE: Final = 205
+ 
+-    op_str: Final = {EQ: "==", NEQ: "!=", LT: "<", GT: ">", LE: "<=", GE: ">="}
++    op_str: Final[dict[int, str]] = {EQ: "==", NEQ: "!=", LT: "<", GT: ">", LE: "<=", GE: ">="}
+ 
+     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+         super().__init__(line)
+--- mypyc/ir/deps.py	2026-11-11 20:25:21.359826738 +0000
++++ mypyc/ir/deps.py	2026-11-12 00:40:06.677069795 +0000
+@@ -56,7 +56,7 @@
+     ) -> None:
+         # Relative path from mypyc/lib-rt, e.g. 'bytes_extra_ops.c'
+         self.path: Final = path
+-        self.include_dirs: Final = include_dirs or []
++        self.include_dirs: Final[list[str]] = include_dirs or []
+         self.internal: Final = internal
+ 
+     def __repr__(self) -> str:
+@@ -86,7 +86,7 @@
+     ) -> None:
+         # Relative path from mypyc/lib-rt, e.g. 'strings/librt_strings.h'
+         self.path: Final = path
+-        self.include_dirs: Final = include_dirs or []
++        self.include_dirs: Final[list[str]] = include_dirs or []
+         self.internal: Final = internal
+ 
+     def __repr__(self) -> str:
+--- mypyc/ir/rtypes.py	2026-11-11 20:25:21.355611298 +0000
++++ mypyc/ir/rtypes.py	2026-11-12 00:53:55.034565730 +0000
+@@ -89,7 +89,7 @@
+     # we never raise an AttributeError and don't need the bitfield
+     # entry.)
+     error_overlap = False
+-    dependencies: tuple[Dependency, ...] | None = None
++    dependencies: list[Dependency] | None = None
+ 
+     @abstractmethod
+     def accept(self, visitor: RTypeVisitor[T]) -> T:
+@@ -233,7 +233,7 @@
+     """
+ 
+     # Map from primitive names to primitive types and is used by deserialization
+-    primitive_map: ClassVar[dict[str, RPrimitive]] = {}
++    primitive_map: dict[str, RPrimitive] = {}
+ 
+     def __init__(
+         self,
+@@ -247,7 +247,7 @@
+         size: int = PLATFORM_SIZE,
+         error_overlap: bool = False,
+         may_be_immortal: bool = True,
+-        dependencies: tuple[Dependency, ...] | None = None,
++        dependencies: list[Dependency] | None = None,
+     ) -> None:
+         RPrimitive.primitive_map[name] = self
+ 
+@@ -259,7 +259,7 @@
+         self._ctype = ctype
+         self.size = size
+         self.error_overlap = error_overlap
+-        self._may_be_immortal = may_be_immortal and HAVE_IMMORTAL
++        self._may_be_immortal: bool = may_be_immortal and HAVE_IMMORTAL
+         self.dependencies = dependencies
+         if ctype == "CPyTagged":
+             self.c_undefined = "CPY_INT_TAG"
+@@ -539,23 +539,25 @@
+ # Python range object.
+ range_rprimitive: Final = RPrimitive("builtins.range", is_unboxed=False, is_refcounted=True)
+ 
++_DEPS_NONE: list[Dependency] = []
++_DEPS_STRINGS: list[Dependency] = [LIBRT_STRINGS]
+ KNOWN_NATIVE_TYPES: Final = {
+     name: RPrimitive(name, is_unboxed=False, is_refcounted=True, dependencies=deps)
+     for name, deps in [
+-        ("librt.internal.WriteBuffer", ()),
+-        ("librt.internal.ReadBuffer", ()),
+-        ("librt.strings.BytesWriter", (LIBRT_STRINGS,)),
+-        ("librt.strings.StringWriter", (LIBRT_STRINGS,)),
++        ("librt.internal.WriteBuffer", _DEPS_NONE),
++        ("librt.internal.ReadBuffer", _DEPS_NONE),
++        ("librt.strings.BytesWriter", _DEPS_STRINGS),
++        ("librt.strings.StringWriter", _DEPS_STRINGS),
+     ]
+ } | {
+     "librt.random.Random": RPrimitive(
+-        "librt.random.Random", is_unboxed=False, is_refcounted=True, dependencies=(LIBRT_RANDOM,)
++        "librt.random.Random", is_unboxed=False, is_refcounted=True, dependencies=[LIBRT_RANDOM]
+     ),
+     "librt.threading.Lock": RPrimitive(
+         "librt.threading.Lock",
+         is_unboxed=False,
+         is_refcounted=True,
+-        dependencies=(LIBRT_THREADING,),
++        dependencies=[LIBRT_THREADING],
+     ),
+ }
+ 
+@@ -797,7 +799,7 @@
+ 
+     def __init__(self, types: list[RType]) -> None:
+         self.name = "tuple"
+-        self.types = tuple(types)
++        self.types: list[RType] = list(types)
+         self.is_refcounted = any(t.is_refcounted for t in self.types)
+         # Generate a unique id which is used in naming corresponding C identifiers.
+         # This is necessary since C does not have anonymous structural type equivalence
+@@ -1096,7 +1098,7 @@
+         self.name = "vec[%s]" % item_type
+         self.item_type = item_type
+         self.names = ["len", "items"]
+-        self.dependencies = (LIBRT_VECS,)
++        self.dependencies = [LIBRT_VECS]
+         if isinstance(item_type, RUnion):
+             non_opt = optional_value_type(item_type)
+         else:
