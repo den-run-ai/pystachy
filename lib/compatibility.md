@@ -192,6 +192,47 @@ Not supported, as compile-time errors:
   template class, which a class cannot derive from. `add_fallback()` takes another
   `NullTranslations`, which answers as the identity.
 
+### `pprint`
+
+CPython's `pprint`, with marked edits. `pformat()`, `pprint()`, `pp()`, `saferepr()`,
+`isreadable()`, `isrecursive()` and `PrettyPrinter` (its `pformat()`, `pprint()`, `format()`,
+`isreadable()` and `isrecursive()`) work with `indent`, `width`, `depth`, `compact`, `sort_dicts`
+and `underscore_numbers`, on `sys.stdout` or a stream with `write()`
+([test](../tests/programs/library/lib_pprint.py)).
+
+CPython chooses how to write a value by `type(value).__repr__`. Here the value's static type
+chooses, as in [`copy`](#copy). Dicts, lists, tuples, sets, frozensets, strs and bytes are wrapped as
+CPython wraps them, at any nesting ([strs and bytes](../tests/programs/library/lib_pprint_text.py)),
+also as members of a union or an optional type. Every other value is written as its `repr()`:
+numbers, `None`, enum members, NamedTuples and objects of classes
+([test](../tests/programs/library/lib_pprint_values.py)). Selected methods of CPython's
+`test_pprint` run compiled ([upstream cases](../tests/programs/upstream/upstream_pprint.py)).
+
+Differences from CPython:
+- An object of a dataclass, of a `collections` class (`deque`, `OrderedDict`, `defaultdict`,
+  `Counter`) or of `types.MappingProxyType` stays on one line where it is wider than the width.
+  CPython wraps its fields or items ([deviation](../tests/deviations/lib_pprint_wide_objects.py)).
+- Nothing is found recursive: there is no `id()` to find a container again by. `isrecursive()`
+  is `False`, and the `context` that `format()` takes stays empty. A value of a static type holds
+  itself only through an object of a class, which is written as its `repr()`, or as a list or
+  dict of a [recursive value alias](../docs/language/typing.md#recursive-value-aliases-prototype),
+  where the recursion limit raises `RecursionError` and CPython writes `<Recursion on list ...>`
+  ([deviation](../tests/deviations/lib_pprint_recursive_alias.py)).
+- Keys and set items whose `<` raises `TypeError` as the program runs, such as the members of
+  an `Enum`, keep the order of their dict or set. CPython orders them by `id()`.
+- `isreadable()` is `False` for a value whose `repr()` is empty, where CPython gives `''`.
+
+Not supported, as compile-time errors:
+- A dict's keys or a set's items that are objects of a class without `__lt__()`. They are sorted
+  with `<`, also for `sort_dicts=False`, whose code compiles with the rest
+  ([error test](../tests/errors/library/lib_pprint_unordered_keys.py)).
+- `Any` values of a module that opts in to [dynamic `Any`](../docs/dynamic-any.md)
+  ([error test](../tests/errors/library/lib_pprint_any.py)).
+- A tuple of more than nine items of different types, which has no `repr()` either, and a
+  NamedTuple of more than nine such fields.
+- A subclass of `PrettyPrinter`. Its `stream` takes its argument's type, which makes it a
+  template class. `indent` and `width` are ints, and the flags are bools.
+
 ## Regular expressions
 
 ### `re`
