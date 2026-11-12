@@ -12,7 +12,7 @@ free-threaded CPython, and how the design compares with other implementations. T
 |---|---|
 | `async def f(...) -> R` | A call makes a coroutine object and runs none of the body. Its type is `Coroutine[Y, None, R]`: `Y` is what its awaits yield to the code that runs it, inferred from them (`None` until one yields something else), and `R` the annotation or what its returns return |
 | `await x` | Runs `x` until it returns, yielding what `x` yields to the code that runs this coroutine; its value is what `x` returns. `x` is a coroutine, a generator of a `@types.coroutine` generator function, or an object whose `__await__` is a generator method |
-| `await` of anything else | `TypeError: object int can't be used in 'await' expression`, as CPython raises it, also for a generator that `types.coroutine` does not mark |
+| `await` of anything else | `TypeError: object int can't be used in 'await' expression`, as CPython raises it, also for a generator that `types.coroutine` does not mark; an `__await__` that is a `@types.coroutine` generator raises `TypeError: __await__() returned a coroutine` |
 | A coroutine awaited again | `RuntimeError: cannot reuse already awaited coroutine`; one suspended where something else awaits it, `RuntimeError: coroutine is being awaited already` |
 | `c.send(None)`, `c.throw(e)`, `c.close()` | Run, throw into or close `c` as a generator's methods do, through each await (PEP 380). A finished coroutine's `send()` and `throw()` raise `RuntimeError: cannot reuse already awaited coroutine`; a `StopIteration` that leaves one is `RuntimeError: coroutine raised StopIteration` |
 | `Coroutine[Y, None, R]` | An annotation of a variable, parameter or field that holds coroutines (`typing`'s or `collections.abc`'s) |

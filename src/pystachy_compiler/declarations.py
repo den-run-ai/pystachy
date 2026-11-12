@@ -1157,7 +1157,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     deco = ""
     stub = False  # (an imported module's that no def follows: see typing_forms)
     for x in d.kids[3:]:
-        if x.s != "async" and deco == "" and not self.coro_deco(x):
+        if x.s != "async" and deco == "" and not self.coro_deco(x, {}):
             deco = x.s  # (not async's keyword, nor @types.coroutine's mark: coroutines.py)
         stub = stub or self.imported(x.s) == "typing.overload"
     if cls != "" and len(d.kids) == 4 and len(d.kids[3].kids) == 0 and (deco == "staticmethod" or deco == "classmethod"):
@@ -1262,7 +1262,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     if cls in self.classes and self.classes[cls].origin != "" and (template_ok(d.s) or init):
         f.generic = True  # (a specialization's methods: compiled where they are called, see specialize)
     gbad = self.gen_declare(f, d) if has_kind(d.kids[2], "yield") and not self.rtmode else self.coro_declare(f, d) if is_async(d) and not self.rtmode else ""
-    awaits = [x for x in d.kids[3:] if self.coro_deco(x)]
+    awaits = [x for x in d.kids[3:] if self.coro_deco(x, {})]
     if len(awaits) > 0 and gbad == "":
         # @types.coroutine: await takes the generators of this generator function (coroutines.py)
         if not f.gen or f.aio or len(awaits) > 1:
@@ -1353,7 +1353,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         f.npos = len(f.params) if f.kwarg < 0 else f.kwarg
     if f.vararg >= 0:
         f.npos = f.vararg
-    others = [x for x in d.kids[3:] if x.s != "async" and not self.coro_deco(x)]
+    others = [x for x in d.kids[3:] if x.s != "async" and not self.coro_deco(x, {})]
     if len(others) > 0 and f.deco == "" and not f.prop and f.acc == "" and not f.extern and not f.pyexport:
         bad = f"decorator @{others[0].s} on an async def is not supported" if is_async(d) else f"unsupported decorator @{others[0].s}"
         bad = STUB.replace("NAME", short(d.s)) if stub else bad

@@ -205,7 +205,7 @@ def gen_applies(self, st: Node, top: bool, loc: dict[str, bool]) -> bool:
     # INERT_DECOS (ffi.extern; staticmethod and the like, which declare_fn rejects there). One
     # named by a variable of the function the def is in (loc) is that variable, not an import
     for x in st.kids[3:]:
-        if x.s == "async" or self.coro_deco(x):
+        if x.s == "async" or self.coro_deco(x, loc):
             continue  # (the async keyword, and @types.coroutine's mark: coroutines.py)
         if (x.s[: x.s.find(".")] if "." in x.s else x.s) in loc:
             return True
@@ -236,7 +236,10 @@ def gen_decorate(self, n: Node) -> Val:
     # (wrap_names), as CPython's update_wrapper() does
     callees: list[Node] = []
     wraps: list[list[Val]] = []  # (of each decorator, @wraps(...)'s argument values, else none)
-    decos = [x for x in n.kids[3:] if x.s != "async" and not self.coro_deco(x)]  # (from the bottom up, as the parser adds them)
+    loc: dict[str, bool] = {}  # (a variable of the function hides an import: coro_deco)
+    if not self.modlevel:
+        loc = self.scope_names()
+    decos = [x for x in n.kids[3:] if x.s != "async" and not self.coro_deco(x, loc)]  # (from the bottom up, as the parser adds them)
     for i in range(len(decos) - 1, -1, -1):
         self.line = decos[i].line
         self.modchk(decos[i])  # (a name that an import in a try statement binds: Loader.qdeco)
@@ -450,7 +453,10 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     idx = len(self.closures)
     # (its decorators apply to the closure: decorate; but async's keyword and @types.coroutine's
     # mark, which are no calls: coroutines.py)
-    f = self.declare_fn(mk("def", d.s, d.line, d.kids[:3] + [x for x in d.kids[3:] if x.s == "async" or self.coro_deco(x)]), "")
+    around: dict[str, bool] = {}  # (the variables of the function n is in: coro_deco)
+    if not self.modlevel:
+        around = self.scope_names()
+    f = self.declare_fn(mk("def", d.s, d.line, d.kids[:3] + [x for x in d.kids[3:] if x.s == "async" or self.coro_deco(x, around)]), "")
     f.ll = f"@c.{idx}"
     f.name = qual
     f.mod = outer.mod

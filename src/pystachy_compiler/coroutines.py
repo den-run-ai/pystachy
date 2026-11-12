@@ -49,11 +49,30 @@ def direct_name(x: Node) -> str:
     return x.kids[0].s
 
 
+def definition_time(n: Node) -> list[Node]:
+    # what the code around def or lambda n evaluates where n runs: its parameters' defaults and a
+    # def's decorator expressions, not its body
+    out: list[Node] = []
+    for p in n.kids[0].kids:
+        if len(p.kids) > 1 and p.kids[1].kind != "noann":
+            out.append(p.kids[1])
+    if n.kind == "def":
+        for x in n.kids[3:]:
+            for e in x.kids:
+                out.append(e)  # (a decorator with arguments, or not a dotted name: its expression)
+    return out
+
+
 def await_sites(n: Node, out: list[Node]) -> bool:
-    # the awaits of code n (outside the functions, classes and lambdas it defines), in out; False
-    # where it also holds an async for, an async with or an asynchronous comprehension, which
-    # await implicitly
-    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "lambda":
+    # the awaits of code n (outside the functions, classes and lambdas it defines, but in their
+    # defaults and decorators, which run here), in out; False where it also holds an async for,
+    # an async with or an asynchronous comprehension, which await implicitly
+    if n.kind == "def" or n.kind == "lambda":
+        for e in definition_time(n):
+            if not await_sites(e, out):
+                return False
+        return True
+    if n.kind == "class" or n.kind == "subclass":
         return True
     if n.kind == "async" or n.kind == "asynccomp":
         return False
@@ -67,10 +86,15 @@ def await_sites(n: Node, out: list[Node]) -> bool:
 
 def shadowing(n: Node, out: dict[str, bool]) -> None:
     # the names that code n binds besides its statements' targets (outside the functions,
-    # classes and lambdas it defines): its comprehensions' targets, local to them, and the names
-    # := binds, as match captures and type statements do. An await of a call of one there calls
-    # what that name holds, not a module's async def
-    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "lambda":
+    # classes and lambdas it defines, but in their defaults and decorators, which run here): its
+    # comprehensions' targets, local to them, and the names := binds, as match captures and type
+    # statements do. An await of a call of one there calls what that name holds, not a module's
+    # async def
+    if n.kind == "def" or n.kind == "lambda":
+        for e in definition_time(n):
+            shadowing(e, out)
+        return
+    if n.kind == "class" or n.kind == "subclass":
         return
     names: list[str] = []
     if n.kind == "listcomp" or n.kind == "asynccomp":
@@ -176,11 +200,15 @@ def gen_direct_await(self, x: Node) -> FnInfo | None:
     return f
 
 
-def gen_coro_deco(self, x: Node) -> bool:
+def gen_coro_deco(self, x: Node, loc: dict[str, bool]) -> bool:
     # is decorator x @types.coroutine (or a name that a from import binds to it): it marks a
     # generator function whose generators await takes (FnInfo.awaitable), and changes nothing
-    # else that Pystachy compiles, as CPython's sets a flag on the function's code
+    # else that Pystachy compiles, as CPython's sets a flag on the function's code. Not where
+    # its name, or the module's (types.coroutine), is a variable of the function the def is in
+    # (loc), which hides the import: that decorator is called, as any other
     if x.kind != "deco" or len(x.kids) > 0 or x.s == "async":
+        return False
+    if (x.s[: x.s.find(".")] if "." in x.s else x.s) in loc:
         return False
     key = self.imported(x.s) if self.imported(x.s) != "" else x.s
     return key == TYPESMOD + ".coroutine" or key == "types.coroutine"
@@ -348,6 +376,10 @@ def gen_await_value(self, n: Node, want: str) -> Val:
         it = self.expr(mk("call", "", n.line, [mk("attr", "__await__", n.line, [self.vnode(v)])]), "")
         own = self.gencallf if self.gencall != "" and it.v == self.gencall else None
         self.gencall = ""
+        if is_gen(it.t) and own is not None and own.awaitable:
+            # (a @types.coroutine generator is a coroutine, which __await__ may not return: PEP 492)
+            self.raise_("TypeError", self.sconst("__await__() returned a coroutine"))
+            return self.await_dead(want)
         if is_gen(it.t) and own is not None:
             if gsend(it.t) != "None":
                 self.err(f"await of {short(v.t)}, whose __await__ takes {typestr(gsend(it.t))} from send(), is not supported: a coroutine is sent None")

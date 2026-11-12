@@ -3445,8 +3445,8 @@ class Gen:
     def coro_declare(self, f: FnInfo, d: Node) -> str:
         return coroutines_coro_declare(self, f, d)
 
-    def coro_deco(self, x: Node) -> bool:
-        return coroutines_coro_deco(self, x)
+    def coro_deco(self, x: Node, loc: dict[str, bool]) -> bool:
+        return coroutines_coro_deco(self, x, loc)
 
     def coro_type(self, y: str, r: str) -> str:
         return coroutines_coro_type(self, y, r)
