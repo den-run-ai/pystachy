@@ -2,6 +2,7 @@
 from __future__ import annotations
 import os
 from src.pystachy_compiler.source_lines import SourceLines
+from src.pystachy_compiler.object_operators import gen_notimplemented as object_notimplemented, gen_object_operator as object_operator, gen_object_op_needed as object_op_needed
 from src.pystachy_compiler.slices import gen_slice_object as slices_slice_object, gen_slice_node as slices_slice_node
 from src.pystachy_compiler.lowering import gen_lower_scalar as scalar_ir_lower_scalar
 from src.pystachy_compiler.scalar_ir import (
@@ -4541,6 +4542,15 @@ class Gen:
 
     def unary(self, n: Node) -> Val:
         return expressions_unary(self, n)
+
+    def notimplemented(self) -> Val:
+        return object_notimplemented(self)
+
+    def object_op_needed(self, op: str, a: str, b: str) -> bool:
+        return object_op_needed(self, op, a, b)
+
+    def object_operator(self, op: str, a: Val, b: Val, shown: str = "", inplace: bool = False, modulus: Val | None = None) -> Val:
+        return object_operator(self, op, a, b, shown, inplace, modulus)
 
     def dunder(self, op: str, a: Val, b: Val, shown: str='') -> Val:
         return expressions_dunder(self, op, a, b, shown)

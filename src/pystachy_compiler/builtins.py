@@ -93,6 +93,8 @@ def gen_dotted(self, n: Node) -> str:
     return ""
 
 def gen_modattr(self, path: str) -> Val:
+    if path == "builtins.NotImplemented":
+        return self.notimplemented()
     if path == "sys.argv":
         return Val(self.rt("pys_argv", "ptr", []), "list[str]")
     if path == "sys.warnoptions":
@@ -922,6 +924,18 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             out = self.int_ucmp('>', Val(self.scalar('sub', [Val(nb, 'int'), Val('2', 'int')]), "int"), Val('34', "int")).v
             nonzero = self.num_cmp("!=", Val(nb, "int"), Val("0", "int")).v
             self.guard(self.scalar('and', [Val(out, 'bool'), Val(nonzero, 'bool')]), "ValueError: int() base must be >= 2 and <= 36, or 0")
+    if name == "pow" and len(vals) == 3 and vals[2].t == "None":
+        return self.arith("**", vals[0], vals[1])
+    if name == "pow" and len(vals) in [2, 3] and (vals[0].t in self.classes or vals[1].t in self.classes):
+        if len(vals) == 2 or vals[2].t == "None":
+            return self.arith("**", vals[0], vals[1])
+        if vals[2].t not in ["int", "bool"]:
+            self.err("three-argument object pow() requires an int or bool modulus, or literal None")
+        if vals[0].t == "dyn" or vals[1].t == "dyn" or is_union(unopt(vals[0].t)) or is_union(unopt(vals[1].t)):
+            self.err("three-argument object pow() requires concrete native operand types")
+        return self.object_operator("**", vals[0], vals[1], "", False, vals[2])
+    if name == "divmod" and len(vals) == 2 and self.object_op_needed("divmod", vals[0].t, vals[1].t):
+        return self.object_operator("divmod", vals[0], vals[1])
     for i in range(len(vals)):
         if vals[i].t == "None" and name in NONERET and len(vals) == 1:
             # None itself (a template's parameter whose argument is None): CPython's error
@@ -1069,8 +1083,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
     v = vals[0]
     t = v.t
     if name == "abs" and len(vals) == 1 and t in self.classes and "__abs__" in self.classes[t].methods:
-        # abs(o) is o.__abs__(), and divmod(o, x) is o.__divmod__(x) (reflected methods
-        # are not supported); for None, CPython's TypeError
+        # abs(o) is o.__abs__(); for None, CPython's TypeError.
         self.notnone(v, "TypeError: bad operand type for abs(): 'NoneType'")
         return self.method(v, "__abs__", [], want, resultsoft)
     if name == "divmod" and len(vals) == 2 and t in self.classes and "__divmod__" in self.classes[t].methods:

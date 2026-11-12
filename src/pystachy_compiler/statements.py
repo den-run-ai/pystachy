@@ -136,7 +136,7 @@ def gen_check_special(self, f: FnInfo) -> None:
     # the special methods Pystachy calls implicitly must have the shape it relies on; in an
     # imported module's class, a wrong one is an error where the method is called, as is a
     # method whose declaration failed (f.bad: its types are placeholders)
-    if (f.name == "__pow__" or f.name == "__ipow__") and f.bad == "" and f.npos < 1:
+    if f.name in ["__pow__", "__rpow__", "__ipow__"] and f.bad == "" and f.npos < 1:
         # Power uses normal argument binding after its prebound receiver, including
         # *args exponents. A variadic receiver cannot take that prebound self.
         self.line = f.node.line
@@ -156,7 +156,7 @@ def gen_check_special(self, f: FnInfo) -> None:
         pass  # (a template: each instance's return type is checked where it is compiled, see instance)
     elif f.name == "__bool__" and f.ret != "bool":
         f.bad = f"__bool__ should return bool, returned {tname(f.ret)}"  # (CPython's TypeError)
-    elif ret != "" and f.ret != ret and not ((f.name == "__len__" or f.name == "__hash__") and f.ret == "bool") and not (ret == "int" and f.ret == BIG):
+    elif ret != "" and f.ret != ret and not (ret == "bool" and f.name != "__bool__" and f.ret in ["notimpl", "union[bool,notimpl]"]) and not ((f.name == "__len__" or f.name == "__hash__") and f.ret == "bool") and not (ret == "int" and f.ret == BIG):
         # (a bool is an int to len() and hash(); a promoting int, of a module that opts in, is one
         # that they take as CPython does: big_len, big_hashed)
         f.bad = f"{f.name} must return {ret}"
@@ -1494,6 +1494,13 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
             rhs = self.vnode(b)
         self.update(cur, [rhs])
         return cur
+    if cur.t in self.classes and cur.t not in self.nts:
+        b = self.expr(rhs, cur.t)
+        if b.t != "dyn" and not is_union(unopt(b.t)):
+            return self.object_operator(op, cur, b, op + "=", True)
+        # The source RHS is already evaluated. Preserve the existing native
+        # in-place method or dynamic/union arithmetic path for an erased RHS.
+        rhs = self.vnode(b)
     if op == "**" and cur.t in self.classes:
         if "__ipow__" in self.classes[cur.t].methods:
             b = self.expr(rhs, cur.t)

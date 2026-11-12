@@ -242,7 +242,6 @@ default rejection 3
 3 tests/errors/classes/obj_call_result.py
 4 tests/errors/classes/obj_float_missing.py
 3 tests/errors/classes/obj_getitem_arity.py
-3 tests/errors/classes/obj_iadd_missing.py
 3 tests/errors/classes/obj_in_not_iterable.py
 7 tests/errors/classes/obj_iter_called.py
 7 tests/errors/classes/obj_iter_dict.py
@@ -274,7 +273,6 @@ default rejection 3
 3 tests/errors/classes/object_sentinel_args.py
 3 tests/errors/classes/object_sentinel_attr.py
 4 tests/errors/classes/object_sentinel_dict_get.py
-3 tests/errors/classes/object_sentinel_eq_class.py
 3 tests/errors/classes/object_sentinel_import_alias.py
 3 tests/errors/classes/object_sentinel_qualified.py
 3 tests/errors/classes/object_sentinel_return.py

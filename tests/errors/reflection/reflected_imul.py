@@ -1,5 +1,5 @@
-# error: reflected_imul.py:13: error: reflected operator methods are not supported (int *= Seq calls Seq.__rmul__)
-# int has no __imul__, and int.__mul__ declines a Seq: CPython calls Seq.__rmul__(s, 2)
+# error: expected int, got Seq
+# Reflected dispatch works, but this augmented assignment cannot retype a stored int as Seq.
 class Seq:
     def __init__(self, xs: list[int]) -> None:
         self.xs = xs

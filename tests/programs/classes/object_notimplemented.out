@@ -1,0 +1,60 @@
+evaluate left
+evaluate right
+left 1
+10
+evaluate left
+evaluate right
+left 1
+right 1
+11
+left 1
+True
+left 2
+True
+NotImplemented NotImplemented True
+maybe None
+None
+maybe None
+None fallback
+None
+maybe None
+False
+maybe None
+True
+child decline
+base decline
+unsupported operand type(s) for +: 'Base' and 'Child'
+base decline
+unsupported operand type(s) for +: 'Child' and 'Base'
+base decline
+unsupported operand type(s) for +: 'Child' and 'Child'
+inplace decline 4
+binary after inplace 5
+10 5 False
+raises first
+stop
+divmod forward
+(1, 2)
+divmod forward
+divmod reflected
+(3, 4)
+power 7
+7
+power 100
+100
+power 100
+reflected power
+200
+power 7
+unsupported operand type(s) for ** or pow(): 'Power', 'Exponent', 'int'
+reference result True
+True
+reference result False
+reference fallback
+True
+8
+None
+10
+20
+unsupported operand type(s) for ** or pow(): 'int', 'Exponent', 'int'
+[exit 0]

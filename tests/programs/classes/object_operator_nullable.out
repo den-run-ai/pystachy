@@ -1,0 +1,11 @@
+True True True
+True True True
+['eq', 'ne', 'lt', 'eq', 'eq', 'eq', 'lt']
+True False
+AttributeError
+AttributeError
+['eq', 'eq']
+True True
+True True False False
+['aware', 'aware', 'aware', 'aware', 'aware', 'aware']
+[exit 0]

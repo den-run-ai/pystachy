@@ -155,9 +155,6 @@ no effect. The shared runtime cache is independent of this setting.
 - **Missing return:** a value-returning function reaching its end raises
   `RuntimeError`. Supported optional returns and templates returning objects or
   optional values return `None`; see [typing](typing.md#function-and-method-templates).
-- **Operators on `None`:** an optional left operand whose class defines an
-  arithmetic/bitwise operator raises `TypeError` when it is `None`, even if
-  CPython would call the right operand's reflected method.
 - **Direct dataclass comparisons:** generated `__eq__`/ordering methods called
   directly compare fields or raise `TypeError` for another class; `__eq__(None)`
   is false. CPython returns `NotImplemented`. Operator syntax declines such
@@ -480,9 +477,9 @@ See [object protocols](semantics.md#object-protocols) and
   classes lacking `__iter__` in comprehensions or `str.join`; inheritance-hierarchy
   constructors calling `iter()` or accepting `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
-  fallback for `reversed`; reflected arithmetic; `NotImplemented`; object or optional
-  numeric power exponents; three-argument object `pow`. Before `**=`, narrow a base-typed
-  receiver if only its subclass defines `__ipow__`.
+  fallback for `reversed`; arbitrary object or nullable moduli in ternary object `pow`;
+  operator fallback paths without a common concrete result type. Native `NotImplemented`
+  results and ordinary reflected arithmetic are supported; see [object protocols](semantics.md#object-protocols).
 - **Comparisons:** equality between unrelated ordinary classes outside inheritance
   hierarchies when the left operand has no applicable comparison method; methods whose
   parameter type excludes a possible operand. The method restriction covers direct

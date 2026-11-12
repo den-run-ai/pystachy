@@ -1,0 +1,10 @@
+class V:
+    def __pow__(self, exponent: int | None) -> int:
+        return 7
+
+
+def apply(exponent: int | None) -> int:
+    return V() ** exponent
+
+
+print(apply(2))

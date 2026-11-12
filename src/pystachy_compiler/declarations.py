@@ -39,6 +39,7 @@ from src.pystachy_compiler.specs import (
     TYPEMODS,
     TYPEVAR,
     TYPE_SIZE,
+    TYPESMOD,
     TYPING,
     UNARY,
     UNCALLED,
@@ -154,6 +155,8 @@ def gen_ann(self, n: Node) -> str:
     # the type annotation n denotes, or "!" and why Pystachy does not support it (typeof's error,
     # which a declaration in an imported module defers to where the program uses it)
     k = n.kind
+    if self.imported_ref(n) == TYPESMOD + ".NotImplementedType":
+        return "notimpl"
     if k == "None":
         return "None"
     if k == "str":
@@ -986,7 +989,7 @@ def gen_optional(self, t: str) -> str:
     if is_union(t):
         # (a union that holds a class's objects may be None, as the class's objects may)
         return t if len([m for m in umembers(t) if m in self.classes]) > 0 else self.ctype("opt", [t])
-    if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
+    if (t == "str" or t == "bytes" or t == "notimpl" or t == "exc" or t == "exctype" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""
 

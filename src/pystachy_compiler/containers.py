@@ -1030,6 +1030,8 @@ def gen_none_arg(self, m: str, k: int) -> str:
     return f"TypeError: {m}() argument {k} must be str, not None"
 
 def gen_to_str(self, v: Val) -> Val:
+    if v.t == "notimpl":
+        return Val(self.sconst("NotImplemented"), "str")
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         return self.dyn_str(self.dyn_box(v))
     t = v.t
@@ -1236,6 +1238,8 @@ def gen_hashable(self, t: str) -> bool:
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
 def gen_repr(self, v: Val) -> Val:
+    if v.t == "notimpl":
+        return Val(self.sconst("NotImplemented"), "str")
     if self.dyn_policy(self.line) and self.refl_builtin_class(v.t) != "":
         return self.dyn_repr(self.dyn_box(v))
     if is_kw(v.t):

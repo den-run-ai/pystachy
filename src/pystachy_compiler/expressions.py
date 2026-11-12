@@ -3624,6 +3624,8 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         r = self.ntop(op, a, b, shown)
         if r.t != "":
             return r
+    if self.object_op_needed(op, a.t, b.t):
+        return self.object_operator(op, a, b, shown)
     if op in REFL and (a.t in self.classes or b.t in self.classes):
         return self.richcmp(op, a, b)
     if (op == "==" or op == "!=") and a.t == "None" and b.t in self.classes:
@@ -3804,6 +3806,8 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
     return []
 
 def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
+    if self.object_op_needed(op, a.t, b.t):
+        return self.object_operator(op, a, b)
     # Compare concrete runtime types, including None. Both operands matter: Python gives
     # the right operand's reflected comparison priority when its class is a strict subtype.
     # Each pair of the operands' alternatives (cmp_alts) is compiled as concrete_cmp compiles
@@ -4029,6 +4033,8 @@ def gen_cmp_tags(self, v: Val, alts: list[Val], to: list[str]) -> None:
             self.place(nxt)
 
 def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
+    if self.object_op_needed(op, a.t, b.t):
+        return self.object_operator(op, a, b)
     # Both objects now have known, non-null concrete classes. NotImplemented is outside
     # the subset; a supported comparison method returns bool, so the first one completes.
     p = self.cmp_pick(op, a.t, b.t)
@@ -4700,6 +4706,14 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     return True
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
+    if (a.t == "notimpl" or b.t == "notimpl") and op in ["is", "is not"]:
+        other = b if a.t == "notimpl" else a
+        hit = self.utest(other, ["notimpl"], is_opt(other.t) or self.optional(other.t) == other.t) if is_union(unopt(other.t)) and "notimpl" in umembers(unopt(other.t)) else "true" if other.t == "notimpl" else "false"
+        if other.t == "opt[notimpl]":
+            hit = self.ptr_cmp("!=", other, Val("null", "None")).v
+        return Val(hit if op == "is" else self.scalar("xor", [Val(hit, "bool"), Val("true", "bool")]), "bool")
+    if op in ICMP and self.object_op_needed(op, a.t, b.t):
+        return self.object_operator(op, a, b)
     if self.curfn.cmpops:
         if self.term and (a.v == "undef" or b.v == "undef"):
             return Val("undef", "bool")

@@ -138,6 +138,14 @@ def gen_union_type(self, ts: list[str]) -> str:
     if len(ms) == 1:
         r = self.optional(ms[0]) if none else ms[0]
         return r if r != "" else f"!None/Optional is only supported for {OPTTYPES}, not {typestr(ms[0])}"
+    if "notimpl" in ms:
+        # A decline result uses the ordinary checked union box only where needed.
+        # Do not widen arbitrary mixtures of scalar and native reference storage.
+        if len(ms) != 2 or any(m != "notimpl" and self.umember_problem(m) != "" and not is_tuple(m) for m in ms):
+            return "!NotImplemented may accompany one concrete native result type"
+        ms.sort()
+        u = self.ctype("union", ms)
+        return self.optional(u) if none else u
     for m in ms:
         if self.umember_problem(m) != "":
             return "!" + self.umember_problem(m)
@@ -543,7 +551,7 @@ def gen_joinable(self, t: str) -> bool:
     u = unopt(t)
     if not is_union(u):
         return is_opt(t)
-    return all([m in ["int", "float", "bool", "str"] for m in umembers(u)])
+    return "notimpl" in umembers(u) or all([m in ["int", "float", "bool", "str"] for m in umembers(u)])
 
 
 def gen_replay_state(self) -> list[int]:

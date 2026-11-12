@@ -792,8 +792,10 @@ bodies using it execute normally; a missing field is not a reason to skip the me
 (`tests/programs/inference/dynany_cmp_getattr_default.py`).
 
 A NamedTuple's `!=` is tuple's, also where its class defines `__eq__`. Arithmetic runs reflected
-methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`), which typed code
-rejects: no method can return `NotImplemented`, so the first one that runs gives the result.
+methods in CPython's order too (`tests/programs/inference/dynany_reflected.py`). The dynamic
+dispatcher still requires its selected method to produce a result: native `NotImplemented`
+values cannot become dynamic `Any`. Typed object operators support the bounded declining
+result and fallback sequence described in [object protocols](language/semantics.md#object-protocols).
 
 ## Deviations
 

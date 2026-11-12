@@ -182,6 +182,8 @@ def gen_load_name(self, name: str) -> Val:
         self.err(f"the type of '{short(name)}' is not known yet here, before its module's code assigns it: declare it at module level{self.where_def(src)} first ({short(src)}: T)")
     if name in self.unsupported:
         self.err(self.unsupported[name])
+    if name == "NotImplemented":
+        return self.notimplemented()
     if name in PYBUILTINS and name[0].islower():
         return Val("null", f"fn[b:{name}]")  # (a builtin function, or a class such as int: calling it calls it)
     if is_excname(name):

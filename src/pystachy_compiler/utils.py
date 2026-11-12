@@ -235,6 +235,8 @@ def tname(t: str) -> str:
     # the CPython name of a type, for error messages
     if t.startswith("_pystachy_iterators$"):
         return iterator_name(t)
+    if t == "notimpl":
+        return "NotImplementedType"
     if t == "None":
         return "NoneType"
     if t == "int+":
@@ -615,6 +617,8 @@ def typestr(t: str) -> str:
     # type t for a message: an empty list or dict whose type is not known yet is "list" or "dict",
     # opt[T] is T | None, a builtin exception BaseException, a class its own name, a function value
     # the function (fn_shown)
+    if t == "notimpl":
+        return "NotImplementedType"
     t = recnames(t.replace("[?,?]", "").replace("[?]", "").replace("int+", "int"))
     while "vtuple[" in t:
         a = t.find("vtuple[")
@@ -1118,7 +1122,7 @@ def template_ok(name: str) -> bool:
         return True
     # Power may also declare an optional modulus parameter: normal call binding checks
     # its signature, rather than SPECIAL's fixed binary-method arity.
-    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __ipow__ __deepcopy__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
+    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __rpow__ __ipow__ __divmod__ __rdivmod__ __deepcopy__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
 
 
 def takes_self(f: FnInfo) -> bool:

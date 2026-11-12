@@ -255,6 +255,8 @@ def const_slot(v: Val) -> str:
 
 
 def lower_data(d: Data) -> str:
+    if d.kind == "singleton":
+        return f"{d.name} = private constant i8 0, align 8"
     if d.kind == "string":
         n = len(d.text) + 1
         # The frontend stores one character per UTF-8 byte. Seed the code-point count

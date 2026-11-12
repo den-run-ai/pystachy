@@ -77,6 +77,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/module.py',
     'src/pystachy_compiler/names.py',
     'src/pystachy_compiler/optimizations.py',
+    'src/pystachy_compiler/object_operators.py',
     'src/pystachy_compiler/parser.py',
     'src/pystachy_compiler/patterns.py',
     'src/pystachy_compiler/program.py',
