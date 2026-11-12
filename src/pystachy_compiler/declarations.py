@@ -434,11 +434,23 @@ def gen_typevar_def(self, st: Node) -> bool:
     self.line = st.line
     if len(c.kids) < 2 or c.kids[1].kind != "str":
         self.err(f"{kind}() needs the type variable's name, a string, as its first argument")
+    constraints = 0
+    bound = False
     for a in c.kids[2:]:
-        if a.kind != "kw" or not is_const(a.kids[0]):
-            self.err("a TypeVar's constraints, and a bound other than a string, are not supported")
-        if a.s == "default":
+        # (constraints and a bound only restrict what binds the variable, which the arguments'
+        # types do; Loader.deftime has read them as annotations, which run no code)
+        if a.kind != "kw" and kind == "TypeVar":
+            constraints += 1
+        elif a.kind == "kw" and a.s == "bound" and kind == "TypeVar":
+            bound = True
+        elif a.kind != "kw" or not is_const(a.kids[0]):
+            self.err(f"a {kind}'s arguments other than its name{', constraints and bound' if kind == 'TypeVar' else ''} must be constants")
+        if a.kind == "kw" and a.s == "default":
             self.tvdefaults[st.kids[0].s] = True
+    if constraints == 1:
+        self.err("A single constraint is not allowed (CPython raises this TypeError when the assignment runs)")
+    if constraints > 0 and bound:
+        self.err("Constraints cannot be combined with bound=... (CPython raises this TypeError when the assignment runs)")
     if kind == "TypeVarTuple":
         self.tvtuples[st.kids[0].s] = True
     return True

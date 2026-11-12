@@ -632,6 +632,10 @@ established type, and comparison methods must return `bool`.
 Function annotations mentioning a module-level `TypeVar` or `TypeVarTuple` (also one
 from-imported from another module), or a PEP 695 function type parameter
 (`def identity[T](value: T) -> T`), make those parts of the signature inferred. Generic classes bind their type variables differently, as described below.
+A `TypeVar`'s bound and constraints (`TypeVar("F", bound=FunctionLike)`,
+`TypeVar("S", int, str)`) are not checked: the arguments' types bind the variable. CPython
+evaluates them when the assignment runs, as annotations: the names they read must be bound by then
+(a string bound is a forward reference), and they may not call the program's code.
 A PEP 695 function's `**P` and `*Ts` are such type parameters too, also in its nested defs:
 `def logged[**P, R](fn: Callable[P, R]) -> Callable[P, R]` may return a nested
 `def wrapper(*args: P.args, **kwargs: P.kwargs) -> R` that forwards them (also with
