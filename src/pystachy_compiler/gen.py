@@ -1103,6 +1103,8 @@ from src.pystachy_compiler.program import (
     gen_generic_subclass as program_generic_subclass,
     gen_generic_traits as program_generic_traits,
     gen_implicit_tparams as program_implicit_tparams,
+    gen_iter_abc as program_iter_abc,
+    gen_iterabc_derived as program_iterabc_derived,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
 )
@@ -1627,6 +1629,7 @@ class Gen:
         # V's objects (tv_bound); "~T" where generic V passes its own TypeVar T on
         self.genargs: dict[str, dict[str, list[str]]] = {}
         self.implicitgen: dict[str, bool] = {}  # the classes generic only by their bases' subscripts (program.implicit_tparams)
+        self.iterabc: dict[str, bool] = {}  # the classes whose base was collections.abc's Iterator or Iterable (program.iter_abc)
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
@@ -3724,6 +3727,12 @@ class Gen:
 
     def implicit_tparams(self, st: Node) -> list[str]:
         return program_implicit_tparams(self, st)
+
+    def iter_abc(self, st: Node) -> str:
+        return program_iter_abc(self, st)
+
+    def iterabc_derived(self, c: str) -> bool:
+        return program_iterabc_derived(self, c)
 
     def exc_base(self, b: Node) -> str:
         return program_exc_base(self, b)
