@@ -1135,7 +1135,9 @@ A secondary base and the primary hierarchy must declare distinct method names; t
 bases may declare one only where the class overrides it
 ([error test](../../tests/errors/classes/inheritance_secondary_conflict.py)). Overrides of secondary
 methods must keep their parameter and return types (but those that name a generic base's type
-variables) and may widen positional-only parameters to accept keywords. The primary hierarchy
+variables). They may return a class derived from the one that the base's method returns
+([test](../../tests/programs/classes/inheritance_traits_covariant.py)), and may widen
+positional-only parameters to accept keywords. The primary hierarchy
 and the class that combines the bases may call `super()` only for methods that no secondary
 base defines: CPython's method resolution order puts the secondary bases after the primary's,
 where such a call could find them. Abstract base classes (`abc.ABC`), `__slots__` in the
