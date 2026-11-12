@@ -1,7 +1,7 @@
 """Numeric operations on explicit, finite unions, using native typed lowering."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import Ins, Val
-from src.pystachy_compiler.specs import DUNDER, NONEARG
+from src.pystachy_compiler.specs import BIG, DUNDER, NONEARG
 from src.pystachy_compiler.syntax import mk
 from src.pystachy_compiler.utils import is_opt, is_union, tname, typestr, umembers, unopt
 
@@ -104,8 +104,12 @@ def gen_unumeric_case(self, op: str, a: Val, b: Val, shown: str, unary: bool) ->
     # A fixed operator has a finite result set: int, float, or int | float.
     # Do not widen int to float, which would lose its runtime type and precision.
     result_type = self.union_type([r.t for r in results])
-    if result_type.startswith("!"):
-        self.err(f"unsupported operand types for {shown if shown != '' else op}: the results of {typestr(v.t)}'s members ({', '.join([typestr(r.t) for r in results])}) have no union; narrow it with isinstance() first")
+    if result_type.startswith("!") and (self.object_union(a.t) or (not unary and self.object_union(b.t)) or len([r for r in results if r.t in self.classes]) > 0):
+        # (a union with objects says which results have no union; one of numbers alone keeps the
+        # conversion's own diagnostic below, which the promoting-int baseline records:
+        # tools/python_int_optin_exceptions.json)
+        promoting = " (a promoting int joins no other result: docs/python-int.md)" if len([r for r in results if r.t == BIG]) > 0 else ""
+        self.err(f"unsupported operand types for {shown if shown != '' else op}: the results of {typestr(v.t)}'s members ({', '.join([typestr(r.t) for r in results])}) have no union{promoting}; narrow it with isinstance() first")
     ph = Ins("phi", result_type, "")
     for i in range(len(results)):
         r = self.convert_at(results[i], result_type, edges[i])

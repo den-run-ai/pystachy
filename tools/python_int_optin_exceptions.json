@@ -18,6 +18,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/containers/sum_objects.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/containers/sum_objects.py:110: error: unsupported operand types for +: the results of Value | int's members (Value, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "Arithmetic on a union of an object and an int joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/containers/sum_objects.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/containers/sum_objects.py:110: error: unsupported operand types for +: the results of Value | int's members (Value, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "Arithmetic on a union of an object and an int joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/generics/generic_inferred_unions.py",
       "mode": "jit",
       "category": "unsupported-storage",
@@ -287,6 +303,22 @@
       "category": "unsupported-storage",
       "diagnostic": "tests/programs/inference/mixed_union_operations.py:19: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got float",
       "reason": "Arithmetic joins a promoting int with float in a closed numeric union, whose integer payload remains fixed-width.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/object_union_operations.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/object_union_operations.py:115: error: unsupported operand types for +: the results of Amount | int's members (Amount, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "Arithmetic on a union of an object and an int joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/inference/object_union_operations.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/inference/object_union_operations.py:115: error: unsupported operand types for +: the results of Amount | int's members (Amount, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "Arithmetic on a union of an object and an int joins the object's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
