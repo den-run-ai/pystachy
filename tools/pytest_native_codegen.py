@@ -434,6 +434,17 @@ def _own_nodes(function):
         pending.extend(ast.iter_child_nodes(node))
 
 
+def _statement_names(statement):
+    """The names a module-level statement binds."""
+    if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        return [statement.name]
+    if isinstance(statement, ast.Import):
+        return [alias.asname or alias.name.split(".")[0] for alias in statement.names]
+    if isinstance(statement, ast.ImportFrom):
+        return [alias.asname or alias.name for alias in statement.names]
+    return _bound_names(statement)
+
+
 def _attribute(name):
     """_pyn_support.name as an expression."""
     return ast.Attribute(ast.Name("_pyn_support", ast.Load()), name, ast.Load())
@@ -459,7 +470,10 @@ class Generator:
         # class's imported base class is defined.
         self.resolve = resolve
         self.imported = {}
+        self.module_names = {}
         self.external = {}
+        self.external_nodes = {}
+        self.fixed_names = None
         # What the test module reads as __file__ and __name__: pytest imports the original
         # file under its own name, where the generated one has another path.
         self.path = path or filename
@@ -1374,6 +1388,11 @@ class Generator:
             name = self.name(base)
             if name == "unittest.TestCase":
                 return True
+            origin = self.attribute_base(base)
+            if origin is not None and self.external_class(*origin) is not None:
+                if self.external_class(*origin).unit:
+                    return True
+                continue
             # (An imported base that is called a test case very probably is one.)
             if isinstance(base, ast.Attribute) and base.attr.endswith("TestCase"):
                 return True
@@ -1395,6 +1414,9 @@ class Generator:
                 for alias in node.names:
                     if alias.name in ("pytest", "unittest"):
                         self.aliases[alias.asname or alias.name] = alias.name
+                    else:
+                        # `import a.b` binds a, through which a.b is read; `import a.b as c` binds c.
+                        self.module_names[alias.asname or alias.name] = alias.name
             elif isinstance(node, ast.ImportFrom):
                 if node.module in ("pytest", "unittest") and not node.level:
                     for alias in node.names:
@@ -1403,6 +1425,39 @@ class Generator:
                     for alias in node.names:
                         self.imported[alias.asname or alias.name] = (node.level, node.module, alias.name)
 
+    def marker_base(self, base):
+        """The name of a base class that only says how a class is typed, or "".
+
+        typing.Protocol, typing.Generic[T], abc.ABC and object: the compiled class has
+        no such base to derive from.
+        """
+        if isinstance(base, ast.Subscript):
+            base = base.value
+        dotted = ast.unparse(base) if isinstance(base, (ast.Name, ast.Attribute)) else ""
+        if isinstance(base, ast.Name):
+            if base.id == "object" and "object" not in self.bound:
+                return "object"
+            origin = self.imported.get(base.id)
+            dotted = f"{origin[1]}.{origin[2]}" if origin is not None and not origin[0] else ""
+        elif dotted:
+            head, _, attribute = dotted.rpartition(".")
+            dotted = self.module_names.get(head, "") + "." + attribute if head in self.module_names else ""
+        return dotted if dotted in ("typing.Protocol", "typing.Generic", "typing_extensions.Protocol",
+                                    "abc.ABC") else ""
+
+    def attribute_base(self, base):
+        """(level, module, name) of a base class written module.Class, or None."""
+        if not isinstance(base, ast.Attribute):
+            return None
+        head = ast.unparse(base.value) if isinstance(base.value, (ast.Name, ast.Attribute)) else ""
+        if head in self.module_names and head not in self.class_nodes:
+            return 0, self.module_names[head], base.attr
+        if isinstance(base.value, ast.Name) and base.value.id in self.imported:
+            # (`from package import module`: the name may be a module of that package.)
+            level, module, name = self.imported[base.value.id]
+            return level, (module + "." if module else "") + name, base.attr
+        return None
+
     def external_info(self, name, depth=0):
         """The class a `from` import binds to this name, read from its module beside the tests.
 
@@ -1410,12 +1465,21 @@ class Generator:
         class is read: one whose own tests carry no decorators and that defines no
         fixtures, since its module is adapted, not collected.
         """
-        if name in self.external:
-            return self.external[name]
-        self.external[name] = None
-        if self.resolve is None or name not in self.imported or depth > 8:
+        if name not in self.imported:
             return None
-        level, module, original = self.imported[name]
+        return self.external_class(*self.imported[name], depth)
+
+    def external_node(self, level, module, original, depth=0):
+        """(generator of its module, class node) of a class another module defines, or None.
+
+        A package's __init__ may pass on a class of one of its modules.
+        """
+        key = (level, module, original)
+        if key in self.external_nodes:
+            return self.external_nodes[key]
+        self.external_nodes[key] = None
+        if self.resolve is None or depth > 8:
+            return None
         found = self.resolve(self.path, level, module, original)
         if found is None:
             return None
@@ -1423,42 +1487,127 @@ class Generator:
         try:
             other = Generator(source, filename, False, path=path, module=dotted, package=True, helper=True,
                               resolve=self.resolve)
-        except CollectionError:
+        except (CollectionError, SyntaxError, RecursionError):
             return None
         other.class_nodes = {node.name: node for node in other.tree.body if isinstance(node, ast.ClassDef)}
         other.infos = {}
+        other.bound = {name for statement in other.tree.body for name in _statement_names(statement)}
         other.scan_imports()
         node = other.class_nodes.get(original)
-        if node is None:
-            # (A package's __init__ may pass on a class of one of its modules.)
-            info = other.external_info(original, depth + 1)
-        else:
-            try:
-                info = other.class_info(node)
-            except CollectionError:
-                return None  # (reported at the test class that derives from it)
-            for ancestor in info.mro:
-                if ancestor.tests or ancestor.node not in other.class_nodes.values():
+        if node is not None:
+            self.external_nodes[key] = (other, node)
+        elif original in other.imported:
+            self.external_nodes[key] = other.external_node(*other.imported[original], depth + 1)
+        return self.external_nodes[key]
+
+    def constructed(self, node, depth=0, own=True):
+        """Whether a class of this module has a constructor: pytest collects no such Test* class.
+
+        It defines __init__ or __new__ (own), or a base does; a Protocol has one too.
+        None when a base is one the collector cannot read (a built-in or installed class).
+        """
+        if own and any(isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef))
+                       and statement.name in ("__init__", "__new__") for statement in node.body):
+            return True
+        answer = False
+        for base in node.bases:
+            marker = self.marker_base(base)
+            if marker.endswith(".Protocol"):
+                return True
+            if marker:
+                continue
+            found = None
+            if isinstance(base, ast.Name) and self.class_nodes.get(base.id) not in (None, node):
+                found = (self, self.class_nodes[base.id])
+            elif isinstance(base, ast.Name) and base.id in self.imported:
+                found = self.external_node(*self.imported[base.id])
+            elif self.attribute_base(base) is not None:
+                found = self.external_node(*self.attribute_base(base))
+            if found is None or depth > 16:
+                answer = None
+                continue
+            inner = found[0].constructed(found[1], depth + 1)
+            if inner:
+                return True
+            if inner is None:
+                answer = None
+        return answer
+
+    def external_class(self, level, module, original, depth=0):
+        """The ClassInfo of a class of another module (external_info), named by how it is imported."""
+        name = (level, module, original)
+        if name in self.external:
+            return self.external[name]
+        self.external[name] = None
+        found = self.external_node(level, module, original, depth)
+        if found is None:
+            return None
+        other, node = found
+        filename = other.filename
+        try:
+            info = other.class_info(node)
+        except CollectionError:
+            return None  # (reported at the test class that derives from it)
+        for ancestor in info.mro:
+            if ancestor.tests or ancestor.node not in other.class_nodes.values():
+                continue
+            if ancestor.node.decorator_list:
+                self.error(ancestor.node, f"{filename}: decorators on an imported base class are unsupported: "
+                           + ancestor.node.name)
+            for statement in ancestor.node.body:
+                if any(target == "pytestmark" for target in _bound_names(statement)):
+                    self.error(statement, f"{filename}: pytestmark in an imported base class is unsupported")
+                if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     continue
-                if ancestor.node.decorator_list:
-                    self.error(ancestor.node, f"{filename}: decorators on an imported base class are unsupported: "
-                               + ancestor.node.name)
-                for statement in ancestor.node.body:
-                    if any(target == "pytestmark" for target in _bound_names(statement)):
-                        self.error(statement, f"{filename}: pytestmark in an imported base class is unsupported")
-                    if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        continue
-                    if any(other.name(dec.func if isinstance(dec, ast.Call) else dec)
-                           for dec in statement.decorator_list) or (
-                            statement.name.startswith("test") and statement.decorator_list):
-                        self.error(statement, f"{filename}: decorated methods of an imported base class are "
-                                   "unsupported: " + statement.name)
-                    if ancestor.unit and statement.name in UNIT_UNSUPPORTED:
-                        self.error(statement, f"{filename}: unsupported unittest.TestCase method: " + statement.name)
-                    if statement.name.startswith("test") and isinstance(statement, ast.FunctionDef):
-                        ancestor.tests[statement.name] = Test(statement, ancestor.node, [], [], [], ancestor.unit)
+                if any(other.name(dec.func if isinstance(dec, ast.Call) else dec)
+                       for dec in statement.decorator_list) or (
+                        statement.name.startswith("test") and statement.decorator_list):
+                    self.error(statement, f"{filename}: decorated methods of an imported base class are "
+                               "unsupported: " + statement.name)
+                if ancestor.unit and statement.name in UNIT_UNSUPPORTED:
+                    self.error(statement, f"{filename}: unsupported unittest.TestCase method: " + statement.name)
+                if statement.name.startswith("test") and isinstance(statement, ast.FunctionDef):
+                    ancestor.tests[statement.name] = Test(statement, ancestor.node, [], [], [], ancestor.unit)
         self.external[name] = info
         return info
+
+    def imported_kind(self, node, alias):
+        """What pytest makes of an imported name that begins test or Test.
+
+        "inert" when it collects nothing: a module; a class that has a constructor, or
+        whose name begins test (pytest collects Test* classes); a function whose name
+        begins Test. "class" for a class it collects that the collector can read: a
+        unittest case, or a Test* class without a constructor. None for anything else,
+        which may be a test the collector cannot read.
+        """
+        local = alias.asname or alias.name
+        if self.resolve is None:
+            return None
+        if self.resolve(self.path, node.level, (node.module + "." if node.module else "") + alias.name, "") is not None:
+            return "inert"
+        found = self.external_node(node.level, node.module, alias.name)
+        if found is not None:
+            other, definition = found
+            readable = self.external_info(local) is not None and not self.conftest
+            if other.unittest_bases(definition):
+                return "class" if readable else None
+            if local.startswith("test"):
+                return "inert"
+            constructed = other.constructed(definition)
+            if constructed is None:
+                return None
+            return "inert" if constructed else "class" if readable else None
+        located = self.resolve(self.path, node.level, node.module, alias.name)
+        if located is None:
+            return None
+        try:
+            body = ast.parse(located[0]).body
+        except (SyntaxError, RecursionError):
+            return None
+        for statement in body:
+            if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)) and statement.name == alias.name:
+                return "inert" if local.startswith("Test") else None
+        return None
 
     def class_info(self, node):
         """This class with its module-level bases resolved, or an error for bases it cannot read."""
@@ -1476,7 +1625,9 @@ class Generator:
                 bases.append(self.class_info(self.class_nodes[base.id]))
             elif isinstance(base, ast.Name) and base.id not in self.class_nodes and self.external_info(base.id):
                 bases.append(self.external_info(base.id))
-            elif not (isinstance(base, ast.Name) and base.id == "object" and "object" not in self.bound):
+            elif self.attribute_base(base) is not None and self.external_class(*self.attribute_base(base)):
+                bases.append(self.external_class(*self.attribute_base(base)))
+            elif not self.marker_base(base):
                 self.error(node, "test classes with imported or computed base classes are unsupported: "
                            + ast.unparse(base))
         if len(bases) + unit > 1:
@@ -1588,8 +1739,10 @@ class Generator:
                 del self.bindings[name]
         self.rebound = {name for name, count in assigned.items() if count > 1}
         # The classes pytest collects: unittest cases whatever their names, and Test* classes.
+        # (A Test* class that inherits a constructor is no test class to pytest.)
         collected = [node for node in self.tree.body if isinstance(node, ast.ClassDef)
-                     and (self.unittest_bases(node) or node.name.startswith("Test"))]
+                     and (self.unittest_bases(node)
+                          or node.name.startswith("Test") and self.constructed(node, own=False) is not True)]
         classes = set()
         for node in collected:
             classes.update(info.node for info in self.class_info(node).mro)
@@ -1597,9 +1750,10 @@ class Generator:
             if (isinstance(node, ast.ClassDef) and node not in classes and node.bases
                     and any(isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)) and item.name.startswith("test")
                             for item in node.body)
+                    and self.constructed(node, own=False) is None
                     and any(not (isinstance(base, ast.Name) and (base.id in self.class_nodes
                                                                  or self.external_info(base.id) is not None))
-                            for base in node.bases)):
+                            and not self.marker_base(base) for base in node.bases)):
                 # Its base may be a unittest case defined elsewhere, which pytest would collect.
                 self.error(node, "a class with test methods has a base class the collector cannot read: "
                            + ast.unparse(node.bases[0]))
@@ -1681,16 +1835,22 @@ class Generator:
         module_marks = ([], [], [])
         for node in self.tree.body:
             if isinstance(node, ast.ImportFrom) and node.module not in ("pytest", "unittest"):
-                if any((alias.asname or alias.name).startswith(("test", "Test")) or alias.name == "*"
-                       for alias in node.names):
-                    self.error(node, "imported tests and star imports are unsupported")
                 for alias in node.names:
-                    # pytest collects a unittest case from every module that imports it.
-                    external = self.external_info(alias.asname or alias.name)
-                    if external is not None and external.unit and not self.conftest:
+                    local = alias.asname or alias.name
+                    if alias.name == "*" or (local.startswith(("test", "Test"))
+                                             and self.imported_kind(node, alias) is None):
+                        self.error(node, "imported tests and star imports are unsupported")
+                for alias in node.names:
+                    # pytest collects a unittest case from every module that imports it, and
+                    # a class called Test* that has no constructor.
+                    local = alias.asname or alias.name
+                    external = self.external_info(local)
+                    if external is not None and not self.conftest and (
+                            external.unit or local.startswith("Test") and self.imported_kind(node, alias) == "class"):
                         bound = copy.copy(external.node)
-                        bound.name = alias.asname or alias.name
-                        info = ClassInfo(bound, True, external.bases, [], tests=external.tests, names=external.names)
+                        bound.name = local
+                        info = ClassInfo(bound, external.unit, external.bases, [], tests=external.tests,
+                                         names=external.names)
                         info.mro = [info, *external.mro[1:]]
                         self.infos[bound] = info
                         self.collected_tests(info)
@@ -2268,8 +2428,11 @@ class Generator:
         names (math.pi, Color.RED). A call, a computation, a subscript and an attribute
         of an object, whose lookup may be a property, are not.
         """
-        fixed = set(self.modules) | set(self.imported) | {
-            item.name for item in ast.walk(self.tree) if isinstance(item, ast.ClassDef)}
+        if self.fixed_names is None:
+            # (Once per module: a generated file has thousands of such calls.)
+            self.fixed_names = set(self.modules) | set(self.imported) | {
+                item.name for item in ast.walk(self.tree) if isinstance(item, ast.ClassDef)}
+        fixed = self.fixed_names
 
         def static(part):
             while isinstance(part, ast.Attribute):
@@ -3188,10 +3351,10 @@ class Generator:
             runner.append("    return _pyn_report.finish()")
             chunks += [("import sys as _pyn_sys", None), *wrappers, ("\n".join(runner), None),
                        ("if __name__ == '__main__':\n    _pyn_sys.exit(_pyn_run(_pyn_sys.argv[1]))", None)]
-        source = pragmas + "\n"
+        parts = [pragmas + "\n"]
+        first = parts[0].count("\n") + 1
         lines = {}
         for text, origin in chunks:
-            first = source.count("\n") + 1
             # Generated code for a declaration reports at that declaration; the
             # runner's own code (0) at no test line.
             lines[first] = getattr(origin, "lineno", 0)
@@ -3200,9 +3363,10 @@ class Generator:
                     _pair_lines(origin, ast.parse(text).body[0], first - 1, lines)
                 except (SyntaxError, IndexError):
                     pass
-            source += text + "\n\n"
-        return GeneratedModule(source.rstrip("\n") + "\n", [cases[index] for index in run], self.builtins_used,
-                               lines, self.hooks)
+            parts.append(text + "\n\n")
+            first += text.count("\n") + 2
+        return GeneratedModule("".join(parts).rstrip("\n") + "\n", [cases[index] for index in run],
+                               self.builtins_used, lines, self.hooks)
 
     def adapt(self):
         """This helper module's source for the generated program (adapt_helper)."""

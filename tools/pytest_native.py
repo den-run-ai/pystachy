@@ -377,6 +377,9 @@ class Layout:
     bases: list[Path]
     # The outermost package directories the tests are in.
     packages: list[Path]
+    # Packages and modules of the source tree that a test class's base class was read
+    # from (resolver): the program imports adapted copies of them.
+    sources: list[Path] = field(default_factory=list)
 
     def above(self, path: Path) -> list[Path]:
         """The conftest.py files whose fixtures a module of this directory can request."""
@@ -450,12 +453,15 @@ def layout(paths: list[Path], root: Path) -> Layout:
     return Layout(modules, ordered, bases, packages)
 
 
-def resolver(tree: Layout, root: Path):
+def resolver(tree: Layout, root: Path, roots: tuple[Path, ...] | list[Path] = ()):
     """Find the module beside the tests that `from module import name` reads (Generator.resolve).
 
     Only modules the generated program has adapted copies of are read: those of the
-    tests' packages and those in the tests' own directories.
+    tests' packages, those in the tests' own directories, and those of the source tree
+    that the tests import from --root or a configured pythonpath directory (roots).
+    The last are noted in tree.sources, for mirror() to copy.
     """
+    roots = [directory for directory in dict.fromkeys([*roots, root]) if directory.is_relative_to(root)]
 
     def resolve(importer, level, module, name):
         importer = Path(importer)
@@ -465,16 +471,24 @@ def resolver(tree: Layout, root: Path):
                 directory = directory.parent
             starts = [directory]
         else:
-            starts = tree.bases
+            starts = [*tree.bases, *(directory for directory in roots if directory not in tree.bases)]
         parts = module.split(".") if module else []
         for start in starts:
             target = start.joinpath(*parts)
             for candidate in ([target.with_suffix(".py")] if parts else []) + [target / "__init__.py"]:
                 if not candidate.is_file() or not candidate.is_relative_to(root):
                     continue
-                inside = any(candidate.is_relative_to(package) for package in tree.packages)
+                inside = any(candidate.is_relative_to(package) for package in [*tree.packages, *tree.sources])
                 if not inside and candidate.parent not in tree.bases:
-                    continue
+                    if level or start not in roots or not parts or not all(
+                            part.isidentifier() and not keyword.iskeyword(part) for part in parts):
+                        continue
+                    # A module of the source tree: its outermost package, or the module itself.
+                    top = start / parts[0]
+                    source = top if (top / "__init__.py").is_file() else top.with_suffix(".py")
+                    if not source.exists() or source.name in ("pytest_native_support.py", "pytest_native_fixtures.py"):
+                        continue
+                    tree.sources.append(source)
                 base = import_root(candidate, root)
                 dotted = ".".join(candidate.relative_to(base).with_suffix("").parts).removesuffix(".__init__")
                 try:
@@ -486,7 +500,8 @@ def resolver(tree: Layout, root: Path):
     return resolve
 
 
-def mirror(work: Path, tree: Layout, generated: set[Path], root: Path) -> dict[str, str]:
+def mirror(work: Path, tree: Layout, generated: set[Path], root: Path,
+           roots: tuple[Path, ...] | list[Path] = ()) -> dict[str, str]:
     """Write the modules beside the tests where the generated ones import them.
 
     A package's generated tests replace their files in a copy of the package, so the
@@ -495,7 +510,7 @@ def mirror(work: Path, tree: Layout, generated: set[Path], root: Path) -> dict[s
     others are imported from their own directory). Returns {written file: source file}.
     """
     written: dict[str, str] = {}
-    resolve = resolver(tree, root)
+    resolve = resolver(tree, root, roots)
 
     def adapted(path: Path, name: str, target: Path, always: bool) -> None:
         try:
@@ -511,7 +526,10 @@ def mirror(work: Path, tree: Layout, generated: set[Path], root: Path) -> dict[s
             write_changed(target, result)
             written[str(target)] = str(path)
 
-    for package in tree.packages:
+    for module in tree.sources:
+        if module.is_file():
+            adapted(module, module.stem, work / module.name, True)
+    for package in [*tree.packages, *(source for source in tree.sources if source.is_dir())]:
         expected = set()
         for directory, dirs, names in os.walk(package):
             dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d not in EXCLUDED_DIRS)
@@ -668,7 +686,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     conftest_names = [conftest.relative_to(root).as_posix() for conftest in tree.conftests]
     aliases = {conftest: f"_pyn_conftest_{index}" for index, conftest in enumerate(tree.conftests)}
     texts: dict[Path, str] = {}
-    resolve = resolver(tree, root)
+    resolve = resolver(tree, root, settings.pythonpath)
 
     def build(operands: bool):
         """Every module's generated source, or the collection errors on results."""
@@ -776,7 +794,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     if builtin:
         write_changed(suite_work / "pytest_native_fixtures.py", (TOOLS / "pytest_native_fixtures.py").read_text())
     # The modules beside the tests, where the generated ones import them.
-    mirror(suite_work, tree, {*paths, *tree.conftests}, root)
+    mirror(suite_work, tree, {*paths, *tree.conftests}, root, settings.pythonpath)
     env = environment([suite_work, *tree.bases, *settings.pythonpath, root])
     # Suite-level cost/output is attached to the first result, not multiplied by
     # the number of modules. The JSON records this execution model explicitly.

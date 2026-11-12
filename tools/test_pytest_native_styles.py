@@ -729,6 +729,16 @@ IMPORTED = {
 }
 
 
+RESOLVED = {
+    # A base class in the package under test, found from --root, and one reached as module.Class.
+    'lib/__init__.py': '',
+    'lib/testing.py': 'import unittest\n\n\nclass LibCase(unittest.TestCase):\n    def setUp(self):\n        self.base = 10\n\n    def assertDouble(self, value: int, expected: int) -> None:\n        self.assertEqual(value * 2, expected)\n\n\nclass TestHelperWithInit:\n    def __init__(self, value: int) -> None:\n        self.value = value\n\n\nclass TestKit:\n    def test_kit(self):\n        assert True\n\n\ndef TestFactory() -> int:\n    return 3\n',
+    'tests/__init__.py': '',
+    'tests/shared.py': 'class Checks:\n    def total(self, a: int, b: int) -> int:\n        return a + b\n\n    def test_inherited(self):\n        assert self.total(1, 2) == 3\n',
+    'tests/test_resolved.py': 'from lib.testing import LibCase, TestFactory, TestHelperWithInit, TestKit\nfrom . import shared\n\n\nclass LibraryCase(LibCase):\n    def test_double(self):\n        self.assertDouble(self.base, 20)\n\n    def test_fails(self):\n        self.assertDouble(self.base, 21)\n\n\nclass TestShared(shared.Checks):\n    def test_own(self):\n        assert self.total(2, 2) == 4\n\n\ndef test_inert_names():\n    assert TestHelperWithInit(2).value == 2\n    assert TestFactory() == 3\n',
+}
+
+
 CONFIGURED = {
     'pyproject.toml': '[project]\nname = "sample"\n\n[tool.pytest.ini_options]\nminversion = "8.0"\ntestpaths = ["tests"]\naddopts = "-ra --strict-markers --tb=short -W error::DeprecationWarning"\nxfail_strict = true\npythonpath = ["src"]\nmarkers = ["slow: takes a while"]\nfilterwarnings = ["ignore:harmless:UserWarning"]\nlog_cli_level = "INFO"\n',
     'src/lib/__init__.py': 'import warnings\n\n\ndef old() -> int:\n    warnings.warn("old", DeprecationWarning)\n    return 1\n\n\ndef noisy() -> int:\n    warnings.warn("harmless noise", UserWarning)\n    return 2\n',
@@ -960,6 +970,49 @@ class StyleParity(TemporarySuite):
         self.assertIn("tests/test_coptic.py::TestMore::test_shared_two", expected["cases"])
         self.assertEqual(len(expected["cases"]), 9)
 
+    def test_bases_in_the_source_tree_and_module_attributes(self):
+        results, expected = self.run_paths(self.files(RESOLVED), "python")
+        self.assertEqual([result.state for result in results], ["test-failed"])
+        # pytest collects an imported Test* class that has no constructor, and nothing from
+        # one that has, from a function called Test* or from a module.
+        self.assertEqual(expected["cases"], [
+            "tests/test_resolved.py::TestKit::test_kit",
+            "tests/test_resolved.py::LibraryCase::test_double",
+            "tests/test_resolved.py::LibraryCase::test_fails",
+            "tests/test_resolved.py::TestShared::test_inherited",
+            "tests/test_resolved.py::TestShared::test_own",
+            "tests/test_resolved.py::test_inert_names"])
+
+    def test_bases_that_only_type_a_class(self):
+        path = self.source("""
+            import abc
+            import typing
+            from typing import Generic, Protocol, TypeVar
+            T = TypeVar("T")
+            class Api(Protocol):
+                def run(self) -> int: ...
+            class Mixin(Api):
+                def test_mixin(self):
+                    assert self.run() == 1
+            class TestApi(Mixin):
+                def run(self) -> int:
+                    return 1
+            class TestGeneric(Generic[T]):
+                def test_generic(self):
+                    assert True
+            class TestAbstract(abc.ABC):
+                def test_abstract(self):
+                    assert True
+            class TestQualified(typing.Protocol):
+                def test_qualified(self):
+                    assert True
+        """, "test_markers.py")
+        results, expected = self.run_paths([path], "python")
+        self.assertEqual(results[0].state, "passed")
+        # A Protocol has a constructor, so pytest collects no Test* class that derives from one.
+        self.assertEqual(expected["cases"], ["test_markers.py::TestGeneric::test_generic",
+                                             "test_markers.py::TestAbstract::test_abstract"])
+
     def test_forms_only_cpython_runs(self):
         # The collector follows pytest here; the compiler does not build these classes.
         path = self.source("""
@@ -1162,6 +1215,11 @@ class StyleParity(TemporarySuite):
     def test_native_jit_imported_base_classes(self):
         results, _ = self.run_paths(self.files(IMPORTED), "jit")
         self.assertEqual([result.state for result in results], ["test-failed", "passed"])
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_jit_bases_in_the_source_tree(self):
+        results, _ = self.run_paths(self.files(RESOLVED), "jit")
+        self.assertEqual([result.state for result in results], ["test-failed"])
 
 
 class StyleRejections(TemporarySuite):

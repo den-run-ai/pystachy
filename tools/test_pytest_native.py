@@ -311,18 +311,26 @@ class CollectionControls(TemporarySuite):
 
     def test_imported_test_classes_cannot_disappear(self):
         self.source("class TestImported:\n    def test_failure(self):\n        assert False\n", "helper.py")
-        for statement in ("from helper import TestImported", "from helper import TestImported as TestAlias"):
+        self.source("def test_function():\n    assert False\n", "functions.py")
+        for statement, name in (("from helper import TestImported", "TestImported"),
+                                ("from helper import TestImported as TestAlias", "TestAlias")):
+            with self.subTest(statement=statement):
+                # pytest collects the class in the module that imports it, under the name bound there.
+                path = self.source(statement + "\ndef test_local():\n    pass\n")
+                actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
+                self.assertEqual(actual.state, "test-failed", actual.error)
+                self.assertEqual(actual.cases, [f"test_suite.py::{name}::test_failure", "test_suite.py::test_local"])
+                if importlib.util.find_spec("pytest"):
+                    expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+                    self.assertEqual(expected["exit_code"], 1, expected)
+                    self.assertEqual(expected["cases"], actual.cases)
+        # What the collector cannot read may be a test: a function, or a class of an installed module.
+        for statement in ("from functions import test_function", "from installed_elsewhere import TestThing"):
             with self.subTest(statement=statement):
                 path = self.source(statement + "\ndef test_local():\n    pass\n")
                 actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
                 self.assertEqual(actual.state, "collection-error")
                 self.assertIn("imported tests", actual.error)
-        path = self.source("from helper import TestImported\ndef test_local():\n    pass\n")
-        if importlib.util.find_spec("pytest"):
-            expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
-            self.assertEqual(expected["exit_code"], 1, expected)
-            self.assertEqual(expected["cases"], ["test_suite.py::TestImported::test_failure",
-                                                  "test_suite.py::test_local"])
 
     def test_dynamic_test_class_aliases_are_rejected(self):
         for statement in ("TestAlias = Helper", "if True:\n    TestAlias = Helper"):
