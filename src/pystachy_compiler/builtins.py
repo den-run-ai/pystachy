@@ -2037,6 +2037,11 @@ def gen_sum_object_item(self, r: Reduce, v: Val) -> None:
     # gives the sum's type, which the others must keep. No operand is dropped or swapped: an
     # __add__ or __radd__ that records its operands sees CPython's, in CPython's order (#636)
     st = r.stt if r.stt != "" else "int"
+    if self.object_union(v.t) and "float" in umembers(unopt(v.t)) and st not in self.classes:
+        # (CPython adds floats with compensation, from a float start or the first float after
+        # ints until the first object: these additions, one by one, would lose that. From an
+        # object start it adds them one by one too)
+        self.err(f"sum() of {typestr(v.t)} is not supported: CPython adds the floats with compensation until the first object; add the items in a loop, or sum the floats and the objects apart")
     if st in ["int", "float", "bool", BIG] and v.t in self.classes and "__radd__" not in self.classes[v.t].methods:
         if "__add__" not in self.classes[v.t].methods:
             # (no class that adds: the call's own diagnostic, as before)

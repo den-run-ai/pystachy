@@ -425,6 +425,11 @@ adds as it is and is narrowed with `isinstance()` where a `Decimal` is needed. A
 no `__radd__` needs a start. The items may be a list, tuple, set, dict, generator or
 iterator object, and a start may be an object for a sum of numbers.
 
+Floats beside objects in the items (`list[float | Money]`) are rejected unless the start is an
+object: CPython adds floats with a compensated sum until the first object
+(`sum([1e16, 1.0, -1e16], 0.0)` is `1.0`), which additions one by one would not reproduce
+([error test](../../tests/errors/containers/sum_objects_float_items.py)).
+
 <a id="reflection"></a>
 
 ## Reflection

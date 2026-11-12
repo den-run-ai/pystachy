@@ -600,8 +600,8 @@ that the tag selects performs it:
 - binary and unary arithmetic, an object's by its methods and by its reflected method for a
   number on its left; the result is the union of the members' results (`int | Money` plus a
   `Money` is a `Money` where both additions return one);
-- `==`, `!=` and the orderings, an object's by its methods; a number or `str` and an object
-  whose class defines no `__eq__` are never equal;
+- `==`, `!=` and the orderings, an object's by its methods, with `None` for the other operand
+  too; a number or `str` and an object whose class defines no `__eq__` are never equal;
 - truth tests, `str()`, `repr()`, printing, f-strings and `format()`, an object's by its
   `__bool__`, `__str__`, `__repr__` and `__format__`;
 - `int()`, `float()`, `abs()`, `round()`, `math.floor()` and the other builtin calls that
