@@ -33,6 +33,7 @@ from src.pystachy_compiler.specs import (
     REFL,
     STUB,
     TYPE_SIZE,
+    TYPESMOD,
     TYPING,
     UNARY,
     UNSUPPORTED,
@@ -431,6 +432,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return r
     if c.kind == "call" and len(c.kids) == 2 and c.kids[0].kind == "name" and c.kids[0].s == "type" and c.kids[1].kind == "None" and not self.bound("type"):
         return self.isnone(t)
+    if (c.kind == "attr" and self.dotted(c) in ("types.CoroutineType", TYPESMOD + ".CoroutineType")) or (c.kind == "name" and self.imported(c.s) in ("types.CoroutineType", TYPESMOD + ".CoroutineType") and not self.bound(c.s)):
+        # (types.CoroutineType: the coroutines of async defs, which their type tells, as
+        # asyncio.ensure_future() tells a coroutine from a future)
+        return 1 if t.startswith("coro[") else 0
     abc = self.typing_ref(c) if c.kind == "attr" or (c.kind == "name" and c.s not in self.classes and self.imported(c.s) != "") else ""
     if abc == "Sequence" or abc == "MutableSequence" or abc == "Mapping" or abc == "MutableMapping":
         # (collections.abc's: str, bytes and tuple, also a NamedTuple, are Sequences, list is a mutable one)
