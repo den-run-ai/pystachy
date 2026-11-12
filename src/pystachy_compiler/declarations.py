@@ -527,8 +527,11 @@ def gen_class_params(self, st: Node) -> str:
     return ""
 
 def gen_alias_value(self, name: str) -> Node:
-    # the value of type alias name: a type statement's, or that an assignment binds
+    # the value of type alias name: a type statement's, or that an assignment binds (of
+    # N = NewType("N", T), T: Loader.newtype)
     st = self.taliases[name]
+    if st.kind == "assign" and st.kids[1].kind == "call":
+        return st.kids[1].kids[2]
     return st.kids[0].kids[0] if st.kind == "typealias" else st.kids[1]
 
 def gen_alias_params(self, name: str) -> list[str]:
@@ -540,7 +543,7 @@ def gen_alias_params(self, name: str) -> list[str]:
     out: list[str] = []
     v = self.alias_whole(name)
     if v.kind != "name" or v.s not in self.typevars:  # (X = T is the TypeVar, which takes none)
-        self.alias_tvars(st.kids[1], out, [name])
+        self.alias_tvars(self.alias_value(name), out, [name])
     return out
 
 def gen_alias_whole(self, name: str) -> Node:

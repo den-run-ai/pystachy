@@ -59,6 +59,12 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
         n = mk("call", n.s, n.line, [f] + args)
     if f.kind == "badattr":
         self.err(f.s)
+    if f.kind == "name" and f.s in self.taliases and f.s not in self.ltype and self.taliases[f.s].kind == "assign" and self.taliases[f.s].kids[1].kind == "call":
+        # N(x) of N = NewType("N", T) (Loader.newtype): x itself, as CPython's NewType returns
+        # its argument unchanged
+        if len(args) != 1 or args[0].kind == "kw" or args[0].kind == "starred" or args[0].kind == "dstar":
+            self.err(f"NewType '{short(f.s)}' takes exactly one positional argument")
+        return self.expr(args[0], want)
     if refl_formatter(f) and len(args) >= 1 and args[0].kind == "str" and refl_attr_fields(args[0].s) and "string$Formatter" in self.classes and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         # string.Formatter().format("...", args) of a constant template: str.format() of it, which
         # the base Formatter's methods do (#486: its attribute fields, {0.x}, need no run-time names)

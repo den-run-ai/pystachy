@@ -1424,6 +1424,13 @@ class Loader:
                 m.kinds[nm] = src if src.startswith("a:") else "a:" + m.q + v.s  # (qstmts drops the statement)
                 self.aliased[m.name + " " + nm] = st
                 self.used_before(m, st)
+            elif not ann and self.newtype(v):
+                # (N = NewType("N", T): an alias of T in annotations, whose calls return their
+                # argument, Gen.call; Gen.program leaves out the assignment)
+                m.kinds[nm] = "t:" + self.qual(m, nm)
+                m.taliases[self.qual(m, nm)] = st
+                self.aliased[m.name + " " + nm] = st
+                self.used_before(m, st)
             elif not ann and v.kind == "call" and self.typevar(st.kids[0]):
                 m.kinds[nm] = "t:" + self.qual(m, nm)  # (T = TypeVar("T"): its imports name it, as a type alias's do)
                 self.aliased[m.name + " " + nm] = st
@@ -1521,6 +1528,11 @@ class Loader:
             ok = (base.kind == "name" and self.kind_of(base) == "" and base.s in GENERICS) or self.kind_of(base).startswith("t:") or self.generic_class(base) or p.startswith("typing.") or p.startswith("collections.abc.")
             return ok and self.type_item(e.kids[1])
         return k == "None" and not top
+
+    def newtype(self, e: Node) -> bool:
+        # is e, a value that module dm's top-level code assigns, typing's NewType("N", T) of a
+        # name and a type that annotations can name (type_value)
+        return e.kind == "call" and len(e.kids) == 3 and self.bpath(e.kids[0]) == "typing.NewType" and e.kids[1].kind == "str" and self.type_value(e.kids[2], False)
 
     def type_item(self, e: Node) -> bool:
         # (type_value) an item of a subscript of a type: also a string (a forward reference), a
@@ -1716,7 +1728,11 @@ class Loader:
                 self.tpnames = tpouter
                 plain = top and cls == "" and k == "class" and len(st.kids) == 1 and "__class_getitem__" not in own
             elif k == "annassign" or (alias and k == "assign"):
-                if alias and st.kids[-1].kind != "str":
+                if alias and st.kids[-1].kind == "call":
+                    # (N = NewType("N", T): NewType, then T, which CPython checks is a type)
+                    self.reads(st.kids[-1].kids[0], env, "CPython evaluates this NewType when the assignment runs", 0)
+                    self.reads(st.kids[-1].kids[2], env, "CPython evaluates this NewType's type when the assignment runs", 3)
+                elif alias and st.kids[-1].kind != "str":
                     self.reads(st.kids[-1], env, "CPython evaluates this type alias's value when the assignment runs", 3)
                 if k == "annassign":
                     self.ann(st.kids[1], env, "the class body" if cls != "" else "the annotated assignment")
@@ -3765,7 +3781,9 @@ class Loader:
                 alias = not self.qdef and not cls and self.is_alias(m, st)
                 for kid in st.kids[:-1]:
                     self.qstore(m, kid, loc)
-                if alias:
+                if alias and st.kids[-1].kind == "call":
+                    self.qann(m, st.kids[-1].kids[2], loc)  # (N = NewType("N", T): its type)
+                elif alias:
                     self.qann(m, st.kids[-1], loc)  # (a type alias's value, where strings are forward references)
                 else:
                     self.qexpr(m, st.kids[-1], loc)
