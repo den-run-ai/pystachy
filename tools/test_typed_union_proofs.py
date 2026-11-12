@@ -1074,6 +1074,32 @@ class UnionProofTests(unittest.TestCase):
                         with self.assertRaises(SystemExit):
                             c.g.verify(c.fn, False)
 
+    def test_tuple_slot_union_reads_take_the_storage_declaration(self):
+        # A tuple loaded from storage declared tuple[W, W] holds W items, whatever the load's own
+        # annotation says (tuple[X, X], narrower): its items' float test leaves int and str, so
+        # the else branch's str payload is not proved. The control's storage is declared X's.
+        x = "union[float,str]"
+        for storage, valid in (("*tuple[" + x + "," + x + "]", True), ("*tuple[" + W + "," + W + "]", False)):
+            with self.subTest(storage=storage):
+                c = Case("tuple_slot_storage", [storage])
+                owner = c.op("mem.load", "tuple[" + x + "," + x + "]", a=[("%a0", "*tuple[" + x + "," + x + "]")])
+                address = c.op("mach.addr", "%ptr", "int", [(owner, "%ptr"), ("0", "int")])
+                bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                value = c.op("slot.unpack", x, a=[(bits, "%slot")])
+                c.guard(value=value, member="float", typ=x)
+                c.block("hit")
+                c.payload(value=value, member="float", typ=x)
+                c.ret()
+                c.block("miss")
+                c.payload(value=value, member="str", typ=x)
+                c.ret()
+                with redirect_stderr(StringIO()):
+                    if valid:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+
     def test_optional_runtime_tuple_length_read_is_no_tag_read(self):
         # The length word of a tuple[T, ...] | None, read without a null test in a function that
         # also narrows a union, is no union tag read; an optional union's machine read (its tag)
