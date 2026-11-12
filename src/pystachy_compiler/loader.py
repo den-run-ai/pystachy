@@ -1897,6 +1897,13 @@ class Loader:
         if base is None or base.kind != "index":
             return False
         g = base.kids[0]
+        if g.kind == "name" and (m.kinds.get(g.s, "") == "c" or m.kinds.get(g.s, "").startswith("a:")):
+            # class S(Visitor[T]): generic as Visitor is, in the type variables it passes on (PEP 484)
+            dm = self.dm
+            self.dm = m
+            implicit = self.generic_class(g) and len([x for x in (base.kids[1].kids if base.kids[1].kind == "tuple" else [base.kids[1]]) if x.kind == "name" and self.typevar(x)]) > 0
+            self.dm = dm
+            return implicit
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
             return k == "b:typing.Generic" or k == "b:typing_extensions.Generic"
