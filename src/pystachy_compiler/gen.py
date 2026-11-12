@@ -999,6 +999,8 @@ from src.pystachy_compiler.coroutines import (
     gen_direct_await as coroutines_direct_await,
     gen_coro_declare as coroutines_coro_declare,
     gen_coro_hinted as coroutines_coro_hinted,
+    gen_coro_join as coroutines_coro_join,
+    gen_coro_rejoin as coroutines_coro_rejoin,
     gen_ret_widen as coroutines_ret_widen,
     gen_yield_change as coroutines_yield_change,
     gen_coro_deco as coroutines_coro_deco,
@@ -3500,6 +3502,12 @@ class Gen:
 
     def coro_hinted(self, g: FnInfo) -> None:
         return coroutines_coro_hinted(self, g)
+
+    def coro_join(self, a: str, b: str) -> str:
+        return coroutines_coro_join(self, a, b)
+
+    def coro_rejoin(self, f: FnInfo, base: str, t: str, vals: list[Val], insts: list[FnInfo | None]) -> None:
+        return coroutines_coro_rejoin(self, f, base, t, vals, insts)
 
     def ret_widen(self, f: FnInfo, t: str) -> bool:
         return coroutines_ret_widen(self, f, t)

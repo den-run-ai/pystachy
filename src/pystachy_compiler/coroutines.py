@@ -432,6 +432,42 @@ def gen_ret_widen(self, f: FnInfo, t: str) -> bool:
     return True
 
 
+def gen_coro_join(self, a: str, b: str) -> str:
+    # the type of the coroutines that async overrides make, which a call through their base
+    # awaits, where they make coroutines of types a and b: what they yield (a None and a T: T |
+    # None, as an await of both would make it) and what they return joined, else ""
+    ya = cyield(a)
+    yb = cyield(b)
+    y = ya if ya == yb else self.join(ya, yb)
+    r = self.join(cret(a), cret(b))
+    return self.coro_type(y, r) if y != "" and r != "" else ""
+
+
+def gen_coro_rejoin(self, f: FnInfo, base: str, t: str, vals: list[Val], insts: list[FnInfo | None]) -> None:
+    # a call through base of async method f, whose overrides (each arm's call made coroutine
+    # vals[i] with instance insts[i]) make coroutines of different types, joined as t
+    # (coro_join): a coroutine's Y and R lay out what its frame holds, so the next pass compiles
+    # each instance with t's from the start ("yield:" and "cret:" hints, as yield_change's and
+    # ret_widen's); this pass goes on with t. Where a hint did not apply, or on the last pass,
+    # it is an error
+    why = f"overrides of {short(base)}.{f.name}() return incompatible types; use a common return type"
+    for i in range(len(vals)):
+        v = vals[i]
+        g = insts[i]
+        if v.t == t:
+            continue
+        if g is None or self.final:
+            self.err(why)
+        if self.drying == 0:
+            for k in ["yield:", "cret:"]:
+                h = cyield(t) if k == "yield:" else cret(t)
+                if (cyield(v.t) if k == "yield:" else cret(v.t)) != h:
+                    if self.hints.get(k + self.fnkey(g), "") == h:
+                        self.err(why)  # (hinted already, and still another type: an annotated return)
+                    self.newhints[k + self.fnkey(g)] = h
+        vals[i] = Val(v.v, t)
+
+
 def gen_coro_hinted(self, g: FnInfo) -> None:
     # the instance g of an async def, before it compiles: Y from an earlier pass's hint (see
     # yield_change), else None; R | None where an earlier pass found it ends without a value
@@ -441,7 +477,8 @@ def gen_coro_hinted(self, g: FnInfo) -> None:
         g.ayield = h
         self.coro_settle(g)
     h = self.hints.get("cret:" + self.fnkey(g), "")
-    if h != "" and g.gretinfer:
+    if h != "" and (g.gretinfer or self.optional(g.gret) == h or (g.gret == "None" and self.optional(h) == h)):
+        # (also an annotated R, where async overrides return it or None: coro_rejoin)
         g.gret = h
         self.coro_settle(g)
 

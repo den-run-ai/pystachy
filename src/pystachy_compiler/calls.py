@@ -1337,6 +1337,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
     end = self.label()
     vals: list[Val] = []
     edges: list[str] = []
+    insts: list[FnInfo | None] = []  # (the instance each arm's call ran, where it made a coroutine)
     narrow = dict(self.narrowed)
     for i in range(len(cs)):
         c = cs[i]
@@ -1350,6 +1351,7 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
         if not self.term:
             if self.idhere() and numeric_identity(v.t):
                 v.idfrom = self.dyn_id_box(v).v
+            insts.append(self.gencallf if self.gencall != "" and v.v == self.gencall else None)
             vals.append(v)
             edges.append(self.cur)
             self.br(end)
@@ -1357,10 +1359,17 @@ def gen_virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: st
             self.place(nxt)
     self.narrowed = narrow
     t = vals[0].t if len(vals) > 0 else "None"
+    corojoin = False
     for v in vals[1:]:
-        t = self.join(t, v.t)
+        jt = self.join(t, v.t)
+        if jt == "" and is_coro(t) and is_coro(v.t):
+            jt = self.coro_join(t, v.t)  # (async overrides: coroutines of one type, coro_rejoin)
+            corojoin = jt != ""
+        t = jt
         if t == "":
             self.err(f"overrides of {short(o.t)}.{f.name}() return incompatible types; use a common return type")
+    if corojoin:
+        self.coro_rejoin(f, o.t, t, vals, insts)
     ph = Ins("phi", t, "")
     for i in range(len(vals)):
         r = self.convert_at(vals[i], t, edges[i])
