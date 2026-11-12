@@ -921,7 +921,11 @@ class Decimal:
     def _isinteger(self) -> bool:
         if self._kind != _FINITE:
             return False
-        return self._exp >= 0 or self._int % 10 ** -self._exp == 0
+        if self._exp >= 0 or self._int == 0:
+            return True
+        if -self._exp >= _ndigits(self._int):
+            return False  # (a fraction below one: no power of ten of its exponent is made)
+        return self._int % 10 ** -self._exp == 0
 
     def _pow(self, other: int, context: Context) -> "Decimal":
         # self ** other for an integer exponent, as CPython's decimal computes it: square and
@@ -1254,6 +1258,8 @@ class Decimal:
             if self._kind >= _NAN:
                 raise ValueError("cannot convert NaN to integer")
             raise OverflowError("cannot convert Infinity to integer")
+        if self._int == 0 or (self._exp < 0 and -self._exp >= _ndigits(self._int)):
+            return 0  # (zero, or a fraction below one: no power of ten of its exponent is made)
         n = self._int * 10 ** self._exp if self._exp >= 0 else self._int // 10 ** -self._exp
         return -n if self._sign else n
 
