@@ -976,6 +976,40 @@ class UnionProofTests(unittest.TestCase):
                             with self.assertRaises(SystemExit):
                                 c.g.verify(c.fn, False)
 
+    def test_tuple_slot_union_reads_take_the_declared_members(self):
+        # A tuple[X, ...] (or a fixed tuple of X items) read through an indexed machine slot
+        # holds a box of X, whose members an exhaustive narrowing proves, else branch too. A
+        # tuple without one union item type, an unguarded read, or a narrowing that leaves two
+        # members (W's) proves nothing. (X has no int member: an unseeded slot's int domain then
+        # proves no branch by coinciding with one.)
+        x = "union[float,str]"
+        for owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]", "tuple[" + x + ",int]", "vtuple[" + W + "]"):
+            for guarded in (True, False):
+                with self.subTest(owner=owner, guarded=guarded):
+                    item = W if W in owner else x
+                    c = Case("tuple_slot_union", [owner, "int"])
+                    address = c.op("mach.addr", "%ptr", "int", [("%a0", "%ptr"), ("%a1", "int")])
+                    bits = c.op("mach.load", "int", a=[(address, "%ptr")])
+                    value = c.op("slot.unpack", item, a=[(bits, "%slot")])
+                    if guarded:
+                        c.guard(value=value, member="float", typ=item)
+                        c.block("hit")
+                        c.payload(value=value, member="float", typ=item)
+                        c.ret()
+                        c.block("miss")
+                        c.payload(value=value, member="str", typ=item)
+                        c.ret()
+                    else:
+                        c.payload(value=value, member="str", typ=item)
+                        c.ret()
+                    valid = guarded and owner in ("vtuple[" + x + "]", "tuple[" + x + "," + x + "]")
+                    with redirect_stderr(StringIO()):
+                        if valid:
+                            c.g.verify(c.fn, False)
+                        else:
+                            with self.assertRaises(SystemExit):
+                                c.g.verify(c.fn, False)
+
     def test_numeric_parser_small_and_large_bounds_agree(self):
         numbers = ("", "0", "00", "01", "9", "10", "99999", "100000", "262143",
                    "262144", "262145", "999999", "1000000", "9999999",

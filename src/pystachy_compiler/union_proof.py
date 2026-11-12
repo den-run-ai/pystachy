@@ -362,6 +362,15 @@ class UnionProof:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
                     self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
+                if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) > 0:
+                    # An indexed slot of a tuple whose items are all of one union type (a fixed
+                    # tuple's, or a tuple[U, ...]'s past its length) holds a box of that union:
+                    # container typing is its own contract, as for a list's items (list.get), so
+                    # an item read from the slot has its members. A length read is no union read.
+                    owner = self.native.get(i.a[0].v, "")
+                    items = targs(owner) if owner.startswith("tuple[") or owner.startswith("vtuple[") else []
+                    if len(items) > 0 and all(x == items[0] for x in items) and is_union(items[0][4:-1] if is_opt(items[0]) else items[0]):
+                        self.typebase("MU:%t" + str(i.r[0]), items[0])
         # Backward relevance for boxed values and forward/backward transport closure for
         # tags and bits. Literals never become tainted: the same integer spelling in an
         # unrelated loop index does not make that index a payload.
