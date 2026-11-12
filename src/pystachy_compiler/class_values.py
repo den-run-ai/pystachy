@@ -423,6 +423,11 @@ def gen_class_value_call(self, c: Val, args: list[Node]) -> Val:
     return Val(self.phi(ph), base)
 
 
+# the names NoneType's class object has itself (dir(type(None))): a class attribute of such a
+# name is not read through a class object, which may be NoneType's (but __doc__, a str)
+NONETYPE_NAMES = "__bool__ __class__ __delattr__ __dir__ __doc__ __eq__ __format__ __ge__ __getattribute__ __getstate__ __gt__ __hash__ __init__ __init_subclass__ __le__ __lt__ __ne__ __new__ __reduce__ __reduce_ex__ __repr__ __setattr__ __sizeof__ __str__ __subclasshook__"
+
+
 def gen_class_value_attr(self, k: Val, name: str) -> Val:
     # k.name of class object k, a class attribute (a name the class body binds): that of the
     # class k is, which is C's unless a class deriving from C binds the name anew. NoneType's
@@ -434,8 +439,12 @@ def gen_class_value_attr(self, k: Val, name: str) -> Val:
     for c in kinds:
         if k.v == self.refl_record(c):
             return self.coerce(self.class_attr(mk("name", c, self.line, []), name), t)  # (the class a constant names)
+    if name in NONETYPE_NAMES.split() and not (name == "__doc__" and t == "str"):
+        self.err(f"reading {name} through a class object ({typestr(k.t)}) is not supported: the value may be NoneType's class object, which has its own {name}")
     end = self.label()
     ph = Ins("phi", t, "")
+    vals: list[Val] = []
+    edges: list[str] = []
     for c in kinds:
         hit = self.label()
         miss = self.label()
@@ -443,13 +452,24 @@ def gen_class_value_attr(self, k: Val, name: str) -> Val:
         self.place(hit)
         v = self.coerce(self.class_attr(mk("name", c, self.line, []), name), t)
         self.incoming(ph, v.v, self.cur)
+        vals.append(v)
+        edges.append(self.cur)
         self.br(end)
         self.place(miss)
-    self.raise_("AttributeError", self.sconst(f"type object 'NoneType' has no attribute '{name}'"))
-    if len(kinds) == 0:
-        return Val("undef", t)
+    if name == "__doc__":
+        # (NoneType's own, which CPython reads of the class object of None)
+        v = Val(self.sconst("The type of the None singleton."), "str")
+        self.incoming(ph, v.v, self.cur)
+        vals.append(v)
+        edges.append(self.cur)
+        self.br(end)
+    else:
+        self.raise_("AttributeError", self.sconst(f"type object 'NoneType' has no attribute '{name}'"))
+        if len(kinds) == 0:
+            return Val("undef", t)
     self.place(end)
-    return Val(self.phi(ph), t)
+    # (a number keeps the identity of the class attribute it is, as a read through the class does)
+    return self.numeric_phi(Val(self.phi(ph), t), vals, edges)
 
 
 def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str, resultsoft: bool) -> Val:
@@ -486,6 +506,8 @@ def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str,
     valued = t != "" and t != "None"
     end = self.label()
     ph = Ins("phi", t if valued else "int", "")
+    vals: list[Val] = []
+    edges: list[str] = []
     for c in kinds:
         hit = self.label()
         miss = self.label()
@@ -496,9 +518,13 @@ def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str,
         self.making.pop()
         if not self.term:
             if valued:
-                self.incoming(ph, self.coerce(r, t).v, self.cur)
+                r = self.coerce(r, t)
+                self.incoming(ph, r.v, self.cur)
+                vals.append(r)
+                edges.append(self.cur)
             self.br(end)
         self.place(miss)
     self.raise_("AttributeError", self.sconst(f"type object 'NoneType' has no attribute '{name}'"))
     self.place(end)
-    return Val(self.phi(ph), t) if valued else Val("null", "None")
+    # (a number that a call returns keeps its identity, as the call through the class does)
+    return self.numeric_phi(Val(self.phi(ph), t), vals, edges) if valued else Val("null", "None")

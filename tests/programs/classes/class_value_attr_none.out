@@ -1,0 +1,5 @@
+A documentation
+3
+The type of the None singleton.
+AttributeError: type object 'NoneType' has no attribute 'limit'
+[exit 0]
