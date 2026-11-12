@@ -325,7 +325,7 @@ def check_header(snapshot):
         raise Unsupported("only completed typed-after snapshots are supported")
 
 
-def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX_INSTRUCTIONS):
+def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX_INSTRUCTIONS, certify=True):
     name(function, "function selector")
     check_header(snapshot)
     functions = snapshot.get("functions")
@@ -892,7 +892,8 @@ def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX
         for key in ("next", "yes", "no"):
             if key in node:
                 node[key] = renumber[node[key]]
-    certificate = infer_certificate(nodes)
+    # (a caller that only validates the function needs no certificate: certify=False)
+    certificate = infer_certificate(nodes) if certify else []
     candidate = {"schema_version": 2, "program": {"entry": 0, "nodes": nodes}, "certificate": certificate}
     return candidate, {"function": symbol, "stage": "typed-after", "nodes": len(nodes),
                        "payloads": payloads, "paired_guards": paired_guards,

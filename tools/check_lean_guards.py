@@ -961,7 +961,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     # analysis and certificate. Pre-exception pass snapshots are accepted only here
     # with their original check and handler edges retained below.
     validation = dict(snapshot, functions=[fn])
-    boundary.normalize_snapshot(validation, fn["symbol"])
+    boundary.normalize_snapshot(validation, fn["symbol"], certify=False)
     if not null_mode and not immutable_boxes and union_writes(fn, context):
         raise boundary.Unsupported("nonprivate writes may alias immutable union boxes")
     if not null_mode and not immutable_boxes:

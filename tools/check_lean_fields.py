@@ -421,7 +421,8 @@ def facts(nodes, keep=None):
 
 def loop_blocks(fn):
     """Blocks on a cycle of the block graph, exception edges included (an allocation there may
-    run again while a value holds its previous object)."""
+    run again while a value holds its previous object): those of a strongly connected component
+    with more than one block, or with an edge to itself (Tarjan's algorithm, iteratively)."""
     succ = {}
     for b in fn["blocks"]:
         targets = list(b["operations"][-1]["targets"]) if b["operations"] else []
@@ -431,17 +432,43 @@ def loop_blocks(fn):
         if b["handler"]:
             targets.append(b["handler"])
         succ[b["label"]] = [t for t in targets if t]
-    out = set()
-    for start in succ:
-        seen, stack = set(), list(succ[start])
-        while stack:
-            x = stack.pop()
-            if x == start:
-                out.add(start)
-                break
-            if x not in seen and x in succ:
-                seen.add(x)
-                stack.extend(succ[x])
+    index, low, stack, on_stack, out = {}, {}, [], set(), set()
+    for root in succ:
+        if root in index:
+            continue
+        work = [(root, iter(succ[root]))]
+        index[root] = low[root] = len(index)
+        stack.append(root)
+        on_stack.add(root)
+        while work:
+            node, edges = work[-1]
+            for target in edges:
+                if target not in succ:
+                    continue
+                if target == node:
+                    out.add(node)
+                if target not in index:
+                    index[target] = low[target] = len(index)
+                    stack.append(target)
+                    on_stack.add(target)
+                    work.append((target, iter(succ[target])))
+                    break
+                if target in on_stack:
+                    low[node] = min(low[node], index[target])
+            else:
+                work.pop()
+                if work:
+                    low[work[-1][0]] = min(low[work[-1][0]], low[node])
+                if low[node] == index[node]:
+                    component = []
+                    while True:
+                        member = stack.pop()
+                        on_stack.discard(member)
+                        component.append(member)
+                        if member == node:
+                            break
+                    if len(component) > 1:
+                        out.update(component)
     return out
 
 
@@ -476,6 +503,7 @@ class Context:
         self.layouts, self.view = class_tables(snapshot)
         self.functions = {f["symbol"]: f for f in snapshot["functions"]}
         self.validated, self.loops, self.graphs, self.callees, self.closures = {}, {}, {}, {}, {}
+        self.states = {}
         self.adapters = adapter_targets(self.functions)
 
     def shapes(self, fn):
@@ -498,7 +526,7 @@ class Context:
         symbol = fn["symbol"]
         if symbol not in self.validated:
             try:
-                boundary.normalize_snapshot(dict(self.snapshot, functions=[fn]), symbol)
+                boundary.normalize_snapshot(dict(self.snapshot, functions=[fn]), symbol, certify=False)
                 self.validated[symbol] = None
             except boundary.Unsupported as error:
                 self.validated[symbol] = error
@@ -532,6 +560,13 @@ class Context:
         if isinstance(self.graphs[key], boundary.Unsupported):
             raise self.graphs[key]
         return self.graphs[key]
+
+    def facts(self, graph):
+        """A graph's facts, inferred once: a round of contract inference that leaves a function's
+        contracts as they were reuses its graph and them."""
+        if id(graph) not in self.states:
+            self.states[id(graph)] = facts(graph[0], graph[3])
+        return self.states[id(graph)]
 
 
 def normalize(ctx, fn, contracts):
@@ -1114,14 +1149,15 @@ def infer_contracts(ctx, proved, refused=frozenset()):
                 if not relevant_function(fn, layouts, contracts):
                     continue
                 try:
-                    nodes, meta, probes, keep = ctx.graph(fn, contracts)
+                    graph = ctx.graph(fn, contracts)
                 except boundary.Unsupported:
                     for k in contracts:
                         if k[0] == fn["symbol"]:
                             posts[k] = set()
                             leaks[k] = True
                     continue
-                state = facts(nodes, keep)
+                nodes, meta, probes, keep = graph
+                state = ctx.facts(graph)
                 for index, callee, pos, value in probes["wanted"]:
                     known = state[index] or {}
                     for tag in known.get(value, ()):

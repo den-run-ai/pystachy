@@ -324,7 +324,7 @@ def normalize(snapshot, fn, memory=None):
         slots=[validated(op) for op in fn["slots"]],
         blocks=[dict(block, operations=[validated(op) for op in block["operations"]]) for block in fn["blocks"]])])
     try:
-        boundary.normalize_snapshot(validation, fn["symbol"], MAX_BLOCKS, MAX_INSTRUCTIONS)
+        boundary.normalize_snapshot(validation, fn["symbol"], MAX_BLOCKS, MAX_INSTRUCTIONS, certify=False)
     except ValueError as error:
         # (a form the boundary validator refuses, such as a type name past its bound)
         raise boundary.Unsupported(f"outside the boundary validator: {error}") from error

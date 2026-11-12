@@ -6,7 +6,9 @@ pragmas. Unsupported obligations remain in the denominator and cause failure.
 """
 import argparse
 import concurrent.futures
+import functools
 import json
+import multiprocessing
 import os
 from pathlib import Path
 import subprocess
@@ -145,9 +147,12 @@ def main(argv=None):
         print("\n".join(programs))
         return 0
     started = time.monotonic()
-    with concurrent.futures.ThreadPoolExecutor(args.jobs) as pool:
+    # (worker processes: a thread holds the interpreter while it checks a snapshot, which is most
+    # of a program's time)
+    context = multiprocessing.get_context("forkserver")
+    with concurrent.futures.ProcessPoolExecutor(args.jobs, mp_context=context) as pool:
         records = []
-        for record in pool.map(lambda p: check_program(p, args.checker, args.timeout), programs):
+        for record in pool.map(functools.partial(check_program, checker=args.checker, timeout=args.timeout), programs):
             records.append(record)
             if args.progress:
                 print(f"{len(records)}/{len(programs)} {record['status']} {record['program']}", file=sys.stderr, flush=True)
