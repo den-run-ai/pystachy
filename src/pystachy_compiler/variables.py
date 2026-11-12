@@ -2006,7 +2006,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
             return
         if is_list(unopt(o.t)):
-            ix = self.ival(t.kids[1])
+            ix = self.ival(t.kids[1], "", True, o, nosub)
             o = self.unwrap(o, nosub)
             self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
