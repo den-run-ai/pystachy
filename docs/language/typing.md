@@ -151,7 +151,8 @@ value's type. In a class body, a constant gives a field its type, and any other 
 class attribute typed as an unannotated one is (`FLAGS: Final = ["a", "b"]`). Nested classes,
 dataclasses, `NamedTuple`s and classes that are not compiled (whose creation may read the
 annotation, as a `TypedDict`'s does) still need a constant or `Final[T]`. `x: Final` alone
-binds nothing.
+binds nothing. In the same classes, `x: ClassVar[T] = value` is the class attribute
+`x: T = value`; `ClassVar` without a value, and in a dataclass, is unsupported.
 `@overload` stubs are discarded when followed by their implementation; they do not create
 runtime overload dispatch. Decorators accepted on unused imported definitions are not
 necessarily supported on methods the program actually uses; see [module rules](modules.md).

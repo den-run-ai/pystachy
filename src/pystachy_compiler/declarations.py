@@ -833,8 +833,8 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = Fa
     # outside class bodies, and in one a field typed by the constant v, or else, where attrs (the
     # body of a module-level class without decorators or a NamedTuple base, which CPython
     # creates without reading its annotations), the class attribute x = v, its s "Final" (the
-    # class has __annotations__: refl_annotated); x: Final[T] is x: T, and x: Final alone does
-    # nothing
+    # class has __annotations__: refl_annotated); x: Final[T] is x: T, x: ClassVar[T] = v is
+    # x: T = v where attrs (a dataclass's is no field), and x: Final alone does nothing
     out: list[Node] = []
     defs: dict[str, bool] = {}
     for i in range(len(body)):
@@ -866,6 +866,8 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = Fa
         a = st.kids[1] if st.kind == "annassign" else st
         if a.kind == "index" and self.typing_ref(a.kids[0]) == "Final":
             st.kids[1] = a.kids[1]
+        elif a.kind == "index" and attrs and len(st.kids) == 3 and st.kids[0].kind == "name" and a.kids[1].kind != "tuple" and self.typing_ref(a.kids[0]) == "ClassVar":
+            st.kids[1] = a.kids[1]  # (x: ClassVar[T] = v: the class attribute x: T = v, as a class-body default is)
         elif a is not st and len(st.kids) == 3 and not cls and self.typing_ref(a) == "Final":
             st.kind = "assign"
             st.kids = [st.kids[0], st.kids[2]]

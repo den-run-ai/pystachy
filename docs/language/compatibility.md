@@ -582,7 +582,8 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 [generic classes](typing.md#explicit-generic-classes).
 
-- **Type variables:** `ClassVar`; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
+- **Type variables:** `ClassVar`, except `x: ClassVar[T] = value` in an ordinary module-level
+  class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
   and returns, except bound class type variables; constraints or nonstring bounds;
   `TypeVarTuple` outside unpacking in tuple, Callable or `*args`; unbound class type variables.
 - **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
