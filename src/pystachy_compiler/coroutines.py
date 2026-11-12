@@ -551,6 +551,9 @@ def gen_coro_hinted(self, g: FnInfo) -> None:
         g.ayield = h
         self.coro_settle(g)
     h = self.hints.get("cret:" + self.fnkey(g), "")
+    o = self.optional(g.gret) if g.gret != "" and g.gret != "None" and not g.gretinfer else ""
+    if h != "" and o != "" and o != h and self.coro_type("None", o) == self.coro_type("None", h):
+        h = o  # (an annotated promoting int's int | None, whose coroutines hold the opt[int] hinted: ctype)
     if h != "" and (g.gretinfer or self.optional(g.gret) == h or (g.gret == "None" and self.optional(h) == h)):
         # (also an annotated R, where async overrides return it or None: coro_rejoin)
         g.gret = h

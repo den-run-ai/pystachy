@@ -1,8 +1,8 @@
 """Calls component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.analysis import local_names, numeric_statement
-from src.pystachy_compiler.bigints import converts
-from src.pystachy_compiler.diagnostics import dynamic_program, shown, where
+from src.pystachy_compiler.bigints import converts, int_tuple
+from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown, where
 from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
@@ -400,7 +400,10 @@ def gen_star_args(self, f: FnInfo, a: Node, pos: int, vals: list[Val], extra: li
     for j in fixed:
         if f.defaults[j].kind != "noann" or f.params[j] in kws:
             self.err(f"unpacking a {typestr(xs.t)} into the arguments of {who} is not supported where its items may fill '{f.params[j]}', a parameter with a default or given by keyword")
-    if f.varelem != "" and f.varelem != et:
+    if int_lists() and int_tuple(et):
+        self.err(f"unpacking a {typestr(xs.t)} into the arguments of {who} is not supported in a program whose lists hold promoting ints (its tuples' ints may be past 64 bits)")
+    if f.varelem != "" and self.ctype("vtuple", [f.varelem]) != self.ctype("vtuple", [et]):
+        # (an annotated promoting int's *args holds 64-bit ints, as a list's items are read: ctype)
         self.err(f"unpacking a {typestr(xs.t)} into the arguments of {who}, whose *{f.params[f.vararg]} takes {typestr(f.varelem)} items, is not supported (make it a list[{typestr(f.varelem)}])")
     n = Val(self.list_len(xs) if is_list(xs.t) else self.mload("int", xs.v), "int")
     for m in range(len(fixed)):
