@@ -310,7 +310,6 @@ def main(argv=None):
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
-    # The compiler runs from each suite's own directory, so a relative path is resolved here.
     args.compiler = shlex.join(runner.compiler_command(args.compiler))
     args.mode = args.mode or ["jit", "aot"]
     names = args.suite or list(manifest["suites"])

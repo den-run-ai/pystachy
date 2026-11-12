@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shlex
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -28,6 +29,99 @@ class TemporarySuite(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(textwrap.dedent(source))
         return path
+
+
+class CompilerCommandTests(TemporarySuite):
+    def test_relative_compiler_runs_from_another_suite_root_and_preserves_failures(self):
+        # This stub tests command launching, without requiring a native compiler.
+        compiler = self.source(f"#!{sys.executable}\n" + "import runpy, sys\n"
+                               "assert sys.argv[1] == 'run'\n"
+                               "sys.argv = sys.argv[2:]\n"
+                               "runpy.run_path(sys.argv[0], run_name='__main__')\n", "pystachy.py")
+        compiler.chmod(0o755)
+        (self.root / "pystachy").symlink_to(compiler.name)
+        report = self.root / "report.json"
+        for command in (["./pystachy"], [sys.executable, "pystachy.py"]):
+            for expected in (1, 2):
+                with self.subTest(command=command, expected=expected):
+                    path = self.source(f"def test_value(): assert 1 == {expected}\n", "cases/test_suite.py")
+                    with contextlib.chdir(self.root), contextlib.redirect_stdout(io.StringIO()), \
+                            contextlib.redirect_stderr(io.StringIO()) as error:
+                        status = runner.main([str(path), "--root", "cases", "--mode", "jit",
+                                              "--compiler", shlex.join(command), "--work-dir", str(self.work),
+                                              "--json", str(report)])
+                    evidence = json.loads(report.read_text())
+                    self.assertEqual(status, expected - 1, error.getvalue())
+                    self.assertEqual(evidence["qualification"], "pytest-matched", evidence)
+                    self.assertEqual(evidence["results"][0]["state"],
+                                     "passed" if expected == 1 else "test-failed")
+
+    def test_missing_compiler_cannot_resolve_to_a_suite_file(self):
+        marker = self.root / "wrong-compiler-ran"
+        compiler = self.source(f"#!{sys.executable}\n" + "import runpy, sys\n"
+                               "from pathlib import Path\n"
+                               f"Path({str(marker)!r}).write_text('ran')\n"
+                               "sys.argv = sys.argv[2:]\n"
+                               "runpy.run_path(sys.argv[0], run_name='__main__')\n",
+                               "cases/missing-compiler.py")
+        compiler.chmod(0o755)
+        path = self.source("def test_value(): assert 1 == 1\n", "cases/test_suite.py")
+        report = self.root / "report.json"
+        for command in (["./missing-compiler.py"], [sys.executable, "missing-compiler.py"]):
+            with self.subTest(command=command):
+                marker.unlink(missing_ok=True)
+                with contextlib.chdir(self.root), contextlib.redirect_stdout(io.StringIO()), \
+                        contextlib.redirect_stderr(io.StringIO()) as error:
+                    status = runner.main([str(path), "--root", "cases", "--mode", "jit",
+                                          "--compiler", shlex.join(command), "--work-dir", str(self.work),
+                                          "--json", str(report)])
+                evidence = json.loads(report.read_text())
+                self.assertEqual(status, 2, error.getvalue())
+                self.assertFalse(marker.exists())
+                self.assertEqual(evidence["results"][0]["state"], "execution-error")
+
+    def test_python_stdin_after_option_separator_is_not_a_file(self):
+        self.source("raise AssertionError('the dash file must not run')\n", "-")
+        with contextlib.chdir(self.root):
+            command = runner.compiler_command(shlex.join([sys.executable, "--", "-"]))
+            result = subprocess.run(command, input="print('from stdin')\n", text=True,
+                                    capture_output=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "from stdin\n")
+
+    def test_python_options_modules_and_script_arguments_are_not_paths(self):
+        for name in ("python", "pystachy.py", "option.py", "argument.py", "module.py"):
+            self.source("", name)
+        script = str(self.root / "pystachy.py")
+        cases = [
+            (["python", "-m", "module.py"], ["python", "-m", "module.py"]),
+            (["python", "-mmodule.py"], ["python", "-mmodule.py"]),
+            (["python", "-c", "option.py"], ["python", "-c", "option.py"]),
+            (["python", "-coption.py"], ["python", "-coption.py"]),
+            (["python", "-", "argument.py"], ["python", "-", "argument.py"]),
+            (["python", "--unknown", "option.py"], ["python", "--unknown", "option.py"]),
+            (["python", "-W", "option.py", "pystachy.py", "argument.py"],
+             ["python", "-W", "option.py", script, "argument.py"]),
+            (["python", "-X", "option.py", "pystachy.py"], ["python", "-X", "option.py", script]),
+            (["python", "--check-hash-based-pycs", "always", "pystachy.py"],
+             ["python", "--check-hash-based-pycs", "always", script]),
+            (["python", "-B", "-OO", "-Wignore", "-Xdev", "--", "pystachy.py"],
+             ["python", "-B", "-OO", "-Wignore", "-Xdev", "--", script]),
+            (["pystachy", "--config", "option.py"], ["pystachy", "--config", "option.py"]),
+        ]
+        with contextlib.chdir(self.root):
+            for command, expected in cases:
+                with self.subTest(command=command):
+                    self.assertEqual(runner.compiler_command(shlex.join(command)), expected)
+
+    def test_quoted_script_and_virtual_environment_executable_keep_their_identity(self):
+        python = self.root / ".venv/bin/python"
+        python.parent.mkdir(parents=True)
+        python.symlink_to(sys.executable)
+        script = self.source("", "compiler with spaces.py")
+        with contextlib.chdir(self.root):
+            self.assertEqual(runner.compiler_command(".venv/bin/python 'compiler with spaces.py'"),
+                             [str(python), str(script)])
 
 
 class DiscoveryTests(TemporarySuite):

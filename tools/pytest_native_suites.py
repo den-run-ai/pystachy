@@ -19,7 +19,7 @@ from pytest_native_codegen import generate
 
 ROOT = Path(__file__).resolve().parents[1]
 EXAMPLES = ("agent", "byte_bpe", "column", "csvstat", "cut", "guarded_score", "id_filter", "latency",
-            "linediff", "mailmerge", "mazepath", "miniui", "montecarlo", "nanogpt", "ndarray",
+            "linediff", "mailmerge", "match_dispatch", "mazepath", "miniui", "montecarlo", "nanogpt", "ndarray",
             "route", "suggest", "topk", "urlstats")
 IMPORTS = {"byte_bpe": ("bench/pyperformance",), "nanogpt": ("examples/ndarray",)}
 
@@ -127,7 +127,6 @@ def main(argv=None):
     parser.add_argument("--timeout", type=float, default=120)
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args(argv)
-    # The compiler runs from each suite's own directory, so a relative path is resolved here.
     args.compiler = shlex.join(runner.compiler_command(args.compiler))
     try:
         selected = select(args.suite, args.group)

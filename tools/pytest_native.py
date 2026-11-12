@@ -102,15 +102,47 @@ def outcome_counts(results: list[Result]) -> dict[str, int]:
 
 
 def compiler_command(text: str) -> list[str]:
-    """Split a compiler command, making relative program and script paths absolute.
+    """Anchor explicit executable and Python script paths before changing cwd.
 
-    The compiler runs from --root, where `./pystachy` would name another file.
+    PATH commands, module names, options and compiler arguments retain their
+    meaning. Preserve symlinks, notably virtual-environment Python executables.
     """
     command = shlex.split(text)
-    for index, part in enumerate(command):
-        relative = not os.path.isabs(part) and not part.startswith("-") and Path(part).is_file()
-        if relative and (os.sep in part or part.endswith(".py") if index else os.sep in part):
-            command[index] = str(Path(part).resolve())
+    if not command:
+        return command
+
+    def anchor(index: int) -> None:
+        path = Path(command[index])
+        # Missing paths must still fail at the caller's location, not resolve
+        # to an unrelated file after the runner changes to the suite root.
+        if not path.is_absolute():
+            command[index] = str(path.absolute())
+
+    if os.sep in command[0]:
+        anchor(0)
+    if not re.fullmatch(r"(?:python|pypy)(?:\d+(?:\.\d+)*)?(?:\.exe)?", Path(command[0]).name):
+        return command
+    index = 1
+    while index < len(command):
+        part = command[index]
+        if part == "--":
+            index += 1
+            break
+        if part in {"-c", "-m", "-"}:
+            return command
+        if part in {"-W", "-X", "--check-hash-based-pycs"}:
+            index += 2
+        elif part.startswith(("-W", "-X", "--check-hash-based-pycs=")):
+            index += 1
+        elif part.startswith("-"):
+            # Unknown options may consume the next token; never guess it is a script.
+            if not set(part[1:]) <= set("bBdEiIOPqRsSuvx"):
+                return command
+            index += 1
+        else:
+            break
+    if index < len(command) and command[index] != "-":
+        anchor(index)
     return command
 
 
@@ -836,8 +868,8 @@ def main(argv: list[str] | None = None) -> int:
     args.hosted_default = args.compiler is None
     if args.compiler is None:
         args.compiler = shlex.join([sys.executable, str(REPO / "pystachy.py")])
-    args.compiler = shlex.join(compiler_command(args.compiler))
     try:
+        args.compiler = shlex.join(compiler_command(args.compiler))
         with lock_work_directory(args.work_dir.resolve()):
             return execute(args)
     except (CollectionError, OSError) as error:

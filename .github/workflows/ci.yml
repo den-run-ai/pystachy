@@ -167,7 +167,7 @@ jobs:
           esac
 
       - name: Opt-in sweeps and Lean corpus CPython dependency
-        if: startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || (matrix.group == 'runtime-cache' && matrix.machine == 'x86_64')
+        if: startsWith(matrix.group, 'dynany-optin-') || startsWith(matrix.group, 'python-int-optin-') || matrix.group == 'opt-in' || (matrix.group == 'gc-jit-1' && matrix.machine == 'x86_64')
         run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
 
       - name: Workload pytest oracle dependency
@@ -187,12 +187,36 @@ jobs:
           VERIFY_BOOTSTRAP_DIR: build/ci-bootstrap
         run: tests/verify.sh "$VERIFY_GROUP"
 
-      # Keep the complete Lean corpora at two workers. Full dynamic-Any already approaches
-      # the job's time bound; put storage proofs in the shorter full scaling group instead.
-      # PR opt-in retains all three checks; contracts checks bounded union/null examples.
+      # These hosted/native controls run sequentially after a short GC JIT group.
+      # PRs use the second native JIT worker below; neither placement adds a job.
+      - name: Runtime ABI and GC root checker controls
+        if: matrix.group == 'gc-jit-0' && matrix.machine == 'x86_64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-rt-18-dev
+          # Generated-code ASan controls run in the existing x86 contracts job.
+          PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 - <<'PY'
+          from pathlib import Path
+          import unittest
+          suite = unittest.TestSuite(
+              unittest.defaultTestLoader.discover("tools", pattern=path.name)
+              for path in sorted(Path("tools").glob("test_runtime_*.py"))
+              if path.name != "test_runtime_asan.py"
+          )
+          raise SystemExit(not unittest.TextTestRunner().run(suite).wasSuccessful())
+          PY
+          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
+            tools/check_cpu_buffers.sh '-fsanitize=address,undefined'
+          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
+            tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'
+
+      # Keep the complete Lean corpora at two workers. Runtime-cache plus corpus proofs and
+      # the program-cache probe exceeded 15 minutes; gc-jit-1 has room after its corpus.
+      # Storage proofs use full scaling. PR opt-in retains all three checks; contracts checks
+      # bounded union/null examples. Each check finishes before the next begins.
       # The pinned release archive is for x86_64 Linux.
       - name: Lean proofs of compiler guard obligations
-        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'runtime-cache' || matrix.group == 'scaling' || matrix.group == 'contracts')
+        if: matrix.machine == 'x86_64' && (matrix.group == 'opt-in' || matrix.group == 'gc-jit-1' || matrix.group == 'scaling' || matrix.group == 'contracts')
         env:
           VERIFY_GROUP: ${{ matrix.group }}
         run: |
@@ -206,7 +230,7 @@ jobs:
             "$lean_boundary_dir/lean.tar.zst" | sha256sum --check -
           tar --no-same-owner --zstd -xf "$lean_boundary_dir/lean.tar.zst" -C "$lean_boundary_dir"
           case "$VERIFY_GROUP" in
-            opt-in|runtime-cache)
+            opt-in|gc-jit-1)
               PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
                 make check-lean-corpus LEAN_CORPUS_FLAGS='--jobs 2 --report build/verify/lean-corpus.json'
               PATH="$lean_boundary_dir/lean-4.35.0-linux/bin:$PATH" \
@@ -272,6 +296,12 @@ jobs:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make bench-pyperformance-check BENCH_COMPILER=build/verify/pystachy2
 
+      - name: Bounded match dispatch correctness
+        if: matrix.group == 'benchmarks'
+        env:
+          PYSTACHY_HOME: ${{ github.workspace }}
+        run: make bench-match-check BENCH_COMPILER=build/verify/pystachy2
+
       - name: Shared pytest example assertions
         if: matrix.group == 'hosted'
         env:
@@ -314,6 +344,7 @@ jobs:
           name: ${{ matrix.machine }}-verification-${{ matrix.group }}
           path: |
             build/pyperformance-smoke.json
+            build/match-dispatch-smoke.json
             build/pytest-pyperformance.json
             build/pytest-workloads.json
             build/pytest-native/examples.json
@@ -391,12 +422,32 @@ jobs:
         run: python3 tools/pr_variants.py --worker "$VARIANT_WORKER"
       # The contracts and cache/GC jobs took up to 13.5 minutes on EPYC 7763 runners, these
       # workers about 3.5 (#1178): the first runs the PR's program-cache probe, with the stage-2
-      # compiler its JIT half restored.
+      # compiler its JIT half restored. The second takes the runtime controls out of Lint.
       - name: Native program cache invalidation and execution
         if: matrix.worker == 0
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-program-cache PROGRAM_CACHE_COMPILER=build/verify/pystachy2
+      - name: Runtime ABI and GC root checker controls
+        if: matrix.worker == 1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-rt-18-dev
+          # Generated-code ASan controls run in the existing x86 contracts job.
+          PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 - <<'PY'
+          from pathlib import Path
+          import unittest
+          suite = unittest.TestSuite(
+              unittest.defaultTestLoader.discover("tools", pattern=path.name)
+              for path in sorted(Path("tools").glob("test_runtime_*.py"))
+              if path.name != "test_runtime_asan.py"
+          )
+          raise SystemExit(not unittest.TextTestRunner().run(suite).wasSuccessful())
+          PY
+          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
+            tools/check_cpu_buffers.sh '-fsanitize=address,undefined'
+          PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \
+            tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         if: always()
         with:

@@ -643,7 +643,7 @@ class Generator:
             return UNKNOWN
         except CollectionError:
             raise
-        except Exception:  # noqa: BLE001 (whatever the expression raises, it was not read)
+        except Exception:  # (whatever the expression raises, it was not read)
             return UNKNOWN
         return value if _static(value, None, partial) else UNKNOWN
 

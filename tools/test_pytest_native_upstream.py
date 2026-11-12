@@ -1,9 +1,12 @@
 """Independent original-unittest controls for upstream pytest qualification."""
 import argparse
+import contextlib
 import copy
+import io
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -165,6 +168,31 @@ class QualificationTests(unittest.TestCase):
                                          "adapted": "test_selected.py::test_Cases__test_pass"}])
         self.assertEqual([item["mode"] for item in row["modes"]], ["python"])
 
+    def test_cli_anchors_compiler_before_invoking_the_nested_runner(self):
+        # The subprocess changes cwd twice: to ROOT, then the adapted suite.
+        # A stub exercises both boundaries without claiming native compilation.
+        compiler = self.root / "compiler-stub.py"
+        compiler.write_text(f"#!{sys.executable}\n" + "import runpy, sys\n"
+                            "assert sys.argv[1] == 'run'\n"
+                            "sys.argv = sys.argv[2:]\n"
+                            "runpy.run_path(sys.argv[0], run_name='__main__')\n")
+        compiler.chmod(0o755)
+        (self.root / "compiler-stub").symlink_to(compiler.name)
+        manifest = self.root / "manifest.json"
+        manifest.write_text(json.dumps({**self.manifest, "suites": {"sample": self.spec}}))
+        report = self.root / "report.json"
+        for command in (["./compiler-stub"], [sys.executable, "compiler-stub.py"]):
+            with self.subTest(command=command), patch.object(upstream, "MANIFEST", manifest), \
+                    contextlib.chdir(self.root), contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()) as error:
+                status = upstream.main(["--suite", "sample", "--mode", "jit", "--compiler", shlex.join(command),
+                                        "--source-cache", str(self.cache), "--work-dir", str(self.args.work_dir),
+                                        "--json", str(report)])
+                evidence = json.loads(report.read_text())
+                self.assertEqual(status, 0, error.getvalue())
+                self.assertEqual(evidence["suites"][0]["state"], "passed", evidence)
+                self.assertEqual([mode["mode"] for mode in evidence["suites"][0]["modes"]], ["python", "jit"])
+
     def test_false_extraction_is_rejected_against_independent_original(self):
         original_export = extractor.pytest_suite
         def altered_export(*args, **kwargs):
@@ -267,7 +295,8 @@ class ManifestTests(unittest.TestCase):
                     if "local" in entry:
                         self.assertEqual(upstream.sha256(upstream.ROOT / entry["local"]), entry["sha256"])
         self.assertEqual({name: len(spec["inventory"]) for name, spec in manifest["suites"].items()},
-                         {"fnmatch": 17, "textwrap": 66, "statistics": 401, "mypyc-namegen": 5})
+                         {"fnmatch": 17, "textwrap": 66, "statistics": 401, "mypyc-namegen": 5, "mypyc-literals": 11,
+                          "mypy-stubinfo": 2})
 
 
 if __name__ == "__main__":

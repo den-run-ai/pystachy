@@ -1137,21 +1137,6 @@ class FormRejections(TemporarySuite):
 
 
 class RunnerDetails(TemporarySuite):
-    def test_relative_compiler_paths_become_absolute(self):
-        (self.root / "tool").write_text("")
-        (self.root / "script.py").write_text("")
-        previous = os.getcwd()
-        os.chdir(self.root)
-        try:
-            self.assertEqual(runner.compiler_command("./tool run"), [str(self.root.resolve() / "tool"), "run"])
-            self.assertEqual(runner.compiler_command("python3 script.py -O"),
-                             ["python3", str(self.root.resolve() / "script.py"), "-O"])
-            # A bare program name is looked up on PATH, even if a file here shares it.
-            self.assertEqual(runner.compiler_command("tool"), ["tool"])
-            self.assertEqual(runner.compiler_command("./missing"), ["./missing"])
-        finally:
-            os.chdir(previous)
-
     def test_generated_lines_map_to_test_lines(self):
         source = textwrap.dedent('''\
             import pytest
