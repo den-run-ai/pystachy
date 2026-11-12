@@ -1095,6 +1095,7 @@ def gen_stmt_main(self, n: Node) -> None:
         else:
             self.list_store(Val(self.lcs[-1], self.ctype("list", [et])), self.list_hold(v, et), "append")
     elif k == "newtype":
+        self.newtype_reads(self.alias_value(n.s))
         if n.s in self.gflag:
             self.mstore('bool', 'true', f'@g.{n.s}.def')  # (N = NewType(...) has run: see call)
     elif k == "defaults" or k == "cdefaults":

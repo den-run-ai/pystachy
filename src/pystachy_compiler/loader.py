@@ -737,6 +737,7 @@ class Loader:
         self.vtakem: list[Mod] = []
         self.vtook: dict[str, bool] = {}
         self.aliased: dict[str, Node] = {}  # assignment/type alias statements, by "<module> <name>"
+        self.newtypes: dict[str, bool] = {}  # the qualified names that N = NewType("N", T) binds (newtype): type aliases that code may call
         # each star import of a package without __all__, with the module it is in (submodules())
         self.stars: list[Node] = []
         self.starm: list[Mod] = []
@@ -1430,6 +1431,7 @@ class Loader:
                 m.kinds[nm] = "t:" + self.qual(m, nm)
                 m.taliases[self.qual(m, nm)] = st
                 self.aliased[m.name + " " + nm] = st
+                self.newtypes[self.qual(m, nm)] = True
                 self.used_before(m, st)
             elif not ann and v.kind == "call" and self.typevar(st.kids[0]):
                 m.kinds[nm] = "t:" + self.qual(m, nm)  # (T = TypeVar("T"): its imports name it, as a type alias's do)
@@ -1611,9 +1613,10 @@ class Loader:
             if msg == "":
                 self.vtakek[i][n.s] = k
                 cp.kind = "pass"
-                if k.startswith("a:"):
-                    # The original variable copy now binds an alias. Keep the import's flag
-                    # and source read, just as import_stmt does for an alias known at load time.
+                if k.startswith("a:") or k[2:] in self.newtypes:
+                    # The original variable copy now binds an alias (or a NewType, which code calls
+                    # too). Keep the import's flag and source read, as import_stmt does for an alias
+                    # known at load time: a read where the import may not have run checks the flag.
                     saved_def = self.curdef
                     saved_try = self.intry
                     self.curdef = n.kids[4].s
@@ -3667,9 +3670,9 @@ class Loader:
                         del inner[nm]  # (this import hides an enclosing function's variable)
                 for nm in self.unsure.get(str(st.line), {}):
                     k = imports.get(nm, "")
-                    if k.startswith("m:") or k.startswith("a:") or k.startswith("b:"):
-                        # (a function's import of a Python module binds a local, which CPython reads
-                        # unbound before it runs)
+                    if k.startswith("m:") or k.startswith("a:") or k.startswith("b:") or k[2:] in self.newtypes:
+                        # (a function's import of a Python module, or of a NewType, binds a local,
+                        # which CPython reads unbound before it runs)
                         st.kids[2].kids.insert(0, mk("badimport", f"'{nm}' is read in {st.s}() where Pystachy cannot tell that the import in it that binds '{nm}' has run (where it has not, CPython raises UnboundLocalError): not supported", st.line, []))
                         break
                 for nm in imports:

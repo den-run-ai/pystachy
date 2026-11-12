@@ -668,6 +668,19 @@ def gen_newtype_name(self, name: str) -> bool:
     # whose calls return their argument
     return name in self.taliases and self.taliases[name].kind == "assign" and self.taliases[name].kids[1].kind == "call"
 
+def gen_newtype_reads(self, e: Node) -> None:
+    # N = NewType("N", T) runs (statement newtype): CPython evaluates T first, where a class or
+    # NewType that T names may not be bound yet, as one read through its module (a.C) during a
+    # circular import, or one that an import which raised was to bind: their errors, as
+    # isinstance's argument has them (isinst_reads). (A string in T is not evaluated)
+    if e.kind == "name":
+        self.modchk(e)
+        if (e.s in self.classes or self.newtype_name(e.s)) and (e.chk or self.foreign(e.s)) and e.s in self.gflag:
+            self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))
+        return
+    for k in e.kids if e.kind != "str" else []:
+        self.newtype_reads(k)
+
 def gen_alias_kept(self, name: str) -> bool:
     # does the assignment that binds type alias name stay in the module's code: Pos = int binds
     # a class, which can be called (Pos("3")), as does an alias of such an alias; the other

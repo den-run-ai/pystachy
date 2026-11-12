@@ -878,10 +878,12 @@ def gen_program(self, mods: list[Mod]) -> str:
     for q in self.taliases:
         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's
         # only where its __value__ is read)
-        why = self.alias_problem(self.taliases[q].kids[1]) if self.taliases[q].kind == "assign" else ""
+        # (of N = NewType("N", T), T: alias_value)
+        why = self.alias_problem(self.alias_value(q)) if self.taliases[q].kind == "assign" else ""
         if why != "":
             self.line = self.taliases[q].line
-            self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates this type alias's value when the assignment runs)")
+            what = "this NewType's type" if self.newtype_name(q) else "this type alias's value"
+            self.err(why[1:] if why.startswith("!") else f"{why} (CPython evaluates {what} when the assignment runs)")
     if len(self.taliases) > 0:
         self.recursive_aliases()
         # an annotation that names a type alias is its value (unalias)
