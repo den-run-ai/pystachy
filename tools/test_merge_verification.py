@@ -1322,6 +1322,34 @@ class PullRequestProfileTests(unittest.TestCase):
                 self.merge()
             self.write(group, self.data[group])
 
+    def test_scaling_halves_keep_exact_coverage_across_pr_workers(self):
+        self.assertEqual(self.groups["benchmarks"], ["bootstrap", "benchmarks", "example-cli", "scaling-0"])
+        self.assertEqual(self.groups["native-aot-3"], ["bootstrap", "tests-native-aot-3", "scaling-1"])
+        result = self.merge()
+        self.assertEqual({step["name"]: step["ci_group"] for step in result["steps"]
+                          if step["name"] in merge.SCALING_STEPS},
+                         {"scaling-0": "benchmarks", "scaling-1": "native-aot-3"})
+        second = self.data["native-aot-3"]["steps"][-1]
+        # Plausible passing summaries cannot hide a missing or duplicated half.
+        for group, duplicate in (("native-aot-3", False), ("benchmarks", True)):
+            changed = copy.deepcopy(self.data[group])
+            if duplicate:
+                changed["steps"].append(copy.deepcopy(second))
+            else:
+                changed["steps"].pop()
+            count = len(changed["steps"])
+            changed["summary"].update(steps=count, passed=count)
+            self.write(group, changed)
+            with self.subTest(group=group), self.assertRaisesRegex(ValueError, "step names/order differ"):
+                self.merge()
+            self.write(group, self.data[group])
+        # Both worker reports must still cover every scaling shape exactly once.
+        changed = copy.deepcopy(self.data["native-aot-3"])
+        changed["steps"][-1]["shapes"][0] = self.data["benchmarks"]["steps"][-1]["shapes"][0]
+        self.write("native-aot-3", changed)
+        with self.assertRaisesRegex(ValueError, "each once"):
+            self.merge()
+
     def test_profile_selection_and_scope_cannot_be_downgraded_or_fabricated(self):
         for group, mutate in (
                 ("contracts", lambda data: data.pop("profile")),

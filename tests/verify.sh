@@ -153,12 +153,13 @@ plan() {
   if [ "$PROFILE" = pr ]; then
     case $1 in
       all) echo 'bootstrap tests-cpython tests-native-jit-0 tests-native-jit-1 tests-native-aot-0 tests-native-aot-1 tests-native-aot-2 tests-native-aot-3 tests-opt-off-0 runtime-cache python-free-0 ubsan-0 gc-self gc-jit-0 gc-aot-0 benchmarks example-cli dynany-optin-0 python-int-optin-0 annotation-widening check-ir runtime-table rtcheck re-fuzz dynany-fuzz re-probe rt-abi inherited-ast streaming ffi list-storage container-eq weakrefs box-slots file-buffers select-io dict-probes compile-limits jit-dead-code aot-dead-code unicode-audit scaling-0 scaling-1'; return ;;
-      native-jit-[01]|native-aot-[0123]) echo "bootstrap tests-$1"; return ;;
+      native-jit-[01]|native-aot-[012]) echo "bootstrap tests-$1"; return ;;
+      native-aot-3) echo 'bootstrap tests-native-aot-3 scaling-1'; return ;;
       safety-0) echo 'bootstrap tests-opt-off-0 python-free-0 gc-jit-0'; return ;;
       safety-1) echo 'bootstrap ubsan-0 gc-aot-0'; return ;;
       opt-in) echo 'bootstrap dynany-optin-0 python-int-optin-0 annotation-widening'; return ;;
       cache-gc) echo 'bootstrap runtime-cache gc-self'; return ;;
-      benchmarks) echo 'bootstrap benchmarks example-cli scaling-0 scaling-1'; return ;;
+      benchmarks) echo 'bootstrap benchmarks example-cli scaling-0'; return ;;
       bootstrap|hosted|contracts) ;; # shared names and steps below
       *) echo "verify: unknown PR group: $1" >&2; return 2 ;;
     esac
