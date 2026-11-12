@@ -1283,6 +1283,7 @@ class UnionProofTests(unittest.TestCase):
         mixed = "union[Item,int]"
         for mode, accepted, message in (("box", True, ""), ("optional-box", True, ""),
                                         ("unknown", False, "union.payload needs tag int"),
+                                        ("wrong-member", False, "union.payload needs tag Item"),
                                         ("unguarded", False, "union.tag needs a nonnull proof")):
             with self.subTest(mode=mode):
                 c = Case("boxed_object_" + mode.replace("-", "_"), ["Item", "int", "bool", "%ptr"])
@@ -1311,7 +1312,7 @@ class UnionProofTests(unittest.TestCase):
                     c.block("some")
                 c.guard(value, "Item", yes="miss", no="hit", typ=mixed)
                 c.block("hit")
-                c.payload(value, "int", typ=mixed)
+                c.payload(value, "Item" if mode == "wrong-member" else "int", typ=mixed)
                 c.finish_pair()
                 errors = StringIO()
                 with redirect_stderr(errors):
