@@ -89,13 +89,14 @@ def stores_attr(n: Node, receiver: str) -> bool:
 
 
 def fieldless(c: Node) -> bool:
-    # does class c (its class node) add no fields: no annotated class-body variable, no
-    # __init__, no store to an attribute of a method's first parameter, and no __slots__ but ()
+    # does class c (its class node) add no fields: no class-body variable, annotated or not (a
+    # class attribute has a slot in its objects too), no __init__, no store to an attribute of a
+    # method's first parameter, and no __slots__ but ()
     for d in c.kids[0].kids:
         slots = (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s == "__slots__"
         if slots and not (d.kids[-1].kind == "tuple" and len(d.kids[-1].kids) == 0 and len(d.kids) == (2 if d.kind == "assign" else 3)):
             return False
-        if d.kind == "annassign" and not slots:
+        if (d.kind == "annassign" or d.kind == "assign" or d.kind == "augassign") and not slots:
             return False
         if d.kind == "def" and (d.s == "__init__" or (len(d.kids[0].kids) > 0 and stores_attr(d.kids[2], d.kids[0].kids[0].s))):
             return False
@@ -338,6 +339,7 @@ def gen_inherit(self, ci: ClassInfo) -> None:
         elif ci.exc != "" and m != "__init__" and m != "__str__" and m != "__repr__":
             self.line = ci.methods[m].node.line
             self.err(f"method '{m}' of '{short(ci.name)}' overrides that of '{short(b.methods[m].cls)}': only __init__, __str__ and __repr__ may be overridden")
+    overrides: dict[str, bool] = {}  # (the methods of the primary chain that a secondary base overrides)
     for r in ci.roles:
         role = self.classes[r]
         # (a generic secondary base's methods leave out the annotations that name its type
@@ -354,8 +356,10 @@ def gen_inherit(self, ci: ClassInfo) -> None:
                     pass  # (its own comes first, checked against the trait's below)
                 elif role.base != "" and pm != "" and self.derives(r, pm):
                     # (the primary base's is a class's that the trait derives from: the trait's comes
-                    # first in CPython's method resolution order)
-                    ci.methods[method] = original
+                    # first in CPython's method resolution order, after an earlier secondary base's)
+                    if method not in overrides:
+                        ci.methods[method] = original
+                        overrides[method] = True
                 elif role.base != "" and pm != "" and self.on_chain(ci.base, pm):
                     pass  # (the primary chain's own comes first: kept, and checked against the trait's)
                 elif method in b.methods or (method in ci.methods and ci.methods[method].cls != ci.name):
@@ -441,19 +445,15 @@ def gen_on_chain(self, c: str, a: str) -> bool:
     return False
 
 def gen_trait_root(self, primary: str, secondary: str) -> str:
-    # the class of primary's chain (on_chain) that secondary base secondary, a subclass, reaches
-    # by its own primary bases, where it and each class on the way add no fields (fieldless) and
-    # have no secondary bases of their own: every object of a class deriving from both then
-    # begins with that class's fields, as secondary's objects do; else ""
-    c = secondary
-    while c in self.classes:
-        info = self.classes[c]
-        if info.exc != "" or self.is_dc(c) or c in self.nts or len(info.roles) > 0 or not fieldless(info.node):
-            return ""
-        c = info.base
-        if self.on_chain(primary, c):
-            return c
-    return ""
+    # the class of primary's chain (on_chain) that secondary base secondary derives from
+    # directly, where secondary adds no fields (fieldless) and has no secondary bases of its own:
+    # every object of a class deriving from both then begins with that class's fields, as
+    # secondary's objects do; else "". Not through other classes: isinstance() and dispatch know
+    # the secondary base itself (ClassInfo.roles), not the classes between it and the chain
+    info = self.classes[secondary]
+    if info.exc != "" or self.is_dc(secondary) or secondary in self.nts or len(info.roles) > 0 or not fieldless(info.node):
+        return ""
+    return info.base if self.on_chain(primary, info.base) else ""
 
 def gen_slotted_trait(self, cls: str, role: str) -> bool:
     # is secondary base role of class cls a trait (trait_root) whose classes up to cls's chain
