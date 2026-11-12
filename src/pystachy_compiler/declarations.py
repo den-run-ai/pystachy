@@ -617,11 +617,17 @@ def gen_alias_problem(self, e: Node) -> str:
         return ""
     return f"!{p}[...] is not supported in a type alias's value"
 
+# CPython's TypeError for N[...] of a NewType N, also of one whose type names a TypeVar
+NEWTYPE_SUBSCRIPT = "'NewType' object is not subscriptable"
+
+
 def gen_alias_args(self, name: str, n: int) -> str:
     # (alias_problem) CPython's TypeError for name[...] with n type arguments, name a type alias
     st = self.taliases[name]
     if st.kind == "typealias":
         return "Only generic type aliases are subscriptable" if st.kids[0].s == "" else ""  # (others take any)
+    if self.newtype_name(name):
+        return NEWTYPE_SUBSCRIPT  # (N = NewType("N", list[T]) too: a NewType is no generic alias)
     v = self.alias_whole(name)
     if v.kind == "name" and v.s in self.taliases:
         return self.alias_args(v.s, n)  # (X = Y of a type statement Y: that TypeAliasType)
@@ -752,8 +758,8 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
         name = a.kids[0].s
         tps = self.alias_params(name)
         xs = a.kids[1].kids if a.kids[1].kind == "tuple" else [a.kids[1]]
-        if len(tps) == 0 or len(xs) != len(tps) or self.alias_variadic(name):
-            return a
+        if len(tps) == 0 or len(xs) != len(tps) or self.alias_variadic(name) or self.newtype_name(name):
+            return a  # (left for alias_ann's error)
         # (the type arguments replace the type parameters first: in type Pair[Row] = ..., Row is
         # the parameter, not the module's alias Row)
         v = self.subst_ann(clone(self.alias_value(name)), tps, [self.unalias(x, seen) for x in xs])
@@ -779,6 +785,8 @@ def gen_alias_ann(self, n: Node) -> str:
     xs = (n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]) if n.kind == "index" else []
     if name in self.resolving:
         return f"!recursive type aliases are not supported: '{short(name)}' refers to itself"
+    if n.kind == "index" and self.newtype_name(name):
+        return "!" + NEWTYPE_SUBSCRIPT + " (CPython raises TypeError where it evaluates this annotation)"
     if n.kind == "index" and self.alias_variadic(name):
         return f"!type alias '{short(name)}' with a TypeVarTuple (*Ts) or ParamSpec (**P) parameter is not supported with type arguments: write its value out"
     if n.kind == "index" and self.alias_arity(name, tps, len(xs)) != "":
