@@ -1,6 +1,9 @@
 # pystachy: dynamic-any
-# isinstance(x, dict) of an Any value that holds an object of lib/collections' mappings, which
-# CPython's derive from dict: true, also where the test narrows the value of a dict
+# isinstance(x, dict) of an Any value tests for a dict alone, where the value narrows to one: the
+# box of an object of lib/collections' mappings, which hold a dict, is no dict to it. CPython's
+# derive from dict, and print dict of 1 True False, dict of 3 True False and dict of 1 True False
+# for them (isinstance() of a value of their own type takes them for dicts:
+# tests/programs/library/lib_collections_isinstance.py)
 from collections import Counter, OrderedDict, defaultdict
 from typing import Any
 
