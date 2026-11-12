@@ -1,0 +1,11 @@
+hash 1
+hash 2
+hash 3
+True
+True
+hash 5
+hash -1
+-4669175845197690231
+True
+TypeError: unhashable type: 'Unhashable'
+[exit 0]

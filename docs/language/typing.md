@@ -13,7 +13,7 @@ unsupported forms, see [compatibility](compatibility.md).
 | `list[T]`, `dict[K, V]` | One static element type, or one key and value type |
 | `set[T]`, `frozenset[T]` | Elements must use the supported dict key types |
 | `tuple[A, B]` | Fixed shape, up to nine items; a constant index gives the item's type, a variable one the union of the items'; slicing requires integer constants (items of one runtime-length element type also slice by run-time bounds, into a `tuple[T, ...]`) |
-| `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`; integer indexing checked at runtime, and slicing |
+| `tuple[T, ...]` | Runtime length; `T` is `int`, `float`, `bool`, `str`, or one of these with `None`, or a class of the program; integer indexing checked at runtime, and slicing |
 | Classes, dataclasses, `NamedTuple` | Fields have static types |
 | `Callable[[A, B], R]` | Fixed positional signature; also supports zero arguments |
 | `A \| B` | Explicit scalar unions, or up to four non-overlapping native class/file members |
@@ -43,14 +43,21 @@ handlers. Their errors are CPython's `UnicodeDecodeError` and `UnicodeEncodeErro
 messages.
 
 `tuple(xs)` copies a supported homogeneous list or a string into an immutable
-runtime-length tuple; later list mutation does not change it. A string converts to a tuple of
+runtime-length tuple; later list mutation does not change it, and a field that `__init__`
+stores from it (`self.items = tuple(items)`) has that tuple's type. A string converts to a tuple of
 its code points ([text](compatibility.md#text-and-file-positions)). `tuple(t)` returns an
 existing tuple unchanged unless an annotation requests a representation conversion
 ([identity limitations](compatibility.md#functions-and-object-identity)). A fixed tuple literal can initialize `tuple[T, ...]`,
 including `()`, and a tuple display with a starred list makes one (`(*xs, 0)`). Supported
 operations are `len`, truth tests, integer indexing, slicing, iteration (also `enumerate`,
 `zip`, and `reversed`), unpacking, `list(t)`, representation and same-element-type equality
-and ordering. Bounds errors raise `IndexError` at runtime.
+and ordering. Bounds errors raise `IndexError` at runtime. Items that are objects (not exceptions or
+NamedTuples) compare as in CPython's tuples: with their `__eq__` (an item equals itself without
+it) over the items both tuples have, also where their lengths differ, then by length, and with
+the ordering method at the first unequal pair; `hash()` hashes each with its class's `__hash__`,
+by identity where the class defines neither `__eq__` nor `__hash__`. A tuple of a subclass's
+objects is one of its base class's. Objects of a [union](#native-reference-unions) of classes
+are not such items yet.
 Optional scalar elements use boxes when needed; widening an immutable tuple to
 optional elements copies its slots rather than reinterpreting numeric bits as pointers.
 
@@ -61,7 +68,7 @@ of that type or `None` (`nums + (None,)`). They do not
 support repetition, membership, dictionary keys, or set elements yet. Their annotation is distinct
 from the fixed shape used by `*args`; `tuple()` takes a list, string, tuple, generator
 expression or `range`/`map`/`filter`/`reversed` call whose items are `int`, `float`,
-`bool`, `str` or optional versions of those types, the objects of iterator classes and
+`bool`, `str` or optional versions of those types, or objects, the objects of iterator classes and
 generators. Direct `enumerate` and `zip` produce tuple-valued items, which runtime-length tuples cannot
 hold. Project a scalar first, for example `tuple(value for index, value in enumerate("ab"))`
 or `tuple(left + right for left, right in zip([1, 2], [3, 4]))`. This enables the existing `re.Match.groups()` implementation

@@ -1,4 +1,4 @@
-# error: runtime-length tuple elements must be int, float, bool, str or their optional types (compiling itertools._batched(
+# error: runtime-length tuple elements must be int, float, bool, str or their optional types, or objects of one of the program's classes (not an exception, a NamedTuple or a union of classes) (compiling itertools._batched(
 # itertools.batched() yields tuples of up to n items, a length known only as the program runs,
 # whose items cannot be tuples (lib/compatibility.md)
 from itertools import batched

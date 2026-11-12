@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import big_tree, held, narrow_type
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
+from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS, VTUPLE_ITEMS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
     ListLayout,
@@ -338,9 +338,19 @@ def gen_star_display(self, n: Node, want: str) -> Val:
             self.list_store(Val(r, self.ctype("list", [et])), self.list_hold(parts[i], et), "append")
     if n.kind == "list":
         return Val(r, self.ctype("list", [et]))
-    if unopt(et) not in ["int", "float", "bool", "str", "dyn", BIG]:
-        self.err("runtime-length tuple elements must be int, float, bool, str or their optional types")
+    if not self.vtuple_item(et):
+        self.err(VTUPLE_ITEMS)
     return Val(self.rt("pys_vtuple_new", "ptr", [f"ptr {r}"]), self.ctype("vtuple", [et]))
+
+def gen_vtuple_item(self, t: str) -> bool:
+    # can a runtime-length tuple hold items of type t: ints, floats, bools, strs (or None with
+    # them), Any values, and objects of one of the program's classes, whose pointers a slot holds
+    # and the tuple's scanned allocation retains (runtime.c's pys_vtuple_from). Not yet objects
+    # of a union of classes: the union proof cannot narrow a tuple slot's box (union_proof.py)
+    u = unopt(t)
+    if u in ["int", "float", "bool", "str", "dyn", BIG]:
+        return True
+    return u in self.classes and self.classes[u].exc == "" and u not in self.nts
 
 def gen_iter_elem(self, t: str) -> str:
     # the type of the items a loop over a value of type t gets, or ""
@@ -820,6 +830,8 @@ def gen_hash_desc(self, t: str) -> str:
         return "?" + self.hash_desc(unopt(t))
     if is_tuple(t) and len(targs(t)) <= 9:
         return "T" + str(len(targs(t))) + "".join(["J" if x == BIG else self.hash_desc(x) for x in targs(t)])  # (desc's J)
+    if is_vtuple(t):
+        return "V" + self.hash_desc(targs(t)[0])  # (its objects' too: H or P)
     return self.desc(t, "==")
 
 def gen_key_fx(self, kt: str) -> str:

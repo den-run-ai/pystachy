@@ -1,0 +1,9 @@
+3
+(Point(1), Point(2)) 3
+(Point(1), Point(3)) 4
+(Point(2), Point(3)) 5
+[(Point(1), Point(2)), (Point(2), Point(1))]
+[(Point(1), Point(1)), (Point(1), Point(2)), (Point(2), Point(2))]
+[(Point(1), Point(1)), (Point(1), Point(2)), (Point(2), Point(1)), (Point(2), Point(2))]
+[(Point(1), Point(2)), (Point(3),)]
+[exit 0]

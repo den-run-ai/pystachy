@@ -1,0 +1,4 @@
+(1, 2) ('a',) (Leaf(3), Leaf(4)) ('x', 'y') (5, 'z')
+2 4 z
+(Leaf(3), Leaf(4), Leaf(5))
+[exit 0]
