@@ -218,7 +218,7 @@ def report(group, steps):
         if name in merge.SUITE_STEPS:
             step.update(passed=10, failed=0, expected=10, failures=[])
         if name in merge.PR_NATIVE_STEPS:
-            step.update(shard_index=int(name[-1]), shard_count=2)
+            step.update(shard_index=int(name[-1]), shard_count=merge.PR_SHARDED_STEPS[name])
         elif name.startswith(("tests-native-", "tests-opt-off-")):   # thirds of a 10-check suite
             share = 10 // merge.SHARDED_STEPS[name] + (int(name[-1]) < 10 % merge.SHARDED_STEPS[name])
             step.update(passed=share, expected=share)
@@ -1209,9 +1209,9 @@ class PullRequestProfileTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.directory = Path(self.temp.name)
         self.corpus = hosted_corpus()
-        self.native = [subprocess.run(["sh", "-c", f". tests/corpus.sh; corpus_shard {index} 2"],
-                                      cwd=merge.ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
-                       for index in range(2)]
+        self.native = {mode: [subprocess.run(["sh", "-c", f". tests/corpus.sh; corpus_shard {index} {count}"],
+                                            cwd=merge.ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
+                              for index in range(count)] for mode, count in (("jit", 2), ("aot", 4))}
         self.data = {}
         for group, steps in self.groups.items():
             if group == "all":
@@ -1229,7 +1229,7 @@ class PullRequestProfileTests(unittest.TestCase):
                 if name == "tests-cpython":
                     step.update(ir_cases=data["sources"]["corpus_cases"], check_cases=data["sources"]["syntax_cases"])
                 if name in merge.PR_SHARDED_STEPS:
-                    cases = (self.native[int(name[-1])] if name.startswith("tests-native-")
+                    cases = (self.native[merge.PR_NATIVE_STEPS[name]][int(name[-1])] if name.startswith("tests-native-")
                              else self.selection["cases"])
                     step.update(selected_cases=list(cases), shard_count=merge.PR_SHARDED_STEPS[name])
                     modes = [merge.PR_NATIVE_STEPS[name]] if name in merge.PR_NATIVE_STEPS else ["jit", "aot"]
@@ -1278,15 +1278,16 @@ class PullRequestProfileTests(unittest.TestCase):
     def merge(self):
         return merge.merge_reports(self.directory, self.groups, COMMIT, profile="pr")
 
-    def test_eleven_groups_reuse_bootstrap_and_cover_every_native_case_in_two_workers_per_mode(self):
+    def test_thirteen_groups_reuse_bootstrap_and_cover_every_native_case_in_two_jit_and_four_aot_workers(self):
         result = self.merge()
-        self.assertEqual(len(self.groups) - 2, 11)
+        self.assertEqual(len(self.groups) - 2, 13)
         self.assertEqual(result["profile"], "pr")
         self.assertEqual(result["group"], "pr")
         self.assertEqual(result["selection"], self.selection)
         self.assertEqual([step["name"] for step in result["steps"]], self.groups["all"])
-        self.assertEqual(sorted(self.native[0] + self.native[1]), sorted(self.corpus))
-        self.assertFalse(set(self.native[0]) & set(self.native[1]))
+        for mode, shards in self.native.items():
+            cases = [case for shard in shards for case in shard]
+            self.assertEqual(Counter(cases), Counter(self.corpus), mode)
         self.assertEqual(result["steps"][0]["ci_group"], "bootstrap")
         self.assertNotIn("bootstrap_reused", result["steps"][0])
         native = [step for step in result["steps"] if step["name"] in merge.PR_NATIVE_STEPS]
@@ -1294,7 +1295,8 @@ class PullRequestProfileTests(unittest.TestCase):
         for mode in ("jit", "aot"):
             pairs = [(case, mode) for step in native if step["modes"] == [mode] for case in step["selected_cases"]]
             self.assertEqual(Counter(pairs), Counter((case, mode) for case in self.corpus))
-        for group in ("native-jit-0", "native-jit-1", "native-aot-0", "native-aot-1", "safety-1", "opt-in", "cache-gc"):
+        for group in ("native-jit-0", "native-jit-1", "native-aot-0", "native-aot-1", "native-aot-2", "native-aot-3",
+                      "safety-1", "opt-in", "cache-gc"):
             path = self.directory / f"verification-{group}" / "verification.json"
             path.unlink()
             with self.subTest(missing=group), self.assertRaisesRegex(ValueError, "missing report groups"):
@@ -1309,6 +1311,7 @@ class PullRequestProfileTests(unittest.TestCase):
                 ("safety-0", lambda data: data["selection"].update(base_commit="f" * 40)),
                 ("safety-0", lambda data: data["selection"]["cases"].pop()),
                 ("native-jit-1", lambda data: data["steps"][1].update(shard_count=3)),
+                ("native-aot-2", lambda data: data["steps"][1].update(shard_count=2)),
                 ("native-jit-0", lambda data: data["steps"][1]["selected_cases"].pop()),
                 ("native-jit-0", lambda data: data["steps"][1].update(modes=["aot"])),
                 ("native-aot-0", lambda data: data["steps"][1].update(modes=["jit", "aot"])),
@@ -1344,9 +1347,27 @@ class PullRequestProfileTests(unittest.TestCase):
             with self.subTest(mode=mode), self.assertRaisesRegex(ValueError, "every corpus case and mode exactly once"):
                 merge.validate_pr_native_coverage(changed)
         changed = copy.deepcopy(self.data)
-        changed.pop("native-aot-1")
-        with self.assertRaisesRegex(ValueError, "both complete JIT and AOT halves"):
+        changed.pop("native-aot-3")
+        with self.assertRaisesRegex(ValueError, "two complete JIT halves and four AOT quarters"):
             merge.validate_pr_native_coverage(changed)
+
+    def test_native_aot_gate_rejects_old_halves_and_forged_quarter_membership(self):
+        changed = copy.deepcopy(self.data)
+        for index in range(2):
+            step = changed[f"native-aot-{index}"]["steps"][1]
+            step.update(selected_cases=self.native["jit"][index], shard_count=2)
+            step["expected"] = step["passed"] = merge.case_checks(step["selected_cases"], ["aot"])
+        changed.pop("native-aot-2")
+        changed.pop("native-aot-3")
+        with self.assertRaisesRegex(ValueError, "four AOT quarters"):
+            merge.validate_pr_native_coverage(changed)
+        # All quarter names and a plausible total still cannot replace their exact case inventories.
+        for index in (2, 3):
+            step = copy.deepcopy(self.data[f"native-aot-{index}"]["steps"][1])
+            step["selected_cases"] = self.native["jit"][index % 2]
+            step["expected"] = step["passed"] = merge.case_checks(step["selected_cases"], ["aot"])
+            with self.subTest(index=index), self.assertRaisesRegex(ValueError, "selected cases differ"):
+                merge.validate_pr_case_step(step, self.selection, f"native-aot-{index}")
 
 
 class PullRequestMatrixTests(unittest.TestCase):
@@ -1361,14 +1382,14 @@ class PullRequestMatrixTests(unittest.TestCase):
             groups = merge.load_groups(profile)
             folded = {"native-jit-0", "native-jit-1"} if profile == "pr" else set()
             self.assertEqual(sorted(json.loads(value)), sorted(name for name in groups if name not in {"all", "bootstrap", *folded}))
-        self.assertEqual(len(json.loads(matrix[1])), 9)
+        self.assertEqual(len(json.loads(matrix[1])), 11)
         machines = re.search(r"machine: \$\{\{ fromJSON\(github\.event_name == 'pull_request' && '([^']+)' \|\| '([^']+)'\) \}\}", job)
         self.assertIsNotNone(machines)
         self.assertEqual(json.loads(machines[1]), ["x86_64"])
         self.assertEqual(json.loads(machines[2]), ["x86_64", "aarch64"])
         self.assertIn("VERIFY_PROFILE: ${{ github.event_name == 'pull_request' && 'pr' || 'full' }}", text)
         self.assertIn('--profile "$VERIFY_PROFILE"', text)
-        variants = text[text.index("\n  pr-variants:\n"):text.index("\n  distribution:\n")]
+        variants = text[text.index("\n  pr-variants:\n"):text.index("\n  qualification:\n")]
         self.assertIn('worker: [0, 1]', variants)
         self.assertIn('VERIFY_PROFILE: pr', variants)
         self.assertIn('name: x86_64-verification-native-jit-${{ matrix.worker }}', variants)
@@ -1378,7 +1399,7 @@ class PullRequestMatrixTests(unittest.TestCase):
         self.assertLess(native_run, native_upload)
         self.assertLess(native_upload, variant_run)
         self.assertIn('name: pr-variants-${{ matrix.worker }}', variants)
-        self.assertIn('needs: [bootstrap, verification, pr-variants, distribution]', text)
+        self.assertIn('needs: [bootstrap, verification, pr-variants, qualification]', text)
         # An ambient PR setting must not silently downgrade a caller asking for full evidence.
         with mock.patch.dict(os.environ, {"VERIFY_PROFILE": "pr"}):
             self.assertEqual(merge.load_groups(), merge.load_groups("full"))
