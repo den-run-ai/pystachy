@@ -517,6 +517,22 @@ AOT workloads had over 20% within-revision wall-time spread (excluding removed `
 and optimized-away `unpack_sequence`). This small monitor does not cover memory, full models,
 end-to-end json_repair or all examples; broader benchmark history remains under #45.
 
+### Weekly AOT performance
+
+The eleven smoke workloads missed two AOT slowdowns: `words` after #667 and `float` after
+#1268 ([#1302](https://github.com/den-run-ai/pystachy/issues/1302)). The separate
+[Weekly performance workflow](../.github/workflows/performance-weekly.yml) runs on Mondays and
+on manual dispatch, never on PRs or pushes. Its two jobs each build the head's compiler and a
+base's: the fixed reference above, or main's first-parent commit of seven days before. They time
+every adapted pyperformance port (its `seconds` line) and every `bench/*.py` microbenchmark (the
+process) in AOT, with the head's workload sources and CPython's output, in three alternating
+base/head pairs on one CPU. A slowdown of at least 10% and 2 ms triggers three more pairs; both
+batches must meet it with disjoint ranges to emit an advisory warning. A workload that the base
+cannot build or run correctly is skipped, as a compiler may predate it; one that the head cannot
+fails the job after its report. No workload starts after 11 minutes, and the 90-day
+`perf-weekly-*` JSON artifacts keep every sample. Replay a change locally with
+`python3 tools/perf_smoke.py --suite weekly --base OLD --head NEW --only bench/words`.
+
 ### PR budget
 
 A code PR can create **20 workflow job rows**, including a skipped legacy DCO job and

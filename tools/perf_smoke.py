@@ -1,4 +1,9 @@
-"""Small advisory base/head comparison; no dependencies or historical timing gate."""
+"""Small advisory base/head comparison; no dependencies or historical timing gate.
+
+The default suite times eleven small workloads in JIT and AOT on every push and PR. The weekly
+suite (scheduled and manual runs only) times every adapted pyperformance port and bench/*.py
+microbenchmark in AOT, which the eleven missed when words and float slowed down (#1302).
+"""
 import argparse
 import hashlib
 import json
@@ -9,9 +14,10 @@ import platform
 import statistics
 import sys
 import tempfile
+import time
 
 from bench_extended import execute
-from bench_pyperformance import BENCHMARKS, run
+from bench_pyperformance import BENCHMARKS, port_path, run
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
@@ -28,17 +34,22 @@ CASES = {
     "regex_effbot": ("bench/pyperformance/regex_effbot.py", BENCHMARKS["regex_effbot"][0]),
 }
 METRICS = ("build_s", "jit_process_s", "jit_loop_s", "aot_process_s", "aot_loop_s")
+# The weekly suite flags a confirmed slowdown of 10% and 2 ms: a smaller one than the default suite's
+# 20% and 5 ms, which its many more, longer AOT workloads and one metric each can resolve.
+WEEKLY_RATIO = 1.10
+WEEKLY_FLOOR = 0.002
+WEEKLY_TIMEOUT = 300  # (seconds for one build or run: regex ports import lib/re)
 
 
-def compare(base, head):
+def compare(base, head, ratio=1.20, floor=0.005):
     if len(base) != 3 or len(head) != 3 or any(
         not math.isfinite(x) or x <= 0 for x in base + head
     ):
         raise ValueError("expected three finite, positive samples per revision")
     b, h = statistics.median(base), statistics.median(head)
     return {"base_s": b, "head_s": h, "ratio": h / b,
-            "candidate": (h / b >= 1.20 or math.isclose(h / b, 1.20))
-            and (h - b >= 0.005 or math.isclose(h - b, 0.005)),
+            "candidate": (h / b >= ratio or math.isclose(h / b, ratio))
+            and (h - b >= floor or math.isclose(h - b, floor)),
             "separated": min(head) > max(base)}
 
 
@@ -97,6 +108,103 @@ def measure(name, compilers, envs, directory, built):
             "output": oracle["stdout"], "samples": first, "confirmation": confirmation, "comparison": comparisons}
 
 
+def weekly_cases(head):
+    """The weekly suite's workloads in head: (source, arguments, metric) by name. Each pyperformance
+    port runs its measured arguments, timed by its 'seconds' line (aot_loop_s); each bench/*.py
+    microbenchmark runs as bench/run.sh runs it, timed as a process (aot_process_s)."""
+    cases = {}
+    for name, (arguments, _) in BENCHMARKS.items():
+        cases["pyperformance/" + name] = (str(port_path(name).relative_to(ROOT)), list(arguments), "aot_loop_s")
+    for source in sorted((head / "bench").glob("*.py")):
+        cases["bench/" + source.stem] = (f"bench/{source.name}", [], "aot_process_s")
+    return cases
+
+
+def first_line(error):
+    text = str(error).strip()
+    return text.splitlines()[0][:300] if text else type(error).__name__
+
+
+def aot_sample(exe, arguments, env, expected, metric):
+    """One AOT run's seconds of metric; its stdout must be CPython's."""
+    if metric == "aot_loop_s":
+        return run([exe, *arguments], env, WEEKLY_TIMEOUT, expected)["loop_s"]
+    record = execute([exe, *arguments], env, WEEKLY_TIMEOUT)
+    if record["stdout"] != expected:
+        raise ValueError(f"output differs from CPython's: {exe}\nexpected: {expected[-500:]!r}\n"
+                         f"got: {record['stdout'][-500:]!r}")
+    return record["wall_s"]
+
+
+def weekly_batch(exes, arguments, envs, expected, metric, offset=0):
+    """Three alternating base/head pairs of AOT runs, in batch's order."""
+    samples = {"base": [], "head": []}
+    for repeat in range(3):
+        for side in (("base", "head") if (repeat + offset) % 2 == 0 else ("head", "base")):
+            samples[side].append(aot_sample(exes[side], arguments, envs[side], expected, metric))
+    return samples
+
+
+def measure_weekly(name, case, compilers, envs, directory, head):
+    """A weekly workload's AOT comparison. A base that cannot build it or print CPython's output
+    skips it, as a compiler older than the workload may; the head's failure is an error."""
+    path, arguments, metric = case
+    source = head / path
+    result = {"name": name, "source": path, "arguments": arguments, "metric": metric}
+    if not source.is_file():
+        return dict(result, status="skipped", reason="not in the head revision")
+    result["source_sha256"] = hashlib.sha256(source.read_bytes()).hexdigest()
+    oracle = execute([sys.executable, str(source), *arguments], envs["head"], WEEKLY_TIMEOUT)
+    exes = {}
+    # Both builds, then a warmup of each that checks its output: a side warmed before the other's
+    # build would run its first timed sample colder, which once hid float's confirmed slowdown.
+    for step in ("build", "warmup"):
+        for side in ("base", "head"):
+            exe = directory / side / ("weekly-" + name.replace("/", "-"))
+            try:
+                if step == "build":
+                    build = execute([compilers[side], "build", str(source), "-o", str(exe)], envs[side], WEEKLY_TIMEOUT)
+                    result[side + "_build_s"] = build["wall_s"]
+                else:
+                    aot_sample(str(exe), arguments, envs[side], oracle["stdout"], metric)
+            except (RuntimeError, ValueError) as error:
+                if side == "base":
+                    return dict(result, status="skipped", reason=f"the base fails it: {first_line(error)}")
+                return dict(result, status="error", error=str(error)[-2000:])
+            exes[side] = str(exe)
+    first = weekly_batch(exes, arguments, envs, oracle["stdout"], metric)
+    comparison = compare(first["base"], first["head"], WEEKLY_RATIO, WEEKLY_FLOOR)
+    confirmation = (weekly_batch(exes, arguments, envs, oracle["stdout"], metric, 3)
+                    if comparison["candidate"] else None)
+    second = (compare(confirmation["base"], confirmation["head"], WEEKLY_RATIO, WEEKLY_FLOOR)
+              if confirmation else None)
+    comparison.update(status=classify(comparison, second), confirmation=second)
+    return dict(result, status=comparison["status"], output_sha256=hashlib.sha256(oracle["stdout"].encode()).hexdigest(),
+                samples=first, confirmation=confirmation, comparison={metric: comparison})
+
+
+def weekly_summary(report):
+    lines = ["## Weekly AOT performance (advisory)", "",
+             f"Base `{report['revisions']['base']}` → head `{report['revisions']['head']}`.", "",
+             "Every adapted pyperformance port (its timed part) and bench/*.py microbenchmark (the process),",
+             "in AOT, with CPython's output: three alternating pairs; ≥10% and ≥2 ms slower triggers three",
+             "confirmation pairs. Warnings require both batches to meet the threshold with non-overlapping",
+             "base/head ranges.", "",
+             "| Workload | Metric | Base | Head | Change | Result |",
+             "|---|---|---:|---:|---:|---|"]
+    notes = []
+    for result in report["results"]:
+        if "comparison" not in result:
+            notes.append(f"- {result['name']}: {result['status']}, {result.get('reason') or first_line(result.get('error', ''))}")
+            continue
+        for metric, c in result["comparison"].items():
+            lines.append(f"| {result['name']} | {metric} | {c['base_s'] * 1000:.2f} ms | {c['head_s'] * 1000:.2f} ms | "
+                         f"{(c['ratio'] - 1) * 100:+.1f}% | {c['status']} |")
+            if c["status"] == "warning":
+                print(f"::warning::{result['name']} {metric}: confirmed >=10% slowdown; see performance artifact")
+    return "\n".join(lines + ([""] + notes if notes else [])) + "\n"
+
+
 def summary(report):
     lines = ["## Performance smoke (advisory)", "",
              f"Base `{report['revisions']['base']}` → head `{report['revisions']['head']}`.", "",
@@ -134,7 +242,24 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", type=Path, required=True, help="baseline checkout")
     parser.add_argument("--json", type=Path, default=Path("build/perf-smoke.json"))
+    parser.add_argument("--suite", choices=("smoke", "weekly"), default="smoke",
+                        help="smoke: eleven workloads in JIT and AOT; weekly: every pyperformance port and "
+                             "bench/*.py microbenchmark in AOT")
+    parser.add_argument("--head", type=Path, default=ROOT,
+                        help="head checkout, whose compiler and workloads --suite weekly measures (default: this one)")
+    parser.add_argument("--only", default="", help="comma-separated workloads of the suite (default: all of them)")
+    parser.add_argument("--budget", type=float, default=0,
+                        help="--suite weekly: seconds after which no further workload starts (default: none)")
     args = parser.parse_args()
+    started = time.monotonic()
+    head = args.head.resolve()
+    if args.suite == "smoke" and (head != ROOT or args.budget):
+        parser.error("--head and --budget need --suite weekly")
+    cases = CASES if args.suite == "smoke" else weekly_cases(head)
+    names = [name for name in args.only.split(",") if name] or list(cases)
+    unknown = [name for name in names if name not in cases]
+    if unknown:
+        parser.error(f"not a workload of the {args.suite} suite: {', '.join(unknown)}")
     # Preserve toolchain discovery, but prevent inherited GC/optimization/import settings.
     env = {k: v for k, v in os.environ.items() if not k.startswith("PYSTACHY_") and k != "PYTHONPATH"}
     if "PYSTACHY_LLVM" in os.environ:
@@ -142,14 +267,16 @@ def main():
     env["PYSTACHY_PROGRAM_CACHE"] = "0"
     env["PYTHONHASHSEED"] = "0"
     affinity = None
-    report = {"schema": 2, "status": "incomplete", "phase": "setup",
+    report = {"schema": 2, "suite": args.suite, "status": "incomplete", "phase": "setup",
               "revisions": {}, "bootstrap": {}, "results": [],
               "environment": {"PYSTACHY_PROGRAM_CACHE": env["PYSTACHY_PROGRAM_CACHE"]}}
+    if args.suite == "weekly":
+        report["thresholds"] = {"ratio": WEEKLY_RATIO, "floor_s": WEEKLY_FLOOR}
     try:
         write_report(args.json, report)
         affinity = sorted(os.sched_getaffinity(0))
         os.sched_setaffinity(0, {affinity[0]})
-        roots = {"base": args.base.resolve(), "head": ROOT}
+        roots = {"base": args.base.resolve(), "head": head}
         report.update(python=sys.version, platform=platform.platform(),
                       runner_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                       cpu=Path("/proc/cpuinfo").read_text().split("model name", 1)[-1].splitlines()[0],
@@ -176,19 +303,26 @@ def main():
             llvm = Path(env.get("PYSTACHY_LLVM", "/usr/lib/llvm-18/bin"))
             report["clang"] = execute([str(llvm / "clang"), "--version"], env, 10)["stdout"]
             built = set()
-            for name in CASES:
+            for name in names:
+                if args.budget and time.monotonic() - started > args.budget:
+                    report["results"].append({"name": name, "status": "skipped", "reason": "out of the time budget"})
+                    continue
                 report["phase"] = f"measure:{name}"
                 write_report(args.json, report)
                 print(f"Measuring {name}", flush=True)
-                report["results"].append(measure(name, compilers, envs, directory, built))
+                report["results"].append(measure(name, compilers, envs, directory, built) if args.suite == "smoke"
+                                         else measure_weekly(name, cases[name], compilers, envs, directory, head))
                 write_report(args.json, report)
         report["phase"] = "summary"
         write_report(args.json, report)
-        text = summary(report)
+        text = summary(report) if args.suite == "smoke" else weekly_summary(report)
         print(text)
         if os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
                 output.write(text)
+        failed = [result["name"] for result in report["results"] if result.get("status") == "error"]
+        if failed:
+            raise RuntimeError(f"the head revision fails {len(failed)} workloads: {', '.join(failed)}")
         report.update(status="complete", phase="complete")
     except BaseException as exc:
         report["status"] = "error"
