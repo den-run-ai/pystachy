@@ -31,6 +31,7 @@ from src.pystachy_compiler.analysis import (
     import_reads,
     imports_user,
     is_main_guard,
+    iterator_values,
     local_names,
     local_types,
     mark,
@@ -836,7 +837,7 @@ class Loader:
             self.order = [self.order[-1]] + self.order[:-1]
             for x in users:
                 x.deps[OBJECTS] = True
-        users = [x for x in self.order if module_reads(x.body, "iter")] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
+        users = [x for x in self.order if module_reads(x.body, "iter") or (iterator_values(x.body) and any(module_reads(x.body, name) for name in ["zip", "enumerate", "map", "filter", "reversed"]))] if not self.rtmode and len(self.dirs) > 0 and ITERS not in self.mods else []
         if len(users) > 0:
             # iter() makes iterator objects of builtin containers: of lib's classes, whose module
             # nothing imports (it imports nothing either, so it comes first)

@@ -76,6 +76,8 @@ class Reduce:
         self.facc = ""
         self.isf = ""
         self.phase = ""  # dynamic sum: in-range int, compensated float, or generic addition
+        self.key = Val("", "")  # streaming min/max: evaluated key, None for natural order
+        self.keyacc = ""  # the selected item's key for a streaming keyed reduction
 
 
 class SetArg:

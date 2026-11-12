@@ -205,3 +205,180 @@ class set_iterator:
             raise StopIteration
         self._at = j + 1
         return __pys_set_key(s, j)
+
+
+class enumerate_iterator:
+    # The source is already an iterator; construction never asks it for an item.
+    def __init__(self, it, start):
+        self._it = it
+        self._index = start
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        item = next(self._it)
+        index = self._index
+        self._index = index + 1
+        return (index, item)
+
+
+class zip_iterator:
+    # A statically typed tuple holds each iterator, including heterogeneous ones.
+    def __init__(self, iters):
+        self._iters = iters
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return __pys_iter_nexts(self._iters)
+
+
+class map_iterator:
+    def __init__(self, fn, iters):
+        self._fn = fn
+        self._iters = iters
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return __pys_iter_apply(self._fn, self._iters)
+
+
+class filter_iterator:
+    def __init__(self, fn, it):
+        self._fn = fn
+        self._it = it
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while True:
+            item = next(self._it)
+            if self._fn(item):
+                return item
+
+
+class filter_truth_iterator:
+    def __init__(self, it):
+        self._it = it
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        while True:
+            item = next(self._it)
+            if item:
+                return item
+
+
+class reversed_iterator:
+    # A list's original last index, but its current contents on each step.
+    def __init__(self, xs):
+        self._xs = xs
+        self._index = len(xs) - 1
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        index = self._index
+        if index >= 0 and index < len(self._xs):
+            self._index = index - 1
+            return self._xs[index]
+        self._index = -1
+        raise StopIteration
+
+
+class reversed_str_iterator:
+    # Use a byte cursor so reversing a Unicode string stays linear.
+    def __init__(self, s):
+        self._s = s
+        self._at: int = __pys_text_size(s)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._at > 0:
+            self._at = __pys_text_prev(self._s, self._at)
+            return __pys_text_at(self._s, self._at)
+        raise StopIteration
+
+
+class reversed_range_iterator:
+    def __init__(self, start, step, count):
+        self._start = start
+        self._step = step
+        self._count = count
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._count != 0:
+            self._count = 9223372036854775807 if self._count == -9223372036854775807 - 1 else self._count - 1
+            return __pys_iter_range_at(self._start, self._step, self._count)
+        raise StopIteration
+
+
+class list_reverseiterator:
+    def __init__(self, xs):
+        self._xs = xs
+        self._index = len(xs) - 1
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        index = self._index
+        if index >= 0 and index < len(self._xs):
+            self._index = index - 1
+            return self._xs[index]
+        self._index = -1
+        raise StopIteration
+
+
+class dict_reversekeyiterator:
+    def __init__(self, d):
+        self._d = d
+        self._used = len(d)
+        self._at: int = __pys_dict_end(d) - 1
+        self._live = True
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        d = self._d
+        if self._used < 0 or (self._live and len(d) != self._used):
+            self._used = -1
+            raise RuntimeError("dictionary changed size during iteration")
+        if not self._live:
+            raise StopIteration
+        j = __pys_dict_prev(d, self._at, self._used, -1)
+        if j < 0:
+            self._live = False
+            raise StopIteration
+        self._at = j - 1
+        return __pys_dict_key(d, j)
+
+
+class bytes_iterator:
+    def __init__(self, xs):
+        self._xs = xs
+        self._index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        index = self._index
+        if index < len(self._xs):
+            self._index = index + 1
+            return self._xs[index]
+        raise StopIteration

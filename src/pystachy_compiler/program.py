@@ -333,7 +333,7 @@ def gen_template_fix(self, cs: list[Node]) -> str:
 def gen_makes_tmpl(self, n: Node) -> bool:
     # does n call a class template, making an object of one of its specializations? iter(x)
     # makes one of lib's iterator classes (see guess_iter)
-    if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.tmpl or (n.kids[0].s == "iter" and len(n.kids) == 2 and ITERS + "$list_iterator" in self.classes)):
+    if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.tmpl or (n.kids[0].s in ["iter", "zip", "enumerate", "map", "filter", "reversed"] and ITERS + "$list_iterator" in self.classes)):
         return True
     for k in n.kids:
         if self.makes_tmpl(k):

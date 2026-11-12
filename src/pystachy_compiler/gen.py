@@ -409,6 +409,7 @@ from src.pystachy_compiler.builtins import (
     gen_next_ as builtins_next_,
     gen_iter_ as builtins_iter_,
     gen_iter_obj as builtins_iter_obj,
+    gen_iterator_value as builtins_iterator_value,
     gen_range_fields as builtins_range_fields,
     gen_range_prim as builtins_range_prim,
     gen_walk as builtins_walk,
@@ -611,6 +612,7 @@ from src.pystachy_compiler.declarations import (
     gen_getfield as declarations_getfield,
     gen_guess as declarations_guess,
     gen_guess_iter as declarations_guess_iter,
+    gen_guess_iterator_value as declarations_guess_iterator_value,
     gen_guess_args as declarations_guess_args,
     gen_has_path as declarations_has_path,
     gen_imported_ref as declarations_imported_ref,
@@ -3058,6 +3060,9 @@ class Gen:
     def guess(self, e: Node, f: FnInfo) -> str:
         return declarations_guess(self, e, f)
 
+    def guess_iterator_value(self, e: Node, f: FnInfo) -> str:
+        return declarations_guess_iterator_value(self, e, f)
+
     def guess_iter(self, a: Node, f: FnInfo) -> str:
         return declarations_guess_iter(self, a, f)
 
@@ -4997,6 +5002,9 @@ class Gen:
 
     def iter_(self, args: list[Node]) -> Val:
         return builtins_iter_(self, args)
+
+    def iterator_value(self, name: str, args: list[Node]) -> Val:
+        return builtins_iterator_value(self, name, args)
 
     def iter_obj(self, name: str, vals: list[Val]) -> Val:
         return builtins_iter_obj(self, name, vals)

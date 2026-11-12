@@ -267,6 +267,29 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         o = self.expr(args[0], "")
         r = self.rt(name[2:], "i64" if name.endswith("enter") else "void", [f"ptr {o.v}"])
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int")) if name.endswith("enter") else Val("null", "None")
+    if name == "__pys_iter_range_at":
+        if self.curfn.mod != ITERS or len(args) != 3:
+            self.err(f"name '{name}' is not defined")
+        rangevals = [self.coerce(self.expr(a, "int"), "int") for a in args]
+        offset = Val(self.scalar("mul", [rangevals[1], rangevals[2]]), "int")
+        return Val(self.scalar("add", [rangevals[0], offset]), "int")
+    if name == "__pys_iter_nexts" or name == "__pys_iter_apply":
+        # Only the private native adapters use these fixed-tuple operations. Expand
+        # next calls in source order without a homogeneous list or dynamic boxes.
+        if self.curfn.mod != ITERS or len(args) != (2 if name == "__pys_iter_apply" else 1):
+            self.err(f"name '{name}' is not defined")
+        iterfn = self.expr(args[0], "") if name == "__pys_iter_apply" else Val("", "")
+        iters = self.expr(args[-1], "")
+        if not is_tuple(iters.t):
+            self.err("internal error: iterator adapter operands must be a fixed tuple")
+        vals: list[Val] = []
+        for i in range(len(targs(iters.t))):
+            vals.append(self.next_([self.vnode(self.tget(iters, i))], ""))
+        if name == "__pys_iter_apply":
+            return self.expr(mk("call", "", self.line, [self.vnode(iterfn)] + [self.vnode(v) for v in vals]), "")
+        if len(vals) == 0:
+            self.raise_("StopIteration", self.sconst(""))
+        return self.tuple_(vals)
     if name.startswith("__pys_dict_") or name.startswith("__pys_set_"):
         return self.walk(name, args)
     if name.startswith("__pys_text_"):
@@ -283,7 +306,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if name == "__pys_text_bytes" and len(args) == 1 and view:
             # the same object: a str and a bytes share their layout and neither changes in place
             return Val(s.v, "bytes")
-        if name in ["__pys_text_at", "__pys_text_next"] and len(args) == 2:
+        if name in ["__pys_text_at", "__pys_text_next", "__pys_text_prev"] and len(args) == 2:
             at = self.as_int(self.expr(args[1], "int"))
             t = "str" if name.endswith("_at") else "int"
             return Val(self.rt(name[2:], rtt(t), [f"ptr {s.v}", f"i64 {at.v}"]), t)
@@ -505,8 +528,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         return self.rres(self.rt("pys_select", "ptr", [self.rarg(v) for v in fds] + [self.rarg(timeout), "i64 " + blocking]), "tuple[list[int],list[int],list[int]]")
     if name == "set" or name == "frozenset":
         return self.set_new(name, args, want, resultsoft)
-    if name == "map" or name == "filter":
-        self.err(f"{name}() is supported as the argument of list(), tuple() (with scalar or optional scalar items), bytes(), sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod(), str.join() and list.extend(), and as the value assigned to a list slice, which take its items at once; elsewhere use a list comprehension")
+    if name in ["map", "filter", "zip", "enumerate", "reversed"]:
+        return self.iterator_value(name, args)
     if len(args) > 0 and self.is_mapcall(args[0]) and (name == "list" or name == "sorted" or name == "sum" or name == "min" or name == "max" or name == "any" or name == "all" or name == "math.fsum" or name == "math.prod" or name == "dict"):
         args = [self.mapgen(args[0])] + args[1:]  # (the generator expression it is)
     if name == "hash":
@@ -777,7 +800,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         ka = IterArg(mk("tuple", "", self.line, [a.kids[0] for a in kws])) if len(kws) > 0 and lazy else None
         self.gencall = ""
         v0 = self.consume(args[0], w, ka, resultsoft)
-        if is_gen(v0.t) and ka is None and (name == "sum" or name == "min" or name == "max" or name == "any" or name == "all" or name == "math.fsum" or name == "math.prod"):
+        if is_gen(v0.t) and ka is None and (name == "sum" or name == "any" or name == "all" or name == "math.fsum" or name == "math.prod"):
             # (a generator's items as they come, as of a generator expression: any() and all()
             # stop at the deciding one, and nothing is kept)
             return self.gen_stream(name, v0, args[1:], want, resultsoft)
@@ -792,6 +815,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             first = self.rt("pys_file_readline", "ptr", [f"ptr {v0.v}"])
             return self.num_cmp('!=', Val(self.mload('int', first), "int"), Val('0', "int"))
         kv = [kvals[j] for j in range(len(kws)) if kws[j].s == "key" and kvals[j].t != "None"]
+        if (name == "min" or name == "max") and (is_gen(v0.t) or self.iter_object(v0.t) or is_dict(v0.t) or is_set(v0.t)):
+            itemtype = gelem(v0.t) if is_gen(v0.t) else self.next_type(v0.t) if self.iter_object(v0.t) else self.iter_elem(v0.t)
+            return stream_minmax(self, name, v0, kv[0] if len(kv) > 0 else Val("null", "None"), Val("", ""), itemtype)
         if (self.iter_object(v0.t) or v0.t == "dyn" or (v0.t == RANGEC and len(kv) == 0)) and (name == "any" or name == "all" or name == "sum" or name == "min" or name == "max") and not (len(kv) > 0 and name != "sum" and v0.t != "dyn" and self.classes[v0.t].methods["__iter__"].gen):
             # an object whose __iter__ returns an iterator object, or a range object: its items as
             # they come, as CPython takes them (any() and all() stop at the deciding one)
@@ -1184,8 +1210,8 @@ def gen_callable_type(self, t: str) -> int:
 
 def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     # min() or max() of one iterable with default=: the default where the iterable has no item,
-    # else what the function gives without it. Lists and dynamic inputs stay live; other inputs
-    # are taken into a list first (as_list, as the function takes them). key= and default= are
+    # else what the function gives without it. Lists, iterator objects and generator values
+    # stay live; direct inline adapters retain consume's path. key= and default= are
     # evaluated as CPython evaluates them: once the iterable is in hand (the iterator of a
     # generator expression or of range(), zip(), map(), ... made: consume's arg) and before
     # its first item is taken
@@ -1216,8 +1242,18 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
             kv.append(value)
     if is_opt(v0.t):
         v0 = self.unwrap(v0, "TypeError: 'NoneType' object is not iterable")
-    # The same conversion supplies the item type for tuples, generators and iterable objects.
-    # It does not request a length hint; dynamic inputs keep their live iterator path below.
+    # A real iterator/generator value must be compared as it advances: collecting it
+    # would reorder key callbacks, swallow earlier errors, and allocate all its items.
+    stream = ka is None and (is_gen(v0.t) or self.iter_object(v0.t) or is_dict(v0.t) or is_set(v0.t))
+    if stream:
+        iw = gelem(v0.t) if is_gen(v0.t) else self.next_type(v0.t) if self.iter_object(v0.t) else self.iter_elem(v0.t)
+        for j in range(len(kws)):
+            if contextual[j]:
+                kv[j] = self.expr(kws[j].kids[0], iw)
+        default = [kv[j] for j in range(len(kws)) if kws[j].s == "default"][0]
+        keys = [kv[j] for j in range(len(kws)) if kws[j].s == "key"]
+        return stream_minmax(self, name, v0, keys[0] if len(keys) > 0 else Val("null", "None"), default, iw)
+    # The remaining conversions retain their established type and default contract.
     lv = v0 if v0.t == "dyn" or is_list(v0.t) else self.as_list(v0, name)
     if lv.t != "dyn" and not is_list(lv.t):
         self.err(f"'{tname(lv.t)}' object is not iterable")
@@ -1276,6 +1312,74 @@ def gen_minmax_default(self, name: str, args: list[Node]) -> Val:
     if not self.idhere() or not numeric_identity(t):
         return result
     return self.numeric_phi(result, [r, d] if e1 != "" else [d], [e1, e2] if e1 != "" else [e2])
+
+def stream_minmax(self, name: str, o: Val, key: Val, default: Val, itemtype: str) -> Val:
+    if key.t != "None":
+        self.key_check(key, f"{name}()")
+    lnone = self.key_none(key, itemtype, ">" if name == "max" else "<", f"{name}()") if key.t != "None" else ""
+    r = Reduce(name, "")
+    r.key = key
+    r.first = self.alloca("bool", "")
+    self.mstore("bool", "true", r.first)
+    token = str(len(self.reds))
+    self.reds[token] = r
+    item = made_var("__item", self.line)
+    g = mk("listcomp", "gen", self.line, [item, item, self.vnode(o)])
+    self.listcomp(g, "", "#" + token)
+    if default.t == "":
+        self.guard(self.mload("bool", r.first), f"ValueError: {name}() iterable argument is empty")
+        result = Val(self.mload(r.t, r.acc), r.t)
+        if r.identity != "":
+            result.idfrom = self.mload("dyn", r.identity)
+        t = r.t
+    else:
+        t = r.t
+        if default.t == "None" and t != "None":
+            t = self.join(t, "None")
+        elif (t == "dyn") != (default.t == "dyn"):
+            t = "dyn"
+        elif default.t != t:
+            t = default.t if is_opt(default.t) and unopt(default.t) == r.t else self.join(r.t, default.t) if r.t.replace(BIG, "int") == default.t.replace(BIG, "int") else ""
+        if t == "" or (default.t == "None" and t != "None" and self.optional(t) != t):
+            self.err(f"default= of {name}() must be None or of the items' type, {typestr(r.t)}, not {typestr(default.t)}")
+        empty = self.label()
+        full = self.label()
+        done = self.label()
+        self.cbr(self.mload("bool", r.first), empty, full)
+        self.place(full)
+        best = Val(self.mload(r.t, r.acc), r.t)
+        if r.identity != "":
+            best.idfrom = self.mload("dyn", r.identity)
+        best = self.coerce(best, t)
+        e1 = self.cur
+        self.br(done)
+        self.place(empty)
+        fallback = self.coerce(default, t)
+        e2 = self.cur
+        self.br(done)
+        self.place(done)
+        ph = Ins("phi", t, "")
+        self.incoming(ph, best.v, e1)
+        self.incoming(ph, fallback.v, e2)
+        result = Val(self.phi(ph), t)
+        if self.idhere() and numeric_identity(t):
+            result = self.numeric_phi(result, [best, fallback], [e1, e2])
+    if lnone == "":
+        return result
+    keyed = self.cur
+    end = self.label()
+    self.br(end)
+    self.place(lnone)
+    plain = stream_minmax(self, name, o, Val("null", "None"), default, itemtype)
+    unkeyed = self.cur
+    self.br(end)
+    self.place(end)
+    joined = Ins("phi", t, "")
+    self.incoming(joined, result.v, keyed)
+    self.incoming(joined, plain.v, unkeyed)
+    value = Val(self.phi(joined), t)
+    return self.numeric_phi(value, [result, plain], [keyed, unkeyed]) if self.idhere() and numeric_identity(t) else value
+
 
 def dynamic_minmax_default(self, name: str, o: Val, key: Val, default: Val) -> Val:
     # Each dynamic item is compared as it arrives, retaining its original box. The default
@@ -1854,6 +1958,32 @@ def gen_reduce_item(self, r: Reduce, e: Node) -> None:
     # an item of reduce()'s generator: added to the sum, or compared with the item kept. Its
     # accumulators are made at its first compilation, which gives the items' type
     v = self.expr(e, "")
+    if r.key.t != "":
+        # A default belongs only to the empty result. The key is evaluated once for
+        # each actual item, before requesting the next item, and never for default.
+        k = v if r.key.t == "None" else self.call_key(r.key, v)
+        if r.t == "":
+            r.t = v.t
+            r.acc = self.alloca(v.t, "")
+            r.keyacc = self.alloca(k.t, "")
+            if self.list_id_kind(self.ctype("list", [v.t])) != 0:
+                r.identity = self.alloca("dyn", "")
+        take = self.label()
+        test = self.label()
+        skip = self.label()
+        self.cbr(self.mload("bool", r.first), take, test)
+        self.place(test)
+        kept = Val(self.mload(k.t, r.keyacc), k.t)
+        self.cbr(self.truth(self.cmp2(">" if r.name == "max" else "<", k, kept)), take, skip)
+        self.place(take)
+        self.mstore(v.t, v.v, r.acc)
+        self.mstore(k.t, k.v, r.keyacc)
+        if r.identity != "":
+            self.mstore("dyn", self.dyn_id_box(v).v, r.identity)
+        self.mstore("bool", "false", r.first)
+        self.br(skip)
+        self.place(skip)
+        return
     if r.t == "":
         r.t = v.t
         if r.name == "sum" and r.stt != "float" and (v.t == BIG or ((v.t == "int" or v.t == "bool") and (r.stt == BIG or self.int_policy(self.line)))):
@@ -2396,6 +2526,8 @@ def gen_iter_(self, args: list[Node]) -> Val:
         return self.iter_obj("list_iterator", [v])
     if v.t == "str":
         return self.iter_obj("str_ascii_iterator", [v])
+    if v.t == "bytes":
+        return self.iter_obj("bytes_iterator", [v])
     if is_tuple(v.t) or is_vtuple(v.t):
         return self.iter_obj("tuple_iterator", [self.as_list(v, "iter")])
     if is_dict(v.t):
@@ -2404,6 +2536,58 @@ def gen_iter_(self, args: list[Node]) -> Val:
         return self.iter_obj("set_iterator", [v])
     self.err(f"'{tname(v.t)}' object is not iterable" if not is_kw(v.t) else "iter() of **kwargs is not supported: iterate over list(kwargs)")
     return v
+
+def gen_iterator_value(self, name: str, args: list[Node]) -> Val:
+    # Stored and nested adapters own concrete iterator objects. All Python call
+    # arguments are evaluated before the first __iter__ callback runs.
+    for a in args:
+        if a.kind == "starred" or a.kind == "dstar" or (a.kind == "kw" and not (name == "enumerate" and a.s == "start")):
+            self.err(f"{name}() does not support this argument")
+    if name == "map" and len(args) < 2:
+        self.err("map() must have at least two arguments.")
+    if name == "filter" and len(args) != 2:
+        self.err(f"filter expected 2 arguments, got {len(args)}")
+    if name == "enumerate" and (len(args) < 1 or len(args) > 2 or args[0].kind == "kw"):
+        self.err("enumerate() expects an iterable and an optional start")
+    if name == "reversed" and len(args) != 1:
+        self.err(f"reversed expected 1 argument, got {len(args)}")
+    vals = [self.expr(a.kids[0] if a.kind == "kw" else a, "") for a in args]
+    if name == "reversed":
+        v = self.unwrap(vals[0], "TypeError: 'NoneType' object is not reversible")
+        if v.t == "dyn":
+            return self.dyn_call(self.dyn_dispatcher("reversed", ["dyn"], "dyn", "__reversed__"), [v])
+        if v.t == RANGEC:
+            self.notnone(v, "TypeError: 'NoneType' object is not reversible")
+            rf = self.range_fields(v)
+            count = Val(self.rt("pys_range_len", "i64", [f"i64 {rf[0]}", f"i64 {rf[1]}", f"i64 {rf[2]}"]), "int")
+            return self.iter_obj("reversed_range_iterator", [Val(rf[0], "int"), Val(rf[2], "int"), count])
+        if v.t in self.classes and v.t not in self.nts:
+            if "__reversed__" in self.classes[v.t].methods:
+                result = self.obj_iterator(v, "TypeError: 'NoneType' object is not reversible", "", "__reversed__")
+                return self.iter_obj("list_iterator", [result]) if is_list(result.t) else result
+            self.err(f"reversed() of {short(v.t)} by its __len__ and __getitem__ is not supported")
+        if v.t in self.nts:
+            v = self.ntup(v, True)
+        if is_tuple(v.t):
+            v = self.as_list(v, "reversed")
+        if v.t == "str":
+            return self.iter_obj("reversed_str_iterator", [v])
+        if is_dict(v.t):
+            return self.iter_obj("dict_reversekeyiterator", [v])
+        if is_list(v.t) or is_vtuple(v.t) or v.t == "bytes":
+            return self.iter_obj("list_reverseiterator" if is_list(v.t) and not is_tuple(vals[0].t) and vals[0].t not in self.nts else "reversed_iterator", [v])
+        self.err(f"'{tname(v.t)}' object is not reversible")
+    if name == "enumerate":
+        start = self.coerce(self.as_int(vals[1]), "int") if len(vals) == 2 else Val("0", "int")
+        return self.iter_obj("enumerate_iterator", [self.iter_([self.vnode(vals[0])]), start])
+    if name == "filter":
+        it = self.iter_([self.vnode(vals[1])])
+        return self.iter_obj("filter_truth_iterator", [it]) if vals[0].t == "None" else self.iter_obj("filter_iterator", [vals[0], it])
+    its: list[Val] = []
+    for v in vals[1:] if name == "map" else vals:
+        its.append(self.iter_([self.vnode(v)]))
+    packed = self.tuple_(its)
+    return self.iter_obj("map_iterator", [vals[0], packed]) if name == "map" else self.iter_obj("zip_iterator", [packed])
 
 def gen_iter_obj(self, name: str, vals: list[Val]) -> Val:
     # a new object of the iterator class name of lib/_pystachy_iterators.py, made of vals
@@ -2431,8 +2615,10 @@ def gen_walk(self, name: str, args: list[Node]) -> Val:
         self.err(f"name '{name}' is not defined")
     o = vals[0]
     ns = [f"i64 {self.coerce(self.as_int(x), 'int').v}" for x in vals[1:]]
-    if name == "__pys_dict_next" and len(ns) == 3:
-        return Val(self.rt("pys_dict_next", "i64", [f"ptr {o.v}"] + ns), "int")
+    if name == "__pys_dict_end" and len(ns) == 0:
+        return Val(self.rt("pys_dict_end", "i64", [f"ptr {o.v}"]), "int")
+    if name in ["__pys_dict_next", "__pys_dict_prev"] and len(ns) == 3:
+        return Val(self.rt(name[2:], "i64", [f"ptr {o.v}"] + ns), "int")
     if name == "__pys_set_next" and len(ns) == 2:
         return Val(self.rt("pys_set_next", "i64", [f"ptr {o.v}"] + ns), "int")
     if name == "__pys_dict_key" and len(ns) == 1:

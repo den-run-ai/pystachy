@@ -16,6 +16,7 @@ from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
+    iterator_name,
     lib_file,
     lib_source,
     opaque_class,
@@ -186,7 +187,7 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         ci = self.classes[c]
         q = shown(ci.origin if ci.origin != "" else c)
         if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC:
-            return "builtins" if what == "__module__" else short(c)
+            return "builtins" if what == "__module__" else iterator_name(c)
         own = self.classes[ci.origin] if ci.origin != "" else ci
         if dynamic_program() and what in ["__module__", "__qualname__"] and what in own.fdefault and self.default_home(own, what) is own and own.fdefault[what].kind == "str":
             return own.fdefault[what].s

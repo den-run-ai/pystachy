@@ -881,10 +881,10 @@ functions are templates: each call's argument types make its code
   and `__length_hint__()` are not there
   ([error test](../tests/errors/library/lib_itertools_print.py),
   [another](../tests/errors/library/lib_itertools_type_name.py)).
-- `zip()`, `map()`, `filter()`, `enumerate()` and `reversed()` are not values, so an itertools
-  function cannot take one ([error test](../tests/errors/library/lib_itertools_zip_argument.py)); it can
-  take a generator expression over them. Ints are 64-bit: `count()` past `2**63 - 1` raises
-  `OverflowError`, where CPython's ints grow.
+- `zip()`, `map()`, `filter()`, `enumerate()` and `reversed()` are native iterator values,
+  so an itertools function can take one directly ([regression](../tests/programs/library/lib_itertools_zip_argument.py)).
+  Their source and item types remain concrete. Ints are 64-bit: `count()` past `2**63 - 1`
+  raises `OverflowError`, where CPython's ints grow.
 
 ### `functools`
 

@@ -33,7 +33,7 @@ A dictionary or set whose size changes while its iterator is active raises `Runt
 `zip()` creates its operands' iterators in order, before iteration starts, then takes one
 item of each in turn and stops at the first exhausted one.
 
-Restrictions on nested iterator-like expressions, snapshots and mutation are listed in
+Restrictions on iterator options, snapshots and mutation are listed in
 [compatibility](compatibility.md).
 
 ### Structural patterns
@@ -225,16 +225,27 @@ for line in it:  # the lines after the header
     print(line)
 ```
 
-`iter()` accepts lists, strings, homogeneous tuples, dictionaries and their `keys()`,
+`iter()` accepts lists, strings, bytes, homogeneous tuples, dictionaries and their `keys()`,
 `values()` and `items()`, sets, `range(...)` and range objects, files and objects with
 `__iter__`. A file is its own iterator. A builtin container's iterator is an object of a class in
 [`lib/_pystachy_iterators.py`](../../lib/_pystachy_iterators.py): it reads a list's current
 length at each step, fails if a dictionary or set changes size, and stays exhausted once
 `StopIteration` is raised. `next(it)` calls `it.__next__()` (a file's next line);
 `next(it, default)` returns the default instead of raising `StopIteration`, and has the type
-of both, such as `T | None` for a `None` default. `iter(callable, sentinel)` and `iter()` of
-`enumerate()`, `zip()`, `map()`, `filter()`, `reversed()` or a generator expression are
-unsupported.
+of both, such as `T | None` for a `None` default. `enumerate()`, `zip()`, `map()`,
+`filter()` and `reversed()` also produce native iterator values: they can be stored,
+passed to an `Iterable[T]` parameter, kept in an inferred field, nested and passed to
+`iter()`, which returns that same iterator. A generator expression is its own iterator too.
+`iter(callable, sentinel)` remains unsupported.
+
+The adapters evaluate all call arguments before creating their source iterators, create
+those iterators from left to right, and request items only when advanced. A callback's
+`StopIteration` propagates as itself; it does not become a generator's `RuntimeError`,
+and another `next()` may resume a source that yields again after that exception.
+`reversed()` keeps a list's original last index, reads its current contents, and stays
+exhausted after the list shrinks past its cursor. Unicode reversal uses a byte cursor.
+Existing direct loop and consumer forms retain their direct lowering. `zip(strict=...)`
+and reversing an object solely by its `__len__` and `__getitem__` remain unsupported.
 
 An iterator's type is its class. `Iterator[T]` and `Iterable[T]` annotations (`typing`'s or
 `collections.abc`'s) therefore type nothing, as a class template's name does: a function with

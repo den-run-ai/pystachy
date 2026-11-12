@@ -1,0 +1,42 @@
+make a
+make b
+iter a
+iter b
+created zip
+next a 1
+next b 1
+(1, 1)
+next a 2
+next b 2
+None
+next a 3
+next b 3
+None
+make e
+iter e
+created enumerate
+next e 1
+next e 2
+next e 3
+(4, 1) (5, 2) None
+make m
+iter m
+created map
+next m 1
+map 1
+next m 2
+map 2
+next m 3
+10 [20]
+make f
+iter f
+created filter
+next f 1
+filter 1
+next f 2
+filter 2
+next f 3
+filter 3
+next f 4
+2 []
+[exit 0]

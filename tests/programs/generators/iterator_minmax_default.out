@@ -1,0 +1,41 @@
+default
+iter
+next 0
+key 3
+next 1
+key 2
+next 2
+key 1
+next 3
+3
+default
+iter
+next 0
+100
+yield 2
+key 2
+yield 1
+key 1
+done
+2
+yield 2
+yield 1
+done
+2 []
+2
+1
+key 4
+key 2
+key 3
+4 2
+key first
+Set changed size during iteration
+Set changed size during iteration
+item 3
+key 3
+item 1
+key 1
+3
+[1]
+[]
+[exit 0]

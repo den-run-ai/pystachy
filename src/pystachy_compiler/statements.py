@@ -1599,8 +1599,6 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             self.for_rrange(tgt, self.range_args(args[0].kids[1:]), body, hide, arg)
             return
         for a in args:
-            if self.iterator_call(a) and (fn == "enumerate" or fn == "zip" or fn == "reversed") and not (a.kids[0].s == "range" and RANGEC in self.classes):
-                self.err(f"{a.kids[0].s}() cannot be nested in {fn}() here; make it a list first, list({a.kids[0].s}(...))")
             if a.kind == "kw" and fn == "zip":
                 self.err(f"zip({a.s}=...) is not supported")
         if ((fn == "enumerate" or fn == "reversed") and len(args) == 1) or (fn == "zip" and len(args) > 0):

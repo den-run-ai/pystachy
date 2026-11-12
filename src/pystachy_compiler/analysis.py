@@ -1047,6 +1047,45 @@ def range_values(n: Node, fine: int) -> bool:
     return False
 
 
+def iterator_values(n: Node, direct: int = 0) -> bool:
+    # Load the private adapters only when an iterator escapes an existing direct
+    # consumer. Direct loops/consumers retain their allocation-free lowering and
+    # do not acquire exception machinery merely because they spell zip or map.
+    kids = n.kids
+    if n.kind == "name":
+        return n.s in ["zip", "enumerate", "map", "filter", "reversed"]
+    if n.kind == "call" and kids[0].kind == "name" and kids[0].s in ["zip", "enumerate", "map", "filter", "reversed"]:
+        if direct == 0 or (direct == 2 and kids[0].s in ["map", "filter"]):
+            return True
+        return any(iterator_values(k, 0) for k in kids[1:])
+    how = 0
+    if n.kind == "call" and kids[0].kind == "name":
+        how = RANGE_TAKERS.get(kids[0].s, 0)
+    if n.kind == "call" and kids[0].kind == "attr":
+        how = RANGE_METHODS.get(kids[0].s, 0)
+    npos = len([k for k in kids[1:] if k.kind not in ["kw", "starred", "dstar"]]) if how != 0 else 0
+    at = 0
+    for i in range(len(kids)):
+        k = kids[i]
+        mode = 0
+        if how != 0 and i > 0 and k.kind not in ["kw", "starred", "dstar"]:
+            at += 1
+            if how == 3 or ((how == 1 or (how == 2 and npos == 1)) and at == 1):
+                mode = 1
+        if (n.kind == "for" and i == 1) or (n.kind == "compfor" and i == 1) or (n.kind == "listcomp" and i == 2):
+            mode = 2
+        elif (n.kind == "yield" and n.s == "from") or (n.kind == "cmp" and n.s in ["in", "not in"] and i == 1):
+            mode = 1
+        elif n.kind == "assign" and len(kids) == 2 and i == 1 and (kids[0].kind == "slice" or starred_target(kids[0])):
+            mode = 1
+        if n.kind in ["list", "tuple"] and k.kind == "starred":
+            if iterator_values(k.kids[0], 1):
+                return True
+        elif iterator_values(k, mode):
+            return True
+    return False
+
+
 def object_values(n: Node) -> bool:
     # may code n call the builtin object(), which makes an object of lib's class (Loader.program)?
     # Any call of the name may (a false True only loads the module); only reading the tree

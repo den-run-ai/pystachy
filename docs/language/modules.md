@@ -226,7 +226,7 @@ determine whether a particular call compiles.
 | Conversions | `int` (including `base=`), `float`, `bool`, `ord`, `chr`, `hex`, `oct`, `bin` |
 | Numeric operations | `abs`, `round`, `divmod`, `pow` (including modular powers and inverses), `sum` |
 | Containers and selection | `len`, `list`, `tuple`, `dict`, `set`, `frozenset`, `sorted`, `min`, `max`, `any`, `all` |
-| Iteration in supported contexts | `range` (also as a value, a [range object](semantics.md#range-objects)), `reversed`, `enumerate`, `zip`, `map`, `filter` |
+| Iteration | `range` (a [range object](semantics.md#range-objects)); native iterator values from `reversed`, `enumerate`, `zip`, `map`, `filter` |
 | Iterators | `iter` (one argument), `next` (with or without a default) |
 | Types and attributes | `isinstance`, `callable`, `getattr`, `setattr`, `hasattr`, `vars`, `dir` and `type(x)`'s names and comparisons (see [reflection](semantics.md#reflection)), `super` in supported instance methods, `hash` |
 | Input and files | `input`, `open` |
@@ -245,7 +245,9 @@ values that can be [dict keys](typing.md#supported-types), floats and NamedTuple
 result optional, or a value of the items' type); `sorted()` and `list.sort()` accept `key=` and
 `reverse=`. A key is a function, a `Callable`, or an object whose class defines `__call__`, and
 one that is `None` where the call runs (a `Callable | None`, or an object) is no key, as
-`key=None` is.
+`key=None` is. Concrete iterator objects, generator values, dictionaries and sets are
+consumed one item at a time by `min()`/`max()`, including with `default=`; keys run before
+the next item is requested. A default is never passed to the key or compared to an item.
 `set()` and `frozenset()` take supported iterables of their element type. Their methods support
 multiple iterable arguments where CPython's do.
 
