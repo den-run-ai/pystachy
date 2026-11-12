@@ -4,7 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.callbacks import specialize_callbacks
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
-from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler.analysis import all_imports, chk_names, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -873,8 +873,11 @@ def gen_program(self, mods: list[Mod]) -> str:
                 m.body.kids[i] = mk("pass", "", st.line, [])  # (a type alias, which only annotations name)
             elif st.kind == "assign" and st.kids[0].kind == "name" and st.kids[0].s in self.taliases and self.taliases[st.kids[0].s] is st and not self.alias_kept(st.kids[0].s):
                 # (N = NewType("N", T) binds N where it runs, as a def does: a call N(x) that may come
-                # first checks it, see call)
-                m.body.kids[i] = mk("newtype", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk("pass", "", st.line, [])
+                # first checks it, see call. CPython evaluates an alias's value there, which may read
+                # a class through its module before that module binds it: see ann_reads)
+                vreads: dict[str, bool] = {}
+                chk_names(st.kids[1], vreads)
+                m.body.kids[i] = mk("newtype", st.kids[0].s, st.line, []) if self.newtype_name(st.kids[0].s) else mk("aliasvalue", st.kids[0].s, st.line, []) if len(vreads) > 0 else mk("pass", "", st.line, [])
     for q in self.taliases:
         # (CPython evaluates an assigned alias's value where it assigns it, a type statement's
         # only where its __value__ is read)

@@ -1635,7 +1635,8 @@ def comp_vars(n: Node, out: dict[str, bool]) -> None:
 
 def chk_names(n: Node, out: dict[str, bool]) -> None:
     # the names of the reads in code n (not in the defs and lambdas in it) that Flow marked
-    # (Node.chk): they may find their variable unassigned
+    # (Node.chk): they may find their variable unassigned (in a type alias's value, those that
+    # Loader.reads marked: its attributes of modules, see Gen.ann_reads)
     if n.kind == "name" and n.chk:
         out[n.s] = True
     if n.kind == "def" or n.kind == "lambda":

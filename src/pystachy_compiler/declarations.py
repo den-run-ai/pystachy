@@ -674,18 +674,22 @@ def gen_newtype_name(self, name: str) -> bool:
     # whose calls return their argument
     return name in self.taliases and self.taliases[name].kind == "assign" and self.taliases[name].kids[1].kind == "call"
 
-def gen_newtype_reads(self, e: Node) -> None:
-    # N = NewType("N", T) runs (statement newtype): CPython evaluates T first, where a class or
-    # NewType that T names may not be bound yet, as one read through its module (a.C) during a
-    # circular import, or one that an import which raised was to bind: their errors, as
-    # isinstance's argument has them (isinst_reads). (A string in T is not evaluated)
+def gen_ann_reads(self, e: Node) -> None:
+    # CPython evaluates e, an assigned type alias's value or the T of N = NewType("N", T), where
+    # its statement runs (aliasvalue, newtype): an attribute it reads through a module (a.C),
+    # which Loader.reads marks (Node.chk), may not be bound yet, as during a circular import, or
+    # the import it needs may have raised: their errors, as isinstance's argument has them
+    # (isinst_reads). A name alone is bound then (Loader.reads rejects one that may not be); the
+    # names of a string, a forward reference, which CPython does not evaluate, are not marked
+    # (Loader.qann parses it later)
     if e.kind == "name":
-        self.modchk(e)
-        if (e.s in self.classes or self.newtype_name(e.s)) and (e.chk or self.foreign(e.s)) and e.s in self.gflag:
-            self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))
+        if e.chk:
+            self.modchk(e)
+            if (e.s in self.classes or self.newtype_name(e.s)) and e.s in self.gflag:
+                self.guard(self.scalar('xor', [Val(self.mload('bool', f'@g.{e.s}.def'), 'bool'), Val('true', 'bool')]), self.unbound(e.s))
         return
-    for k in e.kids if e.kind != "str" else []:
-        self.newtype_reads(k)
+    for k in e.kids:
+        self.ann_reads(k)
 
 def gen_alias_kept(self, name: str) -> bool:
     # does the assignment that binds type alias name stay in the module's code: Pos = int binds

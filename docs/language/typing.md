@@ -162,14 +162,17 @@ too. An annotation that names an alias uses its value, also in another module (`
 Row`, `m.Row`, `import *`).
 
 An assignment evaluates its value when it runs, so the names in it must be bound by then, and
-an annotation that CPython evaluates can name the alias only after the assignment. Its
+an annotation that CPython evaluates can name the alias only after the assignment. A class it
+reads through a module that has not bound it yet, as during a circular import, raises
+`AttributeError` there ([test](../../tests/programs/reflection/type_alias_cycle.py)). Its
 subscripts are checked there as CPython's `typing` checks them, even if no annotation names
 the alias: `Box[int, str]` for a class with one type parameter, `Iterable[int, str]` or
 `Union[()]` is an error. A subscript of a typing name other than its generic aliases
 (`List`, `Iterable`, `Generator`, ...), `Optional`, `Union`, `Callable`, `Tuple`, `Literal`,
 `Annotated` and the single-type forms (`ClassVar`, `Final`, ...) is unsupported there. A
 `type` statement's value is evaluated lazily and may name classes defined further down; so
-may a string value, `Label: TypeAlias = "Text"`.
+may a string value, `Label: TypeAlias = "Text"`, and a string in one, `list["Text"]`, which
+CPython does not evaluate either.
 
 Generic aliases take type arguments: `type Pair[T] = tuple[T, T]`, or an assignment whose
 value mentions `TypeVar`s, `Pair = tuple[T, T]`, whose parameters are those variables in the
@@ -183,10 +186,12 @@ arguments for a `TypeVarTuple` or `ParamSpec` parameter are unsupported.
 ([test](../../tests/programs/generics/newtype.py)). Its type is read when the assignment runs,
 as a type alias's value is: a class it reads through a module that has not bound it yet, as
 during a circular import, raises `AttributeError`
-([test](../../tests/programs/generics/newtype_cycle.py)). A function that imports `N` binds a
-local, which a call where the import may not have run checks, as for an imported function; a
-nested `def` that reads it is rejected. `N` is no generic alias, also where `T` names a TypeVar:
-`N[int]` is CPython's `TypeError`, an error here. Other uses of `N` as a value are rejected.
+([test](../../tests/programs/generics/newtype_cycle.py)), and a string in it is not evaluated
+([test](../../tests/programs/generics/newtype_forward_ref.py)). A function that imports `N`
+binds a local, which a call where the import may not have run checks, as for an imported
+function; a nested `def` that reads it is rejected. `N` is no generic alias, also where `T`
+names a TypeVar: `N[int]` is CPython's `TypeError`, an error here. Other uses of `N` as a value
+are rejected.
 
 Other code can use an alias of `int`, `float`, `str` or `bool` (`Pos = int`) as that class,
 to call it or pass it to `isinstance()`; using another alias as a value (`print(Row)`,
