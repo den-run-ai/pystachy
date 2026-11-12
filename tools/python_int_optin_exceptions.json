@@ -466,6 +466,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/library/lib_decimal_sums.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_decimal_sums.py:41: error: unsupported operand types for +: the results of Decimal | int's members (Decimal, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "Arithmetic on sum()'s int-or-Decimal result joins the Decimal's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/library/lib_decimal_sums.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/library/lib_decimal_sums.py:41: error: unsupported operand types for +: the results of Decimal | int's members (Decimal, int) have no union (a promoting int joins no other result: docs/python-int.md); narrow it with isinstance() first",
+      "reason": "Arithmetic on sum()'s int-or-Decimal result joins the Decimal's result with a promoting int in a closed union; only scalar int-or-None promotion is supported.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/reflection/reflect_dataclasses.py",
       "mode": "jit",
       "category": "unsupported-storage",
