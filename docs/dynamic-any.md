@@ -319,10 +319,7 @@ class. A list test keeps the layout-aware dynamic reference described above.
 `isinstance(x, int)` retains the box because a bool also passes that test, but
 proves an int or bool payload for arithmetic and comparisons. Bool `&`, `|` and
 `^` with another bool, and `**`, stay dynamic because their result rules differ
-(`tests/programs/inference/dynany_proven_int.py`). Where the program boxes an object of
-`collections`' `defaultdict`, `OrderedDict` or `Counter`, which derive from `dict` in CPython,
-`isinstance(x, dict)` outside `lib/` takes that box too and leaves `x` dynamic; the compiler
-finds such a box in one more compilation pass (`tests/programs/inference/dynany_dict_subclasses.py`).
+(`tests/programs/inference/dynany_proven_int.py`).
 
 ## Class values and type-keyed registries
 
