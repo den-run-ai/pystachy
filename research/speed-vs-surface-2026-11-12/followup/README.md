@@ -59,6 +59,25 @@ pass and seven passing methods are rejected: two `:=` targets read after a compr
 methods compile but differ: two treat dict views as lists (the documented view deviation,
 #989) and three raise `NotImplementedError` at run time.
 
+## What removing one blocker unlocks
+
+First errors overstate what one feature unlocks: the next error is often another missing
+feature (`raw/probes-8434a911.txt`). Measured conversions so far:
+
+| Probe | Methods probed | Then pass | Most common next error |
+|---|---:|---:|---|
+| Bounded `match` (#1272), methods rejected for `match` at alpha.5 | 216 | 92 | starred sequence patterns 32, mapping patterns 27, class patterns 12, list subjects 7 |
+| CPython's pure-Python stdlib on the path (parent report) | 2,429 | 0 | missing C modules, dynamic code in the stdlib |
+| Local classes that capture nothing moved to module scope (`scripts/hoist_probe.py`) | 218 | 23 | builtin bases 33, async functions 11 |
+| `gc` stand-in (`scripts/probe_gc.py`) | 141 | 11 | local classes 51 |
+| `inspect.cleandoc` (`scripts/probe_inspect.py`) | 52 | 0 | `compile(str, str, str)` 44 |
+
+For the hoisting probe, 113 of the 365 methods were skipped (a capturing local class, a name
+clash) and 34 changed CPython's own output once hoisted; the 218 rest kept CPython's result.
+With the `gc` stand-in, the upstream `gc_collect` benchmark compiles but fails its own check
+that `gc.collect()` returns `None` or at least the number of objects in the cycles it made;
+`gc_traversal` next needs an annotation for an empty list.
+
 ## Regressions reproduced on main
 
 AOT, 15 interleaved repetitions pinned to one CPU of an idle 4-vCPU x86-64 VM, medians

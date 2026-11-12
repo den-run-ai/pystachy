@@ -1,0 +1,42 @@
+# Probes on main 8434a911 (JIT, method_sweep.py), 2026-11-12
+
+hoist_probe.py: of 365 methods first-rejected for a class inside a function, 113 were skipped
+(a local class captures an enclosing variable, a name clash, or nothing to move), 34 changed
+CPython's own result once hoisted (for example a class's qualified name in output), and 218
+kept CPython's result and were run:
+
+## local classes moved to module scope: 218 programs
+{'compile-error': 195, 'match': 23}
+  33  unsupported base class: single inheritance requires a previously declared ordinary class or a supported except
+  11  async functions are not supported
+   9  returning a value from a function without a return annotation
+   8  unsupported decorator @functools.singledispatchmethod
+   8  property() called as a function is not supported: decorate the getter with @property and the setter with @x.se
+   6  inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (n
+   6  field 'pattern' redeclared with a different type
+   5  cannot infer the type of class attribute 'quoting'; annotate it (quoting: T = ...)
+   5  a base that defines __init_subclass__ is not supported (CPython calls Template.__init_subclass__() when it cre
+   4  'await' is not supported
+
+gc/inspect probes: `import gc` / `import inspect` replaced by `import pz_gc as gc` /
+`import pz_inspect as inspect` (probe_gc.py: no-op collect() returning 0 and fixed thresholds;
+probe_inspect.py: CPython 3.13's cleandoc) in the 193 programs whose first error named gc or
+inspect and that import it at top level: 141 gc programs (11 pass, 1 differs, 129 rejected) and 52
+inspect programs (none pass; 44 next fail on compile(str,str,str)).
+
+## gc and inspect stand-ins: 193 programs
+{'compile-error': 181, 'match': 11, 'differs': 1}
+  51  a class inside a function is not supported
+  44  unsupported call compile(str,str,str)
+   8  cannot infer the type of 'd', an empty dict so far: annotate it (d: dict[K, V] = {})
+   8  module 'pickle' is not supported: it is not a builtin module (sys, os, os.path, math, tempfile, typing, datacl
+   7  module 'gc' is not supported: it is not a builtin module and there is no gc.py on the module path
+   6  cannot infer the type of an empty dict; add a type annotation (d: dict[K, V] = {}, or -> dict[K, V] on a funct
+   4  module 'weakref' has no attribute 'proxy'
+   3  unsupported base class: single inheritance requires a previously declared ordinary class or a supported except
+   2  unsupported operand type(s) for -: 'list' and 'list'
+   2  dict.fromkeys(keys) needs the type of the dict it makes, whose values are None: annotate it (d: dict[K, V | No
+
+Upstream pyperformance with the gc stand-in: gc_collect compiles and fails its own check
+`collected is None or collected >= cycles * (links + 1)` (the stand-in returns 0);
+gc_traversal next fails: cannot infer the type of 'current_list', an empty list so far.
