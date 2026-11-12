@@ -1,6 +1,22 @@
 --- a/Lib/textwrap.py
 +++ b/lib/textwrap.py
-@@ -13,6 +13,13 @@
+@@ -6,6 +6,15 @@
+ # Written by Greg Ward <gward@python.net>
+ 
+ import re
++
++# Pystachy port: the module's patterns are compiled where they are first used, not as it loads
++# (a program that imports argparse loads this module to format help, which most runs never
++# print). Pystachy's re makes such a pattern; CPython's compiles it at once.
++try:
++    from re import _deferred as _pattern
++except ImportError:
++    def _pattern(pattern, flags, groups):
++        return re.compile(pattern, flags)
+ 
+ __all__ = ['TextWrapper', 'wrap', 'fill', 'dedent', 'indent', 'shorten']
+ 
+@@ -13,6 +22,13 @@
  # whitespace characters.  The main reason for doing this is that
  # some Unicode spaces (like \u00a0) are non-breaking whitespaces.
  _whitespace = '\t\n\x0b\x0c\r '
@@ -14,7 +30,7 @@
  
  class TextWrapper:
      """
-@@ -63,7 +70,9 @@
+@@ -63,7 +79,9 @@
          Append to the last line of truncated text.
      """
  
@@ -25,7 +41,7 @@
  
      # This funky little regex is just the trick for splitting
      # text up into word-wrappable chunks.  E.g.
-@@ -71,11 +80,7 @@
+@@ -71,11 +89,7 @@
      # splits into
      #   Hello/ /there/ /--/ /you/ /goof-/ball,/ /use/ /the/ /-b/ /option!
      # (after stripping out empty strings).
@@ -34,11 +50,11 @@
 -    whitespace = r'[%s]' % re.escape(_whitespace)
 -    nowhitespace = '[^' + whitespace[1:]
 -    wordsep_re = re.compile(r'''
-+    wordsep_re: re.Pattern = re.compile(r'''
++    wordsep_re: re.Pattern = _pattern(r'''
          ( # any whitespace
            %(ws)s+
          | # em-dash between words
-@@ -90,24 +95,22 @@
+@@ -90,24 +104,23 @@
              | # em-dash
                (?<=%(wp)s) (?=-{2,}\w)
              )
@@ -48,7 +64,8 @@
 -    del word_punct, letter, nowhitespace
 +        )'''.replace('%(wp)s', _word_punct).replace('%(lt)s', _letter)
 +            .replace('%(ws)s', _whitespace_class).replace('%(nws)s', _nowhitespace),
-+        re.VERBOSE)  # Pystachy port: replace() for % of a mapping, which is not supported
++        re.VERBOSE, 1)  # Pystachy port: replace() for % of a mapping, which is not supported
++    # Pystachy port: _pattern(), with the number of groups, for re.compile(), here and below
  
      # This less funky little regex just split on recognized spaces. E.g.
      #   "Hello there -- you goof-ball, use the -b option!"
@@ -56,7 +73,7 @@
      #   Hello/ /there/ /--/ /you/ /goof-ball,/ /use/ /the/ /-b/ /option!/
 -    wordsep_simple_re = re.compile(r'(%s+)' % whitespace)
 -    del whitespace
-+    wordsep_simple_re: re.Pattern = re.compile(r'(%s+)' % _whitespace_class)  # Pystachy port: the module's pattern
++    wordsep_simple_re: re.Pattern = _pattern(r'(%s+)' % _whitespace_class, 0, 1)  # Pystachy port: the module's pattern
  
      # XXX this is not locale- or charset-aware -- string.lowercase
      # is US-ASCII only (and therefore English-only)
@@ -64,14 +81,14 @@
 -                                 r'[\.\!\?]'          # sentence-ending punct.
 -                                 r'[\"\']?'           # optional end-of-quote
 -                                 r'\Z')               # end of chunk
-+    sentence_end_re: re.Pattern = re.compile(r'[a-z]'             # lowercase letter
-+                                             r'[\.\!\?]'          # sentence-ending punct.
-+                                             r'[\"\']?'           # optional end-of-quote
-+                                             r'\Z')               # end of chunk
++    sentence_end_re: re.Pattern = _pattern(r'[a-z]'             # lowercase letter
++                                           r'[\.\!\?]'          # sentence-ending punct.
++                                           r'[\"\']?'           # optional end-of-quote
++                                           r'\Z', 0, 0)         # end of chunk
  
      def __init__(self,
                   width=70,
-@@ -121,7 +124,7 @@
+@@ -121,7 +134,7 @@
                   break_on_hyphens=True,
                   tabsize=8,
                   *,
@@ -80,7 +97,7 @@
                   placeholder=' [...]'):
          self.width = width
          self.initial_indent = initial_indent
-@@ -147,10 +150,29 @@
+@@ -147,10 +160,29 @@
          whitespace characters to spaces.  Eg. " foo\\tbar\\n\\nbaz"
          becomes " foo    bar  baz".
          """
@@ -112,7 +129,18 @@
          return text
  
  
-@@ -451,7 +473,8 @@
+@@ -413,8 +445,8 @@
+ 
+ # -- Loosely related functionality -------------------------------------
+ 
+-_whitespace_only_re = re.compile('^[ \t]+$', re.MULTILINE)
+-_leading_whitespace_re = re.compile('(^[ \t]*)(?:[^ \t\n])', re.MULTILINE)
++_whitespace_only_re = _pattern('^[ \t]+$', re.MULTILINE, 0)  # Pystachy port: see wordsep_re
++_leading_whitespace_re = _pattern('(^[ \t]*)(?:[^ \t\n])', re.MULTILINE, 1)
+ 
+ def dedent(text):
+     """Remove any common leading whitespace from every line in `text`.
+@@ -451,7 +483,8 @@
          # Find the largest common whitespace between current line and previous
          # winner.
          else:
