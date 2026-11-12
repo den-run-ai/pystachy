@@ -3061,7 +3061,16 @@ I pys_vtuple_index(VTuple *t, I v, Str *d, I st, I en) {   /* tuple.index(v, sta
   for (I j = st; j < en && j < t->len; j++) if (eqitem(t->a[j], v, d->s)) return j;
   pys_fail("ValueError: tuple.index(x): x not in tuple");
 }
-I pys_vtuple_count(VTuple *t, I v, Str *d) { I c = 0; for (I i = 0; i < t->len; i++) c += eqitem(t->a[i], v, d->s); return c; }
+I pys_vtuple_count(VTuple *t, I v, Str *d) {
+  I c = 0;
+  /* strs compare as eqitem compares them for the descriptor "s", without its descriptor walk for
+     each item (a null slot, None, equals only None), as a list's do (pys_list_find): x in t of a
+     tuple of strs is this count */
+  const char *k = d->s + (d->s[0] == '?');   /* (a str or None: eqv's '?' compares the same way) */
+  if (k[0] == 's' && !k[1]) { for (I i = 0; i < t->len; i++) { I a = t->a[i]; c += a && v ? pys_str_eq((Str *)a, (Str *)v) : a == v; } return c; }
+  for (I i = 0; i < t->len; i++) c += eqitem(t->a[i], v, d->s);
+  return c;
+}
 
 /* ---------- lists ----------
    A list's header is scanned. Its item array is atomic when the items cannot be pointers: the
@@ -3451,7 +3460,9 @@ List *pys_list_mul(List *a, I n) {               /* xs * n. A new list's items a
    slots' values decide, 2 where pys_str_eq does (a null slot, None, equals only None). No
    program code runs in these comparisons, so the list cannot change under the search */
 static inline int scalar_items(const List *l, const char *d) {
-  if (d[1] || l->ids) return 0;
+  if (l->ids) return 0;
+  if (d[0] == '?' && d[1] == 's' && !d[2]) return 2;   /* (a str or None, as x in strs searches for an x that may be None: eqv's '?') */
+  if (d[1]) return 0;
   return d[0] == 'i' || d[0] == 'b' ? 1 : d[0] == 's' ? 2 : 0;
 }
 static inline int str_item_eq(I a, I b) { return a && b ? pys_str_eq((Str *)a, (Str *)b) : a == b; }

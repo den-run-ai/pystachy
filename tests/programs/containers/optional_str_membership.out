@@ -1,0 +1,8 @@
+24 False False True
+1 0 2 -1 -2
+'a' True 1 0
+None True 2 1
+'c' False 0 -1
+'b' True 1 2
+False False 0
+[exit 0]
