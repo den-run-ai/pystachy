@@ -66,9 +66,10 @@ test-pytest-json-upstream:
 # Independent application/benchmark suites share original pytest assertions.
 # CI supplies its already verified compiler; local users can use hosted compilation.
 PYTEST_WORKLOAD_COMPILER ?= $(PY) $(CURDIR)/pystachy.py
+PYTEST_WORKLOAD_JOBS ?= 4
 PYTEST_WORKLOAD_ARGS ?=
 test-pytest-workloads:
-	$(PY) tools/pytest_native_suites.py --compiler "$(PYTEST_WORKLOAD_COMPILER)" --json build/pytest-workloads.json $(PYTEST_WORKLOAD_ARGS)
+	$(PY) tools/pytest_native_suites.py --compiler "$(PYTEST_WORKLOAD_COMPILER)" --jobs $(PYTEST_WORKLOAD_JOBS) --json build/pytest-workloads.json $(PYTEST_WORKLOAD_ARGS)
 
 # the statements and branches of the compiler's own source (src/pystachy_compiler/) that the corpus, the
 # FFI and runtime-cache suites, the IR checks and the compiler's unit tests run (or FILES of the corpus
@@ -172,7 +173,7 @@ blas-check: $(BENCH_COMPILER)
 bench-pyperformance-check: $(BENCH_COMPILER)
 	$(PY) -m unittest discover -s tools -p test_bench_pyperformance.py
 	$(PY) tools/bench_pyperformance.py --compiler "$(BENCH_COMPILER)" --smoke --json build/pyperformance-smoke.json
-	$(PY) tools/pytest_native_suites.py --group pyperformance --compiler "$(BENCH_COMPILER)" --json build/pytest-pyperformance.json
+	$(PY) tools/pytest_native_suites.py --group pyperformance --compiler "$(BENCH_COMPILER)" --jobs $(PYTEST_WORKLOAD_JOBS) --json build/pytest-pyperformance.json
 
 # CPython/JIT/AOT checksums for match and equivalent handwritten branches.
 # Smoke reports validate execution and contain no performance thresholds.

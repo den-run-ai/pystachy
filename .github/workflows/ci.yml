@@ -141,7 +141,7 @@ jobs:
         run: python3 -m pip install "$(sed -n '/^typing_extensions==/p' tools/requirements-dev.txt)"
 
       - name: Workload pytest oracle dependency
-        if: matrix.group == 'benchmarks' || matrix.group == 'hosted'
+        if: matrix.group == 'benchmarks' || ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
         run: python3 -m pip install "$(sed -n '/^pytest==/p' tools/requirements-dev.txt)"
 
       # No run-id or token: download-artifact can only select this workflow run here.
@@ -164,7 +164,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-rt-18-dev
-          # Generated-code ASan controls run in the existing x86 contracts job.
+          # Generated-code ASan controls run in x86 contracts (full) or safety-1 (PRs).
           PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 - <<'PY'
           from pathlib import Path
           import unittest
@@ -235,10 +235,10 @@ jobs:
           python3 -m unittest discover -s tools -p test_stack_floor.py
           python3 -m unittest discover -s tools -p test_runtime_signatures.py
 
-      # Keep the existing hosted ASan controls out of Lint's 15-minute budget.
+      # PRs use the short safety worker; full runs retain x86 contracts coverage.
       # setup.sh already validates LLVM; compiler-rt supplies the runtime and preload library.
       - name: Generated user and runtime ASan controls
-        if: matrix.group == 'contracts' && matrix.machine == 'x86_64'
+        if: matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'safety-1') || (github.event_name != 'pull_request' && matrix.group == 'contracts'))
         run: |
           sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev
           python3 -m unittest discover -s tools -p test_runtime_asan.py -v
@@ -274,14 +274,14 @@ jobs:
         run: make bench-match-check BENCH_COMPILER=build/verify/pystachy2
 
       - name: Shared pytest example assertions
-        if: matrix.group == 'hosted'
+        if: ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-pytest-workloads PYTEST_WORKLOAD_COMPILER=build/verify/pystachy2 PYTEST_WORKLOAD_ARGS='--group examples'
 
       # Retain the hosted compiler and original pytest oracle without using Lint's budget.
       - name: Generated native pytest runner parity
-        if: matrix.group == 'hosted' && matrix.machine == 'x86_64'
+        if: matrix.machine == 'x86_64' && ((github.event_name == 'pull_request' && matrix.group == 'opt-in') || (github.event_name != 'pull_request' && matrix.group == 'hosted'))
         env:
           PYSTACHY_HOME: ${{ github.workspace }}
         run: make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"
@@ -401,7 +401,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libclang-rt-18-dev
-          # Generated-code ASan controls run in the existing x86 contracts job.
+          # Generated-code ASan controls run in x86 contracts (full) or safety-1 (PRs).
           PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 - <<'PY'
           from pathlib import Path
           import unittest

@@ -91,6 +91,22 @@ def matrix_rows(job: dict, event: str) -> list[dict]:
     return rows + extra
 
 
+def selected_rows(job: dict, condition: str, event: str) -> list[dict]:
+    """Evaluate literal row ownership, rejecting syntax this control cannot model."""
+    selected = []
+    for row in matrix_rows(job, event):
+        expression = condition.replace("github.event_name", repr(event))
+        for key in ("machine", "group"):
+            expression = expression.replace("matrix." + key, repr(row.get(key)))
+        expression = ast.parse(expression.replace("&&", " and ").replace("||", " or "), mode="eval")
+        allowed = (ast.Expression, ast.BoolOp, ast.Compare, ast.Constant, ast.And, ast.Or, ast.Eq, ast.NotEq)
+        if any(not isinstance(node, allowed) for node in ast.walk(expression)):
+            raise ValueError("unsupported ownership condition")
+        if eval(compile(expression, "<row ownership>", "eval"), {"__builtins__": {}}, {}):
+            selected.append(row)
+    return selected
+
+
 def known_skip(condition: str, event: str) -> bool:
     condition = condition.strip()
     if condition.startswith("${{") and condition.endswith("}}"):
@@ -327,21 +343,21 @@ class LimitTests(unittest.TestCase):
             "python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'",
         ])
 
-    def test_generated_asan_runs_once_in_existing_x86_contracts_job(self):
+    def test_generated_asan_runs_once_on_short_pr_worker_and_full_contracts(self):
         found = workflows()
         job = found["ci.yml"]["jobs"]["verification"]
         controls = [step for step in job["steps"] if "-p test_runtime_asan.py" in step.get("run", "")]
         self.assertEqual(len(controls), 1)
         control = controls[0]
-        self.assertEqual(control["if"], "matrix.group == 'contracts' && matrix.machine == 'x86_64'")
         self.assertEqual(job["env"]["PYSTACHY_LLVM"], "/usr/lib/llvm-18/bin")
         self.assertEqual(control["run"].splitlines(), [
             "sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev",
             "python3 -m unittest discover -s tools -p test_runtime_asan.py -v",
         ])
         for event in ("pull_request", "push", "workflow_dispatch"):
-            self.assertEqual(sum(row["group"] == "contracts" and row["machine"] == "x86_64"
-                                 for row in matrix_rows(job, event)), 1)
+            group = "safety-1" if event == "pull_request" else "contracts"
+            self.assertEqual(selected_rows(job, control["if"], event),
+                             [{"machine": "x86_64", "group": group}])
         self.assertNotIn("continue-on-error", control)
         self.assertNotIn("continue-on-error", job)
         toolchains = [step for step in job["steps"] if "tools/setup.sh --minimal" in step.get("run", "")]
@@ -443,7 +459,7 @@ class LimitTests(unittest.TestCase):
                         expected.append("controls")
                     self.assertEqual(log.read_text().splitlines(), expected)
 
-    def test_native_pytest_parity_runs_once_with_oracle_in_existing_x86_hosted_job(self):
+    def test_native_pytest_parity_runs_once_with_oracle_on_short_pr_worker(self):
         found = workflows()
         job = found["ci.yml"]["jobs"]["verification"]
         steps = job["steps"]
@@ -452,16 +468,27 @@ class LimitTests(unittest.TestCase):
         probe = probes[0]
         self.assertEqual(probe["run"], 'make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"')
         self.assertEqual(probe["env"]["PYSTACHY_HOME"], "${{ github.workspace }}")
-        self.assertEqual(probe["if"], "matrix.group == 'hosted' && matrix.machine == 'x86_64'")
         self.assertNotIn("continue-on-error", probe)
         self.assertNotIn("continue-on-error", job)
         for event in ("pull_request", "push", "workflow_dispatch"):
             with self.subTest(event=event):
-                self.assertEqual(sum(row["group"] == "hosted" and row["machine"] == "x86_64"
-                                     for row in matrix_rows(job, event)), 1)
+                group = "opt-in" if event == "pull_request" else "hosted"
+                self.assertEqual(selected_rows(job, probe["if"], event),
+                                 [{"machine": "x86_64", "group": group}])
         oracles = [step for step in steps if "/^pytest==/p" in step.get("run", "")]
         self.assertEqual(len(oracles), 1)
-        self.assertIn("matrix.group == 'hosted'", oracles[0]["if"])
+        workloads = [step for step in steps if "make test-pytest-workloads" in step.get("run", "")]
+        self.assertEqual(len(workloads), 1)
+        self.assertNotIn("continue-on-error", workloads[0])
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            machines = ["x86_64"] if event == "pull_request" else ["x86_64", "aarch64"]
+            group = "opt-in" if event == "pull_request" else "hosted"
+            self.assertCountEqual(selected_rows(job, workloads[0]["if"], event),
+                                  [{"machine": machine, "group": group} for machine in machines])
+            self.assertCountEqual(selected_rows(job, oracles[0]["if"], event),
+                                  [{"machine": machine, "group": owner}
+                                   for machine in machines for owner in (group, "benchmarks")])
+        self.assertLess(steps.index(oracles[0]), steps.index(workloads[0]))
         self.assertIn("tools/requirements-dev.txt", oracles[0]["run"])
         self.assertLess(steps.index(oracles[0]), steps.index(probe))
         self.assertNotIn("continue-on-error", oracles[0])

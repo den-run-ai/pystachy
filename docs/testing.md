@@ -346,7 +346,7 @@ demand, and on pushes to `main` that change its setup or the suites' runners. PR
 this exhaustive matrix; run it manually on a PR branch when coverage detail is needed.
 The compiler's coverage runs in ten parallel jobs (the corpus in eight shards, the FFI and IR
 suites in one, the runtime-cache and unit suites in another) and the runtime's in seven (the
-corpus in six shards, each after building the native compiler, and the FFI suite); a report job
+corpus in six shards and the FFI suite), following one verified compiler producer; a report job
 for each combines its parts. As for CI's groups, each job targets under ten minutes of work
 within a 15-minute limit. Job summaries show the summaries, and the reports are workflow
 artifacts. After each run on `main`, a separate job, which runs no
@@ -377,12 +377,19 @@ the corpus (`tools/shard_cases.sh`) and `MODES=jit` one tier. The script drops t
 settings that verification drops, builds each variant's runtime in a cache of its own and writes
 the logs to `build/variants/`, so run one at a time in a checkout. Each variant takes about as
 long as `make test`. The [Variants workflow](../.github/workflows/variants.yml) runs each one in
-four shards (24 jobs) daily, on demand and on relevant `main` pushes. The lighter `opt-1`
+four shards (24 consumer jobs plus one compiler producer) daily, on demand and on relevant `main` pushes. The lighter `opt-1`
 and `cflags-O0` rows share one build per shard; the slower optimizer rows run separately
 within the 15-minute job limit. PRs run the seven
 configurations on representative and changed cases in **two workers**, reusing the verified
 bootstrap. Each worker runs three or four configurations with private runtime caches and records its
 exact cases and results. The PR aggregate requires both workers to pass.
+
+Variants and native runtime coverage each build the default compiler once per workflow run.
+Consumers validate the source/commit, LLVM and Python versions, Linux ABI, run identity and
+payload checksums with `tools/verification_bootstrap.py` before execution. Runtime caches
+stay private: variants still build every selected runtime configuration, and coverage still
+builds each instrumented runtime. Hosted compiler coverage remains independent. No compiled
+binary or successful test/proof result is reused between runs.
 
 ## Continuous integration
 
@@ -423,16 +430,19 @@ unexpected output. Its `match-dispatch-smoke.json` artifact is correctness evide
 paired performance and optional pyperf measurements have separate reproduction commands
 in [the match benchmark](../bench/match_dispatch/README.md).
 
-The `hosted` CI job runs 20 independent example API suites through
+The PR `opt-in` worker and full-run `hosted` jobs run 20 independent example API suites through
 `make test-pytest-workloads PYTEST_WORKLOAD_ARGS='--group examples'`, reusing the
 verified compiler. Splitting these checks between existing jobs leaves more room
 within the 15-minute budget without adding workers. `pytest-workloads.json` records every
-original-pytest comparison.
+original-pytest comparison. The Make targets use `PYTEST_WORKLOAD_JOBS=4`; the suite
+runner also accepts `--jobs 1` for a serial replay. Each worker uses one compiler process
+and a private runtime cache. Results retain the selected suite/mode order, failures keep
+the complete inventory, and cancellation terminates only this invocation's process groups.
 Missing modules/results, empty suites, skips, xfails and failed builds fail this
 check. These tests supplement the exact CLI, FFI, upstream-reference and timing
 contracts below; they do not replace those distinct observations.
 
-The x86-64 `hosted` job also runs `make test-pytest-native` with the verified compiler
+The x86-64 PR `opt-in` worker (full-run `hosted`) also runs `make test-pytest-native` with the verified compiler
 and pinned original pytest oracle. Its JIT examples retain the hosted compiler; repeated
 native builds use `PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"`, with `PYSTACHY_HOME`
 pointing at the checkout. Test modules run first, at most four at once. Only after they
@@ -535,11 +545,11 @@ from the budget. Each test runner uses at most four processes within its worker.
 | PR work | Jobs | Coverage |
 |---|---:|---|
 | Linux bootstrap | 1 | x86-64 compiler/runtime fixed points and verified compiler bundle. |
-| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata; shared pytest example APIs and native runner qualification. |
+| Hosted | 1 | Every corpus case: hosted/native IR, diagnostics and check parity; hosted driver end-to-end strata. |
 | Native AOT | 4 | Disjoint quarters of the **complete** corpus in AOT. |
 | Native JIT and variants | 2 | Disjoint halves of the **complete** corpus in JIT, then seven sampled configurations split across the same workers; the first then checks native program-cache invalidation and execution, the second runtime ABI, cache and GC controls. |
-| Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress. |
-| Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles. |
+| Safety | 2 | Representative and changed cases: optimizer off, Python-free rebuild, UBSan rebuild, JIT/AOT GC stress; generated ASan controls on the second worker. |
+| Opt-in compatibility | 1 | Selected programs with dynamic `Any` and promoting ints, against fresh CPython oracles; shared pytest example APIs and native runner qualification. |
 | Contracts | 1 | Complete IR/runtime/FFI and behavioral contract checks; bounded Lean null/union proofs. |
 | Cache and compiler GC | 1 | Both runtime-cache checks, then stressed self-compilation. |
 | Benchmarks and scaling | 1 | Correctness, both scaling halves, BLAS and large upstream regex. |
@@ -939,8 +949,8 @@ The coordinator preserves normal SIGINT handling, cancels both process groups an
 reaps the suite processes before returning from SIGINT or SIGTERM cancellation.
 
 Generated-user and generated-runtime ASan controls run in the existing x86-64
-`contracts` job on code PRs, main pushes and manual runs, using LLVM 18 and its
-compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;
+`safety-1` worker on code PRs and `contracts` on main pushes and manual runs, using
+LLVM 18 and its compiler-rt runtime. All four tests in `tools/test_runtime_asan.py` run there;
 every other `test_runtime_*.py` file runs in the second native JIT/variant worker on PRs
 and the x86-64 `gc-jit-0` job on full runs. Those controls retain real-driver C-cache
 integration, sanitizer setup, and both positive and negative CPU-buffer ownership probes.
