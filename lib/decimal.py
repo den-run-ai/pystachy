@@ -129,6 +129,15 @@ class Context:
         self._emax: int = 999999
         self._capitals: int = 1
         self._clamp: int = 0
+        template = _template
+        if template is not None:
+            # DefaultContext is the prototype of new contexts: what a program sets on it is
+            # the default of the fields left out here (but capitals, which is 1)
+            self._prec = template._prec
+            self._rounding = template._rounding
+            self._emin = template._emin
+            self._emax = template._emax
+            self._clamp = template._clamp
         if prec is not None:
             self.prec = prec
         if rounding is not None:
@@ -331,7 +340,7 @@ class _ContextManager:
 
     def __enter__(self) -> Context:
         global _current
-        self.saved_context = _current
+        self.saved_context = getcontext()
         _current = self.new_context
         return self.new_context
 
@@ -340,12 +349,18 @@ class _ContextManager:
         _current = self.saved_context
 
 
-_current = Context()
+_template: Context | None = None  # DefaultContext, once it is made
+_current: Context | None = None  # the current context: a copy of DefaultContext at its first use
 
 
 def getcontext() -> Context:
     """The current context, which arithmetic operators round to."""
-    return _current
+    global _current
+    context = _current
+    if context is None:
+        context = DefaultContext.copy()
+        _current = context
+    return context
 
 
 def setcontext(context: Context) -> None:
@@ -360,7 +375,7 @@ def localcontext(ctx: Context | None = None, *, prec: int | None = None, roundin
                  Emin: int | None = None, Emax: int | None = None, capitals: int | None = None,
                  clamp: int | None = None) -> _ContextManager:
     """A context manager whose block runs with a copy of ctx (the current context by default)."""
-    new = (_current if ctx is None else ctx).copy()
+    new = (getcontext() if ctx is None else ctx).copy()
     if prec is not None:
         new.prec = prec
     if rounding is not None:
@@ -550,13 +565,13 @@ class Decimal:
     def is_normal(self, context: Context | None = None) -> bool:
         if self._kind != _FINITE or self._int == 0:
             return False
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         return ctx._emin <= self.adjusted()
 
     def is_subnormal(self, context: Context | None = None) -> bool:
         if self._kind != _FINITE or self._int == 0:
             return False
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         return self.adjusted() < ctx._emin
 
     def adjusted(self) -> int:
@@ -739,18 +754,18 @@ class Decimal:
         return (self.copy_negate() if negate else self)._fix(context)
 
     def __neg__(self) -> "Decimal":
-        if self._kind == _FINITE and self._int == 0 and _current._rounding == ROUND_FLOOR:
-            return _dec(1, 0, self._exp)._fix(_current) if not self._sign else _dec(0, 0, self._exp)._fix(_current)
-        return self._unary(_current, 1)
+        if self._kind == _FINITE and self._int == 0 and getcontext()._rounding == ROUND_FLOOR:
+            return _dec(1, 0, self._exp)._fix(getcontext()) if not self._sign else _dec(0, 0, self._exp)._fix(getcontext())
+        return self._unary(getcontext(), 1)
 
     def __pos__(self) -> "Decimal":
-        return self._unary(_current, 0)
+        return self._unary(getcontext(), 0)
 
     def __abs__(self) -> "Decimal":
         if self._kind != _FINITE:
-            nan = self._check_nans(None, _current)
+            nan = self._check_nans(None, getcontext())
             return nan if nan is not None else self.copy_abs()
-        return self.copy_abs()._fix(_current)
+        return self.copy_abs()._fix(getcontext())
 
     def _add(self, other: "Decimal", context: Context) -> "Decimal":
         if self._kind != _FINITE or other._kind != _FINITE:
@@ -866,7 +881,7 @@ class Decimal:
             # (both of CPython's signals for x // 0 and x % 0: the first trapped one is raised)
             raise InvalidOperation("[<class 'decimal.InvalidOperation'>, <class 'decimal.DivisionByZero'>]")
         quotient, remainder = self._divide(other, context)
-        return quotient, remainder._fix(context)
+        return quotient._fix(context), remainder._fix(context)
 
     def _mod(self, other: "Decimal", context: Context) -> "Decimal":
         nan = self._check_nans(other, context)
@@ -892,7 +907,9 @@ class Decimal:
             if self._int == 0:
                 raise InvalidOperation("[<class 'decimal.DivisionUndefined'>]")
             raise DivisionByZero("[<class 'decimal.DivisionByZero'>]")
-        return self._divide(other, context)[0]
+        # (the context's exponent limits apply to an integer quotient too: Overflow past Emax,
+        # and zeros appended for a clamped exponent)
+        return self._divide(other, context)[0]._fix(context)
 
     def _isinteger(self) -> bool:
         if self._kind != _FINITE:
@@ -955,11 +972,11 @@ class Decimal:
         return _dec(sign, result._int, result._exp)._fix(context)
 
     def __pow__(self, other: int) -> "Decimal":
-        return self._pow(other, _current)
+        return self._pow(other, getcontext())
 
     def sqrt(self, context: Context | None = None) -> "Decimal":
         """The square root, correctly rounded half-even to the context's precision."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         if self._kind != _FINITE:
             nan = self._check_nans(None, ctx)
             if nan is not None:
@@ -1010,7 +1027,7 @@ class Decimal:
 
     def fma(self, other: "Decimal", third: "Decimal", context: Context | None = None) -> "Decimal":
         """self * other + third, with no rounding of the product."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         if self._kind != _FINITE or other._kind != _FINITE:
             if self._kind == _SNAN or other._kind == _SNAN or third._kind == _SNAN:
                 raise InvalidOperation("[<class 'decimal.InvalidOperation'>]")
@@ -1026,48 +1043,48 @@ class Decimal:
         return product._add(third, ctx)
 
     def __add__(self, other):
-        return self._add(_operand(other, "+"), _current)
+        return self._add(_operand(other, "+"), getcontext())
 
     def __radd__(self, other: int) -> "Decimal":
-        return _from_int(other)._add(self, _current)
+        return _from_int(other)._add(self, getcontext())
 
     def __sub__(self, other):
         o = _operand(other, "-")
-        return self._add(o.copy_negate() if o._kind < _NAN else o, _current)
+        return self._add(o.copy_negate() if o._kind < _NAN else o, getcontext())
 
     def __rsub__(self, other: int) -> "Decimal":
-        return _from_int(other)._add(self.copy_negate() if self._kind < _NAN else self, _current)
+        return _from_int(other)._add(self.copy_negate() if self._kind < _NAN else self, getcontext())
 
     def __mul__(self, other):
-        return self._mul(_operand(other, "*"), _current)
+        return self._mul(_operand(other, "*"), getcontext())
 
     def __rmul__(self, other: int) -> "Decimal":
-        return _from_int(other)._mul(self, _current)
+        return _from_int(other)._mul(self, getcontext())
 
     def __truediv__(self, other):
-        return self._div(_operand(other, "/"), _current)
+        return self._div(_operand(other, "/"), getcontext())
 
     def __rtruediv__(self, other: int) -> "Decimal":
-        return _from_int(other)._div(self, _current)
+        return _from_int(other)._div(self, getcontext())
 
     def __floordiv__(self, other):
-        return self._floordiv(_operand(other, "//"), _current)
+        return self._floordiv(_operand(other, "//"), getcontext())
 
     def __rfloordiv__(self, other: int) -> "Decimal":
-        return _from_int(other)._floordiv(self, _current)
+        return _from_int(other)._floordiv(self, getcontext())
 
     def __mod__(self, other):
-        return self._mod(_operand(other, "%"), _current)
+        return self._mod(_operand(other, "%"), getcontext())
 
     def __rmod__(self, other: int) -> "Decimal":
-        return _from_int(other)._mod(self, _current)
+        return _from_int(other)._mod(self, getcontext())
 
     def __divmod__(self, other: "Decimal") -> "tuple[Decimal, Decimal]":
-        return self._divmod(other, _current)
+        return self._divmod(other, getcontext())
 
     def remainder_near(self, other: "Decimal", context: Context | None = None) -> "Decimal":
         """self - other * n, for the integer n nearest to self / other (ties to even)."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         nan = self._check_nans(other, ctx)
         if nan is not None:
             return nan
@@ -1164,7 +1181,7 @@ class Decimal:
     def compare(self, other: "Decimal", context: Context | None = None) -> "Decimal":
         """Decimal -1, 0 or 1 as self is less than, equal to or greater than other; NaN for a NaN."""
         if self._kind != _FINITE or other._kind != _FINITE:
-            nan = self._check_nans(other, _current if context is None else context)
+            nan = self._check_nans(other, getcontext() if context is None else context)
             if nan is not None:
                 return nan
         c = self._cmp(other)
@@ -1172,12 +1189,12 @@ class Decimal:
 
     def max(self, other: "Decimal", context: Context | None = None) -> "Decimal":
         """The larger value, rounded to the context: a number rather than a quiet NaN."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         return self._extreme(other, ctx, 1)
 
     def min(self, other: "Decimal", context: Context | None = None) -> "Decimal":
         """The smaller value, rounded to the context: a number rather than a quiet NaN."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         return self._extreme(other, ctx, -1)
 
     def _extreme(self, other: "Decimal", ctx: Context, want: int) -> "Decimal":
@@ -1249,7 +1266,7 @@ class Decimal:
             if self._kind == _SNAN:
                 raise ValueError("cannot convert signaling NaN to float")
             return float("-nan") if self._sign else float("nan")
-        return float(self._text(False, _current))
+        return float(self._text(False, getcontext()))
 
     def __round__(self, n=None):
         # round(d) is the nearest int (ties to even); round(d, n) is a Decimal with n fraction digits
@@ -1263,7 +1280,7 @@ class Decimal:
 
     def quantize(self, exp: "Decimal", rounding: str | None = None, context: Context | None = None) -> "Decimal":
         """The value rounded to the exponent of exp: Decimal('1.41421').quantize(Decimal('0.01'))."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         mode = ctx._rounding if rounding is None else rounding
         if mode not in _ROUNDINGS:
             raise TypeError("valid values for rounding are:\n  [ROUND_CEILING, ROUND_FLOOR, ROUND_UP, ROUND_DOWN,\n   ROUND_HALF_UP, ROUND_HALF_DOWN, ROUND_HALF_EVEN,\n   ROUND_05UP]")
@@ -1288,7 +1305,7 @@ class Decimal:
 
     def to_integral_value(self, rounding: str | None = None, context: Context | None = None) -> "Decimal":
         """The value rounded to an integer, as a Decimal."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         if self._kind != _FINITE:
             nan = self._check_nans(None, ctx)
             return nan if nan is not None else self
@@ -1304,7 +1321,7 @@ class Decimal:
 
     def normalize(self, context: Context | None = None) -> "Decimal":
         """The value with trailing zeros of its coefficient removed: Decimal('32.100') to Decimal('32.1')."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         if self._kind != _FINITE:
             nan = self._check_nans(None, ctx)
             if nan is not None:
@@ -1324,7 +1341,7 @@ class Decimal:
 
     def scaleb(self, other: int, context: Context | None = None) -> "Decimal":
         """The value with other added to its exponent."""
-        ctx = _current if context is None else context
+        ctx = getcontext() if context is None else context
         if self._kind != _FINITE:
             nan = self._check_nans(None, ctx)
             return nan if nan is not None else self
@@ -1365,18 +1382,18 @@ class Decimal:
         return sign + intpart + fracpart + ("E" if context._capitals else "e") + _signed_text(leftdigits - dotplace)
 
     def __str__(self) -> str:
-        return self._text(False, _current)
+        return self._text(False, getcontext())
 
     def __repr__(self) -> str:
-        return "Decimal('" + self._text(False, _current) + "')"
+        return "Decimal('" + self._text(False, getcontext()) + "')"
 
     def to_eng_string(self, context: Context | None = None) -> str:
         """The value in engineering notation: an exponent, if any, that is a multiple of 3."""
-        return self._text(True, _current if context is None else context)
+        return self._text(True, getcontext() if context is None else context)
 
     def __format__(self, specifier: str) -> str:
         spec = _FormatSpec(specifier)
-        context = _current
+        context = getcontext()
         if self._kind != _FINITE:
             body = self.copy_abs()._text(False, context)
             return spec.align(spec.sign_text(self._sign == 1), body + "%" if spec.kind == "%" else body)
@@ -1573,5 +1590,6 @@ def _comparand(other) -> Decimal:
 
 
 DefaultContext = Context(prec=28, rounding=ROUND_HALF_EVEN, Emin=-999999, Emax=999999, capitals=1, clamp=0)
+_template = DefaultContext
 BasicContext = Context(prec=9, rounding=ROUND_HALF_UP)
 ExtendedContext = Context(prec=9, rounding=ROUND_HALF_EVEN)
