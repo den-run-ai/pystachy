@@ -699,6 +699,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
                 # against it, a union's member's too; a value of another type is an instance
                 # of no class of the program: class_values.py)
                 clsv = self.expr(args[1], "")
+                if clsv.t == "dyn":
+                    # (type(x) of a union's object in a module that opts in to dynamic Any: the
+                    # class value of an ordinary class, as its class object)
+                    clsv = self.class_value_unbox(clsv, "type[object]")
                 if self.class_value_named(v.t) or v.t == "None" or is_union(unopt(v.t)):
                     return self.class_value_isinst(v, clsv, self.knownobj(args[0]))
                 self.unwrap(clsv, "TypeError: isinstance() arg 2 must be a type, a tuple of types, or a union")

@@ -3413,6 +3413,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         t = self.join(a.t, b.t)  # x if c else None: T | None
     if e1 != "" and e2 != "" and a.t != b.t and is_clsval(a.t) and is_clsval(b.t) and self.join(a.t, b.t) != "":
         t = self.join(a.t, b.t)  # (class objects: of the nearest base class their classes have in common)
+    elif e1 != "" and e2 != "" and a.t != b.t and is_clsval(a.t) and is_clsval(b.t) and unopt(want) == "type[object]":
+        t = "type[object]"  # (of classes without one, where any class's class object is wanted)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == "dyn":
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == BIG:

@@ -376,7 +376,13 @@ def gen_class_value_dynamic(self, t: Node) -> bool:
     if t.kind == "call" or (t.kind == "attr" and t.s == "__class__"):
         x = self.refl_typeof(t)
     if x is not None:
-        if not self.class_value_named(unopt(self.dry(x))):
+        xt = self.dry(x)
+        if is_union(unopt(xt)) and self.class_value_objects(xt):
+            # (an object of a union of ordinary classes: type(x) is the class object of one of
+            # them, or its class value in a module that opts in to dynamic Any, which
+            # isinstance() takes as that class object)
+            return True
+        if not self.class_value_named(unopt(xt)):
             return False
         # (where a module opts in to dynamic Any, type(x) may be a class box: class_value_typed)
         return not self.dyn_policy(self.line) or is_clsval(unopt(self.dry(t)))

@@ -45,11 +45,13 @@ for x in [A(), B()]:
     print([isinstance(x, k) for k in r.kinds], [issubclass(type(x), k) for k in r.kinds])
 c: A | C = C(3)
 print([isinstance(c, k) for k in r.kinds], [issubclass(k, A) for k in r.kinds], [issubclass(k, C) for k in r.kinds])
-print(sorted([k.__name__ for k in {A, C, B}]), {A: 1, C: 2}[type(c)], hash(kind(c)) == hash(C))
+names: set[type] = {A, C, B}
+table: dict[type, int] = {A: 1, C: 2}
+print(sorted([k.__name__ for k in names]), table[type(c)], hash(kind(c)) == hash(C))
 mixed = [A, C]
 mixed.append(B)
 print(mixed, mixed.index(C), B in mixed, mixed.count(A))
-pick = A if len(mixed) > 5 else C
+pick: type = A if len(mixed) > 5 else C
 print(pick, pick is C, str(pick), repr(pick), f"{pick}")
 none: type | None = None
 print(none, none is None, r.last is not None, r.last == B)
@@ -64,7 +66,7 @@ print(top, top is B, isinstance(B(), top), isinstance(A(), top))
 
 class Holder:
     def __init__(self) -> None:
-        self.k = A
+        self.k: type = A
         self.seen: set[type] = set()
 
     def swap(self) -> None:
@@ -98,5 +100,5 @@ print(sorted([C, B, A], key=lambda k: k.__name__), max([A, C], key=lambda k: k._
 pairs: list[tuple[type, int]] = [(A, 1), (C, 2)]
 for k, n in pairs:
     print(k.__name__, n, k == A, k != C)
-by_name = {k.__name__: k for k in [A, B, C]}
+by_name: dict[str, type] = {k.__name__: k for k in [A, B, C]}
 print(by_name["B"], by_name["C"] is C, issubclass(by_name["B"], A), issubclass(by_name["C"], A))
