@@ -617,6 +617,12 @@ before the loop run the copy where every such list has `stop <= len(xs) - c` for
 `c`, which keeps `0 <= i + c < len(xs)` for every `i` the loop takes; a list that a local not yet
 assigned would hold, and any shorter list, run the loop as compiled, which raises `IndexError`
 (or `UnboundLocalError`) after the same iterations as CPython. The copy doubles the loop's code.
+A call in the loop of a function that the program calls nowhere else is `alwaysinline` in the
+copy, and the callee's ops count toward the 400. LLVM inlines an internal function's only call
+almost whatever its size, but each of two calls only if it is cheap: the copy's second call once
+left `float`'s `Point.__init__` out of line, 37% slower
+([#1300](https://github.com/den-run-ai/pystachy/issues/1300)). The loop's call then is the
+callee's last, which LLVM inlines too.
 With `listguard`, inline list reads and stores carry TBAA tags under `fieldtbaa`'s root, of a
 list's items pointer and of an item, so that LLVM keeps a loop's items pointers in registers
 across its item stores and can vectorize the copy.

@@ -11,6 +11,7 @@ from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_pr
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS, one_nums_intact
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import RENAMED, short
+from src.pystachy_compiler.optimizations import call_counts
 from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
@@ -1276,6 +1277,8 @@ def gen_program(self, mods: list[Mod]) -> str:
     if len(on) > 0:
         # (before eh_ir: a block that a try statement covers keeps its exception edge to the
         # landing block, Blk.handler, which the passes count, see preds)
+        if "listguard" in on:
+            self.callsites = call_counts(self.fns)
         changed = False
         for fn in self.fns:
             if self.optimize(fn, on) > 0:
