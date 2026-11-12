@@ -66,6 +66,9 @@ class FormatTests(unittest.TestCase):
                    "> quoted log line 1\n> quoted log line 2", "Break here  \nthen continue.",
                    "Run:\n\n    make\n    make test\n    make lint",
                    "Run:\n\n    - item\n      continuation\n    next",
+                   "1. Run:\n\n    ```python\n    print(1)\n    print(2)\n    ```\n\n2. Done.",
+                   "Results:\n\ncase | ms\n--- | ---:\nfast | 1.2\nslow | 9.8",
+                   "Notes\n=====\n\nOne line.",
                    "Preserve the value.<!-- note\nspanning lines -->")
         for text in allowed:
             with self.subTest(text=text):
