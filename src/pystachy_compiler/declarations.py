@@ -2462,22 +2462,22 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         et = "int" if t == RANGEC else self.iter_elem(t)
         if t.startswith("!") or et == "" or "?" in et:
             return t if t.startswith("!") else ""
-        x = e.kids[1].s
-        had = x in self.guessvars
-        old = self.guessvars[x] if had else ""
-        oldf = self.guessowner[x] if had else f
-        self.guessvars[x] = et
-        self.guessowner[x] = f
+        cv = e.kids[1].s
+        had = cv in self.guessvars
+        outer = self.guessvars[cv] if had else ""
+        outerf = self.guessowner[cv] if had else f
+        self.guessvars[cv] = et
+        self.guessowner[cv] = f
         vt = ""
         try:
             vt = self.guess(e.kids[0], f)
         finally:
             if had:
-                self.guessvars[x] = old
-                self.guessowner[x] = oldf
+                self.guessvars[cv] = outer
+                self.guessowner[cv] = outerf
             else:
-                del self.guessvars[x]
-                del self.guessowner[x]
+                del self.guessvars[cv]
+                del self.guessowner[cv]
         return vt if vt.startswith("!") else self.ctype("list", [vt]) if vt != "" and vt != "None" and "?" not in vt else ""
     if k == "tuple" and 0 < len(e.kids) <= 9:
         ts = [self.guess(x, f) for x in e.kids if x.kind != "starred"]
