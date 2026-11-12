@@ -2655,7 +2655,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         if kx.t == BIG:
             r = self.rt(self.dict_key_fn(fn, kx), "i64", [f"ptr {o.v}"] + self.dict_key_args(kx, k) + [f"i64 {dv}"], self.key_fx(kv[0]))
         else:
-            r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]))
+            r = self.nonekey(kx, dv, fn, [f"ptr {o.v}", f"i64 {k}", f"i64 {dv}"], self.key_fx(kv[0]), kv[0])
         if fn == "pys_dict_popbox" and self.dict_int(o.t):
             return self.dict_box(r)  # (a value past 64 bits: bigints.py)
         return self.held_read(self.from_slot(r, vt))
@@ -2944,7 +2944,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         self.list_write("list." + m, operands)
         return Val("null", "None")
     if kx.t != "":
-        res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x)
+        res = self.nonekey(kx, av[2][4:] if m == "get" else "", fn, av, x, K)
     else:
         res = self.rt(self.dict_key_fn(fn, bigkey) if bigkey.t != "" else fn, "i64" if slot else rtt(rtype), av, x)
     if numok != "true" and m == "count":
