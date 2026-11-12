@@ -30,8 +30,8 @@ class GeneratedModule:
     cases: list[str]
     # The program imports pytest_native_fixtures (tmp_path, monkeypatch).
     builtin_fixtures: bool = False
-    # The program imports pytest_native_logging (caplog).
-    log_fixtures: bool = False
+    # The other fixture modules the program imports (SUPPORT_MODULES): caplog's, capsys and capfd's.
+    support_modules: list[str] = field(default_factory=list)
     # Generated line -> original line, for the compiler's diagnostics (line_map).
     lines: dict[int, int] = field(default_factory=dict)
     # conftest.py hooks left out of the program, which the pytest comparison answers for.
@@ -155,7 +155,7 @@ UNITTEST_IMPORTS = {"TestCase", "SkipTest", "skip", "skipIf", "skipUnless", "exp
 UNITTEST_MARKS = {"unittest.skip", "unittest.skipIf", "unittest.skipUnless", "unittest.expectedFailure"}
 MONKEYPATCH = {"setenv", "delenv", "undo", "context"}
 # monkeypatch methods the generator writes out where they are called (Generator.patch_plan).
-MONKEYPATCH_WRITTEN = {"setattr", "setitem", "delitem"}
+MONKEYPATCH_WRITTEN = {"setattr", "setitem", "delitem", "chdir"}
 BUILTIN_FIXTURES = {
     "tmp_path": Fixture(None, [], False, False, call="_pyn_fixtures.tmp_path", named=True, origin="builtin"),
     "monkeypatch": Fixture(None, [], True, False, call="_pyn_fixtures.monkeypatch", valued=True, origin="builtin"),
@@ -163,9 +163,14 @@ BUILTIN_FIXTURES = {
     "tmp_path_factory": Fixture(None, [], False, False, scope="session", call="_pyn_fixtures.tmp_path_factory",
                                 origin="builtin"),
     "tmpdir": Fixture(None, [], False, False, call="_pyn_fixtures.tmpdir", named=True, origin="builtin"),
-    # (Its own module: only a suite that asks for caplog compiles logging.)
+    # (Their own modules: only a suite that asks for caplog compiles logging, and only one
+    # that captures output needs a compiler with os.dup2.)
     "caplog": Fixture(None, [], True, False, call="_pyn_logging.caplog", valued=True, origin="builtin"),
+    "capsys": Fixture(None, [], True, False, call="_pyn_capture.capture", valued=True, origin="builtin"),
+    "capfd": Fixture(None, [], True, False, call="_pyn_capture.capture", valued=True, origin="builtin"),
 }
+# The modules of built-in fixtures beside pytest_native_fixtures, by the alias generated code calls.
+SUPPORT_MODULES = {"_pyn_logging": "pytest_native_logging", "_pyn_capture": "pytest_native_capture"}
 
 
 UNKNOWN = object()  # (what evaluate() returns for an expression it does not read)
@@ -548,7 +553,7 @@ class Generator:
         # the runner evaluates those declarations at module level.
         self.shadowed = None
         self.builtins_used = False
-        self.logging_used = False
+        self.support_used = set()
         # monkeypatch calls the program writes out (patch_plan), and their functions.
         self.patches = {}
         self.patch_functions = []
@@ -571,7 +576,17 @@ class Generator:
                                "shows that no outcome depends on it: run with that comparison (no --no-compare)")
                 self.hooks.append(node.name + (" (doctest_namespace)" if node in doctests else ""))
         hooks += doctests
-        names = {node.name for node in hooks}
+        # sys.path.insert(0, "."): a compiled program's imports are resolved before it runs.
+        for node in self.tree.body:
+            call = node.value if isinstance(node, ast.Expr) else None
+            if (isinstance(call, ast.Call) and ast.unparse(call.func) in ("sys.path.insert", "sys.path.append")
+                    and all(isinstance(argument, ast.Constant) for argument in call.args) and not call.keywords):
+                if not self.verified:
+                    self.error(node, "sys.path changes are not made natively, and only the comparison with pytest "
+                               "shows that no outcome depends on them: run with that comparison (no --no-compare)")
+                self.hooks.append(ast.unparse(call))
+                hooks.append(node)
+        names = {node.name for node in hooks if isinstance(node, ast.FunctionDef)}
         self.tree.body = [node for node in self.tree.body if node not in hooks]
         for node in ast.walk(self.tree):
             if isinstance(node, ast.Name) and node.id in names:
@@ -2313,7 +2328,7 @@ class Generator:
             elif (monkeypatch and isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name)
                     and node.value.id == "monkeypatch" and node.attr not in MONKEYPATCH):
                 self.error(node, f"monkeypatch.{node.attr} is unsupported; setenv, delenv, setattr, setitem, "
-                           "delitem, context and undo are supported")
+                           "delitem, chdir, context and undo are supported")
             if isinstance(node, ast.Global) and any(name in self.fixture_functions() for name in node.names):
                 self.error(node, "mutating fixture declarations through globals is unsupported")
             if isinstance(node, ast.Name) and node.id in self.fixture_functions():
@@ -2458,6 +2473,11 @@ class Generator:
             if not raising:
                 self.error(call, "monkeypatch.setattr(raising=False) is unsupported: a compiled object has "
                            "the attributes its class gives it")
+        elif method == "chdir":
+            if len(arguments) != 1 or call.keywords:
+                self.error(call, "monkeypatch.chdir is supported as chdir(path)")
+            self.patches[call] = (method, len(self.patches), True, raising)
+            return
         elif len(arguments) != (3 if method == "setitem" else 2):
             self.error(call, f"monkeypatch.{method} is supported as "
                        + ("setitem(mapping, key, value)" if method == "setitem" else "delitem(mapping, key)"))
@@ -2479,6 +2499,13 @@ class Generator:
         """(the function of one monkeypatch call, the call of it): see patch_plan."""
         method, number, named, raising = self.patches[call]
         receiver = call.func.value
+        if method == "chdir":
+            # (The directory the first chdir left is the last to be restored, as pytest's one saved value.)
+            text = "\n".join([f"def _pyn_patch_{number}(_pyn_patch, _pyn_value) -> None:",
+                              "    _pyn_old = _pyn_os.getcwd()", "    def _pyn_undo() -> None:",
+                              "        _pyn_os.chdir(_pyn_old)", "    _pyn_os.chdir(str(_pyn_value))",
+                              "    _pyn_patch.later(_pyn_undo)"])
+            return text, ast.Expr(ast.Call(ast.Name(f"_pyn_patch_{number}", ast.Load()), [receiver, call.args[0]], []))
         target = ast.unparse(call.args[0]) if named else "_pyn_target"
         passed = [receiver] + ([] if named else [call.args[0]])
         parameters = ["_pyn_patch"] + ([] if named else ["_pyn_target"])
@@ -3075,8 +3102,9 @@ class Generator:
         imports += [f"import {module} as {alias}" for module, alias in self.imports]
         if self.builtins_used:
             imports.append("import pytest_native_fixtures as _pyn_fixtures")
-        if self.logging_used:
-            imports.append("import pytest_native_logging as _pyn_logging")
+        imports += [f"import {SUPPORT_MODULES[alias]} as {alias}" for alias in sorted(self.support_used)]
+        if any(plan[0] == "chdir" for plan in self.patches.values()):
+            imports.append("import os as _pyn_os")
         output = []
         # Each entry: (text, the statement it came from or None).
         placed = False
@@ -3227,8 +3255,9 @@ class Generator:
             if fixture.request:
                 arguments.append(f"_pyn_request_param={fixture_values[name]}")
             if fixture.origin == "builtin":
-                if fixture.call.startswith("_pyn_logging."):
-                    self.logging_used = True
+                alias = fixture.call.split(".")[0]
+                if alias in SUPPORT_MODULES:
+                    self.support_used.add(alias)
                 else:
                     self.builtins_used = True
             call = f"{fixture.call}({', '.join(arguments)})"
@@ -3490,7 +3519,8 @@ class Generator:
             parts.append(text + "\n\n")
             first += text.count("\n") + 2
         return GeneratedModule("".join(parts).rstrip("\n") + "\n", [cases[index] for index in run],
-                               self.builtins_used, self.logging_used, lines, self.hooks)
+                               self.builtins_used, [SUPPORT_MODULES[alias] for alias in sorted(self.support_used)],
+                               lines, self.hooks)
 
     def adapt(self):
         """This helper module's source for the generated program (adapt_helper)."""

@@ -1055,7 +1055,7 @@ class DiagnosticsAndSelection(TemporarySuite):
         self.assertIn("MISMATCH test_suite.py::test_runner_argv [call]", output)
 
     def test_collection_errors_do_not_run_pytest(self):
-        path = self.source("def test_unsupported(capsys):\n    pass\n")
+        path = self.source("def test_unsupported(pytester):\n    pass\n")
         status, report, output = self.cli(path, "--mode", "python")
         self.assertEqual(status, 2)
         self.assertIsNone(report["oracle"])

@@ -1075,7 +1075,7 @@ class FormRejections(TemporarySuite):
                                          "cannot request n of function scope"),
             "monkeypatch.delattr": ("import os\ndef test_a(monkeypatch):\n    monkeypatch.delattr(os, 'sep')\n",
                                     "monkeypatch.delattr is unsupported"),
-            "capsys": ("def test_a(capsys): pass\n", "unsupported fixture: capsys"),
+            "pytester": ("def test_a(pytester): pass\n", "unsupported fixture: pytester"),
             "approx keyword": (fixture + "def test_a():\n    assert 1 == pytest.approx(1, extra=2)\n", "approx supports"),
             "empty raises tuple": (fixture + "def test_a():\n    with pytest.raises(()):\n        pass\n", "raises supports"),
             "raises check": (fixture + "def test_a():\n    with pytest.raises(ValueError, check=len):\n        pass\n",

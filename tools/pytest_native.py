@@ -428,7 +428,8 @@ def layout(paths: list[Path], root: Path) -> Layout:
         else:
             stem = path.stem
             usable = (stem.isidentifier() and not keyword.iskeyword(stem) and not stem.startswith("_pyn_")
-                      and stem not in ("pytest_native_support", "pytest_native_fixtures", "pytest_native_logging", "conftest"))
+                      and stem not in ("pytest_native_support", "pytest_native_fixtures", "pytest_native_logging",
+                                       "pytest_native_capture", "conftest"))
             name = stem if usable else f"_pyn_module_{index}"
         if name.split(".")[0] in taken and taken[name.split(".")[0]] != base / parts[0] or name in modules.values():
             # pytest imports one file under a name and fails on the next ("import file mismatch").
@@ -486,8 +487,9 @@ def resolver(tree: Layout, root: Path, roots: tuple[Path, ...] | list[Path] = ()
                     # A module of the source tree: its outermost package, or the module itself.
                     top = start / parts[0]
                     source = top if (top / "__init__.py").is_file() else top.with_suffix(".py")
-                    if not source.exists() or source.name in ("pytest_native_support.py", "pytest_native_fixtures.py",
-                                                              "pytest_native_logging.py"):
+                    if not source.exists() or source.name in (
+                            "pytest_native_support.py", "pytest_native_fixtures.py", "pytest_native_logging.py",
+                            "pytest_native_capture.py"):
                         continue
                     tree.sources.append(source)
                 base = import_root(candidate, root)
@@ -757,7 +759,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         # Earlier runs wrote other modules there, which a test's own import would find first.
         current = {str(file) for file in generated_files}
         for stale in [suite_work / "suite.py", suite_work / "suite", suite_work / "pytest_native_fixtures.py",
-                      suite_work / "pytest_native_logging.py", *suite_work.glob("*.py")]:
+                      suite_work / "pytest_native_logging.py", suite_work / "pytest_native_capture.py",
+                      *suite_work.glob("*.py")]:
             if str(stale) not in current and stale.name not in ("_pyn_suite.py", "pytest_native_support.py"):
                 stale.unlink(missing_ok=True)
     imports = [f"import {tree.modules[conftest]}" for conftest in tree.conftests]
@@ -794,8 +797,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     write_changed(suite_work / "pytest_native_support.py", (TOOLS / "pytest_native_support.py").read_text())
     if builtin:
         write_changed(suite_work / "pytest_native_fixtures.py", (TOOLS / "pytest_native_fixtures.py").read_text())
-    if any(module.log_fixtures for module in instrumented):
-        write_changed(suite_work / "pytest_native_logging.py", (TOOLS / "pytest_native_logging.py").read_text())
+    for name in sorted({name for module in instrumented for name in module.support_modules}):
+        write_changed(suite_work / f"{name}.py", (TOOLS / f"{name}.py").read_text())
     # The modules beside the tests, where the generated ones import them.
     mirror(suite_work, tree, {*paths, *tree.conftests}, root, settings.pythonpath)
     env = environment([suite_work, *tree.bases, *settings.pythonpath, root])

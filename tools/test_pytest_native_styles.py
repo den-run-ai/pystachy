@@ -6,6 +6,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 import textwrap
 import unittest
@@ -747,6 +748,13 @@ FIXTURES = {
 }
 
 
+# capsys, capfd and monkeypatch.chdir: natively these need os.dup, os.dup2, os.close and os.chdir.
+CAPTURE = {
+    'test_capture.py': 'import os\nimport sys\n\nimport pytest\n\n\ndef test_capsys(capsys):\n    print("hello")\n    sys.stderr.write("problem\\n")\n    captured = capsys.readouterr()\n    assert captured.out == "hello\\n"\n    assert captured.err == "problem\\n"\n    print("again", end="")\n    out, err = capsys.readouterr()\n    assert (out, err) == ("again", "")\n    assert capsys.readouterr().out == ""\n\n\ndef test_capfd(capfd):\n    print("first")\n    sys.stdout.write("second\\n")\n    out, err = capfd.readouterr()\n    assert out == "first\\nsecond\\n" and err == ""\n    with capfd.disabled():\n        pass\n    print("after")\n    assert capfd.readouterr().out == "after\\n"\n\n\n@pytest.fixture\ndef announced(capsys):\n    print("setup output")\n    return 1\n\n\ndef test_fixture_output_is_captured(announced, capsys):\n    assert capsys.readouterr().out == "setup output\\n"\n    assert announced == 1\n\n\ndef test_chdir(monkeypatch, tmp_path):\n    start = os.getcwd()\n    monkeypatch.chdir(tmp_path)\n    assert os.path.realpath(os.getcwd()) == os.path.realpath(str(tmp_path))\n    inner = tmp_path / "inner"\n    inner.mkdir()\n    monkeypatch.chdir(str(inner))\n    assert os.path.basename(os.getcwd()) == "inner"\n    monkeypatch.undo()\n    assert os.getcwd() == start\n\n\ndef test_cwd_restored(monkeypatch, tmp_path):\n    monkeypatch.chdir(tmp_path)\n\n\ndef test_cwd_is_back():\n    assert os.path.exists("test_capture.py")\n',
+}
+DESCRIPTORS = "import os\nos.close(os.dup2(os.dup(1), 9))\nos.chdir('.')\n"
+
+
 CONFIGURED = {
     'pyproject.toml': '[project]\nname = "sample"\n\n[tool.pytest.ini_options]\nminversion = "8.0"\ntestpaths = ["tests"]\naddopts = "-ra --strict-markers --tb=short -W error::DeprecationWarning"\nxfail_strict = true\npythonpath = ["src"]\nmarkers = ["slow: takes a while"]\nfilterwarnings = ["ignore:harmless:UserWarning"]\nlog_cli_level = "INFO"\n',
     'src/lib/__init__.py': 'import warnings\n\n\ndef old() -> int:\n    warnings.warn("old", DeprecationWarning)\n    return 1\n\n\ndef noisy() -> int:\n    warnings.warn("harmless noise", UserWarning)\n    return 2\n',
@@ -996,6 +1004,11 @@ class StyleParity(TemporarySuite):
         self.assertEqual([result.state for result in results], ["passed"])
         self.assertEqual(len(expected["cases"]), 10)
 
+    def test_output_capture_and_chdir(self):
+        results, expected = self.run_paths(self.files(CAPTURE), "python")
+        self.assertEqual([result.state for result in results], ["passed"])
+        self.assertEqual(len(expected["cases"]), 6)
+
     def test_patch_forms_the_program_cannot_write(self):
         forms = {
             'monkeypatch.setattr("os.sep", "/")': "dotted name",
@@ -1005,6 +1018,7 @@ class StyleParity(TemporarySuite):
             'undo = monkeypatch.setattr(os, "sep", "/")': "statement of its own",
             'monkeypatch.setitem(os.environ, "A")': "setitem(mapping, key, value)",
             'monkeypatch.delitem(os.environ)': "delitem(mapping, key)",
+            'monkeypatch.chdir()': "chdir(path)",
             'monkeypatch.delattr(os, "sep")': "monkeypatch.delattr is unsupported",
             'monkeypatch.syspath_prepend("x")': "monkeypatch.syspath_prepend is unsupported",
         }
@@ -1252,6 +1266,16 @@ class StyleParity(TemporarySuite):
         self.assertEqual([result.state for result in results], ["passed"], results[0].error + results[0].stderr)
 
     @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_jit_output_capture_and_chdir(self):
+        probe = self.source(DESCRIPTORS, "descriptors.py")
+        built = subprocess.run([*shlex.split(NATIVE), "ir", str(probe), "-o", os.devnull], capture_output=True)
+        probe.unlink()
+        if built.returncode:
+            self.skipTest("this compiler has no os.dup, os.dup2, os.close and os.chdir")
+        results, _ = self.run_paths(self.files(CAPTURE), "jit")
+        self.assertEqual([result.state for result in results], ["passed"], results[0].error + results[0].stderr)
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
     def test_native_jit_bases_in_the_source_tree(self):
         results, _ = self.run_paths(self.files(RESOLVED), "jit")
         self.assertEqual([result.state for result in results], ["test-failed"])
@@ -1336,6 +1360,13 @@ class StyleRejections(TemporarySuite):
         module, exported = generate_conftest(doctest, "conftest.py", verified=True)
         self.assertNotIn("doctest_namespace", module.source)
         self.assertEqual((module.hooks, list(exported)), (["names (doctest_namespace)"], ["kept"]))
+        # And a change of sys.path: the program's imports are resolved when it is built.
+        paths = "import sys\nsys.path.insert(0, '.')\nVALUE = 1\n"
+        with self.assertRaisesRegex(CollectionError, "sys.path changes are not made natively"):
+            generate_conftest(paths, "conftest.py")
+        module, _ = generate_conftest(paths, "conftest.py", verified=True)
+        self.assertNotIn("sys.path", module.source)
+        self.assertEqual(module.hooks, ["sys.path.insert(0, '.')"])
         for source, message in (
                 ("def pytest_generate_tests(metafunc): pass\n", "unsupported pytest hook: pytest_generate_tests"),
                 ("def pytest_configure(config): pass\nHOOK = pytest_configure\n", "is used by other code")):
