@@ -36,7 +36,7 @@ Ports keep code that only CPython can run, as CPython's sources have it, under
 `sys.implementation.name` is `"pystachy"`, and drops the block (see
 [compile-time branches](../docs/language/modules.md#compile-time-branches)): `urllib.parse`'s
 imports of `warnings` and `ipaddress`, its docstrings of the result fields and its
-byte tables, and `statistics`' import of `random` and table of kernels.
+byte tables, and `statistics`' loading of `random` and `decimal` and table of kernels.
 
 ### Pure-Python accelerators
 
@@ -1078,6 +1078,8 @@ CPython's `math.sumprod` algorithm; unsupported iterators are materialized first
   floats otherwise ([error test](../tests/errors/library/lib_statistics_quantiles_int.py)).
   `median_low` and `median_high` retain the item type. `median` of strings is unsupported.
 - `mode` and `multimode` cannot use float keys. String inputs iterate code points.
+- `Decimal` data is not accepted: natively the module does not load `decimal`, so a program
+  that imports `statistics` compiles none of it.
 - Integer products in weighted `fmean` and in `linear_regression(..., proportional=True)`
   can raise `OverflowError` beyond 64 bits; CPython's integers continue growing.
 - The port's `sumprod` returns a float, including `11.0` for integer inputs and
