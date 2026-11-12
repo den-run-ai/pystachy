@@ -156,6 +156,8 @@ def gen_ann(self, n: Node) -> str:
         return "None"
     if k == "str":
         return self.ann(self.parse_expr(n.s))
+    if k == "badattr":
+        return "!" + n.s  # (why the loader could not qualify a name: an if TYPE_CHECKING: import's, ...)
     s = n.s
     if k == "attr":
         c = self.imported_ref(n)
@@ -2306,8 +2308,11 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return f"fn[m:{f.cls}.{e.s}]"  # (self.m: the method bound to the object)
         return ci.ftypes.get(e.s, "")
     if k == "attr" and e.kids[0].kind == "name" and e.kids[0].s in f.params and e.kids[0].s != me:
-        # p.k of a parameter p holding an object: the type of its field k
+        # p.k of a parameter p holding an object: the type of its field k (its class's fields are
+        # declared first: a class declared later, as a forward reference or a TYPE_CHECKING import names it)
         t = self.guess(e.kids[0], f)
+        if t in self.classes:
+            self.declare_fields(self.classes[t])
         if t in self.classes and e.s in self.classes[t].ftypes and e.s not in self.classes[t].methods:
             return self.classes[t].ftypes[e.s]
     if k == "dictstar":
