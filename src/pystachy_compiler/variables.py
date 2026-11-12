@@ -450,6 +450,14 @@ def gen_new_closure(self, n: Node, key: str) -> Closure:
     qual = name if self.modlevel else self.qualname(outer) + ".<locals>." + name
     idx = len(self.closures)
     f = self.declare_fn(mk("def", d.s, d.line, d.kids[:3]), "")  # (its decorators apply to the closure: decorate)
+    for sp in list(f.sentinels) if not self.modlevel else []:
+        if not self.globread(f.sentinels[sp]):
+            # its default reads a variable of the function around it (a parameter, a local or a
+            # cell) spelled as the sentinel, not the module's sentinel: sp is a parameter of its
+            # annotated type, as without a sentinel
+            f.ptypes[f.params.index(sp)] = f.sentann[sp]
+            del f.sentinels[sp]
+            del f.sentann[sp]
     f.ll = f"@c.{idx}"
     f.name = qual
     f.mod = outer.mod
