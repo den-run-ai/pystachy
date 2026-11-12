@@ -595,6 +595,12 @@ its corpus half restored. [Issue #1178](https://github.com/den-run-ai/pystachy/i
 records historical slow jobs and the measured headroom acceptance criteria; configured
 limits alone do not establish current run times.
 
+Worker setup logs the full LLVM host profile and separately labeled OS CPU fields.
+Lint, aggregates and documentation-only bootstrap jobs use `tools/setup.sh --cpu`
+without installing anything. Missing or unknown values remain unidentified; the
+shared bootstrap producer's CPU does not identify its consumers. These logs provide
+hardware provenance, not proof of repeated headroom acceptance.
+
 ### Full verification
 
 Pushes to `main` and manual runs execute all thirty-four verification groups on both Linux

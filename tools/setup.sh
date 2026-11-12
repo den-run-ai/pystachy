@@ -1,14 +1,38 @@
 #!/bin/sh
-# Package-manager setup; --check never installs. No arguments retain CI's UBSan and BLAS dependencies:
+# Package-manager setup; --check and --cpu never install. No arguments retain CI's UBSan and BLAS dependencies:
 # make blas-check calls Ubuntu's LP64 libblas.so.3 of the reference BLAS and of OpenBLAS, which once
 # installed is also that name's default provider.
 set -eu
 mode=${1:---verify}
-case $mode in --check | --minimal | --verify) ;; *)
-  echo "usage: tools/setup.sh [--minimal | --verify | --check]" >&2; exit 2 ;;
+case $mode in --check | --minimal | --verify | --cpu) ;; *)
+  echo "usage: tools/setup.sh [--minimal | --verify | --check | --cpu]" >&2; exit 2 ;;
 esac
 [ $# -le 1 ] || { echo "tools/setup.sh: too many arguments" >&2; exit 2; }
 cd "$(dirname "$0")/.."
+
+# Keep the worker's LLVM profile distinct from raw OS identification. Neither is
+# a bootstrap reuse key, and an unavailable or unknown value stays unidentified.
+cpu_identity() {
+  printf 'Worker system: '; uname -srm
+  echo "LLVM host profile (opt --version):"
+  if ! "${1:+${1%/}/}opt" --version 2>/dev/null; then
+    echo "LLVM host profile unavailable"
+  fi
+  echo "OS CPU identification (/proc/cpuinfo):"
+  cpu_fields=
+  if [ -r /proc/cpuinfo ]; then
+    cpu_fields=$(sed -n \
+      -e '/^\(vendor_id\|model name\|cpu family\|model\|stepping\)[[:space:]]*:/p' \
+      -e '/^\(CPU implementer\|CPU architecture\|CPU variant\|CPU part\|CPU revision\|Hardware\|Revision\|Model\)[[:space:]]*:/p' \
+      /proc/cpuinfo | LC_ALL=C sort -u)
+  fi
+  printf '%s\n' "${cpu_fields:-OS CPU identification unavailable}"
+}
+if [ "$mode" = --cpu ]; then
+  cpu_identity "${PYSTACHY_LLVM:-}"
+  exit 0
+fi
+
 PY=${PY:-$(command -v python3.13 || command -v python3 || printf '%s' python3)}
 
 find_llvm() {
@@ -85,5 +109,6 @@ for t in clang opt lli llvm-link llvm-as; do
   }
   printf '%s\n' "$version" | head -1
 done
+cpu_identity "$LLVM"
 "$PY" --version
 echo "ready: make PY=$PY"

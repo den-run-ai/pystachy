@@ -54,6 +54,9 @@ jobs:
           printf 'kind=%s\nplan_%s=%s\n' "$plan" "$CI_MACHINE" "$plan" >> "$GITHUB_OUTPUT"
           printf 'base=%s\n' "$base" >> "$GITHUB_OUTPUT"
           printf 'Verification plan: %s\n' "$plan"
+      - name: Record worker CPU for documentation verification
+        if: steps.plan.outputs.kind != 'code'
+        run: tools/setup.sh --cpu
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         if: steps.plan.outputs.kind == 'code'
         with:
@@ -494,6 +497,11 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 2
+
+      - name: Record aggregate worker CPU
+        env:
+          PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+        run: tools/setup.sh --cpu
 
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
         if: needs.bootstrap.outputs.plan_x86_64 == 'code' && (github.event_name == 'pull_request' || needs.bootstrap.outputs.plan_aarch64 == 'code')
