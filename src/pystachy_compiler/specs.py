@@ -111,6 +111,8 @@ DUNDER: dict[str, str] = {"+": "__add__", "-": "__sub__", "*": "__mul__", "/": "
                           "@": "__matmul__", "&": "__and__", "|": "__or__", "^": "__xor__", "<<": "__lshift__", ">>": "__rshift__",
                           "==": "__eq__", "!=": "__ne__", "<": "__lt__", "<=": "__le__", ">": "__gt__", ">=": "__ge__"}
 UNARY: dict[str, str] = {"-": "__neg__", "+": "__pos__", "~": "__invert__"}
+# math functions that call a special method of an object (int(), float(), round(), abs() and divmod() do too)
+PROTOCOL_MATH: dict[str, str] = {"math.floor": "__floor__", "math.ceil": "__ceil__", "math.trunc": "__trunc__"}
 # builtin and module functions that are one runtime call: "name(argtypes)": "C function:result type"
 CALLS: dict[str, str] = {
     "ord(str)": "pys_ord:int", "chr(int)": "pys_chr:str", "int(float)": "pys_f2i:int", "int(str,int)": "pys_int_str:int",
