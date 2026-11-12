@@ -121,6 +121,8 @@ SCOPED = {
     "unaliased": "the node count of the annotation unalias expands: reset per expansion",
     "convedge": "the block convert_at's conversion ends in: set there, read right after as the phi's edge",
     "guessing": "module constants whose values guess() is typing: a recursion guard, set and cleared around it",
+    "globguess": "the types guess() gave constants' values within one outermost guess of one: cleared as that starts",
+    "guesscuts": "how often guess() cut a constant's recursion: compared before and after each guess of a value",
 }
 # those of SCOPED that a nested compile wrongly sees or changes today, each with its reproducer: a
 # fix saves and resets each as Frame and gen_enter do, and moves it out of SCOPED (as #822's

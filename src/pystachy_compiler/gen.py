@@ -1472,6 +1472,10 @@ class Gen:
         self.globvalues: dict[str, Node] = {}
         self.globowners: dict[str, Mod] = {}
         self.guessing: dict[str, bool] = {}
+        # the types guess() gave constants' values within one guess of a constant's value, which
+        # starts afresh, and the reads of a constant being guessed that it has cut (guess)
+        self.globguess: dict[str, str] = {}
+        self.guesscuts = 0
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
         self.abstracts: dict[str, list[str]] = {}  # each class's own @abstractmethod methods (abstract_defs)
         self.abcmeta: dict[str, bool] = {}  # the classes whose statements pass metaclass=ABCMeta
