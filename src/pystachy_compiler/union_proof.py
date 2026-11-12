@@ -246,6 +246,7 @@ class UnionProof:
         self.domains: dict[str, list[str]] = {}
         self.native: dict[str, str] = {}
         self.memtypes: dict[str, str] = {}
+        self.declaredtypes: dict[str, str] = {}  # (declared(), by value)
         self.defs: dict[str, Ins] = {}
         self.blocks: dict[str, int] = {}
         self.raw: dict[str, bool] = {}
@@ -573,11 +574,35 @@ class UnionProof:
 
     def declared(self, v: str) -> str:
         # The type that value v's definition declares: a load's is that of its storage
-        # (memtypes: a parameter's, a local's, a global's or a field's declaration), never the
-        # load's own annotation, which a narrower type could spell; else its definition's.
+        # (memtypes: a parameter's, a local's, a global's or a field's declaration), and a
+        # transport's (phi, select, slot.pack, slot.unpack) is the one its operands all declare
+        # (declared_from), never the op's own annotation, which a narrower type could spell;
+        # "" where that cannot be established. Else its definition's.
+        if v not in self.declaredtypes:
+            t = self.declared_from(v, {})
+            self.declaredtypes[v] = t if t != "?" else ""
+        return self.declaredtypes[v]
+
+    def declared_from(self, v: str, seen: dict[str, bool]) -> str:
+        # (declared) seen: the transports on the way to v. "?" for one of them again (a loop's
+        # back edge, which brings what the other edges declare) and for None (null), which has
+        # no items: they constrain nothing
         d = self.defs[v] if v in self.defs else None
+        if v == "null":
+            return "?"
         if d is not None and (d.op == "mem.load" or d.op == "mach.load"):
             return self.memtypes[d.a[0].v] if len(d.a) > 0 and d.a[0].v in self.memtypes else ""
+        if d is not None and (d.op == "phi" or d.op == "select" or d.op == "slot.pack" or d.op == "slot.unpack"):
+            if v in seen:
+                return "?"
+            seen[v] = True
+            t = "?"
+            for a in d.a[1:] if d.op == "select" else d.a[:1] if d.op != "phi" else d.a:
+                x = self.declared_from(a.v, seen)
+                if x == "" or (x != "?" and t != "?" and x != t):
+                    return ""
+                t = x if x != "?" else t
+            return t
         return self.native.get(v, "")
 
     def box(self, s: UnionState, v: str) -> str:
