@@ -42,7 +42,7 @@ to check that the probes exist and that their test suites execute them.
 | A lock `acquire()` or a `join()` that would wait forever | refused: `RuntimeError` | `tests/deviations/lib_thread_deadlock.py` |
 | `async def` and `await` of coroutines, `@types.coroutine` generators and objects whose `__await__` is a generator method; a coroutine's `send()`, `throw()` and `close()`, run by code of the owner thread | native | `tests/programs/generators/coro_protocol.py`, `tests/programs/generators/coro_scheduler.py`, `tests/programs/upstream/upstream_coroutines.py` |
 | `async with` and `async for` in coroutines of the owner thread | native | `tests/programs/generators/coro_async_with.py`, `tests/programs/generators/coro_async_for.py`, `tests/programs/upstream/upstream_coroutines_with_for.py` |
-| Asynchronous comprehensions and async generators | refused at compile time | `tests/errors/generators/coro_async_comp.py`, `tests/errors/generators/gen_async.py` |
+| Async generators and asynchronous comprehensions in coroutines of the owner thread | native | `tests/programs/generators/agen_await.py`, `tests/programs/generators/acomp_list.py`, `tests/programs/upstream/upstream_asyncgen.py` |
 
 
 A compiled program cannot import `queue`, `asyncio`, `concurrent.futures`,

@@ -268,6 +268,12 @@ def gen_ann(self, n: Node) -> str:
                 if ct.startswith("!"):
                     return ct
             return self.coro_type(cy, cr)
+        if base == "asyncgenerator" or base == "asynciterator" or base == "asynciterable":
+            # AsyncGenerator[T, S], AsyncIterator[T] (typing's or collections.abc's): an async
+            # generator object, whose awaits yield None to the code that runs its consumer, as no
+            # annotation can say otherwise (asyncgens.py)
+            ta = self.agen_ann(n, False)
+            return "!" + ta[0] if len(ta) == 1 else self.agen_type(ta[0], ta[1], "None")
         if base == "callable":
             # Callable[[A, B], R] (typing's or collections.abc's): callable[R,A,B]
             if len(a) != 2 or (a[0].kind != "list" and a[0].kind != "ellipsis"):
@@ -1217,6 +1223,11 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
         # x: object, as in __eq__(self, other: object): a template's parameter, which each call
         # types (any argument: isinstance() narrows it), where a template may be
         if ps[i].kind == "param" and ps[i].kids[0].kind == "name" and ps[i].kids[0].s == "object" and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
+            ps[i].kids[0] = mk("noann", "", d.line, [])
+        # x: AsyncIterator[T] (AsyncIterable[T], AsyncGenerator[T, S]): likewise, so that an
+        # async generator whose awaits yield what no annotation names, or an object of a class
+        # with __aiter__, is its argument (asyncgens.py)
+        if ps[i].kind == "param" and self.agen_param(ps[i].kids[0]) and not (cls != "" and i == 0 and f.deco != "staticmethod") and (cls == "" or template_ok(d.s) or init):
             ps[i].kids[0] = mk("noann", "", d.line, [])
     if (cls == "" or template_ok(d.s) or init) and not f.prop and f.acc == "" and not f.extern and not f.export and not f.pyexport and not self.dyn_policy(d.line):
         # typing.Any, also in list[Any] or Mapping[str, Any]: what it annotates is left to each

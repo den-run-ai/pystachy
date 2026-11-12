@@ -886,6 +886,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         return self.yield_value(n)  # (what send() sends the generator)
     if k == "await":
         return self.await_value(n, want)  # (what the awaitable returns: coroutines.py)
+    if k == "asynccomp" and n.s == "gen":
+        return self.genexp_value(n)  # (an asynchronous generator expression, desugar_comp: an async generator)
     if k in UNSUPPORTED:
         self.err(UNSUPPORTED[k])
     if k == "walrus":

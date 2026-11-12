@@ -1,6 +1,7 @@
 # Coroutines
 
-`async def` and `await` compile natively (PEP 492). A coroutine runs on the program's owner
+`async def` and `await` compile natively (PEP 492), and so do async generators (PEP 525) and
+asynchronous comprehensions (PEP 530). A coroutine runs on the program's owner
 thread, interleaving with others only where it awaits; nothing runs in parallel. This page
 gives the supported forms, how they run, what they cost, how they relate to threads and
 free-threaded CPython, and how the design compares with other implementations. The
@@ -19,18 +20,32 @@ free-threaded CPython, and how the design compares with other implementations. T
 | `async with A() as a, B() as b:` | Awaits `__aenter__()`, then `__aexit__()` as the block ends: with the exception that leaves it (`type, value, tb`), which a true result suppresses, or with `None, None, None` where the block ends, `break`s, `continue`s or `return`s (PEP 492) |
 | `async for x in it: ... else: ...` | Calls `it.__aiter__()` once, then awaits its `__anext__()` for each item until that raises `StopAsyncIteration`, which ends the loop as exhaustion does (its `else` block runs) |
 | An object without the protocol | CPython 3.13's `TypeError`s, such as `'X' object does not support the asynchronous context manager protocol (missed __aexit__ method)`, checked before `__aenter__()` runs, and `'async for' received an invalid object from __anext__: int` |
+| `async def g(...)` that yields | An async generator function: a call makes an async generator object and runs none of the body. `async for`, `await anext(ag)` and `await ag.__anext__()` take its items until it finishes (`StopAsyncIteration`); its awaits pass what they yield on to the code that runs the coroutine that iterates it, and resume with what that sends. `try`/`finally`, `async with` and `async for` in it, also around a `yield` |
+| `ag.asend(v)`, `ag.athrow(e)`, `ag.aclose()` | Awaitables of the next item: `asend()` sends `v` to the `yield` (an `AsyncGenerator[T, S]` annotation gives `S`), `athrow()` raises `e` there and gives what it yields next, `aclose()` raises `GeneratorExit` there and runs its `finally` blocks, awaits included, as CPython 3.13 does: `RuntimeError: anext(): asynchronous generator is already running` (and `athrow()`'s, `aclose()`'s) for a step while another is suspended, `cannot reuse already awaited __anext__()/asend()` (`aclose()/athrow()`) for an awaitable awaited again, `async generator ignored GeneratorExit`, and `async generator raised StopAsyncIteration` (or `StopIteration`) where one leaves the body |
+| `AsyncGenerator[T, S]`, `AsyncIterator[T]`, `AsyncIterable[T]` | The return annotation of an async generator function or method (`async def __aiter__(self) -> AsyncIterator[int]`), and of a variable or field that holds async generators whose awaits yield `None` (`typing`'s or `collections.abc`'s); a function's parameter so annotated (not a method's) takes any async generator, and any object of a class with `__aiter__` |
+| `aiter(x)`, `anext(it)`, `anext(it, default)` | `x.__aiter__()`, the awaitable of the next item, and one that gives `default` where the iterator raises `StopAsyncIteration`, for async generators and objects of classes with `__aiter__` and `__anext__`, with CPython's `TypeError`s for other objects |
+| `[e async for x in it if c]`, `{...}`, `{k: v ...}` | Asynchronous comprehensions in an `async def`: `async for` clauses, first or later, mixed with `for` and `if` clauses, and `await` anywhere in them |
+| `(e async for x in it)`, `(await f(x) for x in xs)` | An asynchronous generator expression: an async generator, also outside an `async def`; its first iterable and that iterable's `__aiter__()` are evaluated where it is written |
 
 Nested `async def`s, `async def` methods and `@types.coroutine` generator functions compile
 too. A driver loop such as pyperformance's `coroutines` benchmark runs unchanged:
 [`bench/pyperformance/coroutines.py`](../bench/pyperformance/coroutines.py) adds only the
 runner. [`tests/programs/upstream/upstream_coroutines.py`](../tests/programs/upstream/upstream_coroutines.py)
 and [`upstream_coroutines_with_for.py`](../tests/programs/upstream/upstream_coroutines_with_for.py)
-adapt 39 of CPython 3.13.16's `test_coroutines.py` cases, and list those they leave out.
+adapt 39 of CPython 3.13.16's `test_coroutines.py` cases, and list those they leave out;
+[`upstream_asyncgen.py`](../tests/programs/upstream/upstream_asyncgen.py) adapts 18 of its
+`test_asyncgen.py` cases that need no `asyncio` (its syntax cases are
+`tests/errors/syntax/syntax_asyncgen_*.py`), and
+[`upstream_coroutines_comp.py`](../tests/programs/upstream/upstream_coroutines_comp.py) its
+`test_coroutines.py` asynchronous comprehension cases.
 
 Not supported yet, each an error as the program compiles:
 
-- asynchronous comprehensions (`[x async for x in it]`) and async generators (an `async def`
-  that yields); `await` in an ordinary comprehension compiles;
+- a `for` loop over an async generator, and an `async for` clause of a comprehension over an
+  object that is no asynchronous iterable, where CPython raises `TypeError` as the program runs;
+  synchronous consumers of an asynchronous generator expression (`list(x async for x in it)`);
+- `athrow(type, value, traceback)`, and an async generator's attributes (`ag_running`,
+  `ag_frame`, `__name__`);
 - the `asyncio` module, which is not shipped (CPython can run a compiled
   [extension](concurrency.md#process-pools-today) from its own event loop);
 - `send()` of a value other than `None`, `await` of a generator held in a variable, and an
@@ -42,7 +57,15 @@ Deviations: a coroutine never awaited prints no `RuntimeWarning`, and one droppe
 suspended is not closed, as Pystachy finalizes no generator
 ([deviations](language/compatibility.md#memory-and-resource-lifetime)). The value a coroutine
 returns is what `await` gives; its `StopIteration` carries none
-(`tests/deviations/gen_stop_value.py`).
+(`tests/deviations/gen_stop_value.py`). A suspended async generator that the program drops is
+not closed either: Pystachy has no `sys.set_asyncgen_hooks`, through which `asyncio` would
+schedule its `aclose()`, and CPython without hooks closes it as its last reference goes
+(`tests/deviations/agen_finalization.py`); an awaitable of its methods never awaited prints no
+`RuntimeWarning`. The awaitables of `__anext__()`, `asend()`, `anext()`, `athrow()` and
+`aclose()` are `async_generator_asend` and `async_generator_athrow` objects, as CPython's are,
+but for `anext(ag, default)`'s, which CPython calls `anext_awaitable`; `throw()` of one that has
+not started raises the exception at once, where CPython first checks that the async generator
+is not running and then throws it into the async generator.
 
 ## How coroutines run
 
@@ -75,6 +98,36 @@ measures the current tree.
 for them, whose implicit awaits are ordinary awaits of `__aenter__()`, `__aexit__()` and
 `__anext__()`: they cost what those awaits cost, and a coroutine suspended in one keeps its own
 exception state while others run.
+
+<a id="async-generators"></a>
+
+## How async generators run
+
+An async generator is one LLVM coroutine frame that suspends in two ways: at a `yield` of its
+own, whose value is its consumer's, and where one of its awaits passes on what its awaitable
+yields to the code that runs the consumer. A step of it (`await ag.__anext__()`, `anext()`,
+`asend()`, `athrow()`, `aclose()`, `async for`) is code of the awaiting coroutine, not an
+awaitable object: it resumes the frame, takes a yield of its own as its value, and where the
+frame suspended in an await, suspends the awaiting coroutine with that value and resumes the
+frame when it is resumed. Nothing is allocated for an item, and `async for` over an async
+generator ends where it finishes without raising `StopAsyncIteration`, so an item costs what
+an item of a `for` over a generator does: a resume, a suspension and a few loads and stores,
+and one of each per level of a recursive chain such as `Tree.__aiter__()`. CPython instead
+makes an `async_generator_asend` object for each step and wraps each value it yields. The
+awaitables used as values (`a = ag.__anext__()`) are coroutine objects, each a frame allocation.
+Asynchronous comprehensions take their items through the same steps.
+
+pyperformance 1.14.0's `async_generators` traverses a balanced tree of 100,000 nodes through
+recursive `async for` loops in `Tree.__aiter__()`, building the tree in the timed region as
+upstream does; [`bench/pyperformance/async_generators.py`](../bench/pyperformance/async_generators.py)
+runs it with `send(None)` where pyperf uses an `asyncio` event loop, since nothing in it suspends.
+In this [snapshot](benchmarks/pyperformance-async-generators-2026-11-12-226de94.json) (`226de94`,
+five processes per mode on a shared 4-vCPU x86-64 host whose load average was about 1, CPython
+3.13.18), the median timed region of three runs (each builds and traverses a tree) took 0.804 s in CPython, 0.088 s in the JIT
+and 0.071 s in AOT, about 9 and 11 times faster; the `generators` port, whose tree is the same
+with `yield from`, ran 1.5 and 1.7 times faster in the same measurement: CPython's step of an
+async generator costs much more than its resume of a generator. `--benchmarks async_generators` of
+[`tools/bench_pyperformance.py`](../tools/bench_pyperformance.py) measures the current tree.
 
 ## Threads, parallelism and free-threading
 

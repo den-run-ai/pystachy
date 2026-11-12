@@ -23,6 +23,7 @@ from src.pystachy_compiler.utils import (
     is_callable,
     is_dict,
     is_fn,
+    is_agen,
     is_coro,
     is_gen,
     is_kw,
@@ -176,7 +177,7 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         return "builtins" if what == "__module__" else c[7:]
     if dynamic_program() and self.refl_builtin_class(c) != "":
         return "builtins" if what == "__module__" else "type"
-    if (dynamic_program() and (is_fn(c) or is_gen(c))) or is_coro(c):
+    if (dynamic_program() and (is_fn(c) or is_gen(c))) or is_coro(c) or is_agen(c):
         return "builtins" if what == "__module__" else tname(c)
     if c == BIG:
         c = "int"  # (a promoting int's class is int: bigints.py)

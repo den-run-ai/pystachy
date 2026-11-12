@@ -55,6 +55,8 @@ def gen_try_(self, n: Node) -> None:
     # may be read after it has a landing block of its own, which unbinds the name
     if n.s == "*":
         self.err("'except*' is not supported")
+    if self.curfn.aio and self.agen_for(n):
+        return  # (the step of an async for over an async generator: asyncgens.py)
     hs: list[Node] = []
     orelse: list[Node] = []
     fin: list[Node] = []
@@ -726,14 +728,16 @@ def gen_raise_stmt(self, n: Node) -> None:
         return
     e = n.kids[0]
     k = self.exc_class(e)
-    if (self.curfn.gen or self.curfn.direct) and not self.eh and k != "" and (exc_derives(k, "StopIteration") if k not in self.classes else self.derives(k, "StopIteration")):
-        # (PEP 479: a StopIteration that leaves a generator is a RuntimeError; with exceptions
-        # off, nothing in the generator can catch it first)
+    sai = self.curfn.agen and k != "" and (exc_derives(k, "StopAsyncIteration") if k not in self.classes else self.derives(k, "StopAsyncIteration"))
+    if (self.curfn.gen or self.curfn.direct) and not self.eh and k != "" and (sai or (exc_derives(k, "StopIteration") if k not in self.classes else self.derives(k, "StopIteration"))):
+        # (PEP 479: a StopIteration that leaves a generator is a RuntimeError, and so is a
+        # StopAsyncIteration that leaves an async generator, PEP 525; with exceptions off,
+        # nothing in the generator can catch it first)
         if k in self.classes:
             self.exc_value_of(e, k)
         else:
             self.exc_vals(self.exc_args(e), k)
-        self.raise_("RuntimeError", self.sconst(("coroutine" if self.curfn.aio or self.curfn.direct else "generator") + " raised StopIteration"))
+        self.raise_("RuntimeError", self.sconst(("async generator" if self.curfn.agen else "coroutine" if self.curfn.aio or self.curfn.direct else "generator") + (" raised StopAsyncIteration" if sai else " raised StopIteration")))
         return
     if k == "" or k in self.classes:
         # e's value and then the cause's, and only then are their classes called and checked, as

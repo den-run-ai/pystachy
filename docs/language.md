@@ -44,7 +44,7 @@ their own contracts; [interoperability](ffi.md) covers C, embedded CPython and e
 | [Reflection](language/semantics.md#reflection) | 🟡 Bounded | `getattr`, `setattr`, `hasattr`, `vars`, `dir` and `type(x).__name__` on classes the compiler knows | `eval`, `exec`; values of attributes named at run time | A run-time name works where only its text or a test is needed |
 | [Statements](language/semantics.md#statements) | 🟡 Bounded | Assignment and unpacking, `:=`, `if`, loops with `else`, `with`, `async with`, `async for`, `assert`, `del`, `global`, `nonlocal`; [bounded `match`](language/semantics.md#structural-patterns) | Mapping and general sequence/class patterns | Deleting a global from a function |
 | [Generators and iterators](language/semantics.md#generators) | 🟢 Direct<br>🟡 Suspended | `yield`, `yield from`, `send()`, `throw()` and `close()`; generator expressions; iterator classes; lazy `itertools` | — | A dropped suspended generator is never closed; some consumers materialize their input |
-| [Coroutines](coroutines.md) | 🟢 Native | `async def`, `await` of coroutines, `@types.coroutine` generators and `__await__` generator methods; `async with`, `async for`; `send()`, `throw()`, `close()`; `Coroutine[Y, None, R]` | Async generators and asynchronous comprehensions; `asyncio` | No never-awaited warning; `StopIteration` carries no return value |
+| [Coroutines](coroutines.md) | 🟢 Native | `async def`, `await` of coroutines, `@types.coroutine` generators and `__await__` generator methods; `async with`, `async for`; `send()`, `throw()`, `close()`; `Coroutine[Y, None, R]`; async generators with `asend()`, `athrow()`, `aclose()`, `aiter()`, `anext()` and `AsyncGenerator[T, S]`; asynchronous comprehensions and generator expressions | `asyncio`; `for` over an async generator | No never-awaited warning; `StopIteration` carries no return value; dropped async generators are not finalized |
 | [Exceptions](language/semantics.md#exceptions) | 🟡 Bounded | CPython 3.13's builtin hierarchy; user exception classes; `raise ... from`; `try` / `except` / `else` / `finally`; catchable `RecursionError` | `except*` and exception groups | No `e.args` or traceback objects; uncaught errors print only the last line; `MemoryError` and Ctrl-C end the program |
 | [Modules](language/modules.md) | 🟡 Bounded | Modules and packages; relative, circular and optional imports; compile-time `__main__`, platform and version branches | CPython C extensions; imports chosen at run time (`importlib`, `__import__`) | A builtin module's import binds program-wide; a module whose code raises keeps its partial globals |
 | [Standard library](stdlib.md#library-support-at-a-glance) | 🟡 Bounded | [Common builtins](language/modules.md#builtins); `sys`, `os`, `math`, `time`, `errno`, `tempfile`, `select`; shipped `re`, `json`, `collections`, `itertools`, `functools`, `datetime`, `tomllib`, `logging` and more | Starting threads (`threading` runs one), `asyncio`, `subprocess`, `socket`, `multiprocessing` and other unshipped modules | Each module supports its own API subset |
@@ -343,8 +343,8 @@ can avoid compiling unused branches that contain one. The main gaps:
 - **Values:** `complex` numbers, `bytearray`, `memoryview`, slice objects and
   general object unions; arbitrary-precision ints and dynamic `Any` values outside their opt-in
   prototypes ([promoting ints](python-int.md), [dynamic `Any`](dynamic-any.md)).
-- **Syntax and calls:** mapping and general sequence/class patterns, async generators and
-  asynchronous comprehensions, `except*` and unrestricted argument expansion.
+- **Syntax and calls:** mapping and general sequence/class patterns, `except*` and unrestricted
+  argument expansion.
 - **Run-time code:** `eval`, `exec` and imports chosen at run time.
 - **Concurrency:** native threads and `asyncio`; CPython can run compiled extension modules in
   [process pools](concurrency.md) instead.

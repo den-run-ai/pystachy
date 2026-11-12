@@ -1,0 +1,6 @@
+[-1, -2, -3]
+outer run -1 outer x False
+[1, 2] 2
+{'outer run': 1}
+done
+[exit 0]

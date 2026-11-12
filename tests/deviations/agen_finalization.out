@@ -1,0 +1,12 @@
+acquire a
+got 1
+after loop
+acquire b
+first 1
+after del
+acquire c
+first 1
+release c
+after aclose
+end
+[exit 0]
