@@ -1949,7 +1949,9 @@ class Loader:
         if self.typevar(e):
             return True
         k = self.dm.kinds.get(e.s, "")
-        for x in self.mods if k.startswith("t:") else []:
+        if not k.startswith("t:"):
+            return False
+        for x in self.mods:
             q = self.mods[x].q
             if q != "" and k[2:].startswith(q) and "$" not in k[2 + len(q) :]:
                 dm = self.dm
