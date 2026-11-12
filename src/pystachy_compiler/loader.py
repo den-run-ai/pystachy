@@ -1967,7 +1967,17 @@ class Loader:
 
     def tv_named(self, e: Node) -> bool:
         # is name e a TypeVar of module dm (typevar), or another module's that an import binds
-        # there: its kind names it as its own module's records it ("t:", see bindings)
+        # there: its kind names it as its own module's records it ("t:", see bindings); or is e
+        # a user module's attribute that names one there (visitors.T)
+        if e.kind == "attr":
+            p = self.mod_of(e.kids[0])
+            if p == "":
+                return False
+            dm = self.dm
+            self.dm = self.mods[p]
+            r = self.tv_named(mk("name", e.s, e.line, []))
+            self.dm = dm
+            return r
         if e.kind != "name":
             return False
         if self.typevar(e):
