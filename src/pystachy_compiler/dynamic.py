@@ -24,7 +24,7 @@ from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
 from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
-from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
+from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, lib_file, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
 DYN = "dyn"
 # what isinstance(x, int) narrows a dyn local to: still the box (a bool passes the test too),
@@ -2530,7 +2530,37 @@ def gen_dyn_isinst(self, v: Val, c: Node) -> Val:
         self.err("isinstance() of an Any value is only supported with builtin types, classes, None and tuples of them")
     if "*" in ts:
         return Val("true", "bool")
-    return Val(self.dyn_test(v, ts), "bool")
+    r = self.dyn_test(v, ts)
+    if "dict[dyn,dyn]" in ts and dyn_dict_objects(self):
+        # (or the box of an object of lib/collections' mappings, by its class: @dyn.isdict)
+        hit = self.dyn_call(self.dyn_dispatcher("isdict", [DYN], "bool", ""), [v])
+        r = self.scalar("or", [Val(r, "bool"), hit])
+    return Val(r, "bool")
+
+
+# Gen.hints' key of a program whose Any values may hold objects of lib/collections' mappings,
+# which CPython's isinstance() takes for dicts (dyn_dict_objects)
+DICTHINT = "dyn:dict-objects"
+
+
+def dyn_dict_objects(self) -> bool:
+    # does a test isinstance(x, dict) of an Any value x compiled here take the box of an object of
+    # lib/collections' mappings for a dict too, as CPython's derive from dict (Gen.dict_object):
+    # in code outside lib/, where a pass found that the program boxes one (DICTHINT, which
+    # dyn_dict_rejoin sets). The test then reads the box's class too, and the value stays an Any
+    # value where the test holds. A pass without the hint compiles the test as a dict's alone
+    if lib_file(self.line, self.libdir):
+        return False
+    self.dyndicts = True
+    return DICTHINT in self.hints
+
+
+def dyn_dict_rejoin(self) -> None:
+    # at the end of a pass that compiled tests isinstance(x, dict) of Any values outside lib/
+    # without DICTHINT (dyn_dict_objects): where the program boxes an object of lib/collections'
+    # mappings, the next pass compiles them with it
+    if self.dyndicts and DICTHINT not in self.hints and len([c for c in self.dynclasses if self.dict_class(c)]) > 0:
+        self.newhints[DICTHINT] = "1"
 
 
 def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
@@ -2545,6 +2575,8 @@ def gen_dyn_narrow_type(self, c: Node, truth: bool) -> str:
     # Keep its descriptor and use the layout-aware dynamic operations after the test.
     if len(ts) != 1 or ts[0] == "" or ts[0] == "*" or ts[0] == "%class:type":
         return ""
+    if ts[0] == "dict[dyn,dyn]" and dyn_dict_objects(self):
+        return ""  # (an object of lib/collections' mappings passes the test too)
     return ts[0]
 
 
@@ -3376,6 +3408,8 @@ def gen_dyn_supports(self, c: str, key: str, dunder: str, nargs: int) -> bool:
         return True
     if key == "callable":
         return "__call__" in ci.methods
+    if key == "isdict":
+        return self.dict_class(c)
     if key == "truth":
         return "__bool__" in ci.methods or "__len__" in ci.methods
     if key == "lengthhint":
@@ -3540,7 +3574,7 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         r = self.expr(mk("call", "", line, [mk("attr", key[5 : key.rfind(".")], line, [xn])] + an), "")
     elif key == "module" or key == "qualname":
         r = Val(self.sconst(self.refl_type_name(x.t, "__module__" if key == "module" else "__qualname__")), "str")
-    elif key == "callable":
+    elif key == "callable" or key == "isdict":
         r = Val("true", "bool")
     elif key == "slice":
         self.raise_("TypeError", self.sconst(f"slicing an object is not supported: {short(x.t)}.__getitem__ would take a slice object, which Pystachy does not have"))
@@ -4157,6 +4191,8 @@ def gen_dyn_fallback(self, f: FnInfo, key: str, ps: list[Val]) -> None:
         self.ret_(Val(self.sconst("builtins"), "str"))
     elif key == "qualname":
         self.ret_(self.dyn_type_name(o))
+    elif key == "isdict":
+        self.ret_(Val("false", "bool"))  # (a box of no class of lib/collections' mappings)
     elif key == "callable":
         kind = Val(self.mload("int", self.dyn_typeof(o)), "int")
         self.ret_(Val(self.scalar("or", [self.num_cmp("==", kind, Val(str(DK_FUNC), "int")),

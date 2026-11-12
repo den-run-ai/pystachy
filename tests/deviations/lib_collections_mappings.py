@@ -1,15 +1,12 @@
 # Documented deviations of lib/collections' Counter, defaultdict and OrderedDict (Pystachy's
 # own) from CPython's.
-from collections import Counter, OrderedDict, defaultdict
+from collections import Counter, defaultdict
 
-# They hold a dict rather than derive from it: CPython prints True three times.
+# They hold a dict rather than derive from it (isinstance() takes them for dicts all the same:
+# tests/programs/library/lib_collections_isinstance.py). keys(), values() and items() are lists,
+# as a dict's are here (CPython: dict_keys([...]), ...), and elements() is a list (CPython:
+# <itertools.chain object at 0x...>).
 c = Counter("abca")
-d: defaultdict[str, int] = defaultdict(int)
-od: OrderedDict[str, int] = OrderedDict()
-print(isinstance(c, dict), isinstance(d, dict), isinstance(od, dict))
-
-# keys(), values() and items() are lists, as a dict's are here (CPython: dict_keys([...]), ...),
-# and elements() is a list (CPython: <itertools.chain object at 0x...>).
 print(c.keys(), c.values(), c.items(), c.elements())
 
 # A loop gets the keys the mapping has when it starts: CPython raises RuntimeError: dictionary

@@ -6,7 +6,7 @@ from src.pystachy_compiler.callbacks import specialize_callbacks
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
 from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
-from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
+from src.pystachy_compiler.dynamic import DICTHINT, comparison_properties, comparison_storage, dyn_dict_rejoin
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
 from src.pystachy_compiler.ir import Val, ClassInfo, FnInfo, NOLABELS, NONUMS, NOVALS, one_nums_intact
 from src.pystachy_compiler.module import Mod
@@ -1240,9 +1240,11 @@ def gen_program(self, mods: list[Mod]) -> str:
         if nm not in self.gtypes and nm not in self.funcs and nm not in self.classes:
             self.global_var(f"@g.{nm}.def", "bool")  # (a variable no compiled code assigns)
     timing_end(phase + ".discover", started)
+    dyn_dict_rejoin(self)  # (Any values that may hold objects of lib/collections' mappings)
     # Finite comparison field discoveries only grow (incompatible joins are
     # terminal). Finish these even if earlier fields used the ordinary join budget.
-    if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") for k in self.newhints)):
+    # So does DICTHINT, which one pass adds at most.
+    if len(self.newhints) > 0 and (not self.final or any(k.startswith("cmpfield:") or k.startswith("cmpwrite:") or k == DICTHINT for k in self.newhints)):
         raise Rejoin()  # (joins found wider types: the next pass compiles them, see join_hint)
     started = timing_start()
     # The completed adapter set makes candidate discovery independent of which

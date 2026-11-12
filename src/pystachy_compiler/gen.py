@@ -843,6 +843,8 @@ from src.pystachy_compiler.expressions import (
     gen_obj_isinst as expressions_obj_isinst,
     gen_isinst_reads as expressions_isinst_reads,
     gen_isnone as expressions_isnone,
+    gen_dict_class as expressions_dict_class,
+    gen_dict_object as expressions_dict_object,
     gen_isnull as expressions_isnull,
     gen_iter_ret as expressions_iter_ret,
     gen_keep_stack as expressions_keep_stack,
@@ -1443,6 +1445,11 @@ class Gen:
         self.hints: dict[str, str] = {}
         self.newhints: dict[str, str] = {}
         self.final = True
+        # whether code outside lib/ tested isinstance(x, dict) of an Any value (dyn_dict_objects):
+        # where the program boxes an object of lib/collections' mappings, the next pass compiles
+        # those tests with DICTHINT. Speculative compilation (dry, a declined adapter) may set it
+        # as well, which costs at most that pass: the hint is correct for any such test
+        self.dyndicts = False
         # comparison methods (Class.method) that @o.x.<class> does not call with an Any value, as
         # their call with one did not compile on an earlier pass (dyn_xbody); the ones this pass
         # finds; the method whose call with one is being compiled (then an error restarts: gen_err)
@@ -4232,6 +4239,12 @@ class Gen:
 
     def isnone(self, t: str) -> int:
         return expressions_isnone(self, t)
+
+    def dict_class(self, t: str) -> bool:
+        return expressions_dict_class(self, t)
+
+    def dict_object(self, t: str) -> bool:
+        return expressions_dict_object(self, t)
 
     def isinst_reads(self, c: Node) -> None:
         return expressions_isinst_reads(self, c)
