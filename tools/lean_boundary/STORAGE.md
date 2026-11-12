@@ -19,6 +19,11 @@ The checks address three different obligations:
 | Read a tuple item's trailing digit slot | The corresponding item is the marker, and its source representation permits that read. |
 | Cross between plain and promoting tuple views | Plain-to-promoting excludes the marker; promoting-to-plain excludes a non-null digit pointer. Nested mixed tuples retain each item's own representation. |
 
+A `**kwargs` record, `kw[a:A,b:B]`, is the tuple of its values at run time, and the
+function that receives one reads it as that tuple: the checks compare its layout,
+`tuple[A,B]`, with the view's as they compare a tuple's. A type's text may hold
+4,096 characters: a nested tuple's grows with its nesting, as a name's cannot.
+
 For optional tuples, a fit fact means either the tuple is absent or its item
 fits. A null branch may establish the absent case, while every present branch
 must justify the item checks. This does not prove null-dereference safety.
