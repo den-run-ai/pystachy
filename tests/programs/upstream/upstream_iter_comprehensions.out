@@ -3,6 +3,7 @@
 ()
 ()
 ('a', 'b', 'c')
+('one', 'two', 'three')
 '1'
 '2'
 StopIteration

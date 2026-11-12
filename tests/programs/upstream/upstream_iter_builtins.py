@@ -27,9 +27,9 @@
 #   test_stop_sequence, test_3720, test_iter_overflow, test_iter_neg_setstate,
 #   test_free_after_iterating, test_error_iter, test_exception_locations,
 #   test_ref_counting_behavior (also __new__, __del__)
-# - test_nested_comprehensions_* and test_builtin_tuple's tuple() of a list, a tuple and a str:
-#   tests/programs/upstream/upstream_iter_comprehensions.py adopts them; test_builtin_tuple's tuple() of a dict
-#   and of a file (not supported)
+# - test_nested_comprehensions_* and test_builtin_tuple's tuple() of a list, a tuple, a str and
+#   a dict: tests/programs/upstream/upstream_iter_comprehensions.py adopts them; test_builtin_tuple's
+#   tuple() of a file (not supported)
 # - test_builtin_list's, test_builtin_filter's and test_builtin_zip's TypeErrors (list(42),
 #   filter(None, 42), zip(None), ...): compile-time errors here; their SequenceClass parts
 # - test_builtin_map's `expected`, which upstream computes and never checks; test_builtin_zip's
