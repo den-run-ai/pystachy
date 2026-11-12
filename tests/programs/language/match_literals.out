@@ -1,0 +1,10 @@
+negative ['subject', 'guard:-1']
+zero ['subject']
+small ['subject']
+small ['subject']
+other:8 ['subject', 'guard:8']
+true false none
+one one fraction
+text bytes other
+True
+[exit 0]
