@@ -12,6 +12,8 @@ import sys
 import urllib.error
 import urllib.request
 
+from release_notes import blocks
+
 TITLE_LIMIT = 64
 WORD_LIMIT = 200
 CHAR_LIMIT = 6000
@@ -19,6 +21,9 @@ LABEL = "needs-description"
 STATUS = "Submission format"
 GUIDE = "https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md#issues-and-pull-requests"
 PR_ACTIONS = ("opened", "edited", "synchronize", "reopened", "ready_for_review")
+# Tool attribution belongs in a sentence of the description, not in footers or session links.
+FOOTER = re.compile(r"Generated (?:by|with) \[?(?:Claude|Codex|ChatGPT|Copilot)|^Co-Authored-By:|"
+                    r"claude\.ai/code/session_|chatgpt\.com/codex/tasks/", re.I | re.M)
 ACK_MARKER = "<!-- pystachy-ack-v1 -->"
 ACK_BODY = (ACK_MARKER + "\nThanks for contributing! Please reply once to acknowledge "
             "the [contributor guidelines](https://github.com/den-run-ai/pystachy/blob/main/CONTRIBUTING.md), "
@@ -26,6 +31,11 @@ ACK_BODY = (ACK_MARKER + "\nThanks for contributing! Please reply once to acknow
             "and any substantial AI assistance (tool and scope, or `AI: none`). "
             "You are responsible for reviewing and understanding your contribution. "
             "This reminder is **not a blocking check**.")
+
+
+def wrapped(text):
+    """Return whether a paragraph or list item continues on another line."""
+    return any(kind == "text" and len(lines) > 1 for kind, lines in blocks(text))
 
 
 def validate(title, body, is_pr=False):
@@ -59,6 +69,12 @@ def validate(title, body, is_pr=False):
     elif any(not re.search(r"\w", value) or value.strip().lower() == "_no response_"
              for _, value in sections):
         errors.append("Fill each section with a short, concrete answer.")
+    if wrapped(text):
+        errors.append("Write each paragraph and list item on one line; GitHub shows every newline "
+                      "in a body as a line break.")
+    if FOOTER.search(text):
+        errors.append("Remove generated-by footers, Co-Authored-By lines and session links; "
+                      "disclose AI assistance in a sentence instead.")
     return errors
 
 

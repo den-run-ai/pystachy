@@ -61,9 +61,10 @@ Changed package contents require a new version; existing PyPI files are not repl
 
 ## Publish a version
 
-1. Set [VERSION](../VERSION) to the intended semantic version and add its curated notes
-   as `docs/releases/VERSION.md`, such as [v0.1.0-alpha.4](releases/v0.1.0-alpha.4.md).
-   Then merge the version bump, intended fixes and packaging changes into `main`.
+1. Set [VERSION](../VERSION) to the intended semantic version and add its notes as
+   `docs/releases/VERSION.md`, written as the [writing guide](writing.md#release-notes)
+   describes, such as [v0.4.0-alpha.6](releases/v0.4.0-alpha.6.md). Then merge the
+   version bump, intended fixes and packaging changes into `main`.
 2. Wait for **CI**, **Installation**, **Lint** and **Packages** to succeed on the exact
    `main` commit. CI on a `main` push includes the complete Linux x86-64 and Linux ARM64
    verification matrices; a success on only one architecture does not satisfy this gate.
@@ -79,11 +80,21 @@ minutes for all four verification workflows on that commit. A failure or cancell
 blocks publication. A published version cannot be replaced, and an existing tag must
 resolve to the selected commit. Create a new version for changed code.
 
-The release notes are the version's file under `docs/releases/`, followed by the
-generated asset list, Docker image, installation link and source commit. Every Release
-run and PR distribution check fails if `VERSION` has no notes file. GitHub shows the
-notes outside the repository, so they use absolute links and no top-level title; the
-release is titled "Pystachy VERSION". A retried publication keeps an existing draft's notes.
+The release body is the version's file under `docs/releases/`, followed by a generated
+section with the archive requirements, Docker image, prerelease status and source commit.
+GitHub shows every newline of a release body as a line break, so
+[`tools/release_notes.py`](../tools/release_notes.py) joins the wrapped lines of
+paragraphs and list items before publishing. Every Release run, the PR distribution check
+and Lint run its `check` on the current version's notes: no top-level title (the release
+is titled "Pystachy VERSION"), absolute links pinned to a tag or commit, at most 80 words
+per paragraph or list item and 700 words outside tables and code. A retried publication
+keeps an existing draft's notes.
+
+To correct published notes, merge the edited `docs/releases/VERSION.md` into `main`, then
+run the [Release notes workflow](../.github/workflows/release-notes.yml) from `main` for
+that version. It replaces the published text above `## Release assets` and keeps that
+section, the tag and the assets unchanged. With `source` set to `reflow`, it only joins the
+wrapped lines of the published text, for versions whose notes are not maintained here.
 
 Keep the current version's notes in the source tree: they are a required packaging input.
 Older published notes are available on [GitHub Releases](https://github.com/den-run-ai/pystachy/releases)
@@ -155,6 +166,7 @@ jobs finish, so manual promotion does not race an active release.
 ```sh
 make
 python3 -m unittest discover -s tools -p 'test_release*.py'
+python3 tools/release_notes.py check "docs/releases/$(cat VERSION).md"
 python3 tools/release.py --version v0.1.0-alpha.3 --output-dir dist
 python3 tools/release_smoke.py dist/pystachy-v0.1.0-alpha.3-linux-x86_64.tar.gz
 docker build -t pystachy:test .
