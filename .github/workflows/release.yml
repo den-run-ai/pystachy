@@ -185,6 +185,9 @@ jobs:
               output.write(f'version={version}\ncommit={commit}\npublish={str(publish).lower()}\nprerelease={str("-" in version).lower()}\n')
           PY
 
+      - name: Check the release notes against docs/writing.md
+        run: python3 tools/release_notes.py check "docs/releases/$(cat VERSION).md"
+
       - name: Require green CI on the release commit
         if: steps.version.outputs.publish == 'true'
         env:
@@ -451,15 +454,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp "docs/releases/$RELEASE_VERSION.md" release-notes.md
-          # Markdown backticks are literal text, not command substitutions.
-          # shellcheck disable=SC2016
-          {
-            printf '\n## Release assets\n\nNative compiler packages for Linux x86-64/AArch64 and macOS arm64/x86-64.\n\n'
-            printf 'Docker image: `%s:%s` (linux/amd64 and linux/arm64, LLVM 18 included).\n\n' "$DOCKER_IMAGE" "$RELEASE_VERSION"
-            printf 'Binary packages require LLVM 18 on Linux or LLVM 20 on macOS. See [installation instructions](https://github.com/%s/blob/%s/docs/install.md).\n\nSource commit: `%s`.\n' \
-              "$GITHUB_REPOSITORY" "$RELEASE_COMMIT" "$RELEASE_COMMIT"
-          } >> release-notes.md
+          # GitHub shows each newline of a release body as a line break: unwrap the notes.
+          python3 tools/release_notes.py render "docs/releases/$RELEASE_VERSION.md" \
+            --version "$RELEASE_VERSION" --commit "$RELEASE_COMMIT" --repository "$GITHUB_REPOSITORY" \
+            --image "$DOCKER_IMAGE" --prerelease "$PRERELEASE" --output release-notes.md
           if ! gh release view "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$RELEASE_VERSION" --repo "$GITHUB_REPOSITORY" --target "$RELEASE_COMMIT" \
               --draft --title "Pystachy $RELEASE_VERSION" --notes-file release-notes.md

@@ -37,6 +37,9 @@ on:
       - tools/requirements-dev.txt
       - tools/runtime_coverage.sh
       - tools/shard_cases.sh
+      - tools/verification_bootstrap.py
+      - tools/merge_verification.py
+      - tests/verify.sh
 concurrency:
   group: coverage-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.ref }}
   cancel-in-progress: true
@@ -45,6 +48,34 @@ permissions:
   contents: read
 
 jobs:
+  bootstrap:
+    name: verified compiler producer
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+      PYSTACHY_JOBS: '4'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version-file: .python-version
+      - name: LLVM 18 toolchain
+        run: tools/setup.sh --minimal
+      - name: Verify compiler and runtime fixed points
+        run: tests/verify.sh bootstrap
+      - name: Package verified bootstrap
+        run: python3 tools/verification_bootstrap.py export build/ci-bootstrap
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: verified-bootstrap-x86_64
+          path: build/ci-bootstrap/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
   hosted:
     name: hosted compiler coverage (${{ matrix.name }})
     runs-on: ubuntu-24.04
@@ -144,9 +175,10 @@ jobs:
           retention-days: 14
 
   runtime:
+    needs: bootstrap
     name: native runtime coverage (${{ matrix.name }})
     runs-on: ubuntu-24.04
-    # (the compiler's build, then the corpus's sixth: 4-7 minutes where all of it took 10-16)
+    # Share the verified default compiler; each row still builds its own instrumented runtime.
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -161,6 +193,9 @@ jobs:
           - {name: ffi, suites: ffi, shard: ''}
     env:
       PYSTACHY_LLVM: /usr/lib/llvm-18/bin
+      PYSTACHY_JOBS: '4'
+      PYSTACHY_HOME: ${{ github.workspace }}
+      COMPILER: ${{ github.workspace }}/build/verify/pystachy2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -173,8 +208,14 @@ jobs:
       - name: LLVM 18 toolchain and clang's profile runtime
         run: tools/setup.sh
 
-      - name: The native compiler (make)
-        run: make PY=python3
+      # No run-id or token: only a producer in this workflow run can supply the compiler.
+      - name: Download verified bootstrap
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+        with:
+          name: verified-bootstrap-x86_64
+          path: build/ci-bootstrap
+      - name: Validate and restore the native compiler
+        run: python3 tools/verification_bootstrap.py restore build/ci-bootstrap
 
       - name: tools/runtime_coverage.sh (a part of make runtime-coverage)
         env:
