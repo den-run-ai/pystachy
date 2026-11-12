@@ -825,6 +825,46 @@ def gen_typing_ref(self, n: Node) -> str:
         return p[p.rfind(".") + 1 :]
     return short(n.s) if short(n.s) in TYPING and "__future__.annotations" in self.imports.values() else ""
 
+def class_binds(body: list[Node]) -> dict[str, int]:
+    # how often a class body binds each name, or {} where a statement may bind names otherwise
+    # than by a name target or a def (so that class_consts resolves none)
+    n: dict[str, int] = {}
+    for st in body:
+        if st.kind == "assign":
+            for t in st.kids[:-1]:
+                if t.kind != "name":
+                    return {}
+                n[t.s] = n.get(t.s, 0) + 1
+        elif st.kind == "annassign" and len(st.kids) == 3:
+            if st.kids[0].kind != "name":
+                return {}
+            n[st.kids[0].s] = n.get(st.kids[0].s, 0) + 1
+        elif st.kind == "def":
+            n[st.s] = n.get(st.s, 0) + 1
+        elif st.kind != "annassign" and st.kind != "pass" and st.kind != "expr":
+            return {}
+    return n
+
+
+def class_consts(e: Node, consts: dict[str, Node]) -> Node:
+    # class-body expression e, where each name it reads in the class scope that names one of the
+    # body's constants bound before it (consts) is that constant, as CPython reads it from the
+    # class namespace; a lambda's body and a comprehension past its first iterable read no class
+    # names (their names stay, an error where the default is compiled: no_class_names)
+    if e.kind == "name" and "$" not in e.s and e.s in consts:
+        c = clone(consts[e.s])
+        c.line = e.line
+        return c
+    if e.kind == "lambda":
+        return e
+    if e.kind == "listcomp" or e.kind == "asynccomp":
+        e.kids[2] = class_consts(e.kids[2], consts)
+        return e
+    for i in range(len(e.kids)):
+        e.kids[i] = class_consts(e.kids[i], consts)
+    return e
+
+
 def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = False, top: bool = False) -> list[Node]:
     # what typing decides before any code runs, in the statements of body (a class body if cls,
     # the module's if top) and in those they hold: a def decorated with @overload is a stub that
@@ -834,11 +874,21 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = Fa
     # body of a module-level class without decorators or a NamedTuple base, which CPython
     # creates without reading its annotations), the class attribute x = v, its s "Final" (the
     # class has __annotations__: refl_annotated); x: Final[T] is x: T, x: ClassVar[T] = v is
-    # x: T = v where attrs (a dataclass's is no field), and x: Final alone does nothing
+    # x: T = v where attrs (a dataclass's is no field), and x: Final alone does nothing. Where
+    # attrs, a name that the body binds once, to a constant, is that constant where the class
+    # scope reads it further on (class_consts)
     out: list[Node] = []
     defs: dict[str, bool] = {}
+    binds = class_binds(body) if attrs else {}
+    consts: dict[str, Node] = {}
     for i in range(len(body)):
         st = body[i]
+        if len(consts) > 0 and (st.kind == "assign" or st.kind == "annassign"):
+            st.kids[-1] = class_consts(st.kids[-1], consts) if st.kind == "assign" or len(st.kids) == 3 else st.kids[-1]
+        elif len(consts) > 0 and st.kind == "def":
+            for p in st.kids[0].kids:
+                if p.kind == "param":
+                    p.kids[1] = class_consts(p.kids[1], consts)  # (a default: evaluated where the def runs)
         stub = self.stub(m, st)
         self.line = st.line
         if stub and st.s in defs:
@@ -889,6 +939,9 @@ def gen_typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = Fa
         elif a is not st and self.typing_ref(a) == "Final":
             st.kind = "pass"  # (x: Final alone binds nothing)
             st.kids = []
+        v = st.kids[-1] if (st.kind == "assign" and len(st.kids) == 2) or (st.kind == "annassign" and len(st.kids) == 3) else None
+        if v is not None and st.kids[0].kind == "name" and binds.get(st.kids[0].s, 0) == 1 and is_const(v) and v.kind != "noann":
+            consts[st.kids[0].s] = v
         for k in st.kids:
             if k.kind == "block":
                 k.kids = self.typing_forms(m, k.kids, st.kind == "class", top and st.kind == "class" and len(st.kids) == 1)

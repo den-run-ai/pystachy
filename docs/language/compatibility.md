@@ -377,7 +377,8 @@ See [context-manager semantics](semantics.md#context-managers) and
   variable from-imports, immediate `C = C()` rebinding and module-level definitions replacing
   imports under the [module-scope rules](modules.md#module-scope).
 - **Class scope:** defaults referring to earlier class attributes, even builtin-like names or
-  `__name__`; class-body `__doc__`; `:=`, including in a lambda default evaluated there.
+  `__name__`, except constants an ordinary class binds once; class-body `__doc__`; `:=`,
+  including in a lambda default evaluated there.
 - **Local scope:** reads textually before the first assignment, or where only discarded code
   binds the local. `del`, `def`, `class`, `:=`, match captures and `type` also establish locals.
   Declare the type before an early read: `x: int`.

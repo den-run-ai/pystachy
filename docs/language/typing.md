@@ -973,6 +973,10 @@ A class-body default is a class attribute, read by instances until they assign t
 value. Later changes to the class attribute affect those instances. Unannotated class-body
 assignments infer their type, except in dataclasses and NamedTuples, where annotations are
 required. Supported subclasses also inherit their base's fields and class attributes.
+In a module-level class without decorators or a `NamedTuple` base, a later class-body value
+or method default may read a name the body binds once to a constant (`op_str = {ADD: "+"}`),
+as CPython reads the class namespace; lambdas and comprehensions past their first iterable
+do not see it.
 
 A class attribute may hold a function (`encode = enc`, as CPython's `encodings` modules bind
 their codec functions). It is read and called through its class or a subclass
