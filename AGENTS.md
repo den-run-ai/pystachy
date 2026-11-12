@@ -113,11 +113,11 @@ Start focused, then broaden for the risk and required gates. `make test` is not 
 `tests/verify.sh` and `tools/merge_verification.py` define coverage: prove expected counts,
 source/toolchain identity and every stage, not just zero failures. Report both a timed-out
 stage and its later isolated pass; never relabel a partial matrix complete or disable gates.
-PR CI: at most 20 jobs, two workers/group, 15 minutes/job (`tools/test_workflow_limits.py`).
-Keep native JIT/AOT and hosted IR coverage complete; sample alternate configurations with
-`VERIFY_PROFILE=pr`. Main/manual runs stay exhaustive. Compact slow PR groups instead of
-expanding matrices. `gc-self` is one stressed
-self-compilation with a ten-minute bound: fix compiler cost, not its timeout
+PR CI: at most 19 job rows; four AOT shards, two workers/other group; four local
+processes/worker and 15 minutes/job (`tools/test_workflow_limits.py`). Keep every native
+JIT/AOT and hosted IR case; `VERIFY_PROFILE=pr` samples alternate configurations.
+Main/manual retain exhaustive x86/ARM, distribution, full Lean and performance checks.
+Keep `gc-self`'s ten-minute bound: fix cost, not timeout
 ([#581](https://github.com/den-run-ai/pystachy/pull/581)).
 
 ## Hosted agent sessions
