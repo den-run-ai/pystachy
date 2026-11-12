@@ -17,7 +17,7 @@ See docs/internals.md#async-generators.
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import int_program
 from src.pystachy_compiler.ir import FnInfo, Ins, Val
-from src.pystachy_compiler.specs import AGCLOSE, AGFLAGS, AGRUN, AGYIELD, BIG, GENCLEAN, GENDONE, GENEXC, GENNEW, GENSEND, GENSTATE
+from src.pystachy_compiler.specs import AGCLOSE, AGFLAGS, AGRUN, AGYIELD, GENCLEAN, GENDONE, GENEXC, GENNEW, GENSEND, GENSTATE
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import ayield, cret, gelem, gsend, is_agen, is_coro, meet, targs, tname, typestr, unopt
 
@@ -173,8 +173,8 @@ def gen_agen_result(self, t: str, mode: str, dflt: Val) -> str:
         if j == "":
             self.err(f"anext() of an async generator of {typestr(t)} with a default of {typestr(dflt.t)}: they need one type")
         return j
-    if mode == "athrow" and v != "None" and self.optional(v) != "" and v != BIG:
-        return self.optional(v)
+    if mode == "athrow" and v != "None" and self.optional(v) != "":
+        return self.optional(v)  # (a promoting int's: its box, BIGOPT)
     return v
 
 
