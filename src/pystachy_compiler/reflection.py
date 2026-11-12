@@ -3059,6 +3059,8 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
     o = self.new_obj(c)
     self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.s), "str"))
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
+    if self.enum_intlike(c):
+        self.setfield(o, self.field(o, " enum int"), " enum int", self.coerce(v, "int"))
     return o
 
 
@@ -3229,4 +3231,6 @@ def gen_enum_new(self, args: list[Node]) -> Val:
     o = self.new_obj(c)
     self.setfield(o, self.field(o, "_name_"), "_name_", nm)
     self.setfield(o, self.field(o, "_value_"), "_value_", v)
+    if self.enum_intlike(c):
+        self.setfield(o, self.field(o, " enum int"), " enum int", v)
     return o

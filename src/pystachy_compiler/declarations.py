@@ -1632,6 +1632,10 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         xs = EXCFIELDS.split()
         for x in xs if exc_derives(ci.exc, "SystemExit") else xs[:3]:
             self.add_field(ci, " " + x[: x.find(":")], x[x.find(":") + 1 :])
+    if self.enum_intlike(ci.name) and " enum int" not in ci.ftypes:
+        # CPython's immutable int payload is distinct from the mutable _value_ attribute.
+        # Only enum_member and enum_new initialize this hidden field; exit_member reads it.
+        self.add_field(ci, " enum int", "int")
     dc = self.is_dc(ci.name) and ci.name not in self.nts
     kwmode = ci.kwonly  # (@dataclass(kw_only=True), or after _: KW_ONLY)
     kwseen = False

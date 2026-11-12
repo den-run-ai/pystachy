@@ -1002,13 +1002,13 @@ def gen_exit_member(self, v: Val) -> list[Val]:
     # sys.exit(v) and SystemExit(v) of a value v that is not None: [whether v is an int that is
     # an object here, that int]. CPython's int-like enum members are ints (IntEnum's and
     # IntFlag's, and those of an enum class of int and Enum), the status the program ends with;
-    # here they are objects of their classes, which the object's class tells, and __index__()
-    # is their value
+    # here they are objects of their classes, which the object's class tells. Read the stored
+    # int payload: __index__, __int__, and the mutable _value_ attribute cannot change it.
     ks = self.exit_ints(v.t)
     if len(ks) == 0:
         return [Val("false", "bool"), Val("0", "int")]
     if self.enum_intlike(v.t):
-        return [Val("true", "bool"), self.big_status(self.protocol(v, "__index__", []))]
+        return [Val("true", "bool"), self.getfield(v, self.field(v, " enum int"), " enum int")]
     end = self.label()
     isint = Ins("phi", "bool", "")
     status = Ins("phi", "int", "")
@@ -1018,7 +1018,8 @@ def gen_exit_member(self, v: Val) -> list[Val]:
         miss = self.label()
         self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.classes[k].tag), "int")).v, hit, miss)
         self.place(hit)
-        st = self.big_status(self.protocol(Val(v.v, k), "__index__", []))
+        member = Val(v.v, k)
+        st = self.getfield(member, self.field(member, " enum int"), " enum int")
         self.incoming(isint, "true", self.cur)
         self.incoming(status, st.v, self.cur)
         self.br(end)
