@@ -17,7 +17,7 @@ from src.pystachy_compiler.diagnostics import int_program
 from src.pystachy_compiler.ir import FnInfo, Val
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, GENCLEAN, GENDONE, GENEXC, GENSTATE, TYPESMOD
-from src.pystachy_compiler.syntax import Node, has_kind, mk
+from src.pystachy_compiler.syntax import Node, has_kind, mk, names_in
 from src.pystachy_compiler.utils import cret, cyield, fbits, gelem, gsend, is_coro, is_gen, tname, typestr, unopt
 
 
@@ -65,6 +65,27 @@ def await_sites(n: Node, out: list[Node]) -> bool:
     return True
 
 
+def shadowing(n: Node, out: dict[str, bool]) -> None:
+    # the names that code n binds besides its statements' targets (outside the functions,
+    # classes and lambdas it defines): its comprehensions' targets, local to them, and the names
+    # := binds, as match captures and type statements do. An await of a call of one there calls
+    # what that name holds, not a module's async def
+    if n.kind == "def" or n.kind == "class" or n.kind == "subclass" or n.kind == "lambda":
+        return
+    names: list[str] = []
+    if n.kind == "listcomp" or n.kind == "asynccomp":
+        names_in(n.kids[1], names)
+        for k in n.kids[3:]:
+            if k.kind == "compfor":
+                names_in(k.kids[0], names)
+    if n.kind == "walrus" or n.kind == "typealias" or n.kind == "pattern":
+        names = n.s.split()
+    for nm in names:
+        out[nm] = True
+    for k in n.kids:
+        shadowing(k, out)
+
+
 def gen_coro_analyze(self) -> None:
     # which async defs of the modules' top level never suspend (FnInfo.nosusp), before any code
     # compiles: those all of whose awaits are of a call, by its name, of such an async def, a name
@@ -95,6 +116,7 @@ def gen_awaits_direct(self, f: FnInfo, nos: dict[str, bool]) -> bool:
     # def that nos holds may never suspend
     own: dict[str, bool] = {}
     local_names(f.node.kids[2].kids, own)
+    shadowing(f.node.kids[2], own)
     for p in f.params:
         own[p] = True
     sites: list[Node] = []

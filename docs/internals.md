@@ -460,8 +460,9 @@ words of a program that calls `send()` (`Gen.gproto`). A coroutine's own `send()
 LLVM's CoroElide may put its frame in its caller's.
 
 Before any code compiles, `Gen.coro_analyze` finds the module-level `async def`s that never
-suspend: each await in them is of a call, by its name, of such an `async def` (the greatest
-such set, so mutual recursion qualifies). `await f(...)` of one calls `f`'s twin
+suspend: each await in them is of a call, by its name, of such an `async def`, a name that the
+function does not bind itself (as a local, a comprehension's target or by `:=`). It takes the
+greatest such set, so mutual recursion qualifies. `await f(...)` of one calls `f`'s twin
 (`coro_twin`): the same body compiled as an ordinary template function (`FnInfo.direct`), whose
 awaits are such calls too. No coroutine object, frame allocation or resume remains, which is
 what running the coroutine to its return would compute; a call of `f` as a value still makes a
