@@ -1,0 +1,12 @@
+LinearRegression(slope=18.438524590163933, intercept=26.405737704918124)
+LinearRegression(slope=19.117842323651452, intercept=0.0)
+LinearRegression(slope=1.7267993874425729, intercept=0.15352220520673754)
+LinearRegression(slope=1.7608628659476115, intercept=0.0)
+LinearRegression(slope=0.2036065573770492, intercept=0.05819672131147513)
+164.0708782742681 0.0
+0.5555993535417242 0.060832117939217056
+StatisticsError: x is constant
+StatisticsError: x is constant
+StatisticsError: linear regression requires at least two data points
+StatisticsError: linear regression requires that both inputs have same number of data points
+[exit 0]

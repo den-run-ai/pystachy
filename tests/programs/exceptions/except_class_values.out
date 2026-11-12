@@ -1,0 +1,14 @@
+local alias: StatisticsError sum of weights must be non-zero
+parameter caught: ValueError
+parameter missed: KeyError ValueError
+7
+key: KeyError('k')
+clauses evaluated: ['ValueError', 'KeyError']
+tuple value: ValueError
+tuple display: FileNotFoundError missing
+no error: 1
+field: integer division or modulo by zero
+went on: inner
+finally ran
+replaced: raised by the clause
+[exit 0]
