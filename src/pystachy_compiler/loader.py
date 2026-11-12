@@ -465,6 +465,16 @@ def enum_new_value(d: Node, parts: list[Node], cname: str, member: str, items: l
                 env2[s.kids[0].s] = lit
             elif s.kids[0].s in env2:
                 del env2[s.kids[0].s]
+        elif s is not made:
+            # (another statement, such as value += 1: a name it binds holds no value the
+            # compiler computes, so a _value_ that reads it is not supported)
+            rebound: dict[str, bool] = {}
+            local_names([s], rebound)
+            for name in rebound:
+                if name in nodes:
+                    del nodes[name]
+                if name in env2:
+                    del env2[name]
     e = assigned.kids[1]
     lit = enum_fold(e, env2)
     if len(lit) == 0:
@@ -602,6 +612,7 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
         defs: dict[str, bool] = {}
         vtype = ""
         last: list[int] = []
+        rawkind = ""  # (the type of a value written for a __new__ that auto() cannot count from)
         env: dict[str, list[str]] = {}  # (the names a member's value may read: the module's constants, then the members before)
         for k in consts:
             env[k] = consts[k]
@@ -653,7 +664,9 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                         v = mk("int", str(1 << hb), v.line, [])
                     elif kind == "StrEnum":
                         v = mk("str", nm.lower(), v.line, [])
-                    elif vtype != "" and vtype != "int":
+                    elif rawkind != "":
+                        fail(f"auto() after a member whose value is written as a {rawkind} is not supported (CPython's cannot increment it)", v.line)
+                    elif len(news) == 0 and vtype != "" and vtype != "int":
                         fail(f"auto() after a member whose value is a {vtype} is not supported", v.line)
                     else:
                         v = mk("int", str(max(last) + 1 if len(last) > 0 else 1), v.line, [])
@@ -697,8 +710,13 @@ def enum_classes(n: Node, names: dict[str, str]) -> None:
                 if vtype != "" and lit[0] != vtype:
                     fail(f"enum class {st.s}'s members have values of two types, {vtype} and {lit[0]}: Pystachy's enum members' values have one type", s.line)
                 vtype = lit[0]
-                if vtype == "int":
-                    last.append(int(lit[1]))
+                # (auto() counts from the values the body assigns, which a __new__ may give the
+                # members other _value_s than)
+                raw = written if len(news) == 1 else lit
+                if raw[0] == "int":
+                    last.append(int(raw[1]))
+                elif len(news) == 1:
+                    rawkind = raw[0]
                 if (written[0] == "int" or written[0] == "str") and not unread:
                     env[nm] = written
                 elif nm in env:
