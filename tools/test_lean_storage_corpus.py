@@ -68,6 +68,14 @@ class StorageCorpusTests(unittest.TestCase):
         self.assertNotIn("tests/programs/strings/bom.py", selected)
         self.assertEqual(selected, sorted(set(selected), key=lambda name: name.encode()))
 
+    def test_shipped_decimal_enrolls_only_the_programs_that_import_it(self):
+        # lib/decimal.py opts in to promoting ints. statistics, which random names in its
+        # self-test, loads it in CPython only: a program that imports random or statistics
+        # compiles no decimal code, and must not join this corpus through them.
+        selected = corpus.select()
+        self.assertIn("tests/programs/library/lib_decimal.py", selected)
+        self.assertEqual([name for name in selected if "/lib_statistics" in name or "/lib_random" in name], [])
+
 
 @unittest.skipUnless(corpus.storage.DEFAULT_CHECKER.is_file() and
                      corpus.storage.arithmetic.DEFAULT_CHECKER.is_file(), "build the Lean checkers")
