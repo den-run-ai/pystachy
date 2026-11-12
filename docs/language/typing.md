@@ -1155,5 +1155,7 @@ may not call `super()`. Methods resolve in CPython's C3 order: the first class t
 defines a method, among the class, its primary chain and its traits (also those of its primary
 base), gives it, and a trait's property replaces an inherited property whole, with its setter
 and deleter. A class's traits, its primary base's included, derive from the same class, and a
-trait's class method that overrides one of that chain's may not use `cls`. `__slots__` in such a
+trait's class method that overrides one of that chain's may not use `cls`. A method that a trait
+and the primary chain define apart, which their shared class does not, gives bound methods that
+compare equal through either base but cannot become a `Callable`. `__slots__` in such a
 hierarchy needs every trait to declare `__slots__ = ()`.
