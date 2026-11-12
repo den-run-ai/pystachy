@@ -325,7 +325,7 @@ def check_header(snapshot):
         raise Unsupported("only completed typed-after snapshots are supported")
 
 
-def normalize_snapshot(snapshot, function):
+def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX_INSTRUCTIONS):
     name(function, "function selector")
     check_header(snapshot)
     functions = snapshot.get("functions")
@@ -373,10 +373,10 @@ def normalize_snapshot(snapshot, function):
         for key, label in targets_of_checks.items()), "invalid check targets")
     blocks = fn.get("blocks")
     require(isinstance(blocks, list) and blocks, "invalid blocks")
-    if len(blocks) > 1024:
-        raise Unsupported("function exceeds 1024 blocks")
+    if len(blocks) > max_blocks:
+        raise Unsupported(f"function exceeds {max_blocks} blocks")
     slots = {}
-    require(isinstance(fn.get("slots"), list) and len(fn["slots"]) <= MAX_INSTRUCTIONS, "invalid slots")
+    require(isinstance(fn.get("slots"), list) and len(fn["slots"]) <= max_instructions, "invalid slots")
     for raw in fn["slots"]:
         # Slot kinds: storage, a local's "is assigned" flag and a stack tuple, whose register is
         # a tuple value rather than storage.
@@ -413,8 +413,8 @@ def normalize_snapshot(snapshot, function):
         if label != "":
             starts[label] = None
         total += len(operations)
-        if total > MAX_INSTRUCTIONS:
-            raise Unsupported(f"function exceeds {MAX_INSTRUCTIONS} instructions")
+        if total > max_instructions:
+            raise Unsupported(f"function exceeds {max_instructions} instructions")
         for offset, raw in enumerate(operations):
             op = instruction(raw)
             invoke = op["op"] in INVOKES and len(op["targets"]) == 2

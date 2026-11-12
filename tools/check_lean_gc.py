@@ -43,6 +43,25 @@ NUMERIC = frozenset({"int", "float", "bool"})
 INT_KEYS = frozenset({"int", "bool"})  # (keymem: a key kind 0, or a descriptor of an int or a bool)
 PLACEHOLDERS = frozenset({"T", "K", "V", "S", "?", "*T", "*K", "*V"})
 KEYS = "#keys"  # (a dict's key array's location: the value's own is its value array's)
+# The boundary validator's bounds here: a function's work is linear in its blocks, so the regex
+# engine's sre_match (about 1,300 blocks and 4,500 instructions) is checked; its graph keeps
+# the checker's node bound.
+MAX_BLOCKS, MAX_INSTRUCTIONS = 4096, 16384
+# A generator's own operations, as the boundary validator reads them: its first resumption, a
+# suspension resuming at its target (whose results, the value sent in, no generator uses: the
+# validator refuses a use of one) and its end; gen.promise without a handle reads its own
+# promise, a pointer the runtime made.
+GENERATOR_OPS = {"gen.start": "br", "gen.yield": "br", "gen.ret": "ret.none"}
+
+
+def short(typ):
+    """A type the boundary validator reads (it bounds names at 256 characters): a longer one, such
+    as a constant table's tuple type, by a name made from its digest, the same for each use of it.
+    Only validation reads these; the model reads the IR's own types."""
+    if len(typ) <= 256:
+        return typ
+    pointer = "*" if typ.startswith("*") else ""
+    return f"{pointer}long.{hashlib.sha256(typ[len(pointer):].encode()).hexdigest()[:24]}"
 SPEC_VARIABLES = frozenset({"T", "K", "V", "S"})  # (specs.py's type variables of runtime functions)
 LIMITATIONS = (
     "Proves, per function in the finite-tag model, that no list, dict or set whose item, value or key "
@@ -287,12 +306,25 @@ def normalize(snapshot, fn, memory=None):
     words, invariants = memory or ({}, {})
     context = {"classes": snapshot.get("classes") or {}, "layouts": snapshot.get("class_layouts") or {}}
     # (the boundary validator refuses list.store, which writes memory its guard model does not hold:
-    # here it is a write, validated as the runtime write it stores as)
-    validation = dict(snapshot, functions=[dict(fn, blocks=[dict(block, operations=[
-        dict(op, op="rt", text="list.set") if op["op"] == "list.store" else op for op in block["operations"]])
-        for block in fn["blocks"]])])
+    # here it is a write, validated as the runtime write it stores as; and generators, validated as
+    # the function their operations' edges make)
+    def validated(op):
+        op = dict(op, type=short(op["type"]), operands=[dict(a, type=short(a["type"])) for a in op["operands"]])
+        if op["op"] == "list.store":
+            return dict(op, op="rt", text="list.set")
+        if op["op"] in GENERATOR_OPS:
+            return dict(op, op=GENERATOR_OPS[op["op"]], operands=[], results=[])
+        if op["op"] == "gen.promise" and not op["operands"]:
+            return dict(op, op="rt", text="gen.promise")  # (its own promise: the runtime's word)
+        return op
+    validation = dict(snapshot, functions=[dict(
+        fn, recursion=dict(fn["recursion"], generator=False, coroutine=False),
+        return_representation=short(fn.get("return_representation") or ""),
+        parameters=[dict(p, representation=short(p.get("representation") or "")) for p in fn["parameters"]],
+        slots=[validated(op) for op in fn["slots"]],
+        blocks=[dict(block, operations=[validated(op) for op in block["operations"]]) for block in fn["blocks"]])])
     try:
-        boundary.normalize_snapshot(validation, fn["symbol"])
+        boundary.normalize_snapshot(validation, fn["symbol"], MAX_BLOCKS, MAX_INSTRUCTIONS)
     except ValueError as error:
         # (a form the boundary validator refuses, such as a type name past its bound)
         raise boundary.Unsupported(f"outside the boundary validator: {error}") from error
@@ -681,6 +713,22 @@ def normalize(snapshot, fn, memory=None):
             emit({"op": "jump", "next": defined({"op": "call", "type": types[value], "operands": [], "text": ""}, value,
                                                  len(nodes) + 1)})
 
+    def yielded(op):
+        """A suspension's use of what it yields, as its generator's declared yield type (gen[T, ...]):
+        the value slot.pack packed (its caller's slot.unpack assumes that type). A yielded word of
+        a type with arrays that may hold pointers is otherwise unsupported."""
+        made = fn.get("return_representation") or ""
+        parts = targs(made) if made.startswith("gen[") else []
+        word = op["operands"][0]["value"] if op["operands"] else ""
+        packer = producers.get(word)
+        if packer is not None and packer["op"] == "slot.pack" and packer["operands"] and parts:
+            return [{"value": packer["operands"][0]["value"], "type": parts[0]}]
+        if parts and not word.startswith("%") and "@" not in word:
+            return []  # (a constant: a number, or null, which has no array)
+        if not parts or any(tags is not None for _, tags in arrays(parts[0])):
+            raise boundary.Unsupported(f"a yielded word of type {parts[0] if parts else made} that no slot.pack here made")
+        return []
+
     entry_of = {}
     for block in fn["blocks"]:
         label = block["label"]
@@ -689,8 +737,10 @@ def normalize(snapshot, fn, memory=None):
             kind, args = op["op"], op["operands"]
             if block["handler"] and block["handler"] in labels:
                 emit({"op": "choice", "yes": len(nodes) + 1, "no": into(label, block["handler"])})
+            # (a suspension uses what it yields, not the word it passes)
+            used = yielded(op) if kind == "gen.yield" else args
             if kind not in ("phi", "empty.kind"):  # (empty.kind sets a kind: no use of an array)
-                for position, operand in enumerate(args):
+                for position, operand in enumerate(used):
                     if not operand["value"].startswith("%") or operand["value"] in slots:
                         continue
                     # (its own view; a callee's parameter, the function's result and a store's
@@ -744,7 +794,7 @@ def normalize(snapshot, fn, memory=None):
                     after = ("node", {"op": "choice", "yes": into(label, target), "no": after})
                 emit({"op": "jump", "next": after})
                 continue
-            if kind in ("ret", "ret.none", "unreachable") or (kind in ("raise", "throw") and not op["targets"]):
+            if kind in ("ret", "ret.none", "unreachable", "gen.ret") or (kind in ("raise", "throw") and not op["targets"]):
                 emit({"op": "stop"})
                 continue
             if kind == "empty.kind" and args and args[0]["value"] in kinds and args[0]["value"] not in slots:
@@ -802,7 +852,8 @@ def normalize(snapshot, fn, memory=None):
         for key in ("yes", "no", "next"):
             if key in node:
                 node[key] = place(node[key])
-    boundary.require(len(nodes) <= boundary.MAX_NODES, "graph exceeds resource bound")
+    if len(nodes) > boundary.MAX_NODES:
+        raise boundary.Unsupported(f"graph exceeds {boundary.MAX_NODES} nodes")
     reached, pending = {0}, [0]
     while pending:
         for target in boundary.successors(nodes[pending.pop()]):
@@ -883,8 +934,12 @@ def relevant(fn, declared, stored=frozenset()):
                 return True
             if writes_of(op) or (op["op"] == "rt" and op["text"] in FILLS):
                 return True
-    # (its returns are checked where their type leaves list items or dict values open: open_results)
-    return restricts(fn.get("return_representation") or "") or bool(open_results(fn.get("return_representation") or ""))
+    # (its returns are checked where their type leaves list items or dict values open: open_results;
+    # a generator's suspensions, by what it yields)
+    made = fn.get("return_representation") or ""
+    if made.startswith("gen[") and targs(made) and restricts(targs(made)[0]):
+        return True
+    return restricts(made) or bool(open_results(made))
 
 
 def infer_invariants(snapshot, words, opened, rounds=3):

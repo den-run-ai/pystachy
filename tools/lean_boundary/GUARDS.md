@@ -243,7 +243,7 @@ rejection is an investigation target; it does not establish a compiler bug.
 ## Supported abstraction and boundaries
 
 The bounded CI selection exercises 61 inventoried union reads, 101 payload obligations, three
-proved union return domains, twenty-seven removed null checks, 151 field obligations and 120
+proved union return domains, twenty-seven removed null checks, 151 field obligations and 136
 collector-scanning obligations ([GC.md](GC.md)) in `examples/union_guards.py`,
 `examples/union_effects.py`, `examples/union_split.py`, `examples/union_memory.py`,
 `examples/union_defaults.py`, `examples/gc_arrays.py`, `examples/null_guards.py`,

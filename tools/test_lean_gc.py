@@ -9,8 +9,8 @@ sets that only runtime functions hold made atomic where strs are written into th
 kind for a set or dict.fromkeys keys a list's strs fill, a str stored by list.store into a list of
 ints, atomic lists in globals that an open view stores (another view loads them as lists of strs)
 or that every view leaves open (their loads assume what their stores hold), an atomic open
-template result, and a dict of str keys re-kinded to int keys by empty.kind. Lean must reject
-each, while the original stays proved.
+template result, a dict of str keys re-kinded to int keys by empty.kind, and a generator of lists
+of ints declared to yield lists of strs. Lean must reject each, while the original stays proved.
 """
 import copy
 import os
@@ -210,6 +210,17 @@ class ArrayKindTests(unittest.TestCase):
         self.assertEqual([a["type"] for a in store["operands"]], ["list[int]", "int", "*int"])
         store["operands"][2]["type"] = "*str"
         self.assertEqual(self.status(snapshot, "@f.bumped"), "rejected")
+
+    def test_generator_yielding_atomic_lists_as_strs_is_rejected(self):
+        # (rows() yields copies of a list of ints, atomic: declared to yield lists of strs, its
+        # consumers would keep strs in them. Each suspension is checked by the yield type)
+        snapshot = self.sample()
+        rows = next(fn for fn in snapshot["functions"] if fn["symbol"].startswith("@f.rows"))
+        self.assertEqual(rows["return_representation"], "gen[list[int]]")
+        self.assertTrue(any(op["op"] == "gen.yield" for block in rows["blocks"] for op in block["operations"]))
+        self.assertEqual(self.status(copy.deepcopy(snapshot), rows["symbol"]), "accepted")
+        rows["return_representation"] = "gen[list[str]]"
+        self.assertEqual(self.status(snapshot, rows["symbol"]), "rejected")
 
     def test_missing_holes_fail_closed(self):
         snapshot = self.sample()

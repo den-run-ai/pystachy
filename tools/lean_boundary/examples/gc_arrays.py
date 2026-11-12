@@ -65,6 +65,19 @@ def bumped(values: list[int]) -> list[int]:
     return out
 
 
+def rows(n: int):
+    # (a generator of lists of ints, atomic: each suspension yields its generator's yield type)
+    row = []
+    for i in range(n):
+        row.append(i)
+        yield list(row)
+
+
+def split_all(texts: list[str]):
+    for text in texts:
+        yield text.split()
+
+
 def fresh():
     # (a template's empty result, open until its caller types it: made scanned, as pys_list_new is)
     return []
@@ -83,5 +96,8 @@ table = counts(names + ["1"])
 cells = owners([Cell("a"), Cell("b")])
 floats = [0.5, 1.5] + [2.5]
 copied = squares[1:] + squares[:1]
+grid = [sum(row) for row in rows(4)]
+pieces = [piece for split in split_all(["a b", "c"]) for piece in split]
 print(sum(squares), names, sorted(table.items()), cells[1].label, sorted(seen(copied)), len(pairs(squares)), floats)
 print(sorted(table.keys()), sorted(table.values()), list(seen([3, 1, 2])), distinct(names + ["0", "A", "a"]), queue, len(spare), later, shouted(names), bumped(squares))
+print(grid, pieces)

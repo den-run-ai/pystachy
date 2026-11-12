@@ -68,6 +68,11 @@ template's empty result, which its caller types) are scanned: a function returni
 checked for it, and a direct call's result assumes it (`pys_list_new` and `pys_dict_new` make
 them).
 
+A generator's suspension (`gen.yield`) is a use of what it yields as its declared yield type
+(`gen[T]`), which its consumer's `slot.unpack` assumes: the value a `slot.pack` in the generator
+packed, or a constant (a number, or null). Another yielded word is unsupported where `T`'s arrays
+may hold pointers. Its first resumption and its end (`gen.start`, `gen.ret`) are edges.
+
 The assumptions at parameters, results, loads and words hold by induction over a run where every
 function's obligations are proved: a program's proof needs every function accepted.
 
@@ -83,9 +88,10 @@ are trusted. The check does not cover pointers stored in other atomic memory (st
 `Buf` data, hash and index arrays), the collector's roots (stack, registers and registered globals),
 `allocelide`'s deletion of reference-free objects, lifetime, or type puns that compiled library
 code makes on purpose (`_pystachy_copy`'s memo keeps objects as `str` words and casts them back).
-Objects and fixed tuples, `pys_new`'s included, are scanned memory. Functions beyond the boundary
-validator's bounds (more than 1,024 blocks or 4,096 instructions, a type name past 256
-characters) and generators are unsupported.
+Objects and fixed tuples, `pys_new`'s included, are scanned memory. The boundary validator checks
+the IR's form here up to 4,096 blocks and 16,384 instructions, reading a type name past 256
+characters by its digest; a function whose graph passes the checker's 16,384 nodes, or with an
+operation of more than 256 operands, is unsupported.
 
 The tag model has no emptiness: a template's empty dict or set, typed by its caller's `empty.kind`,
 keeps the old tags its open result type leaves unknown, so its keys are rejected where a use
@@ -103,9 +109,9 @@ memory holds a list of strs and one passed for a parameter that is a list of str
 set only runtime functions hold, made atomic where strs are written into them; an int key kind for
 a set or for `dict.fromkeys` keys filled with a list's strs; a str stored by `list.store` into a
 list of ints; an atomic list stored in a global through an open view; an atomic list in a global
-that every view leaves open, appended strs; an atomic open template result; and a dict of str keys
-re-kinded to int keys by `empty.kind`. Lean must reject each; disabling each rule makes a control
-fail.
+that every view leaves open, appended strs; an atomic open template result; a dict of str keys
+re-kinded to int keys by `empty.kind`; and a generator of lists of ints declared to yield lists of
+strs. Lean must reject each; disabling each rule makes a control fail.
 
 ## Run and coverage
 
@@ -118,13 +124,15 @@ python3.13 tools/inspect_compiler.py tools/lean_boundary/examples/gc_arrays.py \
 python3.13 tools/check_lean_gc.py --snapshot /tmp/gc-arrays/typed-after.json
 ```
 
-A sweep on 2026-11-12 of all 2,418 differential programs and deviations (snapshots of the
-compiler at `e7ec9bb8`) proved 171,031 of 171,406 obligations in 25,998 functions: 2,188
-programs are proved, 32 rejected and 198 unsupported. 12 are rejected only for the copy memo's
-pun, 19 for a template's empty result that its caller types, directly or through a call cycle,
-and one, `dict_union_object_keys.py`, for a generic function whose keys stay a type parameter.
-Unsupported functions are generators (188) or beyond the boundary validator's bounds (252 past
-1,024 blocks, 16 past 4,096 instructions, 45 with a type name past 256 characters). Designing
-the check found the bug `e7ec9bb8` fixes: `list(())` allocated an atomic array that its callers
-typed as a list of strs. The check rejected `generic_annotations.py` and `iterate_tuples.py`
-before the fix, and its regressions crash without it.
+A sweep on 2026-11-12 of all 2,418 differential programs and deviations (snapshots of the compiler
+at `e7ec9bb8`) proved 188,950 of 189,325 obligations in 25,998 functions: 2,377 programs are
+proved, 32 rejected and 9 unsupported. 12 are rejected only for the copy memo's pun, 19 for a
+template's empty result that its caller types, directly or through a call cycle, and one,
+`dict_union_object_keys.py`, for a generic function whose keys stay a type parameter. The
+unsupported functions are `html.entities`' initializer and `class_ids_wide.py`'s module code, whose
+graphs pass 16,384 nodes, and the `sqids` constructor, which makes a 358-item tuple. The generators
+(504 across the corpus), the regex engine's `sre_match` and the constant tables that an earlier
+sweep left unsupported raised no rejection. Designing the check found the bug `e7ec9bb8` fixes:
+`list(())` allocated an atomic array that its callers typed as a list of strs. The check rejected
+`generic_annotations.py` and `iterate_tuples.py` before the fix, and its regressions crash without
+it.
