@@ -138,7 +138,7 @@ def discover(paths: list[Path], root: Path) -> list[Path]:
         if not path.is_relative_to(root):
             raise CollectionError(f"path is outside --root {root}: {path}")
         if path.is_file():
-            if path.suffix != ".py":
+            if path.suffix != ".py" or path.name == "conftest.py":
                 raise CollectionError(f"expected a Python test module: {path}")
             files.add(path)
         else:
@@ -272,7 +272,9 @@ def translate(text: str, sources: dict[str, tuple[str, object]]) -> str:
     def original(match):
         name, module = sources[match.group(1)]
         line = original_line(module, int(match.group(2)))
-        return match.group(0) if line is None else f"{name}:{line} [{match.group(0)}]"
+        if line is None:
+            return match.group(0)
+        return f"{name}:{line} [generated {Path(match.group(1)).name}:{match.group(2)}]"
     if not sources:
         return text
     pattern = "(" + "|".join(re.escape(generated) for generated in sorted(sources, key=len, reverse=True)) + r"):(\d+)"
@@ -298,7 +300,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         return []
     conftest = paths[0].parent / "conftest.py"
     conftest_name = conftest.relative_to(root).as_posix() if conftest.is_file() else ""
-    texts: list[str] = []
+    texts: dict[Path, str] = {}
 
     def build(operands: bool):
         """Every module's generated source, or the collection errors on results."""
@@ -313,11 +315,11 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
                     result.error = str(error)
                 return None
         generated = []
-        for index, (path, result) in enumerate(zip(paths, results)):
+        for path, result in zip(paths, results):
             try:
-                if len(texts) <= index:
-                    texts.append(path.read_text())
-                generated.append(generate(texts[index], result.path, operands,
+                if path not in texts:
+                    texts[path] = path.read_text()
+                generated.append(generate(texts[path], result.path, operands,
                                           selections.get(path) if selections else None, shared, False))
                 result.cases = generated[-1].cases
                 result.state = "collected"
@@ -332,7 +334,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         # The last module with cases ends the session scope in its last case.
         last = max((index for index, module in enumerate(generated) if module.cases), default=None)
         if last is not None:
-            generated[last] = generate(texts[last], results[last].path, operands,
+            generated[last] = generate(texts[paths[last]], results[last].path, operands,
                                        selections.get(paths[last]) if selections else None, shared, True)
         return modules + generated
 

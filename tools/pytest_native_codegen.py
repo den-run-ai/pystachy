@@ -812,13 +812,27 @@ class Generator:
         postponed = any(isinstance(node, ast.ImportFrom) and node.module == "__future__"
                         and any(alias.name == "annotations" for alias in node.names) for node in self.tree.body)
         declared = self.declared_functions()
+        bound = set()
+        for node in self.tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                bound.add(node.name)
+            elif isinstance(node, ast.Import):
+                bound.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+            elif isinstance(node, ast.ImportFrom):
+                bound.update(alias.asname or alias.name for alias in node.names)
+            else:
+                bound.update(_bound_names(node))
+        # Built-in method decorators run no module code, unless the module rebinds them.
+        builtin = {"property", "staticmethod", "classmethod"} - bound
 
-        def static(statements):
+        def static(statements, method=False):
             for node in statements:
                 if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     # Function bodies run later; arbitrary decorators and defaults
                     # could mutate a parameter table before pytest collects it.
-                    if node not in declared and node.decorator_list:
+                    plain = method and all(isinstance(decorator, ast.Name) and decorator.id in builtin
+                                           for decorator in node.decorator_list)
+                    if node not in declared and node.decorator_list and not plain:
                         self.error(node, "named parameter tables require static module initialization")
                     evaluated = list(node.args.defaults) + [value for value in node.args.kw_defaults if value]
                     if not postponed:
@@ -832,9 +846,12 @@ class Generator:
                     continue
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
                     continue
-                if node in self.classes:
-                    # Its decorators are pytest marks, which hold literals only.
-                    static(node.body)
+                if isinstance(node, ast.ClassDef) and not node.keywords and (
+                        node in self.classes or not node.decorator_list) and all(
+                        not isinstance(part, ast.Call) for base in node.bases for part in ast.walk(base)):
+                    # A class body runs at import like module code; a test class's
+                    # decorators are pytest marks, which hold literals only.
+                    static(node.body, True)
                     continue
                 if any(isinstance(part, (ast.Call, ast.AugAssign, ast.Delete, ast.ClassDef, ast.If, ast.For,
                                          ast.While, ast.Try, ast.With))
@@ -1103,6 +1120,28 @@ class Generator:
             parts.append(ast.FormattedValue(ast.Call(_attribute("saferepr"), [value], []), -1, None))
         return ast.JoinedStr(parts)
 
+    def approximate(self, node, location, operator):
+        """The message of `assert actual == pytest.approx(expected)`: both operands' reprs.
+
+        visit_Compare made the comparison a call; its arguments are bound as captured()
+        binds a comparison's operands.
+        """
+        call = node.test.operand if isinstance(node.test, ast.UnaryOp) else node.test
+        if not (operator in ("==", "!=") and isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+                and call.func.attr == "approx_equal" and isinstance(call.func.value, ast.Name)
+                and call.func.value.id == "_pyn_support"):
+            return None
+        parts = [ast.Constant(location + "\nassert ")]
+        for index, side in enumerate(call.args):
+            if index:
+                parts.append(ast.Constant(f" {operator} "))
+            temporary = f"_pyn_operand_{self.counter}"
+            self.counter += 1
+            call.args[index] = ast.NamedExpr(ast.Name(temporary, ast.Store()), side)
+            parts.append(ast.FormattedValue(ast.Call(_attribute("saferepr"), [ast.Name(temporary, ast.Load())], []),
+                                            -1, None))
+        return ast.JoinedStr(parts)
+
     def transform_source(self):
         declarations = self.declared_functions()
         classes = set(self.classes)
@@ -1244,11 +1283,13 @@ class Generator:
             def visit_Assert(self, node):
                 location = f"{filename}:{node.lineno}: assert {ast.unparse(node.test)}"
                 custom = node.msg is not None
+                operator = (OPERATORS.get(type(node.test.ops[0]))
+                            if isinstance(node.test, ast.Compare) and len(node.test.ops) == 1 else None)
                 node = self.generic_visit(node)
                 if not custom:
                     detail = None
                     if generator.operands and self.scopes and self.scopes[-1] == "function":
-                        detail = generator.captured(node, location)
+                        detail = generator.captured(node, location) or generator.approximate(node, location, operator)
                     node.msg = detail or ast.Constant(location)
                 return node
 
@@ -1279,6 +1320,30 @@ class Generator:
             output += [(line, None) for line in imports]
         return output
 
+    @staticmethod
+    def value_annotation(function, generator):
+        """Source of the type a fixture provides, from its return annotation, or None."""
+        annotation = function.returns
+        if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+            try:
+                annotation = ast.parse(annotation.value, mode="eval").body
+            except SyntaxError:
+                return None
+        if annotation is None or (isinstance(annotation, ast.Constant) and annotation.value is None):
+            return None
+        if not generator:
+            return ast.unparse(annotation)
+        # Iterator[T], Iterable[T] or Generator[T, S, R], however the module names them.
+        if not isinstance(annotation, ast.Subscript):
+            return None
+        kind = annotation.value.attr if isinstance(annotation.value, ast.Attribute) else getattr(annotation.value, "id", "")
+        if kind not in {"Iterator", "Iterable", "Generator"}:
+            return None
+        item = annotation.slice.elts[0] if isinstance(annotation.slice, ast.Tuple) and annotation.slice.elts else annotation.slice
+        if isinstance(item, ast.Constant) and item.value is None:
+            return None
+        return ast.unparse(item)
+
     def scope_block(self, fixture):
         """A module, class or session fixture's cache: set up on first request, kept until
         the scope's last case, and a setup failure repeated to every later request."""
@@ -1288,7 +1353,11 @@ class Generator:
         call = f"{function.name}({', '.join(f'{name}={name}' for name in fixture.dependencies)})"
         lines = [f"_pyn_scope_failed_{key}: list[BaseException] = []", f"_pyn_scope_active_{key} = [False]"]
         if fixture.valued:
-            lines.append(f"_pyn_scope_value_{key} = []")
+            # The cache starts empty: the fixture's own annotation types it where the
+            # compiler cannot infer that from the value (a string keeps CPython from
+            # evaluating names that exist for type checkers only).
+            hint = self.value_annotation(function, fixture.generator)
+            lines.append(f"_pyn_scope_value_{key}{': ' + repr('list[' + hint + ']') if hint else ''} = []")
         if fixture.generator:
             lines.append(f"_pyn_scope_generator_{key} = []")
         lines += [f"def _pyn_scope_finish_{key}() -> None:", f"    _pyn_scope_failed_{key}.clear()"]

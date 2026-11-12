@@ -793,6 +793,7 @@ class FormParity(TemporarySuite):
                    if event["outcome"] == "failed"}
         self.assertTrue(details["test_failing_repr_fails_as_an_assertion"].startswith("AssertionError: "))
         self.assertIn("raised in repr()", details["test_failing_repr_fails_as_an_assertion"])
+        self.assertTrue(details["test_approx_failure"].endswith("assert 1.0 == 1.1 ± 1.1e-06"), details)
 
     def test_typed_value_expands_only_where_it_is_safe(self):
         actual, _ = self.check("typed_value")
@@ -889,29 +890,41 @@ class FormParity(TemporarySuite):
         self.assertEqual(actual.state, "passed", actual.error + actual.stderr)
         self.assertEqual(runner.compare([actual], expected), [])
 
-    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
-    def test_native_jit_parity(self):
-        for name in SUITES:
-            with self.subTest(suite=name):
-                actual, _ = self.check(name, "jit")
-                if name != "builtin":  # (its `in os.environ`-free asserts keep operands too)
-                    self.assertTrue(actual.assertion_operands, actual.operand_build_error)
+    def check_combined(self, mode):
+        """Every suite as one program: one build covers them, as one pytest session does."""
+        self.source("def increment(value: int) -> int:\n    return value + 1\n", "test_helpers.py")
+        self.source(CONFTEST, "conftest.py")
+        states = {"test_helpers.py": "empty", "test_first.py": "passed", "test_second.py": "passed"}
+        self.source(CONFTEST_FIRST, "test_first.py")
+        self.source(CONFTEST_SECOND, "test_second.py")
+        for name, (source, state) in SUITES.items():
+            self.source(source, f"test_{name}.py")
+            states[f"test_{name}.py"] = state
+        paths = sorted(self.root / name for name in states)
+        results = runner.run_suite(paths, self.root, self.work / mode, mode, shlex.split(NATIVE), sys.executable, 300)
+        expected = runner.oracle(paths, self.root, self.work / "oracle", sys.executable, 120)
+        self.assertEqual(runner.compare(results, expected), [], results[0].error + results[0].stderr + json.dumps(
+            runner.outcome_differences(results, expected), indent=2))
+        self.assertEqual({result.path: result.state for result in results}, states)
+        self.assertEqual(len(expected["cases"]), 123)
+        # conftest.py's session fixture fails as the last case of the last module ends.
+        self.assertEqual(results[-1].events[-1]["detail"], "RuntimeError: session teardown\n")
+        return results
+
+    def test_all_suites_share_one_session(self):
+        self.check_combined("python")
 
     @unittest.skipUnless(NATIVE, "native compiler opt-in required")
-    def test_native_aot_parity(self):
-        for name in ("classes", "typed_value", "scopes", "scope_failures", "builtin"):
-            with self.subTest(suite=name):
-                self.check(name, "aot")
-
-    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
-    def test_native_conftest_and_scopes_under_gc_stress(self):
-        for mode in ("jit", "aot"):
-            with self.subTest(mode=mode):
-                self.check_conftest(mode)
+    def test_native_jit_suites_under_gc_stress(self):
         # A scope's cached value must survive the tests between its first and last use.
         with patch.dict(os.environ, {"PYSTACHY_GC_STRESS_PROGRAM": "1", "PYSTACHY_IRCHECK": "1"}):
-            self.check("scopes", "jit")
-            self.check("fixture_params", "jit")
+            results = self.check_combined("jit")
+        self.assertTrue(results[0].assertion_operands, results[0].operand_build_error)
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_aot_conftest(self):
+        # (examples/pytest_native/test_forms.py builds the other forms ahead of time.)
+        self.check_conftest("aot")
 
     @unittest.skipUnless(NATIVE, "native compiler opt-in required")
     def test_native_relative_compiler_and_source_lines(self):
@@ -931,7 +944,7 @@ class FormParity(TemporarySuite):
         actual = runner.run_module(path, self.root, self.work, "jit", shlex.split(NATIVE), sys.executable, 180)
         self.assertEqual(actual.state, "execution-error")
         # The diagnostic names the test's line beside the generated one.
-        self.assertRegex(actual.stderr, r"test_suite\.py:12 \[\S+test_suite\.py:\d+\]: error: ")
+        self.assertRegex(actual.stderr, r"test_suite\.py:12 \[generated test_suite\.py:\d+\]: error: ")
         command = shlex.split(NATIVE)
         if len(command) == 1 and os.path.isabs(command[0]):
             relative = os.path.relpath(command[0])
@@ -1040,6 +1053,11 @@ class FormRejections(TemporarySuite):
         with self.assertRaisesRegex(CollectionError, "only in the directory of the selected tests"):
             runner.discover([self.root / "tests"], self.root)
 
+    def test_conftest_is_not_a_test_module(self):
+        path = self.source("def test_a(): pass\n", "conftest.py")
+        with self.assertRaisesRegex(CollectionError, "expected a Python test module"):
+            runner.discover([path], self.root)
+
     def test_conftest_collection_error_stops_the_suite(self):
         self.source("def pytest_collection_modifyitems(items): pass\n", "conftest.py")
         path = self.source("def test_a(): pass\n")
@@ -1095,12 +1113,40 @@ class RunnerDetails(TemporarySuite):
         self.assertIsNone(original_line(module, 1))
         self.assertIsNone(original_line(GeneratedModule("", []), 5))
 
+    def test_scope_caches_take_the_fixture_annotation(self):
+        source = generate(textwrap.dedent('''\
+            import typing
+            import pytest
+            @pytest.fixture(scope="module")
+            def names() -> typing.Iterator[list[str]]:
+                yield []
+            @pytest.fixture(scope="session")
+            def table() -> "dict[str, int]":
+                return {}
+            @pytest.fixture(scope="class")
+            def channel() -> typing.Generator[int, None, None]:
+                yield 1
+            @pytest.fixture(scope="module")
+            def inferred():
+                return [1]
+            @pytest.fixture(scope="module")
+            def effect() -> typing.Iterator[None]:
+                yield
+            def test_a(names, table, channel, inferred, effect): pass
+        '''), "test_suite.py").source
+        self.assertIn("_pyn_scope_value_names: 'list[list[str]]' = []", source)
+        self.assertIn("_pyn_scope_value_table: 'list[dict[str, int]]' = []", source)
+        self.assertIn("_pyn_scope_value_channel: 'list[int]' = []", source)
+        self.assertIn("_pyn_scope_value_inferred = []", source)
+        # A fixture that provides nothing has no cached value.
+        self.assertNotIn("_pyn_scope_value_effect", source)
+
     def test_translate_names_source_lines(self):
         module = GeneratedModule("", [], lines={4: 10, 9: 12})
         sources = {"/work/test_a.py": ("tests/test_a.py", module)}
         self.assertEqual(runner.translate("/work/test_a.py:10: error: x (call at /work/test_a.py:5)\nother:3", sources),
-                         "tests/test_a.py:12 [/work/test_a.py:10]: error: x "
-                         "(call at tests/test_a.py:10 [/work/test_a.py:5])\nother:3")
+                         "tests/test_a.py:12 [generated test_a.py:10]: error: x "
+                         "(call at tests/test_a.py:10 [generated test_a.py:5])\nother:3")
         self.assertEqual(runner.translate("/work/test_a.py:2: error", sources), "/work/test_a.py:2: error")
         self.assertEqual(runner.translate("anything", {}), "anything")
 

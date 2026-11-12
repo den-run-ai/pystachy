@@ -20,10 +20,12 @@ python3 tools/pytest_native.py path/to/tests/test_api.py::test_parse --compiler 
 python3 tools/pytest_native.py path/to/tests --mode aot --compiler ./pystachy --json build/test-results.json
 ```
 
-Node IDs (`path::test` or `path::test[id]`) select cases as pytest's arguments do:
-in the order given, a repeated ID once, and an unknown ID is an error. Give node IDs
-for every argument, with one module's IDs together. The module is still imported
-whole. The real pytest oracle runs the same selection.
+Node IDs (`path::test`, `path::test[id]`, `path::TestClass` or
+`path::TestClass::test`) select cases as pytest's arguments do: in the order given,
+and an unknown ID is an error. As in pytest, an ID that another one contains is
+dropped: `path::test` covers `path::test[id]`, and a class covers its tests. Give
+node IDs for every argument, with one module's IDs together. The module is still
+imported whole. The real pytest oracle runs the same selection.
 
 Oracle comparison is enabled by default; `--compare` also selects it explicitly.
 It runs the **original** files in real CPython pytest, independently of
@@ -43,8 +45,10 @@ qualification, without repeating comparison inside every timed execution.
 `--mode python` runs generated code under CPython and is useful for distinguishing
 collector/helper mistakes from native compiler behavior. `--compiler './pystachy'`
 selects a bootstrapped compiler; the default is the hosted compiler in this
-checkout. `--python` selects the oracle interpreter; a missing pytest is reported
-as such. `--timeout` bounds each build/run/oracle subprocess.
+checkout. A relative compiler path is resolved where the command is given, although
+the compiler runs from `--root`. `--python` selects the oracle interpreter; a
+missing pytest is reported as such. `--timeout` bounds each build/run/oracle
+subprocess.
 
 Each failure shows the native exception's class and message (`KeyError: 'missing'`),
 as pytest's summary does. A comparison assertion with no message (`==`, `!=`, `<`,
@@ -55,12 +59,21 @@ fails, its own report follows. A case or phase whose outcome differs from pytest
 is listed as `MISMATCH`, and a summary line counts the outcomes. If the native
 compiler rejects the operand code (for example, `repr()` of a function), the program
 was never started, and the suite is built again with plain assertion messages; the
-JSON keeps that build's error, and later runs of the unchanged code skip it.
-Compile errors name the generated module, whose lines can differ from the source.
+JSON keeps that build's error, and later runs of the unchanged code skip it. An
+operand whose `__repr__` raises is shown as such, and the assertion still fails as
+an `AssertionError`.
+
+The compiler reads generated modules. Its diagnostics name the test's own line
+first and the generated one after it:
+`tests/test_api.py:13 [generated test_api.py:20]: error: ...`. Code that the runner
+generates for a declaration (a case's fixture calls, a scope's cache, parameter
+values) reports at that test, fixture or class.
 
 `--root` defaults to the current directory. Selected files must be inside it and
 must share one source directory. The latter restriction preserves sibling-import
 resolution; combining arbitrary directories requires additional import support.
+A `conftest.py` in that directory supplies fixtures to every selected module; one
+anywhere else under `--root` is an error, because pytest would apply it too.
 All selected modules are collected before execution, imported before tests run,
 and executed in one process, preserving shared imported-module state. Empty test
 modules are imported too: an import failure cannot disappear from the result.
@@ -80,6 +93,19 @@ This hosted tool currently targets Linux and macOS.
 
 - Module-level functions with the default pytest `test` prefix; ordinary helper
   functions/classes and supported application imports remain in the program.
+  A literal named like a test (`test_cases = [...]`), `import test_helpers`, and a
+  `test*` function nested in another function or in an ordinary class are not tests
+  for pytest either.
+- Test classes: `class TestX:` at module level, without base classes, `__init__`
+  or nested test classes. Each test method runs on a new instance; helper methods
+  and class attributes stay. Marks on the class (`skip`, `skipif`, `xfail`,
+  `parametrize`, `usefixtures`, labels) apply to its tests after each method's own.
+  A class may define function-scoped fixtures as methods, which share the test's
+  instance. Declarations inside a class are evaluated before its body: they cannot
+  use the class's own attributes, and a `skipif` expression there is limited to
+  names, attributes, literals and comparisons. The compiler still requires that
+  `__init__` declares instance attributes, so state assigned in a method fixture
+  (`self.client = ...`) runs under CPython only; return the value from a fixture.
 - Plain `assert`, with a source location and expression added when no message
   exists. Assertion expressions retain their evaluation order and execute once.
 - `@pytest.mark.parametrize` with bounded static tables, optional literal string
@@ -88,18 +114,50 @@ This hosted tool currently targets Linux and macOS.
 - Inline `pytest.param(..., id="case", marks=...)` entries with static
   skip/skipif/xfail marks. Named tables containing `pytest.param` and computed
   parameter metadata remain unsupported.
-- Function-scoped return/yield fixtures defined in the selected module,
-  dependencies and literal `autouse`.
+- Return/yield fixtures defined in the selected module, in a test class or in the
+  directory's `conftest.py`, with dependencies and literal `autouse`.
   `@pytest.fixture(name="alias")` exposes an explicit public fixture name.
   Repeated requests share one fixture value within a test. Teardown resumes yield
   fixtures in reverse setup order, including after a test fails or later fixture
   setup fails; one cleanup failure does not discard the remaining cleanup.
-- `pytest.raises(ExceptionClass, match="regex")` as a context manager, including
-  guarded `.value` and `.type`; exception tuples, `check=`, callable form and
-  compiled regexes are outside this subset.
+- Fixture scopes `function`, `class`, `module` and `session` for module-level and
+  `conftest.py` fixtures. A wider fixture is set up at its first request and torn
+  down in the teardown of the last case of its class, module or run, innermost
+  scope first, including when that case is skipped. A setup failure or skip is
+  kept and repeated for every later request in the scope without running the
+  fixture again. A class-scoped fixture ends with each test outside a class, as in
+  pytest. Fixtures cannot request a narrower scope. The runner caches a wider
+  fixture's value in a list typed from its return annotation (`T`, or
+  `Iterator[T]` for a yield fixture) where it has one; annotate a fixture whose
+  value's type the compiler cannot infer, such as an empty container.
+- `@pytest.fixture(params=[...], ids=[...])` on function-scoped fixtures, read as
+  `request.param`. Cases and IDs follow pytest: fixture parameters in the order of
+  the test's fixture closure, then its `parametrize` marks; a directly parametrized
+  argument replaces a fixture of that name. Other uses of `request`, parametrized
+  wider scopes (pytest reorders tests around them) and `indirect=` are rejected.
+- Built-in `tmp_path` (a new empty `pathlib.Path` directory per test, named as
+  pytest names it and removed after the run) and `monkeypatch` with `setenv`,
+  `delenv` and `undo`. Other `monkeypatch` methods patch objects at run time, which
+  compiled calls do not observe, and are rejected; `capsys`, `caplog` and the
+  remaining built-in fixtures are unsupported.
+- `pytest.raises(ExceptionClass, match="regex")` and a literal tuple
+  `pytest.raises((A, B))` as a context manager, with `.value`, `.type`,
+  `.typename` and `.match(regex)`; `check=`, the callable form and compiled
+  regexes are outside this subset. The context holds a `BaseException`, whose own
+  fields compiled code cannot read. Where a function reads
+  `info.value.attribute`, its `with pytest.raises(E) as info:` block is expanded
+  to `try`/`except E`, so `info.value` has class `E`. This needs one class, a name
+  bound by one block only and used as `.value`, `.type`, `.typename` or
+  `.match(...)`, and no `return`, `break` or `continue` in the block; otherwise
+  the context manager stays, and reading such a field is a compile error.
+- `actual == pytest.approx(expected, rel=..., abs=..., nan_ok=...)` and `!=` for
+  `int` and `float`, with pytest's tolerances. Write `pytest.approx(...)` directly
+  in the comparison, or on its left: a number does not consult a stored approx
+  object in compiled code. Sequences, mappings and other types are unsupported.
 - `pytest.fail`, `pytest.skip`, `pytest.xfail`, and static skip/skipif/xfail marks,
-  including strict XPASS and `run=False`. Boolean conditional markers require
-  an explicit reason, as in pinned pytest.
+  including strict XPASS, `run=False` and `raises=` with a class or a literal tuple
+  of classes. Boolean conditional markers require an explicit reason, as in pinned
+  pytest.
 - A test decorator's `skipif` condition may be an expression, such as
   `sys.platform == "win32"`: it is evaluated once at import, in decorator order, as
   pytest's decorator is. String conditions, which pytest evaluates as code, and
@@ -117,9 +175,13 @@ This hosted tool currently targets Linux and macOS.
 Unsupported source forms detected by the collector are errors, never implicit skips.
 Imported fixtures are unsupported; the default oracle checks their observable
 collection and phase effects. The collector rejects
-test classes, async/generator tests, xunit setup/teardown hooks, conftest files,
+`unittest.TestCase` classes, test classes with base classes or `__init__`,
+async/generator tests, xunit setup/teardown hooks, `conftest.py` hooks and tests,
+fixture overrides (a module fixture named as a `conftest.py` one, or a class fixture
+named as a module one), `conftest.py` files outside the tests' directory,
 pytest configuration, test packages, relative test imports, custom decorators,
-plugins, dynamic test creation and unsupported pytest APIs. It also rejects
+plugins, dynamic test creation and unsupported pytest APIs such as `pytest.warns`
+and `pytest.importorskip`. It also rejects
 observable module metadata such as `__file__`, and namespace inspection/mutation.
 Named collection metadata is accepted only within conservative initialization
 rules; a helper call or compound initialization which could change it is rejected.
@@ -150,8 +212,10 @@ The target checks original pytest outcomes, negative controls, fixture lifecycle
 shared module state, native JIT/AOT, GC stress and a mixed `Any` fixture. It runs
 inside the existing x86-64 `hosted` CI job on code PRs, main pushes and manual runs.
 The examples exercise current stdlib APIs and the
-iniconfig/jdcal/json_repair ports. The 35 cases include 16 JSON-repair cases for
-malformed/Unicode input, result objects, logs, fixture aliases and strict errors. These are
+iniconfig/jdcal/json_repair ports. The 49 cases include 16 JSON-repair cases for
+malformed/Unicode input, result objects, logs, fixture aliases and strict errors, and 14
+for test classes, fixture scopes and parameters, `tmp_path`, `monkeypatch`,
+`pytest.approx` and typed `pytest.raises` values. These are
 original tests, not claims of complete upstream suite support. Keep the existing
 [943-case JSON-repair replay](../tests/upstream/json_repair/README.md) and extension
 checks: this runner adds fixture/collection qualification rather than replacing
