@@ -1897,12 +1897,21 @@ class Loader:
         if base is None or base.kind != "index":
             return False
         g = base.kids[0]
-        if g.kind == "name" and (m.kinds.get(g.s, "") == "c" or m.kinds.get(g.s, "").startswith("a:")):
-            # class S(Visitor[T]): generic as Visitor is, in the type variables it passes on (PEP 484)
-            dm = self.dm
+        dm = self.dm
+        self.dm = m
+        gm = self.mod_of(g.kids[0]) if g.kind == "attr" else ""
+        gk = self.kind_of(g) if g.kind == "name" else self.mods[gm].kinds.get(g.s, "") if gm != "" else ""
+        implicit = False
+        if gk == "c" or gk.startswith("a:"):
+            # class S(Visitor[T]), also S(pkg.visitors.Visitor[T]): generic as Visitor is, in the
+            # type variables it passes on (PEP 484), its module's own or ones it imports
+            if gm != "":
+                self.dm = self.mods[gm]
+            generic = self.generic_class(mk("name", g.s, g.line, []) if gm != "" else g)
             self.dm = m
-            implicit = self.generic_class(g) and len([x for x in (base.kids[1].kids if base.kids[1].kind == "tuple" else [base.kids[1]]) if x.kind == "name" and self.typevar(x)]) > 0
-            self.dm = dm
+            implicit = generic and len([x for x in (base.kids[1].kids if base.kids[1].kind == "tuple" else [base.kids[1]]) if self.tv_named(x)]) > 0
+        self.dm = dm
+        if gk == "c" or gk.startswith("a:"):
             return implicit
         if g.kind == "name":
             k = m.kinds.get(g.s, "")
@@ -1919,6 +1928,36 @@ class Loader:
             return k[2:] if k.startswith("b:") else ""  # (also a user module's attribute: collections.abc)
         p = self.bpath(e.kids[0]) if e.kind == "attr" else ""
         return p + "." + e.s if p != "" else ""
+
+    def mod_of(self, e: Node) -> str:
+        # the user module that name or attribute e names in module dm (pkg.mod, where import
+        # pkg.mod binds pkg), or ""
+        if e.kind == "name":
+            k = self.dm.kinds.get(e.s, "")
+            return k[2:] if k.startswith("m:") and k[2:] in self.mods else ""
+        p = self.mod_of(e.kids[0]) if e.kind == "attr" else ""
+        k = self.mods[p].kinds.get(e.s, "") if p != "" else ""
+        if k.startswith("m:") and k[2:] in self.mods:
+            return k[2:]
+        return p + "." + e.s if p != "" and k == "" and p + "." + e.s in self.mods else ""
+
+    def tv_named(self, e: Node) -> bool:
+        # is name e a TypeVar of module dm (typevar), or another module's that an import binds
+        # there: its kind names it as its own module's records it ("t:", see bindings)
+        if e.kind != "name":
+            return False
+        if self.typevar(e):
+            return True
+        k = self.dm.kinds.get(e.s, "")
+        for x in self.mods if k.startswith("t:") else []:
+            q = self.mods[x].q
+            if q != "" and k[2:].startswith(q) and "$" not in k[2 + len(q) :]:
+                dm = self.dm
+                self.dm = self.mods[x]
+                r = self.typevar(mk("name", k[2 + len(q) :], e.line, []))
+                self.dm = dm
+                return r
+        return False
 
     def typevar(self, e: Node) -> bool:
         # is name e a module global that only e = TypeVar(...) (or TypeVarTuple(...)) statements
