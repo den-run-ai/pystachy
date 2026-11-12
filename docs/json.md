@@ -112,7 +112,7 @@ them compare equal. See [numeric deviations](language/compatibility.md#numbers).
 | `loads(s: str)` | Scalars, mixed arrays, nested objects; string keys; whitespace; last duplicate key wins |
 | `dumps(obj: JSONValue)` | Scalars and recursive lists/dicts; insertion-order objects; shared aliases; cycle detection |
 | `load(fp)`, `dump(obj, fp)` | `loads(fp.read())` and `fp.write(dumps(obj))` of a text file; `dump()` takes the encoder keywords and writes the document in one piece |
-| Encoder keywords | `ensure_ascii=True`, `allow_nan=True`, `sort_keys=False`, `separators=None` or a two-string tuple |
+| Encoder keywords | `ensure_ascii=True`, `allow_nan=True`, `sort_keys=False`, `separators=None` or a two-string tuple, `indent=None`, an `int` or a `str` |
 | `JSONDecoder()` | Default `decode(s)` and `raw_decode(s, idx=0)`; the latter returns a value and character end offset, without skipping leading whitespace or rejecting trailing text |
 | `JSONDecodeError` | `ValueError` subclass with `msg`, `doc`, `pos`, `lineno`, `colno` and formatted error text |
 
@@ -150,7 +150,7 @@ Deliberate limits:
   `ValueError: Circular reference detected`.
 - Input is `str`; bytes/bytearray input, configured `JSONDecoder` constructors,
   `JSONEncoder`, hooks, custom conversion functions, `default`, `skipkeys`,
-  `check_circular`, `strict` and indentation are not implemented.
+  `check_circular` and `strict` are not implemented.
 - Object keys must be strings; tuple serialization and arbitrary user objects
   are outside the `JSONValue` representation. Unsupported APIs/types are normally
   compilation errors, not CPython's runtime errors.
@@ -210,7 +210,7 @@ The calling module does not need a `python-int` pragma. Conversion retains the r
 public `JSONDecoder` methods retain their signed-64-bit boundary.
 
 `dumps()` of `Any` values writes tuples as arrays, and int, float, bool and `None` keys as
-strings, and takes CPython's `skipkeys`, `check_circular` and `default` too. It raises CPython's
+strings, and takes CPython's `skipkeys`, `check_circular`, `default` and `indent` too. It raises CPython's
 `TypeError`s: `Object of type C is not JSON serializable` for a value JSON cannot hold, and `keys
 must be str, int, float, bool or None, not C`. It preserves wide integer values and
 keys; its other limits are those listed above.

@@ -94,7 +94,10 @@ def _floatstr(value: float, allow_nan: bool) -> str:
 
 class _Writer:
     def __init__(self, skipkeys: bool, ensure_ascii: bool, check_circular: bool, allow_nan: bool,
-                 sort_keys: bool, item_separator: str, key_separator: str, default: Any) -> None:
+                 sort_keys: bool, item_separator: str, key_separator: str, default: Any,
+                 pretty: bool, indent: str) -> None:
+        self.pretty = pretty  # (an indent was given: each item goes on its own line)
+        self.indent = indent
         self.skipkeys = skipkeys
         self.ascii = ensure_ascii
         self.circular = check_circular
@@ -107,6 +110,9 @@ class _Writer:
         self.calls = 0  # (default() calls so far: where one ran, a dict being written may have changed)
         self.chain = 0  # (default() calls in progress, each converting the value the one before returned)
         self.open: list[Any] = []  # (the containers being written, for check_circular)
+        # (what separates the items of each dict being written, and what precedes its first)
+        self.separators: list[str] = []
+        self.inners: list[str] = []
 
     def enter(self, value: Any, depth: int) -> None:
         if self.circular:
@@ -159,17 +165,33 @@ class _Writer:
         elif isinstance(value, list) or isinstance(value, tuple):
             self.enter(value, depth)
             out.append("[")
+            separator = self.item_separator
+            lines = self.pretty and len(value) > 0
+            if lines:
+                # (CPython writes an empty container on one line, with or without an indent)
+                inner = "\n" + self.indent * (depth + 1)
+                separator += inner
+                out.append(inner)
             first = True
             for item in value:
                 if not first:
-                    out.append(self.item_separator)
+                    out.append(separator)
                 first = False
                 self.write(item, depth + 1)
+            if lines:
+                out.append("\n" + self.indent * depth)
             out.append("]")
             self.open.pop()
         elif isinstance(value, dict):
             self.enter(value, depth)
             out.append("{")
+            # (as CPython's: the first line break comes with the first key written, so a dict
+            # whose every key skipkeys skips is written as an empty one)
+            self.separators.append(self.item_separator)
+            self.inners.append("")
+            if self.pretty:
+                self.inners[-1] = "\n" + self.indent * (depth + 1)
+                self.separators[-1] += self.inners[-1]
             first = True
             if self.sort_keys:
                 # (CPython sorts a list of the items first: a default() callback's change to a
@@ -209,6 +231,10 @@ class _Writer:
                         # either. Any live unsupported key is still to reject (or skip).
                         seen = {x: True for x in keys if self.supported_key(x)}
                         keys.extend([x for x in value if not self.skips(x) and (not self.supported_key(x) or x not in seen)])
+            self.separators.pop()
+            self.inners.pop()
+            if self.pretty and not first:
+                out.append("\n" + self.indent * depth)
             out.append("}")
             self.open.pop()
         elif self.default is not None:
@@ -242,33 +268,49 @@ class _Writer:
             return False
         s = self.key(k)
         if not first:
-            out.append(self.item_separator)
+            out.append(self.separators[-1])
+        elif self.pretty:
+            out.append(self.inners[-1])
         _quote(out, s, self.ascii)
         out.append(self.key_separator)
         self.write(v, depth + 1)
         return True
 
 
+def _indent_text(indent: Any) -> str:
+    # one level of dumps()'s indent: the str itself, or that many spaces (none for 0 or less),
+    # as CPython makes it, ' ' * indent (json's own takes a JSONValue: this module's values
+    # do not cross into it)
+    if indent is None:
+        return ""
+    if isinstance(indent, str):
+        return indent
+    if isinstance(indent, int):
+        return " " * indent
+    raise TypeError(f"can't multiply sequence by non-int of type '{type(indent).__name__}'")
+
+
 def dumps(obj: Any, *, skipkeys: bool = False, ensure_ascii: bool = True, check_circular: bool = True,
-          allow_nan: bool = True, separators: tuple[str, str] | None = None, default: Any = None,
-          sort_keys: bool = False) -> str:
-    """Encode Any values, as CPython's json.dumps() without indent and cls."""
-    item_separator = ", "
+          allow_nan: bool = True, indent: Any = None, separators: tuple[str, str] | None = None,
+          default: Any = None, sort_keys: bool = False) -> str:
+    """Encode Any values, as CPython's json.dumps() without cls."""
+    item_separator = ", " if indent is None else ","  # (an indented line ends without a space)
     key_separator = ": "
     if separators is not None:
         item_separator = separators[0]
         key_separator = separators[1]
-    w = _Writer(skipkeys, ensure_ascii, check_circular, allow_nan, sort_keys, item_separator, key_separator, default)
+    w = _Writer(skipkeys, ensure_ascii, check_circular, allow_nan, sort_keys, item_separator, key_separator, default,
+                indent is not None, _indent_text(indent))
     w.write(obj, 0)
     return "".join(w.out)
 
 
 def dump(obj: Any, fp: TextIO, *, skipkeys: bool = False, ensure_ascii: bool = True, check_circular: bool = True,
-         allow_nan: bool = True, separators: tuple[str, str] | None = None, default: Any = None,
-         sort_keys: bool = False) -> None:
+         allow_nan: bool = True, indent: Any = None, separators: tuple[str, str] | None = None,
+         default: Any = None, sort_keys: bool = False) -> None:
     """Write the text dumps() returns to fp (one write, where CPython writes it in pieces)."""
     fp.write(dumps(obj, skipkeys=skipkeys, ensure_ascii=ensure_ascii, check_circular=check_circular,
-                   allow_nan=allow_nan, separators=separators, default=default, sort_keys=sort_keys))
+                   allow_nan=allow_nan, indent=indent, separators=separators, default=default, sort_keys=sort_keys))
 
 
 def _raw_decode(s: str, idx: int = 0) -> tuple[Any, int]:

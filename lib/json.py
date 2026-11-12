@@ -6,8 +6,8 @@ Typed JSONValue integers use Pystachy's signed 64-bit range; the dynamic Any
 decoder promotes larger tokens. Nesting counts against sys.setrecursionlimit() and stops at
 2,000 containers, which keeps a raised limit within the native stack; object keys are str.
 load(fp) and dump(obj, fp) read and write a text file's whole document. Decoder hooks, bytes
-input, encoder subclasses and indentation are not implemented. Containers are created with recursive JSONValue storage; narrowing
-keeps their original identity and mutable contents.
+input and encoder subclasses are not implemented. Containers are created with recursive
+JSONValue storage; narrowing keeps their original identity and mutable contents.
 """
 
 from typing import TextIO
@@ -801,14 +801,33 @@ def _escape_chars(out: list[str], s: str, ensure_ascii: bool) -> None:
     out.append('"')
 
 
+def _indent_text(indent: JSONValue) -> str:
+    # one level of dumps()'s indent: the str itself, or that many spaces (none for 0 or less),
+    # as CPython makes it, ' ' * indent. (dumps() takes the indent as a JSONValue: an int or a
+    # str in the one type that a module that tracks no numeric identity may take, dynamic.py's
+    # identity_inert, where int | str holds an int with its object)
+    if isinstance(indent, str):
+        return indent
+    if isinstance(indent, bool):
+        return " " if indent else ""
+    if isinstance(indent, int):
+        return " " * indent
+    if indent is None:
+        return ""
+    kind = "float" if isinstance(indent, float) else "list" if isinstance(indent, list) else "dict"
+    raise TypeError("can't multiply sequence by non-int of type '" + kind + "'")
+
+
 class _Encoder:
     def __init__(self, ensure_ascii: bool, allow_nan: bool, sort_keys: bool,
-                 item_separator: str, key_separator: str) -> None:
+                 item_separator: str, key_separator: str, pretty: bool, indent: str) -> None:
         self.ascii = ensure_ascii
         self.nan = allow_nan
         self.sort_keys = sort_keys
         self.item_separator = item_separator
         self.key_separator = key_separator
+        self.pretty = pretty  # (an indent was given: each item goes on its own line)
+        self.indent = indent
         self.out: list[str] = []
         self.lists: list[list[JSONValue]] = []
         self.dicts: list[dict[str, JSONValue]] = []
@@ -837,12 +856,20 @@ class _Encoder:
                 raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.lists.append(value)
             self.out.append("[")
+            separator = self.item_separator
+            if self.pretty and len(value) > 0:
+                # (CPython writes an empty container on one line, with or without an indent)
+                inner = "\n" + self.indent * (depth + 1)
+                separator += inner
+                self.out.append(inner)
             first = True
             for item in value:
                 if not first:
-                    self.out.append(self.item_separator)
+                    self.out.append(separator)
                 first = False
                 self.write(item, depth + 1)
+            if self.pretty and len(value) > 0:
+                self.out.append("\n" + self.indent * depth)
             self.out.append("]")
             self.lists.pop()
         elif isinstance(value, dict):
@@ -854,32 +881,43 @@ class _Encoder:
             self.dicts.append(value)
             self.out.append("{")
             keys = sorted(value) if self.sort_keys else list(value)
+            separator = self.item_separator
+            if self.pretty and len(keys) > 0:
+                inner = "\n" + self.indent * (depth + 1)
+                separator += inner
+                self.out.append(inner)
             first = True
             for key in keys:
                 if not first:
-                    self.out.append(self.item_separator)
+                    self.out.append(separator)
                 first = False
                 _quote(self.out, key, self.ascii)
                 self.out.append(self.key_separator)
                 self.write(value[key], depth + 1)
+            if self.pretty and len(keys) > 0:
+                self.out.append("\n" + self.indent * depth)
             self.out.append("}")
             self.dicts.pop()
 
 
 def dumps(obj: JSONValue, *, ensure_ascii: bool = True, allow_nan: bool = True,
-          sort_keys: bool = False, separators: tuple[str, str] | None = None) -> str:
+          sort_keys: bool = False, indent: JSONValue = None,
+          separators: tuple[str, str] | None = None) -> str:
     """Encode recursive JSON values; mutable container identity is preserved."""
-    item_separator = ", "
+    item_separator = ", " if indent is None else ","  # (an indented line ends without a space)
     key_separator = ": "
     if separators is not None:
         item_separator = separators[0]
         key_separator = separators[1]
-    encoder = _Encoder(ensure_ascii, allow_nan, sort_keys, item_separator, key_separator)
+    encoder = _Encoder(ensure_ascii, allow_nan, sort_keys, item_separator, key_separator, indent is not None,
+                       _indent_text(indent))
     encoder.write(obj, 0)
     return "".join(encoder.out)
 
 
 def dump(obj: JSONValue, fp: TextIO, *, ensure_ascii: bool = True, allow_nan: bool = True,
-         sort_keys: bool = False, separators: tuple[str, str] | None = None) -> None:
+         sort_keys: bool = False, indent: JSONValue = None,
+         separators: tuple[str, str] | None = None) -> None:
     """Write the text dumps() returns to fp (one write, where CPython writes it in pieces)."""
-    fp.write(dumps(obj, ensure_ascii=ensure_ascii, allow_nan=allow_nan, sort_keys=sort_keys, separators=separators))
+    fp.write(dumps(obj, ensure_ascii=ensure_ascii, allow_nan=allow_nan, sort_keys=sort_keys, indent=indent,
+                   separators=separators))
