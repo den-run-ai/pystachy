@@ -993,6 +993,8 @@ from src.pystachy_compiler.asyncgens import (
     gen_agen_close_sub as asyncgens_agen_close_sub,
     gen_agen_declare as asyncgens_agen_declare,
     gen_agen_for as asyncgens_agen_for,
+    gen_agen_aiter as asyncgens_agen_aiter,
+    gen_agen_adapter as asyncgens_agen_adapter,
     gen_agen_landed as asyncgens_agen_landed,
     gen_agen_method as asyncgens_agen_method,
     gen_agen_raised as asyncgens_agen_raised,
@@ -3543,6 +3545,12 @@ class Gen:
 
     def agen_for(self, n: Node) -> bool:
         return asyncgens_agen_for(self, n)
+
+    def agen_aiter(self, e: Node) -> Val:
+        return asyncgens_agen_aiter(self, e)
+
+    def agen_adapter(self, it: Val) -> Val:
+        return asyncgens_agen_adapter(self, it)
 
     def agen_args(self, m: str, args: list[Node]) -> None:
         return asyncgens_agen_args(self, m, args)

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import CPYSTACK, MAXNEST, TOODEEP, fail
 from src.pystachy_compiler.lexer import ESCAPES, Lexer, Tok, big_key, debug_text, string_end, utf8
-from src.pystachy_compiler.coroutines import desugar_async
+from src.pystachy_compiler.coroutines import async_first, desugar_async
 from src.pystachy_compiler.scope import Symtable
 from src.pystachy_compiler.patterns import lower_matches
 from src.pystachy_compiler.syntax import (
@@ -1824,6 +1824,7 @@ class Parser:
                         gen = start(a)
                     fl = self.line()
                     a = self.comp(a, line)
+                    async_first(a)
                     a.s = "gen"
                     if cls and len(c.kids) == n and self.peek() == ")":
                         self.invalid(fl)  # (class C(x for x in y): only a call takes one)
@@ -1980,6 +1981,7 @@ class Parser:
             e = self.nitem()
             if self.compnext():
                 e = self.comp(e, line)
+                async_first(e)
                 e.s = "gen"
             elif self.peek() == ",":
                 e = mk("tuple", "", line, [e])

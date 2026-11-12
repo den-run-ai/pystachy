@@ -1,0 +1,19 @@
+made
+count 3 starts
+got 1
+got 2
+got 3
+driver got double 0
+driver got double 1
+0 2 -1
+count 4 starts
+[0, 1, 4, 9]
+__aiter__ called
+tagged made
+['t1!', 't2!']
+count 2 starts
+count 2 starts
+count 3 starts
+[1, 0, 2]
+done
+[exit 0]

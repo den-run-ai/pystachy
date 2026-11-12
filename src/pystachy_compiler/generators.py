@@ -1356,8 +1356,11 @@ def gen_genexp_value(self, n: Node) -> Val:
             ps.append(mk("param", f".{j}", line, [noann, noann]))
             cargs.append(mk("kw", a.s, line, [mk("name", f".{j}", line, [])]) if a.kind == "kw" else mk("name", f".{j}", line, []))
         itn = mk("call", "", line, [first.kids[0]] + cargs)
+    if first.kind == "await" and first.s == "aiterc":
+        itn = mk("await", "aiterc", line, [itn])  # (its first clause is async for: its iterator, evaluated here, an async generator)
     loop = mk("for", "", line, [n.kids[1], itn, mk("block", "", line, body)])
-    d = mk("def", "<genexpr>", line, [mk("params", "0,-1", line, ps), noann, mk("block", "", line, [loop])])
+    # (an asynchronous generator expression, desugar_comp: an async def's, an async generator)
+    d = mk("def", "<genexpr>", line, [mk("params", "0,-1", line, ps), noann, mk("block", "", line, [loop])] + ([mk("deco", "async", line, [])] if n.kind == "asynccomp" else []))
     free: dict[str, bool] = {}
     closure_free(d, free)
     f = self.curfn

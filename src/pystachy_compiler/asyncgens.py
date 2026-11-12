@@ -563,3 +563,45 @@ def gen_agen_for(self, n: Node) -> bool:
     else:
         self.narrowed = {}
     return True
+
+
+def gen_agen_aiter(self, e: Node) -> Val:
+    # the iterable e of a comprehension's async for clause (an await node of kind aiterc,
+    # desugar_comp): what its __aiter__() gives, as async for checks it (await_protocol), which a
+    # for loop steps through with awaits (for_seq). An iterator object that is no async generator
+    # is stepped through by one that yields what its __anext__() gives (agen_adapter)
+    dead = self.term
+    it = self.await_protocol(mk("await", "aiter", e.line, [e]), "")
+    if self.term and not dead:
+        # (await_protocol raised CPython's TypeError: the loop, whose items have no type, would be
+        # code that never runs)
+        self.err(f"an async for clause of a comprehension over {tname(unopt(self.dry(e)))} is not supported: it is no asynchronous iterable (CPython raises TypeError)")
+    if is_agen(unopt(it.t)):
+        return it
+    return self.agen_adapter(it)
+
+
+def gen_agen_adapter(self, it: Val) -> Val:
+    # an async generator that yields what iterator object it's __anext__() gives until that raises
+    # StopAsyncIteration (the builtin class, whatever the program binds to its name: a made name),
+    # for a comprehension's async for clause (agen_aiter). Its locals' names hold a dot, as no
+    # variable's of the program can
+    line = self.line
+    noann = mk("noann", "", line, [])
+    run = "__pys_ac.run"
+    val = "__pys_ac.val"
+    stop = mk("name", "StopAsyncIteration", line, [])
+    stop.made = True
+    step = mk("block", "", line, [mk("assign", "", line, [mk("name", val, line, []), mk("await", "anext", line, [mk("name", ".0", line, [])])])])
+    end = mk("except", "", line, [stop, mk("block", "", line, [mk("assign", "", line, [mk("name", run, line, []), mk("False", "", line, [])])])])
+    each = mk("block", "else", line, [mk("expr", "", line, [mk("yield", "", line, [mk("name", val, line, [])])])])
+    loop = mk("while", "", line, [mk("name", run, line, []), mk("block", "", line, [mk("try", "", line, [step, end, each])])])
+    body = [mk("assign", "", line, [mk("name", run, line, []), mk("True", "", line, [])]), loop]
+    d = mk("def", "__aiter__", line, [mk("params", "0,-1", line, [mk("param", ".0", line, [noann, noann])]), noann, mk("block", "", line, body), mk("deco", "async", line, [])])
+    f = self.curfn
+    g = self.declare_fn(d, "")
+    self.ngenexp += 1
+    g.ll = f"@f.agen.aiter.{self.ngenexp}"
+    g.mod = f.mod
+    g.home = self.fn_home(f)
+    return self.call_fn(g, [], [self.vnode(it)])

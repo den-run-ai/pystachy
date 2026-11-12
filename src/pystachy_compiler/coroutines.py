@@ -97,7 +97,7 @@ def desugar_async(body: list[Node], aio: bool, tmps: list[int]) -> None:
 
 def desugar_walk(n: Node, aio: bool, tmps: list[int]) -> None:
     # the blocks of code n, whose async statements desugar_async rewrites where n is of an async
-    # def's own code (aio)
+    # def's own code (aio), and its comprehensions (desugar_comp)
     if n.kind == "def":
         aio = is_async(n)
         tmps = [0]
@@ -106,8 +106,71 @@ def desugar_walk(n: Node, aio: bool, tmps: list[int]) -> None:
     if n.kind == "block":
         desugar_async(n.kids, aio, tmps)
         return
+    if n.kind == "listcomp" or n.kind == "asynccomp":
+        desugar_comp(n)
     for k in n.kids:
         desugar_walk(k, aio, tmps)
+
+
+def async_first(c: Node) -> None:
+    # comprehension c, which the parser makes a generator expression (its s "gen", where "async"
+    # says that its first for clause is async for): that clause's iterable is marked (an "aiterof"
+    # node), until desugar_comp makes it an await of kind aiterc
+    if c.s == "async":
+        c.kids[2] = mk("aiterof", "", c.kids[2].line, [c.kids[2]])
+
+
+def desugar_comp(c: Node) -> None:
+    # (desugar_walk, once Symtable has checked the module, before the comprehensions in c) the
+    # iterable of each async for clause of comprehension c becomes an await node of kind aiterc:
+    # what its __aiter__() gives, an async generator that a for loop over it steps through with
+    # awaits (agen_aiter, for_seq). A generator expression with one, or with an await outside its
+    # first iterable (which the code around it evaluates), is an asynchronous generator expression,
+    # an "asynccomp" node (PEP 530: an async generator, genexp_value); any other comprehension is a
+    # "listcomp", whose awaits are the function's around it (Symtable has checked that it is async)
+    line = c.line
+    gen = c.s == "gen"
+    aio = c.kind == "asynccomp" or (gen and comp_awaits(c))
+    if c.kids[2].kind == "aiterof":
+        c.kids[2] = mk("await", "aiterc", line, [c.kids[2].kids[0]])
+    elif c.s == "async":
+        c.kids[2] = mk("await", "aiterc", line, [c.kids[2]])
+        c.s = ""
+    for x in c.kids[3:]:
+        if x.kind == "compfor" and x.s == "async":
+            x.kids[1] = mk("await", "aiterc", line, [x.kids[1]])
+            x.s = ""
+    c.kind = "asynccomp" if gen and aio else "listcomp"
+
+
+def comp_awaits(c: Node) -> bool:
+    # does generator expression c await in its own code: an await, or an asynchronous comprehension
+    # inlined in it, outside its first iterable
+    for k in [c.kids[0], c.kids[1]] + c.kids[3:]:
+        if awaits_in(k):
+            return True
+    return False
+
+
+def awaits_in(n: Node) -> bool:
+    # does code n await (comp_awaits): outside the functions it defines (but in their defaults and
+    # decorators) and the generator expressions it holds (but in their first iterables); an async
+    # for clause's aiterc is no await
+    if (n.kind == "await" and n.s != "aiterc") or (n.kind == "asynccomp" and n.s != "gen"):
+        return True
+    if n.kind == "def" or n.kind == "lambda":
+        for e in definition_time(n):
+            if awaits_in(e):
+                return True
+        return False
+    if n.kind == "class" or n.kind == "subclass":
+        return False
+    if (n.kind == "listcomp" or n.kind == "asynccomp") and n.s == "gen":
+        return awaits_in(n.kids[2])
+    for k in n.kids:
+        if awaits_in(k):
+            return True
+    return False
 
 
 def async_with(it: Node, body: list[Node], line: int, tmps: list[int]) -> list[Node]:
@@ -463,6 +526,8 @@ def gen_await_value(self, n: Node, want: str) -> Val:
     # which this coroutine runs until it returns; the value it returns is the await's (PEP 492).
     # Anything else raises CPython's TypeError here
     f = self.curfn
+    if n.s == "aiterc":
+        return self.agen_aiter(n.kids[0])  # (an async for clause's iterable, whose __aiter__() no await runs: desugar_comp)
     if not f.aio and not f.direct:
         self.err("'await' outside async function")
     if n.s != "":
