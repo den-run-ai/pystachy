@@ -199,7 +199,8 @@ def assets(version, commit, repository, image, prerelease):
         raise ValueError(f"not a full commit SHA: {commit!r}")
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository):
         raise ValueError(f"not an owner/name repository: {repository!r}")
-    if not re.fullmatch(r"[a-z0-9]+(?:[._-][a-z0-9]+)*(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+", image):
+    component = r"[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*"  # Docker's repository name grammar
+    if not re.fullmatch(rf"{component}(?:/{component})+", image):
         raise ValueError(f"not a Docker image name: {image!r}")
     base = f"https://github.com/{repository}"
     lines = [

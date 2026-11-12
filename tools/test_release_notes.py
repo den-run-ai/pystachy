@@ -148,9 +148,12 @@ class RenderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "absolute https"):
             build("See [x](y.md).\n")
         for change in ({"version": "0.4.0"}, {"commit": COMMIT[:12]}, {"repository": "pystachy"},
-                       {"image": "Example/Pystachy"}, {"image": "pystachy"}):
+                       {"image": "Example/Pystachy"}, {"image": "pystachy"}, {"image": "a/b`c"}):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 build(GOOD, **change)
+        for image in ("docker.io/my_org/py--stachy", "my__org/pystachy.v2"):
+            with self.subTest(image=image):
+                self.assertIn(f"`{image}:v9.9.9-alpha.1`", build(GOOD, image=image))
 
 
 class RefreshTests(unittest.TestCase):
