@@ -98,6 +98,8 @@ SCOPED = {
     "joinname": "its name, with joinkind",
     "jointype": "its type, with joinkind",
     "joinsrc": "the value being assigned: stmt saves, sets and restores it around the store",
+    "guessvars": "the variables of the comprehensions guess() is typing: set and restored around each element's guess",
+    "guessowner": "the function whose comprehension binds each of guessvars: set and restored with them",
     "making": "the nested compiles in progress (messages, the depth limit), which a nested compile must see",
     "template_bytes": "bytes of the active instances' signatures: a limit, which a nested compile must see",
     "lib": "declaring an imported module's function, whose errors wait for its calls: set around declare_fn",
