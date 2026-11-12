@@ -23,7 +23,8 @@ location takes is that box (class_value_box), which a type[C] location takes bac
 (class_value_unbox). A program that such a module compiled before must compile as it did, with
 all it could do with a box: where a program that names no type[C] does not compile with typed
 class objects, or stores an Any value where a class object's type was inferred, the driver
-compiles it again with the module's classes read as boxes (ClassBoxes, class_value_static).
+compiles it again with the classes read as boxes in the opted-in modules that name no type[C]
+themselves (ClassBoxes, class_value_static).
 """
 from __future__ import annotations
 from src.pystachy_compiler.diagnostics import LINES, ClassBoxes, dynamic_program, where
@@ -80,9 +81,10 @@ def gen_class_value_static(self, c: str, mod: str, line: int) -> bool:
     # is class c's class object a typed value (type[c]) where code at source line line of module
     # mod ("": not known), which opts in to dynamic Any, reads it: where it is one in other
     # modules. Else the module keeps the class box it has always made of the class there
-    # (reflection.py's refl_class_value), an Any value: as do all its reads once a program that
-    # names no type[C] does not compile with typed ones (ClassBoxes: the driver's clsany), so
-    # that the programs compiled before class objects were typed are compiled as they were
+    # (reflection.py's refl_class_value), an Any value: as do all its reads once the program
+    # does not compile with typed ones (ClassBoxes: the driver's clsany), so that the modules
+    # compiled before class objects were typed are compiled as they were. A module that names
+    # type[C] itself was not compiled then: its reads stay typed, and its errors are theirs
     if line // LINES in self.clsany or not self.class_value_named(c) or self.class_value_problem(c) != "":
         return False
     if c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$"):
@@ -93,21 +95,20 @@ def gen_class_value_static(self, c: str, mod: str, line: int) -> bool:
     m = self.classes[c].mod
     if mod != "" and m != mod and m in self.comp and mod in self.comp and self.comp[m] == self.comp[mod]:
         return False
-    self.clsused[line // LINES] = True
+    if not self.class_value_annotated(line // LINES):
+        self.clsused[line // LINES] = True
     return True
 
 
-def gen_class_value_annotated(self) -> bool:
-    # does the program name type[C] of an ordinary class C (in an annotation: nothing else
-    # subscripts type): it was not compiled before class objects were typed, so its errors are
-    # those of its typed class objects, and its type[C] locations take Any values as other typed
-    # locations do (class_value_unbox), with no ClassBoxes
+def gen_class_value_annotated(self, file: int) -> bool:
+    # does the module of source file file name type[C] of an ordinary class C (in an annotation:
+    # nothing else subscripts type): it was not compiled before class objects were typed
     if self.clsann < 0:
         self.clsann = 0
         for body in self.clsbodies:
-            if type_subscript(self, body.kids):
-                self.clsann = 1
-    return self.clsann == 1
+            if len(body.kids) > 0 and type_subscript(self, body.kids):
+                self.clsannfiles[body.kids[0].line // LINES] = True
+    return file in self.clsannfiles
 
 
 def type_subscript(self, ns: list[Node]) -> bool:
@@ -171,8 +172,8 @@ def gen_class_value_isa(self, v: Val, t: str) -> str:
 def gen_class_value_unbox(self, v: Val, t: str) -> Val:
     # Any value v as a class object of type t (type[C]): its record where v is the class box of
     # C or of a class deriving from it, else TypeError (as a typed location takes an Any value)
-    if len(self.clsused) > 0 and not self.class_value_annotated():
-        raise ClassBoxes()  # (the type was inferred of a class a module read: that module's class box)
+    if len(self.clsused) > 0:
+        raise ClassBoxes()  # (the type may be inferred of a class a module read: that module's class box)
     self.guard(self.scalar("xor", [Val(self.class_value_isa(v, t), "bool"), Val("true", "bool")]), f"TypeError: expected {typestr(t)}")
     return Val(self.mload("%ptr", self.maddr("%ptr", v.v, "1")), t)
 

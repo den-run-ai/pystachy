@@ -1414,11 +1414,13 @@ class Gen:
         self.idfull = False
         # (class_values.py) the files of modules that opt in to dynamic Any whose classes are
         # read as class boxes (the driver's, kept across passes); those that read one as a typed
-        # class object in this pass; the modules' statements, and whether one names type[C] of
-        # an ordinary class (-1: not looked for yet)
+        # class object in this pass, but those that name type[C] of an ordinary class themselves;
+        # the modules' statements, and the files of the modules that name one (clsann -1: not
+        # looked for yet)
         self.clsany: dict[int, bool] = {}
         self.clsused: dict[int, bool] = {}
         self.clsbodies: list[Node] = []
+        self.clsannfiles: dict[int, bool] = {}
         self.clsann = -1
         # Fixed for a compilation pass; dry traversal retains these program policies,
         # and a restart makes a fresh Gen before disabling hints or tracking everything.
@@ -4733,8 +4735,8 @@ class Gen:
     def class_value_static(self, c: str, mod: str, line: int) -> bool:
         return class_values_class_value_static(self, c, mod, line)
 
-    def class_value_annotated(self) -> bool:
-        return class_values_class_value_annotated(self)
+    def class_value_annotated(self, file: int) -> bool:
+        return class_values_class_value_annotated(self, file)
 
     def class_value_box(self, v: Val) -> Val:
         return class_values_class_value_box(self, v)
