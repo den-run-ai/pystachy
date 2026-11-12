@@ -2877,6 +2877,31 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
                 box = self.select(own, Val(box, "%ptr"), Val(ci.fglob[name] + ".box", "%ptr"))
                 self.dyn_id_read(v, box)
             return v
+    shadows = self.exc_shadows(ci, name) if name in ci.fflag and name not in ci.fsure else []
+    if len(shadows) > 0:
+        # an object of an exception class whose class variable shadows the field (exc_shadows)
+        # reads that class's value until it assigns the field itself: found, as for a tagged
+        # class's objects above, by the object's class, here the ExcClass it holds
+        own = self.mem_load(Val(self.fgep(o, ci.fflag[name]), "*bool")).v
+        fv = self.mem_load(Val(p.v, "*" + p.t))
+        cls = self.mem_load(Val(self.fgep(o, ci.fpos[" cls"]), "*str")).v
+        cv = fv
+        cb = box
+        assigned = own
+        for x in shadows:
+            if x.ftypes[name] != p.t:
+                self.err(f"class variable {short(x.name)}.{name} ({typestr(x.ftypes[name])}) shadowing field '{name}' of {short(ci.name)} ({typestr(p.t)}) is not supported")
+            self.xcls[x.name] = True  # (its ExcClass, which its objects hold)
+            match = self.ptr_cmp('==', Val(cls, "str"), Val(f"@x.{x.name}", "str")).v
+            self.class_default(x, name)
+            cv = Val(self.select(match, self.mem_load(Val(x.fglob[name], "*" + p.t)), cv), p.t)
+            if box != "":
+                cb = self.select(match, Val(x.fglob[name] + ".box", "%ptr"), Val(cb, "%ptr"))
+            assigned = self.scalar('or', [Val(assigned, 'bool'), Val(match, 'bool')])
+        bad = self.scalar('xor', [Val(assigned, 'bool'), Val('true', 'bool')])
+        r = self.select(own, fv, cv)
+        if box != "":
+            box = self.select(own, Val(box, "%ptr"), Val(cb, "%ptr"))
     if name in ci.fflag and name not in ci.fsure:
         f = self.fgep(o, ci.fflag[name])
         if bad == "":

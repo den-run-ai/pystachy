@@ -531,14 +531,17 @@ def gen_fl_fields(self, ci: ClassInfo) -> None:
         # assigning its own fields. Keep assignment bits in the root layout so base-typed
         # reads remain safe for every ordinary subclass, including future call paths.
         checked = (ci.tag > 0 and not f.startswith(" ")) or f in ci.fextra
-        if (checked or f in fl.unsafe or f in fl.probed or ci.name + "." + f in self.cvars) and f not in ci.fflag:
+        # (a field that an exception subclass's class variable shadows: its objects leave it
+        # unassigned, and ci's code, which reads and assigns it for them too, tests this flag)
+        shadowed = len(self.exc_shadows(ci, f)) > 0
+        if (checked or shadowed or f in fl.unsafe or f in fl.probed or ci.name + "." + f in self.cvars) and f not in ci.fflag:
             if ci.fpos[f] < nb and f in fl.unsafe:
                 # (the base's code, which reads it with no flag to test)
                 self.line = ci.node.line
                 self.err(f"{short(ci.name)}.__init__ may leave field '{f}' of {short(ci.base)} unassigned where it is read: assign it, or call super().__init__(...) first")
             ci.fflag[f] = len(ci.fields) + ci.nflag
             ci.nflag += 1
-            if not checked and f not in fl.unsafe and ci.name + "." + f not in self.cvars:
+            if not checked and not shadowed and f not in fl.unsafe and ci.name + "." + f not in self.cvars:
                 ci.fsure[f] = True  # (only hasattr tests its flag: no read finds it unassigned)
     # Identity boxes follow flags so subclasses can embed this complete prefix. A
     # provisional None field reserves a slot: later inference can make it numeric. Not where
@@ -556,6 +559,15 @@ def gen_default_home(self, ci: ClassInfo, fl: str) -> ClassInfo:
     while fl in ci.fdefault and ci.base in self.classes and fl in self.classes[ci.base].fdefault and self.classes[ci.base].fdefault[fl] is ci.fdefault[fl]:
         ci = self.classes[ci.base]
     return ci
+
+def gen_exc_shadows(self, ci: ClassInfo, fl: str) -> list[ClassInfo]:
+    # the exception classes deriving from ci whose class variable fl (Sub.fl = v, of an fl its
+    # class body binds) shadows ci's field fl: their objects read their class's value until they
+    # assign fl themselves, also through ci's code, which tests fl's flag (fl_fields) and, where
+    # it is not set, finds the object's class by its ExcClass (Gen.getfield)
+    if ci.exc == "" or fl in ci.fdefault or fl not in ci.ftypes or fl.startswith(" "):
+        return []
+    return [x for x in self.classes.values() if x is not ci and x.exc != "" and x.name + "." + fl in self.cvars and self.derives(x.name, ci.name)]
 
 def gen_fl_defaults(self, n: Node) -> list[Node]:
     # the default values a def or class statement evaluates (see hoist)
