@@ -814,9 +814,20 @@ def gen_ann_problem(self, n: Node, ret: bool) -> str:
     # why typeof(n), for a return annotation (ret), or vtype(n) fails, or "" (one that raises
     # where CPython evaluates it is the loader's error: see Loader.deftime)
     t = self.ann(n)
-    if t == "None" and not ret:
+    if t == "None" and not ret and not self.tv_none(n):
         return "None is only supported as a return type; annotate an optional value as T | None"
     return t[1:] if t.startswith("!") else ""
+
+def gen_tv_none(self, n: Node) -> bool:
+    # is annotation n a type variable that a generic class's specialization binds to None
+    # (Box[None]'s T), or a union of such and None (T | None): it types its values as None, which
+    # fields, parameters and containers hold as a null pointer
+    u = self.parse_expr(n.s) if n.kind == "str" else n
+    if u.kind == "name":
+        return self.tvar(u.s) == "None"
+    if u.kind == "binop" and u.s == "|":
+        return (self.tv_none(u.kids[0]) or u.kids[0].kind == "None") and (self.tv_none(u.kids[1]) or u.kids[1].kind == "None") and (u.kids[0].kind != "None" or u.kids[1].kind != "None")
+    return False
 
 def gen_vtype(self, n: Node) -> str:
     # the annotation of a variable, parameter or field: None alone is only a return type
@@ -935,6 +946,8 @@ def gen_opt(self, t: str, x: Node) -> str:
         return t
     if t == "exc":
         return self.ctype("opt", [t])  # (an exception or None: __exit__'s exception)
+    if t == "None" and self.tv_none(x):
+        return t  # (T | None of a T bound to None: None)
     r = self.optional(t)
     return r if r != "" else f"!None/Optional is only supported for {OPTTYPES}, not {typestr(t)}"
 
@@ -2159,6 +2172,11 @@ def gen_scan_fields(self, ci: ClassInfo, f: FnInfo, body: list[Node], known: dic
                     # gives it its type, T | None, as for a variable (see none_field)
                     t = NONEVAR
                     ci.fnone[name] = st.kids[-1]
+                    e = st.kids[-1]
+                    j = f.params.index(e.s) if e.kind == "name" and e.s in f.params else -1
+                    a = st.kids[1] if k == "annassign" else f.node.kids[0].kids[j].kids[0] if j > 0 and j < len(f.node.kids[0].kids) else e
+                    if (k == "annassign" or j > 0) and self.tv_none(a):
+                        ci.fnonetv[name] = True  # (it holds what a None type variable types: None, see none_field)
                 if t == "" and why == "":
                     why = f"cannot infer the type of field '{name}'; annotate it (self.{name}: T = ...)"
                 if t == "" and ci.mod == "":
@@ -2570,7 +2588,7 @@ def gen_none_field(self, cls: str, name: str, cmp: bool) -> str:
         if ci.ftypes[name] == NONEVAR:
             self.refine_field(ci, name, t)
         return ci.ftypes[name]
-    if not self.set_elsewhere(root, name):
+    if not self.set_elsewhere(root, name) or name in root.fnonetv:
         self.nonereads[key] = where(self.line)
         return "None"
     if cmp:

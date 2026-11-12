@@ -650,6 +650,7 @@ from src.pystachy_compiler.declarations import (
     gen_unalias_all as declarations_unalias_all,
     gen_union_members as declarations_union_members,
     gen_unpack_ann as declarations_unpack_ann,
+    gen_tv_none as declarations_tv_none,
     gen_vtype as declarations_vtype,
     gen_widens as declarations_widens,
     gen_widens_items as declarations_widens_items,
@@ -2932,6 +2933,9 @@ class Gen:
 
     def ann_problem(self, n: Node, ret: bool) -> str:
         return declarations_ann_problem(self, n, ret)
+
+    def tv_none(self, n: Node) -> bool:
+        return declarations_tv_none(self, n)
 
     def vtype(self, n: Node) -> str:
         return declarations_vtype(self, n)

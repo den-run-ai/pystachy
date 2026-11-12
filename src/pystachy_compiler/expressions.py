@@ -1161,7 +1161,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if given and soft:
             for v in items:
                 et = self.wider(et, v.t) or et
-        if et == "" or et == "None":
+        if et == "" or (et == "None" and not (given and want == "list[None]")):
+            # (a list of None that its context names list[None], as a type variable bound to None
+            # does, list[T] of Box[None]: its slots hold null pointers)
             self.err(f"cannot infer the type of {'an empty list' if len(items) == 0 else 'a list of None'}; add a type annotation (xs: list[T] = [], or -> list[T] on a function returning the list)")
         for v in items if not is_list(want) and et in self.classes else items[:0]:
             e0 = et
@@ -4898,6 +4900,9 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return Val(r if op == "in" else self.scalar('xor', [Val(r, 'bool'), Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == "str":
         a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
+    if (op == "in" or op == "not in") and a.t == "None" and is_list(b.t) and elem(b.t) == "None":
+        # (a list[None]'s items are all None: it holds None where it holds an item)
+        return self.num_cmp("!=" if op == "in" else "==", Val(self.list_len(b), "int"), Val("0", "int"))
     if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes) or (is_set(b.t) and selem(b.t) not in self.classes) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
         return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's, and no number
     kt = targs(b.t)[0] if is_dict(b.t) else selem(b.t) if is_set(b.t) else ""

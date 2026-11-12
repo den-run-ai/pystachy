@@ -258,11 +258,19 @@ def gen_bind(self, c: str, ts: list[str], given: dict[str, str]) -> dict[str, st
     init = self.classes[c].methods["__init__"].node  # (as specialize's: a template has its own)
     ps = init.kids[0].kids
     later: list[int] = []
+    nones: dict[str, int] = {}  # (a type variable that a direct None argument alone may bind: its parameter)
     for i in range(1, min(len(ps), len(ts) + 1)):
         a = ps[i].kids[0]
         if not self.names_tv(a, tvs):
             continue
         t = ts[i - 1]
+        u = self.parse_expr(a.s) if a.kind == "str" else a
+        if ps[i].kind == "param" and t == "None" and u.kind == "name" and u.s in tvs and u.s not in self.tvtuples:
+            # (None binds the variable only where no other argument does, below: Box(None) is a
+            # Box[None], as for a type checker; Pair(1, None) keeps its union fallback)
+            if u.s not in nones:
+                nones[u.s] = i
+            continue
         if ps[i].kind == "starparam":
             why = self.match_items([a] if a.kind == "starred" else [a] * len(targs(t)), targs(t), tv, tvs)  # (*args: *Ts, or *args: T)
         elif ps[i].kind == "dstarparam":
@@ -288,6 +296,12 @@ def gen_bind(self, c: str, ts: list[str], given: dict[str, str]) -> dict[str, st
             # (a private class, such as functools' cache wrapper, is not one a program names)
             hint = "" if short(c).startswith("_") else f"; or name them where the object goes (q: {short(c)}[{ints}] = {short(c)}(...)) or in the call ({short(c)}[{ints}](...))"
             self.err(f"{short(c)}() cannot bind its type variables from the argument for '{ps[i].s}', a {typestr(ts[i - 1])}: {self.match(a, ts[i - 1], dict(tv), tvs)}{hint}")
+    for x in nones:
+        if x in tv and tv[x] != "None":
+            i = nones[x]
+            self.err(f"{short(c)}() cannot bind its type variables from the argument for '{ps[i].s}', a None: '{short(x)}' would be None, which Pystachy binds no type variable to (a list or dict of None values has no type)")
+        if x not in tv and x not in given:
+            tv[x] = "None"
     for x in tvs:
         if x not in tv and x in given:
             tv[x] = given[x]

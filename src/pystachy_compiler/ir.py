@@ -603,6 +603,7 @@ class ClassInfo:
         self.ftypes: dict[str, str] = {}
         self.fdefault: dict[str, Node] = {}
         self.fnone: dict[str, Node] = {}  # field -> the value of __init__ that gave it its first value, None (Gen.none_field)
+        self.fnonetv: dict[str, bool] = {}  # the fields of those given a parameter whose type variable is bound to None (Box[None]'s self.v = v)
         self.fguess: dict[str, bool] = {}  # the fields whose type __init__'s values gave them (not annotations: Gen.join_hint)
         self.slots: list[str] = []  # literal __slots__, including inherited slots
         self.slotlimit = False  # every ordinary base and this class omit an instance dict
