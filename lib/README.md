@@ -89,7 +89,7 @@ described [below](#unchanged-cpython-files).
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
 | 🟡 `random` | Adapted CPython on a subset `_random` (`_pyrandom`) | Seeded `Random` and module functions, integers, sequences, distributions, state | Int, bool and float seeds; 63-bit `getrandbits`; no subclasses |
-| 🟡 `statistics` | Adapted CPython | `fmean`, geometric mean, medians, quantiles, mode, `covariance`, `correlation` (of floats) | Selected numeric types and APIs |
+| 🟡 `statistics` | Adapted CPython | `fmean`, geometric mean, medians, quantiles, mode, `covariance`, `linear_regression`, `correlation` (of floats) | Selected numeric types and APIs; `kde` now passes its `match` dispatch but still needs heterogeneous function storage |
 | 🟢 `colorsys` | Unchanged CPython | All conversion functions | Subset string and type rules apply |
 | 🧪 `mpz` | Experimental subset wrapper over the shared native bigint core | Explicit arbitrary-precision arithmetic, comparisons, decimal text, hashing and typed containers | Default `int` is checked 64-bit; [promoting ints](../docs/python-int.md) are a separate opt-in. See [API and limits](../docs/mpz.md) |
 

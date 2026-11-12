@@ -703,7 +703,11 @@ from src.pystachy_compiler.exceptions import (
     gen_as_type as exceptions_as_type,
     gen_assert_fails as exceptions_assert_fails,
     gen_bind_as as exceptions_bind_as,
+    gen_catch_item as exceptions_catch_item,
+    gen_catch_named as exceptions_catch_named,
     gen_catch_set as exceptions_catch_set,
+    gen_catch_test as exceptions_catch_test,
+    gen_catch_values as exceptions_catch_values,
     gen_catches as exceptions_catches,
     gen_cause as exceptions_cause,
     gen_cause_value as exceptions_cause_value,
@@ -732,6 +736,7 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_make as exceptions_exc_make,
     gen_exc_sub as exceptions_exc_sub,
     gen_exc_tables as exceptions_exc_tables,
+    gen_exc_strict as exceptions_exc_strict,
     gen_exc_test as exceptions_exc_test,
     gen_exc_tree as exceptions_exc_tree,
     gen_exc_type_of as exceptions_exc_type_of,
@@ -3928,6 +3933,21 @@ class Gen:
 
     def catch_set(self, t: Node) -> str:
         return exceptions_catch_set(self, t)
+
+    def catch_item(self, c: Node) -> Node:
+        return exceptions_catch_item(self, c)
+
+    def catch_named(self, c: Node) -> bool:
+        return exceptions_catch_named(self, c)
+
+    def catch_values(self, t: Node) -> bool:
+        return exceptions_catch_values(self, t)
+
+    def catch_test(self, e: Val, t: Node) -> Val:
+        return exceptions_catch_test(self, e, t)
+
+    def exc_strict(self, t: str) -> bool:
+        return exceptions_exc_strict(self, t)
 
     def as_type(self, h: Node) -> str:
         return exceptions_as_type(self, h)

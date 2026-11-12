@@ -1,11 +1,14 @@
-"""Cap PRs at 20 jobs, task groups at two workers, and every job at 15 minutes."""
+"""Cap PRs below 20 jobs, AOT at four shards, other groups at two, and jobs at 15 minutes."""
 
 import ast
 from collections import Counter
 import itertools
 import json
+import os
 from pathlib import Path
 import re
+import subprocess
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -13,7 +16,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 LIMIT = 15
-PR_LIMIT = 20
+PR_LIMIT = 19
 PR_EVENTS = ("pull_request", "pull_request_target")
 PR_AXIS = re.compile(
     r"\$\{\{\s*fromJSON\(github\.event_name\s*==\s*'pull_request'\s*"
@@ -88,6 +91,22 @@ def matrix_rows(job: dict, event: str) -> list[dict]:
     return rows + extra
 
 
+def selected_rows(job: dict, condition: str, event: str) -> list[dict]:
+    """Evaluate literal row ownership, rejecting syntax this control cannot model."""
+    selected = []
+    for row in matrix_rows(job, event):
+        expression = condition.replace("github.event_name", repr(event))
+        for key in ("machine", "group"):
+            expression = expression.replace("matrix." + key, repr(row.get(key)))
+        expression = ast.parse(expression.replace("&&", " and ").replace("||", " or "), mode="eval")
+        allowed = (ast.Expression, ast.BoolOp, ast.Compare, ast.Constant, ast.And, ast.Or, ast.Eq, ast.NotEq)
+        if any(not isinstance(node, allowed) for node in ast.walk(expression)):
+            raise ValueError("unsupported ownership condition")
+        if eval(compile(expression, "<row ownership>", "eval"), {"__builtins__": {}}, {}):
+            selected.append(row)
+    return selected
+
+
 def known_skip(condition: str, event: str) -> bool:
     condition = condition.strip()
     if condition.startswith("${{") and condition.endswith("}}"):
@@ -131,9 +150,12 @@ def require_pr_budget(found: dict) -> dict:
     counts, groups = pr_job_counts(found)
     if sum(counts.values()) > PR_LIMIT:
         raise ValueError(f"PR job budget {sum(counts.values())} exceeds {PR_LIMIT}: {counts}")
-    over = {name: count for name, count in groups.items() if count > 2}
+    # AOT saturates four local CPUs for almost 14 minutes with two shards. Reallocate
+    # retired PR distribution/performance slots to four AOT shards; all other groups stay two.
+    over = {name: count for name, count in groups.items()
+            if count > (4 if name == "ci.yml/pull_request/verification/native-aot" else 2)}
     if over:
-        raise ValueError(f"PR task groups exceed two workers: {over}")
+        raise ValueError(f"PR task groups exceed their worker budget: {over}")
     return counts
 
 
@@ -213,16 +235,36 @@ class BudgetTests(unittest.TestCase):
         self.assertEqual(sum(require_pr_budget(found).values()), 4)
         matrix = found["fixture.yml"]["jobs"]["verification"]["strategy"]["matrix"]
         matrix["group"].append("native-2")
-        with self.assertRaisesRegex(ValueError, "exceed two workers"):
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
             require_pr_budget(found)
         matrix["group"].pop()
         matrix["machine"] = ["x86_64", "aarch64"]
-        with self.assertRaisesRegex(ValueError, "exceed two workers"):
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
             require_pr_budget(found)
 
     def test_other_matrices_cannot_exceed_two_workers(self):
-        with self.assertRaisesRegex(ValueError, "exceed two workers"):
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
             require_pr_budget(self.workflow({"worker": ["0", "1", "2"]}))
+
+    def test_only_ci_native_aot_can_use_four_workers(self):
+        found = self.workflow({"group": [f"native-aot-{n}" for n in range(4)]})
+        workflow = found.pop("fixture.yml")
+        workflow["jobs"]["verification"] = workflow["jobs"].pop("work")
+        found["ci.yml"] = workflow
+        self.assertEqual(sum(require_pr_budget(found).values()), 4)
+        matrix = workflow["jobs"]["verification"]["strategy"]["matrix"]
+        matrix["group"].append("native-aot-4")
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
+            require_pr_budget(found)
+        matrix["group"] = [f"hosted-{n}" for n in range(4)]
+        with self.assertRaisesRegex(ValueError, "exceed their worker budget"):
+            require_pr_budget(found)
+
+    def test_twenty_pr_jobs_are_over_budget_even_without_matrices(self):
+        found = self.workflow()
+        found["fixture.yml"]["jobs"] = {f"job-{n}": {} for n in range(20)}
+        with self.assertRaisesRegex(ValueError, "PR job budget 20 exceeds 19"):
+            require_pr_budget(found)
 
     def test_unknown_dynamic_matrices_and_reusable_workflows_fail_closed(self):
         for matrix in ("${{ fromJSON(needs.plan.outputs.matrix) }}",
@@ -267,23 +309,24 @@ class LimitTests(unittest.TestCase):
         self.assertEqual(job["env"]["VERIFY_PROFILE"],
                          "${{ github.event_name == 'pull_request' && 'pr' || 'full' }}")
 
-    def test_o1_bootstrap_qualification_follows_standard_export_in_existing_x86_job(self):
-        job = workflows()["ci.yml"]["jobs"]["bootstrap"]
-        steps = job["steps"]
-        probes = [step for step in steps if "tools/check_bootstrap_tier.py" in step.get("run", "")]
-        self.assertEqual(len(probes), 1)
-        probe = probes[0]
-        self.assertEqual(probe["if"], "steps.plan.outputs.kind == 'code' && matrix.machine == 'x86_64'")
-        self.assertIn("build/ci-bootstrap", probe["run"])
-        self.assertNotIn("continue-on-error", probe)
-        self.assertNotIn("continue-on-error", job)
-        exports = [step for step in steps if "verification_bootstrap.py export build/ci-bootstrap" in step.get("run", "")]
-        self.assertEqual(len(exports), 1)
-        self.assertLess(steps.index(exports[0]), steps.index(probe))
-        reports = [step for step in steps if "build/bootstrap-tier/report.json" in step.get("with", {}).get("path", "")]
-        self.assertEqual(len(reports), 1)
-        self.assertIn("build/bootstrap-tier/make.log", reports[0]["with"]["path"])
-        self.assertIn("!cancelled()", reports[0]["if"])
+    def test_full_qualification_does_not_block_bootstrap_consumers(self):
+        jobs = workflows()["ci.yml"]["jobs"]
+        bootstrap = jobs["bootstrap"]
+        qualification = jobs["qualification"]
+        self.assertEqual(matrix_rows(bootstrap, "pull_request"), [{"machine": "x86_64"}])
+        self.assertEqual(matrix_rows(bootstrap, "push"), [{"machine": "x86_64"}, {"machine": "aarch64"}])
+        self.assertEqual(qualification["if"], "github.event_name != 'pull_request'")
+        self.assertEqual(qualification["needs"], "bootstrap")
+        self.assertEqual(jobs["verification"]["needs"], "bootstrap")
+        self.assertEqual(jobs["pr-variants"]["needs"], "bootstrap")
+        for job in (bootstrap, jobs["verification"], jobs["pr-variants"]):
+            self.assertFalse(any("check_bootstrap_tier.py" in step.get("run", "") for step in job["steps"]))
+        commands = "\n".join(step.get("run", "") for step in qualification["steps"])
+        for command in ("verification_bootstrap.py restore", "check_bootstrap_tier.py", "tools/release_smoke.py"):
+            self.assertIn(command, commands)
+        self.assertNotIn("continue-on-error", qualification)
+        self.assertNotIn("pull_request", workflows()["performance.yml"]["on"])
+        self.assertNotIn("distribution", jobs)
 
     def test_lint_overlaps_exactly_two_control_suites_on_every_event(self):
         steps = workflows()["lint.yml"]["jobs"]["lint"]["steps"]
@@ -300,37 +343,81 @@ class LimitTests(unittest.TestCase):
             "python3 tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'",
         ])
 
-    def test_generated_asan_runs_once_in_existing_x86_contracts_job(self):
+    def test_generated_asan_runs_once_on_short_pr_worker_and_full_contracts(self):
         found = workflows()
         job = found["ci.yml"]["jobs"]["verification"]
-        controls = [step for step in job["steps"] if "test_runtime_asan.py" in step.get("run", "")]
+        controls = [step for step in job["steps"] if "-p test_runtime_asan.py" in step.get("run", "")]
         self.assertEqual(len(controls), 1)
         control = controls[0]
-        self.assertEqual(control["if"], "matrix.group == 'contracts' && matrix.machine == 'x86_64'")
         self.assertEqual(job["env"]["PYSTACHY_LLVM"], "/usr/lib/llvm-18/bin")
         self.assertEqual(control["run"].splitlines(), [
             "sudo apt-get update && sudo apt-get install -y libclang-rt-18-dev",
             "python3 -m unittest discover -s tools -p test_runtime_asan.py -v",
         ])
         for event in ("pull_request", "push", "workflow_dispatch"):
-            self.assertEqual(sum(row["group"] == "contracts" and row["machine"] == "x86_64"
-                                 for row in matrix_rows(job, event)), 1)
+            group = "safety-1" if event == "pull_request" else "contracts"
+            self.assertEqual(selected_rows(job, control["if"], event),
+                             [{"machine": "x86_64", "group": group}])
         self.assertNotIn("continue-on-error", control)
         self.assertNotIn("continue-on-error", job)
         toolchains = [step for step in job["steps"] if "tools/setup.sh --minimal" in step.get("run", "")]
         self.assertEqual(len(toolchains), 1)
         self.assertLess(job["steps"].index(toolchains[0]), job["steps"].index(control))
 
-    def test_lint_runtime_discovery_omits_only_asan_and_preserves_failure(self):
-        steps = workflows()["lint.yml"]["jobs"]["lint"]["steps"]
-        controls = [step for step in steps if "test_runtime_*.py" in step.get("run", "")]
-        self.assertEqual(len(controls), 1)
-        control = controls[0]
-        self.assertNotIn("if", control)
-        self.assertNotIn("continue-on-error", control)
-        self.assertIn('PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 -', control["run"])
-        self.assertIn("<<'PY'\n", control["run"])
-        script = control["run"].split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+    def test_runtime_controls_use_short_existing_workers_once_per_event(self):
+        found = workflows()
+        jobs = found["ci.yml"]["jobs"]
+        lint_commands = "\n".join(step.get("run", "") for step in found["lint.yml"]["jobs"]["lint"]["steps"])
+        self.assertNotIn("test_runtime_*.py", lint_commands)
+        self.assertNotIn("check_cpu_buffers.sh", lint_commands)
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            selected = []
+            for name in ("verification", "pr-variants"):
+                job = jobs[name]
+                controls = [step for step in job["steps"] if "test_runtime_*.py" in step.get("run", "")]
+                self.assertEqual(len(controls), 1, name)
+                control = controls[0]
+                self.assertNotIn("continue-on-error", control)
+                self.assertNotIn("continue-on-error", job)
+                self.assertEqual(job["env"]["PYSTACHY_LLVM"], "/usr/lib/llvm-18/bin")
+                prior = "tests/verify.sh" if name == "verification" else "tools/pr_variants.py"
+                worker = next(step for step in job["steps"] if prior in step.get("run", ""))
+                self.assertLess(job["steps"].index(worker), job["steps"].index(control))
+                job_condition = job["if"].split("&&")[0] if name == "pr-variants" else "True"
+                for row in matrix_rows(job, event):
+                    condition = "(" + job_condition + ") && (" + control["if"] + ")"
+                    condition = condition.replace("github.event_name", repr(event))
+                    for key in ("machine", "group"):
+                        condition = condition.replace("matrix." + key, repr(row.get(key)))
+                    condition = condition.replace("matrix.worker", str(row.get("worker")))
+                    condition = condition.replace("&&", " and ").replace("||", " or ")
+                    expression = ast.parse(condition, mode="eval")
+                    allowed = (ast.Expression, ast.BoolOp, ast.Compare, ast.Constant, ast.And, ast.Or, ast.Eq)
+                    self.assertTrue(all(isinstance(node, allowed) for node in ast.walk(expression)), condition)
+                    if eval(compile(expression, "<runtime-controls condition>", "eval"), {"__builtins__": {}}, {}):
+                        selected.append((name, row.get("machine"), row.get("group"), row.get("worker")))
+            expected = [("pr-variants", None, None, "1")] if event == "pull_request" else [
+                ("verification", "x86_64", "gc-jit-0", None)]
+            with self.subTest(event=event):
+                self.assertEqual(selected, expected)
+
+    def test_runtime_discovery_omits_only_asan_and_preserves_native_controls_and_failure(self):
+        jobs = workflows()["ci.yml"]["jobs"]
+        controls = [step for name in ("verification", "pr-variants") for step in jobs[name]["steps"]
+                    if "test_runtime_*.py" in step.get("run", "")]
+        self.assertEqual(len(controls), 2)
+        self.assertEqual(controls[0]["run"], controls[1]["run"])
+        command = controls[0]["run"]
+        self.assertTrue(command.startswith("sudo apt-get update\nsudo apt-get install -y libclang-rt-18-dev\n"))
+        self.assertIn('PYSTACHY_CACHE_TEST_LLVM="$PYSTACHY_LLVM" python3 -', command)
+        self.assertIn("<<'PY'\n", command)
+        script, native = command.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)
+        self.assertEqual(native.splitlines(), [
+            'PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \\',
+            "  tools/check_cpu_buffers.sh '-fsanitize=address,undefined'",
+            'PY=python3 CC="$PYSTACHY_LLVM/clang" ASAN_OPTIONS=detect_leaks=1 \\',
+            "  tools/check_cpu_buffers.sh --negative-control '-fsanitize=address,undefined'",
+        ])
         paths = [*sorted((ROOT / "tools").glob("test_runtime_*.py")), Path("test_runtime_added.py")]
         self.assertIn("test_runtime_asan.py", [path.name for path in paths])
         expected = [path.name for path in paths if path.name != "test_runtime_asan.py"]
@@ -340,29 +427,68 @@ class LimitTests(unittest.TestCase):
                     patch.object(unittest, "TextTestRunner") as runner:
                 runner.return_value.run.return_value.wasSuccessful.return_value = success
                 with self.assertRaises(SystemExit) as raised:
-                    exec(compile(script, "<Lint runtime discovery>", "exec"), {})
+                    exec(compile(script, "<CI runtime discovery>", "exec"), {})
                 self.assertEqual(raised.exception.code, not success)
                 self.assertCountEqual(discover.call_args_list,
                                       [unittest.mock.call("tools", pattern=name) for name in expected])
 
-    def test_native_pytest_parity_runs_once_with_oracle_in_existing_x86_hosted_job(self):
+    def test_runtime_setup_failures_stop_before_controls(self):
+        job = workflows()["ci.yml"]["jobs"]["verification"]
+        control = next(step for step in job["steps"] if "test_runtime_*.py" in step.get("run", ""))
+        setup = control["run"].split("PYSTACHY_CACHE_TEST_LLVM=", 1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "calls"
+            sudo = root / "sudo"
+            sudo.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$SETUP_LOG"\n'
+                            'if [ "$2" = "$FAIL_STAGE" ]; then exit 23; fi\nexit 0\n')
+            sudo.chmod(0o755)
+            for stage in ("update", "install", ""):
+                with self.subTest(stage=stage):
+                    log.write_text("")
+                    env = dict(os.environ, PATH=directory + os.pathsep + os.environ["PATH"],
+                               SETUP_LOG=str(log), FAIL_STAGE=stage)
+                    completed = subprocess.run(["bash", "--noprofile", "--norc", "-e", "-o", "pipefail", "-c",
+                                                setup + 'printf "controls\\n" >> "$SETUP_LOG"\n'],
+                                               env=env, capture_output=True, text=True, timeout=10)
+                    self.assertEqual(completed.returncode, 23 if stage else 0, completed.stderr)
+                    expected = ["apt-get update"]
+                    if stage != "update":
+                        expected.append("apt-get install -y libclang-rt-18-dev")
+                    if not stage:
+                        expected.append("controls")
+                    self.assertEqual(log.read_text().splitlines(), expected)
+
+    def test_native_pytest_parity_runs_once_with_oracle_on_short_pr_worker(self):
         found = workflows()
         job = found["ci.yml"]["jobs"]["verification"]
         steps = job["steps"]
         probes = [step for step in steps if "make test-pytest-native" in step.get("run", "")]
         self.assertEqual(len(probes), 1)
         probe = probes[0]
-        self.assertEqual(probe["run"], "make test-pytest-native")
-        self.assertEqual(probe["if"], "matrix.group == 'hosted' && matrix.machine == 'x86_64'")
+        self.assertEqual(probe["run"], 'make test-pytest-native PYTEST_NATIVE_COMPILER="$PWD/build/verify/pystachy2"')
+        self.assertEqual(probe["env"]["PYSTACHY_HOME"], "${{ github.workspace }}")
         self.assertNotIn("continue-on-error", probe)
         self.assertNotIn("continue-on-error", job)
         for event in ("pull_request", "push", "workflow_dispatch"):
             with self.subTest(event=event):
-                self.assertEqual(sum(row["group"] == "hosted" and row["machine"] == "x86_64"
-                                     for row in matrix_rows(job, event)), 1)
+                group = "opt-in" if event == "pull_request" else "hosted"
+                self.assertEqual(selected_rows(job, probe["if"], event),
+                                 [{"machine": "x86_64", "group": group}])
         oracles = [step for step in steps if "/^pytest==/p" in step.get("run", "")]
         self.assertEqual(len(oracles), 1)
-        self.assertIn("matrix.group == 'hosted'", oracles[0]["if"])
+        workloads = [step for step in steps if "make test-pytest-workloads" in step.get("run", "")]
+        self.assertEqual(len(workloads), 1)
+        self.assertNotIn("continue-on-error", workloads[0])
+        for event in ("pull_request", "push", "workflow_dispatch"):
+            machines = ["x86_64"] if event == "pull_request" else ["x86_64", "aarch64"]
+            group = "opt-in" if event == "pull_request" else "hosted"
+            self.assertCountEqual(selected_rows(job, workloads[0]["if"], event),
+                                  [{"machine": machine, "group": group} for machine in machines])
+            self.assertCountEqual(selected_rows(job, oracles[0]["if"], event),
+                                  [{"machine": machine, "group": owner}
+                                   for machine in machines for owner in (group, "benchmarks")])
+        self.assertLess(steps.index(oracles[0]), steps.index(workloads[0]))
         self.assertIn("tools/requirements-dev.txt", oracles[0]["run"])
         self.assertLess(steps.index(oracles[0]), steps.index(probe))
         self.assertNotIn("continue-on-error", oracles[0])

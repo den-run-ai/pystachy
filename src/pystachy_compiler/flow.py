@@ -668,6 +668,47 @@ def gen_user_call(self, n: Node) -> bool:
             return True
     return False
 
+def walrus_ran(e: Node, out: dict[str, bool]) -> None:
+    # the names a := in expression e binds wherever e is evaluated to its end: not in the
+    # operands of and/or after the first, the arms of an if-else, the comparisons of a chain
+    # after the first, a comprehension's clauses past its first iterable or a lambda (as
+    # gen_fl_expr has them)
+    k = e.kind
+    if k == "lambda":
+        return
+    if k == "listcomp":
+        walrus_ran(e.kids[2], out)
+        return
+    if k == "walrus":
+        walrus_ran(e.kids[0], out)
+        out[e.s] = True
+        return
+    n = 1 if k == "boolop" or k == "ifexp" else 2 if k == "cmp" else len(e.kids)
+    for c in e.kids[:n]:
+        walrus_ran(c, out)
+
+
+def walrus_true(e: Node, out: dict[str, bool]) -> None:
+    # the names a := in test e binds wherever e is true: an and is true only where each of its
+    # operands ran and was true; an or where one operand was true after the operands before it
+    # ran (what those cases have in common)
+    if e.kind == "boolop" and e.s == "and":
+        for c in e.kids:
+            walrus_true(c, out)
+    elif e.kind == "boolop":
+        before: dict[str, bool] = {}
+        common: dict[str, bool] = {}
+        for i in range(len(e.kids)):
+            here = dict(before)
+            walrus_true(e.kids[i], here)
+            common = here if i == 0 else {nm: True for nm in common if nm in here}
+            walrus_ran(e.kids[i], before)
+        for nm in common:
+            out[nm] = True
+    else:
+        walrus_ran(e, out)
+
+
 def gen_fl_stmts(self, fl: Flow, body: list[Node]) -> None:
     for st in body:
         self.fl_stmt(fl, st)
@@ -693,6 +734,10 @@ def gen_fl_stmt(self, fl: Flow, n: Node) -> None:
         mark = len(fl.log)
         if f != "" and not neg:
             fl.put("." + f)
+        sure: dict[str, bool] = {}
+        walrus_true(n.kids[0], sure)  # (the branch where the test is true has what its := bound there)
+        for nm in sure:
+            fl.put(nm)
         self.fl_stmts(fl, n.kids[1].kids)
         then = fl.since(mark)
         fl.undo(mark)
@@ -930,8 +975,14 @@ def gen_fl_expr(self, fl: Flow, e: Node) -> None:
             self.fl_expr(fl, e.kids[2])
             fl.join(then, mark)
         else:
-            for c in e.kids[n:]:
-                self.fl_expr(fl, c)
+            for i in range(n, len(e.kids)):
+                if k == "boolop" and e.s == "and":
+                    # (an operand of and runs only where the one before it was true)
+                    sure: dict[str, bool] = {}
+                    walrus_true(e.kids[i - 1], sure)
+                    for nm in sure:
+                        fl.put(nm)
+                self.fl_expr(fl, e.kids[i])
             fl.undo(mark)
     elif fl.probe(e) != "":
         # (hasattr(self, "f") reads f's flag and lets self escape no further)
