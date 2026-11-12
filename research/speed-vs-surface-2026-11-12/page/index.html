@@ -152,8 +152,8 @@
       <span class="pz-key"><i class="pz-sw" data-color="7"></i>other</span>
     </div>
     <div class="pz-chart" id="blockers" data-draw="blockers" data-source="samples" role="img" aria-label="Stacked area of CPython test methods by first compiler error category over time"></div>
-    <h3 class="pz-subhead">Newly passing methods at each sampled commit, by what blocked them at the previous one</h3>
-    <div class="pz-legend">
+    <h3 class="pz-subhead" id="unlocks-head">Newly passing methods at each sampled commit, by what blocked them at the previous one</h3>
+    <div class="pz-legend" id="unlocks-legend">
       <span class="pz-key"><i class="pz-sw" data-color="0"></i>missing library</span>
       <span class="pz-key"><i class="pz-sw" data-color="1"></i>unimplemented syntax</span>
       <span class="pz-key"><i class="pz-sw" data-color="4"></i>static typing</span>
@@ -161,7 +161,7 @@
       <span class="pz-key"><i class="pz-sw" data-color="7"></i>other, or wrong output before</span>
     </div>
     <div class="pz-chart" id="unlocks" data-draw="unlocks" data-source="unlocks" role="img" aria-label="Stacked columns of newly passing methods by their previous blocker category, per sampled interval"></div>
-    <h3 class="pz-subhead">Most common first errors at the latest commit</h3>
+    <h3 class="pz-subhead" id="blockers-table-head">Most common first errors at the latest commit</h3>
     <div class="pz-table-wrap">
       <table class="pz-table" id="blockers-table" data-source="blockers_head" data-row-key="rank">
         <thead><tr><th data-field="rank" class="pz-num">#</th><th data-field="message">First compiler error</th><th data-field="category">Cause</th><th data-field="methods" class="pz-num">Methods</th></tr></thead>

@@ -1,0 +1,16 @@
+rank,message,category,methods
+1,cannot import name 'member' from 'enum',library,724
+2,a class inside a function is not supported,dynamic,365
+3,module 'configparser' is not supported: it is not a builtin module,library,288
+4,cannot infer the type of field 'set'; annotate it (self.set: T = ...),typing,253
+5,module 'pickle' is not supported: it is not a builtin module,dynamic,238
+6,module 'decimal' is not supported: it is not a builtin module,library,233
+7,'match' statements are not supported,syntax,216
+8,unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class,dynamic,177
+9,cannot import name 'verify' from 'enum',library,151
+10,module 'gc' is not supported: it is not a builtin module,dynamic,141
+11,module '_pyio' is not supported: it is not a builtin module,library,134
+12,module 'locale' is not supported: it is not a builtin module,library,127
+13,module 'pprint' is not supported: it is not a builtin module,library,95
+14,inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object),dynamic,87
+15,cannot import name 'TemporaryFile' from 'tempfile',library,87

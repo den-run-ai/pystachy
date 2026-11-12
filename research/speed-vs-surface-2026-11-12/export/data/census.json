@@ -1,0 +1,366 @@
+[
+{
+"benchmark": "2to3",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'subprocess' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "argparse",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "unsupported type annotation"
+},
+{
+"benchmark": "async_generators",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "async functions are not supported"
+},
+{
+"benchmark": "async_tree",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'asyncio' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "asyncio_tcp",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'asyncio' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "barnes_hut",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "cannot infer the type of field 'particles'; annotate it (self.particles: T = ...)"
+},
+{
+"benchmark": "base64",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'base64' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "bpe_tokeniser",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "cannot infer the type of field '_decoder'; annotate it (self._decoder: T = ...)"
+},
+{
+"benchmark": "chaos",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "cannot infer the type of class attribute '__rmul__'; annotate it (__rmul__: T = ...)"
+},
+{
+"benchmark": "comprehensions",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "cannot infer the type of 'widgets', an empty list so far: annotate it (widgets: list[T] = [])"
+},
+{
+"benchmark": "concurrent_imap",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'multiprocessing' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "coroutines",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "async functions are not supported"
+},
+{
+"benchmark": "crypto_pyaes",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'pyaes' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "decimal_factorial",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'decimal' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "decimal_pi",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'decimal' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "deepcopy",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "unsupported type annotation"
+},
+{
+"benchmark": "deltablue",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
+},
+{
+"benchmark": "fannkuch",
+"ported": true,
+"compiles_unmodified_at_head": true,
+"first_compiled": "2026-10-16T18:56:15Z",
+"head_first_error": ""
+},
+{
+"benchmark": "float",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "cannot infer the type of field 'x'; annotate it (self.x: T = ...)"
+},
+{
+"benchmark": "gc_collect",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'gc' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "gc_traversal",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'gc' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "generators",
+"ported": true,
+"compiles_unmodified_at_head": true,
+"first_compiled": "2026-10-16T18:56:15Z",
+"head_first_error": ""
+},
+{
+"benchmark": "go",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "cannot infer the type of field 'pos_child'; annotate it (self.pos_child: T = ...)"
+},
+{
+"benchmark": "hexiom",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "class attribute 'HIGHEST_VALUE_STRATEGY' of 'Done' used in a class-body default is not supported"
+},
+{
+"benchmark": "json_dumps",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "cannot infer the type of an empty dict; add a type annotation (d: dict[K, V] = {}, or -> dict[K, V] on a function returning the dict)"
+},
+{
+"benchmark": "json_loads",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "expected int, got str"
+},
+{
+"benchmark": "logging",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "expected <function bench_silent>, got <function bench_simple_output> (each function is a type of its own: a variable, a list's items or a "
+},
+{
+"benchmark": "mdp",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'fractions' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "meteor_contest",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "expected int, got float"
+},
+{
+"benchmark": "nbody",
+"ported": true,
+"compiles_unmodified_at_head": true,
+"first_compiled": "2026-10-16T18:56:15Z",
+"head_first_error": ""
+},
+{
+"benchmark": "nqueens",
+"ported": true,
+"compiles_unmodified_at_head": true,
+"first_compiled": "2026-10-16T18:56:15Z",
+"head_first_error": ""
+},
+{
+"benchmark": "pathlib",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "'pathlib.PosixPath' object has no method 'stat'"
+},
+{
+"benchmark": "pickle",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'pickle' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "pidigits",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "map() is supported as the argument of list(), tuple() (with scalar or optional scalar items), bytes(), sorted(), sum(), min(), max(), any"
+},
+{
+"benchmark": "pprint",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'pprint' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "pyflate",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'hashlib' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "python_startup",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'subprocess' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "raytrace",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'array' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "regex_compile",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "cannot infer the type of 'regexes', which capture_compile() reads, where it is defined: annotate it (regexes: T = ...)"
+},
+{
+"benchmark": "regex_dna",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "unsupported call bytearray()"
+},
+{
+"benchmark": "regex_effbot",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "type <function bench_regex_effbot> has no attribute 'data'"
+},
+{
+"benchmark": "regex_v8",
+"ported": true,
+"compiles_unmodified_at_head": true,
+"first_compiled": "2026-10-13T06:45:33Z",
+"head_first_error": ""
+},
+{
+"benchmark": "richards",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)"
+},
+{
+"benchmark": "richards_super",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "inheritance with generic class templates is not supported: annotate __init__ parameters with concrete types (not Any or object)"
+},
+{
+"benchmark": "scimark",
+"ported": true,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'array' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "spectral_norm",
+"ported": true,
+"compiles_unmodified_at_head": true,
+"first_compiled": "2026-10-20T11:11:26Z",
+"head_first_error": ""
+},
+{
+"benchmark": "sqlite_synth",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'sqlite3' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "telco",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'decimal' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "tomli_loads",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'tomli' is not supported: it is not a builtin module"
+},
+{
+"benchmark": "typing_runtime_protocols",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "unsupported base class: single inheritance requires a previously declared ordinary class or a supported exception class"
+},
+{
+"benchmark": "unpack_sequence",
+"ported": true,
+"compiles_unmodified_at_head": true,
+"first_compiled": "2026-10-16T18:56:15Z",
+"head_first_error": ""
+},
+{
+"benchmark": "xml_etree",
+"ported": false,
+"compiles_unmodified_at_head": false,
+"first_compiled": "",
+"head_first_error": "module 'xml' is not supported: it is not a builtin module"
+}
+]

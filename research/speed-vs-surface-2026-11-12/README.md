@@ -86,6 +86,9 @@ excluded: AOT removes its timed loop.
 
 ## Files
 
+- `export/`: the report for offline reading: `report.md` (renders on GitHub with its
+  images), `report.html` (self-contained, works offline), `report.pdf`, one PNG per
+  chart in `images/`, and every dataset as CSV and JSON in `data/`.
 - `commits.txt`: sampled commits (label, SHA).
 - `data/*.json`: the rows charted on the dashboard (`samples`, `speedups`,
   `history` for all 660 first-parent commits, `blockers_head`, `unlocks`, `census`).

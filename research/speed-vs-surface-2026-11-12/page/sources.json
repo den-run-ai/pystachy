@@ -1,0 +1,52 @@
+[
+ {
+  "id": "samples",
+  "title": "Sampled commits",
+  "description": "One row per sampled commit on main from 7 October to 11 November 2026: CPython test methods passing, first-error causes, benchmarks that work, source size and compiler size."
+ },
+ {
+  "id": "speedups",
+  "title": "AOT speed per benchmark and commit",
+  "description": "Median AOT time of each benchmark at each sampled commit and of CPython 3.13.18 on the same source, measured pinned to one core on an idle 4-vCPU VM; speedup is CPython's time over the commit's."
+ },
+ {
+  "id": "history",
+  "title": "Source size at every commit on main",
+  "description": "Lines of compiler, shipped library and runtime source, and differential test counts, at each of the 660 first-parent commits on main."
+ },
+ {
+  "id": "blockers_head",
+  "title": "Most common first errors, latest commit",
+  "description": "The 15 most frequent first compiler errors among the CPython test methods v0.4.0-alpha.5 rejects, with the cause each was assigned."
+ },
+ {
+  "id": "unlocks",
+  "title": "Newly passing methods per sampled commit",
+  "description": "Methods that pass at a sampled commit but not at the previous one, by the cause of their first error at the previous one."
+ },
+ {
+  "id": "census",
+  "title": "Unmodified upstream pyperformance files",
+  "description": "Whether each of the 52 pyperformance 1.14.0 benchmark files compiles with only pyperf's runner replaced, the first sampled commit that compiled it, and its first error at the latest commit."
+ },
+ {
+  "id": "changes",
+  "title": "Largest speed changes and their causes",
+  "description": "The biggest AOT time changes between consecutive sampled commits, with the merge that caused each where a bisection over the first-parent merges in between found it, or the merges the interval contains."
+ },
+ {
+  "id": "overlay_head",
+  "title": "Latest commit with CPython's standard library added",
+  "description": "Where the methods blocked by a missing library piece stop when CPython 3.13.16's pure-Python standard library is on the import path, at v0.4.0-alpha.5."
+ },
+ {
+  "id": "perf_index",
+  "title": "Performance index per commit (calculated)",
+  "description": "Geometric mean of the per-benchmark AOT speedups over CPython 3.13 at each sampled commit: over the 16-port pyperformance core set where all 16 were measured, and over the six day-one microbenchmarks."
+ },
+ {
+  "id": "findings",
+  "title": "Findings since v0.1.0-alpha.2 (calculated)",
+  "description": "Methods passing at v0.1.0-alpha.2 and gained since, compiler lines added since, the share of typing and dynamic-model first errors in language tests at the latest commit, and methods unlocked from each since the release."
+ }
+]

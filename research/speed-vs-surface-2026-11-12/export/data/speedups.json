@@ -1,0 +1,8072 @@
+[
+{
+"label": "1007-2309_4f7d51c5",
+"date": "2026-10-08T06:09:58Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.036175,
+"speedup": 23.8143
+},
+{
+"label": "1007-2309_4f7d51c5",
+"date": "2026-10-08T06:09:58Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038161,
+"speedup": 29.6671
+},
+{
+"label": "1007-2309_4f7d51c5",
+"date": "2026-10-08T06:09:58Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.032563,
+"speedup": 48.2573
+},
+{
+"label": "1007-2309_4f7d51c5",
+"date": "2026-10-08T06:09:58Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.165652,
+"speedup": 4.5608
+},
+{
+"label": "1007-2309_4f7d51c5",
+"date": "2026-10-08T06:09:58Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.01589,
+"speedup": 69.3008
+},
+{
+"label": "1007-2309_4f7d51c5",
+"date": "2026-10-08T06:09:58Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.055665,
+"speedup": 3.249
+},
+{
+"label": "1009-2236_caf100d8",
+"date": "2026-10-10T05:36:22Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.035875,
+"speedup": 24.0129
+},
+{
+"label": "1009-2236_caf100d8",
+"date": "2026-10-10T05:36:22Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038457,
+"speedup": 29.4387
+},
+{
+"label": "1009-2236_caf100d8",
+"date": "2026-10-10T05:36:22Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.032608,
+"speedup": 48.1912
+},
+{
+"label": "1009-2236_caf100d8",
+"date": "2026-10-10T05:36:22Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.169274,
+"speedup": 4.4632
+},
+{
+"label": "1009-2236_caf100d8",
+"date": "2026-10-10T05:36:22Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016001,
+"speedup": 68.8198
+},
+{
+"label": "1009-2236_caf100d8",
+"date": "2026-10-10T05:36:22Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.055318,
+"speedup": 3.2693
+},
+{
+"label": "1009-2236_caf100d8",
+"date": "2026-10-10T05:36:22Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.043169,
+"speedup": 13.4484
+},
+{
+"label": "1010-1113_3542d631",
+"date": "2026-10-10T18:13:11Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.035657,
+"speedup": 24.1602
+},
+{
+"label": "1010-1113_3542d631",
+"date": "2026-10-10T18:13:11Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038183,
+"speedup": 29.6497
+},
+{
+"label": "1010-1113_3542d631",
+"date": "2026-10-10T18:13:11Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.03196,
+"speedup": 49.1676
+},
+{
+"label": "1010-1113_3542d631",
+"date": "2026-10-10T18:13:11Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.178737,
+"speedup": 4.2269
+},
+{
+"label": "1010-1113_3542d631",
+"date": "2026-10-10T18:13:11Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015809,
+"speedup": 69.6555
+},
+{
+"label": "1010-1113_3542d631",
+"date": "2026-10-10T18:13:11Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.055507,
+"speedup": 3.2582
+},
+{
+"label": "1010-1113_3542d631",
+"date": "2026-10-10T18:13:11Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.043004,
+"speedup": 13.5
+},
+{
+"label": "1011-2353_bd56b374",
+"date": "2026-10-12T06:53:32Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.03576,
+"speedup": 24.0906
+},
+{
+"label": "1011-2353_bd56b374",
+"date": "2026-10-12T06:53:32Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.03821,
+"speedup": 29.6287
+},
+{
+"label": "1011-2353_bd56b374",
+"date": "2026-10-12T06:53:32Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.032139,
+"speedup": 48.8936
+},
+{
+"label": "1011-2353_bd56b374",
+"date": "2026-10-12T06:53:32Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.174405,
+"speedup": 4.3319
+},
+{
+"label": "1011-2353_bd56b374",
+"date": "2026-10-12T06:53:32Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015623,
+"speedup": 70.4836
+},
+{
+"label": "1011-2353_bd56b374",
+"date": "2026-10-12T06:53:32Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.056664,
+"speedup": 3.1917
+},
+{
+"label": "1011-2353_bd56b374",
+"date": "2026-10-12T06:53:32Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.043074,
+"speedup": 13.4779
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.026524,
+"speedup": 21.7164
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.31629,
+"speedup": 1.5838
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.034983,
+"speedup": 24.6257
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038212,
+"speedup": 29.6271
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.032172,
+"speedup": 48.8435
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.171413,
+"speedup": 4.4075
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015601,
+"speedup": 70.5865
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.05796,
+"speedup": 3.1203
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.042806,
+"speedup": 13.5624
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 1.477174,
+"speedup": 0.2158
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.02396,
+"speedup": 21.5946
+},
+{
+"label": "1012-2345_535a6f14",
+"date": "2026-10-13T06:45:33Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010725,
+"speedup": 55.4153
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.026405,
+"speedup": 21.8144
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.30773,
+"speedup": 1.6278
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.034838,
+"speedup": 24.7279
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.039179,
+"speedup": 28.8963
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.031955,
+"speedup": 49.1763
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.1755,
+"speedup": 4.3049
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.01565,
+"speedup": 70.3652
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.056151,
+"speedup": 3.2208
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.0429,
+"speedup": 13.5326
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 1.066083,
+"speedup": 0.299
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.023377,
+"speedup": 22.1329
+},
+{
+"label": "1013-1917_438565eb",
+"date": "2026-10-14T02:17:31Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010549,
+"speedup": 56.3419
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.026182,
+"speedup": 21.9999
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.297164,
+"speedup": 1.6857
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.035193,
+"speedup": 24.4786
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038936,
+"speedup": 29.0766
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.031487,
+"speedup": 49.9073
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.166306,
+"speedup": 4.5428
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.01574,
+"speedup": 69.9598
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.05577,
+"speedup": 3.2428
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.042841,
+"speedup": 13.5513
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 1.096557,
+"speedup": 0.2907
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.022754,
+"speedup": 22.7394
+},
+{
+"label": "1014-0510_aad4f1c2",
+"date": "2026-10-14T03:10:23Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010566,
+"speedup": 56.2495
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.025727,
+"speedup": 22.3887
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.025517,
+"speedup": 14.4226
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.036105,
+"speedup": 13.9
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.034446,
+"speedup": 13.0572
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.058286,
+"speedup": 7.3733
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.306533,
+"speedup": 1.6342
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.035888,
+"speedup": 24.0047
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.039058,
+"speedup": 28.9856
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.035503,
+"speedup": 44.2609
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.171059,
+"speedup": 4.4166
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015946,
+"speedup": 69.0582
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.057998,
+"speedup": 3.1183
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.042989,
+"speedup": 13.5048
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.174806,
+"speedup": 2.6711
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.044191,
+"speedup": 12.5952
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 1.509452,
+"speedup": 0.3717
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 1.073317,
+"speedup": 0.3425
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 1.108961,
+"speedup": 0.2874
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.010422,
+"speedup": 59.9004
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.008915,
+"speedup": 83.5883
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.02114,
+"speedup": 24.4755
+},
+{
+"label": "1015-2123_bdc20a24",
+"date": "2026-10-15T19:23:53Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010515,
+"speedup": 56.5228
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.02841,
+"speedup": 20.2746
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.769406,
+"speedup": 4.1662
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.024975,
+"speedup": 14.736
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.147879,
+"speedup": 3.2952
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034768,
+"speedup": 14.4347
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.107014,
+"speedup": 2.0501
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.032106,
+"speedup": 14.009
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.054333,
+"speedup": 7.9097
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.299507,
+"speedup": 1.6725
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.035914,
+"speedup": 23.9869
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.03786,
+"speedup": 29.9032
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.032648,
+"speedup": 48.1317
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.171437,
+"speedup": 4.4069
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015574,
+"speedup": 70.7089
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.058801,
+"speedup": 3.0757
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.042887,
+"speedup": 13.5368
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.170804,
+"speedup": 2.7337
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.038177,
+"speedup": 14.5794
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 1.484452,
+"speedup": 0.378
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 1.042626,
+"speedup": 0.3526
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 1.043118,
+"speedup": 0.3056
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008906,
+"speedup": 70.1004
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.008912,
+"speedup": 83.6133
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.021625,
+"speedup": 23.9267
+},
+{
+"label": "1016-2056_23791590",
+"date": "2026-10-16T18:56:15Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010464,
+"speedup": 56.8006
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.025117,
+"speedup": 22.9331
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.755598,
+"speedup": 4.2423
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.023754,
+"speedup": 15.4936
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.141557,
+"speedup": 3.4424
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.035419,
+"speedup": 14.1694
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.127393,
+"speedup": 1.7221
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.032738,
+"speedup": 13.7388
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.053916,
+"speedup": 7.971
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.303641,
+"speedup": 1.6498
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.045226,
+"speedup": 19.0481
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037833,
+"speedup": 29.9238
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.033597,
+"speedup": 46.7729
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.168629,
+"speedup": 4.4803
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015798,
+"speedup": 69.7059
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.059296,
+"speedup": 3.05
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.04401,
+"speedup": 13.1913
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.177312,
+"speedup": 2.6333
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.032561,
+"speedup": 17.0939
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 1.458134,
+"speedup": 0.3848
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 1.092905,
+"speedup": 0.3364
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 1.133852,
+"speedup": 0.2811
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009386,
+"speedup": 66.5161
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.012723,
+"speedup": 58.5686
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.019719,
+"speedup": 26.2388
+},
+{
+"label": "1017-1821_63977813",
+"date": "2026-10-17T16:21:57Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010614,
+"speedup": 55.9982
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.024865,
+"speedup": 23.1653
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.67554,
+"speedup": 4.7451
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.023837,
+"speedup": 15.4395
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.144273,
+"speedup": 3.3776
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034769,
+"speedup": 14.434
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.138809,
+"speedup": 1.5805
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033201,
+"speedup": 13.5472
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.057419,
+"speedup": 7.4846
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.316107,
+"speedup": 1.5847
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.039022,
+"speedup": 22.0768
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037518,
+"speedup": 30.1756
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.032357,
+"speedup": 48.5648
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.163422,
+"speedup": 4.623
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016141,
+"speedup": 68.2229
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.077694,
+"speedup": 2.3278
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.044262,
+"speedup": 13.1162
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.177941,
+"speedup": 2.624
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.032243,
+"speedup": 17.2624
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 1.506175,
+"speedup": 0.3725
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 1.032101,
+"speedup": 0.3562
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 1.046885,
+"speedup": 0.3045
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009117,
+"speedup": 68.476
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009155,
+"speedup": 81.3897
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.019192,
+"speedup": 26.9596
+},
+{
+"label": "1018-1740_bb5ac4ab",
+"date": "2026-10-18T15:40:12Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010616,
+"speedup": 55.9881
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013382,
+"speedup": 43.0438
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.746658,
+"speedup": 4.2931
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.02785,
+"speedup": 13.2144
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.140656,
+"speedup": 3.4644
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034253,
+"speedup": 14.6516
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.12903,
+"speedup": 1.7003
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.034543,
+"speedup": 13.0207
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.059076,
+"speedup": 7.2747
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.308739,
+"speedup": 1.6225
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.037828,
+"speedup": 22.7733
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037508,
+"speedup": 30.1836
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027945,
+"speedup": 56.2331
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.137256,
+"speedup": 5.5043
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015993,
+"speedup": 68.8527
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.076063,
+"speedup": 2.3777
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.044453,
+"speedup": 13.0598
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.177388,
+"speedup": 2.6322
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.03364,
+"speedup": 16.5455
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.19599,
+"speedup": 2.863
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.168345,
+"speedup": 2.1837
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.235449,
+"speedup": 1.3538
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008899,
+"speedup": 70.1517
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.012759,
+"speedup": 58.403
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.010083,
+"speedup": 51.3138
+},
+{
+"label": "1019-2327_b040f45e",
+"date": "2026-10-19T21:27:11Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.01065,
+"speedup": 55.8078
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013498,
+"speedup": 42.6733
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.786146,
+"speedup": 4.0775
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.027838,
+"speedup": 13.2204
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.143493,
+"speedup": 3.3959
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.035313,
+"speedup": 14.2117
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.139666,
+"speedup": 1.5708
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.037662,
+"speedup": 11.9424
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.061759,
+"speedup": 6.9586
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.324019,
+"speedup": 1.546
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038011,
+"speedup": 22.664
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037677,
+"speedup": 30.0483
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027873,
+"speedup": 56.3779
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.156222,
+"speedup": 4.8361
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015667,
+"speedup": 70.2857
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.07894,
+"speedup": 2.291
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.044047,
+"speedup": 13.1803
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.180044,
+"speedup": 2.5934
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.034009,
+"speedup": 16.3662
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.199942,
+"speedup": 2.8064
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.157919,
+"speedup": 2.3278
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.240623,
+"speedup": 1.3247
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009202,
+"speedup": 67.8418
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009148,
+"speedup": 81.4542
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.009824,
+"speedup": 52.6683
+},
+{
+"label": "1020-1311_afb59cd3",
+"date": "2026-10-20T11:11:26Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010672,
+"speedup": 55.6914
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013293,
+"speedup": 43.3319
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.832596,
+"speedup": 3.85
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028106,
+"speedup": 13.0942
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.140726,
+"speedup": 3.4627
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034778,
+"speedup": 14.4303
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.128505,
+"speedup": 1.7072
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.034671,
+"speedup": 12.9726
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.064885,
+"speedup": 6.6234
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.315829,
+"speedup": 1.5861
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.037564,
+"speedup": 22.9335
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037438,
+"speedup": 30.2399
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027821,
+"speedup": 56.4835
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.155757,
+"speedup": 4.8505
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015853,
+"speedup": 69.4618
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.08033,
+"speedup": 2.2514
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.04422,
+"speedup": 13.1287
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.1774,
+"speedup": 2.632
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.034448,
+"speedup": 16.1573
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.201176,
+"speedup": 2.7892
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.157003,
+"speedup": 2.3414
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.247412,
+"speedup": 1.2884
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008735,
+"speedup": 71.4674
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009628,
+"speedup": 77.3932
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.009812,
+"speedup": 52.7339
+},
+{
+"label": "1021-2357_11722f0c",
+"date": "2026-10-21T21:57:32Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010743,
+"speedup": 55.325
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013486,
+"speedup": 42.711
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.81147,
+"speedup": 3.9502
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028034,
+"speedup": 13.1277
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.141012,
+"speedup": 3.4557
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034695,
+"speedup": 14.4651
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.13932,
+"speedup": 1.5747
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.037251,
+"speedup": 12.0741
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.065038,
+"speedup": 6.6079
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.109723,
+"speedup": 1.0979
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.589139,
+"speedup": 1.2084
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.309811,
+"speedup": 1.6169
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.037857,
+"speedup": 22.7561
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.03777,
+"speedup": 29.974
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.028817,
+"speedup": 54.5311
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.160265,
+"speedup": 4.7141
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015901,
+"speedup": 69.2543
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.078809,
+"speedup": 2.2948
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.04422,
+"speedup": 13.1288
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.176963,
+"speedup": 2.6385
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.032251,
+"speedup": 17.2582
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.20272,
+"speedup": 2.7679
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.15658,
+"speedup": 2.3478
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.260898,
+"speedup": 1.2218
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008901,
+"speedup": 70.1353
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009101,
+"speedup": 81.8734
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.009735,
+"speedup": 53.1518
+},
+{
+"label": "1022-2219_7514bef7",
+"date": "2026-10-22T20:19:55Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010681,
+"speedup": 55.6457
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.01444,
+"speedup": 39.8892
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.794106,
+"speedup": 4.0366
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028179,
+"speedup": 13.0605
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.139469,
+"speedup": 3.4939
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034457,
+"speedup": 14.5647
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.139729,
+"speedup": 1.5701
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033886,
+"speedup": 13.273
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.064888,
+"speedup": 6.6231
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.112329,
+"speedup": 1.0725
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.615665,
+"speedup": 1.1563
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.349226,
+"speedup": 1.4344
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038272,
+"speedup": 22.5092
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037707,
+"speedup": 30.024
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.028518,
+"speedup": 55.1035
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.168666,
+"speedup": 4.4793
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.01582,
+"speedup": 69.6072
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.07946,
+"speedup": 2.276
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.044271,
+"speedup": 13.1137
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.177645,
+"speedup": 2.6284
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.03174,
+"speedup": 17.5362
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.198593,
+"speedup": 2.8254
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.155396,
+"speedup": 2.3656
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.24186,
+"speedup": 1.3179
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008932,
+"speedup": 69.8938
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009193,
+"speedup": 81.0532
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.009733,
+"speedup": 53.1597
+},
+{
+"label": "1023-0733_f5a09d42",
+"date": "2026-10-23T05:33:33Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.011186,
+"speedup": 53.1334
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013509,
+"speedup": 42.6397
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.829679,
+"speedup": 3.8635
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028349,
+"speedup": 12.9821
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.138671,
+"speedup": 3.514
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034307,
+"speedup": 14.6287
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.13663,
+"speedup": 1.6057
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.035143,
+"speedup": 12.7984
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.0659,
+"speedup": 6.5214
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.127354,
+"speedup": 0.9459
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.721013,
+"speedup": 0.9874
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.340273,
+"speedup": 1.4722
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038046,
+"speedup": 22.6431
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037669,
+"speedup": 30.0543
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.028262,
+"speedup": 55.6023
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.166427,
+"speedup": 4.5395
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016499,
+"speedup": 66.7442
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.080872,
+"speedup": 2.2363
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045536,
+"speedup": 12.7493
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.196203,
+"speedup": 2.3798
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.033227,
+"speedup": 16.751
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.206018,
+"speedup": 2.7236
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.15437,
+"speedup": 2.3814
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.26233,
+"speedup": 1.2151
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009049,
+"speedup": 68.992
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009201,
+"speedup": 80.9822
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.011168,
+"speedup": 46.3307
+},
+{
+"label": "1024-1743_6f5b169b",
+"date": "2026-10-24T15:43:26Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010596,
+"speedup": 56.0928
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013629,
+"speedup": 42.2639
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.829171,
+"speedup": 3.8659
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028904,
+"speedup": 12.7326
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.142713,
+"speedup": 3.4145
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034587,
+"speedup": 14.5099
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.125758,
+"speedup": 1.7445
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.035122,
+"speedup": 12.8059
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.074833,
+"speedup": 5.7429
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.13054,
+"speedup": 0.9229
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.757165,
+"speedup": 0.9402
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.330816,
+"speedup": 1.5142
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038276,
+"speedup": 22.5067
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038087,
+"speedup": 29.7243
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.029873,
+"speedup": 52.6035
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.162969,
+"speedup": 4.6359
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016341,
+"speedup": 67.3885
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.079633,
+"speedup": 2.2711
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.04558,
+"speedup": 12.737
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.196099,
+"speedup": 2.3811
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.033973,
+"speedup": 16.3834
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.204407,
+"speedup": 2.7451
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.156971,
+"speedup": 2.3419
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.258245,
+"speedup": 1.2343
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009161,
+"speedup": 68.1467
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.008813,
+"speedup": 84.5539
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.011243,
+"speedup": 46.022
+},
+{
+"label": "1025-2124_de65c6fb",
+"date": "2026-10-25T20:24:14Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010721,
+"speedup": 55.4377
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.01337,
+"speedup": 43.0832
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.847767,
+"speedup": 3.7811
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028406,
+"speedup": 12.9558
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.146463,
+"speedup": 3.3271
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034229,
+"speedup": 14.662
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.135127,
+"speedup": 1.6236
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.0338,
+"speedup": 13.3068
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.065257,
+"speedup": 6.5857
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.132981,
+"speedup": 0.9059
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.766304,
+"speedup": 0.929
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.327773,
+"speedup": 1.5283
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038283,
+"speedup": 22.5031
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.03779,
+"speedup": 29.9586
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.029027,
+"speedup": 54.1356
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.202927,
+"speedup": 3.723
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016552,
+"speedup": 66.5282
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.079666,
+"speedup": 2.2701
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045795,
+"speedup": 12.6773
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.19632,
+"speedup": 2.3784
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.916617,
+"speedup": 0.8203
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.037176,
+"speedup": 14.9718
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.112494,
+"speedup": 4.9879
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.158934,
+"speedup": 2.313
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.256321,
+"speedup": 1.2436
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009017,
+"speedup": 69.2391
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.008809,
+"speedup": 84.5911
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.011257,
+"speedup": 45.9621
+},
+{
+"label": "1026-2250_368b12a5",
+"date": "2026-10-26T21:50:35Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010632,
+"speedup": 55.9048
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013382,
+"speedup": 43.0421
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.82743,
+"speedup": 3.874
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028488,
+"speedup": 12.9185
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.147523,
+"speedup": 3.3031
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034528,
+"speedup": 14.5348
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.125288,
+"speedup": 1.7511
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.035473,
+"speedup": 12.6793
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.069432,
+"speedup": 6.1896
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.13211,
+"speedup": 0.9119
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.778039,
+"speedup": 0.915
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.322838,
+"speedup": 1.5517
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.037956,
+"speedup": 22.6963
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037954,
+"speedup": 29.8284
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.028839,
+"speedup": 54.4896
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.197641,
+"speedup": 3.8226
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016423,
+"speedup": 67.0496
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.079125,
+"speedup": 2.2857
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045723,
+"speedup": 12.6971
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.202676,
+"speedup": 2.3038
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.874658,
+"speedup": 0.8597
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.03705,
+"speedup": 15.0229
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.105916,
+"speedup": 5.2977
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.15815,
+"speedup": 2.3244
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.253326,
+"speedup": 1.2583
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009073,
+"speedup": 68.8091
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009639,
+"speedup": 77.3051
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.011548,
+"speedup": 44.8052
+},
+{
+"label": "1027-2350_48b28bb1",
+"date": "2026-10-27T22:50:27Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010818,
+"speedup": 54.9398
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013194,
+"speedup": 43.6548
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.838333,
+"speedup": 3.8237
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028304,
+"speedup": 13.0028
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.152681,
+"speedup": 3.1916
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.035351,
+"speedup": 14.1966
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.124874,
+"speedup": 1.7569
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.03671,
+"speedup": 12.2522
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.067266,
+"speedup": 6.3889
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.135546,
+"speedup": 0.8888
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.718123,
+"speedup": 0.9913
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.332135,
+"speedup": 1.5082
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.037944,
+"speedup": 22.704
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037431,
+"speedup": 30.2453
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027757,
+"speedup": 56.6131
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.19428,
+"speedup": 3.8887
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016247,
+"speedup": 67.7781
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.079721,
+"speedup": 2.2686
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045625,
+"speedup": 12.7244
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.200648,
+"speedup": 2.3271
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.931487,
+"speedup": 0.8072
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.037716,
+"speedup": 14.7576
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.111311,
+"speedup": 5.041
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.159976,
+"speedup": 2.2979
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.265553,
+"speedup": 1.2003
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.00936,
+"speedup": 66.6969
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009299,
+"speedup": 80.1297
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.011562,
+"speedup": 44.7489
+},
+{
+"label": "1028-2337_5e553e10",
+"date": "2026-10-28T22:37:48Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.014261,
+"speedup": 41.6763
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013269,
+"speedup": 43.4105
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.804487,
+"speedup": 3.9845
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.027557,
+"speedup": 13.3553
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.142366,
+"speedup": 3.4228
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034657,
+"speedup": 14.4806
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.124137,
+"speedup": 1.7673
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033912,
+"speedup": 13.2631
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.068149,
+"speedup": 6.3062
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.12059,
+"speedup": 0.999
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.570388,
+"speedup": 1.2481
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.318623,
+"speedup": 1.5722
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038813,
+"speedup": 22.1957
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037471,
+"speedup": 30.2137
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.028221,
+"speedup": 55.6817
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.196963,
+"speedup": 3.8358
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016644,
+"speedup": 66.1624
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.075406,
+"speedup": 2.3984
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045855,
+"speedup": 12.6607
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.187604,
+"speedup": 2.4889
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.896696,
+"speedup": 0.8386
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.037475,
+"speedup": 14.8525
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.111542,
+"speedup": 5.0305
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.155603,
+"speedup": 2.3625
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.248297,
+"speedup": 1.2838
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009428,
+"speedup": 66.2196
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009093,
+"speedup": 81.951
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.01152,
+"speedup": 44.9135
+},
+{
+"label": "1029-2037_d9de6b18",
+"date": "2026-10-29T19:37:34Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010693,
+"speedup": 55.5826
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013134,
+"speedup": 43.855
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.816028,
+"speedup": 3.9282
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028275,
+"speedup": 13.0162
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.153553,
+"speedup": 3.1734
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034138,
+"speedup": 14.7009
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.122965,
+"speedup": 1.7842
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033285,
+"speedup": 13.5127
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.063167,
+"speedup": 6.8036
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.126241,
+"speedup": 0.9543
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.622291,
+"speedup": 1.144
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.336753,
+"speedup": 1.4876
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.037935,
+"speedup": 22.7093
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037675,
+"speedup": 30.05
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.028299,
+"speedup": 55.5295
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.194681,
+"speedup": 3.8807
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016171,
+"speedup": 68.0973
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.074492,
+"speedup": 2.4278
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045813,
+"speedup": 12.6722
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.188151,
+"speedup": 2.4816
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.917126,
+"speedup": 0.8199
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.037547,
+"speedup": 14.8239
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.106884,
+"speedup": 5.2497
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.158344,
+"speedup": 2.3216
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.234181,
+"speedup": 1.3611
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009131,
+"speedup": 68.375
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.008954,
+"speedup": 83.2209
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.011315,
+"speedup": 45.7258
+},
+{
+"label": "1030-1548_06e3ad5d",
+"date": "2026-10-30T22:48:35Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010616,
+"speedup": 55.9852
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013333,
+"speedup": 43.2018
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.739811,
+"speedup": 4.3329
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.026891,
+"speedup": 13.6857
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.150227,
+"speedup": 3.2437
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034891,
+"speedup": 14.3835
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.122292,
+"speedup": 1.794
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033382,
+"speedup": 13.4737
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.063596,
+"speedup": 6.7576
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.120489,
+"speedup": 0.9998
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.573643,
+"speedup": 1.241
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.335795,
+"speedup": 1.4918
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.03899,
+"speedup": 22.0945
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037989,
+"speedup": 29.801
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027466,
+"speedup": 57.2132
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.199507,
+"speedup": 3.7868
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.017351,
+"speedup": 63.4643
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.073113,
+"speedup": 2.4736
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045879,
+"speedup": 12.654
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.190022,
+"speedup": 2.4572
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.898248,
+"speedup": 0.8371
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.037271,
+"speedup": 14.9335
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.110042,
+"speedup": 5.0991
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.158911,
+"speedup": 2.3133
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.250686,
+"speedup": 1.2715
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.0095,
+"speedup": 65.7149
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009505,
+"speedup": 78.3969
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.011262,
+"speedup": 45.9432
+},
+{
+"label": "1031-1436_07b26e02",
+"date": "2026-10-31T21:36:33Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010573,
+"speedup": 56.2152
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.013844,
+"speedup": 41.6063
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.795277,
+"speedup": 4.0307
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.027083,
+"speedup": 13.5891
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.142929,
+"speedup": 3.4093
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034595,
+"speedup": 14.5067
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.126035,
+"speedup": 1.7407
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033506,
+"speedup": 13.4238
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.076014,
+"speedup": 5.6537
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.129236,
+"speedup": 0.9322
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.562502,
+"speedup": 1.2656
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.307014,
+"speedup": 1.6316
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038786,
+"speedup": 22.2108
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037586,
+"speedup": 30.121
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.028459,
+"speedup": 55.2166
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.209519,
+"speedup": 3.6059
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.017595,
+"speedup": 62.5847
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.074969,
+"speedup": 2.4124
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045351,
+"speedup": 12.8014
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.192198,
+"speedup": 2.4294
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.904729,
+"speedup": 0.8311
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.037831,
+"speedup": 14.7125
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.110791,
+"speedup": 5.0646
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.159957,
+"speedup": 2.2982
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.250536,
+"speedup": 1.2723
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009173,
+"speedup": 68.06
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.012203,
+"speedup": 61.0618
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.011373,
+"speedup": 45.4943
+},
+{
+"label": "1101-2341_14d4eb15",
+"date": "2026-11-02T07:41:36Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010501,
+"speedup": 56.6009
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.014261,
+"speedup": 40.3908
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.771722,
+"speedup": 4.1537
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.026539,
+"speedup": 13.8674
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.148914,
+"speedup": 3.2723
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.035603,
+"speedup": 14.096
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.126473,
+"speedup": 1.7347
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033094,
+"speedup": 13.5911
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.066118,
+"speedup": 6.4999
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.116695,
+"speedup": 1.0323
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.580669,
+"speedup": 1.226
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.304749,
+"speedup": 1.6438
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.037468,
+"speedup": 22.9924
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037854,
+"speedup": 29.9078
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027839,
+"speedup": 56.4459
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.201936,
+"speedup": 3.7413
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.017107,
+"speedup": 64.3691
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.073267,
+"speedup": 2.4684
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045417,
+"speedup": 12.7828
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.184977,
+"speedup": 2.5242
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.913422,
+"speedup": 0.8232
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.037221,
+"speedup": 14.9539
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.11012,
+"speedup": 5.0955
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.158213,
+"speedup": 2.3235
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.253648,
+"speedup": 1.2567
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008941,
+"speedup": 69.8208
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.012244,
+"speedup": 60.8565
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.009945,
+"speedup": 52.0279
+},
+{
+"label": "1102-1432_9c8bc746",
+"date": "2026-11-02T22:32:22Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010619,
+"speedup": 55.9707
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.014185,
+"speedup": 40.6069
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.73405,
+"speedup": 4.3669
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028101,
+"speedup": 13.0967
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "comprehensions",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.104149,
+"aot_s": 0.039266,
+"speedup": 2.6524
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.144183,
+"speedup": 3.3797
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034267,
+"speedup": 14.6454
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.124902,
+"speedup": 1.7565
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.03344,
+"speedup": 13.4501
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.065858,
+"speedup": 6.5255
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.098611,
+"speedup": 1.2217
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.583428,
+"speedup": 1.2202
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "logging",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.002825,
+"aot_s": 0.001824,
+"speedup": 1.5487
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.304686,
+"speedup": 1.6441
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.039457,
+"speedup": 21.8331
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038634,
+"speedup": 29.3038
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.028158,
+"speedup": 55.8065
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.153422,
+"speedup": 4.9243
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016924,
+"speedup": 65.0649
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.076649,
+"speedup": 2.3595
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045303,
+"speedup": 12.8148
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.178993,
+"speedup": 2.6086
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.915529,
+"speedup": 0.8213
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.035277,
+"speedup": 15.7776
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.106356,
+"speedup": 5.2758
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.169719,
+"speedup": 2.166
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.258292,
+"speedup": 1.2341
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.00909,
+"speedup": 68.683
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.012546,
+"speedup": 59.3954
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.010015,
+"speedup": 51.6633
+},
+{
+"label": "1103-2351_a1436c85",
+"date": "2026-11-04T07:51:59Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.01063,
+"speedup": 55.9106
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.014517,
+"speedup": 39.6774
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.714897,
+"speedup": 4.4839
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028522,
+"speedup": 12.9034
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "comprehensions",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.104149,
+"aot_s": 0.038566,
+"speedup": 2.7006
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.148045,
+"speedup": 3.2915
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.034463,
+"speedup": 14.5623
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.119817,
+"speedup": 1.831
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.034065,
+"speedup": 13.2035
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.067615,
+"speedup": 6.356
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.10197,
+"speedup": 1.1814
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.564946,
+"speedup": 1.2601
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "logging",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.002825,
+"aot_s": 0.001812,
+"speedup": 1.5589
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.300663,
+"speedup": 1.6661
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.039876,
+"speedup": 21.604
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038187,
+"speedup": 29.6468
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027949,
+"speedup": 56.2245
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.144881,
+"speedup": 5.2146
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.01696,
+"speedup": 64.9272
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.076458,
+"speedup": 2.3654
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.044837,
+"speedup": 12.948
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.180851,
+"speedup": 2.5818
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.86338,
+"speedup": 0.8709
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.035483,
+"speedup": 15.6861
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.104443,
+"speedup": 5.3724
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.156307,
+"speedup": 2.3519
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.242868,
+"speedup": 1.3125
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009182,
+"speedup": 67.9909
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.011988,
+"speedup": 62.1596
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.010001,
+"speedup": 51.7355
+},
+{
+"label": "1104-2259_d8127936",
+"date": "2026-11-05T06:59:43Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010622,
+"speedup": 55.9542
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.01537,
+"speedup": 37.4767
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.764181,
+"speedup": 4.1947
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028445,
+"speedup": 12.938
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "comprehensions",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.104149,
+"aot_s": 0.036641,
+"speedup": 2.8424
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.145365,
+"speedup": 3.3522
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.035041,
+"speedup": 14.322
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.120154,
+"speedup": 1.8259
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.03349,
+"speedup": 13.4301
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.067594,
+"speedup": 6.358
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.101167,
+"speedup": 1.1908
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.577167,
+"speedup": 1.2334
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "logging",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.002825,
+"aot_s": 0.001768,
+"speedup": 1.5983
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.305369,
+"speedup": 1.6404
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.04027,
+"speedup": 21.3927
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038023,
+"speedup": 29.7745
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027628,
+"speedup": 56.8786
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.148402,
+"speedup": 5.0909
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016873,
+"speedup": 65.2638
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.074785,
+"speedup": 2.4183
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.044669,
+"speedup": 12.9969
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.179895,
+"speedup": 2.5955
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.871044,
+"speedup": 0.8633
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.035274,
+"speedup": 15.7791
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.102157,
+"speedup": 5.4926
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.155964,
+"speedup": 2.357
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.242944,
+"speedup": 1.312
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009406,
+"speedup": 66.3717
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.012165,
+"speedup": 61.2542
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.010139,
+"speedup": 51.0295
+},
+{
+"label": "1105-1804_e7513fd5",
+"date": "2026-11-06T02:04:23Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.01066,
+"speedup": 55.7569
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.014093,
+"speedup": 40.8722
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.730893,
+"speedup": 4.3857
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028843,
+"speedup": 12.7597
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "comprehensions",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.104149,
+"aot_s": 0.037571,
+"speedup": 2.7721
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.145169,
+"speedup": 3.3567
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.033152,
+"speedup": 15.138
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.12174,
+"speedup": 1.8021
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033485,
+"speedup": 13.4321
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.066177,
+"speedup": 6.4941
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.094944,
+"speedup": 1.2688
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.587961,
+"speedup": 1.2108
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "logging",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.002825,
+"aot_s": 0.001749,
+"speedup": 1.6157
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.315039,
+"speedup": 1.5901
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.040057,
+"speedup": 21.506
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037984,
+"speedup": 29.8049
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027303,
+"speedup": 57.5539
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.153086,
+"speedup": 4.9352
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.018399,
+"speedup": 59.8497
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.075723,
+"speedup": 2.3884
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045217,
+"speedup": 12.8392
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.176313,
+"speedup": 2.6483
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.867765,
+"speedup": 0.8665
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.035424,
+"speedup": 15.7124
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.103652,
+"speedup": 5.4134
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.155997,
+"speedup": 2.3565
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.245433,
+"speedup": 1.2987
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008977,
+"speedup": 69.5451
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.012688,
+"speedup": 58.7281
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.010009,
+"speedup": 51.6959
+},
+{
+"label": "1107-1222_c5b8b4fc",
+"date": "2026-11-07T20:22:05Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010654,
+"speedup": 55.7894
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.014107,
+"speedup": 40.8306
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.756192,
+"speedup": 4.239
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.028412,
+"speedup": 12.9531
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "comprehensions",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.104149,
+"aot_s": 0.035454,
+"speedup": 2.9376
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.141741,
+"speedup": 3.4379
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.033547,
+"speedup": 14.9599
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.12385,
+"speedup": 1.7714
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033536,
+"speedup": 13.4117
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.066056,
+"speedup": 6.506
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.111211,
+"speedup": 1.0833
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.581616,
+"speedup": 1.224
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "logging",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.002825,
+"aot_s": 0.00173,
+"speedup": 1.6333
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.329345,
+"speedup": 1.521
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.040341,
+"speedup": 21.355
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.03746,
+"speedup": 30.2218
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027421,
+"speedup": 57.3061
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.151829,
+"speedup": 4.976
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016216,
+"speedup": 67.9078
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.076008,
+"speedup": 2.3794
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.044941,
+"speedup": 12.9181
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.178588,
+"speedup": 2.6145
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.880634,
+"speedup": 0.8539
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.035679,
+"speedup": 15.6001
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.101729,
+"speedup": 5.5158
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.156283,
+"speedup": 2.3522
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.245966,
+"speedup": 1.2959
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.009258,
+"speedup": 67.4367
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009588,
+"speedup": 77.7185
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.010025,
+"speedup": 51.6097
+},
+{
+"label": "1108-2211_d6b9b3f1",
+"date": "2026-11-09T06:11:08Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010704,
+"speedup": 55.5244
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.014016,
+"speedup": 41.0957
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.697384,
+"speedup": 4.5965
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.027795,
+"speedup": 13.2408
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "comprehensions",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.104149,
+"aot_s": 0.036383,
+"speedup": 2.8625
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.142213,
+"speedup": 3.4265
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.033568,
+"speedup": 14.9506
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.125486,
+"speedup": 1.7483
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033379,
+"speedup": 13.4747
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.040885,
+"speedup": 10.5116
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.107909,
+"speedup": 1.1164
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.603719,
+"speedup": 1.1792
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "logging",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.002825,
+"aot_s": 0.001689,
+"speedup": 1.673
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.322965,
+"speedup": 1.5511
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038039,
+"speedup": 22.6473
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037598,
+"speedup": 30.1112
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027791,
+"speedup": 56.5439
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.150744,
+"speedup": 5.0118
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016063,
+"speedup": 68.5536
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.077706,
+"speedup": 2.3274
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045457,
+"speedup": 12.7716
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.184345,
+"speedup": 2.5329
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.877222,
+"speedup": 0.8572
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.03556,
+"speedup": 15.6523
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.102798,
+"speedup": 5.4584
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.16052,
+"speedup": 2.2901
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.233123,
+"speedup": 1.3673
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008898,
+"speedup": 70.1602
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009415,
+"speedup": 79.1466
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.009992,
+"speedup": 51.7833
+},
+{
+"label": "1109-2159_070c8137",
+"date": "2026-11-10T05:59:26Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010714,
+"speedup": 55.473
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.014054,
+"speedup": 40.9852
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.719625,
+"speedup": 4.4544
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.027775,
+"speedup": 13.2506
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "comprehensions",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.104149,
+"aot_s": 0.034471,
+"speedup": 3.0213
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.139704,
+"speedup": 3.488
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.032741,
+"speedup": 15.3284
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.128673,
+"speedup": 1.705
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033482,
+"speedup": 13.4334
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.041153,
+"speedup": 10.443
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.113291,
+"speedup": 1.0634
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.599068,
+"speedup": 1.1883
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "logging",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.002825,
+"aot_s": 0.001601,
+"speedup": 1.7644
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.329368,
+"speedup": 1.5209
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.038045,
+"speedup": 22.6435
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.038013,
+"speedup": 29.7826
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.02771,
+"speedup": 56.7098
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.150427,
+"speedup": 5.0224
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.016033,
+"speedup": 68.6814
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.075083,
+"speedup": 2.4087
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.045578,
+"speedup": 12.7376
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.183359,
+"speedup": 2.5465
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.877938,
+"speedup": 0.8565
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.035616,
+"speedup": 15.6274
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.103154,
+"speedup": 5.4396
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.16093,
+"speedup": 2.2843
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.226428,
+"speedup": 1.4078
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008861,
+"speedup": 70.4543
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009472,
+"speedup": 78.6683
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.009995,
+"speedup": 51.7682
+},
+{
+"label": "1110-2331_d02995cb",
+"date": "2026-11-11T07:31:23Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010706,
+"speedup": 55.5177
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "barnes_hut",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.576,
+"aot_s": 0.014027,
+"speedup": 41.0637
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "bpe_tokeniser",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 3.205498,
+"aot_s": 0.680757,
+"speedup": 4.7087
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "chaos",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.368028,
+"aot_s": 0.027297,
+"speedup": 13.4824
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "comprehensions",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.104149,
+"aot_s": 0.035094,
+"speedup": 2.9677
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "fannkuch",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.487291,
+"aot_s": 0.140704,
+"speedup": 3.4632
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "float",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.50186,
+"aot_s": 0.04349,
+"speedup": 11.5397
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "generators",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.21939,
+"aot_s": 0.125388,
+"speedup": 1.7497
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "go",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.449776,
+"aot_s": 0.033581,
+"speedup": 13.3939
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "hexiom",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.429761,
+"aot_s": 0.044478,
+"speedup": 9.6623
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "json_dumps",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.120469,
+"aot_s": 0.105486,
+"speedup": 1.142
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "json_loads",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.711894,
+"aot_s": 0.585576,
+"speedup": 1.2157
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "logging",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.002825,
+"aot_s": 0.00162,
+"speedup": 1.7446
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "meteor_contest",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.500938,
+"aot_s": 0.319632,
+"speedup": 1.5672
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "micro_fib",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.861474,
+"aot_s": 0.039282,
+"speedup": 21.9307
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "micro_mandel",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.132121,
+"aot_s": 0.037695,
+"speedup": 30.0335
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "micro_nbody",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.571415,
+"aot_s": 0.027561,
+"speedup": 57.0162
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "micro_sieve",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.755502,
+"aot_s": 0.144545,
+"speedup": 5.2268
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "micro_spectral",
+"kind": "micro",
+"core": true,
+"cpython_s": 1.101188,
+"aot_s": 0.015482,
+"speedup": 71.1249
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "micro_words",
+"kind": "micro",
+"core": true,
+"cpython_s": 0.180853,
+"aot_s": 0.073256,
+"speedup": 2.4688
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "nbody",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.580554,
+"aot_s": 0.046585,
+"speedup": 12.4623
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "nqueens",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.466922,
+"aot_s": 0.183049,
+"speedup": 2.5508
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "pidigits",
+"kind": "pyperformance",
+"core": false,
+"cpython_s": 0.751931,
+"aot_s": 0.898009,
+"speedup": 0.8373
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "raytrace",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.556593,
+"aot_s": 0.035455,
+"speedup": 15.6985
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "regex_dna",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.561112,
+"aot_s": 0.104254,
+"speedup": 5.3822
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "regex_effbot",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.36761,
+"aot_s": 0.171447,
+"speedup": 2.1442
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "regex_v8",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.318755,
+"aot_s": 0.221341,
+"speedup": 1.4401
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "richards",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.624303,
+"aot_s": 0.008839,
+"speedup": 70.6291
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "richards_super",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.745156,
+"aot_s": 0.009661,
+"speedup": 77.1342
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "scimark",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.517407,
+"aot_s": 0.01013,
+"speedup": 51.0781
+},
+{
+"label": "1111-1528_b2182a4f",
+"date": "2026-11-11T23:28:36Z",
+"benchmark": "spectral_norm",
+"kind": "pyperformance",
+"core": true,
+"cpython_s": 0.594355,
+"aot_s": 0.010645,
+"speedup": 55.8326
+}
+]

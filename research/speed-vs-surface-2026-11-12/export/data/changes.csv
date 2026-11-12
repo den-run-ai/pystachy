@@ -1,0 +1,8 @@
+rank,benchmark,from_date,to_date,before_ms,after_ms,time_ratio,change,evidence
+1,regex_dna,2026-10-18,2026-10-19,1506.2,196.0,0.13,"Faster: lib/re matcher work (#676, #680, #682, #683, #685)","interval of 32 merges, Oct 18 to 19; not bisected"
+2,regex_effbot,2026-10-18,2026-10-19,1032.1,168.3,0.163,Faster: same lib/re work,same interval; not bisected
+3,regex_v8,2026-10-18,2026-10-19,1046.9,235.4,0.225,Faster: same lib/re work,same interval; not bisected
+4,scimark,2026-10-18,2026-10-19,19.2,10.1,0.525,Faster: likely field TBAA (#724) or tuple returns by value (#727),same interval; not bisected
+5,barnes_hut,2026-10-18,2026-10-19,24.9,13.4,0.538,Faster: likely field TBAA (#724) or tuple returns by value (#727),same interval; not bisected
+6,micro_words,2026-10-17,2026-10-18,59.3,77.7,1.31,"Slower: Unicode code-point strings, stage 1 (#667)",bisected over 15 merges to a355c83f
+7,float,2026-11-11,2026-11-11,32.7,43.5,1.328,Slower: listguard bounds-check hoisting with Lean checks (#1268),bisected over 7 merges to b40ee875
