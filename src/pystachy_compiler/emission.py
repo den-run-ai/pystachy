@@ -586,8 +586,9 @@ def gen_convert_at(self, v: Val, t: str, label: str) -> Val:
     return v
 
 def gen_converts(self, a: str, b: str) -> bool:
-    # does a value of type a take code to be one of type b (convert_in)
-    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int")
+    # does a value of type a take code to be one of type b (convert_in): also a runtime-length
+    # tuple whose items each become a box (coerce's pys_vtuple_box), which a join of tuples makes
+    return self.boxes(a, b) or (is_sopt(a) and b == unopt(a)) or (b == "int+" and a == "int") or (is_vtuple(a) and is_vtuple(unopt(b)) and is_sopt(targs(unopt(b))[0]) and targs(a)[0] == unopt(targs(unopt(b))[0]))
 
 def gen_boxes(self, a: str, b: str) -> bool:
     # is a value of type a one of type b once boxed: an int as an int | None, a member as a
