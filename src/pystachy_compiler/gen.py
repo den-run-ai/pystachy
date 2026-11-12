@@ -473,6 +473,8 @@ from src.pystachy_compiler.calls import (
     gen_nt_new as calls_nt_new,
     gen_star_call as calls_star_call,
     gen_star_who as calls_star_who,
+    gen_star_args as calls_star_args,
+    gen_star_pack as calls_star_pack,
     gen_static_callee as calls_static_callee,
     gen_tests as calls_tests,
     gen_to_callable as calls_to_callable,
@@ -4735,6 +4737,12 @@ class Gen:
 
     def star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
         return calls_star_call(self, n, want, resultsoft, typeargs)
+
+    def star_pack(self, f: Node) -> bool:
+        return calls_star_pack(self, f)
+
+    def star_args(self, f: FnInfo, a: Node, pos: int, vals: list[Val], extra: list[Val], args: list[Node]) -> int:
+        return calls_star_args(self, f, a, pos, vals, extra, args)
 
     def static_callee(self, f: Node) -> bool:
         return calls_static_callee(self, f)
