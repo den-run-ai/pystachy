@@ -2093,8 +2093,8 @@ class Loader:
         # never runs, for annotations alone (Mod.tkinds, see kind()): a class, function, alias or
         # module of a module that the program loads anyway, as an import would bind it; else why an
         # annotation cannot name it. Nothing is loaded for them, and code that reads such a name
-        # still finds it unbound, as CPython does
-        for m in list(self.mods.values()):
+        # still finds it unbound, as CPython does; also the main module's (self.order has it)
+        for m in self.order:
             for st in m.tcimports:
                 for a in st.kids:
                     if a.s == "" or a.s == "*" or a.s in m.kinds or a.s in m.tkinds or a.s in TYPING:

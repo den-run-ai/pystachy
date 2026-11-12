@@ -2311,8 +2311,16 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         # p.k of a parameter p holding an object: the type of its field k (its class's fields are
         # declared first: a class declared later, as a forward reference or a TYPE_CHECKING import names it)
         t = self.guess(e.kids[0], f)
-        if t in self.classes:
-            self.declare_fields(self.classes[t])
+        chain: list[str] = []
+        c = t
+        while c in self.classes and c not in chain:
+            chain.append(c)
+            c = self.classes[c].base
+        for j in range(len(chain) - 1, -1, -1):
+            # (its bases' first, as their declarations order them: class_fields copies a base's
+            # slots and fields, so a class whose base is not ready yet waits for its turn)
+            if j == len(chain) - 1 or self.classes[chain[j + 1]].fields_ready:
+                self.declare_fields(self.classes[chain[j]])
         if t in self.classes and e.s in self.classes[t].ftypes and e.s not in self.classes[t].methods:
             return self.classes[t].ftypes[e.s]
     if k == "dictstar":
