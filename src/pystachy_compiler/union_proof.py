@@ -362,6 +362,14 @@ class UnionProof:
             for i in b.code:
                 if (i.op == "rt" and len(i.r) == 1) or i.op == "list.load":
                     self.native["%t" + str(i.r[0])] = self.runtime_type(i, i.t)
+                if i.op == "rt" and i.s == "vtuple.get" and len(i.r) == 1 and len(i.a) == 2:
+                    # A tuple[U, ...]'s item at an index, which pys_vtuple_get checks against its
+                    # length: a box of that union, as an item slot's (below) or a list's (list.get)
+                    owner = self.native.get(i.a[0].v, "")
+                    owner = owner[4:-1] if is_opt(owner) else owner
+                    item = targs(owner)[0] if owner.startswith("vtuple[") else ""
+                    if is_union(item[4:-1] if is_opt(item) else item):
+                        self.typebase("U:%t" + str(i.r[0]), item)
                 if i.op == "mach.addr" and len(i.r) == 1 and len(i.a) == 2:
                     # An item slot of a tuple whose items are all of one union type (a fixed
                     # tuple's, or a tuple[U, ...]'s past its length) holds a box of that union:
