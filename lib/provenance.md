@@ -46,7 +46,9 @@ observable contract.
 | `tomllib._re` | `Lib/tomllib/_re.py` | `0bd8a54280babaa755456e0e4ceabd5f072558f19373698e29d2491e0fb7e4b4` |
 | `tomllib._types` | `Lib/tomllib/_types.py` | `f864c6d9552a929c7032ace654ee05ef26ca75d21b027b801d77e65907138b74` |
 
-`heapq` adapts its top-k routines while retaining the other upstream code.
+`heapq` adapts its top-k routines, and its heap functions to those of `Modules/_heapqmodule.c`
+(SHA-256 `5072eb373c4963e8a19040010a86f341243708d0696907b0984b4a73db3d6bf1`), which CPython
+imports over them, while retaining the other upstream code.
 `difflib.context_diff()` replaces its fixed prefix table's `dict()` keyword construction
 with an equivalent literal, preserving insertion order and the upstream generator.
 Its selected compiled output-format tests derive from `Lib/test/test_difflib.py` at

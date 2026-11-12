@@ -1,10 +1,44 @@
-# Lean payload-guard prototype
+# Lean compiler safety checks
+
+The checkers prove selected properties of normalized generated IR. There is no
+compiler-wide verified-code percentage: obligations overlap, and a theorem about
+the model does not establish that the exporter or runtime implements that model.
+
+| Area | Enforced property | Current boundary |
+|---|---|---|
+| Dynamic `Any` | Payload reads have matching type guards | Runtime tag/layout contracts |
+| Lists, dictionaries and sets | Unchecked accesses have bounds/live-entry facts | Runtime effects and container contracts |
+| Closure cells and calls | Captured-container facts survive only valid reads; visible callee writes invalidate facts | Independent Python body-effect scan and cell ABI |
+| Promoting integers | Selected result-fit claims and actual checked `+`, `-`, `*` reconstruction paths | Other inline arithmetic, LLVM and integer runtime |
+| Integer storage | Low-word, tuple-tail, narrowing and complete stack-copy obligations | Exported representations, fresh allocation and stack ABI |
+| Null-check removal | Removed checks are redundant in the captured before-pass graph | Whole-pass equivalence and broader heap correlations |
+| Closed unions | Inventoried tag/payload reads have nonnull/member guards | Raw transport, dynamic reconstruction and unsupported forms |
+
+All accepted certificates are checked by Lean. Mutation controls exercise the
+Python adapters, including lost inventories, exceptional edges and forged facts.
+Parsing, inference, specialization, GC/lifetime, general optimization equivalence,
+exception semantics and LLVM lowering remain unproved.
+
+[GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
+full-corpus inventory command; full-corpus acceptance is not claimed.
+Broader null/union correlations and unsupported forms are tracked in
+[#1270](https://github.com/den-run-ai/pystachy/issues/1270).
+
+The same Lean project also builds the [unchecked-access checker](ACCESS.md), which proves list
+reads within bounds and reused dict entries live.
+The [promoting-integer storage checker](STORAGE.md) extends the same checked
+control-flow model to low-word uses, tuple digit slots and representation
+crossings. Its storage model and trust boundary are separate from the dynamic
+payload-tag obligations described here.
 
 This optional developer tool checks the guards of `dyn.payload` operations in
 one selected function, or in every function, of a completed Pystachy typed-IR
 snapshot; `make check-lean-corpus` checks every such read of the dynamic-`Any`
 test programs. It does not change compilation, dynamic-`Any` opt-ins, library
 behavior or runtime checks.
+
+[INT.md](INT.md) describes the proofs of promoting ints' fit claims and
+`make check-lean-int`, which checks each such claim of the programs that opt in.
 
 ## Provenance and license
 
@@ -17,14 +51,16 @@ registries or test data from
 That project's [Apache-2.0-licensed work](https://github.com/Broyojo/python-formalization/blob/17bf78a9856c06fea409349246be4a06482518d1/LICENSE)
 was a reference for the discussion motivating this separate prototype.
 
-The provenance review compared the three Lean source files with that project's pinned
-`17bf78a9856c06fea409349246be4a06482518d1` tree, including its axiom audit;
-it found no copied implementation. The shared logical axiom names and
+The original payload-checker provenance review compared its three Lean source files with
+that project's pinned `17bf78a9856c06fea409349246be4a06482518d1` tree, including its axiom
+audit; that historical comparison found no copied implementation. The shared logical axiom names and
 `Lean.collectAxioms` calls are standard Lean interfaces. This records a source
 and dependency review, not a formal proof of authorship.
 
-Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`
-module; `lake-manifest.json` contains no external packages. The pinned Lean
+Current Lean imports are limited to `Std`, `Lean` and the local `PystachyBoundary`,
+`PystachyAccess`, `PystachyInt`, `PystachyInline`, `PystachyStorage` and
+`PystachyGuards` modules; `lake-manifest.json`
+contains no external packages. The pinned Lean
 toolchain is an external development dependency with its own
 [Apache-2.0 license](https://github.com/leanprover/lean4/blob/v4.35.0/LICENSE).
 It is downloaded for CI and is not vendored in this repository. Its license is
@@ -92,7 +128,9 @@ of a file, wherever it is, so the selection over-approximates.
 Each program is compiled by the hosted compiler under
 `tools/inspect_compiler.py --typed-after-only`, which records only the final
 snapshot, and the run fails unless Lean accepts every function that reads a
-payload. `--list` prints the selection; named programs are checked instead of it.
+payload and, by the [unchecked-access checker](ACCESS.md), every function with an
+unchecked list read or dict entry. `--list` prints the selection; named programs
+are checked instead of it.
 
 `--checker PATH` selects another built checker. `--emit NEW_FILE` writes only the
 candidate program and certificate: its report says `prepared`, `checked: false`.
@@ -224,10 +262,11 @@ checker has a ten-second subprocess deadline.
 
 ## Coverage of compiled code
 
-On 2026-11-11, `make check-lean-corpus` checked the 479 programs it selects
-from this checkout: 1,150 functions read a dynamic payload, 2,573 times. Lean
-accepted every function, so every one of those reads is proved to be guarded,
-in about 90 seconds with four workers. An earlier sweep found the two forms
+On 2026-11-11, `make check-lean-corpus` checked the 480 programs it selects
+from this checkout: 1,153 functions read a dynamic payload, 2,579 times. Lean
+accepted every function, so every one of those reads is proved to be guarded.
+The same run proved all 7,500 of their [unchecked accesses](ACCESS.md), in about
+250 seconds with two workers. An earlier sweep found the two forms
 this needed: slice bounds of an `Any` value and `sum()` of `Any` values read int
 payloads that no tag test guarded (their compiler guards are
 [#1227](https://github.com/den-run-ai/pystachy/pull/1227)), and two length-hint
@@ -276,7 +315,7 @@ and manual dispatch. PR selection uses the cumulative merge diff and runs
 conservatively if its history is missing. Five workflow tests exercise the
 actual selector against temporary Git histories. `make check-lean-corpus` runs in
 the x86_64 verification group `opt-in` of every PR that changes code, and in
-`dynany-optin-0` on main and manual runs; a sixth test keeps both jobs on one
+`runtime-cache` on main and manual runs; a sixth test keeps both jobs on one
 Lean archive; that target first runs the corpus tool's own tests
 (`tools/test_lean_corpus.py`). Both jobs download the pinned, SHA-256-checked
 Linux Lean release; no PR job is added. Lean is not a compiler, runtime or
