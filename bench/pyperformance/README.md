@@ -1,6 +1,6 @@
 # pyperformance benchmarks
 
-These are 26 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
+These are 27 of the 52 benchmarks tried from [pyperformance](https://github.com/python/pyperformance)
 1.14.0, adapted so that Pystachy compiles them. CPython runs the same adapted files, so each
 comparison runs identical source in CPython, the JIT and AOT. The adaptations and smaller
 inputs change the work, so these results are not comparable with published pyperformance numbers.
@@ -38,8 +38,8 @@ cannot validate the kernels.
 
 ## Shared pytest correctness suite
 
-The [pytest tests](pytest/) import all 26 delivered benchmark modules and exercise
-their existing workload functions with 43 ordinary pytest cases. The same files
+The [pytest tests](pytest/) import all 27 delivered benchmark modules and exercise
+their existing workload functions with 47 ordinary pytest cases. The same files
 run under original CPython pytest and the [native runner](../../docs/pytest-native.md):
 
 ```sh
@@ -48,7 +48,7 @@ python3 tools/pytest_native_suites.py --group pyperformance --mode jit
 python3 tools/pytest_native_suites.py --group pyperformance --mode aot
 ```
 
-The registry preserves all 43 cases in five independent categories, each with
+The registry preserves all 47 cases in five independent categories, each with
 its own original-pytest oracle. This bounds native build memory and separates
 the JSON opt-in from typed workloads. `make bench-pyperformance-check` includes
 both native modes in addition to its existing process/timing/provenance checks.
@@ -102,7 +102,7 @@ directory is also accepted. In that mode each source hash is verified and the ar
 hash is unmeasured (`null`).
 
 The runner's [`UPSTREAM` map](../../tools/bench_pyperformance.py) is the authoritative
-file-by-file SHA-256 manifest for all 52 sources. Its `BENCHMARKS` map selects the 25
+file-by-file SHA-256 manifest for all 52 sources. Its `BENCHMARKS` map selects the 27
 ports and their normal and smoke inputs. Keep provenance in those checked manifests
 when adding a port; the tables below describe adaptations and recorded first errors.
 
@@ -128,7 +128,7 @@ pyperformance is distributed under the MIT License; [LICENSE](LICENSE) and [AUTH
 are its `COPYING` and `AUTHORS` files. Each port keeps its upstream header. `regex_v8.py`'s
 header carries the V8 project's BSD license, and `raytrace.py`'s states the MIT License.
 `deltablue` is excluded pending a separate provenance decision: its upstream docstring
-says the JavaScript original was GPL-licensed. The other 26 benchmarks remain included.
+says the JavaScript original was GPL-licensed. The other 27 benchmarks remain included.
 `fannkuch.py`, `meteor_contest.py`, `nbody.py`, `pidigits.py`, `regex_dna.py` and `spectral_norm.py` say they
 come from The Computer Language Benchmarks Game, whose programs are published under the
 3-clause BSD License. `richards.py` and `richards_super.py` credit a Java version
@@ -150,7 +150,8 @@ adaptations follow these rules:
 - `import pyperf` is removed. A main that reads the loop count and sizes from `sys.argv`
   replaces `pyperf.Runner` and prints the results, or a checksum.
 - The seconds the main prints are for the part that pyperf would time. Where the runner calls
-  `bench_func()`, the main times a loop of calls of that function and nothing else. Where it
+  `bench_func()`, the main times a loop of calls of that function and nothing else; where it
+  calls `bench_async_func()`, a loop that runs a coroutine of that function each time. Where it
   calls `bench_time_func()`, each benchmark function keeps its own timer around the same loop,
   with `time.perf_counter()`, which is `pyperf.perf_counter()`. Instead of returning the
   seconds, it appends them to a list `TIMED`, whose sum the main prints, and returns its result,
@@ -162,6 +163,7 @@ adaptations follow these rules:
 
 | Benchmark | Other adaptations |
 |---|---|
+| `async_generators` | The recursive `Tree.__aiter__()` async generator, its `async for` loops and the tree are unchanged. Where pyperf's `bench_async_func()` awaits the benchmark in an asyncio event loop, the main runs each coroutine with `send(None)`, as nothing in it suspends. A size argument limits smoke/GC runs to 100 nodes; the normal run keeps 100,000. The complete yielded sequence is checked outside the timer. |
 | `barnes_hut` | Integer zeros that become floats are float literals. Constructors, the particle list and the child nodes are annotated. |
 | `bpe_tokeniser` | Five kernel adaptations: annotate the decoder field and empty ranks dictionary; type the pair `Counter`; materialize `zip` for `enumerate`; pass the UTF-8 replacement policy positionally. The runner exposes the unchanged pattern, permits smaller vocabularies, and takes an explicit corpus path instead of `__file__`. |
 | `chaos` | A Park–Miller generator replaces `random.seed()` and `randrange()`, so the points differ from upstream. `GVector` has float parameters and defaults; `__rmul__ = __mul__` becomes a method; fields are annotated; loops replace two-clause comprehensions; `length` starts as `0.0`; `x` and `y` are converted to int in one assignment each; an impossible `type()` message is a literal. `main()` returns the game, whose `create_image_chaos()` the main times with the default arguments. |
@@ -244,7 +246,6 @@ blockers than its first error, and a newer compiler may have removed one.
 |---|---|---|
 | `2to3` | no `subprocess` module | `signal` imports the missing `_signal` |
 | `argparse` | bare `list` return annotation on `generate_arguments()` | a bare `list` annotation (`-> list`) |
-| `async_generators` | `async def` | same |
 | `async_tree`, `asyncio_tcp` | no `asyncio` module | `socket` imports the missing `_socket` |
 | `base64` | no `base64` module | `random.randbytes()` needs `int.to_bytes()` |
 | `concurrent_imap` | no `multiprocessing` module | `signal` imports the missing `_signal` |
@@ -304,6 +305,7 @@ at that revision.
 
 | Benchmark | First error of the upstream file |
 |---|---|
+| `async_generators` | `async def` at `3aa7265a`, then `async generators are not supported`; none since async generators compile |
 | `barnes_hut` | field `particles` needs a type annotation |
 | `bpe_tokeniser` | field `_decoder` needs a type annotation |
 | `chaos` | class attribute `__rmul__` needs a type annotation |
