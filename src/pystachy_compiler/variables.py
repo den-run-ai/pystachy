@@ -33,6 +33,7 @@ from src.pystachy_compiler.utils import (
     empty_ann,
     empty_default,
     empty_display,
+    holds_no_object,
     is_const,
     is_dict,
     is_fn,
@@ -1703,6 +1704,11 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         # forces replay if it later widens; a source that stays unresolved stores only
         # None. A restarted copy can therefore consume its own inferred payload hint.
         v = Val("null", "None")
+    if name in self.curfn.sentinels and not self.is_global(name) and not holds_no_object(v.t) and not (v.t == "dyn" and self.ltype.get(name, "") == "dyn"):
+        # (p is S of sentinel parameter p is decided by p's type, the sentinel's where the call
+        # left p out, see static: another object() that p held would be taken for S. A dynamic p
+        # is tested at run time)
+        self.err(f"assigning sentinel parameter '{name}' a value that may be an object() is not supported: its tests 'is {short(self.curfn.sentinels[name])}' are decided by its type")
     if name in self.noneglobals and name not in self.ltype:
         if v.t != "None":
             self.err(f"'{name}' is None in its module's code: giving it a {v.t} elsewhere (a function or another module) is not supported")

@@ -7,7 +7,7 @@ from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, OBJECTC, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -1419,8 +1419,12 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
             # (the callee never observes this argument's object: numeric_proof, as its null
             # companion below says; read it as an operand, without snapshots)
             self.fn.scalar_reads = True
-        # (a sentinel parameter's argument is a T, or the sentinel itself: declare_fn)
-        pt = f.sentann[f.params[j]] if f.params[j] in f.sentinels and not (e.kind == "name" and e.s == f.sentinels[f.params[j]]) else f.ptypes[j]
+        # (a sentinel parameter's argument is a T, or the sentinel itself: declare_fn; also as a
+        # sentinel parameter of the caller's for the same sentinel that may hold it: only the
+        # sentinel can where its type is object's (store_name), and a dynamic value is tested at
+        # run time, as the caller's tests of it are)
+        sent = f.params[j] in f.sentinels and e.kind == "name" and (e.s == f.sentinels[f.params[j]] or (e.s in self.curfn.sentinels and self.curfn.sentinels[e.s] == f.sentinels[f.params[j]] and (self.static_type(e) == OBJECTC or self.static_type(e) == "dyn")))
+        pt = f.sentann[f.params[j]] if f.params[j] in f.sentinels and not sent else f.ptypes[j]
         try:
             arg = self.expr(e, pt if pt != "" or j >= len(hint) else self.generic_hint(e, hint[j]))
         finally:
