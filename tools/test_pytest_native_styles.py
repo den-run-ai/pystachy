@@ -1,5 +1,7 @@
 """Original-pytest parity for unittest cases, class inheritance, computed tables and layouts."""
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import shlex
@@ -638,6 +640,13 @@ IMPORTED = {
 }
 
 
+CONFIGURED = {
+    'pyproject.toml': '[project]\nname = "sample"\n\n[tool.pytest.ini_options]\nminversion = "8.0"\ntestpaths = ["tests"]\naddopts = "-ra --strict-markers --tb=short -W error::DeprecationWarning"\nxfail_strict = true\npythonpath = ["src"]\nmarkers = ["slow: takes a while"]\nfilterwarnings = ["ignore:harmless:UserWarning"]\nlog_cli_level = "INFO"\n',
+    'src/lib/__init__.py': 'import warnings\n\n\ndef old() -> int:\n    warnings.warn("old", DeprecationWarning)\n    return 1\n\n\ndef noisy() -> int:\n    warnings.warn("harmless noise", UserWarning)\n    return 2\n',
+    'tests/test_config.py': 'import pytest\n\nimport lib\n\n\n@pytest.mark.slow\ndef test_imports_from_pythonpath():\n    assert lib.noisy() == 2\n\n\n@pytest.mark.xfail(reason="strict by configuration")\ndef test_strict_xpass_fails():\n    assert True\n\n\n@pytest.mark.xfail(reason="still expected")\ndef test_xfail():\n    assert False\n\n\ndef test_deprecation_is_an_error():\n    lib.old()\n\n\ndef test_expected_warning():\n    with pytest.warns(DeprecationWarning):\n        lib.old()\n',
+}
+
+
 SUITES = {
     "unit": (UNITTEST, "test-failed"),
     "tables": (TABLES, "passed"),
@@ -651,12 +660,12 @@ SUITES = {
 
 @unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
 class StyleParity(TemporarySuite):
-    def files(self, files):
+    def files(self, files, configured=False):
         for name, text in files.items():
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text)
-        return runner.discover([self.root], self.root)
+        return runner.discover([self.root], self.root, configured)
 
     def run_paths(self, paths, mode):
         results = runner.run_suite(paths, self.root, self.work / mode, mode, shlex.split(NATIVE), sys.executable, 300)
@@ -791,6 +800,79 @@ class StyleParity(TemporarySuite):
         self.assertEqual(result.cases[0], "test_stale.py::test_value[1]")
         self.assertEqual(expected["cases"][0], "test_stale.py::test_value[10]")
         self.assertIn("collected test IDs/order differ from pytest", runner.compare([result], expected))
+
+    def run_cli(self, mode, *arguments):
+        evidence = self.root / "evidence.json"
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as error:
+            status = runner.main([*arguments, "--root", str(self.root), "--mode", mode, "--work-dir", str(self.work),
+                                  "--json", str(evidence), *(["--compiler", NATIVE] if mode != "python" else [])])
+        return status, error.getvalue(), json.loads(evidence.read_text()) if evidence.exists() else {}
+
+    def check_configured(self, mode):
+        self.files(CONFIGURED, True)
+        # (A caller that has not read the configuration must not run under it.)
+        with self.assertRaisesRegex(CollectionError, "pytest configuration is not supported"):
+            runner.discover([self.root], self.root)
+        status, error, report = self.run_cli(mode, str(self.root / "tests"))
+        self.assertEqual(status, 1, error)
+        self.assertEqual(report["qualification"], "pytest-matched", error)
+        outcomes = {event["nodeid"].split("::")[1]: event["outcome"] for event in report["results"][0]["events"]
+                    if event["phase"] == "call"}
+        # xfail_strict, pythonpath, -W error::DeprecationWarning and filterwarnings apply.
+        self.assertEqual(outcomes, {
+            "test_imports_from_pythonpath": "passed", "test_strict_xpass_fails": "failed", "test_xfail": "xfailed",
+            "test_deprecation_is_an_error": "failed", "test_expected_warning": "passed"})
+
+    def test_project_configuration_is_honored(self):
+        self.check_configured("python")
+        settings = runner.configuration([self.root / "tests" / "test_config.py"], self.root)
+        self.assertTrue(settings.xfail_strict)
+        self.assertEqual(settings.pythonpath, [(self.root / "src").resolve()])
+        self.assertEqual(settings.filters, [("error", "", "DeprecationWarning"), ("ignore", "harmless", "UserWarning")])
+        self.assertIn("addopts = --strict-markers", settings.ini)
+
+    def test_configuration_the_runner_cannot_honor_is_rejected(self):
+        path = self.source("def test_a(): pass\n", "tests/test_a.py")
+        rejected = {
+            "pyproject.toml": [('[tool.pytest.ini_options]\naddopts = "-n auto"\n', "addopts '-n'"),
+                               ('[tool.pytest.ini_options]\naddopts = "-m \'not slow\'"\n', "addopts '-m'"),
+                               ('[tool.pytest.ini_options]\npython_files = "check_*.py"\n', "python_files"),
+                               ('[tool.pytest.ini_options]\nasyncio_mode = "auto"\n', "asyncio_mode"),
+                               ('[tool.pytest.ini_options]\nfilterwarnings = ["error::pkg.Custom"]\n',
+                                "filterwarnings 'error::pkg.Custom'"),
+                               ("[tool.pytest.ini_options\n", "cannot read pytest configuration")],
+            "pytest.ini": [("[pytest]\npython_functions = check_*\n", "python_functions"),
+                           ("[pytest]\nusefixtures = clean\n", "usefixtures")],
+            "setup.cfg": [("[tool:pytest]\ndoctest_optionflags = ELLIPSIS\n", "doctest_optionflags")],
+        }
+        for name, cases in rejected.items():
+            for content, message in cases:
+                with self.subTest(name=name, content=content):
+                    (self.root / name).write_text(content)
+                    try:
+                        status, error, _ = self.run_cli("python", str(path))
+                        self.assertEqual(status, 2)
+                        self.assertIn("pytest configuration", error)
+                        self.assertIn(message, error)
+                    finally:
+                        (self.root / name).unlink()
+        # A project file that does not configure pytest, and options that only shape its report.
+        accepted = {"pyproject.toml": '[project]\nname = "x"\n[tool.ruff]\nline-length = 100\n',
+                    "tox.ini": "[tox]\nenvlist = py\n",
+                    "pytest.ini": "[pytest]\naddopts = -q -ra --tb=short --color yes\nlog_level = INFO\n"
+                                  "testpaths = tests\njunit_family = xunit2\n"}
+        for name, content in accepted.items():
+            (self.root / name).write_text(content)
+        status, error, report = self.run_cli("python", str(path))
+        self.assertEqual((status, report["qualification"]), (0, "pytest-matched"), error)
+        # The nearest file is the one pytest reads.
+        (self.root / "tests" / "pytest.ini").write_text("[pytest]\nxfail_strict = true\n")
+        self.assertTrue(runner.configuration([path], self.root).xfail_strict)
+        self.assertEqual(runner.configuration([path], self.root).source, str(self.root / "tests" / "pytest.ini"))
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_jit_project_configuration(self):
+        self.check_configured("jit")
 
     @unittest.skipUnless(NATIVE, "native compiler opt-in required")
     def test_native_jit_suites_under_gc_stress(self):

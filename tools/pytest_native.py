@@ -6,6 +6,7 @@ The CLI compares original-source, real-pytest outcomes by default as an independ
 from __future__ import annotations
 
 import argparse
+import configparser
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 import fcntl
@@ -21,12 +22,29 @@ import subprocess
 import sys
 import textwrap
 import time
+import tomllib
 
 from pytest_native_codegen import CollectionError, adapt_helper, generate, generate_conftest, original_line
 
 TOOLS = Path(__file__).resolve().parent
 REPO = TOOLS.parent
 CONFIGS = ("pytest.ini", ".pytest.ini", "pytest.toml", ".pytest.toml")
+# Configuration that changes no test's collection or outcome: reporting, logging and paths
+# the runner is given on its command line.
+IGNORED_OPTIONS = {"minversion", "testpaths", "console_output_style", "cache_dir", "norecursedirs",
+                   "required_plugins", "tmp_path_retention_count", "tmp_path_retention_policy",
+                   "verbosity_assertions", "verbosity_test_cases", "truncation_limit_lines",
+                   "truncation_limit_chars", "faulthandler_timeout", "strict_config", "strict_xfail"}
+COLLECTION_DEFAULTS = {"python_files": ["test_*.py", "*_test.py"], "python_classes": ["Test"],
+                       "python_functions": ["test"]}
+# Command-line options in addopts that change no outcome, with whether a value follows.
+QUIET_OPTIONS = {"-q": False, "--quiet": False, "-v": False, "-vv": False, "-vvv": False, "--verbose": False,
+                 "-s": False, "-l": False, "--showlocals": False, "--no-header": False, "--no-summary": False,
+                 "--strict-config": False, "--disable-warnings": False, "--tb": True, "--color": True,
+                 "--durations": True, "--durations-min": True, "-r": True, "--code-highlight": True}
+WARNING_CLASSES = {"Warning", "UserWarning", "DeprecationWarning", "PendingDeprecationWarning", "SyntaxWarning",
+                   "RuntimeWarning", "FutureWarning", "ImportWarning", "UnicodeWarning", "BytesWarning",
+                   "ResourceWarning", "EncodingWarning"}
 EXCLUDED_DIRS = {"build", "dist", "venv", ".venv", "__pycache__", "node_modules"}
 
 
@@ -48,7 +66,148 @@ class Result:
     operand_build_error: str = ""
 
 
-def parse_targets(arguments: list[str], root: Path) -> dict[Path, list[str]] | None:
+@dataclass
+class Settings:
+    """pytest's configuration under --root, as far as the runner honors it (configuration())."""
+    source: str = ""
+    # xfail marks without strict= fail the run when their test passes.
+    xfail_strict: bool = False
+    # Directories pytest adds to sys.path.
+    pythonpath: list[Path] = field(default_factory=list)
+    # (action, message regex, category) for warnings.filterwarnings, in the order given.
+    filters: list[tuple[str, str, str]] = field(default_factory=list)
+    # The same options for the isolated pytest that the comparison runs.
+    ini: list[str] = field(default_factory=list)
+
+
+def _warning_filter(text: str, source: Path) -> tuple[str, str, str]:
+    """A filterwarnings entry (action:message:category) the compiled program can apply."""
+    parts = [part.strip() for part in text.split(":")]
+    action, message, category = parts[0], (parts[1:2] or [""])[0], (parts[2:3] or [""])[0] or "Warning"
+    if (action not in {"error", "ignore", "always", "default", "module", "once"} or category not in WARNING_CLASSES
+            or any(parts[3:])):
+        raise CollectionError(f"pytest configuration is not supported: filterwarnings {text!r} in {source} "
+                              "(an action, a message and a built-in warning class are)")
+    return action, message, category
+
+
+def configuration(paths: list[Path], root: Path) -> Settings:
+    """Read the configuration pytest would use for these tests, without ignoring any of it.
+
+    pytest takes the first configuration file from the tests' common directory upward;
+    the search here stops at --root, which the comparison's pytest is rooted at. Options
+    that only shape pytest's report are accepted; those that change collection or
+    outcomes are honored (xfail_strict, pythonpath, filterwarnings of built-in classes,
+    registered markers under --strict-markers) or rejected by name.
+    """
+    settings = Settings()
+    if not paths:
+        return settings
+    directory = Path(os.path.commonpath([str(path.parent) for path in paths]))
+    options = None
+    while options is None and directory.is_relative_to(root):
+        for name in (*CONFIGS, "pyproject.toml", "tox.ini", "setup.cfg"):
+            source = directory / name
+            if not source.is_file():
+                continue
+            try:
+                if name.endswith(".toml"):
+                    data = tomllib.loads(source.read_text())
+                    table = data.get("tool", {}).get("pytest") if name == "pyproject.toml" else data.get("pytest")
+                    if table is None:
+                        continue
+                    options = dict(table.get("ini_options", {})) if name == "pyproject.toml" else dict(table)
+                    options.update({key: value for key, value in table.items() if key != "ini_options"}
+                                   if name == "pyproject.toml" else {})
+                else:
+                    parser = configparser.ConfigParser(interpolation=None)
+                    parser.read_string(source.read_text())
+                    section = "tool:pytest" if name == "setup.cfg" else "pytest"
+                    if not parser.has_section(section):
+                        if name in CONFIGS:
+                            options = {}
+                            break
+                        continue
+                    options = dict(parser.items(section))
+            except (OSError, UnicodeError, ValueError, configparser.Error) as error:
+                raise CollectionError(f"cannot read pytest configuration {source}: {error}") from None
+            break
+        if options is None:
+            if directory == root:
+                break
+            directory = directory.parent
+    if options is None:
+        return settings
+    settings.source = str(source)
+
+    def lines(value) -> list[str]:
+        items = value if isinstance(value, list) else str(value).splitlines()
+        return [str(item).strip() for item in items if str(item).strip()]
+
+    def words(value) -> list[str]:
+        return [str(item) for item in value] if isinstance(value, list) else shlex.split(str(value))
+
+    def flag(value) -> bool:
+        return value if isinstance(value, bool) else str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+    markers: list[str] = []
+    strict_markers = False
+    for key, value in options.items():
+        if key in IGNORED_OPTIONS or key.startswith(("log_", "junit_")):
+            continue
+        if key == "xfail_strict":
+            settings.xfail_strict = flag(value)
+        elif key == "markers":
+            markers = lines(value)
+        elif key == "strict_markers":
+            strict_markers = strict_markers or flag(value)
+        elif key == "pythonpath":
+            settings.pythonpath = [(directory / item).resolve() for item in words(value)]
+        elif key == "filterwarnings":
+            settings.filters += [_warning_filter(item, source) for item in lines(value)]
+        elif key in COLLECTION_DEFAULTS:
+            if sorted(words(value)) != sorted(COLLECTION_DEFAULTS[key]):
+                raise CollectionError(f"pytest configuration is not supported: {key} in {source} "
+                                      "(the runner collects pytest's default names)")
+        elif key == "addopts":
+            arguments = words(value)
+            index = 0
+            while index < len(arguments):
+                option, _, attached = arguments[index].partition("=")
+                index += 1
+                if option in {"--strict-markers", "--strict"}:
+                    strict_markers = True
+                elif option == "-W" or (option.startswith("-W") and len(option) > 2 and not attached):
+                    text = arguments[index] if option == "-W" and index < len(arguments) else option[2:]
+                    index += option == "-W"
+                    settings.filters.append(_warning_filter(text, source))
+                elif option in QUIET_OPTIONS or (option.startswith("-r") and option[2:].isalpha()):
+                    if QUIET_OPTIONS.get(option) and not attached and option != "-r":
+                        index += 1
+                    elif option == "-r" and not attached:
+                        index += 1
+                elif option == "--import-mode" and (attached or (arguments[index:index + 1] or [""])[0]) == "prepend":
+                    index += not attached
+                else:
+                    raise CollectionError(f"pytest configuration is not supported: addopts {arguments[index - 1]!r} "
+                                          f"in {source}")
+        else:
+            raise CollectionError(f"pytest configuration is not supported: {key} in {source}")
+    if settings.xfail_strict:
+        settings.ini.append("xfail_strict = true")
+    if markers:
+        settings.ini += ["markers =", *("    " + marker for marker in markers)]
+    if strict_markers:
+        settings.ini.append("addopts = --strict-markers")
+    if settings.pythonpath:
+        settings.ini.append("pythonpath = " + " ".join(shlex.quote(str(item)) for item in settings.pythonpath))
+    if settings.filters:
+        settings.ini += ["filterwarnings =", *(f"    {action}:{message}:{category}"
+                                               for action, message, category in settings.filters)]
+    return settings
+
+
+def parse_targets(arguments: list[str], root: Path, configured: bool = False) -> dict[Path, list[str]] | None:
     """Node IDs (path::name or path::name[id]) by module, in first-seen order, or None.
 
     As in pytest's arguments, cases run in the order given and a repeated node ID runs
@@ -72,7 +231,7 @@ def parse_targets(arguments: list[str], root: Path) -> dict[Path, list[str]] | N
     for path in selections:
         if path.suffix != ".py":
             raise CollectionError(f"expected a Python test module: {path}")
-        discover([path], root)
+        discover([path], root, configured)
     return selections
 
 
@@ -146,11 +305,13 @@ def compiler_command(text: str) -> list[str]:
     return command
 
 
-def discover(paths: list[Path], root: Path) -> list[Path]:
+def discover(paths: list[Path], root: Path, configured: bool = False) -> list[Path]:
     """Select test modules without importing them.
 
     Tests may sit in packages and in several directories; layout() works out how
-    pytest imports each and which conftest.py files apply to it.
+    pytest imports each and which conftest.py files apply to it. A caller that has
+    not read pytest's configuration (configuration()) must not run tests under one:
+    it is rejected here unless configured says the caller applies it.
     """
     files: set[Path] = set()
     for path in paths:
@@ -171,7 +332,7 @@ def discover(paths: list[Path], root: Path) -> list[Path]:
                     if name.endswith(".py") and (name.startswith("test_") or name.endswith("_test.py")):
                         files.add(base / name)
     checked: set[Path] = set()
-    for path in sorted(files):
+    for path in sorted(files) if not configured else []:
         for parent in path.parents:
             if not parent.is_relative_to(root) or parent in checked:
                 break
@@ -473,7 +634,8 @@ def translate(text: str, sources: dict[str, tuple[str, object]]) -> str:
 
 
 def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: list[str],
-              python: str, timeout: float, selections: dict[Path, list[str]] | None = None) -> list[Result]:
+              python: str, timeout: float, selections: dict[Path, list[str]] | None = None,
+              settings: Settings | None = None) -> list[Result]:
     """Preflight every module, import all of them, then execute in one process.
 
     Per-file processes would lose pytest's shared imported-module state and could
@@ -484,6 +646,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     results = [Result(path=path.relative_to(root).as_posix()) for path in paths]
     if not results:
         return []
+    settings = settings or Settings()
     try:
         tree = layout(paths, root)
     except CollectionError as error:
@@ -512,7 +675,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
                 shared, imports, package = context(conftest)
                 module, exported[conftest] = generate_conftest(
                     conftest.read_text(), name, operands, str(conftest), tree.modules[conftest], shared, imports,
-                    package, aliases[conftest], resolve)
+                    package, aliases[conftest], resolve, settings.xfail_strict)
                 modules.append(module)
             except (CollectionError, OSError, UnicodeError, SyntaxError) as error:
                 for result in results:
@@ -523,7 +686,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
             path = paths[index]
             shared, imports, package = context(path)
             return generate(texts[path], results[index].path, operands, selections.get(path) if selections else None,
-                            shared, session_end, str(path), tree.modules[path], imports, package, resolve)
+                            shared, session_end, str(path), tree.modules[path], imports, package, resolve,
+                            settings.xfail_strict)
 
         generated = []
         for index, (path, result) in enumerate(zip(paths, results)):
@@ -581,6 +745,11 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         # tmp_path directories live under one directory that this run owns and removes.
         imports = ["import pytest_native_fixtures as _pyn_fixtures",
                    f"_pyn_fixtures.tmp_base[0] = {str(temporary)!r}", *imports]
+    if settings.filters:
+        # The configuration's filterwarnings, before any test module is imported.
+        imports = ["import warnings as _pyn_warnings",
+                   *(f"_pyn_warnings.filterwarnings({action!r}, {message!r}, {category})"
+                     for action, message, category in settings.filters), *imports]
     # The marker is written before any test module's code runs: without it, a failed
     # native command never started the program, and nothing observable happened.
     driver = "\n".join(["import sys", f"open({str(marker)!r}, 'w').close()", *imports, "",
@@ -594,7 +763,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         write_changed(suite_work / "pytest_native_fixtures.py", (TOOLS / "pytest_native_fixtures.py").read_text())
     # The modules beside the tests, where the generated ones import them.
     mirror(suite_work, tree, {*paths, *tree.conftests}, root)
-    env = environment([suite_work, *tree.bases, root])
+    env = environment([suite_work, *tree.bases, *settings.pythonpath, root])
     # Suite-level cost/output is attached to the first result, not multiplied by
     # the number of modules. The JSON records this execution model explicitly.
     first = results[0]
@@ -739,12 +908,13 @@ def pytest_sessionfinish(session, exitstatus):
 
 
 def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: float,
-           selections: dict[Path, list[str]] | None = None) -> dict:
+           selections: dict[Path, list[str]] | None = None, settings: Settings | None = None) -> dict:
     # pytest reads the conftest.py files layout() finds: those from --root down to the
     # tests. --confcutdir keeps those above --root out, as --noconftest does without any.
     conftest = bool(paths) and bool(layout(paths, root).conftests)
     write_changed(work / "_pyn_oracle.py", ORACLE_PLUGIN)
-    write_changed(work / "empty.ini", "[pytest]\n")
+    # Its configuration is the part of the project's that the runner honors (configuration()).
+    write_changed(work / "empty.ini", "\n".join(["[pytest]", *(settings.ini if settings else [])]) + "\n")
     report = work / "oracle.jsonl"
     report.unlink(missing_ok=True)
     env = environment([work, root])
@@ -888,17 +1058,19 @@ def execute(args) -> int:
         print("note: the default hosted compiler compiles every run again; after make, "
               "--compiler ./pystachy reuses the native program cache", file=sys.stderr)
     try:
-        selections = parse_targets(args.paths, root)
-        paths = list(selections) if selections is not None else discover([Path(path) for path in args.paths], root)
+        selections = parse_targets(args.paths, root, True)
+        paths = (list(selections) if selections is not None
+                 else discover([Path(path) for path in args.paths], root, True))
+        settings = configuration(paths, root)
     except (CollectionError, OSError, UnicodeError) as error:
         print(f"collection error: {error}", file=sys.stderr)
         return 2
     results = run_suite(paths, root, work, args.mode, shlex.split(args.compiler), args.python, args.timeout,
-                        selections)
+                        selections, settings)
     collected = not any(result.state == "collection-error" for result in results)
     # A module the runner cannot collect is an error already; running pytest would only
     # report the consequences as differences.
-    reference = (oracle(paths, root, work, args.python, args.timeout, selections)
+    reference = (oracle(paths, root, work, args.python, args.timeout, selections, settings)
                  if args.compare and paths and collected else None)
     differences = compare(results, reference) if reference is not None else []
     mismatches = outcome_differences(results, reference) if reference is not None else []

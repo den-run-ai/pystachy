@@ -87,9 +87,19 @@ preserving shared imported-module state. Empty test modules are imported too: an
 import failure cannot disappear from the result. Generated modules keep their test
 modules' names, so `__module__` and `repr()` of their classes and functions match,
 and `__file__` and `__name__` read as the original module's. A module that cannot
-be collected is reported without running the pytest oracle. pytest configuration
-files under `--root` are rejected: point `--root` at the tests' directory when the
-project's `pyproject.toml` configures pytest.
+be collected is reported without running the pytest oracle.
+
+The runner reads the configuration pytest would use: the first of `pytest.toml`,
+`pytest.ini`, `pyproject.toml` (`[tool.pytest.ini_options]` or `[tool.pytest]`),
+`tox.ini` and `setup.cfg` from the tests' directory up to `--root`. None of it is
+silently ignored. Options that only shape pytest's report are accepted (`testpaths`,
+`minversion`, `log_*`, `junit_*`, and in `addopts` flags such as `-ra`, `-q`,
+`--tb=short`, `--color`). `xfail_strict`, `pythonpath`, `markers` with
+`--strict-markers`, and `filterwarnings` or `-W` entries made of an action, a
+message and a built-in warning class are honored, in the program and in the
+comparison's pytest alike. Any other option is an error that names it: `-m`, `-k`,
+`-n`, coverage and other plugins' options, changed `python_files`, `python_classes`
+or `python_functions`, and filters on a project's own warning class.
 
 Generated sources, executables and phase reports live in `--work-dir` (default
 `build/pytest-native`). The CLI locks that directory against concurrent runs;
@@ -239,7 +249,7 @@ collection and phase effects. The collector rejects test classes with `__init__`
 several base classes or a base class it cannot read, async/generator tests,
 class- and module-level xunit hooks, `conftest.py` hooks that change collection or
 execution, tests in `conftest.py`, a class fixture named as a module one, pytest
-configuration, custom decorators (including `unittest.mock.patch` and hypothesis),
+configuration it cannot honor, custom decorators (including `unittest.mock.patch` and hypothesis),
 plugins, dynamic test creation and unsupported pytest APIs such as
 `pytest.importorskip`, `capsys` and `monkeypatch.setattr`. It also rejects
 namespace inspection/mutation and assignment to module metadata. A name the

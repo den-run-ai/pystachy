@@ -333,9 +333,11 @@ class Generator:
     def __init__(self, source: str, filename: str, operands: bool = True, selected=None,
                  shared=None, conftest: bool = False, session_end: bool = True, path: str = "",
                  module: str = "", imports=None, package: bool = False, alias: str = "_pyn_conftest",
-                 helper: bool = False, resolve=None):
+                 helper: bool = False, resolve=None, strict: bool = False):
         self.source = source
         self.filename = filename
+        # pytest's xfail_strict setting: what an xfail mark without strict= means.
+        self.strict = strict
         # resolve(path, level, module, name) -> (source, filename, path, module) of the module
         # beside the tests that `from module import name` reads, or None: where a test
         # class's imported base class is defined.
@@ -1080,7 +1082,7 @@ class Generator:
             self.error(decorator, "marker reason must be a literal string")
         if any(not isinstance(kws[key], bool) for key in ("strict", "run") if key in kws):
             self.error(decorator, "xfail strict/run must be literal booleans")
-        return Mark(kind, condition, reason, kws.get("strict", False), kws.get("run", True), raises)
+        return Mark(kind, condition, reason, kws.get("strict", self.strict), kws.get("run", True), raises)
 
     def unit_mark(self, decorator, prelude, method):
         """unittest's skip decorators and expectedFailure, or None where the condition is false.
@@ -2957,7 +2959,7 @@ def original_line(module: GeneratedModule, line: int) -> int | None:
 
 def generate(source: str, filename: str, operands: bool = True, selected=None, shared=None,
              session_end: bool = True, path: str = "", module: str = "", imports=None,
-             package: bool = False, resolve=None) -> GeneratedModule:
+             package: bool = False, resolve=None, strict: bool = False) -> GeneratedModule:
     """Collect and adapt one module, or reject unsupported collection explicitly.
 
     operands keeps comparison operands for assertion failures (Generator.captured);
@@ -2967,22 +2969,23 @@ def generate(source: str, filename: str, operands: bool = True, selected=None, s
     (module, alias) each is imported as; session_end is false for every module but the
     last that runs; path and module are what the test module reads as __file__ and
     __name__; package says its directory is one, where relative imports resolve;
-    resolve finds the module of an imported base class (Generator.__init__).
+    resolve finds the module of an imported base class (Generator.__init__); strict is
+    pytest's xfail_strict setting.
     """
     return Generator(source, filename, operands, selected, shared, False, session_end, path, module, imports,
-                     package, resolve=resolve).generate()
+                     package, resolve=resolve, strict=strict).generate()
 
 
 def generate_conftest(source: str, filename: str, operands: bool = True, path: str = "", module: str = "",
                       shared=None, imports=None, package: bool = False, alias: str = "_pyn_conftest",
-                      resolve=None):
+                      resolve=None, strict: bool = False):
     """Adapt a conftest.py: its generated module, and its fixtures for generate(shared=).
 
     shared and imports name the conftest.py files above it, whose fixtures its own may
     request; other modules call its fixtures through alias.
     """
     generator = Generator(source, filename, operands, None, shared, True, True, path, module, imports, package,
-                          alias, resolve=resolve)
+                          alias, resolve=resolve, strict=strict)
     module = generator.generate()
     return module, generator.export()
 
