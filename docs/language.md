@@ -156,8 +156,8 @@ The main rules are:
   [inferred unions](language/typing.md#inferred-unions).
 - Mutable containers are invariant: a `list[int]` cannot become a `list[int | None]`.
 - Empty lists and dictionaries need an annotation or a use that determines their type.
-- Ordinary functions and methods infer an omitted return annotation from their supported returns,
-  including no-argument and fully annotated parameter signatures. Parameters keep their declared
+- Ordinary functions, methods and property getters infer an omitted return annotation from their
+  supported returns, including no-argument and fully annotated parameter signatures. Parameters keep their declared
   types, explicit `-> None` stays a contract, and functions without value returns return `None`.
   Constructors and implicit special methods keep their own result contracts.
 - A module-level function or ordinary method with an unannotated parameter is specialized for

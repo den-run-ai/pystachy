@@ -1,8 +1,9 @@
 # error: property value needs a return annotation
+# (a generator getter: an ordinary getter's type is inferred from its returns)
 class C:
     @property
     def value(self):
-        return 1
+        yield 1
 
 
-print(C().value)
+print(list(C().value))
