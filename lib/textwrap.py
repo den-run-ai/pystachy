@@ -80,7 +80,7 @@ class TextWrapper:
     # splits into
     #   Hello/ /there/ /--/ /you/ /goof-/ball,/ /use/ /the/ /-b/ /option!
     # (after stripping out empty strings).
-    wordsep_re: re.Pattern = re.compile(r'''
+    wordsep_re: re.Pattern = re._deferred(r'''
         ( # any whitespace
           %(ws)s+
         | # em-dash between words
@@ -97,20 +97,23 @@ class TextWrapper:
             )
         )'''.replace('%(wp)s', _word_punct).replace('%(lt)s', _letter)
             .replace('%(ws)s', _whitespace_class).replace('%(nws)s', _nowhitespace),
-        re.VERBOSE)  # Pystachy port: replace() for % of a mapping, which is not supported
+        re.VERBOSE, 1)  # Pystachy port: replace() for % of a mapping, which is not supported
+    # Pystachy port: re._deferred() for re.compile(), here and below. The pattern is compiled
+    # where it is first used, not as the module loads: a program that imports argparse loads
+    # this module to format help, which most runs never print.
 
     # This less funky little regex just split on recognized spaces. E.g.
     #   "Hello there -- you goof-ball, use the -b option!"
     # splits into
     #   Hello/ /there/ /--/ /you/ /goof-ball,/ /use/ /the/ /-b/ /option!/
-    wordsep_simple_re: re.Pattern = re.compile(r'(%s+)' % _whitespace_class)  # Pystachy port: the module's pattern
+    wordsep_simple_re: re.Pattern = re._deferred(r'(%s+)' % _whitespace_class, 0, 1)  # Pystachy port: the module's pattern
 
     # XXX this is not locale- or charset-aware -- string.lowercase
     # is US-ASCII only (and therefore English-only)
-    sentence_end_re: re.Pattern = re.compile(r'[a-z]'             # lowercase letter
-                                             r'[\.\!\?]'          # sentence-ending punct.
-                                             r'[\"\']?'           # optional end-of-quote
-                                             r'\Z')               # end of chunk
+    sentence_end_re: re.Pattern = re._deferred(r'[a-z]'             # lowercase letter
+                                               r'[\.\!\?]'          # sentence-ending punct.
+                                               r'[\"\']?'           # optional end-of-quote
+                                               r'\Z', 0, 0)         # end of chunk
 
     def __init__(self,
                  width=70,
@@ -435,8 +438,8 @@ def shorten(text, width, **kwargs):
 
 # -- Loosely related functionality -------------------------------------
 
-_whitespace_only_re = re.compile('^[ \t]+$', re.MULTILINE)
-_leading_whitespace_re = re.compile('(^[ \t]*)(?:[^ \t\n])', re.MULTILINE)
+_whitespace_only_re = re._deferred('^[ \t]+$', re.MULTILINE, 0)  # Pystachy port: see wordsep_re
+_leading_whitespace_re = re._deferred('(^[ \t]*)(?:[^ \t\n])', re.MULTILINE, 1)
 
 def dedent(text):
     """Remove any common leading whitespace from every line in `text`.
