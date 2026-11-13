@@ -418,6 +418,8 @@ def gen_class_value_issub(self, k: Val, t: Node) -> Val:
         return out
     if anyclass:
         return Val("true", "bool")  # (every class derives from object, NoneType too)
+    if o.t == "fn[b:object]":
+        return Val("true", "bool")  # (object, read through a variable: every class derives from it, as where it is named)
     if o.t.startswith("fn[b:") and base == "object":
         # (a builtin class named: k may be its class object, bool's for int, a named tuple's
         # for tuple)
