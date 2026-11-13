@@ -232,8 +232,9 @@ CPython's, so a complex number equal to an int or a float hashes as it does. `bo
 The compiler rejects what CPython rejects at run time (ordering, `//`, `%`, `divmod()`, `round()`,
 `int()`, `float()` and `math` functions of one, assigning an attribute), an `int` or a `float`
 where `complex` is declared (as for `float`: write `2+0j` or `complex(2)`), `sum()` of complex
-numbers, a union of `complex` with another scalar or a container, a complex number as a dynamic
-`Any` value, and subclasses of `complex`. There is no `cmath`.
+numbers, a union of `complex` with a class's objects, a complex number as a dynamic `Any`
+value, and subclasses of `complex`. Unions with other scalars are
+[closed scalar unions](typing.md#closed-scalar-unions). There is no `cmath`.
 
 ## Iterators
 

@@ -659,8 +659,9 @@ See [user exception classes](semantics.md#user-exception-classes) and
   objects, mixed-type variables/returns/`dict.get` defaults, or aliases / `type(x) is object` without any
   module calling `object()`. See [sentinels](semantics.md#sentinels).
 - **Complex numbers:** ordering, `//`, `%`, `divmod()`, `round()`, `int()`, `float()` and `math`
-  of one; an `int` or `float` where `complex` is declared; `sum()`; unions with other scalars or
-  containers; dynamic `Any` values; attribute assignment and subclasses. See
+  of one; an `int` or `float` where `complex` is declared; `sum()`; unions with a class's
+  objects, and ordering or container equality of unions that hold one; dynamic `Any` values;
+  attribute assignment and subclasses. See
   [complex numbers](semantics.md#complex-numbers).
 - **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`, `_pystachy_complex`.
 - **Arguments:** unsupported keywords; optional `key=` when items lack a supported natural

@@ -341,8 +341,8 @@ would differ from the integer.
 
 ## Closed scalar unions
 
-Explicit `A | B` and `Union[A, B]` annotations may combine `int`, `float`, `bool`
-and `str`, optionally including `None`. Nested and repeated members normalize to
+Explicit `A | B` and `Union[A, B]` annotations may combine `int`, `float`, `bool`,
+`str` and `complex`, optionally including `None`. Nested and repeated members normalize to
 one type. These annotations are supported by default in both AOT and JIT modes.
 They may appear in arguments, returns, local variables, fields and container values:
 
@@ -417,6 +417,12 @@ described above. Recursive JSON-shaped types use the
 runtime compilation and speculative type assumptions are out of scope.
 Boxing may allocate; this feature expands supported programs and makes no performance
 claim.
+
+A `complex` member, as mypy's `int | bool | float | complex | str` holds one, narrows with
+`isinstance()`; truth tests, `str()`, `repr()`, printing, `format()` and f-string
+specifications, `==` and `!=` (across members, so `1 == 1+0j` is true), `+`, `-`, `*`, `/`
+and `**` of numeric members, `abs()` and `hash()` select its operations by the tag. Ordering,
+other builtins, and the equality of containers that hold such a union require narrowing first.
 
 ### Inferred unions
 
