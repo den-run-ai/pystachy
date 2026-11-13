@@ -713,7 +713,10 @@ as it makes dataclasses and `NamedTuple` classes ([test](../tests/programs/libra
   whose results are ints and strs, and with CPython's `TypeError` for an operand of another
   type. Compared with an object of another class, a member lets that object's reflected method
   decide, or identity where it has none, as `int`'s and `str`'s methods return `NotImplemented`
-  ([test](../tests/programs/library/lib_enum_reflected.py)). One cannot be passed where an `int`
+  ([test](../tests/programs/library/lib_enum_reflected.py)). A number on the left of an
+  `IntEnum` or `IntFlag` member computes as CPython's `int` does (`1 + member`, `n += member`,
+  `4 | flag`, which keeps the flag's class), through the member's reflected method
+  ([test](../tests/programs/library/lib_enum_int_left.py)). One cannot be passed where an `int`
   or `str` is typed, `int(member)` is not supported, and these are compile-time errors, as
   CPython's member is an `int` or a `str`: `isinstance()` of one and `int` or `str`, also of a
   value of a base class, such as `Enum`, that may hold one
