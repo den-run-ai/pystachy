@@ -384,11 +384,26 @@ def gen_class_value_issub(self, k: Val, t: Node) -> Val:
             items.append(x if xnamed else self.vnode(self.expr(x, "")))
         k = self.unwrap(k, "TypeError: issubclass() arg 1 must be a class")
         self.nn[k.v] = True
-        found = Val("false", "bool")
+        # (CPython tests the items in order and stops at the first that k derives from: a later
+        # item that is no class, a variable that is None, raises only where it is reached)
+        end = self.label()
+        found = Ins("phi", "bool", "")
         for x in items:
             one = self.class_value_issub(k, x)
-            found = one if found.v == "false" else Val(self.scalar('or', [found, one]), "bool")
-        return found
+            if one.v == "false":
+                continue
+            self.incoming(found, "true", self.cur)
+            if one.v == "true":
+                self.br(end)
+                self.place(end)
+                return Val(self.phi(found), "bool")
+            rest = self.label()
+            self.cbr(one.v, end, rest)
+            self.place(rest)
+        self.incoming(found, "false", self.cur)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(found), "bool")
     named = t.kind == "name" and t.s in self.classes and t.s not in self.ltype
     anyclass = t.kind == "name" and t.s == "object" and not self.bound("object")
     # CPython evaluates both arguments before it checks either: the second is read, or
@@ -418,6 +433,8 @@ def gen_class_value_issub(self, k: Val, t: Node) -> Val:
         return out
     if anyclass:
         return Val("true", "bool")  # (every class derives from object, NoneType too)
+    if o.t == "fn[b:object]":
+        return Val("true", "bool")  # (object, read through a variable: every class derives from it, as where it is named)
     if o.t.startswith("fn[b:") and base == "object":
         # (a builtin class named: k may be its class object, bool's for int, a named tuple's
         # for tuple)
