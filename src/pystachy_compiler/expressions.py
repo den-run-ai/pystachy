@@ -4525,10 +4525,13 @@ def gen_complex_cmp(self, op: str, a: Val, b: Val) -> Val:
     return Val(eq, "bool") if op == "==" else Val(self.scalar('xor', [Val(eq, 'bool'), Val('true', 'bool')]), "bool")
 
 def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
-    # a == b or a != b where a union holds a complex number, whose equality runtime.c's union
-    # descriptors do not compare (1 == 1+0j across members): each member's comparison, chosen by
-    # the tag, as cmp2 compiles it for the member's type (complex_cmp, ...), and None's
+    # a == b or a != b where a union is one side and a complex number, or a union holding one, is
+    # either side; runtime.c's union descriptors compare no complex member (1 == 1+0j across
+    # members). The union's members are chosen by the tag, None first: each value compared with
+    # the other side by cmp2 (complex_cmp, or this again for another union), but where their kinds
+    # differ (a str, a number, None), which no value of the other kind equals in CPython
     v = a if is_union(unopt(a.t)) else b
+    o = b if v is a else a
     members = (["None"] if is_opt(v.t) else []) + umembers(unopt(v.t))
     end = self.label()
     ph = Ins("phi", "bool", "")
@@ -4543,14 +4546,24 @@ def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
         else:
             self.cbr(self.utest(v, [m], False), hit, miss)
         self.place(hit)
-        x = Val("null", "None") if m == "None" else self.uget(Val(v.v, unopt(v.t)), m)
-        r = self.cmp2(op, x, b) if v is a else self.cmp2(op, a, x)
-        self.incoming(ph, r.v, self.cur)
+        r = ""
+        if not is_union(unopt(o.t)) and not is_opt(o.t) and eq_kind(m) != eq_kind(o.t):
+            r = "false" if op == "==" else "true"
+        else:
+            x = Val("null", "None") if m == "None" else self.uget(Val(v.v, unopt(v.t)), m)
+            r = (self.cmp2(op, x, o) if v is a else self.cmp2(op, o, x)).v
+        self.incoming(ph, r, self.cur)
         self.br(end)
         if miss != "":
             self.place(miss)
     self.place(end)
     return Val(self.phi(ph), "bool")
+
+
+def eq_kind(t: str) -> str:
+    # what kind of value equality compares a value of scalar type t with: numbers with numbers
+    # (exactly, across int, float, bool and complex), strs with strs, None with None
+    return "num" if t in ["int", "float", "bool", BIG, COMPLEXC] else t
 
 def gen_compare(self, n: Node) -> Val:
     tc = self.refl_type_cmp(n)  # (type(a) is C, type(a) == type(b): reflection.py)
@@ -4883,7 +4896,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
-        if (op == "==" or op == "!=") and any([is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t)) for x in [a, b]]):
+        if (op == "==" or op == "!=") and any([x.t == COMPLEXC or (is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))) for x in [a, b]]):
             return self.complex_ueq(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
