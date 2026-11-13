@@ -2427,10 +2427,18 @@ class Loader:
             q = path[:i] if i >= 0 else path
             if q in self.mods and self.mods[q].missing != "":
                 t = self.mods[q]
-                while t.misvia in self.mods:
+                while t.misvia != "" and t.misvia in self.mods:
                     t = self.mods[t.misvia]  # (the module whose own import is of the missing one)
                 return t
         return None
+
+    def required(self, path: str) -> None:
+        # an import that is not optional runs the code of module path and of its packages: where
+        # one of them fails because a module it imports is not found, that import's error. Only
+        # an optional import decides that such a module fails (missing_import())
+        lost = self.fails_missing(path)
+        if lost is not None:
+            self.find(lost.missing, lost.missline)
 
     def init_fails(self, name: str) -> str:
         # the exception module name's code raises at its top level for sure (init_raise()), or ""
@@ -3134,9 +3142,7 @@ class Loader:
                 self.bind(m, a.s, "x:" + msg, infn, line)
                 continue
             if lost is not None:
-                # only an optional import decides that a module's import of a missing module fails:
-                # any other import of it is the error of that import
-                self.find(lost.missing, lost.missline)
+                self.required(path)
             self.chain(path, inits)
             if a.s == "":
                 # an import that fails in an optional import (optional()): its packages' code runs (and
@@ -3408,6 +3414,7 @@ class Loader:
             if self.modpath(sub) == "":
                 fail(f"'{x}' from '{src.name}' is not supported: no definition or submodule was found on the module path", line)
             self.find(sub, line)
+            self.required(sub)
             inits.kids.append(mk("str", sub, line, []))
             self.bind(m, name, "m:" + sub, infn, line)
         elif k == "":
