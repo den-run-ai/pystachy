@@ -1,0 +1,7 @@
+mods: init mods
+mods.shapes: init mods.shapes
+default factor
+default by
+3j (1+2j) 2j
+2j (1+0.5j) 6j
+[exit 0]

@@ -289,10 +289,13 @@ def gen_hoist(self, f: FnInfo) -> None:
                 f.dglob[j] = "!" + bad
                 continue
             v = self.expr(d, t)
-            if t == COMPLEXC and f.mod != "" and not early and v.t in ["int", "float", "bool", BIG]:
+            if t == COMPLEXC and (f.mod != "" or is_const(d)) and not early and v.t in ["int", "float", "bool", BIG]:
                 # a function of an imported module whose complex parameter defaults to a real
                 # number, which CPython keeps as it is: the default ran, and is an error only
-                # where a call needs it, as it was while complex annotations were unsupported
+                # where a call needs it, as it was while complex annotations were unsupported;
+                # also the program's own constant default (z: complex = 0), which a program that
+                # tracks numeric identity (dynamic Any) evaluates here only for its identity
+                # (after claude/blissful-hawking-ve4fwg-complex, 8e338e03)
                 f.dglob[j] = f"!expected complex, got {typestr(v.t)} as the default value of parameter '{f.params[j]}' of {short(f.name)}() (write a complex literal like 2+0j, or use complex())"
                 continue
             if early:

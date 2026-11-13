@@ -300,10 +300,6 @@ def gen_dyn_boxable(self, t: str) -> str:
     if t in self.classes and t not in self.tmpl:
         if self.classes[t].exc != "":
             return f"an exception object ({typestr(t)}) as Any is not supported yet"
-        if t == COMPLEXC:
-            # (an Any value's arithmetic dispatches to class methods, which lib's complex has not:
-            # the compiler computes a complex number's operations, complex_arith)
-            return "a complex number as Any is not supported yet"
         for kind in ["enum$IntEnum", "enum$StrEnum", "enum$IntFlag"]:
             # (CPython's IntEnum member is an int, a StrEnum member a str, as an Any value's
             # isinstance() would find: here an object of its class)
@@ -2518,6 +2514,9 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
         return [c.s]
     if self.bound(c.s):
         return [""]
+    if c.s == "complex" and COMPLEXC in self.classes:
+        self.dyn_class_type(COMPLEXC)  # (the class of complex numbers, lib/_pystachy_complex.py: boxed as its objects)
+        return [COMPLEXC]
     m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]", "list[int]"], "dict": ["dict[dyn,dyn]"],
          "tuple": ["vtuple[dyn]"], "object": ["*"], "type": ["%class:type"]}
     if c.s in m:

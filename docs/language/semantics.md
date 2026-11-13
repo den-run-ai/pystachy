@@ -234,7 +234,9 @@ and `+`, `repr()`, `str()`, `format()` and f-string format specifications,
 `%`, `divmod()`, `round()`, `int()`, `float()` and `math` functions of one, assigning an
 attribute), an `int` or a `float` where `complex` is declared (as for `float`: write `2+0j` or
 `complex(2)`), `sum()` of complex numbers, a union of `complex` with another scalar or a container,
-a complex number as a dynamic `Any` value, and subclasses of `complex`. There is no `cmath`.
+and subclasses of `complex`. In a module that opts in to dynamic `Any`, an `Any` value may hold a
+complex number, whose operations are the class's methods (`__add__` and the others, a reflected one
+for an `int`, `float` or `bool` on the left), as CPython's are. There is no `cmath`.
 
 ## Iterators
 

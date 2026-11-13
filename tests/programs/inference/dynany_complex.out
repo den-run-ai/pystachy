@@ -1,0 +1,9 @@
+(1+2j) complex True False True True
+[1, 2.5, 3j, 's', True] ['int', 'float', 'complex', 'str', 'bool'] [False, False, True, False, False]
+3.0 0.0 True -3j 3.0 True (-0-3j) 3j
+(-9+0j) (2+2j) (3.5+2j) (2+4j) (-3+4j) 2j (0.5+1j) (-3+4j) True
+(2+4j) (3.5+2j) (0.2-0.4j) -2j (1+2j) True (3-3j)
+False False True True True True (1+2j) 3j (1+2j) 3j
+i i True False {3j: 'i', 1: 'one'}
+(3.5+3j)
+[exit 0]

@@ -30,8 +30,84 @@ class complex:
     def __hash__(self) -> int:
         return __pys_complex_hash(self.real, self.imag)
 
-    def __eq__(self, other: "complex") -> bool:
-        return self.real == other.real and self.imag == other.imag
+    def __eq__(self, other) -> bool:
+        # complex_richcompare's == of a dynamic Any value, also with an int (compared with the
+        # real part exactly) or a float (the compiler compares typed numbers itself, complex_cmp,
+        # and an object of another class by its own __eq__); != inverts it
+        if isinstance(other, complex):
+            return self.real == other.real and self.imag == other.imag
+        if isinstance(other, (int, float)):
+            return self.imag == 0.0 and self.real == other
+        return False
+
+    # The arithmetic of a dynamic Any value that holds a complex number (the compiler computes a
+    # typed operation itself, complex_arith): the other operand converted as TO_COMPLEX converts
+    # it, a real number on the left by the reflected method, which takes its float (_radd & co).
+    # After the dynamic Any port of claude/blissful-hawking-ve4fwg-complex (#1414).
+    def __add__(self, other):
+        if isinstance(other, complex):
+            return _sum(self.real, self.imag, other.real, other.imag)
+        if isinstance(other, (int, float)):
+            return _sum(self.real, self.imag, float(other), 0.0)
+        raise TypeError(_operands("+", type(other).__name__))
+
+    def __radd__(self, other: bool | int | float) -> "complex":
+        return self._radd(float(other))
+
+    def _radd(self, other: float) -> "complex":
+        return _sum(other, 0.0, self.real, self.imag)
+
+    def __sub__(self, other):
+        if isinstance(other, complex):
+            return _diff(self.real, self.imag, other.real, other.imag)
+        if isinstance(other, (int, float)):
+            return _diff(self.real, self.imag, float(other), 0.0)
+        raise TypeError(_operands("-", type(other).__name__))
+
+    def __rsub__(self, other: bool | int | float) -> "complex":
+        return self._rsub(float(other))
+
+    def _rsub(self, other: float) -> "complex":
+        return _diff(other, 0.0, self.real, self.imag)
+
+    def __mul__(self, other):
+        if isinstance(other, complex):
+            return _prod(self.real, self.imag, other.real, other.imag)
+        if isinstance(other, (int, float)):
+            return _prod(self.real, self.imag, float(other), 0.0)
+        raise TypeError(_operands("*", type(other).__name__))
+
+    def __rmul__(self, other: bool | int | float) -> "complex":
+        return self._rmul(float(other))
+
+    def _rmul(self, other: float) -> "complex":
+        return _prod(other, 0.0, self.real, self.imag)
+
+    def __truediv__(self, other):
+        if isinstance(other, complex):
+            return _quot(self.real, self.imag, other.real, other.imag)
+        if isinstance(other, (int, float)):
+            return _quot(self.real, self.imag, float(other), 0.0)
+        raise TypeError(_operands("/", type(other).__name__))
+
+    def __rtruediv__(self, other: bool | int | float) -> "complex":
+        return self._rtruediv(float(other))
+
+    def _rtruediv(self, other: float) -> "complex":
+        return _quot(other, 0.0, self.real, self.imag)
+
+    def __pow__(self, other):
+        if isinstance(other, complex):
+            return _pow(self.real, self.imag, other.real, other.imag)
+        if isinstance(other, (int, float)):
+            return _pow(self.real, self.imag, float(other), 0.0)
+        raise TypeError(_operands("** or pow()", type(other).__name__))
+
+    def __rpow__(self, other: bool | int | float) -> "complex":
+        return self._rpow(float(other))
+
+    def _rpow(self, other: float) -> "complex":
+        return _pow(other, 0.0, self.real, self.imag)
 
     def __bool__(self) -> bool:
         return self.real != 0.0 or self.imag != 0.0
@@ -52,6 +128,10 @@ class complex:
         if spec == "":
             return self.__repr__()  # (str(self))
         return _format(self.real, self.imag, spec)
+
+
+def _operands(op: str, other: str) -> str:
+    return "unsupported operand type(s) for " + op + ": 'complex' and '" + other + "'"
 
 
 def _part(x: float) -> str:
