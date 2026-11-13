@@ -201,6 +201,17 @@ def functools_names(body: Node) -> dict[str, str]:
     return out
 
 
+def functools_calls(n: Node, names: dict[str, str]) -> None:
+    # (functools_classes) a call of one of functools' names that the compiler applies as a
+    # decorator, anywhere in n, is rejected: cached_property(f) makes an object that no class
+    # statement's method is, and total_ordering(C) takes a class as a value
+    for kid in n.kids:
+        if kid.kind == "call" and dotted(kid.kids[0]) in names:
+            made = names[dotted(kid.kids[0])]
+            fail(f"{made}(...) as a call is not supported: the compiler applies it where it decorates a {'class statement' if made == 'total_ordering' else 'method of a class statement'} (@{dotted(kid.kids[0])})", kid.line)
+        functools_calls(kid, names)
+
+
 def functools_classes(n: Node, names: dict[str, str]) -> None:
     # (functools) what two decorators of functools (names: as the module imports them) make of
     # the class statements of module body n, as source: the subset has neither class decorators
@@ -215,6 +226,7 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
     # (__pys_ordering: Gen.ordering), else a bool
     if len(names) == 0:
         return
+    functools_calls(n, names)
     for st in n.kids:
         if st.kind != "class" and st.kind != "subclass":
             continue

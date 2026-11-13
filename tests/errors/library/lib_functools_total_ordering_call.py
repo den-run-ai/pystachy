@@ -1,4 +1,4 @@
-# error: lib_functools_total_ordering_call.py:13: error: class 'A' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)
+# error: lib_functools_total_ordering_call.py:13: error: total_ordering(...) as a call is not supported: the compiler applies it where it decorates a class statement (@total_ordering)
 from functools import total_ordering
 
 
