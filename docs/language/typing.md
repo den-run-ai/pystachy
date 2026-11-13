@@ -377,8 +377,9 @@ conditional expressions, assertions and exiting guards that narrow a local. CPyt
 the attribute again each time, so the narrowing lasts only while nothing can have stored it.
 It ends at a call of the program's code (also an operator, conversion or iteration that runs
 a method, a property's read, a generator's resume or `yield`), at a store to an attribute of
-that name on any object, at an assignment to the local, and at the start of a loop. From there
-the attribute has its declared type again: test it again, or copy it to a local first.
+that name on any object or to a global, at an assignment to the local, at the start and the
+end of a loop, and in an `except` or `finally` block. From there the attribute has its declared
+type again: test it again, or copy it to a local first.
 
 Globals, properties and cells assigned by a `nonlocal` closure are not narrowed. Copy their
 value to an ordinary local before testing it. The copy remains
