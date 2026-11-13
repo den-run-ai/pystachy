@@ -798,6 +798,7 @@ from src.pystachy_compiler.expressions import (
     gen_enum_intlike as expressions_enum_intlike,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
+    gen_cmp_try as expressions_cmp_try,
     gen_cmp_key as expressions_cmp_key,
     gen_cmp_arm as expressions_cmp_arm,
     gen_cmp_rest as expressions_cmp_rest,
@@ -4569,6 +4570,9 @@ class Gen:
 
     def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool = False) -> None:
         return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end, lenient)
+
+    def cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
+        return expressions_cmp_try(self, op, k, x, y)
 
     def cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
         return expressions_cmp_rest(self, v, alts, to)

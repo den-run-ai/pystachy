@@ -571,8 +571,9 @@ an attribute to a member's object is rejected, since a native layout has no inst
 dictionary. `None`, frozen dataclasses and classes with only `__slots__` raise CPython's
 errors. `is` and `is not` compare the objects themselves, `None` included. A tuple's `in`,
 `count()` and `index()` find the same object first, then compare a member's object as an object
-of its class compares. Narrow a local to a member before equality comparison, truth testing or
-formatting. Containers remain
+of its class compares, but for methods that cannot take the other object
+([compatibility](compatibility.md#functions-and-object-identity)). Narrow a local to a member
+before equality comparison, truth testing or formatting. Containers remain
 invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.

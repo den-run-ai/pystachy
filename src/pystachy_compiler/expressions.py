@@ -3817,6 +3817,8 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val
     if len(keys) == 1:
         if lenient and keys[0].startswith("bad "):
             return Val("false" if op == "==" else "true", "bool")
+        if lenient and keys[0].startswith("call "):
+            return self.cmp_try(op, keys[0], pairs[0][0], pairs[0][1])
         return self.ptr_cmp('==' if op == '==' else '!=', a, b) if keys[0] == "is" else self.concrete_cmp(op, pairs[0][0], pairs[0][1])
     arms = [self.label() for k in keys]
     tos = [[arms[i] for i in rw] for rw in rows]
@@ -3946,11 +3948,44 @@ def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph:
     self.place(l)
     if lenient and k.startswith("bad "):
         r = Val("false" if op == "==" else "true", "bool")
+    elif lenient and k.startswith("call "):
+        r = self.cmp_try(op, k, p[0], p[1])
     else:
         r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1])
     if not self.term:
         self.incoming(ph, r.v, self.cur)
         self.br(end)
+
+def gen_cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
+    # concrete_cmp(op, x, y) for a lenient comparison (tuple search, titem_eq) of pair x, y, whose
+    # key k calls a method: an attempt (Gen.xtry), as a dynamic value's comparison method's call
+    # is (dynamic.py), since the search compiles a call for each pair of classes its operands may
+    # be of, which the program may never compare. Where that call does not compile (a template's
+    # instance whose body cannot take the operand, or a function of an imported module it is the
+    # first to call), the program is compiled again with the method declining the pair, as one
+    # that does not take the operand does (cmp_arm): the search rejects no program it compiled
+    # before it dispatched on classes (#409)
+    attempt = "search " + " ".join(k.split(" ")[2:])  # (the instance: whichever operand it is called on)
+    if attempt in self.xnot:
+        return Val("false" if op == "==" else "true", "bool")
+    previous = self.xtry
+    self.xtry = attempt
+    n = len(self.called)
+    r = self.concrete_cmp(op, x, y)
+    if len(self.called) > n:
+        # (the functions of imported modules it is the first to call, the last keys of called, are
+        # compiled inside the attempt, as dyn_prepare_factory compiles them: later, an error in
+        # one would reject the program)
+        fr = self.save()
+        while len(self.called) > n:
+            fresh = list(self.called)[n:]
+            n = len(self.called)
+            for ll in fresh:
+                if ll in self.lazy and ll not in self.compiled and not self.lazy[ll].generic:
+                    self.function(self.lazy[ll], self.lazy[ll].node.kids[2].kids)
+        self.restore(fr)
+    self.xtry = previous
+    return r
 
 def gen_cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
     # where none of the tests of operand v's classes matches (cmp_tags): the target the most of

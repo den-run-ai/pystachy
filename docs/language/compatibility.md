@@ -160,6 +160,12 @@ no effect. The shared runtime cache is independent of this setting.
 - **Operators on `None`:** an optional left operand whose class defines an
   arithmetic/bitwise operator raises `TypeError` when it is `None`, even if
   CPython would call the right operand's reflected method.
+- **Tuple search over objects:** a tuple's `in`, `count()` and `index()` call
+  `__eq__` for each pair of classes that objects of a union, or of a class with
+  subclasses, may be of. A method whose parameter annotation does not take the
+  other operand, or a template whose body does not compile for it, declines that
+  pair, which then compares unequal unless identical. CPython calls the method,
+  which may return true or raise.
 - **Direct dataclass comparisons:** generated `__eq__`/ordering methods called
   directly compare fields or raise `TypeError` for another class; `__eq__(None)`
   is false. CPython returns `NotImplemented`. Operator syntax declines such
