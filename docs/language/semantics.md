@@ -357,8 +357,18 @@ Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
 Reflected arithmetic methods such as `__radd__`, `__rdivmod__` and `__rpow__` remain
 unsupported. Power dispatch with an object exponent, optional numeric exponent, or the
 three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
-modulus parameter; two-argument power leaves it at its default. Returning `NotImplemented`
-from an operator remains unsupported.
+modulus parameter; two-argument power leaves it at its default.
+
+A comparison method (`__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__`) may
+`return NotImplemented`. The comparison then calls the other operand's reflected method, and
+after both decline, `==` and `!=` compare identity and an ordering raises `TypeError`, as in
+CPython ([test](../../tests/programs/classes/cmp_notimplemented_hierarchy.py)). `NotImplemented`
+is not a value otherwise: an arithmetic method cannot return it, and neither can a `return`
+inside a `try` statement with a `finally` block or a `with` statement. Only a comparison reads
+it, so a call that takes the method's result as it is (`a.__eq__(b)`,
+`super().__eq__(other)`) is rejected where the method may return it for those operands. Such
+a call compiles where the method's `isinstance()` test of its operand is decided at compile
+time: for a new object, and for an operand the calling comparison method has passed on unchanged.
 Power methods require a positional `self`; following arguments may use `*args`.
 For `**=`, a base-typed receiver whose subclass introduces an `__ipow__` that the base
 lacks must be narrowed to the concrete receiver type; otherwise compilation rejects the
