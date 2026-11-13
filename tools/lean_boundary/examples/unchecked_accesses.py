@@ -130,6 +130,19 @@ def shifted(xs: list[int]) -> int:
     return s
 
 
+def rows(data: list[float], i: int, j: int, dim: int) -> float:
+    # listguard with a base: data[bi + d] and data[bj + d] for d < dim, where tests before the loop
+    # find bi and bj at least 0 and dim plus each at most len(data); the copy adds each base to d
+    # without an overflow check
+    bi = i * dim
+    bj = j * dim
+    s = 0.0
+    for d in range(dim):
+        diff = data[bi + d] - data[bj + d]
+        s += diff * diff
+    return s
+
+
 def main() -> None:
     cache = Cache()
     print(item([1, 2, 3], 1), last([4, 5]), pair([4, 5]), ends([1, 2, 3, 4]), total([1, 2, 3]))
@@ -139,7 +152,7 @@ def main() -> None:
     print(list(every_other(["a", "b", "c"])))
     smooth = [0.0] * 5
     smoothed([1.0, 2.0, 3.0, 4.0, 5.0], smooth)
-    print(smooth, pairs([1, 2, 3, 4, 5]), shifted([1, 2, 3]))
+    print(smooth, pairs([1, 2, 3, 4, 5]), shifted([1, 2, 3]), rows([1.0, 2.0, 3.0, 5.0], 0, 1, 2))
 
 
 main()
