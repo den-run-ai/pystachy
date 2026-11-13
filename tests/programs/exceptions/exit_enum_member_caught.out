@@ -1,0 +1,30 @@
+0 3 SystemExit(<Status.USAGE: 3>)
+finally 0
+1 6 SystemExit(<Perm.R|W: 6>)
+finally 1
+2 Mixed.SEVEN SystemExit(<Mixed.SEVEN: 7>)
+finally 2
+3 0 SystemExit(<Status.OK: 0>)
+finally 3
+4 Plain.NINE SystemExit(<Plain.NINE: 9>)
+finally 4
+5 0 SystemExit(<Perm: 0>)
+finally 5
+6 3 SystemExit(<Status.USAGE: 3>)
+finally 6
+7 Plain.NINE SystemExit(<Plain.NINE: 9>)
+finally 7
+8 6 SystemExit(<Perm.R|W: 6>)
+finally 8
+9 Mixed.SEVEN SystemExit(<Mixed.SEVEN: 7>)
+finally 9
+10 3 SystemExit(<Status.USAGE: 3>)
+finally 10
+11 Plain.NINE SystemExit(<Plain.NINE: 9>)
+finally 11
+12 6 SystemExit(<Perm.R|W: 6>)
+finally 12
+13 Mixed.SEVEN SystemExit(<Mixed.SEVEN: 7>)
+finally 13
+last
+[exit 3]
