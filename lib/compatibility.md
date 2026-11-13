@@ -265,10 +265,11 @@ The existing unboxed-NaN identity deviation also applies: separately decoded
 
 The typed `JSONValue` path and public `JSONDecoder` methods reject integer tokens
 outside signed 64-bit range with `OverflowError`. Dynamic `Any` decoding promotes
-larger tokens, with a 4,300-digit conversion limit that raises `ValueError`. Nested
-containers count against `sys.setrecursionlimit()` and stop at 2,000 under a raised limit,
-beyond which the codec raises `RecursionError`; CPython's C codec accepts 9,998 at any limit
-([deviation](../tests/deviations/json_limits.py)).
+larger tokens, with a 4,300-digit conversion limit that raises `ValueError`. Decoding nests
+as CPython's C decoder does: 9,998 containers at any recursion limit, and its `RecursionError`
+beyond. Encoded containers count against `sys.setrecursionlimit()` and stop at 2,000 under a
+raised limit, beyond which the encoder raises `RecursionError`; CPython's C encoder accepts
+9,998 at any limit ([deviation](../tests/deviations/json_limits.py)).
 Text that Pystachy reads from a file, `input()` or `sys.argv` can hold bytes that
 are not UTF-8, which CPython rejects or escapes as it reads them. `loads()` counts
 each byte that starts no UTF-8 sequence as one character, as `str` does, in values

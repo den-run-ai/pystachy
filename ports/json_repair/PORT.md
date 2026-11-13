@@ -245,15 +245,15 @@ upstream and the port, under CPython or natively. Its schema family found none i
 repairs under generated schemas, against upstream with `jsonschema` 4.26 and
 [the two orders pinned](#schema-guided-repair), and the validator alone agrees with
 `jsonschema` on 50,000 generated schemas, but for the references it leaves out. A
-[native regression](../../tests/programs/apps/port_json_repair_schema.py) replays 739 of the
+[native regression](../../tests/programs/apps/port_json_repair_schema.py) replays 182 of the
 schema cases against upstream's recorded outcomes. The corpus and these runs establish these
 cases, not full-package parity.
 
-Valid input takes the default fast path, `json.loads()`, whose nesting counts against the
-native recursion limit: at the default limit, about 500 nested containers decode and return as
-upstream does on CPython (#1021), and deeper valid input raises `RecursionError` from the fast
-path, whereas CPython's C decoder accepts up to 9,998 at any limit. Under a raised limit the
-codec stops at 2,000 containers with CPython's message
+Valid input takes the default fast path, `json.loads()`, which nests as CPython's C decoder
+does: `loads()` returns up to 9,998 nested containers at any recursion limit, and deeper valid
+input raises its `RecursionError`, as upstream's does. Returning text re-encodes the value with
+`json.dumps()`, whose nesting counts against the native recursion limit: about 1,000 containers
+at the default limit and 2,000 under a raised one, where CPython's C encoder accepts 9,998
 ([deviation](../../tests/deviations/json_limits.py)).
 Malformed-input repair has no separate depth budget: exceeding the native recursion limit
 raises `RecursionError`, which upstream's facade translates to

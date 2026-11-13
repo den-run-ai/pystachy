@@ -8,7 +8,7 @@ json.dumps() of a value that holds Any values. loads() decodes straight into Any
 then share; dumps() walks Any values as CPython's encoder walks objects: tuples are arrays, int,
 float, bool and None keys become strings, and a value JSON cannot hold raises its TypeError.
 json's own functions keep JSONValue's typed storage for other code. The text scanner, its errors
-and limits are json's (_Parser): strings, keys, number syntax and its bound on nesting.
+and limits are json's (_Parser): strings, keys, number syntax and its bounds on nesting.
 Integer tokens beyond int64 promote through a separate helper; scanner indices stay fixed-width.
 """
 from typing import Any, TextIO
@@ -22,12 +22,8 @@ def _value(p: _Parser, depth: int) -> Any:
     if token is _STRING_TOKEN:
         return p.string()
     if token is _ARRAY_TOKEN or token is _OBJECT_TOKEN:
-        if depth >= 2000:  # (json's bound on nesting: _Parser.value())
-            if token is _ARRAY_TOKEN:
-                raise RecursionError("maximum recursion depth exceeded"
-                                     " while decoding a JSON array from a unicode string")
-            raise RecursionError("maximum recursion depth exceeded"
-                                 " while decoding a JSON object from a unicode string")
+        if depth >= 64:  # (as json's _Parser.value(): the containers nested further are decoded without calls)
+            return _deep(p, token is _ARRAY_TOKEN, depth)
         if token is _ARRAY_TOKEN:
             return _array(p, depth)
         return _object(p, depth)
@@ -41,6 +37,60 @@ def _value(p: _Parser, depth: int) -> Any:
     if isinstance(v, str):
         return _integer(v)
     return None
+
+
+def _deep(p: _Parser, array: bool, depth: int) -> Any:
+    # The container at depth and all that it holds, with the open containers on a list where
+    # _array() and _object() have them in calls: nesting past the first 64 uses neither the
+    # recursion limit nor the native stack, and stops where CPython's decoder does, at 9,998.
+    # The scanner's deep_*() methods are its begin(), next_item() and object_key().
+    arrays: list[bool] = []
+    outer: list[Any] = []
+    keys: list[str] = []
+    current: Any = None
+    while True:
+        # open a container of the kind array says, inside current
+        if depth >= 9998:
+            raise RecursionError("maximum recursion depth exceeded while decoding a JSON "
+                                 + ("array" if array else "object") + " from a unicode string")
+        if len(arrays) > 0:
+            outer.append(current)
+        arrays.append(array)
+        if array:
+            current = []
+        else:
+            current = {}
+        depth += 1
+        more = not p.deep_begin(array)
+        while True:
+            array = arrays[-1]
+            if more:
+                key = "" if array else p.deep_key()
+                opener = p.deep_token()
+                if opener is _ARRAY_TOKEN or opener is _OBJECT_TOKEN:
+                    keys.append(key)
+                    array = opener is _ARRAY_TOKEN
+                    break
+                item = _value(p, 0)  # (no container: a scalar, or the error for none)
+                if array:
+                    current.append(item)
+                else:
+                    current[key] = item
+            else:
+                # current is closed: it is the value, or an item of the container around it
+                arrays.pop()
+                depth -= 1
+                if len(arrays) == 0:
+                    return current
+                done = current
+                current = outer.pop()
+                array = arrays[-1]
+                if array:
+                    current.append(done)
+                else:
+                    current[keys[-1]] = done
+                keys.pop()
+            more = p.deep_next(array)
 
 
 def _array(p: _Parser, depth: int) -> list[Any]:

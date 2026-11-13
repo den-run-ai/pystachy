@@ -3,8 +3,9 @@
 
 This prototype implements loads(str), dumps(JSONValue) and the default JSONDecoder.
 Typed JSONValue integers use Pystachy's signed 64-bit range; the dynamic Any
-decoder promotes larger tokens. Nesting counts against sys.setrecursionlimit() and stops at
-2,000 containers, which keeps a raised limit within the native stack; object keys are str.
+decoder promotes larger tokens. Decoding nests as CPython's C decoder does, 9,998 containers at
+any recursion limit. Encoding counts against sys.setrecursionlimit() and stops at 2,000
+containers, which keeps a raised limit within the native stack; object keys are str.
 load(fp) and dump(obj, fp) read and write a text file's whole document. Decoder hooks, bytes
 input and encoder subclasses are not implemented. Containers are created with recursive
 JSONValue storage; narrowing keeps their original identity and mutable contents.
@@ -74,6 +75,11 @@ def _u8next(data: bytes, i: int, n: int) -> int:
     return i + _u8len(data, i)
 
 
+# The first 64 nested containers are decoded by calls, which sys.setrecursionlimit() counts, and
+# deeper ones with the open containers on a list (deep()), up to CPython's bound: its C decoder
+# accepts 9,998 nested containers on Linux (its C recursion limit), whatever the recursion limit.
+# (The two numbers are literals where they are used, here and in _pystachy_json_any: a module
+# variable that another module reads is not identity-inert.)
 _STRING_TOKEN = b'"'
 _ARRAY_TOKEN = b"["
 _OBJECT_TOKEN = b"{"
@@ -259,6 +265,64 @@ class _Parser:
         if i == self.n or self.data[i] != 34:
             raise self.error("Expecting property name enclosed in double quotes", i)
         key = self.key()
+        self.skip()
+        i = self.pos
+        if i == self.n or self.data[i] != 58:
+            raise self.error("Expecting ':' delimiter", i)
+        self.pos = i + 1
+        self.skip()
+        return key
+
+    # begin(), next_item() and object_key() again, for the decoders of deeply nested containers
+    # (deep() and _pystachy_json_any._deep()). They are copies and not second callers, and
+    # deep_key() scans with escaped(), which every string with an escape already calls: a
+    # helper with one caller is inlined into the Any decoder's loops, and one with two was
+    # not, which cost 5% of the instructions of decoding small documents.
+    def deep_token(self) -> bytes:
+        # next_token()'s token of a container that comes next, else b" " (also at the end of the
+        # text, where the value's own decoder raises). A token and not a number: a number that
+        # an Any decoder takes from here would need its identity tracked.
+        i = self.pos
+        if i < self.n:
+            c = self.data[i]
+            if c == 91:
+                return _ARRAY_TOKEN
+            if c == 123:
+                return _OBJECT_TOKEN
+        return b" "
+
+    def deep_begin(self, array: bool) -> bool:
+        close = 93 if array else 125
+        self.pos += 1
+        self.skip()
+        if self.pos < self.n and self.data[self.pos] == close:
+            self.pos += 1
+            return True
+        return False
+
+    def deep_next(self, array: bool) -> bool:
+        close = 93 if array else 125
+        self.skip()
+        i = self.pos
+        if i == self.n:
+            raise self.error("Expecting ',' delimiter", i)
+        token = self.data[i]
+        if token == close:
+            self.pos = i + 1
+            return False
+        if token != 44:
+            raise self.error("Expecting ',' delimiter", i)
+        self.pos = i + 1
+        self.skip()
+        if self.pos < self.n and self.data[self.pos] == close:
+            raise self.error("Illegal trailing comma before end of " + ("array" if array else "object"), i)
+        return True
+
+    def deep_key(self) -> str:
+        i = self.pos
+        if i == self.n or self.data[i] != 34:
+            raise self.error("Expecting property name enclosed in double quotes", i)
+        key = self.escaped(i, i + 1)
         self.skip()
         i = self.pos
         if i == self.n or self.data[i] != 58:
@@ -561,6 +625,56 @@ class _Parser:
             if self.pos < self.n and data[self.pos] == 125:
                 raise self.error("Illegal trailing comma before end of object", i)
 
+    def deep(self, array: bool, depth: int) -> JSONValue:
+        # The container at depth and all that it holds, with the open containers on lists where
+        # array() and object() have them in calls. It stops where CPython's decoder does.
+        arrays: list[bool] = []
+        lists: list[list[JSONValue]] = []
+        dicts: list[dict[str, JSONValue]] = []
+        keys: list[str] = []
+        while True:
+            # open a container of the kind array says
+            if depth >= 9998:
+                raise RecursionError("maximum recursion depth exceeded while decoding a JSON "
+                                     + ("array" if array else "object") + " from a unicode string")
+            arrays.append(array)
+            if array:
+                opened: list[JSONValue] = []
+                lists.append(opened)
+            else:
+                mapping: dict[str, JSONValue] = {}
+                dicts.append(mapping)
+            depth += 1
+            more = not self.deep_begin(array)
+            while True:
+                array = arrays[-1]
+                if more:
+                    key = "" if array else self.deep_key()
+                    opener = self.deep_token()
+                    if opener is _ARRAY_TOKEN or opener is _OBJECT_TOKEN:
+                        keys.append(key)
+                        array = opener is _ARRAY_TOKEN
+                        break
+                    item = self.value(depth)  # (no container: a scalar, or the error for none)
+                    if array:
+                        lists[-1].append(item)
+                    else:
+                        dicts[-1][key] = item
+                else:
+                    # the innermost container is closed: it is the value, or an item of the one around it
+                    arrays.pop()
+                    depth -= 1
+                    done: JSONValue = lists.pop() if array else dicts.pop()
+                    if len(arrays) == 0:
+                        return done
+                    array = arrays[-1]
+                    if array:
+                        lists[-1].append(done)
+                    else:
+                        dicts[-1][keys[-1]] = done
+                    keys.pop()
+                more = self.deep_next(array)
+
     def value(self, depth: int) -> JSONValue:
         i = self.pos
         if i == self.n:
@@ -571,14 +685,10 @@ class _Parser:
             return self.string()
         if c == 123 or c == 91:
             # Each nested container is two calls that sys.setrecursionlimit() counts (value(),
-            # then array() or object()). Past 2,000 containers, a raised limit could exhaust the
-            # native stack in its largest-frame configurations (docs/json.md's JSON API limits).
-            if depth >= 2000:
-                if c == 91:
-                    raise RecursionError("maximum recursion depth exceeded"
-                                         " while decoding a JSON array from a unicode string")
-                raise RecursionError("maximum recursion depth exceeded"
-                                     " while decoding a JSON object from a unicode string")
+            # then array() or object()), for the first 64: deep() decodes the ones nested
+            # further, with neither calls nor the native stack.
+            if depth >= 64:
+                return self.deep(c == 91, depth)
             if c == 91:
                 return self.array(depth)
             return self.object(depth)

@@ -16,8 +16,17 @@ for depth in [256, 257, 300, 400]:
         levels += 1
     print(levels, value)
 
-# Under a raised recursion limit, 2,000 levels decode; nesting beyond the codec's bound
-# raises RecursionError out of the fast path in both implementations.
+# The fast path's decoder nests as CPython's does, whatever the recursion limit: loads() returns
+# 9,998 nested containers.
+deep: Any = loads("[" * 9998 + "]" * 9998)
+levels = 0
+while isinstance(deep, list) and len(deep) > 0:
+    deep = deep[0]
+    levels += 1
+print(levels)
+
+# Under a raised recursion limit, 2,000 levels decode and encode; nesting beyond the decoder's
+# bound raises RecursionError out of the fast path in both implementations.
 limit = sys.getrecursionlimit()
 sys.setrecursionlimit(5000)
 try:

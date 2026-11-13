@@ -137,15 +137,18 @@ Deliberate limits:
 - Typed `JSONValue` integer tokens must fit signed 64-bit storage; a larger integer
   raises `OverflowError`. Dynamic `Any` decoding promotes larger integers as described
   below. Floating-point tokens use native double precision.
-- Nesting is native recursion, which `sys.setrecursionlimit()` bounds (#1021): each decoded
-  container is two counted calls, each encoded one a single call (two for a dict of `Any`
-  values). At the default limit of 1,000, about 500 containers decode and 1,000 encode
-  (500 such dicts); deeper nesting raises `RecursionError: maximum recursion depth exceeded`.
-  Under a raised limit, a fixed bound of 2,000 containers keeps the codec within an 8 MiB
-  native stack in every measured configuration, and raises CPython's messages:
-  `RecursionError: maximum recursion depth exceeded while decoding a JSON array from a
-  unicode string` (or `object`), or `while encoding a JSON object`. CPython's C codec
-  accepts 9,998 containers on Linux at any recursion limit
+- Decoding nests as CPython's C decoder does on Linux: 9,998 containers at any recursion
+  limit, and beyond them `RecursionError: maximum recursion depth exceeded while decoding a
+  JSON array from a unicode string` (or `object`). The first 64 containers are two counted
+  calls each; deeper ones are decoded without calls, so neither `sys.setrecursionlimit()` nor
+  the native stack bounds them.
+- Encoding is native recursion, which `sys.setrecursionlimit()` bounds (#1021): each encoded
+  container is a single counted call (two for a dict of `Any` values). At the default limit
+  of 1,000, about 1,000 containers encode (500 such dicts); deeper nesting raises
+  `RecursionError: maximum recursion depth exceeded`. Under a raised limit, a fixed bound of
+  2,000 containers keeps the encoder within an 8 MiB native stack in every measured
+  configuration, and raises CPython's message, `while encoding a JSON object`. CPython's C
+  encoder accepts 9,998 containers on Linux at any recursion limit
   ([deviation](../tests/deviations/json_limits.py)). Circular serialization raises
   `ValueError: Circular reference detected`.
 - Input is `str`; bytes/bytearray input, configured `JSONDecoder` constructors,
@@ -427,7 +430,7 @@ python3.13 tools/json_check.py --native --gc-stress
 
 The regular fixtures compare against CPython's standard `json`; the separate
 [JSON limit fixture](../tests/deviations/json_limits.py) records deliberate integer
-and codec depth differences. The [runtime limit fixture](../tests/deviations/recursive_alias_limits.py)
+and encoder depth differences. The [runtime limit fixture](../tests/deviations/recursive_alias_limits.py)
 checks deep values, cycles and reuse after exception unwinding.
 [`tests/programs/library/json_scanner.py`](../tests/programs/library/json_scanner.py) covers the byte scanner's
 boundaries: positions after multibyte text, documents holding lone surrogates,
