@@ -1,0 +1,15 @@
+# program variant instructions(callgrind Ir, whole process) stdout-md5-prefix
+pow_loop main 73565460 783379bb673a
+pow_loop pow 60189898 783379bb673a
+pow_loop cmp 73795799 783379bb673a
+cmp_loop main 54602754 11f254344292
+cmp_loop pow 54600237 11f254344292
+cmp_loop cmp 40415973 11f254344292
+umap_core main 8879473109 5b424cc57889
+umap_core pow 7992216148 5b424cc57889
+umap_core cmp 8736416708 5b424cc57889
+negpow_loop main 42856921
+negpow_loop pow 40635681
+negpow_loop pow2 35391528
+pow_loop pow2 60564666
+umap_core pow2 8026445020

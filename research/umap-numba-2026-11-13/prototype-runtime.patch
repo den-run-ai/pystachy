@@ -1,0 +1,82 @@
+diff --git a/runtime.c b/runtime.c
+index a7b5e19..6e6b9c5 100644
+--- a/runtime.c
++++ b/runtime.c
+@@ -966,7 +966,9 @@ Str *pys_pct_chr(I c) {                /* "%c" % i: the character, UTF-8 encoded
+   return c < 128 ? pys_chr(c) : pys_str(b, u8enc(b, c));
+ }
+ Str *pys_ascii(Str *r);                       /* ascii(): the repr-escaping pass is in runtime.py */
+-static I idx(I i, I n, const char *m) { if (i < 0) i += n; if (i < 0 || i >= n) pys_fail(m); return i; }
++static I idx(I i, I n, const char *m) {   /* (n, a length, is never negative: one unsigned compare checks both ends) */
++  if (i < 0) i += n; if ((uint64_t)i >= (uint64_t)n) pys_fail(m); return i;
++}
+ static void span(I *lo, I *hi, I n) {
+   if (*lo == NONE) *lo = 0; else if (*lo < 0 && (*lo += n) < 0) *lo = 0; else if (*lo > n) *lo = n;
+   if (*hi == NONE) *hi = n; else if (*hi < 0 && (*hi += n) < 0) *hi = 0; else if (*hi > n) *hi = n;
+@@ -1591,6 +1593,10 @@ double pys_idiv(I a, I b) {                  /* int / int, rounded once like CPy
+   return (a < 0) != (b < 0) ? -r : r;
+ }
+ I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a float: -1, 0, 1, or 2 if unordered */
++  if ((uint64_t)i + (1ULL << 53) <= (1ULL << 54)) {   /* |i| <= 2**53: (double)i is exact, so one float compare decides */
++    double x = (double)i;
++    return d > x ? -1 : d < x ? 1 : d == x ? 0 : 2;
++  }
+   if (isnan(d)) return 2;
+   if (d >= 9223372036854775808.0) return -1;
+   if (d < -9223372036854775808.0) return 1;
+@@ -1905,11 +1911,50 @@ double pys_big_float(I lo, void *hi) {         /* rounded once, to nearest even,
+    (#656). It is on these two functions only: LLVM inlines no function with the attribute into one
+    without it, so -fno-builtin-pow over all of runtime.c would keep every runtime.c helper out of
+    runtime.py's code and the program's */
+-__attribute__((no_builtin("pow"))) double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
+-  if (a == 0 && b < 0 && isfinite(b)) pys_fail("ZeroDivisionError: 0.0 cannot be raised to a negative power");
+-  if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) pys_fail("ValueError: a negative number to a fractional power has a complex result (not supported)");
+-  double r = pow(a, b);
+-  if (isinf(r) && isfinite(a) && isfinite(b)) pys_fail("OverflowError: (34, 'Numerical result out of range')");
++/* CPython's float ** float errors. They never return, so a loop that keeps going after pys_fpow sees no
++   memory written on its way, and LLVM keeps lists' lengths and items in registers across it */
++static _Noreturn __attribute__((noinline, cold)) void fpow_fail(int kind) {
++  pys_fail(kind == 0 ? "ZeroDivisionError: 0.0 cannot be raised to a negative power"
++           : kind == 1 ? "ValueError: a negative number to a fractional power has a complex result (not supported)"
++           : "OverflowError: (34, 'Numerical result out of range')");
++}
++/* libm's pow, which errno aside writes nothing (errno is not read for pow: CPython's checks below use
++   the values). no_builtin keeps it a call of libm's: the AOT tier's whole-program -O2 would otherwise
++   rewrite a constant argument: pow(x, 2.0) as x * x, pow(x, -1.0) as 1.0 / x and pow(2.0, y) as exp2(y),
++   which glibc's pow does not always round alike (#656). LLVM inlines no function with the attribute
++   into one without it, which keeps this one apart */
++__attribute__((no_builtin("pow"), noinline, const)) static double fpow_value(double a, double b) { return pow(a, b); }
++/* the error CPython raises for a ** b, whose libm value is r: 0, 1 or 2 (fpow_fail's), or -1 for none */
++__attribute__((noinline, const)) static int fpow_error(double a, double b, double r) {
++  if (a == 0 && b < 0 && isfinite(b)) return 0;
++  if (a < 0 && isfinite(a) && isfinite(b) && b != floor(b)) return 1;
++  if (isinf(r) && isfinite(a) && isfinite(b)) return 2;
++  return -1;
++}
++/* An empty asm hides a value from the optimizer: pow of a hidden argument cannot be rewritten for a
++   constant exponent or base (#656), and llvm.pow writes no memory, so this fast path inlines */
++static inline double opaque(double x) {
++#if defined(__x86_64__)
++  __asm__("" : "+x"(x));
++#elif defined(__aarch64__)
++  __asm__("" : "+w"(x));
++#else
++  volatile double v = x; x = v;
++#endif
++  return x;
++}
++double pys_fpow(double a, double b) {   /* float ** float with CPython's errors */
++  if (a > 0) {                          /* libm's pow is CPython's here unless it overflows (an infinite a falls through) */
++#if __has_builtin(__builtin_elementwise_pow)
++    double r = __builtin_elementwise_pow(opaque(a), opaque(b));
++#else
++    double r = fpow_value(a, b);
++#endif
++    if (r < INFINITY) return r;
++  }
++  double r = fpow_value(a, b);
++  int e = fpow_error(a, b, r);
++  if (e >= 0) fpow_fail(e);
+   return r;
+ }
+ /* math functions raise like CPython's math module: a NaN from a non-NaN argument is a domain

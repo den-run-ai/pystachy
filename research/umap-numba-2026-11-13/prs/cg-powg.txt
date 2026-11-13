@@ -1,0 +1,3 @@
+negpow_loop powg 34080656 ceda8c8470ef
+pow_loop powg 59364644 783379bb673a
+umap_core powg 8026439578 5b424cc57889
