@@ -5,11 +5,23 @@
 # points, as tests/upstream/json_repair/replay.py tags them). The port validates with its own
 # validator (ports/json_repair/_jsonschema), natively and under CPython. Then what that validator
 # leaves out, which must fail and not pass: references it does not resolve, and draft 3.
+#
+# Then the commands: upstream's (json_repair.json_repair.cli(), which the port keeps in
+# json_repair._cli, a module that a program which runs it imports), with indented output, a named
+# output file, inline replacement, its options and the errors it reports itself, and the port's
+# own (json_repair.__main__). One program runs all of it: each program that imports the port
+# compiles it, and with the commands argparse and re, whose code the Lean corpus checks would
+# prove once more.
 import json
+import os
 import sys
+import tempfile
 from typing import Any
 
 from json_repair import loads, repair_json
+from json_repair.__main__ import cli
+from json_repair._cli import cli as upstream
+from json_repair.json_repair import cli as facade
 
 
 def tagged(value: Any) -> Any:
@@ -112,5 +124,72 @@ def left_out() -> None:
     print("own", json.dumps(outcome("loads", '{"a": "x", "b": 2}', {"schema": own})))
 
 
+def text(path: str) -> str:
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def upstream_command() -> None:
+    directory = tempfile.mkdtemp()
+    source = os.path.join(directory, "source.json")
+    target = os.path.join(directory, "target.json")
+    schema = os.path.join(directory, "schema.json")
+    with open(source, "w", encoding="utf-8") as f:
+        f.write('{name: "café", items: [1, 2, 3,], nested: {a: tru, b: nul}, empty: [], none: {}}')
+    with open(schema, "w", encoding="utf-8") as f:
+        f.write('{"type": "object"}')
+    print(upstream([source]))
+    print(facade([source, "--indent", "0"]))
+    print(upstream([source, "--indent", "4", "--ensure_ascii"]))
+    print(upstream([source, "-o", target]), repr(text(target)))
+    print(upstream([source, "--output", target, "--indent", "1", "--skip-json-loads"]), repr(text(target)))
+    with open(target, "w", encoding="utf-8") as f:
+        f.write('{"a": 1, "a": 2, "b": [1 2]}')
+    print(upstream([target, "-i"]), repr(text(target)))
+    with open(target, "w", encoding="utf-8") as f:
+        f.write('{"a": 1, "a": 2}')
+    print(upstream([target, "--strict"]), repr(text(target)))
+    for argv in [[source, "-i", "-o", target], ["-i"], [source, "--schema", schema, "--schema-model", "m:C"],
+                 [source, "--strict", "--schema", schema], [source, "--schema-repair-mode", "salvage"]]:
+        try:
+            print(upstream(argv))
+        except SystemExit as e:
+            print("exit", str(e))
+    print(upstream([os.path.join(directory, "missing.json")]))
+    print(upstream([source, "--schema", schema]))  # (which the port's own validator checks: PORT.md)
+    print(text(source) == '{name: "café", items: [1, 2, 3,], nested: {a: tru, b: nul}, empty: [], none: {}}')
+    os.remove(schema)
+    os.remove(target)
+    os.remove(source)
+    os.rmdir(directory)
+
+
+def own_command() -> None:
+    directory = tempfile.mkdtemp()
+    source = os.path.join(directory, "source.json")
+    target = os.path.join(directory, "target.json")
+    with open(source, "w", encoding="utf-8") as f:
+        f.write('{name: "café", values: [true, null,],}')
+    print(cli([source, "-o", target, "--ensure_ascii"]))
+    with open(source, encoding="utf-8") as f:
+        print(f.read())
+    with open(target, encoding="utf-8") as f:
+        print(f.read())
+    print(cli(["--inline", source]))
+    with open(source, encoding="utf-8") as f:
+        print(f.read())
+    with open(source, "wb") as binary_output:
+        binary_output.write(br'{"value":"\ud800"}')
+    print(cli(["--inline", source]))
+    with open(source, "rb") as binary_input:
+        print(binary_input.read())
+    os.remove(target)
+    os.remove(source)
+    os.rmdir(directory)
+
+
 recorded()
 left_out()
+# (upstream's command first: the recorded stderr line stays the own command's last)
+upstream_command()
+own_command()
