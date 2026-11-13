@@ -2,7 +2,7 @@
 # annotated lists, generator expressions and dicts, closures, partial() and unpacked arguments
 import concurrent.futures
 import functools
-from concurrent.futures import Executor, Future, ThreadPoolExecutor, as_completed, wait
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed, wait
 
 
 def scale(x: int, k: int = 2) -> int:
