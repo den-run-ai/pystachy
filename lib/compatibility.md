@@ -522,7 +522,9 @@ of `__all__` gives CPython's results, errors and messages:
 
 The edits replace what the subset lacks: `int.from_bytes()` and `to_bytes()`, a `bytearray`
 result, a bytes pattern of `re`, and a `struct` format made at run time. Run under CPython, the
-edited module passes the 40 tests of `test_base64`.
+edited module passes the 40 tests of `test_base64`; a
+[checksum over pseudo-random inputs](../tests/programs/library/lib_base64_random.py) covers every
+codec.
 
 - Binary data is `bytes`, as Pystachy has no `bytearray`, `memoryview` or `array`. The decoders
   also take a `str` of ASCII characters, as CPython's do. Another type of argument is a
