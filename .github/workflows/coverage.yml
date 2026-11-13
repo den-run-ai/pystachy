@@ -1,6 +1,6 @@
 # Report-only coverage (docs/testing.md#compiler-coverage, #native-runtime-coverage). make coverage: the
 # CPython-hosted compiler's own source under coverage.py, while it runs the differential, rejection and
-# deviation suite (JIT and AOT, in eight shards), the FFI and runtime-cache suites, its unit tests and
+# deviation suite (JIT and AOT, in ten shards), the FFI and runtime-cache suites, its unit tests and
 # the IR checks of the programs the corpus does not compile (pystachy.py, runtime.py, bench/, tests/ir/).
 # make runtime-coverage: the native runtime's C code under clang's source-based coverage, while the
 # native compiler's programs run the corpus (in six shards) and the FFI suite. Each part runs in a job
@@ -79,20 +79,22 @@ jobs:
   hosted:
     name: hosted compiler coverage (${{ matrix.name }})
     runs-on: ubuntu-24.04
-    # (the corpus's eighth: 4-7 minutes of work on runners that took 9-14 for its third)
+    # Split the complete corpus ten ways to target headroom below the 15-minute limit.
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         include:
-          - {name: corpus 0 of 8, suites: corpus, shard: 0/8}
-          - {name: corpus 1 of 8, suites: corpus, shard: 1/8}
-          - {name: corpus 2 of 8, suites: corpus, shard: 2/8}
-          - {name: corpus 3 of 8, suites: corpus, shard: 3/8}
-          - {name: corpus 4 of 8, suites: corpus, shard: 4/8}
-          - {name: corpus 5 of 8, suites: corpus, shard: 5/8}
-          - {name: corpus 6 of 8, suites: corpus, shard: 6/8}
-          - {name: corpus 7 of 8, suites: corpus, shard: 7/8}
+          - {name: corpus 0 of 10, suites: corpus, shard: 0/10}
+          - {name: corpus 1 of 10, suites: corpus, shard: 1/10}
+          - {name: corpus 2 of 10, suites: corpus, shard: 2/10}
+          - {name: corpus 3 of 10, suites: corpus, shard: 3/10}
+          - {name: corpus 4 of 10, suites: corpus, shard: 4/10}
+          - {name: corpus 5 of 10, suites: corpus, shard: 5/10}
+          - {name: corpus 6 of 10, suites: corpus, shard: 6/10}
+          - {name: corpus 7 of 10, suites: corpus, shard: 7/10}
+          - {name: corpus 8 of 10, suites: corpus, shard: 8/10}
+          - {name: corpus 9 of 10, suites: corpus, shard: 9/10}
           - {name: 'ffi, ir', suites: ffi ir, shard: ''}
           - {name: 'cache, unit', suites: cache unit, shard: ''}
     env:
