@@ -1,4 +1,4 @@
-# Shared list alias tags (draft PR "Share list alias tags between compiled code and runtime.c")
+# Shared list alias tags (#1442)
 
 Against main `bf699eb5`, same host as the parent directory. `tbaa` is the PR's compiler (hosted
 under CPython, which emits the native compiler's IR); outputs equal main's everywhere.

@@ -97,3 +97,9 @@ probe at 2,000 points made 18,255,622 `pow` and as many `floor` calls on main, a
 17,721,627 of each; the power PR makes no `floor` call in either, and the comparison PR removes the
 probe's 8,295,600 `trunc` calls. microGPT's powers stay: #899's bias-correction powers read module
 globals, which LLVM reloads after the loop's stores.
+
+## Shared list alias tags (#1442)
+
+Compiled code and `runtime.c` now give list lengths, items pointers and items one set of TBAA
+tags. Its instruction counts, timings and the wrong-tag control are in
+[list-tags/README.md](list-tags/README.md).
