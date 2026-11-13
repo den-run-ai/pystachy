@@ -483,6 +483,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_lean_union_split.py
 	$(PY) -m unittest discover -s tools -p test_lean_union_memory.py
 	$(PY) -m unittest discover -s tools -p test_lean_gc.py
+	$(PY) -m unittest discover -s tools -p test_lean_report.py
 	$(PY) -m unittest discover -s tools -p test_lean_fields.py
 	$(PY) -m unittest discover -s tools -p test_lean_int.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
@@ -537,6 +538,16 @@ check-lean-storage:
 	$(PY) tools/check_lean_storage_corpus.py $(LEAN_STORAGE_FLAGS)
 
 .PHONY: check-lean-storage
+
+# Every Lean check over every differential test program and deviation, each compiled once, into
+# the small committed report tools/lean_boundary/REPORT.md (tools/lean_report.py). Run it after
+# a change to typed IR, a pass a check covers or a checker; --status says what changed since.
+LEAN_REPORT_FLAGS ?=
+lean-report:
+	cd tools/lean_boundary && lake build
+	$(PY) tools/lean_report.py $(LEAN_REPORT_FLAGS)
+
+.PHONY: lean-report
 
 check-repository:
 	$(PY) tools/check_repository_hygiene.py
