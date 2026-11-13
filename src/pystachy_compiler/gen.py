@@ -570,6 +570,7 @@ from src.pystachy_compiler.declarations import (
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
     gen_ann_items as declarations_ann_items,
+    gen_literal_ann as declarations_literal_ann,
     gen_ann_none as declarations_ann_none,
     gen_ann_problem as declarations_ann_problem,
     gen_any_in as declarations_any_in,
@@ -2821,6 +2822,9 @@ class Gen:
 
     def ann_items(self, xs: list[Node]) -> list[str]:
         return declarations_ann_items(self, xs)
+
+    def literal_ann(self, items: list[Node], line: int) -> str:
+        return declarations_literal_ann(self, items, line)
 
     def unpack_ann(self, n: Node) -> str:
         return declarations_unpack_ann(self, n)
