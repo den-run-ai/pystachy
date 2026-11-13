@@ -1,0 +1,7 @@
+class first failed
+class second missing
+function first failed
+function second missing
+global first failed
+global second missing
+[exit 0]

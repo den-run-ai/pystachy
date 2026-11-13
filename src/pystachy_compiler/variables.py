@@ -743,7 +743,8 @@ def gen_read(self, n: Node) -> Val:
             self.guard(bad, f"UnboundLocalError: cannot access local variable '{name}' where it is not associated with a value")
     elif not initialized and (n.chk or self.foreign(name)) and name in self.gflag and (name in self.gtypes or (name in self.funcs and name not in self.ltype)):
         # (a global, or a function whose def statement may not have run yet)
-        bad = self.scalar('xor', [Val(self.mem_load(Val(f'@g.{name}.def', '*bool')).v, 'bool'), Val('true', 'bool')])
+        flag = self.imp_flag(name, True) if self.copying else f'@g.{name}.def'
+        bad = self.scalar('xor', [Val(self.mem_load(Val(flag, '*bool')).v, 'bool'), Val('true', 'bool')])
         self.guard(bad, self.unbound(name, self.copying))
     if constant:
         # Keep a variable read dynamic for frontend rules (tuple index/length), while LLVM
@@ -767,12 +768,14 @@ def gen_modchk(self, n: Node) -> None:
         self.modchk(n.kids[0])  # builtin attributes and calls bypass expr() of their module
     for c in n.mchk.split(";") if n.mchk != "" else []:
         p = c.split(" ")
+        if p[2] == "D" and p[0] not in self.gflag:
+            continue  # its def/class is bound before any circular import can read it
         un = f"NameError: name '{p[1]}' is not defined"
         if p[2] == "A":
             un = f"AttributeError: module '{p[0][: p[0].rfind('.')]}' has no attribute '{p[1]}'"
         elif p[2] == "M":
             un = f"AttributeError: module '{owner(p[0])}' has no attribute '{p[1]}'"
-        elif p[2] == "I":
+        elif p[2] == "I" or p[2] == "D":
             f = self.mfile[owner(p[0])]
             where = os.path.realpath(f) if f.endswith(".py") else "unknown location"
             un = f"ImportError: cannot import name '{p[1]}' from '{owner(p[0])}' ({where})"
@@ -780,13 +783,14 @@ def gen_modchk(self, n: Node) -> None:
             un = f"NameError: cannot access free variable '{p[1]}' where it is not associated with a value in enclosing scope"
         elif p[2] == "L":
             un = f"UnboundLocalError: cannot access local variable '{p[1]}' where it is not associated with a value"
-        flag = f"@init.{p[0]}.done" if p[2] == "A" else self.imp_flag(p[0], p[2] == "G" or p[2] == "M" or p[2] == "I")
+        flag = f"@init.{p[0]}.done" if p[2] == "A" else self.imp_flag(p[0], p[2] == "G" or p[2] == "M" or p[2] == "I" or p[2] == "D")
         self.guard(self.scalar('xor', [Val(self.mem_load(Val(flag, '*bool')).v, 'bool'), Val('true', 'bool')]), un)
 
 def gen_imp_flag(self, x: str, glob: bool) -> str:
-    # the flag of name x, which an import in a try statement binds (Loader.import_binds()), set
-    # where an import binds it ("bound" nodes): module code's (glob, x qualified) is a global,
-    # a function's its slot, or the cell that the lambdas in it that read x share (lambda_flags)
+    # The current module-attempt binding of x (imports, definitions and variables), or
+    # a function's import binding. Module code's flag is global; a function's is its slot
+    # or the cell shared by lambdas that read it (lambda_flags). Retained value/definition
+    # readiness uses .def separately, so retrying a module need not invalidate old aliases.
     if glob:
         if x not in self.impg:
             self.impg[x] = True
@@ -1743,6 +1747,7 @@ def gen_store_name(self, name: str, v: Val, retype: bool = False) -> None:
         self.mem_store(Val(f"@g.{name}", "*" + t), cv)
         if name in self.gflag:
             self.mem_store(Val(f"@g.{name}.def", "*bool"), Val("true", "bool"))
+            self.mem_store(Val(self.imp_flag(name, True), "*bool"), Val("true", "bool"))
         if name in self.gidbox and numeric_identity(t):
             self.dyn_id_store(self.gidbox[name], v, t)  # (the object it now holds: dyn_box)
     else:

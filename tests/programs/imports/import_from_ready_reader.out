@@ -1,0 +1,9 @@
+source done
+early 11 12 13
+class imported
+function imported
+global imported 23
+local 66
+reader done
+ready 66
+[exit 0]
