@@ -31,7 +31,7 @@ BUILD_ENV: list[str] = [
 # as its environment entry, NAME=VALUE, or as NAME alone when it is unset.
 # docs/program-cache.md classifies every setting a compilation reads.
 KEYED_ENV: list[str] = [
-    "PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_DEBUG_LINES",
+    "PYSTACHY_OPT", "PYSTACHY_JIT_INLINE", "PYSTACHY_JIT_OPT", "PYSTACHY_DEBUG_LINES",
     "PYSTACHY_RUNTIME_C_CACHE", "PYSTACHY_PATH", "PYSTACHY_PROGRAM_CACHE_INPUTS",
     "PATH", "HOME", "XDG_CONFIG_HOME",
 ]

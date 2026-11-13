@@ -658,6 +658,14 @@ including 4 KiB and 64 KiB pages, and runs deep recursion in JIT and AOT under a
 `RLIMIT_STACK`. Its extension probe also maps an obstacle before import and verifies catchable
 errors and recovery under finite and unlimited host limits, with program GC stress.
 
+`PYSTACHY_JIT_OPT=2` runs LLVM's `-O2` pipeline over the program's module in place of the JIT
+tier's cleanup (inlining, `mem2reg`, `instcombine` and `simplifycfg`): loop optimizations,
+vectorization and an inliner without the `PYSTACHY_JIT_INLINE` budget, as an AOT build gets, but
+over the program alone, since this tier still calls the precompiled runtime. Optimizing costs time
+at each launch that only a program whose loops run long enough repays, so the default stays `1`
+([#430](https://github.com/den-run-ai/pystachy/issues/430)). Coroutines are lowered by the
+pipeline itself, and the allocator's late inlining (`JITLATE`) follows it as before.
+
 `PYSTACHY_JIT_CODEGEN=0` selects `-O0` code generation. This can reduce startup for large
 programs, but the generated code can run slower. The default (`2`) keeps ORC's own level of code
 generation, `-O2`. The [JIT runner](#the-jit-runner) generates the code at the level selected
@@ -843,6 +851,7 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_UNICODE_AUDIT=1` | Compile the [Unicode audit](language/compatibility.md#unicode-audit) checks into the program and its imported library code |
 | `PYSTACHY_OPT` | Disable named optimizations with `-name`, comma-separated, or all with `-all`; see [IR passes](typed-ir.md#optimizations) |
 | `PYSTACHY_JIT_INLINE=N` | IR-line threshold for JIT user-function inlining, including the recursion entry helper; `0` disables it (the scalar recursion helpers remain inlined) |
+| `PYSTACHY_JIT_OPT=1\|2` | `1` (default) runs the JIT tier's cleanup over the program; `2` runs LLVM's `-O2` pipeline in its place, which takes longer at each launch (no `PYSTACHY_JIT_INLINE` budget applies) |
 | `PYSTACHY_JIT_CODEGEN=0\|2` | `0` generates the program's code at `-O0`: the JIT runner's `-O0`, or `llc -O0` for `lli`'s ORC to link; `2` (default) keeps ORC's level |
 | `PYSTACHY_JIT_LAUNCHER=auto\|lli` | What runs `pystachy run`'s programs: `auto` (default), Pystachy's [JIT runner](#the-jit-runner) where it can be built, else `lli`; `lli` always `lli` |
 | `PYSTACHY_PROGRAM_CACHE=0` | Disable the default Linux native [program cache](program-cache.md); unset, empty or `1` enables it where supported. Its [settings](program-cache.md#settings) section lists the variables that key or bypass it |

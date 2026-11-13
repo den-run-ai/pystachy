@@ -76,7 +76,7 @@ nor the default (an empty `PYSTACHY_JIT_INLINE` is rejected, for example).
 
 | Rule | Variables |
 |---|---|
-| Keyed | `PYSTACHY_OPT`, `PYSTACHY_JIT_INLINE`, `PYSTACHY_DEBUG_LINES`, `PYSTACHY_RUNTIME_C_CACHE`, `PYSTACHY_PATH`, `PYSTACHY_PROGRAM_CACHE_INPUTS`; `PATH`, `HOME` and `XDG_CONFIG_HOME`, which select tools and Clang's user configuration |
+| Keyed | `PYSTACHY_OPT`, `PYSTACHY_JIT_INLINE`, `PYSTACHY_JIT_OPT`, `PYSTACHY_DEBUG_LINES`, `PYSTACHY_RUNTIME_C_CACHE`, `PYSTACHY_PATH`, `PYSTACHY_PROGRAM_CACHE_INPUTS`; `PATH`, `HOME` and `XDG_CONFIG_HOME`, which select tools and Clang's user configuration |
 | Keyed through the directory selected, as spelled and resolved | `PYSTACHY_HOME`; `PYSTACHY_LLVM`, where an empty value searches `PATH` and bypasses the cache |
 | Bypass when not empty, otherwise keyed. These add compiler, linker or loader inputs, and tools treat an empty value as set: GNU ld rejects an empty `GNUTARGET` | `CPATH`, `C_INCLUDE_PATH`, `CPLUS_INCLUDE_PATH`, `OBJC_INCLUDE_PATH`, `LIBRARY_PATH`, `COMPILER_PATH`, `GCC_EXEC_PREFIX`, `SDKROOT`, `CCC_OVERRIDE_OPTIONS`, `CLANG_CONFIG_FILE_SYSTEM_DIR`, `CLANG_CONFIG_FILE_USER_DIR`, `LD_PRELOAD`, `LD_LIBRARY_PATH`, `LD_AUDIT`, `LD_RUN_PATH`, `LD_HWCAP_MASK`, `GLIBC_TUNABLES`, `LDEMULATION`, `GNUTARGET` |
 | Bypass | `PYSTACHY_CFLAGS`, `PYSTACHY_IRCHECK`, `PYSTACHY_IRFX` or `PYSTACHY_UNICODE_AUDIT` when not empty; `PYSTACHY_JIT_CODEGEN` other than unset or `2`; `PYSTACHY_PROGRAM_CACHE` other than unset, empty or `1`; `PYSTACHY_LIBPYTHON`, read only for programs that embed CPython, which bypass the cache |
