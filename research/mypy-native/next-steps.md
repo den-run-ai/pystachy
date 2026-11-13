@@ -35,6 +35,24 @@ A static census of `import` statements in mypy and mypyc outside their tests, ag
 | `tokenize` | `mypy/report.py`, `stubdoc.py` | none; 3.13's `tokenize` wraps the C tokenizer |
 | `pickle`, `sqlite3`, `resource`, `multiprocessing`, `queue`, `pkgutil`, `pdb`, `site`, `symtable`, `urllib.request`, `xml.sax.saxutils`, `_curses` | the daemon, reports, stubgen, stubtest, optional imports | none |
 
+## The parser has no owner
+
+mypy 2.4.1 parses with `ast_serialize` by default (`mypy/options.py:393`, `native_parser = True`):
+a Rust extension (`mypyc/ast_serialize`, version 0.13.1 on PyPI, wheel SHA-256
+`9f99786e0d62082a5b121b3437f3167562133711df22128de1e9886f57f0b226`) returns the tree as bytes, and
+`mypy/nativeparse.py` (2,199 lines, about 80 node tags) reads them through `librt.internal`,
+which #1276 ports. `mypy/fastparse.py` over `ast` is the fallback. The mypy-port session has a
+throwing stand-in for `ast_serialize.parse()`. Nothing was built or run here; three routes:
+
+| Route | Cost | Risk |
+|---|---|---|
+| Call the Rust crate through Pystachy's FFI, behind a small C-ABI wrapper | A Rust build for the port; the wheel itself only exports CPython's module entry | Upstream's own parser, so no drift; not checked that the crate separates parsing from its Python bindings |
+| A parser in the subset that writes the same bytes | A full Python 3.14 tokenizer and parser plus the serializer, several thousand lines; the wheel is a byte-for-byte oracle under CPython | Follows every change of the format (`cache_version`) |
+| A CPython-compatible `ast` module for `fastparse.py` | The same parser, plus about 100 node classes and dispatch by computed method names | The path mypy is leaving |
+
+The compiler's own parser cannot serve as is: its `Node` keeps a line and no columns or end
+positions (`src/pystachy_compiler/syntax.py`), and it rewrites what it parses.
+
 ## `base64`
 
 `lib/base64.py` adapts CPython 3.13.16's file: every function of `__all__`, for `bytes` data.
