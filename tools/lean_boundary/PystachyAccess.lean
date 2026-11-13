@@ -223,16 +223,22 @@ def noWrap (facts : Facts) (src : Name) (k : Int) : Bool :=
     | .len a _ => a == src
     | _ => false)
 
-/-- Facts that show `x + y` fits in 64 bits: `x < c` where `s = c + y` (or `y + c`) is a value, so
-that `x + y < s`, and lower bounds of `x` and `y` that add up to at least the least 64-bit value.
-listguard's copy adds a loop's index `x` below its stop `c` to a base `y` whose sum with the stop
-a test before the loop computed. -/
+/-- Facts that show `x + y` fits in 64 bits: `x < c` where `s = c + y` (or `y + c`) is a value, or
+`x ≤ k` where `s = y + k'` is one and `k < k'`, so that `x + y < s`; and lower bounds of `x` and `y`
+that add up to at least the least 64-bit value. listguard's copy adds a loop's index `x` below
+its stop to a base `y` whose sum with the stop a test before the loop computed. -/
 def noWrapSum (facts : Facts) (x y : Name) : Bool :=
-  (facts.any fun f => match f with
+  ((facts.any fun f => match f with
     | .lt a c => a == x && facts.any fun g => match g with
         | .sum _ p q => (p == c && q == y) || (p == y && q == c)
         | _ => false
-    | _ => false) &&
+    | _ => false) ||
+  -- (a constant stop: x ≤ k < k', where s = y + k')
+  (facts.any fun f => match f with
+    | .atMost a k => a == x && facts.any fun g => match g with
+        | .off _ p k' => p == y && decide (k < k')
+        | _ => false
+    | _ => false)) &&
   (facts.any fun f => match f with
     | .ge a k₁ => a == x && facts.any fun g => match g with
         | .ge b k₂ => b == y && decide (minI64 ≤ k₁ + k₂)
@@ -382,12 +388,16 @@ def ruleStep (facts : Facts) : Fact → Bool
 /-- One step of reasoning about sums: adding one value to both sides keeps an order, and lower
 bounds add up. -/
 def sumStep (facts : Facts) : Fact → Bool
-  -- (x = p + q and z = r + t with an addend in common and the other two ordered)
+  -- (x = p + q and z = r + t with an addend in common and the other two ordered; or z = r + k'
+  -- with r one addend and the other at most k < k')
   | .lt x z => facts.any fun f => match f with
       | .sum x' p q => x' == x && facts.any fun g => match g with
           | .sum z' r t => z' == z &&
               ((p == r && facts.contains (.lt q t)) || (p == t && facts.contains (.lt q r)) ||
                 (q == r && facts.contains (.lt p t)) || (q == t && facts.contains (.lt p r)))
+          | .off z' r k' => z' == z && facts.any fun h => match h with
+              | .atMost a k => decide (k < k') && ((r == p && a == q) || (r == q && a == p))
+              | _ => false
           | _ => false
       | _ => false
   -- (x = p + q, with p ≥ k₁ and q ≥ k₂)
@@ -716,36 +726,62 @@ theorem noWrap_sound {m : Mem} {facts : Facts} {src : Name} {k : Int} (wf : WF m
 theorem noWrapSum_sound {m : Mem} {facts : Facts} {x y : Name} (wf : WF m)
     (known : Knows m facts) (fits : noWrapSum facts x y = true) : I64 (m.val x + m.val y) := by
   unfold noWrapSum at fits
-  simp only [Bool.and_eq_true, List.any_eq_true] at fits
-  obtain ⟨⟨f, fMember, fStep⟩, ⟨g, gMember, gStep⟩⟩ := fits
-  have fHolds := known f fMember
+  simp only [Bool.and_eq_true, Bool.or_eq_true, List.any_eq_true] at fits
+  obtain ⟨upper, ⟨g, gMember, gStep⟩⟩ := fits
   have gHolds := known g gMember
-  cases f with
-  | lt a c =>
-      simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at fStep
-      obtain ⟨rfl, s, sMember, sStep⟩ := fStep
-      have sHolds := known s sMember
-      cases s with
-      | sum total p q =>
-          cases g with
-          | ge a' k₁ =>
-              simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at gStep
-              obtain ⟨rfl, h, hMember, hStep⟩ := gStep
-              have hHolds := known h hMember
-              cases h with
-              | ge b k₂ =>
-                  simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hStep
-                  obtain ⟨rfl, low⟩ := hStep
-                  have range := wf.1 total
-                  simp only [Fact.Holds] at fHolds sHolds gHolds hHolds
-                  simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq] at sStep
-                  unfold I64 minI64 maxI64 at range ⊢
-                  unfold minI64 at low
-                  rcases sStep with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;> omega
-              | _ => simp at hStep
-          | _ => simp at gStep
-      | _ => simp at sStep
-  | _ => simp at fStep
+  -- (the lower bounds: x ≥ k₁ and y ≥ k₂ with k₁ + k₂ at least the least 64-bit value)
+  have lower : minI64 ≤ m.val x + m.val y := by
+    cases g with
+    | ge a' k₁ =>
+        simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at gStep
+        obtain ⟨rfl, h, hMember, hStep⟩ := gStep
+        have hHolds := known h hMember
+        cases h with
+        | ge b k₂ =>
+            simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at hStep
+            obtain ⟨rfl, low⟩ := hStep
+            simp only [Fact.Holds] at gHolds hHolds
+            omega
+        | _ => simp at hStep
+    | _ => simp at gStep
+  -- (the upper bound: x + y < s for a value s)
+  have higher : m.val x + m.val y ≤ maxI64 := by
+    rcases upper with ⟨f, fMember, fStep⟩ | ⟨f, fMember, fStep⟩
+    · have fHolds := known f fMember
+      cases f with
+      | lt a c =>
+          simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at fStep
+          obtain ⟨rfl, s, sMember, sStep⟩ := fStep
+          have sHolds := known s sMember
+          cases s with
+          | sum total p q =>
+              have range := wf.1 total
+              simp only [Fact.Holds] at fHolds sHolds
+              simp only [Bool.or_eq_true, Bool.and_eq_true, beq_iff_eq] at sStep
+              unfold I64 maxI64 at range
+              unfold maxI64
+              rcases sStep with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;> omega
+          | _ => simp at sStep
+      | _ => simp at fStep
+    · have fHolds := known f fMember
+      cases f with
+      | atMost a k =>
+          simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at fStep
+          obtain ⟨rfl, s, sMember, sStep⟩ := fStep
+          have sHolds := known s sMember
+          cases s with
+          | off total p k' =>
+              have range := wf.1 total
+              simp only [Bool.and_eq_true, beq_iff_eq, decide_eq_true_eq] at sStep
+              obtain ⟨rfl, smaller⟩ := sStep
+              simp only [Fact.Holds] at fHolds sHolds
+              unfold I64 maxI64 at range
+              unfold maxI64
+              omega
+          | _ => simp at sStep
+      | _ => simp at fStep
+  unfold I64
+  exact ⟨lower, higher⟩
 
 theorem step_sound {m : Mem} {facts : Facts} {goal : Fact} (wf : WF m)
     (known : Knows m facts) (derived : ruleStep facts goal = true) : goal.Holds m := by
@@ -1025,6 +1061,17 @@ theorem sumStep_sound {m : Mem} {facts : Facts} {goal : Fact}
                 · have less := known _ ordered
                   simp only [Fact.Holds] at less
                   omega
+          | off z' r k' =>
+              simp only [Bool.and_eq_true, beq_iff_eq, List.any_eq_true] at gStep
+              obtain ⟨rfl, h, hMember, hStep⟩ := gStep
+              have hHolds := known h hMember
+              cases h with
+              | atMost a k =>
+                  simp only [Bool.and_eq_true, Bool.or_eq_true, beq_iff_eq, decide_eq_true_eq] at hStep
+                  obtain ⟨below, which⟩ := hStep
+                  simp only [Fact.Holds] at fHolds gHolds hHolds ⊢
+                  rcases which with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ <;> omega
+              | _ => simp at hStep
           | _ => simp at gStep
       | _ => simp at fStep
   | ge x k =>
@@ -1704,6 +1751,44 @@ example : check ⟨baseLoop.nodes.set 6 (.test (.sle (.reg "i") (.reg "s")) 7 11
 /- The copy reached where the length test failed. -/
 example : check ⟨baseLoop.nodes.set 3 (.test (.sle (.reg "t") (.reg "n")) 11 4), 0⟩
     baseLoopCertificate = false := by decide
+
+/-- The same copy over `range(4)`, a constant stop: the test before the loop computes `t = b + 4`,
+an offset, and the loop's own test `i < 4` bounds `i` by 3, below 4. -/
+def baseConstLoop : Program := ⟨[
+  .length "n" "xs" 1,
+  .test (.sle (.lit 0) (.reg "b")) 2 11,
+  .addChecked "t" "b" 4 3 11,
+  .test (.sle (.reg "t") (.reg "n")) 4 11,
+  .lit "h" 0 5,
+  .copy "i" "h" 6,
+  .test (.slt (.reg "i") (.lit 4)) 7 11,
+  .addReg "j" "b" "i" 8,
+  .load "xs" (.reg "j") 9,
+  .addChecked "u" "i" 1 10 11,
+  .copy "h" "u" 5,
+  .stop], 0⟩
+
+def baseConstLoopCertificate : Certificate := [
+  [],
+  [.len "n" "xs"],
+  [.len "n" "xs", .ge "b" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "h" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "i" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "i" 0, .atMost "i" 3],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "i" 0, .sum "j" "b" "i",
+    .lt "j" "t", .le "j" "n" 1, .ge "j" 0, .below "j" "n"],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .ge "i" 0],
+  [.len "n" "xs", .ge "b" 0, .off "t" "b" 4, .le "t" "n" 0, .off "u" "i" 1, .ge "u" 0],
+  []]
+
+example : check baseConstLoop baseConstLoopCertificate = true := by decide
+/- The test before the loop adds 3 where the loop runs to 4: `b + 3` may reach the length. -/
+example : check ⟨baseConstLoop.nodes.set 2 (.addChecked "t" "b" 3 3 11), 0⟩
+    (baseConstLoopCertificate.map fun facts => facts.map fun
+      | .off "t" "b" 4 => .off "t" "b" 3
+      | f => f) = false := by decide
 
 /-- `a, b = xs` after the runtime check that the length is 2, and `a, *b, c = xs`'s last
 item, at the length minus one, after the check that the length is at least 2. -/

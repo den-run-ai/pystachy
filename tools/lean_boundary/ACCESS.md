@@ -69,13 +69,15 @@ tests before the loop give `b ≥ -start - c` and, through `t = stop + b`, a che
 the copy's `j = b + i` is a plain sum, which gives the fact `j = b + i` only where `i < stop`,
 `t = stop + b` and lower bounds of `i` and `b` show it fits. Adding `b` to both sides of `i < stop`
 gives `j < t`, which chains to `j + c < n` as above, and the lower bounds add up to `j + c ≥ 0`.
+With a constant stop `k'`, the test computes `t = b + k'`, an offset, and the loop's test bounds
+`i` by `k' - 1`, which gives `j < t` the same way.
 Certificate inference retains the finite positive lower bounds requested by initial
 constants and negative offsets. Thus a loop starting at 1 and advancing by 2 keeps
 `i >= 1` at the join of its initial and later iterations. Each proposed weakening
 is checked by the existing Lean rule; an invalid start or descending induction
 still fails the access proof.
 
-The build checks 46 examples by kernel reduction: 14 shapes the compiler emits and 32
+The build checks 48 examples by kernel reduction: 15 shapes the compiler emits and 33
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
 test and its read or in a range loop's body, a missing or weaker unpacking check, a starred
 tail's read at the length or past an offset that may wrap, a lookup's missing-key branch or an
@@ -84,7 +86,8 @@ reload across a write of another class's field or of the same field of any objec
 join, facts assumed at entry or around a loop, a guarded range loop's read past the test's
 offset, after a list write, or where the test failed, and a base copy without its test of the
 base, with an unchecked sum of the stop and the base, with a loop that runs to its stop
-inclusive or stores its base, or reached where the length test failed. `Audit.lean` checks the theorem's axioms as
+inclusive or stores its base, reached where the length test failed, or adding to the base less
+than the loop's constant stop. `Audit.lean` checks the theorem's axioms as
 for the payload checker.
 
 ## How IR reaches the model
