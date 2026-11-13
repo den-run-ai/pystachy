@@ -289,6 +289,11 @@ def gen_hoist(self, f: FnInfo) -> None:
                 f.dglob[j] = "!" + bad
                 continue
             v = self.expr(d, t)
+            if t == COMPLEXC and is_const(d) and not early and v.t != COMPLEXC and v.t != "None":
+                # a constant of another type (z: complex = 0), here only for its identity: as
+                # where a module tracks none, an error only where a call needs the default
+                f.dglob[j] = f"!expected {typestr(t)}, got {typestr(v.t)}"
+                continue
             if t == COMPLEXC and f.mod != "" and not early and v.t != COMPLEXC and v.t != "None":
                 # an imported module's def whose complex parameter has a default of another type
                 # (z: complex = scale()), which compiled while complex was no type: the def is
