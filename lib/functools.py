@@ -27,7 +27,7 @@ When this module runs under CPython, the public decorators use its native _funct
 from typing import Callable, Generic, NamedTuple, TypeVar, TypeVarTuple
 
 __all__ = ["cache", "lru_cache", "reduce", "cmp_to_key", "partial", "update_wrapper", "wraps",
-           "WRAPPER_ASSIGNMENTS", "WRAPPER_UPDATES", "cached_property"]
+           "WRAPPER_ASSIGNMENTS", "WRAPPER_UPDATES", "total_ordering", "cached_property"]
 
 _Ts = TypeVarTuple("_Ts")  # the decorated function's parameter types
 _R = TypeVar("_R")  # and its return type
@@ -407,9 +407,15 @@ except ImportError:
     pass
 
 
-# Pystachy port: cached_property is the compiler's where it decorates a method of a class
-# statement (Loader.functools_classes), which is all it does here: a method's object is found
-# as its class is compiled, so any other use of it is a compile-time error.
+# Pystachy port: total_ordering and cached_property are the compiler's where they decorate a
+# class statement and a method of one (Loader.functools_classes), which is all they do here: a
+# class is no value in Pystachy, and a method's object is found as its class is compiled, so
+# any other use of them is a compile-time error.
+def total_ordering(cls):
+    """Class decorator that fills in missing ordering methods"""
+    return cls
+
+
 class _method_of_a_class_statement:
     pass
 

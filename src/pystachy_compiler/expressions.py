@@ -3751,6 +3751,8 @@ def declines_in(ns: list[Node]) -> bool:
             continue
         if n.kind == "return" and len(n.kids) == 1 and n.kids[0].kind == "name" and n.kids[0].s == "NotImplemented":
             return True
+        if n.kind == "call" and n.kids[0].kind == "name" and n.kids[0].s == "__pys_ordering":
+            return True  # (a method the loader wrote for @total_ordering: ordering)
         if declines_in(n.kids):
             return True
     return False
@@ -3793,6 +3795,30 @@ def gen_declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: l
         clear.line = self.line
     blk.code.insert(at, clear)
     decl.append(True)
+    return r
+
+def gen_ordering(self, args: list[Node]) -> Val:
+    # __pys_ordering(self, other, "__lt__") of a method the loader wrote for @total_ordering
+    # (functools_classes), which a class's own code cannot name (__pys... is private to its
+    # class there): type(self).__lt__(self, other), as CPython's functools calls the class's
+    # own ordering method. Where that returned NotImplemented the method written returns it too:
+    # it returns False here, with decl_flag's variable as its callee left it (decline). Else
+    # this is what the callee returned, a bool
+    if self.curfn.cls not in self.classes or self.curfn.name not in ["__lt__", "__le__", "__gt__", "__ge__"] or len(args) != 3 or args[2].kind != "str" or self.ret != "bool" or len(self.exits) > 0:
+        self.err("name '__pys_ordering' is not defined")
+    me = self.expr(args[0], "")
+    other = self.expr(args[1], "")
+    decl: list[bool] = []
+    r = self.declining_call(self.classes[me.t].methods[args[2].s], me, other, False, decl)
+    if len(decl) == 0:
+        return r
+    self.curfn.declines = True
+    lret = self.label()
+    lgo = self.label()
+    self.cbr(self.mload('bool', self.decl_flag()), lret, lgo)
+    self.place(lret)
+    self.ret_(Val("false", "bool"))
+    self.place(lgo)
     return r
 
 def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:

@@ -798,6 +798,7 @@ from src.pystachy_compiler.expressions import (
     gen_may_decline as expressions_may_decline,
     gen_decl_flag as expressions_decl_flag,
     gen_cmp_cands as expressions_cmp_cands,
+    gen_ordering as expressions_ordering,
     gen_declining_call as expressions_declining_call,
     gen_cmp_stage as expressions_cmp_stage,
     gen_cmp_declining as expressions_cmp_declining,
@@ -4574,6 +4575,9 @@ class Gen:
 
     def declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: list[bool]) -> Val:
         return expressions_declining_call(self, f, me, arg, direct, decl)
+
+    def ordering(self, args: list[Node]) -> Val:
+        return expressions_ordering(self, args)
 
     def cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
         return expressions_cmp_cands(self, op, at, bt)
