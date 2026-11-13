@@ -1485,8 +1485,8 @@ class Gen:
         self.noneglobals: dict[str, bool] = {}  # module globals of imported modules that are always None
         self.intglobals: dict[str, str] = {}  # single-binding module int literals, after normal read checks
         self.rangeused = False  # code addresses an object of lib's range class (declared then: lower_module)
-        self.declflag = False  # a comparison method returns NotImplemented: its hidden variable is declared (decl_flag)
         self.objectused = False  # and of lib's object class, which object() makes
+        self.declflag = False  # a comparison method returns NotImplemented: its hidden variable is declared (decl_flag)
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
