@@ -150,11 +150,40 @@ static void locality(void) {
   if (current != before || text_hint_slot(current)->s == current) bad("owned append retained a position hint");
   if (pys_text_len(current) != 3 || pys_ord(pys_text_get(current, 2)) != 0x1F98A) bad("raw append changed cached segmentation");
 }
+static void affixes(void) {
+  /* startswith/endswith with start 0 and an end at or past the byte length (the defaults, 0 and
+     INT64_MAX) take the whole str's bytes and leave a fresh receiver's code points uncounted
+     (#1301): s.upper().startswith("L") once counted each word. Every start and end, of the whole
+     str or not, gives what the counting path (text_tail) gives */
+  const char text[] = "\xC3\xA9\xE4\xB8\xAD" "ab" "\xF0\x9F\xA6\x8A";   /* é中ab🦊: 5 code points, 11 bytes */
+  const char *raw[] = {"", "\xC3\xA9", "\xC3\xA9\xE4\xB8\xAD", "b\xF0\x9F\xA6\x8A", "\xF0\x9F\xA6\x8A", "\xA6\x8A", "a", "x",
+                       "\xC3\xA9\xE4\xB8\xAD" "ab" "\xF0\x9F\xA6\x8A" "!"};
+  const I bounds[] = {INT64_MIN, -12, -6, -5, -4, -1, 0, 1, 2, 4, 5, 6, 10, 11, 12, INT64_MAX};
+  const I nn = sizeof raw / sizeof raw[0], nb = sizeof bounds / sizeof bounds[0];
+  Str *needles[sizeof raw / sizeof raw[0]];
+  for (I k = 0; k < nn; k++) needles[k] = hold(cstr(raw[k]));
+  current = pys_str(text, sizeof text - 1);
+  if (current->chars1) bad("affix receiver setup");
+  if (!pys_text_startswith(current, needles[2], 0, INT64_MAX) || !pys_text_endswith(current, needles[4], 0, INT64_MAX) ||
+      pys_text_startswith(current, needles[8], 0, 11) || pys_text_endswith(current, needles[1], 0, 12))
+    bad("whole-str affix result");
+  if (current->chars1) bad("whole-str startswith/endswith counted code points");
+  for (I k = 0; k < nn; k++)
+    for (I i = 0; i < nb; i++)
+      for (I j = 0; j < nb; j++) {
+        I st = bounds[i], en = bounds[j];
+        current = pys_str(text, sizeof text - 1);   /* uncounted, as a fresh result is */
+        I pre = pys_text_startswith(current, needles[k], st, en), suf = pys_text_endswith(current, needles[k], st, en);
+        if (st == 0 && en >= 11 && current->chars1) bad("whole-str bounds counted code points");
+        if (pre != text_tail(current, needles[k], st, en, 0) || suf != text_tail(current, needles[k], st, en, 1))
+          bad("startswith/endswith bounds disagree with the counted bounds");
+      }
+}
 int main(void) {
   gc_init(__builtin_frame_address(0), roots, 2);
   held = pys_list_new(32);
-  cache(); seams(); slice_seams(); cursors(); locality();
+  cache(); seams(); slice_seams(); cursors(); locality(); affixes();
   if (gc_stress && gc_n <= 3) bad("GC stress did not add allocation-triggered collections");
-  puts("unicodeprobe: length/position caches, linear nearby indexing/search, raw seam invalidation, cursors and GC passed");
+  puts("unicodeprobe: length/position caches, linear nearby indexing/search, raw seam invalidation, cursors, uncounted whole-str affixes and GC passed");
   return 0;
 }
