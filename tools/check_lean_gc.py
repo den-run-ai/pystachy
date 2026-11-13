@@ -49,14 +49,6 @@ KEYS = "#keys"  # (a dict's key array's location: the value's own is its value a
 MAX_BLOCKS, MAX_INSTRUCTIONS = 4096, 16384
 
 
-def short(typ):
-    """A type the boundary validator reads (it bounds names at 256 characters): a longer one, such
-    as a constant table's tuple type, by a name made from its digest, the same for each use of it.
-    Only validation reads these; the model reads the IR's own types."""
-    if len(typ) <= 256:
-        return typ
-    pointer = "*" if typ.startswith("*") else ""
-    return f"{pointer}long.{hashlib.sha256(typ[len(pointer):].encode()).hexdigest()[:24]}"
 SPEC_VARIABLES = frozenset({"T", "K", "V", "S"})  # (specs.py's type variables of runtime functions)
 LIMITATIONS = (
     "Proves, per function in the finite-tag model, that no list, dict or set whose item, value or key "
@@ -310,16 +302,7 @@ def normalize(snapshot, fn, memory=None, declared=None):
     declared: signatures(snapshot), if the caller has them."""
     words, invariants = memory or ({}, {})
     context = {"classes": snapshot.get("classes") or {}, "layouts": snapshot.get("class_layouts") or {}}
-    # (the boundary validator refuses list.store, which writes memory its guard model does not hold:
-    # here it is a write, validated as the runtime write it stores as; and generators, validated as
-    # the function their operations' edges make, boundary.generator_validation)
-    def renamed(op):
-        op = dict(op, type=short(op["type"]), operands=[dict(a, type=short(a["type"])) for a in op["operands"]])
-        return dict(op, op="rt", text="list.set") if op["op"] == "list.store" else op
-    validation = dict(snapshot, functions=[dict(
-        boundary.generator_validation(fn, renamed),
-        return_representation=short(fn.get("return_representation") or ""),
-        parameters=[dict(p, representation=short(p.get("representation") or "")) for p in fn["parameters"]])])
+    validation = dict(snapshot, functions=[boundary.word_validation(fn)])
     try:
         boundary.normalize_snapshot(validation, fn["symbol"], MAX_BLOCKS, MAX_INSTRUCTIONS, certify=False)
     except ValueError as error:

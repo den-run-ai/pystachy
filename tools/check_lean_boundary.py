@@ -367,6 +367,28 @@ def check_header(snapshot):
         raise Unsupported("only completed typed-after snapshots are supported")
 
 
+def short(typ):
+    """A type the validator reads (name bounds names at 256 characters): a longer one, such as a
+    constant table's tuple type, by a name made from its digest, the same for each use of it."""
+    if len(typ) <= 256:
+        return typ
+    pointer = "*" if typ.startswith("*") else ""
+    return f"{pointer}long.{hashlib.sha256(typ[len(pointer):].encode()).hexdigest()[:24]}"
+
+
+def word_validation(fn):
+    """fn as normalize_snapshot validates it for an adapter whose model reads the IR's own
+    operations and types, the field and collector checks: generator_validation's, with each type
+    by its short name and each list.store as the runtime write it stores as (the guard model here
+    refuses it, as it writes memory that model does not hold; theirs take its operands as words
+    written, escapes)."""
+    def renamed(op):
+        op = dict(op, type=short(op["type"]), operands=[dict(a, type=short(a["type"])) for a in op["operands"]])
+        return dict(op, op="rt", text="list.set") if op["op"] == "list.store" else op
+    return dict(generator_validation(fn, renamed), return_representation=short(fn.get("return_representation") or ""),
+                parameters=[dict(p, representation=short(p.get("representation") or "")) for p in fn["parameters"]])
+
+
 def generator_validation(fn, operation=lambda op: op):
     """fn as normalize_snapshot validates it for an adapter that models generators: each
     operation mapped by operation (the adapter's own renaming), then a generator's own

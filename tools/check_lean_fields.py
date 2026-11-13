@@ -557,7 +557,7 @@ class Context:
         symbol = fn["symbol"]
         if symbol not in self.validated:
             try:
-                boundary.normalize_snapshot(dict(self.snapshot, functions=[boundary.generator_validation(fn)]), symbol,
+                boundary.normalize_snapshot(dict(self.snapshot, functions=[boundary.word_validation(fn)]), symbol,
                                             certify=False)
                 self.validated[symbol] = None
             except boundary.Unsupported as error:

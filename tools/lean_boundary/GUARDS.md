@@ -118,7 +118,10 @@ relational, and the IR assigns `rv` only once `__init__` returns, as CPython doe
 505 functions (53 distinct) are unsupported: beyond the boundary validator's bounds
 or the certificate's size, or a list store, generator or long type name it refuses.
 Designing these checks found the bug b27908f4 fixes (no corpus program had its shape),
-and they reject that program as compiled before the fix.
+and they reject that program as compiled before the fix. The check now validates a function
+as the collector check does: a `list.store`, which the validator's guard model refuses, as the
+runtime write it stores as (the field model takes a write's operands as escapes), and a type
+name past 256 characters by its digest (the model reads the IR's own types).
 
 ## Payload bits and split locals
 

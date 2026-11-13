@@ -18,6 +18,7 @@ import unittest
 
 import check_lean_boundary as boundary
 import check_lean_fields as fields
+from test_lean_boundary import instruction
 
 ROOT = Path(__file__).resolve().parent.parent
 CHECKER = boundary.DEFAULT_CHECKER
@@ -239,6 +240,34 @@ class FieldInitTests(unittest.TestCase):
         finally:
             fields.infer_contracts = original
         self.assertEqual(results["@m.Gauge.__init__"]["status"], "rejected", results["@m.Gauge.__init__"])
+
+    def test_a_list_store_writes_its_operands_as_escapes(self):
+        # (the shared validator's guard model refuses list.store; this model takes a write's
+        # operands as escapes, and validates it as the runtime write it stores as: Watch's self
+        # stored into log before or after __init__ assigns name, which Watch's lambda reads unflagged)
+        def stored(after_name):
+            snapshot = self.sample()
+            block = self.function(snapshot, "@m.Watch.__init__")["blocks"][0]
+            address = next(f"%t{op['results'][0]}" for op in block["operations"] if op["op"] == "field.addr")
+            at = next(i for i, op in enumerate(block["operations"])
+                      if op["op"] == "mem.store" and op["operands"][0]["value"] == address)
+            block["operations"].insert(at + 1 if after_name else 0, instruction("list.store", operands=[
+                ("%a1", "list[callable[str]]"), ("0", "int"), ("%a0", "*callable[str]")]))
+            return self.statuses(snapshot)[0]["@m.Watch.__init__"]
+        self.assertEqual(stored(True)["status"], "accepted")
+        result = stored(False)
+        self.assertEqual((result["status"], tuple(result["why"]["site"][:3])), ("rejected", ("entry", 0, "escapes")),
+                         result)
+
+    def test_a_type_past_the_validators_bound_is_validated_by_its_short_name(self):
+        # (such as a constant table's tuple type: the model reads the IR's own types)
+        snapshot = self.sample()
+        watch = self.function(snapshot, "@m.Watch.__init__")
+        long = json.dumps(watch).replace("callable[str]", "callable[" + "tuple[str," * 30 + "str" + "]" * 30 + "]")
+        watch.clear()
+        watch.update(json.loads(long))
+        self.assertGreater(max(len(op["type"]) for block in watch["blocks"] for op in block["operations"]), 256)
+        self.assertEqual(self.statuses(snapshot)[0]["@m.Watch.__init__"]["status"], "accepted")
 
     def test_forms_beyond_the_model_are_refused(self):
         snapshot = self.sample()
