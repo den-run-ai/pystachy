@@ -511,10 +511,9 @@ ports/sortedcontainers/LICENSE; the text of the License is reproduced at the end
 sqids (ports/sqids/)
 --------------------
 
-ports/sqids/__init__.py, constants.py and sqids.py are sqids 0.5.2's modules, edited where
-ports/sqids/PORT.md lists (each edit is marked "Pystachy port:"). sqids is used under the MIT
-License, whose text and copyright notice ("Copyright (c) 2023-present Sqids maintainers.") are in
-ports/sqids/LICENSE.
+ports/sqids/__init__.py, constants.py and sqids.py are sqids 0.5.2's modules, unedited. sqids
+is used under the MIT License, whose text and copyright notice ("Copyright (c) 2023-present Sqids
+maintainers.") are in ports/sqids/LICENSE.
 
 tomli-w (ports/tomli_w/)
 ------------------------
