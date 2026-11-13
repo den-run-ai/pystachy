@@ -1518,14 +1518,19 @@ or the exception it raised, also `SystemExit`: `result()` raises that exception 
 ([tests](../tests/programs/library/lib_concurrent_futures_submit.py),
 [exceptions](../tests/programs/library/lib_concurrent_futures_exceptions.py)). For calls that do
 not wait for each other, that is one of the schedules CPython's pool may take; `max_workers` is
-checked as CPython checks it and bounds nothing. `Executor.map()`, `shutdown()`, the context
-manager, `wait()` with `return_when` and its named tuple `DoneAndNotDoneFutures`,
-`as_completed()`, the methods of `Future` (`result()`, `exception()`, `done()`, `running()`,
-`cancelled()`, `cancel()`, `add_done_callback()`, `set_running_or_notify_cancel()`,
-`set_result()`, `set_exception()`), `CancelledError`, `TimeoutError`, `InvalidStateError`,
-`BrokenExecutor` and `concurrent.futures.thread.BrokenThreadPool` work as CPython's do where no
-other thread runs. mypy's `BuildManager.parse_all()` compiles as it is written: a bound method
-submitted for each state, the futures in a list, `wait(futures).done` and `result()`
+checked as CPython checks it and bounds nothing. `Executor.map()`
+([test](../tests/programs/library/lib_concurrent_futures_map.py)), `shutdown()` and the context
+manager ([test](../tests/programs/library/lib_concurrent_futures_shutdown.py)), `wait()` with
+`return_when` and its named tuple `DoneAndNotDoneFutures`, `as_completed()`
+([test](../tests/programs/library/lib_concurrent_futures_wait.py)), the methods of `Future`
+(`result()`, `exception()`, `done()`, `running()`, `cancelled()`, `cancel()`,
+`add_done_callback()`, `set_running_or_notify_cancel()`, `set_result()`, `set_exception()`),
+`CancelledError`, `TimeoutError`, `InvalidStateError`, `BrokenExecutor` and
+`concurrent.futures.thread.BrokenThreadPool` work as CPython's do where no other thread runs.
+`Executor` types a parameter that takes any executor and is the base class of a program's own
+([test](../tests/programs/library/lib_concurrent_futures_executor.py)). mypy's
+`BuildManager.parse_all()` compiles as it is written: a bound method submitted for each state,
+the futures in a list, `wait(futures).done` and `result()`
 ([test](../tests/programs/library/lib_concurrent_futures_mypy.py)).
 
 - **A call runs inside `submit()`.** Calls run in the order submitted, and `done()` is true as

@@ -63,7 +63,7 @@ show("notified", c)
 try:
     c.set_result(1)
 except InvalidStateError as e:
-    print("InvalidStateError:", str(e)[:24])
+    print("InvalidStateError:", str(e)[:23])
 
 x = Future[int]()
 x.set_exception(KeyError("k"))

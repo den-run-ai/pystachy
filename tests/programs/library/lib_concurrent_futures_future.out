@@ -13,7 +13,7 @@ CancelledError
 CancelledError True True
 False
 notified True False True <Future at   state=cancelled>
-InvalidStateError: CANCELLED_AND_NOTIFIED: 
+InvalidStateError: CANCELLED_AND_NOTIFIED:
 raised True False False <Future at   state=finished raised KeyError>
 KeyError: 'k' True
 None returned NoneType>
