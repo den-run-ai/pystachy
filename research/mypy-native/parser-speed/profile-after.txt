@@ -1,0 +1,40 @@
+1,620,572,073 (100.0%)  PROGRAM TOTALS
+Ir                    file:function
+--------------------------------------------------------------------------------
+296,956,951 (18.32%)  ???:f.ast_serialize$_parse_bytes
+180,422,198 (11.13%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms
+ 92,968,902 ( 5.74%)  ???:m.ast_serialize$_lexer$Lexer.next_token
+ 92,667,067 ( 5.72%)  ???:main
+ 77,061,354 ( 4.76%)  ???:pys_bytes_from_list
+ 65,541,228 ( 4.04%)  ???:m.ast_serialize$_serialize$Serializer.int_
+ 61,250,927 ( 3.78%)  ???:gc_slow
+ 56,803,057 ( 3.51%)  ???:m.ast_serialize$_lexer$Lexer.lex_identifier
+ 55,250,631 ( 3.41%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms
+ 54,213,958 ( 3.35%)  ???:m.ast_serialize$_serialize$Serializer.raw
+ 52,173,244 ( 3.22%)  ???:m.ast_serialize$_serialize$Serializer.room
+ 46,610,111 ( 2.88%)  ???:scan
+ 41,495,652 ( 2.56%)  ???:m.ast_serialize$_parser$Parser.do_bump
+ 31,448,911 ( 1.94%)  ???:pys_str_slice
+ 27,149,264 ( 1.68%)  ???:m.ast_serialize$_serialize$LineIndex.line_of
+ 26,441,688 ( 1.63%)  ???:m.ast_serialize$_serialize$Serializer.location
+ 19,084,337 ( 1.18%)  ???:pys_dict_get
+ 18,473,516 ( 1.14%)  ???:m.ast_serialize$_serialize$Serializer.expr'2
+ 17,150,092 ( 1.06%)  ???:m.ast_serialize$_parser$Parser.do_bump_lexer
+ 14,503,041 ( 0.89%)  ???:m.ast_serialize$_serialize$LineIndex.column
+ 13,331,280 ( 0.82%)  ???:m.ast_serialize$_parser$Parser.parse_binary_expression_or_higher_recursive
+ 12,711,902 ( 0.78%)  ???:rebuild
+ 12,398,055 ( 0.77%)  ???:m.ast_serialize$_parser$Parser.is_list_element
+ 11,613,788 ( 0.72%)  ???:m.ast_serialize$_parser$Parser.parse_lhs_expression_inner
+ 11,058,795 ( 0.68%)  ???:m.ast_serialize$_parser$Parser.parse_identifier
+ 10,549,726 ( 0.65%)  ???:m.ast_serialize$_serialize$Serializer.expr
+  9,699,262 ( 0.60%)  ???:m.ast_serialize$_serialize$Serializer.stmt'2
+  9,428,363 ( 0.58%)  ???:dfinds
+  8,938,435 ( 0.55%)  ???:m.ast_serialize$_parser$Parser.parse_arguments
+  8,823,935 ( 0.54%)  ???:m.ast_serialize$_parser$Parser.parse_lhs_expression_inner'2
+  8,727,040 ( 0.54%)  ???:m.ast_serialize$_parser$Parser.bump_name
+  7,658,720 ( 0.47%)  ???:m.ast_serialize$_serialize$Serializer.str_
+  7,204,517 ( 0.44%)  ???:m.ast_serialize$_lexer$Lexer.lex_comment
+  6,924,296 ( 0.43%)  ???:collect
+  6,652,400 ( 0.41%)  ???:pys_str_find
+  5,766,823 ( 0.36%)  ???:m.ast_serialize$_parser$Parser.list_terminator_kind
+  5,703,867 ( 0.35%)  ???:m.ast_serialize$_parser$Parser.parse_name
