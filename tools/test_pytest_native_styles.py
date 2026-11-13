@@ -861,6 +861,124 @@ def test_recwarn(recwarn):
     assert len(recwarn.list) == 0
 '''
 
+# Tests a native compiler rejects: each calls typed code in a way only CPython can run.
+UNCOMPILED = """
+import pytest
+
+
+def scale(value: int, factor: int = 2) -> int:
+    if not isinstance(value, int):
+        raise TypeError("value must be an int")
+    return value * factor
+
+
+def twice(value):
+    return scale(value)
+
+
+def test_first():
+    assert scale(2) == 4
+
+
+def test_wrong_type():
+    with pytest.raises(TypeError):
+        scale("two")
+
+
+@pytest.mark.parametrize("value", [1, "one", 3])
+def test_values(value):
+    if isinstance(value, int):
+        assert twice(value) == 2 * value
+    else:
+        with pytest.raises(TypeError):
+            twice(value)
+
+
+class TestGroup:
+    def test_fine(self):
+        assert scale(3, 3) == 9
+
+    def test_missing_argument(self):
+        with pytest.raises(TypeError):
+            scale()
+
+    def test_last(self):
+        assert scale(0) == 0
+
+
+def test_end():
+    assert twice(5) == 10
+"""
+UNCOMPILED_CASES = {"test_wrong_type", "test_values[1]", "test_values[one]", "test_values[3]",
+                    "TestGroup::test_missing_argument"}
+
+# A stand-in for the compiler that rejects a program whose test modules have a line with
+# REJECTED, naming the first as the compiler names a line, and otherwise runs it in CPython.
+REJECTING_COMPILER = """
+import pathlib, runpy, sys
+assert sys.argv[1] == "run"
+for file in sorted(pathlib.Path(sys.argv[2]).parent.glob("test_*.py")):
+    for number, line in enumerate(file.read_text().splitlines(), 1):
+        if "REJECTED" in line:
+            print(f"{file}:{number}: error: rejected (compiling f() for the call at {file}:{number})", file=sys.stderr)
+            sys.exit(1)
+sys.argv = sys.argv[2:]
+runpy.run_path(sys.argv[0], run_name="__main__")
+"""
+
+REJECTED = """
+import pytest
+
+LOG: list[str] = []
+
+
+def helper():
+    return 1
+
+
+def test_first():
+    LOG.append("first")
+    assert helper() == 1
+
+
+@pytest.mark.parametrize(
+    "value",
+    [1, 2],
+)
+def test_marked(value):
+    REJECTED = value
+    assert REJECTED
+
+
+class TestGroup:
+    def setup_method(self):
+        LOG.append("setup")
+
+    def test_kept(self):
+        assert LOG[-1] == "setup"
+
+    @pytest.mark.skip(reason="never")
+    def test_method(self):
+        REJECTED = 1
+
+    def test_also_kept(self):
+        assert helper() == 1
+
+
+class TestWhole:
+    REJECTED = 1
+
+    def test_one(self):
+        assert self.REJECTED
+
+    def test_two(self):
+        assert True
+
+
+def test_last():
+    assert LOG[0] == "first"
+"""
+
 SUITES = {
     "unit": (UNITTEST, "test-failed"),
     "tables": (TABLES, "passed"),
@@ -1279,6 +1397,166 @@ class StyleParity(TemporarySuite):
     def test_native_jit_bases_in_the_source_tree(self):
         results, _ = self.run_paths(self.files(RESOLVED), "jit")
         self.assertEqual([result.state for result in results], ["test-failed"])
+
+
+@unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
+class UncompiledTests(TemporarySuite):
+    """A test the compiler rejects is left out and reported; the others run."""
+
+    def files(self, files):
+        for name, text in files.items():
+            (self.root / name).write_text(text)
+        return runner.discover([self.root], self.root)
+
+    def rejecting(self):
+        # (Not beside the tests: CPython would import those in place of the generated modules.)
+        compiler = self.root / "compiler" / "rejecting.py"
+        compiler.parent.mkdir(exist_ok=True)
+        compiler.write_text(REJECTING_COMPILER)
+        return [sys.executable, str(compiler)]
+
+    def run_rejecting(self, files, *arguments):
+        paths = self.files(files)
+        evidence = self.root / "evidence.json"
+        with contextlib.redirect_stdout(io.StringIO()) as output, contextlib.redirect_stderr(io.StringIO()) as error:
+            status = runner.main([*(arguments or [str(path) for path in paths]), "--root", str(self.root),
+                                  "--mode", "jit", "--work-dir", str(self.work), "--json", str(evidence),
+                                  "--compiler", shlex.join(self.rejecting())])
+        return status, output.getvalue(), error.getvalue(), json.loads(evidence.read_text())
+
+    def test_the_line_a_diagnostic_blames(self):
+        files = {"/w/tests/test_a.py": 0, "/w/test_a.py": 1}
+        text = ("/w/pkg/core.py:9: error: expected int, got str (compiling pkg.core.f(str) for the call at "
+                "/w/test_a.py:12; compiling test_a.test_x(str) for the call at /w/tests/test_a.py:140)\n")
+        self.assertEqual(runner.blamed_lines(text, files), [(1, 12), (0, 140)])
+        self.assertEqual(runner.blamed_lines(text, {}), [])
+        source = textwrap.dedent(REJECTED)
+        cases = ["t.py::test_first", "t.py::test_marked[1]", "t.py::TestGroup::test_kept",
+                 "t.py::TestGroup::test_method", "t.py::TestWhole::test_one"]
+        lines = source.split("\n")
+
+        def at(text):
+            return lines.index(text) + 1
+        # A decorated test from its first decorator; a method alone; a class for its other lines.
+        self.assertEqual(runner.test_region(source, at("    REJECTED = value"), cases),
+                         (at("@pytest.mark.parametrize("), at("    assert REJECTED")))
+        self.assertEqual(runner.test_region(source, at("        REJECTED = 1"), cases),
+                         (at('    @pytest.mark.skip(reason="never")'), at("        REJECTED = 1")))
+        self.assertEqual(runner.test_region(source, at("        LOG.append(\"setup\")"), cases),
+                         (at("class TestGroup:"), at("        assert helper() == 1")))
+        # A helper, a module statement and a class no case names belong to no test.
+        self.assertIsNone(runner.test_region(source, at("    return 1"), cases))
+        self.assertIsNone(runner.test_region(source, at("LOG: list[str] = []"), cases))
+        self.assertIsNone(runner.test_region(source, at("    REJECTED = 1"), cases[:4]))
+        self.assertIsNone(runner.test_region("def broken(:\n", 1, cases))
+        blank = runner.blanked(source, at("    def test_kept(self):"), at("        assert LOG[-1] == \"setup\""))
+        self.assertEqual(len(blank.split("\n")), len(lines))
+        self.assertEqual(blank.split("\n")[at("    def test_kept(self):") - 1], "    pass")
+        self.assertEqual(blank.split("\n")[at("def test_last():") - 1], "def test_last():")
+
+    def test_rejected_tests_are_left_out_and_the_run_fails(self):
+        status, output, error, report = self.run_rejecting({"test_rejected.py": REJECTED})
+        result = report["results"][0]
+        self.assertEqual(status, 2, error)
+        self.assertEqual(report["qualification"], "partly-compiled", error)
+        self.assertEqual(report["differences"], [runner.UNCOMPILED])
+        self.assertEqual(result["state"], "passed", error)
+        self.assertEqual([case.split("::", 1)[1] for case in result["cases"]],
+                         ["test_first", "TestGroup::test_kept", "TestGroup::test_also_kept", "test_last"])
+        self.assertEqual({case.split("::", 1)[1] for case in result["uncompiled"]},
+                         {"test_marked[1]", "test_marked[2]", "TestGroup::test_method", "TestWhole::test_one",
+                          "TestWhole::test_two"})
+        # The reason names the test's own line beside the generated one.
+        self.assertRegex(result["uncompiled"]["test_rejected.py::test_marked[1]"],
+                         r"^test_rejected\.py:\d+ \[generated test_rejected\.py:\d+\]: error: rejected")
+        self.assertIn("NOT COMPILED test_rejected.py::TestWhole::test_two", output)
+        self.assertIn("4 passed, 5 not compiled", output)
+        self.assertIn("match for the cases that compiled", output)
+        # pytest ran them: a skipped one and four that passed.
+        self.assertIn("test_rejected.py::TestGroup::test_method: pytest skipped, native not compiled",
+                      report["mismatches"])
+        self.assertIn("test_rejected.py::test_marked[2]: pytest passed, native not compiled", report["mismatches"])
+        self.assertEqual(len(report["mismatches"]), 5)
+        # Without the comparison the run fails as well.
+        status, output, error, report = self.run_rejecting({}, str(self.root / "test_rejected.py"), "--no-compare")
+        self.assertEqual((status, report["qualification"]), (2, "unverified"), error)
+        self.assertEqual(len(report["results"][0]["uncompiled"]), 5)
+
+    def test_other_differences_are_still_differences(self):
+        # The test left out is the one that made a later test pass under pytest.
+        status, _, error, report = self.run_rejecting({"test_order.py": textwrap.dedent("""
+            LOG: list[str] = []
+
+            def test_writes():
+                REJECTED = 1
+                LOG.append("written")
+
+            def test_reads():
+                assert LOG == ["written"]
+        """)})
+        self.assertEqual(status, 2, error)
+        self.assertEqual(report["qualification"], "pytest-mismatch")
+        self.assertIn("test_order.py::test_reads [call]: pytest passed, native failed", report["mismatches"])
+        self.assertEqual(list(report["results"][0]["uncompiled"]), ["test_order.py::test_writes"])
+
+    def test_errors_no_test_explains_fail_the_build(self):
+        for name, source in (
+                ("module statement", "REJECTED = 1\ndef test_a():\n    assert REJECTED\n"),
+                ("helper", "def helper():\n    REJECTED = 1\n    return REJECTED\ndef test_a():\n    assert helper()\n"),
+                ("fixture", "import pytest\n@pytest.fixture\ndef value():\n    REJECTED = 1\n    return REJECTED\n"
+                            "def test_a(value):\n    assert value\n")):
+            with self.subTest(name):
+                self.work = self.root / "build" / name.replace(" ", "-")
+                status, _, error, report = self.run_rejecting({"test_whole.py": source})
+                self.assertEqual(status, 2)
+                # (A JIT command that fails before the program starts is an execution error.)
+                self.assertEqual(report["results"][0]["state"], "execution-error")
+                self.assertEqual(report["results"][0]["uncompiled"], {})
+                self.assertIn("error: rejected", error)
+
+    def test_a_selected_test_is_not_left_out(self):
+        status, _, error, report = self.run_rejecting({"test_rejected.py": REJECTED},
+                                                      str(self.root / "test_rejected.py") + "::test_marked")
+        self.assertEqual(status, 2)
+        self.assertEqual(report["results"][0]["state"], "execution-error", error)
+        self.assertEqual(report["results"][0]["uncompiled"], {})
+
+    def test_the_tests_left_out_are_bounded(self):
+        source = "".join(f"def test_{index}():\n    REJECTED = {index}\n" for index in range(4)) + "def test_ok(): pass\n"
+        with patch.object(runner, "LEFT_OUT_LIMIT", 3):
+            status, _, error, report = self.run_rejecting({"test_many.py": source})
+        self.assertEqual(status, 2)
+        self.assertEqual(report["results"][0]["state"], "execution-error", error)
+        self.assertEqual(len(report["results"][0]["uncompiled"]), 3)
+        self.work = self.root / "build" / "enough"
+        with patch.object(runner, "LEFT_OUT_LIMIT", 4):
+            status, _, error, report = self.run_rejecting({"test_many.py": source})
+        self.assertEqual((status, report["results"][0]["state"]), (2, "passed"), error)
+        self.assertEqual(report["results"][0]["cases"], ["test_many.py::test_ok"])
+
+    def test_every_test_left_out_is_no_success(self):
+        status, _, error, report = self.run_rejecting({"test_none.py": "def test_only():\n    REJECTED = 1\n"})
+        self.assertEqual(status, 2, error)
+        self.assertEqual(report["results"][0]["state"], "empty", error)
+        self.assertEqual(list(report["results"][0]["uncompiled"]), ["test_none.py::test_only"])
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_jit_and_aot_leave_out_what_the_compiler_rejects(self):
+        paths = self.files({"test_left.py": UNCOMPILED})
+        for mode in ("jit", "aot"):
+            with self.subTest(mode=mode):
+                results = runner.run_suite(paths, self.root, self.work / mode, mode, shlex.split(NATIVE),
+                                           sys.executable, 300)
+                expected = runner.oracle(paths, self.root, self.work / "oracle", sys.executable, 120)
+                self.assertEqual(runner.compare(results, expected), [runner.UNCOMPILED],
+                                 results[0].error + results[0].stderr)
+                self.assertEqual(results[0].state, "passed", results[0].stderr)
+                self.assertEqual({case.split("::", 1)[1] for case in results[0].uncompiled}, UNCOMPILED_CASES)
+                self.assertEqual([case.split("::", 1)[1] for case in results[0].cases],
+                                 ["test_first", "TestGroup::test_fine", "TestGroup::test_last", "test_end"])
+                # The calls that led the compiler to the rejected line blame the test.
+                self.assertIn("compiling test_left.twice(str)", results[0].uncompiled["test_left.py::test_values[3]"])
+                self.assertTrue(results[0].assertion_operands)
 
 
 class StyleRejections(TemporarySuite):

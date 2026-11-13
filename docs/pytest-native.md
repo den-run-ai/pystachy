@@ -82,6 +82,31 @@ first and the generated one after it:
 generates for a declaration (a case's fixture calls, a scope's cache, parameter
 values) reports at that test, fixture or class.
 
+A test that the compiler rejects does not stop the others. Suites often have a few:
+a test that passes a `str` where the code under test declares an `int`, or omits an
+argument, to see its `TypeError`, is a type error to a compiler. The runner leaves
+such a test out of the program and builds again, up to 25 times for a suite. It
+finds the test in the diagnostic: the rejected line, or one of the calls that led
+the compiler to it, is in the test. A function or method goes with every
+parametrized case it has, and a class goes whole when the line is in it but in none
+of its tests. The program is then the one the file would make without that test, so
+nothing of it runs, its decorators included. Each case left out is printed as
+`NOT COMPILED` with the diagnostic and listed in the JSON's `uncompiled`:
+
+```text
+tests/test_api.py: passed (41 cases, 3 not compiled)
+NOT COMPILED tests/test_api.py::test_rejects_text[one]
+    tests/test_api.py:20 [generated test_api.py:19]: error: expected int, got str
+```
+
+Such a run exits with 2, never 0: pytest ran cases that the program does not have.
+Its `qualification` is `partly-compiled` when everything that compiled matches
+pytest, and a test that needed the missing one's side effects shows as a
+`MISMATCH`. An error that no test explains fails the build as before: a module's
+own statements, a fixture, a helper that no call leads to from a test, or the
+package under test. So does a test named by a node ID. No test runs twice, because
+a program whose build fails has not started.
+
 `--root` defaults to the current directory, and selected files must be inside it.
 Tests may be in several directories and in packages. The generated program mirrors
 how pytest imports them: a module of a package (a directory with `__init__.py`)
@@ -377,7 +402,8 @@ and call, which the comparison includes, and a failed one fails the run as in
 pytest. Missing cases, missing call phases, duplicate events, interrupted runs,
 malformed reports and disagreement with process status are execution errors.
 Test stdout cannot impersonate the report protocol. Exit codes are 0 for success,
-1 for test failures, 2 for collection/build/execution/oracle errors, and 5 for no
+1 for test failures, 2 for collection/build/execution/oracle errors and for cases
+[left out](#run-a-suite) because they do not compile, and 5 for no
 tests. A matching intentionally failing suite still returns 1.
 
 ```sh

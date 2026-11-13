@@ -6,6 +6,7 @@ The CLI compares original-source, real-pytest outcomes by default as an independ
 from __future__ import annotations
 
 import argparse
+import ast
 import configparser
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
@@ -44,6 +45,8 @@ QUIET_OPTIONS = {"-q": False, "--quiet": False, "-v": False, "-vv": False, "-vvv
                  "--strict-config": False, "--disable-warnings": False, "--tb": True, "--color": True,
                  "--durations": True, "--durations-min": True, "-r": True, "--code-highlight": True}
 EXCLUDED_DIRS = {"build", "dist", "venv", ".venv", "__pycache__", "node_modules"}
+# Tests one suite may leave out because the native compiler rejects them (run_suite).
+LEFT_OUT_LIMIT = 25
 
 
 @dataclass
@@ -65,6 +68,10 @@ class Result:
     # conftest.py hooks the program left out, as "path: name" (first module): the
     # comparison with pytest answers for them.
     hooks: list[str] = field(default_factory=list)
+    # Cases the native program does not contain, each with the compiler's reason: the
+    # compiler rejected their test, which the runner then left out (leave_out()). They
+    # are not in cases, and a run that has any never succeeds.
+    uncompiled: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -666,6 +673,67 @@ def translate(text: str, sources: dict[str, tuple[str, object]]) -> str:
     return re.sub(pattern, original, text)
 
 
+def blamed_lines(text: str, files: dict[str, int]) -> list[tuple[int, int]]:
+    """The generated test-module lines a compiler diagnostic names, as (module, line).
+
+    files maps each generated test module's file to its position. The lines come in the
+    diagnostic's own order: where the error is, then the calls that had the compiler
+    compile that code, innermost first.
+    """
+    if not files:
+        return []
+    pattern = "(" + "|".join(re.escape(file) for file in sorted(files, key=len, reverse=True)) + r"):(\d+)"
+    return [(files[match.group(1)], int(match.group(2))) for match in re.finditer(pattern, text)]
+
+
+def test_region(source: str, line: int, cases: list[str]) -> tuple[int, int] | None:
+    """The lines of the test that a line of a test module belongs to, or None.
+
+    A test is a module-level function or a method that some collected case names; a line
+    of such a class outside its test methods (a hook, a helper method, a class
+    attribute) belongs to all of the class's tests. Decorators belong to their test.
+    """
+    functions, methods, classes = set(), set(), set()
+    for case in cases:
+        parts = case.partition("[")[0].split("::")[1:]
+        if len(parts) == 1:
+            functions.add(parts[0])
+        elif len(parts) > 1:
+            classes.add(parts[0])
+            methods.add(parts[-1])
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError, RecursionError):
+        return None
+
+    def span(node):
+        return min([node.lineno, *(decorator.lineno for decorator in node.decorator_list)]), node.end_lineno
+
+    for node in tree.body:
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        first, last = span(node)
+        if not first <= line <= last:
+            continue
+        if not isinstance(node, ast.ClassDef):
+            return (first, last) if node.name in functions else None
+        for member in node.body:
+            if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)) and member.name in methods:
+                inner = span(member)
+                if inner[0] <= line <= inner[1]:
+                    return inner
+        return (first, last) if node.name in classes else None
+    return None
+
+
+def blanked(source: str, first: int, last: int) -> str:
+    """source with lines first..last replaced by one `pass`, every other line where it was."""
+    lines = source.split("\n")
+    indent = lines[first - 1][:len(lines[first - 1]) - len(lines[first - 1].lstrip())]
+    lines[first - 1:last] = [indent + "pass", *[""] * (last - first)]
+    return "\n".join(lines)
+
+
 def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: list[str],
               python: str, timeout: float, selections: dict[Path, list[str]] | None = None,
               settings: Settings | None = None) -> list[Result]:
@@ -675,6 +743,10 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
     turn a failing suite green. Empty modules must be imported too. selections holds
     node-ID selectors by module (parse_targets). The conftest.py of the tests'
     directory supplies fixtures to every module.
+
+    A test that the native compiler rejects is left out of the program, with every case
+    it has, and the build is tried again: the other tests still run. Result.uncompiled
+    names those cases. Nothing has run when a build fails, so no test runs twice.
     """
     results = [Result(path=path.relative_to(root).as_posix()) for path in paths]
     if not results:
@@ -772,7 +844,6 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         imports.append(f"import {name}")
         calls += [f"    _pyn_code = {name}._pyn_run({str(report)!r})",
                   "    if _pyn_code == 1:", "        _pyn_failed = True"]
-    count = sum(len(result.cases) for result in results)
     marker = suite_work / "started"
     # (A reserved name: a test package called tmp is mirrored beside it.)
     temporary = suite_work / "_pyn_tmp"
@@ -786,14 +857,19 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         imports = ["import warnings as _pyn_warnings",
                    *(f"_pyn_warnings.filterwarnings({action!r}, {message!r}, {category})"
                      for action, message, category in settings.filters), *imports]
-    # The marker is written before any test module's code runs: without it, a failed
-    # native command never started the program, and nothing observable happened.
-    driver = "\n".join(["import sys", f"open({str(marker)!r}, 'w').close()", *imports, "",
-                         "def _pyn_main() -> int:", "    _pyn_failed = False", *calls,
-                         "    if _pyn_failed:", "        return 1", f"    return {0 if count else 5}", "",
-                         "sys.exit(_pyn_main())", ""])
     source = suite_work / "_pyn_suite.py"
-    write_changed(source, driver)
+
+    def write_driver():
+        # The marker is written before any test module's code runs: without it, a failed
+        # native command never started the program, and nothing observable happened.
+        # (The exit status counts the program's cases, which leaving a test out changes.)
+        count = sum(len(result.cases) for result in results)
+        write_changed(source, "\n".join([
+            "import sys", f"open({str(marker)!r}, 'w').close()", *imports, "",
+            "def _pyn_main() -> int:", "    _pyn_failed = False", *calls,
+            "    if _pyn_failed:", "        return 1", f"    return {0 if count else 5}", "",
+            "sys.exit(_pyn_main())", ""]))
+
     write_changed(suite_work / "pytest_native_support.py", (TOOLS / "pytest_native_support.py").read_text())
     if builtin:
         write_changed(suite_work / "pytest_native_fixtures.py", (TOOLS / "pytest_native_fixtures.py").read_text())
@@ -814,6 +890,7 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         return {str(file): (origin, module) for file, origin, module in zip(generated_files, origins, modules)}
 
     def attempt(modules):
+        write_driver()
         for file, module in zip(generated_files, modules):
             write_changed(file, module.source)
         for report in reports:
@@ -856,30 +933,81 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
             return "not-started", ran
         return "ran", ran
 
-    # Assertion operands add code that the compiler may not accept (an operand's repr or
-    # its temporary's type). Such a build is retried once with plain assertions, which
-    # runs no test code twice, and the choice is kept until the instrumented code changes.
-    used = instrumented
-    fingerprint = hashlib.sha256("\0".join([shlex.join(compiler), *(module.source for module in instrumented)])
-                                 .encode()).hexdigest()
     plain_record = suite_work / "plain-assertions"
-    plain = None
-    if mode != "python" and plain_record.is_file() and plain_record.read_text() == fingerprint:
-        plain = used = build(False)
-        first.assertion_operands = False
-    status, value = attempt(used)
-    if status in ("build-failed", "not-started") and plain is None:
-        plain = build(False)
-        if [module.source for module in plain] != [module.source for module in instrumented]:
+
+    def attempts(instrumented):
+        """Run the program, with plain assertions where only those compile: (status, value, modules)."""
+        # Assertion operands add code that the compiler may not accept (an operand's repr or
+        # its temporary's type). Such a build is retried once with plain assertions, which
+        # runs no test code twice, and the choice is kept until the instrumented code changes.
+        used = instrumented
+        fingerprint = hashlib.sha256("\0".join([shlex.join(compiler), *(module.source for module in instrumented)])
+                                     .encode()).hexdigest()
+        plain = None
+        first.assertion_operands, first.operand_build_error = True, ""
+        if mode != "python" and plain_record.is_file() and plain_record.read_text() == fingerprint:
+            plain = used = build(False)
             first.assertion_operands = False
-            first.operand_build_error = translate(value.stderr or value.stdout, sources_of(instrumented))[-4000:]
-            used = plain
-            status, value = attempt(plain)
-            if status not in ("build-failed", "not-started"):
-                plain_record.write_text(fingerprint)
-            else:
-                # Both builds failed: the plain one's error is the module's own.
-                first.assertion_operands, first.operand_build_error = True, ""
+        status, value = attempt(used)
+        if status in ("build-failed", "not-started") and plain is None:
+            plain = build(False)
+            if [module.source for module in plain] != [module.source for module in instrumented]:
+                first.assertion_operands = False
+                first.operand_build_error = translate(value.stderr or value.stdout, sources_of(instrumented))[-4000:]
+                used = plain
+                status, value = attempt(plain)
+                if status not in ("build-failed", "not-started"):
+                    plain_record.write_text(fingerprint)
+                else:
+                    # Both builds failed: the plain one's error is the module's own.
+                    first.assertion_operands, first.operand_build_error = True, ""
+        return status, value, used
+
+    def leave_out(value, used):
+        """Leave out the test that a failed build's diagnostic blames: the modules without it, or None.
+
+        The diagnostic names the line it rejects and the calls that led the compiler
+        there; the first of those lines that is in a test blames it. The test's lines are
+        blanked in the text the modules are generated from, so the program is the one
+        its file would make without that test, and each case this removes is recorded
+        with the diagnostic. An error in no test (a module's own statement, a helper or a
+        fixture that no call leads to from a test, the package under test) blames none.
+        """
+        text = value.stderr or value.stdout
+        offset = len(tree.conftests)
+        for index, line in blamed_lines(text, {str(file): index
+                                               for index, file in enumerate(generated_files[offset:])}):
+            path = paths[index]
+            original = original_line(used[offset + index], line)
+            region = test_region(texts[path], original, results[index].cases) if original else None
+            if region is None:
+                continue
+            kept = texts[path], [(result.cases, result.state, result.error) for result in results]
+            texts[path] = blanked(texts[path], *region)
+            rebuilt = build(True)
+            if rebuilt is None or all(set(result.cases) >= set(cases) for result, (cases, _, _) in zip(results, kept[1])):
+                # (What is left is not a module the runner collects, or has every case still.)
+                texts[path] = kept[0]
+                for result, (cases, state, error) in zip(results, kept[1]):
+                    result.cases, result.state, result.error = cases, state, error
+                continue
+            reason = next((entry for entry in translate(text, sources_of(used)).splitlines() if "error:" in entry),
+                          text.strip())[:2000]
+            for result, (cases, _, _) in zip(results, kept[1]):
+                for case in cases:
+                    if case not in result.cases:
+                        result.uncompiled[case] = reason
+            return rebuilt
+        return None
+
+    status, value, used = attempts(instrumented)
+    left = 0
+    while status in ("build-failed", "not-started") and left < LEFT_OUT_LIMIT:
+        remaining = leave_out(value, used)
+        if remaining is None:
+            break
+        left += 1
+        status, value, used = attempts(remaining)
     if status == "build-error" or status == "run-error":
         for result in results:
             result.state = "compile-error" if status == "build-error" else "execution-error"
@@ -904,7 +1032,8 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
             result.state = "empty" if code == 5 else "passed" if code == 0 else "test-failed"
         except (OSError, UnicodeError, ValueError, KeyError, IndexError, TypeError) as error:
             result.state, result.error = "execution-error", str(error)
-    expected_exit = 1 if any(result.state == "test-failed" for result in results) else 0 if count else 5
+    expected_exit = (1 if any(result.state == "test-failed" for result in results)
+                     else 0 if any(result.cases for result in results) else 5)
     if ran.returncode != expected_exit or any(result.state == "execution-error" for result in results):
         # An import failure, crash, interrupt or incomplete report is never a
         # passing suite, even if earlier modules happened to finish.
@@ -994,14 +1123,21 @@ def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: floa
                 "stdout": ran.stdout if ran is not None else "", "stderr": stderr}
 
 
+UNCOMPILED = "the native program does not have every case: the compiler rejected tests, which the runner left out"
+
+
 def compare(results: list[Result], reference: dict) -> list[str]:
+    """How the run differs from pytest's; cases left out of the program are one difference
+    (UNCOMPILED), and the others are then compared without them."""
     if "error" in reference:
         return ["oracle: " + reference["error"]]
     errors = []
+    left = {case for result in results for case in result.uncompiled}
     cases = [case for result in results for case in result.cases]
-    if cases != reference["cases"]:
+    if cases != [case for case in reference["cases"] if case not in left] or not left <= set(reference["cases"]):
         errors.append("collected test IDs/order differ from pytest")
     events = [event for result in results for event in result.events]
+    reference = {**reference, "events": [event for event in reference["events"] if event["nodeid"] not in left]}
     def key(event):
         # A setup/teardown failure is an ERROR in the native summary, but pytest's
         # report API calls it failed and uses its phase to distinguish it.
@@ -1011,6 +1147,8 @@ def compare(results: list[Result], reference: dict) -> list[str]:
         errors.append("setup/call/teardown outcomes differ from pytest")
     if any(result.state not in {"passed", "test-failed", "empty"} for result in results):
         errors.append("native collection/build/execution did not complete")
+    if left:
+        errors.append(UNCOMPILED)
     return errors
 
 
@@ -1019,11 +1157,12 @@ def outcome_differences(results: list[Result], reference: dict) -> list[str]:
     if "error" in reference:
         return []
     native_cases = [case for result in results for case in result.cases]
-    lines = [f"{case}: collected natively, not by pytest" for case in native_cases
+    left = {case for result in results for case in result.uncompiled}
+    lines = [f"{case}: collected natively, not by pytest" for case in [*native_cases, *left]
              if case not in reference["cases"]]
     lines += [f"{case}: collected by pytest, not natively" for case in reference["cases"]
-              if case not in native_cases]
-    if not lines and native_cases != reference["cases"]:
+              if case not in native_cases and case not in left]
+    if not lines and native_cases != [case for case in reference["cases"] if case not in left]:
         lines.append("collection order differs: pytest " + ", ".join(reference["cases"]))
     if any(result.state not in {"passed", "test-failed", "empty"} for result in results):
         return lines  # (no native outcomes to set beside pytest's)
@@ -1040,8 +1179,13 @@ def outcome_differences(results: list[Result], reference: dict) -> list[str]:
         return found
     native = outcomes(event for result in results for event in result.events)
     original = outcomes(reference["events"])
+    for case in reference["cases"]:
+        if case in left:
+            # (pytest's outcome for the case: its call's, or its setup's where that did not pass)
+            lines.append(f"{case}: pytest {original.get((case, 'call'), original.get((case, 'setup'), 'absent'))}, "
+                         "native not compiled")
     for key in dict.fromkeys([*original, *native]):
-        if original.get(key) != native.get(key):
+        if key[0] not in left and original.get(key) != native.get(key):
             lines.append(f"{key[0]} [{key[1]}]: pytest {original.get(key, 'absent')}, "
                          f"native {native.get(key, 'absent')}")
     return lines
@@ -1124,13 +1268,17 @@ def execute(args) -> int:
                  if args.compare and paths and collected else None)
     differences = compare(results, reference) if reference is not None else []
     mismatches = outcome_differences(results, reference) if reference is not None else []
-    if differences or any(result.state in {"collection-error", "compile-error", "execution-error"} for result in results):
+    uncompiled = sum(len(result.uncompiled) for result in results)
+    if (differences or uncompiled
+            or any(result.state in {"collection-error", "compile-error", "execution-error"} for result in results)):
         status = 2
     elif not any(result.cases for result in results):
         status = 5
     else:
         status = int(any(result.state == "test-failed" for result in results))
+    # (partly-compiled: what the program has matches pytest, and it lacks cases that pytest runs.)
     qualification = ("unverified" if not args.compare else "not-compared" if not collected
+                     else "partly-compiled" if differences == [UNCOMPILED]
                      else "pytest-mismatch" if differences else "pytest-matched" if reference is not None
                      else "no-tests")
     evidence = {"mode": args.mode, "qualification": qualification,
@@ -1142,7 +1290,15 @@ def execute(args) -> int:
     expected = {(event["nodeid"], event["phase"]): event
                 for event in (reference or {}).get("events", [])}
     for result in results:
-        print(f"{result.path}: {result.state} ({len(result.cases)} cases)")
+        lacking = f", {len(result.uncompiled)} not compiled" if result.uncompiled else ""
+        print(f"{result.path}: {result.state} ({len(result.cases)} cases{lacking})")
+        reasons: dict[str, list[str]] = {}
+        for case, reason in result.uncompiled.items():
+            reasons.setdefault(reason, []).append(case)
+        for reason, cases in reasons.items():
+            for case in cases:
+                print(f"NOT COMPILED {case}")
+            print(textwrap.indent(clipped(reason), "    "))
         for event in result.events:
             if event["outcome"] in {"failed", "error"}:
                 print(f"{'FAILED' if event['outcome'] == 'failed' else 'ERROR'} {event['nodeid']} [{event['phase']}]")
@@ -1170,15 +1326,19 @@ def execute(args) -> int:
               + ", ".join(results[0].hooks), file=sys.stderr)
     if args.compare and reference is not None and not differences:
         print("pytest collection and phase outcomes match")
+    elif differences == [UNCOMPILED]:
+        print("pytest collection and phase outcomes match for the cases that compiled")
     if status == 5:
         print("no tests collected")
     counts = outcome_counts(results)
     summary = ", ".join(f"{counts[name]} {name + 's' if name == 'error' and counts[name] > 1 else name}"
                         for name in ("failed", "passed", "skipped", "xfailed", "xpassed", "error", "subtests passed",
                                      "subtests skipped") if counts.get(name))
+    if uncompiled:
+        summary += (", " if summary else "") + f"{uncompiled} not compiled"
     if summary:
-        verdict = ("; UNVERIFIED" if not args.compare else "; pytest comparison failed"
-                   if differences or reference is None else "")
+        verdict = ("; UNVERIFIED" if not args.compare else "" if differences == [UNCOMPILED]
+                   else "; pytest comparison failed" if differences or reference is None else "")
         print(f"{summary} in {time.perf_counter() - started:.2f}s ({args.mode}{verdict})")
     return status
 
