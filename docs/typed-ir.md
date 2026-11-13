@@ -560,7 +560,9 @@ taken, and `slot.pack` and `slot.unpack`. It does not compare two different
 addresses: the test that stays may be what proves a later payload read. A call that
 cannot run passes nothing. Fields and results come from the previous reading of the
 program, so each reading is sound alone; at most eight are made, and the last is
-applied.
+applied. A function of more than 4,096 ops is read as it is written: following every
+local of an interpreter-sized function through every block costs most where it
+decides least.
 
 A decided `cbr` or `switch` becomes a `br`. A block that cannot run becomes one
 `unreachable` op under its old label, which loops, `try` statements and checks may

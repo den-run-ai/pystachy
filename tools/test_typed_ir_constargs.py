@@ -221,6 +221,19 @@ print(Rules().apply("k"))
         self.assertEqual(tests(apply), 0)
         self.assertEqual(callees(apply), {"@m.Rules.resolve"})
 
+    def test_a_function_over_the_bound_is_read_as_written(self):
+        def source(statements):
+            body = "\n".join(f"    total += len(text) + {k}" for k in range(statements))
+            return (f"def big(text: str, loud: bool = False) -> int:\n    total = 0\n{body}\n"
+                    "    if loud:\n        total = -total\n    return total\n\nprint(big('a'))\n")
+
+        small = compile_source(source(8))["@f.big"]
+        self.assertLess(len(operations(small)), constargs.CLOSE_OPS)
+        self.assertEqual(tests(small), 0)
+        big = compile_source(source(1200))["@f.big"]
+        self.assertGreater(len(operations(big)), constargs.CLOSE_OPS)
+        self.assertEqual(tests(big), 1)  # (loud's test stays)
+
     def test_without_folding_the_decided_code_stops_the_program(self):
         source = HELPER + 'print(repair(" a "))\n'
         folded = compile_source(source)["@f.repair"]

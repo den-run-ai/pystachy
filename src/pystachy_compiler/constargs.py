@@ -17,6 +17,12 @@ from src.pystachy_compiler.utils import lt
 VARIES = "!"
 # how many times the whole program is read: each reading may find more fields constant
 ROUNDS = 8
+# A function of more ops than this is read as it is written. Reading one closely follows each
+# of its locals through each of its blocks, and the few functions this large (an interpreter's
+# loop, say) are where that costs most and decides least: LLVM folds what stays in a function
+# once its parameters are constants, and what this pass adds, the code that a decided test
+# leaves without a caller, is found in the functions that call such code, which are small.
+CLOSE_OPS = 4096
 # the ops whose result is a constant where their operands are (Fold.result)
 PASSES_ON: dict[str, bool] = {"phi": True, "select": True, "slot.pack": True, "slot.unpack": True, "ptr.cmp": True, "num.cmp": True, "scalar.cmp": True, "scalar.bin": True}
 SIGNED: dict[str, str] = {"eq": "==", "ne": "!=", "slt": "<", "sle": "<=", "sgt": ">", "sge": ">="}
@@ -29,15 +35,22 @@ NOITEMS: list[str] = []
 NOFIELDS: dict[str, str] = {}
 
 
+# whether each operand spelling the pass has asked about is a constant (constant): a str's
+# startswith() counts code points, which costs more than every other step of reading an op
+SPELLED: dict[str, bool] = {}
+
+
 def constant(v: str) -> bool:
     # an operand that is one value wherever it is written: None's null, a bool, an int
     # literal that fits a machine word with room to spare, or a module constant's address
-    if v == "null" or v == "true" or v == "false":
-        return True
-    if v.startswith("@"):
-        return True
-    d = v[1:] if v.startswith("-") else v
-    return d.isdigit() and len(d) <= 18
+    if v in SPELLED:
+        return SPELLED[v]
+    r = v == "null" or v == "true" or v == "false" or v.startswith("@")
+    if not r:
+        d = v[1:] if v.startswith("-") else v
+        r = d.isdigit() and len(d) <= 18
+    SPELLED[v] = r
+    return r
 
 
 def meet(a: str, b: str) -> str:
@@ -157,13 +170,21 @@ class Fold:
         self.edges: dict[int, bool] = {}
         self.val: dict[str, str] = {}
         self.sidx: dict[str, int] = {}  # a private slot's register -> its place in a state
-        self.defs: dict[str, bool] = {}
         # the blocks that read a value: uhead gives the last one listed, unext the one before
         self.uhead: dict[str, int] = {}
         self.ublk: list[int] = []
         self.unext: list[int] = []
+        # the ops this reads, each block's from its bfirst: those that may define a constant,
+        # the stores into the slots it follows, and every op that names a block
+        self.bfirst: list[int] = []
+        self.bops: list[Ins] = []
+        # the blocks to read (again), taken in the order they were built, which follows the
+        # control flow but for a loop's way back: a block is then read once most of what
+        # reaches it is known. redo: a block before the one being read is waiting
         self.queued: list[bool] = [False] * self.nb
-        self.work: list[int] = []
+        self.reading = 0
+        self.redo = False
+        self.given: list[str] = []  # the parameters it was read with
         tracked: dict[str, str] = {}
         for j in range(self.nb):
             l = fn.blocks[j].label
@@ -176,25 +197,14 @@ class Fold:
         for s in fn.slots:
             if s.k == 0:
                 tracked[slot_register(s)] = lt(s.t)
-        for j in range(self.nb):
-            for i in fn.blocks[j].code:
-                for n in i.r:
-                    self.defs[tmpname(n)] = True
+        for b in fn.blocks if len(tracked) > 0 else fn.blocks[:0]:
+            for i in b.code:
                 for k in range(len(i.a)):
-                    v = i.a[k].v
-                    if not v.startswith("%"):
-                        continue
-                    if v in tracked:
-                        if k == 0 and (i.op == "mem.load" or i.op == "mem.store"):
-                            continue
-                        del tracked[v]  # (its address goes elsewhere: anything may store there)
-                    h = self.uhead[v] if v in self.uhead else -1
-                    if h < 0 or self.ublk[h] != j:
-                        self.uhead[v] = len(self.ublk)
-                        self.ublk.append(j)
-                        self.unext.append(h)
+                    if i.a[k].v in tracked and not (k == 0 and (i.op == "mem.load" or i.op == "mem.store")):
+                        del tracked[i.a[k].v]  # (its address goes elsewhere: anything may store there)
         for x in range(len(fn.ps)):
             p = params[first + x]
+            self.given.append(p)
             self.val[f"%a{fn.ps[x]}"] = p if p != "" else VARIES
         # Of those slots, the ones that some store may give a constant: the others only
         # ever vary once assigned, and following them through every edge of a large
@@ -203,7 +213,7 @@ class Fold:
         # of such a value; the two sets grow together until neither does.
         maybe: dict[str, bool] = {}
         seeded: dict[str, bool] = {}
-        grew = len(tracked) > 0
+        grew = True
         while grew:
             grew = False
             for b in fn.blocks:
@@ -228,7 +238,7 @@ class Fold:
                         can = len(i.r) == 2 and i.a[0].v in maybe
                     elif op == "alloc.fixed":
                         can = i.t.startswith("tuple[")
-                    elif op in PASSES_ON:
+                    elif op in PASSES_ON and (op != "scalar.bin" or i.t == "bool"):
                         for a in i.a:
                             if self.may(a.v, maybe):
                                 can = True
@@ -243,6 +253,28 @@ class Fold:
             self.sidx[register] = len(self.zero)
             t = tracked[register]
             self.zero.append("null" if t == "ptr" else "false" if t == "i1" else "0" if t == "i64" else VARIES)
+        self.maybe: dict[str, bool] = maybe
+        for j in range(self.nb):
+            self.bfirst.append(len(self.bops))
+            for i in fn.blocks[j].code:
+                keep = len(i.b) > 0 and i.op != "phi"
+                if not keep and len(i.r) > 0:
+                    keep = tmpname(i.r[len(i.r) - 1]) in maybe
+                if not keep and i.op == "mem.store":
+                    keep = i.a[0].v in self.sidx
+                if not keep and i.op == "tuple.store":
+                    keep = len(i.a) == 2 and i.a[0].v in maybe
+                if not keep:
+                    continue
+                self.bops.append(i)
+                for a in i.a:
+                    if a.v in maybe:
+                        h = self.uhead[a.v] if a.v in self.uhead else -1
+                        if h < 0 or self.ublk[h] != j:
+                            self.uhead[a.v] = len(self.ublk)
+                            self.ublk.append(j)
+                            self.unext.append(h)
+        self.bfirst.append(len(self.bops))
         # each block's state where it starts, once it can run: block j's from j * ns; st and
         # anywhere are the state of the block being read, and what its slots hold anywhere in it
         self.ns = len(self.zero)
@@ -252,16 +284,18 @@ class Fold:
 
     def may(self, v: str, maybe: dict[str, bool]) -> bool:
         # can operand v be a constant: one as written, a constant parameter, or a value in maybe
-        if not v.startswith("%"):
-            return constant(v)
-        return v in maybe or (v in self.val and self.val[v] != VARIES)
+        if v in maybe:
+            return True
+        if v in self.val:
+            return self.val[v] != VARIES
+        return constant(v)
 
     def value(self, a: Val) -> str:
         v = a.v
-        if v.startswith("%"):
-            if v in self.val:
-                return self.val[v]
-            return "" if v in self.defs else VARIES
+        if v in self.val:
+            return self.val[v]
+        if v in self.maybe:
+            return ""  # (not read yet)
         return v if constant(v) else VARIES
 
     def flow(self, j: int, label: str, st: list[str]) -> None:
@@ -276,13 +310,15 @@ class Fold:
         self.live[k] = True
         base = k * self.ns
         for x in range(self.ns):
-            m = meet(self.sin[base + x], st[x])
-            if m != self.sin[base + x]:
-                self.sin[base + x] = m
+            new = st[x]
+            old = self.sin[base + x]
+            if new != old and new != "" and old != VARIES:
+                self.sin[base + x] = new if old == "" else VARIES  # (meet)
                 changed = True
         if changed and not self.queued[k]:
             self.queued[k] = True
-            self.work.append(k)
+            if k <= self.reading:
+                self.redo = True
 
     def result(self, i: Ins, j: int) -> str:
         # what the one value that i defines is (but a load of a private slot: block)
@@ -363,7 +399,8 @@ class Fold:
             k = self.ublk[h]
             if self.live[k] and not self.queued[k]:
                 self.queued[k] = True
-                self.work.append(k)
+                if k <= self.reading:
+                    self.redo = True
             h = self.unext[h]
 
     def block(self, j: int) -> None:
@@ -374,7 +411,8 @@ class Fold:
         for x in range(self.ns):
             st[x] = self.sin[j * self.ns + x]
             anywhere[x] = st[x]
-        for i in b.code:
+        for y in range(self.bfirst[j], self.bfirst[j + 1]):
+            i = self.bops[y]
             op = i.op
             if (op == "mem.store" or op == "mem.load") and i.a[0].v in self.sidx:
                 k = self.sidx[i.a[0].v]
@@ -464,11 +502,14 @@ class Fold:
         for x in range(self.ns):
             self.sin[x] = self.zero[x]
         self.queued[0] = True
-        self.work.append(0)
-        while self.ok and len(self.work) > 0:
-            j = self.work.pop()
-            self.queued[j] = False
-            self.block(j)
+        self.redo = True
+        while self.ok and self.redo:
+            self.redo = False
+            for j in range(self.nb):
+                if self.queued[j]:
+                    self.queued[j] = False
+                    self.reading = j
+                    self.block(j)
         for j in range(self.nb if self.ok else 0):
             if not self.live[j]:
                 continue
@@ -634,6 +675,10 @@ class Fields:
         # what each function returns as it is written: a constant where every return names
         # that one, VARIES otherwise, "" where it has no return of a value
         self.plain: list[str] = []
+        self.small: list[bool] = []  # it has no more than CLOSE_OPS ops
+        # a module function or method that only its symbol can reach: no generator, export or
+        # function of another language (whether a value names it is taken's to say)
+        self.direct: list[bool] = []
         for c in classes:
             ci = classes[c]
             for name in ci.fields:
@@ -661,14 +706,15 @@ class Fields:
             self.cfirst.append(len(self.cins))
             machine = False  # some machine op addresses a value or a parameter
             plain = ""
+            ops = 0
             for x in range(len(fn.blocks)):
+                ops += len(fn.blocks[x].code)
                 for i in fn.blocks[x].code:
                     op = i.op
                     for k in range(len(i.a)):
                         v = i.a[k].v
-                        if v.startswith("@"):
-                            if (v.startswith("@f.") or v.startswith("@m.")) and v in index:
-                                self.taken[v] = True  # (a function as a value)
+                        if v in index:
+                            self.taken[v] = True  # (a function as a value)
                         elif fielded and v in fa:
                             name = fa[v]
                             if k == 0 and op == "mem.load":
@@ -691,7 +737,7 @@ class Fields:
                                 if a.t in classes:
                                     self.raw(classes[a.t], True)
                         continue
-                    if (i.s.startswith("@f.") or i.s.startswith("@m.")) and i.s in index:
+                    if i.s in index:
                         self.taken[i.s] = True
                     if op == "mach.store" or op == "mach.addr":
                         machine = machine or i.a[0].v.startswith("%t") or i.a[0].v.startswith("%a")
@@ -700,6 +746,8 @@ class Fields:
                     elif op == "rt" and i.t in classes:
                         self.raw(classes[i.t], True)  # (an object the runtime made or found)
             self.plain.append(plain if not fn.coro and not f.gen else "")
+            self.small.append(ops <= CLOSE_OPS)
+            self.direct.append((f.ll.startswith("@f.") or f.ll.startswith("@m.")) and not fn.coro and not f.gen and not f.export and not f.pyexport and not f.extern)
             if machine:
                 self.machine(fn, classes)
         self.lfirst.append(len(self.lname))
@@ -777,11 +825,12 @@ class Round:
     # give each field and what the returns that can run give. Fewer constants only ever leave
     # more of the program able to run, so a reading made with what an earlier one found is
     # right as well.
-    def __init__(self, fns: list[IFn], fields: Fields, facts: Facts):
+    def __init__(self, fns: list[IFn], fields: Fields, facts: Facts, before: Round | None):
         nf = len(fns)
         self.fns = fns
         self.fields = fields
         self.facts = facts
+        self.before: Round | None = before  # the reading before this one, whose close readings may serve again
         self.folds: list[Fold | None] = []
         self.given: dict[str, str] = {}
         self.found = Facts(facts.index, {})
@@ -797,7 +846,7 @@ class Round:
             fn = fns[j]
             f = fn.f
             ll = f.ll
-            own = (ll.startswith("@f.") or ll.startswith("@m.")) and ll not in fields.taken and not fn.coro and not f.gen and not f.export and not f.pyexport and not f.extern
+            own = fields.direct[j] and ll not in fields.taken
             self.closed.append(own)
             self.pfirst.append(len(self.params))
             for _ in fn.ps:
@@ -849,7 +898,7 @@ class Round:
         # is function j read with what its values are (Fold), not as it is written: where a
         # parameter, a field it reads or the result of a function it calls is a constant
         fn = self.fns[j]
-        if fn.coro or fn.f.gen:
+        if fn.coro or fn.f.gen or not self.fields.small[j]:
             return False
         for x in range(self.pfirst[j], self.pfirst[j + 1]):
             if self.params[x] != VARIES and self.params[x] != "":
@@ -867,6 +916,35 @@ class Round:
                     break
         return self.told[j] == 1
 
+    def kept(self, j: int) -> Fold | None:
+        # the reading before this one's close reading of function j, where it was made with
+        # what j is read with now: the same parameters, and the same facts of the fields it
+        # reads and the functions it calls. A close reading depends on nothing else.
+        if self.before is None:
+            return None
+        fo = self.before.folds[j]
+        if fo is None:
+            return None
+        first = self.pfirst[j]
+        for x in range(len(fo.given)):
+            if fo.given[x] != self.params[first + x]:
+                return None
+        fields = self.fields
+        now = self.facts
+        was = self.before.facts
+        for x in range(fields.lfirst[j], fields.lfirst[j + 1]):
+            name = fields.lname[x]
+            if (name in now.fconst) != (name in was.fconst) or (name in now.fconst and now.fconst[name] != was.fconst[name]):
+                return None
+        for x in range(fields.cfirst[j], fields.cfirst[j + 1]):
+            g = fields.cfn[x]
+            if now.retv[g] != was.retv[g] or len(now.rett[g]) != len(was.rett[g]):
+                return None
+            for y in range(len(now.rett[g])):
+                if now.rett[g][y] != was.rett[g][y]:
+                    return None
+        return fo
+
     def read(self, j: int, closely: bool) -> bool:
         # Read function j with what its parameters are now, and give its callees what its
         # calls that can run pass. Whether a function before it in the order must be read
@@ -875,8 +953,10 @@ class Round:
         again = False
         fo: Fold | None = None
         if closely:
-            fo = Fold(self.fns[j], self.params, self.pfirst[j], fields.addr[j], self.facts)
-            fo.run()
+            fo = self.kept(j)
+            if fo is None:
+                fo = Fold(self.fns[j], self.params, self.pfirst[j], fields.addr[j], self.facts)
+                fo.run()
             if not fo.ok:
                 fo = None
         self.folds[j] = fo
@@ -933,14 +1013,16 @@ def fold_constant_arguments(fns: list[IFn], consts: list[Data], texts: list[str]
     for j in range(len(fns)):
         if fields.plain[j] != "":
             facts.returned(j, fields.plain[j], NOITEMS)
-    rd = Round(fns, fields, facts)
+    rd = Round(fns, fields, facts, None)
     for _ in range(ROUNDS - 1):
         if rd.found.same(facts):
             break  # (a reading finds no less than it was given)
         facts = rd.found
-        rd = Round(fns, fields, facts)
+        rd.before = None  # (the reading before the last is no longer needed)
+        rd = Round(fns, fields, facts, rd)
     n = 0
     for fo in rd.folds:
         if fo is not None and fo.folds > 0:
             n += fo.apply(trap)
+    SPELLED.clear()
     return n
