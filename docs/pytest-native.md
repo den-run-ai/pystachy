@@ -90,27 +90,31 @@ see its `TypeError`, which is a type error to a compiler. The runner leaves such
 test out of the program, which is then the one its file would make without that
 test: nothing of it runs, its decorators included.
 
-- **Collection.** The collector names the line it rejects. A test function or method
-  with that line is left out, and a class when the line is in it but in none of its
-  tests; classes that derive from one left out go with it. Each is printed as
-  `NOT COLLECTED` with the reason and listed in the JSON's `uncollected`.
-- **Compilation.** The compiler's diagnostic names the rejected line and the calls
-  that led to it; the first of them in a test blames it. That test is left out with
-  every parametrized case it has and the program is built again, up to 25 times for
-  a suite. Each case is printed as `NOT COMPILED` with the diagnostic and listed in
-  `uncompiled`. No test runs twice: a program whose build fails has not started.
-- **Imports.** An import statement of a test module that either rejects is left out
-  in the same way: `from unittest import mock`, `import pickle` for a module
-  Pystachy does not have, or the one name of `from functools import reduce,
-  total_ordering` that its module lacks. The tests that use the name are then
-  rejected for it and left out in their turn. The statement is printed as
-  `NOT IMPORTED` and listed in `unimported`.
-- **Fixtures.** A fixture of a test module or a `conftest.py` that the collector
-  rejects is left out, unless it is autouse, and the tests that request it, directly
-  or through another fixture, are left out for it. No other fixture of its name
-  takes its place: not a wider `conftest.py`'s, not pytest's own. A nearer
-  `conftest.py` that defines the name provides it again, as in pytest. The fixture
-  is printed as `NOT AVAILABLE` and listed in `unavailable`.
+- **Tests the collector rejects.** The collector names the line it rejects. A test
+  function or method with that line is left out, and a class when the line is in it
+  but in none of its tests; classes that derive from one left out go with it. Each
+  is printed as `NOT COLLECTED` with the reason and listed in the JSON's
+  `uncollected`.
+- **Tests the compiler rejects.** The compiler's diagnostic names the rejected line
+  and the calls that led to it; the first of them in a test blames it. That test is
+  left out with every parametrized case it has and the program is built again, up
+  to 25 times for a suite. Each case is printed as `NOT COMPILED` with the
+  diagnostic and listed in `uncompiled`. No test runs twice: a program whose build
+  fails has not started.
+- **Fixtures.** A fixture of a test module or a `conftest.py` that either rejects is
+  left out, unless it is autouse, and the tests that request it, directly or
+  through another fixture, are left out for it. No other fixture of its name takes
+  its place: not a wider `conftest.py`'s, not pytest's own. A nearer `conftest.py`
+  that defines the name provides it again, as in pytest. The fixture is printed as
+  `NOT AVAILABLE` and listed in `unavailable`.
+- **Imports and assignments.** A module-level statement of a test module or a
+  `conftest.py` that only binds names and that either rejects is left out:
+  `from unittest import mock`, `import pickle` for a module Pystachy does not have,
+  the one name of `from functools import reduce, total_ordering` that its module
+  lacks, or a mark kept in a name the collector cannot read. What uses the name is
+  then rejected for it: a test is left out in its turn, and anything else fails as
+  before. The statement is printed as `NOT BOUND` and listed in `unbound`. A name
+  pytest reads by itself stays: `pytestmark`, `pytest_plugins`, `collect_ignore`.
 
 ```text
 tests/test_api.py: passed (41 cases, 3 not compiled, 2 tests not collected)
@@ -120,14 +124,14 @@ NOT COMPILED tests/test_api.py::test_rejects_text[one]
     tests/test_api.py:31 [generated test_api.py:19]: error: expected int, got str
 ```
 
-Such a run exits with 2, never 0: pytest ran tests, or an import, that the program
+Such a run exits with 2, never 0: pytest ran tests, or a statement, that the program
 does not have. Its `qualification` is `partial` when everything the program has
 matches pytest; each case pytest ran of a test left out is a `MISMATCH` line with
 pytest's outcome, and so is a test that needed the side effects of something left
 out. What is rejected elsewhere still rejects the module or fails the build: a
 module's other statements, star imports, an autouse fixture, a `conftest.py`'s
-imports and hooks, a fixture or a helper that the compiler rejects and no call
-leads to from a test, or the package under test. So does a test named by a node ID.
+hooks, a helper that no call leads to from a test, or the package under test. So
+does a test named by a node ID.
 
 `--root` defaults to the current directory, and selected files must be inside it.
 Tests may be in several directories and in packages. The generated program mirrors
@@ -426,9 +430,10 @@ and call, which the comparison includes, and a failed one fails the run as in
 pytest. Missing cases, missing call phases, duplicate events, interrupted runs,
 malformed reports and disagreement with process status are execution errors.
 Test stdout cannot impersonate the report protocol. Exit codes are 0 for success,
-1 for test failures, 2 for collection/build/execution/oracle errors and for tests
-or imports [left out](#run-a-suite) because the collector or the compiler rejects
-them, and 5 for no tests. A matching intentionally failing suite still returns 1.
+1 for test failures, 2 for collection/build/execution/oracle errors and for tests,
+fixtures or statements [left out](#run-a-suite) because the collector or the
+compiler rejects them, and 5 for no tests. A matching intentionally failing suite
+still returns 1.
 
 ```sh
 make test-pytest-native

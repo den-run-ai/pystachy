@@ -331,8 +331,8 @@ class CollectionControls(TemporarySuite):
                 path = self.source(statement + "\ndef test_local():\n    pass\n")
                 actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
                 self.assertEqual(actual.cases, ["test_suite.py::test_local"])
-                self.assertEqual(list(actual.unimported), ["1: " + statement])
-                self.assertIn("imported tests", actual.unimported["1: " + statement])
+                self.assertEqual(list(actual.unbound), ["test_suite.py:1: " + statement])
+                self.assertIn("imported tests", actual.unbound["test_suite.py:1: " + statement])
                 if importlib.util.find_spec("pytest"):
                     expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
                     differences = runner.compare([actual], expected)
@@ -386,7 +386,7 @@ class CollectionControls(TemporarySuite):
 
     def test_cli_collection_error_is_nonzero(self):
         # A statement of the module itself rejects the module; a test is left out of it.
-        for source, state in (("def helper(): pass\ntest_alias = helper\n", "collection-error"),
+        for source, state in (("def helper(): pass\nglobals()['test_alias'] = helper\n", "collection-error"),
                               ("async def test_one(): pass\n", "empty")):
             with self.subTest(state=state):
                 path = self.source(source)
@@ -891,7 +891,7 @@ class MultiModuleParity(TemporarySuite):
                 with open({str(call_marker)!r}, "w") as handle:
                     handle.write("test happened")
         ''', "test_first.py")
-        unsupported = self.source("def helper(): pass\ntest_alias = helper\n", "test_second.py")
+        unsupported = self.source("def helper(): pass\nglobals()['test_alias'] = helper\n", "test_second.py")
         results = runner.run_suite([first, unsupported], self.root, self.work, "python", [], sys.executable, 30)
         self.assertTrue(any(result.state == "collection-error" for result in results))
         self.assertFalse(import_marker.exists(), "collection preflight ran module initialization")
@@ -1071,7 +1071,7 @@ class DiagnosticsAndSelection(TemporarySuite):
         self.assertIn("MISMATCH test_suite.py::test_runner_argv [call]", output)
 
     def test_collection_errors_do_not_run_pytest(self):
-        path = self.source("def helper(): pass\ntest_alias = helper\n")
+        path = self.source("def helper(): pass\nglobals()['test_alias'] = helper\n")
         status, report, output = self.cli(path, "--mode", "python")
         self.assertEqual(status, 2)
         self.assertIsNone(report["oracle"])
