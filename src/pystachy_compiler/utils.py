@@ -11,6 +11,7 @@ from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
     CODECS,
+    EMPTYFS,
     FSETMETHODS,
     FX,
     FXALL,
@@ -228,6 +229,10 @@ def tname(t: str) -> str:
         return "TextIOWrapper"
     if is_vtuple(t):
         return "tuple"
+    if is_aset(t):
+        return "AbstractSet"  # (a set or a frozenset: the type does not tell)
+    if t == EMPTYFS:
+        return "frozenset"
     if t.startswith("opt["):
         return tname(t[4:-1]) + " | None"
     if is_union(t) or t.startswith("rec["):
@@ -381,8 +386,9 @@ def is_dict(t: str) -> bool:
 
 
 def is_set(t: str) -> bool:
-    # set[T] or frozenset[T] (runtime.c's sets): a frozenset is a set that no method changes
-    return t.startswith("set[") or t.startswith("frozenset[")
+    # set[T] or frozenset[T] (runtime.c's sets): a frozenset is a set that no method changes; and
+    # aset[T], AbstractSet[T], a value that is one or the other (is_aset)
+    return t.startswith("set[") or t.startswith("frozenset[") or t.startswith("aset[")
 
 
 def empty_ann(t: str) -> str:
@@ -391,7 +397,21 @@ def empty_ann(t: str) -> str:
 
 
 def is_fset(t: str) -> bool:
-    return t.startswith("frozenset[")
+    # a set that the code holding it does not change: a frozenset, or an AbstractSet's value
+    return t.startswith("frozenset[") or t.startswith("aset[")
+
+
+def is_aset(t: str) -> bool:
+    # aset[T]: AbstractSet[T], a set[T] or a frozenset[T] as code that only reads it holds it.
+    # Its elements are T's, in a table of T's kind, so len(), in, a loop, a comparison and the
+    # other operand of a set's operators and methods take it as a frozenset; which of the two it
+    # is, the type does not tell: repr(), isinstance() and type() of one are compile errors
+    return t.startswith("aset[")
+
+
+def set_base(t: str) -> str:
+    # the constructor of set type t: set, frozenset, or aset
+    return t[: t.find("[")]
 
 
 def selem(t: str) -> str:
@@ -639,7 +659,7 @@ def typestr(t: str) -> str:
     w = ""
     for c in t + ",":
         if c == "[" or c == "]" or c == ",":
-            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else SPECSHOW[w] if w in SPECSHOW else short(w))
+            out.append("BaseException" if w == "exc" else "type[BaseException]" if w == "exctype" else "Any" if w == "dyn" else "Generator" if w == "gen" and c == "[" else "AbstractSet" if w == "aset" and c == "[" else "frozenset" if w == EMPTYFS else SPECSHOW[w] if w in SPECSHOW else short(w))
             out.append(c)
             w = ""
         else:

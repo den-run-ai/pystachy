@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import big_tree, held, narrow_type
 from src.pystachy_compiler.diagnostics import dynamic_program, int_lists, shown
 from src.pystachy_compiler.ir import ClassInfo, Ins, IterArg, SetArg, Val
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
+from src.pystachy_compiler.specs import BIG, BIGOPT, EMPTYFS, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
     ListLayout,
@@ -15,6 +15,7 @@ from src.pystachy_compiler.utils import (
     folds,
     has_method,
     is_dict,
+    is_aset,
     is_fset,
     is_kw,
     is_list,
@@ -30,6 +31,7 @@ from src.pystachy_compiler.utils import (
     literal,
     lookable,
     selem,
+    set_base,
     targs,
     tname,
     typestr,
@@ -379,7 +381,7 @@ def gen_set_rekind(self, v: Val, et: str) -> Val:
     # that kind. A table of strs (kind 1) holds no None and looks none up, where one whose
     # elements may be None (none_key) has a descriptor that says so; hash(None) and a str's are
     # the same in both
-    t = self.ctype("frozenset" if is_fset(v.t) else "set", [et])
+    t = self.ctype(set_base(v.t), [et])
     if self.set_kind(selem(v.t)) == self.set_kind(et):
         return Val(v.v, t)
     r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(et)}"])
@@ -413,6 +415,8 @@ def gen_sitems(self, v: Val, et: str, what: str, mode: str = "") -> Val:
     # "peer": the method compares the two sets (isdisjoint, issubset, issuperset): such a set is
     # taken as a set of both types (wider's), as which the caller then takes its own set
     v = self.unwrap(v, "TypeError: 'NoneType' object is not iterable")
+    if v.t == EMPTYFS and et != "":
+        v = self.coerce(v, self.ctype("frozenset", [et]))  # (frozenset() that nothing typed: an empty one of the set's elements)
     if v.t == "str":
         v = Val(self.rt("pys_str_list", "ptr", [f"ptr {v.v}"]), "list[str]")
     elif v.t == "bytes":
@@ -442,6 +446,18 @@ def gen_sitems(self, v: Val, et: str, what: str, mode: str = "") -> Val:
     if et == "" and self.elem_problem(it) != "":
         self.err(self.elem_problem(it))
     return v
+
+def gen_emptyfs_pair(self, a: Val, b: Val) -> list[Val]:
+    # the operands of an operator or a comparison, one of which is frozenset() that nothing typed
+    # (EMPTYFS): beside a set it is an empty frozenset of that set's elements (coerce), and two
+    # of them are empty frozensets of one type
+    if a.t == EMPTYFS and b.t == EMPTYFS:
+        return [Val(a.v, "frozenset[int]"), Val(b.v, "frozenset[int]")]
+    if a.t == EMPTYFS and is_set(unopt(b.t)):
+        return [self.coerce(a, self.ctype("frozenset", [selem(unopt(b.t))])), b]
+    if b.t == EMPTYFS and is_set(unopt(a.t)):
+        return [a, self.coerce(b, self.ctype("frozenset", [selem(unopt(a.t))]))]
+    return [a, b]
 
 def gen_supdate(self, s: str, v: Val, et: str) -> None:
     # set s, of elements of type et, takes the elements of v, a set, a dict or a list (siter), as
@@ -544,15 +560,22 @@ def gen_set_new(self, name: str, args: list[Node], want: str, resultsoft: bool =
     if len(args) > 1:
         self.err(f"{name} expected at most 1 argument, got {len(args)}")
     w = want if is_set(want) and is_fset(want) == fz and "?" not in want else ""
+    if is_aset(want) and "?" not in want:
+        w = self.ctype(name, [selem(want)])  # (for an AbstractSet[T]: a set[T], or a frozenset[T], which is one)
     if len(args) == 0:
+        if w == "" and fz and not is_set(unopt(want)):
+            # frozenset() that nothing types: empty for good, so an empty frozenset[T] or
+            # AbstractSet[T] of any T where one is expected (coerce); its table is an int's,
+            # whose lookups hash any slot
+            return Val(self.rt("pys_set_new", "ptr", ["i64 0"]), EMPTYFS)
         if w == "":
             self.err(f"cannot infer the type of an empty {name}; add a type annotation ({'s: set[T] = set()' if not fz else 'f: frozenset[T] = frozenset()'})")
         return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(w))}"]), w)
     v = self.siter(args[0], selem(w) if w != "" else "", f"{name}()", resultsoft)
     it = self.iter_elem(v.t)
     t = self.ctype(name, [selem(w) if w != "" else "None" if it == NONE_ITEM else self.none_items(it)])  # (set([None, None]): set[None])
-    if fz and is_fset(v.t):
-        return Val(v.v, t)
+    if fz and is_fset(v.t) and not is_aset(v.t):
+        return Val(v.v, t)  # (frozenset(f) of a frozenset is f; an AbstractSet's value may be a set, and is copied)
     if is_set(v.t):
         return Val(self.rt("pys_set_copy", "ptr", [f"ptr {v.v}"]), t)
     r = self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(t))}"])
@@ -566,9 +589,9 @@ def gen_setop(self, op: str, a: Val, b: Val) -> Val:
     if w == "":
         self.err(f"unsupported operand types for {op}: {typestr(a.t)} and {typestr(b.t)} (a set holds elements of one type)")
     fn = "pys_set_or" if op == "|" else "pys_set_and" if op == "&" else "pys_set_sub" if op == "-" else "pys_set_xor"
-    fz = is_fset(a.t)
     ab = self.set_pair(a, b, w)  # (a set[str] and a set[str | None]: tables of one kind)
-    return Val(self.rt(fn, "ptr", [f"ptr {ab[0].v}", f"ptr {ab[1].v}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t))), self.ctype("frozenset" if fz else "set", [w]))
+    # (the result is of the left operand's kind of set, which CPython's is: an AbstractSet's too)
+    return Val(self.rt(fn, "ptr", [f"ptr {ab[0].v}", f"ptr {ab[1].v}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t))), self.ctype(set_base(a.t), [w]))
 
 def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
     # a method of a set or frozenset o, run as CPython's setobject.c runs it; the iterables the
@@ -639,7 +662,7 @@ def gen_smethod(self, o: Val, m: str, args: list[Node]) -> Val:
         self.rt("pys_set_clear", "void", [ov])
         return none
     if m == "copy":
-        return o if fz else Val(self.rt("pys_set_copy", "ptr", [ov]), o.t)  # (frozenset.copy() is the frozenset)
+        return o if fz and not is_aset(o.t) else Val(self.rt("pys_set_copy", "ptr", [ov]), o.t)  # (frozenset.copy() is the frozenset; an AbstractSet's value may be a set)
     if m == "update" or m == "union" or m == "intersection" or m == "intersection_update" or m == "difference" or m == "difference_update":
         # CPython evaluates every argument first, in order, then the method takes the items of
         # each in turn (sargs, stake): update() adds a generator's (or map()'s, filter()'s) as

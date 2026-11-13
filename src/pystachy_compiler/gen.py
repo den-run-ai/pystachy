@@ -495,6 +495,7 @@ from src.pystachy_compiler.containers import (
     gen_dict_any_method as containers_dict_any_method,
     gen_dkey as containers_dkey,
     gen_elem_problem as containers_elem_problem,
+    gen_emptyfs_pair as containers_emptyfs_pair,
     gen_fromkeys as containers_fromkeys,
     gen_hash_classes as containers_hash_classes,
     gen_hash_desc as containers_hash_desc,
@@ -1483,6 +1484,7 @@ class Gen:
         self.rangeused = False  # code addresses an object of lib's range class (declared then: lower_module)
         self.objectused = False  # and of lib's object class, which object() makes
         self.complexused = False  # and of lib's complex class
+        self.abcsets = False  # an annotation names collections.abc.Set, which holds a frozenset once a pass is told so (ann_base, coerce)
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
@@ -5064,6 +5066,9 @@ class Gen:
 
     def set_kind(self, et: str) -> str:
         return containers_set_kind(self, et)
+
+    def emptyfs_pair(self, a: Val, b: Val) -> list[Val]:
+        return containers_emptyfs_pair(self, a, b)
 
     def set_rekind(self, v: Val, et: str) -> Val:
         return containers_set_rekind(self, v, et)

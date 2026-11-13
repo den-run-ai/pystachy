@@ -26,6 +26,7 @@ from src.pystachy_compiler.specs import (
     MODATTRS,
     NONEVAR,
     COMPLEXC,
+    EMPTYFS,
     OBJECTC,
     ORDOP,
     PYBUILTINS,
@@ -58,6 +59,7 @@ from src.pystachy_compiler.utils import (
     int_fits,
     is_callable,
     is_const,
+    is_aset,
     is_dict,
     is_fn,
     is_gen,
@@ -489,6 +491,10 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return -2  # (a tuple, unless it is None)
     if c.s == "tuple" and is_vtuple(t):
         return 1
+    if is_aset(t) and (c.s == "set" or c.s == "frozenset"):
+        self.err(f"isinstance() of an AbstractSet value and {c.s} is not supported: the value is a set or a frozenset, which its type does not tell")
+    if t == EMPTYFS and (c.s == "set" or c.s == "frozenset"):
+        return 1 if c.s == "frozenset" else 0
     if c.s == "list" or c.s == "dict" or c.s == "tuple" or c.s == "set" or c.s == "frozenset":
         return 1 if t.startswith(c.s + "[") else 0
     if c.s == "type" and t == "exctype":
@@ -586,6 +592,8 @@ def gen_cond(self, n: Node) -> str:
 def gen_truth(self, v: Val) -> str:
     if v.t == "dyn":
         return self.dyn_truth(v)  # (dynamic.py)
+    if v.t == EMPTYFS:
+        return "false"  # (frozenset() that nothing typed: empty)
     if is_union(unopt(v.t)):
         return self.uop(v, "truth").v
     t = v.t
@@ -3378,8 +3386,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         a = left_operand(self, n.kids[1], want, resultsoft, [])
     else:
         a = self.expr(n.kids[1], want, resultsoft=resultsoft)
-    if is_vtuple(unopt(want)) or want == "dyn":
-        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py)
+    if is_vtuple(unopt(want)) or want == "dyn" or (is_aset(unopt(want)) and (self.widens(a.t, want) or a.t == EMPTYFS)):
+        a = self.coerce(a, want)  # (construct the requested representation in its arm: a box, dynamic.py; a set or a frozenset as the AbstractSet wanted)
     keep = kept is not None and is_union(unopt(want)) and a.t in ["int", "float", "bool", "str", BIG]
     if not keep and ((is_fn(a.t) and is_callable(unopt(want))) or is_union(unopt(want))):
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
@@ -3397,7 +3405,7 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
     else:
         b = self.expr(n.kids[2], wb, resultsoft=resultsoft)
     self.branch -= 1
-    if is_vtuple(unopt(want)) or want == "dyn":
+    if is_vtuple(unopt(want)) or want == "dyn" or (is_aset(unopt(want)) and (self.widens(b.t, want) or b.t == EMPTYFS)):
         b = self.coerce(b, want)
     # (an operand's arms of one type, or an int and a promoting int, which join below: no union is made)
     same = keep and (b.t == a.t or self.join(a.t, b.t) == BIG)
@@ -4354,6 +4362,10 @@ def gen_wexpr(self, e: Node, want: str, resultsoft: bool, op: str = "", kept: li
 
 
 def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
+    if a.t == EMPTYFS or b.t == EMPTYFS:
+        ab = self.emptyfs_pair(a, b)
+        a = ab[0]
+        b = ab[1]
     if self.curfn.cmpops:
         if self.term and (a.v == "undef" or b.v == "undef"):
             return Val("undef", "int")
@@ -4692,6 +4704,12 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     return True
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
+    if (op == "in" or op == "not in") and b.t == EMPTYFS:
+        return Val("false" if op == "in" else "true", "bool")  # (frozenset() that nothing typed holds nothing)
+    if a.t == EMPTYFS or b.t == EMPTYFS:
+        ab = self.emptyfs_pair(a, b)
+        a = ab[0]
+        b = ab[1]
     if self.curfn.cmpops:
         if self.term and (a.v == "undef" or b.v == "undef"):
             return Val("undef", "bool")

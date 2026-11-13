@@ -525,7 +525,7 @@ def gen_match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         return self.match(xs[0], et, tv, tvs) if et != "" else "it has no supported iterable item type"
     if base == "list" and is_list(t) and len(xs) == 1:
         return self.match(xs[0], elem(t), tv, tvs)
-    if (base == "set" or base == "frozenset") and is_set(t) and len(xs) == 1:
+    if (base == "set" or base == "frozenset" or base == "aset") and is_set(t) and len(xs) == 1:
         return self.match_key(xs[0], selem(t), tv, tvs)
     if base == "dict" and is_dict(t) and len(xs) == 2:
         why = self.match_key(xs[0], targs(t)[0], tv, tvs)

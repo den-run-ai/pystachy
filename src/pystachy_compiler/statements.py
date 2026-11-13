@@ -11,6 +11,7 @@ from src.pystachy_compiler.specs import (
     BIG,
     BIGOPT,
     COMPLEXC,
+    EMPTYFS,
     ABCSMORE,
     ABCSOTHER,
     DUNDER,
@@ -41,6 +42,7 @@ from src.pystachy_compiler.utils import (
     gelem,
     is_const,
     is_dict,
+    is_aset,
     is_fset,
     is_gen,
     is_kw,
@@ -373,9 +375,11 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             bound[fl] = True
             t = ci.ftypes[fl]
             u = unopt(t)  # (a default of a T | None field that is not None is a T)
-            if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or (is_set(u) and not is_fset(u)) or self.unhashable(u)):
+            # (an AbstractSet field's default is a set unless frozenset(...) makes it)
+            aset_set = is_aset(u) and not (st.kids[2].kind == "call" and st.kids[2].kids[0].kind == "name" and st.kids[2].kids[0].s == "frozenset")
+            if self.is_dc(ci.name) and ci.name not in self.nts and not is_const(st.kids[2]) and (is_list(u) or is_dict(u) or (is_set(u) and (not is_fset(u) or aset_set)) or self.unhashable(u)):
                 # (CPython's ValueError where it creates the class: the default's class has __hash__ = None)
-                c = u[: u.find("[")] if "[" in u else f"{self.classes[u].mod if self.classes[u].mod != '' else '__main__'}.{short(u)}"
+                c = "set" if is_aset(u) else u[: u.find("[")] if "[" in u else f"{self.classes[u].mod if self.classes[u].mod != '' else '__main__'}.{short(u)}"
                 self.err(f"mutable default <class '{c}'> for field {fl} is not allowed: use default_factory")
             for m in ["__set_name__", "__get__", "__set__", "__delete__"] if t in self.classes and not is_const(st.kids[2]) else []:
                 # (__set_name__ runs when CPython creates the class, __get__ too with @dataclass)
@@ -1462,10 +1466,14 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
             cur = Val(cur.v, unopt(cur.t))
         self.rt("pys_list_imul", "void", [f"ptr {cur.v}", f"i64 {self.coerce(b, 'int').v}"])
         return cur
+    if is_aset(unopt(cur.t)) and (op == "|" or op == "&" or op == "-" or op == "^"):
+        self.err(f"{op}= on an AbstractSet value is not supported: it changes a set in place and rebinds a frozenset, and the value is either; write x = x {op} y")
     if is_set(unopt(cur.t)) and not is_fset(unopt(cur.t)) and (op == "|" or op == "&" or op == "-" or op == "^"):
         # s |= t, s &= t, s -= t, s ^= t of a set t: s changes in place (a frozenset s is
         # rebound to s op t, as CPython's has no in-place operators)
         b = self.expr(rhs, unopt(cur.t))
+        if b.t == EMPTYFS:
+            b = self.coerce(b, self.ctype("frozenset", [selem(unopt(cur.t))]))  # (frozenset() that nothing typed)
         if is_opt(cur.t) or is_opt(b.t):
             self.none_operands(op, cur, b, op + "=")
             cur = Val(cur.v, unopt(cur.t))
