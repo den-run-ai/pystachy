@@ -30,6 +30,7 @@ SOURCES = [
     "from import x\nfrom . import (a, *)\nimport\n",
     "with (a as b, c\n    pass\n",
     "x = b'\u00e9' + '\\N{NOT A NAME}' + '\\x4' + '\\u12'\n",
+    "x = '\\N{TANGUT IDEOGRAPH-17000}'\ny = '\\N{KEYCAP NUMBER SIGN}'\nz = '\\N{CJK COMPATIBILITY IDEOGRAPH-0F900}'\n",
     "x = (" * 3 + "\n",
     "lambda x: (yield)\nyield = 1\n",
     "x = {**a: 1, b: **c}\ny = [*a for a in b]\nz = {**a for a in b}\n",

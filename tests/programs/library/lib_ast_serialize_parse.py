@@ -22,7 +22,8 @@ SOURCES = [
     "while x:\n    break\nelse:\n    continue\nfor a, b in c:\n    pass\nelse:\n    pass\nwith a, (b as c), d as (e, f): pass\nwith (a as b, c as d,): pass\n",
     "\u00e9 = '\u00fc'\n\u4e2d\u6587 = \"\u4e2d\" + x\ndef f\u00e9(a\u00e9: '\u00e9' = '\u00e9'):\n    return a\u00e9  # \u00e9\n@d\u00e9\nclass C\u00e9: pass\n",
     "\ufeffimport os\r\nx = (1,\r\n     2)\r\nif x:\r\n\tpass\r\ny = '''a\r\nb'''\r\n",
-    "x = '\\ud800' '\\U0001f600' '\\N{BULLET}' '\\x41\\101\\n' r'\\ud800'\ny = b'\\x00\\xff\\'\"'\n",
+    "x = '\\ud800' '\\U0001f600' '\\N{BULLET}' '\\x41\\101\\n' r'\\ud800'\ny = b'\\x00\\xff\\'\"'\n"
+    "z = '\\N{garay capital letter a}\\N{EGYPTIAN HIEROGLYPH-1346A}\\N{LF}\\N{cjk unified ideograph-04e00}'\n",
     "x = []  # type: List[int]\ndef f(a, b):\n    # type: (int, str) -> None\n    pass\ndef g(a,  # type: int\n      b):\n    # type: (...) -> int\n    pass\nclass C:\n    def m(self, x):  # type: (int) -> None\n        pass\n",
     "y = 1  # type: int  # type: ignore[a, b]\nz = 2  # type: ignore # type: ignore\nw = 3  # type: (\nv = 4  # mypy: ignore[x]\nu = 5  # type: ignore[bad code]\nt = 6  # type:\n",
     "# type: ignore[a]\nimport os\n",

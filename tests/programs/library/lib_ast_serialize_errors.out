@@ -172,65 +172,73 @@
    1 16 True Got unexpected unicode
    1 35 True Got unexpected unicode
    1 44 True Got unexpected unicode
-24 0 52 2243708260 2 1974276567
+24 0 92 2773686174 2 1974276567
+   1 9 True Got unexpected unicode
+   2 9 True Got unexpected unicode
+   3 9 True Got unexpected unicode
+24 5 95 2019208530 2 1974276567
+   1 9 True Got unexpected unicode
+   2 9 True Got unexpected unicode
+   3 9 True Got unexpected unicode
+25 0 52 2243708260 2 1974276567
    1 8 True Expected `)`, found `=`
    1 13 True Expected `)`, found `=`
    2 1 True unexpected EOF while parsing
-24 5 52 2243708260 2 1974276567
+25 5 52 2243708260 2 1974276567
    1 8 True Expected `)`, found `=`
    1 13 True Expected `)`, found `=`
    2 1 True unexpected EOF while parsing
-25 0 75 917705340 2 1974276567
+26 0 75 917705340 2 1974276567
    2 1 True Invalid assignment target
-25 5 75 917705340 2 1974276567
+26 5 75 917705340 2 1974276567
    2 1 True Invalid assignment target
-26 0 233 2930657044 2 1974276567
+27 0 233 2930657044 2 1974276567
    1 6 True Starred expression cannot be used here
    1 17 True Expected an expression
    3 4 True PEP 798 is not supported yet
-26 5 222 2389699364 2 1974276567
+27 5 222 2389699364 2 1974276567
    1 6 True Starred expression cannot be used here
    1 17 True Expected an expression
-27 0 36 1549298045 2 1974276567
+28 0 36 1549298045 2 1974276567
    1 7 True Global statement must have at least one name
    2 9 True Nonlocal statement must have at least one name
    3 4 True Delete statement must have at least one target
-27 5 36 1549298045 2 1974276567
+28 5 36 1549298045 2 1974276567
    1 7 True Global statement must have at least one name
    2 9 True Nonlocal statement must have at least one name
    3 4 True Delete statement must have at least one target
-28 0 96 2100209584 2 1974276567
+29 0 96 2100209584 2 1974276567
    1 7 True Type parameter list cannot be empty
    2 8 True Type parameter list cannot be empty
    3 11 True Expected a type parameter or the end of the type parameter list
-28 5 96 2100209584 2 1974276567
+29 5 96 2100209584 2 1974276567
    1 7 True Type parameter list cannot be empty
    2 8 True Type parameter list cannot be empty
    3 11 True Expected a type parameter or the end of the type parameter list
-29 0 115 2522238315 2 1974276567
+30 0 115 2522238315 2 1974276567
    1 11 True Expected `else`, found newline
    2 16 True Expected an expression
-29 5 115 2522238315 2 1974276567
+30 5 115 2522238315 2 1974276567
    1 11 True Expected `else`, found newline
    2 16 True Expected an expression
-30 0 104 1847041587 2 1974276567
+31 0 104 1847041587 2 1974276567
    3 5 True Expected an expression
    5 6 True Expected `:`, found name
    5 8 True Expected an expression
    6 1 True Unexpected indentation
-30 5 104 1847041587 2 1974276567
+31 5 104 1847041587 2 1974276567
    3 5 True Expected an expression
    5 6 True Expected `:`, found name
    5 8 True Expected an expression
    6 1 True Unexpected indentation
-31 0 32 1241383266 2 1974276567
+32 0 32 1241383266 2 1974276567
    3 1 True Expected a newline after line continuation character
-31 5 32 1241383266 2 1974276567
+32 5 32 1241383266 2 1974276567
    3 1 True Expected a newline after line continuation character
-32 0 34 1664602477 2 1974276567
+33 0 34 1664602477 2 1974276567
    1 207 True Source is too deeply nested
    2 1 True Expected `)`, found end of file
-32 5 34 1664602477 2 1974276567
+33 5 34 1664602477 2 1974276567
    1 207 True Source is too deeply nested
    2 1 True Expected `)`, found end of file
 'List[' 28 2870192057

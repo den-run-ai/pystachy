@@ -18,6 +18,7 @@ from ._ast import (
     X_EXCEPT_HANDLER, X_FORMAT_SPEC, X_FS_INTERP, X_FS_LITERAL, X_FSTRING_PART, X_IDENTIFIER,
     X_KEYWORD, X_MATCH_CASE, X_PATTERN_KEYWORD, X_STRING_PART, X_WITHITEM,
 )
+from ._names16 import lookup as names16_lookup
 from ._lexer import (
     F_BYTE, F_FSTRING, F_NON_ASCII_NAME, F_RAW, F_TRIPLE_QUOTED, F_TSTRING, F_UNCLOSED,
     MODE_MODULE, Lexer, LexerCheckpoint, closer_len, opener_len,
@@ -3829,8 +3830,41 @@ class StringParser:
         return -1
 
 
+def ascii_upper(s: str) -> str:
+    out: list[str] = []
+    for ch in s:
+        out.append(chr(ord(ch) - 32) if "a" <= ch <= "z" else ch)
+    return "".join(out)
+
+
+def is_hex(s: str) -> bool:
+    for ch in s:
+        if not ("0" <= ch <= "9" or "A" <= ch <= "F"):
+            return False
+    return len(s) > 0
+
+
 def lookup_unicode_name(name: str) -> int:
-    try:
-        return ord(unicodedata.lookup(name))
-    except KeyError:
+    """The character of a \\N{...} escape, as unicode_names2 1.3.0 (Unicode 16.0) finds it for the
+    extension: CPython's unicodedata.lookup() (Unicode 15.1), less named sequences and the TANGUT
+    IDEOGRAPH-XXXX names, which unicode_names2 lacks, and with a five-digit CJK UNIFIED
+    IDEOGRAPH-0XXXX, the EGYPTIAN HIEROGLYPH-XXXXX names of 13460 to 143FA and the other names and
+    aliases added in 16.0 (_names16); -1 for none."""
+    up = ascii_upper(name)
+    if up.startswith("TANGUT IDEOGRAPH-"):
         return -1
+    if up.startswith("EGYPTIAN HIEROGLYPH-"):
+        digits = up[20:]
+        if len(digits) == 5 and is_hex(digits):
+            v = int(digits, 16)
+            if 0x13460 <= v <= 0x143FA:
+                return v
+    if up.startswith("CJK UNIFIED IDEOGRAPH-0") and len(up) == 27:
+        name = up[:22] + up[23:]
+    try:
+        found = unicodedata.lookup(name)
+    except KeyError:
+        return names16_lookup(up)
+    if len(found) != 1:
+        return -1
+    return ord(found)

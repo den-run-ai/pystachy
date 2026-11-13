@@ -363,7 +363,11 @@ CPython 3.13.16's Unicode character predicates.
 lib/ast_serialize/_unicode.py holds the XID_Start and XID_Continue properties of the
 Unicode Character Database 17.0.0, generated from its DerivedCoreProperties.txt (SHA-256
 24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08, Copyright (c) 2025
-Unicode, Inc.).
+Unicode, Inc.), and lib/ast_serialize/_names16.py character names and aliases of the
+Unicode Character Database 16.0.0, generated from its UnicodeData.txt (SHA-256
+ff58e5823bd095166564a006e47d111130813dcf8bf234ef79fa51a870edb48f) and NameAliases.txt
+(SHA-256 9953f0fcebf5ea8091c5c581e4df0e43f20d2533c84ccca7987a9bb819a896a8), both by
+tools/ast_serialize_tables.py.
 
 The data is used under the Unicode License V3:
 
