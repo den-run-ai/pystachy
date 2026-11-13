@@ -1,7 +1,7 @@
 """Declarations component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
-from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
+from src.pystachy_compiler.analysis import READS_ONLY_FNS, attr_fills, attr_values, called_only, calls_init, local_names, nonexpr, only_reads_items, stmt_walrus
 from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
@@ -1099,6 +1099,17 @@ def gen_widens(self, a: str, b: str) -> bool:
         i += 1
     return True
 
+def gen_seq_default(self, p: Node, d: Node) -> bool:
+    # is p of function d a parameter annotated Sequence[T] whose default is the empty tuple, which
+    # d's body only reads the items of (only_reads_items): its default is then an empty list, the
+    # list[T] that Sequence[T] compiles to, which no code of d can tell from () or keep
+    a = self.parse_expr(p.kids[0].s) if p.kids[0].kind == "str" else p.kids[0]
+    if p.kind != "param" or p.kids[1].kind != "tuple" or len(p.kids[1].kids) > 0 or a.kind != "index" or self.typing_ref(a.kids[0]) != "Sequence":
+        return False
+    params = [q.s for q in d.kids[0].kids]
+    fns = [x for x in READS_ONLY_FNS if not self.bound(x) and x not in params and called_only(d.kids[2], x)]
+    return only_reads_items(d.kids[2], p.s, fns)
+
 def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
     # a function or method. A module-level function with a parameter that has no annotation
     # is a template: a call compiles it, once per list of argument types, for those types
@@ -1306,6 +1317,8 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
             bad = "**kwargs is not supported" if p.kind == "dstarparam" else "*args, **kwargs are not supported"
             continue
         f.params.append(p.s)
+        if self.seq_default(p, d):
+            p.kids[1] = mk("list", "", p.kids[1].line, [])  # (see seq_default)
         f.defaults.append(p.kids[1])
         f.dglob.append("")
         f.dtypes.append("")

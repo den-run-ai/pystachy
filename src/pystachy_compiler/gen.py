@@ -646,6 +646,7 @@ from src.pystachy_compiler.declarations import (
     gen_typing_forms as declarations_typing_forms,
     gen_typing_name as declarations_typing_name,
     gen_typing_ref as declarations_typing_ref,
+    gen_seq_default as declarations_seq_default,
     gen_unalias as declarations_unalias,
     gen_unalias_all as declarations_unalias_all,
     gen_union_members as declarations_union_members,
@@ -2926,6 +2927,9 @@ class Gen:
 
     def typing_ref(self, n: Node) -> str:
         return declarations_typing_ref(self, n)
+
+    def seq_default(self, p: Node, d: Node) -> bool:
+        return declarations_seq_default(self, p, d)
 
     def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
         return declarations_typing_forms(self, m, body, cls)
