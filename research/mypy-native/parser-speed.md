@@ -101,5 +101,25 @@ allocator's fast path, so there is no missing link-time step.
 4. Allocation without clearing for constructors that store every field first.
 5. Profile-guided builds, once `-fprofile-use` survives the runtime's build.
 
-The UMAP session was asked for what it learned about LLVM settings, intrinsics and hot spots in
-its Numba comparison; no answer had arrived when this was written.
+## What the UMAP session reported
+
+Its reply of 2026-11-13, not checked here; its evidence is `research/umap-numba-2026-11-13/README.md`
+at `8afc7dd2` on branch `claude/dreamy-shannon-bb3cu1`.
+
+- Ahead-of-time builds target the baseline CPU; `-march=native` gave 0 to 1.5% on its loops after
+  its fixes, and `-O3` nothing. The same as here.
+- A runtime function marked `no_builtin` is never inlined into a caller without the attribute
+  (`pys_fpow`, `pys_m_pow`, `pys_m_fmod`). The JIT never inlines the runtime: 2.8 times slower than
+  ahead-of-time on its scanning loop.
+- List access cost 26 instructions an element against Numba's 4: overflow-checked index
+  arithmetic, negative-index normalization, the bounds check, and reloads of the length and items
+  pointer. It gives three causes of the reloads: header loads that follow an overflow exit, any
+  call that is not inlined, and two TBAA roots, the compiler's "pystachy fields" and clang's for
+  inlined runtime C, so an inlined `pys_list_set` store forces the length to be reloaded.
+- Every list store loads `l->ids` and branches to `opt_in_trap`, in plain programs too.
+- Its pull requests #1436 and #1437 change `runtime.c` only. It may next extend `listguard` to
+  loop-invariant offsets and hoist list headers, in `optimizations.py` and the lowering, and will
+  say so first.
+
+The two-roots cause is the list form of item 3 above, so tags for `str` and `bytes` accesses and
+its header hoisting belong to one piece of work; whoever starts tells the other.
