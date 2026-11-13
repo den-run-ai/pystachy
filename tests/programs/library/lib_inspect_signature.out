@@ -1,0 +1,40 @@
+() (a, /) (a, /, b) (b) (a, /, b, c=0, *args, k, kd='x', **kw)
+(*args) (*, k) (**kw) (a, /, *, k) (b, *, kd='x', k) (*args, **kw) (a, /, **kw) (a, /, *args)
+(c=0, *args, d) (x=1, /, c=0) (*, kd='x', k, **kw)
+ValueError: wrong parameter order: positional or keyword parameter before positional-only parameter
+ValueError: wrong parameter order: keyword-only parameter before positional or keyword parameter
+ValueError: wrong parameter order: variadic keyword parameter before keyword-only parameter
+ValueError: wrong parameter order: variadic positional parameter before positional-only parameter
+ValueError: wrong parameter order: variadic keyword parameter before variadic positional parameter
+ValueError: wrong parameter order: keyword-only parameter before variadic positional parameter
+ValueError: non-default argument follows default argument
+ValueError: non-default argument follows default argument
+ValueError: duplicate parameter name: 'b'
+ValueError: duplicate parameter name: 'args'
+ValueError: duplicate parameter name: 'a'
+ValueError: wrong parameter order: variadic keyword parameter before positional-only parameter
+7 True
+(a, /, b, c=0, *args, k, kd='x', **kw) -> 'int' <Signature (a, /, b, c=0, *args, k, kd='x', **kw) -> 'int'> True True
+(
+    a,
+    /,
+    b,
+    c=0,
+    *args,
+    k,
+    kd='x',
+    **kw
+) -> 'int'
+(a, /, b, c=0, *args, k, kd='x', **kw) -> 'int' True
+(
+    a,
+    /
+)
+'(\n    \n)' '()'
+() <Signature ()> () (*, k) () -> 1 () -> None
+int <class 'inspect._empty'> True False True
+7 ['a', 'b', 'c', 'args', 'k', 'kd', 'kw'] True False kd='x' None **kw True True
+['a', 'b', 'c', 'args', 'k', 'kd', 'kw'] ['a', 'b', 'c=0', '*args', 'k', "kd='x'", '**kw'] [('a', 'POSITIONAL_ONLY'), ('b', 'POSITIONAL_OR_KEYWORD'), ('c', 'POSITIONAL_OR_KEYWORD'), ('args', 'VAR_POSITIONAL'), ('k', 'KEYWORD_ONLY'), ('kd', 'KEYWORD_ONLY'), ('kw', 'VAR_KEYWORD')] ['a', 'b', 'c', 'args', 'k', 'kd', 'kw']
+KeyError: 'nope'
+(*, b, a, /) 2 KEYWORD_ONLY
+[exit 0]

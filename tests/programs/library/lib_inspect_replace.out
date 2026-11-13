@@ -1,0 +1,15 @@
+a: 'int' = 1 b: 'int' = 1 KEYWORD_ONLY a: 'int' = 2 a=1 a: 'int' a: 'int' = None a: None = 1 c: 'str' = 'd'
+True False False a: 'int' = 1 implicit3
+ValueError: '1x' is not a valid parameter name
+ValueError: 'class' is not a valid parameter name
+ValueError: 'a b' is not a valid parameter name
+TypeError: name must be a str, not a int
+TypeError: name must be a str, not a NoneType
+ValueError: variadic positional parameters cannot have default values
+**a: 'int'
+ValueError: value None is not a valid Parameter.kind
+(a: 'int' = 1, *, k) -> 'bool' (a: 'int' = 1, *, k) -> 'bool' (*, k) -> 'bool' (a: 'int' = 1, *, k) () -> 'bool' () -> 'bool' (a: 'int' = 1, *, k) -> None (*, k, **z) -> 0
+True False False (a: 'int' = 1, *, k) -> 'bool' True
+ValueError: wrong parameter order: keyword-only parameter before positional or keyword parameter
+ValueError: duplicate parameter name: 'k'
+[exit 0]
