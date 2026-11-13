@@ -98,6 +98,8 @@ def gen_modattr(self, path: str) -> Val:
         return Val(self.rt("pys_warnoptions", "ptr", []), "list[str]")
     if path == "sys.maxsize":
         return Val("9223372036854775807", "int")
+    if path == "sys.maxunicode":
+        return Val("1114111", "int")
     if path == "sys.stdin" or path == "sys.stdout" or path == "sys.stderr":
         return Val(self.rt("pys_std", "ptr", [f"i64 {0 if path == 'sys.stdin' else 1 if path == 'sys.stdout' else 2}"]), "file")
     if path == "math.pi":

@@ -288,7 +288,7 @@ arguments. Supported iteration contexts and other restrictions are in the
 
 | Module | Supported surface |
 |---|---|
-| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
+| `sys` | `argv`, `warnoptions`, `exit`, `stdin`/`stdout`/`stderr` (files), `maxsize`, `maxunicode`, `platform`, `implementation.name` (`"pystachy"`), `prefix`/`base_prefix`/`exec_prefix`/`base_exec_prefix`; see [runtime values](compatibility.md#modules-and-libraries). `setrecursionlimit`/`getrecursionlimit` enforce [native recursion limits](compatibility.md#recursion). |
 | `sys.version_info` | CPython 3.13.16's items and `major`, `minor`, `micro`, `releaselevel`, `serial`; see [representation differences](compatibility.md#modules-and-libraries). |
 | `sys.float_info` | `max`, `max_exp`, `max_10_exp`, `min`, `min_exp`, `min_10_exp`, `dig`, `mant_dig`, `epsilon`, `radix`, `rounds`, matching CPython for IEEE 754 doubles. `sys.float_info` itself is not a value. |
 | `os` | `system`, `execv`, `set_inheritable`, `dup`, `dup2` (two descriptors), `close`, `getpid`, `getcwd`, `chdir` (a `str` path), `getenv`, `remove`, `unlink`, `rmdir`, `mkdir`, `makedirs` (`mode` and `exist_ok` by position or by name, in that order), `listdir`, `rename`, `replace`, `fspath`; `name`, `sep`, `curdir`, `pardir`, `extsep`, `pathsep`, `linesep`, `devnull`. |

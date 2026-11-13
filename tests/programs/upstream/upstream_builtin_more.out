@@ -87,6 +87,7 @@ ord('A') 65
 ord('a') 97
 ord('') 128
 ord('ÿ') 255
+sys.maxunicode 1114111
 0x10FFFF 1114111
 0xFFFF 65535
 0x10000 65536
