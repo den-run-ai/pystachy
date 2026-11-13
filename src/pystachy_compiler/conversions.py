@@ -215,6 +215,14 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
     if is_sopt(t) and v.t == unopt(t):
         return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t).identity(v)  # representation-only boxing
+    if v.t == "frozenset[dyn]" and is_fset(unopt(t)) and self.fset_unboxes(selem(unopt(t))):
+        # a frozenset of Any values where a frozenset[T] or an AbstractSet[T] is expected: no code
+        # changes it, so it crosses as a tuple does, a new frozenset of its elements, each checked
+        # as a T where it is unboxed (docs/dynamic-any.md; runtime.c's pys_set_unbox). A set of
+        # Any values does not: a copy would not see what its other holders add
+        et = selem(unopt(t))
+        dt = self.dyn_class_type(et) if et in self.classes else self.dyn_type(et)
+        return Val(self.rt("pys_set_unbox", "ptr", [f"ptr {v.v}", f"ptr {dt}", f"i64 {self.key_kind(et)}"]), t)
     if v.t == EMPTYFS and is_fset(unopt(t)):
         # frozenset() that nothing typed, where a frozenset[T] or an AbstractSet[T] is expected:
         # an empty one of T's (a new object: CPython's is one object, which only `is` tells)
@@ -247,6 +255,13 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
+
+def gen_fset_unboxes(self, et: str) -> bool:
+    # can a frozenset of Any values become one of et's (coerce): et's values are a box's payload
+    # as a set holds them, of one DynType (an int of 64 bits, a str, an object of a class)
+    if et == "int" or et == "str":
+        return True
+    return et in self.classes and et not in self.tmpl and self.classes[et].exc == ""
 
 def gen_desc(self, t: str, use: str) -> str:
     if "rec[" in t:

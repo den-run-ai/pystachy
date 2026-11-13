@@ -6232,6 +6232,23 @@ Big pys_set_big_pop(Set *s) {                        /* s.pop() of a set of ints
 void pys_set_clear(Set *s) { stable(s, 8); s->len = 0; }
 /* set(o), s.copy() and frozenset(o) of a set o: o merged into a new set */
 Set *pys_set_copy(Set *s) { Set *r = pys_set_new(s->kind); smerge(r, s); return r; }
+/* frozenset o of Any values as a frozenset of t's, which a frozenset[T] or an AbstractSet[T] takes
+   (Gen.coerce): a new set of kind kind, whose elements are o's payloads. Each is checked as a typed
+   variable's is (pys_dyn_unbox: TypeError), all of them before the set is made. They keep o's
+   hashes of them, which a set of that kind has too, and, in a table without dummies, o's slots: the
+   set is iterated as o is, CPython's being o itself, and no __hash__ or __eq__ runs */
+Set *pys_set_unbox(Set *o, const DynType *t, I kind) {
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) pys_dyn_unbox((Dyn *)o->keys[i], t);
+  Set *s = pys_set_new(kind);
+  if (!o->len) return s;
+  if (o->mask != s->mask) stable(s, o->mask + 1);
+  s->fill = s->len = o->len;
+  for (I i = 0; i <= o->mask; i++) if (o->hs[i] != -1) {
+    I k = pys_dyn_unbox((Dyn *)o->keys[i], t);
+    if (o->fill == o->len) { s->keys[i] = k; s->hs[i] = o->hs[i]; } else sclean(s, k, o->hs[i]);
+  }
+  return s;
+}
 /* s.update(o) (s |= o) of a set o; of a list (any other iterable's items), one insertion per item;
    of a dict, one resize for all its keys, then theirs in order */
 void pys_set_update(Set *s, Set *o) { smerge(s, o); }

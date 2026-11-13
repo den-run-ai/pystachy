@@ -548,6 +548,7 @@ from src.pystachy_compiler.conversions import (
     gen_as_int as conversions_as_int,
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
+    gen_fset_unboxes as conversions_fset_unboxes,
     gen_floats as conversions_floats,
     gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
@@ -2809,6 +2810,9 @@ class Gen:
 
     def desc(self, t: str, use: str) -> str:
         return conversions_desc(self, t, use)
+
+    def fset_unboxes(self, et: str) -> bool:
+        return conversions_fset_unboxes(self, et)
 
     def ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
         return declarations_ctype(self, base, ts, canon)
