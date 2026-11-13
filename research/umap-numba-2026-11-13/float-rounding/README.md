@@ -13,10 +13,15 @@ Paired medians of pinned, rotated rounds ([time_variants.py](../prs/time_variant
 
 | Program | main | branch | paired ratio |
 |---|---:|---:|---:|
-| [round_loop.py](round_loop.py) 10M (`math.floor`, `round`, `math.ceil`, `math.trunc`) | 0.127 s | 0.088 s | 0.691 (7/7) |
-| [fmod_loop.py](fmod_loop.py) 10M (whole `%`, then fractional `//` and `%`) | 0.180 s | 0.172 s | 0.974 (7/7) |
-| pyperformance regex_dna | 0.070 s | 0.070 s | 1.054 (1/5): no change |
+| [round_loop.py](round_loop.py) 10M (`math.floor`, `round`, `math.ceil`, `math.trunc`) | 0.127 s | 0.079 s | 0.642 (7/7) ([json](t_round2.json)) |
+| [fmod_loop.py](fmod_loop.py) 10M (whole `%`, then fractional `//` and `%`) | 0.180 s | 0.160 s | 0.918 (7/7) ([json](t_fmod2.json)) |
+| pyperformance regex_dna | 0.070 s | 0.070 s | 1.054 (1/5): no change ([json](t_regex.json)) |
 
-round_loop's libm calls fall from 4,500,000 to 494,829 (its fractional `%` keeps `fmod` and
-`floor`); fmod_loop's from 1,750,000 to 999,993 at 1M iterations. A 32-bit division costs about
+Those are of `4a148105`; the first commit, `23900063`, gave 0.691 and 0.974
+([t_round.json](t_round.json), [t_fmod.json](t_fmod.json)): one out-of-line path served both `%` and
+`//`, so a fractional `%` also computed the quotient's `floor()`.
+
+At 1M iterations, round_loop's libm calls fall from 4,500,000 to 247,500 (its fractional `%`
+keeps `fmod`), and fmod_loop's from 1,749,993 to 749,993 (the fractional loop keeps `fmod` and
+`//`'s `floor`). A 32-bit division costs about
 what glibc's `fmod` does at these magnitudes, so whole `%` gains little.
