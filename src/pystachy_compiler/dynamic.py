@@ -1304,6 +1304,16 @@ def gen_dyn_xbody(self, c: str) -> None:
     a = self.read(mk("name", "a", line, []))
     b = self.read(mk("name", "b", line, []))
     nt = c in self.nts
+    if c == COMPLEXC:
+        # (lib's complex compares with numbers only: CPython's returns NotImplemented for any other
+        # value, whose own method then answers, as 2 lets pys_dyn_eq's dobj(b, a) do)
+        mine = self.dyn_test(b, ["int", "float", "bool", COMPLEXC])
+        cgo = self.label()
+        cdecline = self.label()
+        self.cbr(mine, cgo, cdecline)
+        self.place(cdecline)
+        self.ret_(Val("2", "int"))
+        self.place(cgo)
     for k in range(len(XCMP)):
         m = XCMP[k]
         inv = False
@@ -3215,6 +3225,11 @@ def gen_dyn_body(self, key: str) -> None:
             cm = self.classes[c].methods
             for s in [x for x in self.dynclasses if x != c and self.derives(x, c) and r in self.classes[x].methods and (r not in cm or self.classes[x].methods[r] is not cm[r])]:
                 self.dyn_reflected(f, s, r, o, ps[1], "true")
+            if c == COMPLEXC:
+                # (lib's complex takes numbers only: CPython's returns NotImplemented for an object of
+                # another class, whose reflected method then runs)
+                for s in [x for x in self.dynclasses if x != c and r in self.classes[x].methods]:
+                    self.dyn_reflected(f, s, r, o, ps[1], "true")
         self.dyn_arm(f, key, dunder, self.dyn_payload(o, c), ps[1:])
         if not self.term:
             self.br(rest)

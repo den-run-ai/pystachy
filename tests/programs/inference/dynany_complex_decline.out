@@ -1,0 +1,5 @@
+True True False False False True
+Right.__radd__ Right.__rsub__ Right.__rmul__
+(1+1j) 2j True True False True True
+unsupported operand type(s) for +: 'complex' and 'Plain'
+[exit 0]
