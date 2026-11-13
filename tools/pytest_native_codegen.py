@@ -469,8 +469,12 @@ class Generator:
                  shared=None, conftest: bool = False, session_end: bool = True, path: str = "",
                  module: str = "", imports=None, package: bool = False, alias: str = "_pyn_conftest",
                  helper: bool = False, resolve=None, strict: bool = False, verified: bool = False,
-                 keyword: str = "", markexpr: str = ""):
+                 keyword: str = "", markexpr: str = "", unavailable=None):
         self.source = source
+        # Fixtures the runner left out of this module or of a conftest.py above it, each
+        # with the reason: a test that requests one cannot be collected, though another
+        # fixture of its name (a wider conftest.py's, a built-in) is in sight.
+        self.unavailable = dict(unavailable or {})
         # pytest's -k and -m: the cases to run among those the node IDs select.
         self.keyword = match_expression(keyword, "-k")
         self.markexpr = match_expression(markexpr, "-m")
@@ -2274,6 +2278,7 @@ class Generator:
                             key=lambda name: group[name].function.name)
         names += test.usefixtures + self.arguments(test.function, bound=test.owner is not None)
         closure = []
+        nearer = {**self.fixtures, **self.own_fixtures(test.owner)}
 
         def visit(name):
             if name in closure:
@@ -2281,6 +2286,8 @@ class Generator:
             closure.append(name)
             if name in direct:
                 return
+            if name in self.unavailable and name not in nearer:
+                self.error(test.function, f"the fixture {name} was left out: {self.unavailable[name]}")
             if name not in fixtures:
                 self.error(test.function, "unknown or unsupported fixture: " + name)
             for dependency in fixtures[name].dependencies:
@@ -3602,7 +3609,7 @@ def original_line(module: GeneratedModule, line: int) -> int | None:
 def generate(source: str, filename: str, operands: bool = True, selected=None, shared=None,
              session_end: bool = True, path: str = "", module: str = "", imports=None,
              package: bool = False, resolve=None, strict: bool = False,
-             verified: bool = False, keyword: str = "", markexpr: str = "") -> GeneratedModule:
+             verified: bool = False, keyword: str = "", markexpr: str = "", unavailable=None) -> GeneratedModule:
     """Collect and adapt one module, or reject unsupported collection explicitly.
 
     operands keeps comparison operands for assertion failures (Generator.captured);
@@ -3619,19 +3626,19 @@ def generate(source: str, filename: str, operands: bool = True, selected=None, s
     """
     return Generator(source, filename, operands, selected, shared, False, session_end, path, module, imports,
                      package, resolve=resolve, strict=strict, verified=verified, keyword=keyword,
-                     markexpr=markexpr).generate()
+                     markexpr=markexpr, unavailable=unavailable).generate()
 
 
 def generate_conftest(source: str, filename: str, operands: bool = True, path: str = "", module: str = "",
                       shared=None, imports=None, package: bool = False, alias: str = "_pyn_conftest",
-                      resolve=None, strict: bool = False, verified: bool = False):
+                      resolve=None, strict: bool = False, verified: bool = False, unavailable=None):
     """Adapt a conftest.py: its generated module, and its fixtures for generate(shared=).
 
     shared and imports name the conftest.py files above it, whose fixtures its own may
     request; other modules call its fixtures through alias.
     """
     generator = Generator(source, filename, operands, None, shared, True, True, path, module, imports, package,
-                          alias, resolve=resolve, strict=strict, verified=verified)
+                          alias, resolve=resolve, strict=strict, verified=verified, unavailable=unavailable)
     module = generator.generate()
     return module, generator.export()
 

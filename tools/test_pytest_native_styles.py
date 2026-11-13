@@ -861,6 +861,70 @@ def test_recwarn(recwarn):
     assert len(recwarn.list) == 0
 '''
 
+# Tests the collector rejects, each for one form, among tests it collects.
+UNCOLLECTED = """
+import os
+from unittest import mock
+
+import pytest
+
+
+def values():
+    return [1, 2]
+
+
+class MixinA:
+    def test_a(self):
+        assert True
+
+
+class MixinB:
+    def test_b(self):
+        assert True
+
+
+def test_plain():
+    assert values() == [1, 2]
+
+
+@pytest.mark.parametrize("value", values())
+def test_table(value):
+    assert value
+
+
+@mock.patch("os.getcwd")
+def test_patched(getcwd):
+    assert getcwd is os.getcwd
+
+
+def test_dotted(monkeypatch):
+    monkeypatch.setattr("os.sep", "!")
+    assert os.sep == "!"
+
+
+class TestBoth(MixinA, MixinB):
+    def test_own(self):
+        assert True
+
+
+class TestDerived(TestBoth):
+    def test_more(self):
+        assert True
+
+
+class TestGroup:
+    def test_kept(self):
+        assert True
+
+    @pytest.mark.parametrize("value", values())
+    def test_method_table(self, value):
+        assert value
+
+
+def test_last():
+    assert True
+"""
+
 # Tests a native compiler rejects: each calls typed code in a way only CPython can run.
 UNCOMPILED = """
 import dis
@@ -1458,6 +1522,7 @@ class UncompiledTests(TemporarySuite):
 
     def files(self, files):
         for name, text in files.items():
+            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
             (self.root / name).write_text(text)
         return runner.discover([self.root], self.root)
 
@@ -1492,11 +1557,15 @@ class UncompiledTests(TemporarySuite):
             return lines.index(text) + 1
         # A decorated test from its first decorator; a method alone; a class for its other lines.
         self.assertEqual(runner.test_region(source, at("    REJECTED = value"), cases),
-                         (at("@pytest.mark.parametrize("), at("    assert REJECTED")))
+                         (at("@pytest.mark.parametrize("), at("    assert REJECTED"), "test_marked"))
         self.assertEqual(runner.test_region(source, at("        REJECTED = 1"), cases),
-                         (at('    @pytest.mark.skip(reason="never")'), at("        REJECTED = 1")))
+                         (at('    @pytest.mark.skip(reason="never")'), at("        REJECTED = 1"), "TestGroup::test_method"))
         self.assertEqual(runner.test_region(source, at("        LOG.append(\"setup\")"), cases),
-                         (at("class TestGroup:"), at("        assert helper() == 1")))
+                         (at("class TestGroup:"), at("        assert helper() == 1"), "TestGroup"))
+        # Before a module has cases, a test is what its name says, and any class may hold some.
+        self.assertEqual(runner.test_region(source, at("    assert LOG[0] == \"first\""), None)[2], "test_last")
+        self.assertEqual(runner.test_region(source, at("    REJECTED = 1"), None)[2], "TestWhole")
+        self.assertIsNone(runner.test_region(source, at("    return 1"), None))
         # A helper, a module statement and a class no case names belong to no test.
         self.assertIsNone(runner.test_region(source, at("    return 1"), cases))
         self.assertIsNone(runner.test_region(source, at("LOG: list[str] = []"), cases))
@@ -1511,8 +1580,8 @@ class UncompiledTests(TemporarySuite):
         status, output, error, report = self.run_rejecting({"test_rejected.py": REJECTED})
         result = report["results"][0]
         self.assertEqual(status, 2, error)
-        self.assertEqual(report["qualification"], "partly-compiled", error)
-        self.assertEqual(report["differences"], [runner.UNCOMPILED])
+        self.assertEqual(report["qualification"], "partial", error)
+        self.assertEqual(report["differences"], [runner.LEFT_OUT])
         self.assertEqual(result["state"], "passed", error)
         self.assertEqual([case.split("::", 1)[1] for case in result["cases"]],
                          ["test_first", "TestGroup::test_kept", "TestGroup::test_also_kept", "test_last"])
@@ -1524,7 +1593,7 @@ class UncompiledTests(TemporarySuite):
                          r"^test_rejected\.py:\d+ \[generated test_rejected\.py:\d+\]: error: rejected")
         self.assertIn("NOT COMPILED test_rejected.py::TestWhole::test_two", output)
         self.assertIn("4 passed, 5 not compiled", output)
-        self.assertIn("match for the cases that compiled", output)
+        self.assertIn("match for the cases the program has", output)
         # pytest ran them: a skipped one and four that passed.
         self.assertIn("test_rejected.py::TestGroup::test_method: pytest skipped, native not compiled",
                       report["mismatches"])
@@ -1540,7 +1609,7 @@ class UncompiledTests(TemporarySuite):
             "values.py": "KEPT = 1\nREJECTED_name = 2\nother = 3\n", "test_imports.py": UNIMPORTED})
         result = report["results"][0]
         self.assertEqual(status, 2, error)
-        self.assertEqual(report["qualification"], "partly-compiled", error)
+        self.assertEqual(report["qualification"], "partial", error)
         self.assertEqual([case.split("::", 1)[1] for case in result["cases"]],
                          ["test_uses_the_others", "TestGroup::test_kept"])
         # The module's import goes whole; the from-import loses the one name it lacks.
@@ -1565,7 +1634,7 @@ class UncompiledTests(TemporarySuite):
                 assert True
         """)})
         self.assertEqual(status, 2, error)
-        self.assertEqual(report["qualification"], "partly-compiled")
+        self.assertEqual(report["qualification"], "partial")
         self.assertEqual(report["results"][0]["cases"], ["test_unused.py::test_only"])
         self.assertEqual(report["results"][0]["uncompiled"], {})
         self.assertIn("1 passed, 1 import left out", output)
@@ -1583,6 +1652,144 @@ class UncompiledTests(TemporarySuite):
         self.assertEqual(runner.import_region("from m import a\n", 1, "a"), (1, 1, ["a"], "pass"))
         self.assertEqual(runner.blanked("from m import (a,\n  b)\nx = 1\n", 1, 2, "from m import a"),
                          "from m import a\n\nx = 1\n")
+
+    def run_python(self, files, *arguments):
+        paths = self.files(files)
+        evidence = self.root / "evidence.json"
+        with contextlib.redirect_stdout(io.StringIO()) as output, contextlib.redirect_stderr(io.StringIO()) as error:
+            status = runner.main([*(arguments or [str(path) for path in paths]), "--root", str(self.root),
+                                  "--mode", "python", "--work-dir", str(self.work), "--json", str(evidence)])
+        return status, output.getvalue(), error.getvalue(), json.loads(evidence.read_text())
+
+    def test_tests_the_collector_rejects_are_left_out(self):
+        status, output, error, report = self.run_python({"test_mixed.py": UNCOLLECTED})
+        result = report["results"][0]
+        self.assertEqual(status, 2, error)
+        self.assertEqual(report["qualification"], "partial", error)
+        self.assertEqual(report["differences"], [runner.LEFT_OUT])
+        self.assertEqual([case.split("::", 1)[1] for case in result["cases"]],
+                         ["test_plain", "TestGroup::test_kept", "test_last"])
+        reasons = {name.split("::", 1)[1]: reason for name, reason in result["uncollected"].items()}
+        self.assertEqual(set(reasons), {"test_table", "test_patched", "test_dotted", "TestBoth", "TestDerived",
+                                        "TestGroup::test_method_table"})
+        self.assertIn("parametrize needs a table the collector can read", reasons["test_table"])
+        self.assertIn("several base classes", reasons["TestBoth"])
+        # A class goes with the base class it derives from.
+        self.assertIn("its base class was left out: test_mixed.py:", reasons["TestDerived"])
+        self.assertEqual(list(result["unimported"]), ["3: from unittest import mock"])
+        self.assertEqual(result["uncompiled"], {})
+        # Every case pytest ran of those tests is named, with pytest's outcome.
+        self.assertEqual(len(report["mismatches"]), 13, report["mismatches"])
+        self.assertIn("test_mixed.py::test_table[2]: pytest passed, native not collected", report["mismatches"])
+        self.assertIn("test_mixed.py::TestDerived::test_a: pytest passed, native not collected", report["mismatches"])
+        self.assertIn("NOT COLLECTED test_mixed.py::TestGroup::test_method_table", output)
+        self.assertIn("3 passed, 6 tests not collected, 1 import left out", output)
+        self.assertIn("match for the cases the program has", output)
+        # Without the comparison the run fails as well.
+        status, _, error, report = self.run_python({}, str(self.root / "test_mixed.py"), "--no-compare")
+        self.assertEqual((status, report["qualification"]), (2, "unverified"), error)
+
+    def test_fixtures_the_collector_rejects_are_left_out_with_the_tests_that_request_them(self):
+        rejected = "@pytest.fixture\ndef {name}(request):\n    return request.node.name\n"
+        status, output, error, report = self.run_python({
+            "conftest.py": "import pytest\n@pytest.fixture\ndef plain():\n    return 1\n"
+                           + rejected.format(name="node_name") + rejected.format(name="tmp_path")
+                           + "@pytest.fixture\ndef through(node_name):\n    return node_name.upper()\n",
+            "test_outer.py": textwrap.dedent("""
+                import pytest
+
+                def test_plain(plain):
+                    assert plain == 1
+
+                def test_named(node_name):
+                    assert node_name == "test_named"
+
+                def test_through(through):
+                    assert through == "TEST_THROUGH"
+
+                def test_builtin_name(tmp_path):
+                    assert tmp_path == "test_builtin_name"
+
+                @pytest.fixture(name="renamed")
+                def local(request):
+                    return request.node.name
+
+                def test_local(renamed):
+                    assert renamed == "test_local"
+
+                @pytest.mark.usefixtures("node_name")
+                class TestMarked:
+                    def test_method(self):
+                        assert True
+            """),
+            # A nearer conftest.py that defines the name provides it again, also to the wider one's fixtures.
+            "inner/conftest.py": "import pytest\n@pytest.fixture\ndef node_name():\n    return 'inner'\n",
+            "inner/test_inner.py": "def test_redefined(node_name, through):\n"
+                                   "    assert (node_name, through) == ('inner', 'INNER')\n",
+        })
+        self.assertEqual(status, 2, error)
+        self.assertEqual(report["qualification"], "partial", error)
+        inner, outer = report["results"]
+        self.assertEqual((inner["cases"], outer["cases"]),
+                         (["inner/test_inner.py::test_redefined"], ["test_outer.py::test_plain"]))
+        # A conftest.py's are on the first module.
+        self.assertEqual(list(inner["unavailable"]), ["conftest.py::node_name", "conftest.py::tmp_path"])
+        self.assertEqual(list(outer["unavailable"]), ["test_outer.py::renamed"])
+        reasons = {name.split("::", 1)[1]: reason for name, reason in outer["uncollected"].items()}
+        self.assertEqual(set(reasons), {"test_named", "test_through", "test_builtin_name", "test_local",
+                                        "TestMarked::test_method"})
+        self.assertIn("the fixture node_name was left out: conftest.py:", reasons["test_through"])
+        # pytest's own fixture of the name does not take the place of the one left out.
+        self.assertIn("the fixture tmp_path was left out", reasons["test_builtin_name"])
+        self.assertIn("the fixture renamed was left out: test_outer.py:", reasons["test_local"])
+        self.assertIn("NOT AVAILABLE conftest.py::node_name (fixture)", output)
+        self.assertIn("2 passed, 5 tests not collected, 3 fixtures left out", output)
+        self.assertEqual(len(report["mismatches"]), 5, report["mismatches"])
+
+    def test_fixtures_that_are_not_left_out(self):
+        source = "import pytest\n@pytest.fixture({})\ndef value(request):\n    return request.node\n"
+        self.assertEqual(runner.fixture_region(source.format(""), 4), (2, 4, "value"))
+        self.assertEqual(runner.fixture_region(source.format("name='other', scope='module'"), 3), (2, 4, "other"))
+        self.assertEqual(runner.fixture_region("import pytest\n@pytest.fixture\ndef value():\n    pass\n", 3),
+                         (2, 4, "value"))
+        for options in ("autouse=True", "autouse=FLAG", "name=NAME", "**OPTIONS"):
+            self.assertIsNone(runner.fixture_region(source.format(options), 4), options)
+        self.assertIsNone(runner.fixture_region("def helper():\n    pass\n", 2))
+        self.assertIsNone(runner.fixture_region("class A:\n    @pytest.fixture\n    def value(self):\n        pass\n", 4))
+
+    def test_what_the_collector_rejects_outside_tests_rejects_the_module(self):
+        fixture = ("import pytest\n@pytest.fixture(autouse=True)\ndef value(request):\n"
+                   "    return request.node.name\n")
+        cases = {
+            "fixture": ({"test_whole.py": fixture + "def test_a(value):\n    assert value\n"}, "test_whole.py:"),
+            "module statement": ({"test_whole.py": "def helper(): pass\ntest_alias = helper\ndef test_a(): pass\n"},
+                                 "dynamically assigning"),
+            "star import": ({"values.py": "X = 1\n", "test_whole.py": "from values import *\ndef test_a(): pass\n"},
+                            "star imports"),
+            "conftest": ({"conftest.py": fixture, "test_whole.py": "def test_a(value):\n    assert value\n"},
+                         "conftest.py:"),
+        }
+        for name, (files, message) in cases.items():
+            with self.subTest(name):
+                for stale in self.root.glob("*.py"):
+                    stale.unlink()
+                self.work = self.root / "build" / name.replace(" ", "-")
+                status, _, error, report = self.run_python(files)
+                result = report["results"][-1]
+                self.assertEqual((status, result["state"]), (2, "collection-error"), error)
+                self.assertIn(message, result["error"])
+                self.assertEqual((result["uncollected"], result["unimported"]), ({}, {}))
+
+    def test_the_tests_not_collected_are_bounded(self):
+        source = "".join(f"async def test_{index}(): pass\n" for index in range(3)) + "def test_ok(): pass\n"
+        with patch.object(runner, "UNCOLLECTED_LIMIT", 2):
+            status, _, error, report = self.run_python({"test_many.py": source})
+        self.assertEqual((status, report["results"][0]["state"]), (2, "collection-error"), error)
+        self.work = self.root / "build" / "enough"
+        with patch.object(runner, "UNCOLLECTED_LIMIT", 3):
+            status, _, error, report = self.run_python({"test_many.py": source})
+        self.assertEqual((status, report["results"][0]["state"]), (2, "passed"), error)
+        self.assertEqual(len(report["results"][0]["uncollected"]), 3)
 
     def test_other_differences_are_still_differences(self):
         # The test left out is the one that made a later test pass under pytest.
@@ -1650,7 +1857,7 @@ class UncompiledTests(TemporarySuite):
                 results = runner.run_suite(paths, self.root, self.work / mode, mode, shlex.split(NATIVE),
                                            sys.executable, 300)
                 expected = runner.oracle(paths, self.root, self.work / "oracle", sys.executable, 120)
-                self.assertEqual(runner.compare(results, expected), [runner.UNCOMPILED],
+                self.assertEqual(runner.compare(results, expected), [runner.LEFT_OUT],
                                  results[0].error + results[0].stderr)
                 self.assertEqual(results[0].state, "passed", results[0].stderr)
                 self.assertEqual({case.split("::", 1)[1] for case in results[0].uncompiled}, UNCOMPILED_CASES)
@@ -1798,10 +2005,13 @@ class StyleRejections(TemporarySuite):
             result = runner.run_suite([path], self.root, self.work, "python", [], sys.executable, 60)[0]
             with self.subTest(source=source):
                 if message:
-                    self.assertEqual(result.state, "collection-error")
-                    self.assertIn(message, result.error)
+                    # The class or the import the limit rejects is left out, with the limit as its reason.
+                    # (The module "library" exists nowhere: its import fails the run that is left.)
+                    self.assertIn(result.state, ("empty", "passed", "execution-error"), result.error)
+                    self.assertIn(message, " ".join([*result.uncollected.values(), *result.unimported.values()]))
                 else:
                     self.assertEqual(result.state, "passed", result.error + result.stderr)
+                    self.assertEqual((result.uncollected, result.unimported), ({}, {}))
 
 
 class HelperModules(unittest.TestCase):

@@ -325,12 +325,19 @@ class CollectionControls(TemporarySuite):
                     self.assertEqual(expected["exit_code"], 1, expected)
                     self.assertEqual(expected["cases"], actual.cases)
         # What the collector cannot read may be a test: a function, or a class of an installed module.
+        # Its import is left out and recorded, which fails the run, and pytest's case is missed.
         for statement in ("from functions import test_function", "from installed_elsewhere import TestThing"):
             with self.subTest(statement=statement):
                 path = self.source(statement + "\ndef test_local():\n    pass\n")
                 actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 10)
-                self.assertEqual(actual.state, "collection-error")
-                self.assertIn("imported tests", actual.error)
+                self.assertEqual(actual.cases, ["test_suite.py::test_local"])
+                self.assertEqual(list(actual.unimported), ["1: " + statement])
+                self.assertIn("imported tests", actual.unimported["1: " + statement])
+                if importlib.util.find_spec("pytest"):
+                    expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
+                    differences = runner.compare([actual], expected)
+                    self.assertIn(runner.LEFT_OUT, differences) if "error" not in expected else None
+                    self.assertGreater(len(differences), 1 if "error" not in expected else 0, differences)
 
     def test_dynamic_test_class_aliases_are_rejected(self):
         for statement in ("TestAlias = Helper", "if True:\n    TestAlias = Helper"):
@@ -378,13 +385,19 @@ class CollectionControls(TemporarySuite):
         self.assertEqual(status, 5)
 
     def test_cli_collection_error_is_nonzero(self):
-        path = self.source("async def test_one(): pass\n")
-        evidence = self.root / "result.json"
-        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
-            status = runner.main([str(path), "--root", str(self.root), "--mode", "python",
-                                  "--work-dir", str(self.work), "--json", str(evidence)])
-        self.assertEqual(status, 2)
-        self.assertEqual(json.loads(evidence.read_text())["results"][0]["state"], "collection-error")
+        # A statement of the module itself rejects the module; a test is left out of it.
+        for source, state in (("def helper(): pass\ntest_alias = helper\n", "collection-error"),
+                              ("async def test_one(): pass\n", "empty")):
+            with self.subTest(state=state):
+                path = self.source(source)
+                evidence = self.root / "result.json"
+                with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                    status = runner.main([str(path), "--root", str(self.root), "--mode", "python",
+                                          "--work-dir", str(self.work), "--json", str(evidence)])
+                result = json.loads(evidence.read_text())["results"][0]
+                self.assertEqual(status, 2)
+                self.assertEqual(result["state"], state)
+                self.assertEqual(list(result["uncollected"]), ["test_suite.py::test_one"] if state == "empty" else [])
 
 
 LIFECYCLE = '''
@@ -641,11 +654,14 @@ class OriginalPytestParity(TemporarySuite):
                 assert make_value() == 1
         ''')
         actual = runner.run_module(path, self.root, self.work, "python", [], sys.executable, 30)
-        self.assertEqual(actual.state, "collection-error")
-        self.assertIn("only be requested", actual.error)
+        # The test is left out, not run: nothing of it can pass.
+        self.assertEqual((actual.state, actual.cases), ("empty", []))
+        self.assertIn("only be requested", actual.uncollected["test_suite.py::test_direct"])
         expected = runner.oracle([path], self.root, self.work / "oracle", sys.executable, 30)
         self.assertEqual(expected.get("exit_code"), 1)
-        self.assertTrue(runner.compare([actual], expected))
+        self.assertEqual(runner.compare([actual], expected), [runner.LEFT_OUT])
+        self.assertEqual(runner.outcome_differences([actual], expected),
+                         ["test_suite.py::test_direct: pytest failed, native not collected"])
 
     def test_parameter_set_ids_marks_and_strict_xpass(self):
         self.check_parity(PYTEST_PARAMETERS, "test-failed")
@@ -875,7 +891,7 @@ class MultiModuleParity(TemporarySuite):
                 with open({str(call_marker)!r}, "w") as handle:
                     handle.write("test happened")
         ''', "test_first.py")
-        unsupported = self.source("async def test_second(): pass\n", "test_second.py")
+        unsupported = self.source("def helper(): pass\ntest_alias = helper\n", "test_second.py")
         results = runner.run_suite([first, unsupported], self.root, self.work, "python", [], sys.executable, 30)
         self.assertTrue(any(result.state == "collection-error" for result in results))
         self.assertFalse(import_marker.exists(), "collection preflight ran module initialization")
@@ -1055,7 +1071,7 @@ class DiagnosticsAndSelection(TemporarySuite):
         self.assertIn("MISMATCH test_suite.py::test_runner_argv [call]", output)
 
     def test_collection_errors_do_not_run_pytest(self):
-        path = self.source("def test_unsupported(pytester):\n    pass\n")
+        path = self.source("def helper(): pass\ntest_alias = helper\n")
         status, report, output = self.cli(path, "--mode", "python")
         self.assertEqual(status, 2)
         self.assertIsNone(report["oracle"])

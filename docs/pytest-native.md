@@ -82,38 +82,52 @@ first and the generated one after it:
 generates for a declaration (a case's fixture calls, a scope's cache, parameter
 values) reports at that test, fixture or class.
 
-A test that the compiler rejects does not stop the others. Suites often have a few:
-a test that passes a `str` where the code under test declares an `int`, or omits an
-argument, to see its `TypeError`, is a type error to a compiler. The runner leaves
-such a test out of the program and builds again, up to 25 times for a suite. It
-finds the test in the diagnostic: the rejected line, or one of the calls that led
-the compiler to it, is in the test. A function or method goes with every
-parametrized case it has, and a class goes whole when the line is in it but in none
-of its tests. The program is then the one the file would make without that test, so
-nothing of it runs, its decorators included. Each case left out is printed as
-`NOT COMPILED` with the diagnostic and listed in the JSON's `uncompiled`:
+A test that the collector or the compiler rejects does not stop the others. Suites
+often have a few: a test under a hypothesis or `mock.patch` decorator, or with a
+parameter table made at run time, which the collector cannot preserve; a test that
+passes a `str` where the code under test declares an `int`, or omits an argument, to
+see its `TypeError`, which is a type error to a compiler. The runner leaves such a
+test out of the program, which is then the one its file would make without that
+test: nothing of it runs, its decorators included.
+
+- **Collection.** The collector names the line it rejects. A test function or method
+  with that line is left out, and a class when the line is in it but in none of its
+  tests; classes that derive from one left out go with it. Each is printed as
+  `NOT COLLECTED` with the reason and listed in the JSON's `uncollected`.
+- **Compilation.** The compiler's diagnostic names the rejected line and the calls
+  that led to it; the first of them in a test blames it. That test is left out with
+  every parametrized case it has and the program is built again, up to 25 times for
+  a suite. Each case is printed as `NOT COMPILED` with the diagnostic and listed in
+  `uncompiled`. No test runs twice: a program whose build fails has not started.
+- **Imports.** An import statement of a test module that either rejects is left out
+  in the same way: `from unittest import mock`, `import pickle` for a module
+  Pystachy does not have, or the one name of `from functools import reduce,
+  total_ordering` that its module lacks. The tests that use the name are then
+  rejected for it and left out in their turn. The statement is printed as
+  `NOT IMPORTED` and listed in `unimported`.
+- **Fixtures.** A fixture of a test module or a `conftest.py` that the collector
+  rejects is left out, unless it is autouse, and the tests that request it, directly
+  or through another fixture, are left out for it. No other fixture of its name
+  takes its place: not a wider `conftest.py`'s, not pytest's own. A nearer
+  `conftest.py` that defines the name provides it again, as in pytest. The fixture
+  is printed as `NOT AVAILABLE` and listed in `unavailable`.
 
 ```text
-tests/test_api.py: passed (41 cases, 3 not compiled)
+tests/test_api.py: passed (41 cases, 3 not compiled, 2 tests not collected)
+NOT COLLECTED tests/test_api.py::test_round_trip
+    tests/test_api.py:20: unsupported test decorator
 NOT COMPILED tests/test_api.py::test_rejects_text[one]
-    tests/test_api.py:20 [generated test_api.py:19]: error: expected int, got str
+    tests/test_api.py:31 [generated test_api.py:19]: error: expected int, got str
 ```
 
-An import statement of a test module that the compiler cannot make is left out in
-the same way: `import pickle`, for a module Pystachy does not have, or the one name
-of `from functools import reduce, total_ordering` that its module lacks. The tests
-that use the name are then rejected for it and left out in their turn, with both
-diagnostics; the rest of the module runs. The statement is printed as
-`NOT IMPORTED` and listed in the JSON's `unimported`.
-
-Such a run exits with 2, never 0: pytest ran cases, or an import, that the program
-does not have. Its `qualification` is `partly-compiled` when everything that
-compiled matches pytest, and a test that needed the side effects of something left
-out shows as a `MISMATCH`. An error that neither a test nor such an import explains
-fails the build as before: a module's other statements, a fixture, a helper that no
-call leads to from a test, a `conftest.py`, or the package under test. So does a
-test named by a node ID. No test runs twice, because a program whose build fails
-has not started.
+Such a run exits with 2, never 0: pytest ran tests, or an import, that the program
+does not have. Its `qualification` is `partial` when everything the program has
+matches pytest; each case pytest ran of a test left out is a `MISMATCH` line with
+pytest's outcome, and so is a test that needed the side effects of something left
+out. What is rejected elsewhere still rejects the module or fails the build: a
+module's other statements, star imports, an autouse fixture, a `conftest.py`'s
+imports and hooks, a fixture or a helper that the compiler rejects and no call
+leads to from a test, or the package under test. So does a test named by a node ID.
 
 `--root` defaults to the current directory, and selected files must be inside it.
 Tests may be in several directories and in packages. The generated program mirrors
@@ -358,7 +372,9 @@ This hosted tool currently targets Linux and macOS.
 - Explicit per-source dynamic `Any` opt-in for supported open payloads. The runner
   itself stores metadata, statuses and exceptions in concrete types.
 
-Unsupported source forms detected by the collector are errors, never implicit skips.
+Unsupported source forms detected by the collector are errors, never implicit skips:
+a test with one is [left out and reported](#run-a-suite), which fails the run, and
+anywhere else the form rejects its module.
 Imported fixtures are unsupported; the default oracle checks their observable
 collection and phase effects. The collector rejects test classes with `__init__`,
 several base classes or a base class it cannot read, async/generator tests,
@@ -410,9 +426,9 @@ and call, which the comparison includes, and a failed one fails the run as in
 pytest. Missing cases, missing call phases, duplicate events, interrupted runs,
 malformed reports and disagreement with process status are execution errors.
 Test stdout cannot impersonate the report protocol. Exit codes are 0 for success,
-1 for test failures, 2 for collection/build/execution/oracle errors and for cases
-or imports [left out](#run-a-suite) because they do not compile, and 5 for no
-tests. A matching intentionally failing suite still returns 1.
+1 for test failures, 2 for collection/build/execution/oracle errors and for tests
+or imports [left out](#run-a-suite) because the collector or the compiler rejects
+them, and 5 for no tests. A matching intentionally failing suite still returns 1.
 
 ```sh
 make test-pytest-native
