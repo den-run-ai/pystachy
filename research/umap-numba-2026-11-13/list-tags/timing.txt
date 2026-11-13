@@ -1,0 +1,12 @@
+umap_core wall   main  median 8.713s  range 8.422-8.792  paired/main 1.000  faster 0/5
+umap_core wall   tbaa  median 8.381s  range 8.070-8.730  paired/main 0.984  faster 5/5
+umap_core wall   powg  median 8.200s  range 7.873-8.309  paired/main 0.937  faster 5/5
+umap_core wall   combo median 8.119s  range 8.033-8.389  paired/main 0.936  faster 5/5
+umap_core layout main  median 5.259s  range 5.049-5.333  paired/main 1.000  faster 0/5
+umap_core layout tbaa  median 5.245s  range 4.983-5.429  paired/main 1.018  faster 2/5
+umap_core layout powg  median 4.786s  range 4.722-4.851  paired/main 0.910  faster 5/5
+umap_core layout combo median 4.790s  range 4.758-5.075  paired/main 0.921  faster 4/5
+nbody wall   main  median 0.038s  range 0.037-0.047  paired/main 1.000  faster 0/7
+nbody wall   tbaa  median 0.036s  range 0.035-0.040  paired/main 0.962  faster 6/7
+scatter wall   main  median 0.067s  range 0.066-0.071  paired/main 1.000  faster 0/7
+scatter wall   tbaa  median 0.063s  range 0.062-0.070  paired/main 0.945  faster 5/7

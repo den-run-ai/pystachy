@@ -1,0 +1,15 @@
+dictcount main 1276382253 tbaa 1276387252 change +0.00% output same
+dictkeys main 1371489710 tbaa 1366279762 change -0.38% output same
+dictlookup main 2261884914 tbaa 2261884914 change +0.00% output same
+fib main 597515134 tbaa 597515134 change +0.00% output same
+itertools_loops main 1869249792 tbaa 1856732287 change -0.67% output same
+list_reads main 1033341 tbaa 994817 change -3.73% output same
+listindex main 50447232 tbaa 50447233 change +0.00% output same
+mandel main 268873200 tbaa 268873200 change +0.00% output same
+memo main 1197177295 tbaa 1197177295 change +0.00% output same
+nbody main 422322559 tbaa 413322569 change -2.13% output same
+optional_scalars main 1473605 tbaa 1473607 change +0.00% output same
+setdisplay main 1705582454 tbaa 1705582523 change +0.00% output same
+sieve main 401263934 tbaa 401263922 change -0.00% output same
+spectral main 240860642 tbaa 240810562 change -0.02% output same
+words main 483265339 tbaa 482065339 change -0.25% output same
