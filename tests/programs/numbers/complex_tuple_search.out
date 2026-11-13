@@ -1,0 +1,6 @@
+True True True True True True
+True True False False False False
+2 2 0 2 1 True False
+True 1 1 False (1+0j)
+ValueError tuple.index(x): x not in tuple
+[exit 0]
