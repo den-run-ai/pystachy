@@ -252,7 +252,7 @@ multiple iterable arguments where CPython's do.
 The common `str`, `list`, `dict` and `tuple` methods are implemented, including:
 
 - `find`, `index` and `count` with start and end bounds, including `None`.
-- `startswith` and `endswith`, including a tuple of strings.
+- `startswith` and `endswith`, including a tuple of strings of fixed or run-time length (`tuple[str, ...]`).
 - `split`, `rsplit`, `partition`, `rpartition`, `splitlines`, `removeprefix` and `removesuffix`.
 - `replace` with a count, also given as `count=`.
 - `center`, `ljust` and `rjust` with a fill character; `zfill`, `expandtabs`, `capitalize`,

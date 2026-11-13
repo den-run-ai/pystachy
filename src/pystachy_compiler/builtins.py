@@ -2804,7 +2804,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 # index's later bounds may call back and rebind the query's source.
                 if m == "index" and v.idslot != "":
                     idquery.idfrom = self.dyn_id_box(v).v
-            if (base == "str" or base == "bytes") and (m == "startswith" or m == "endswith") and i == 0 and (is_tuple(unopt(v.t)) or v.t in self.nts):
+            if (base == "str" or base == "bytes") and (m == "startswith" or m == "endswith") and i == 0 and (is_tuple(unopt(v.t)) or is_vtuple(unopt(v.t)) or v.t in self.nts):
                 v = self.ntup(v)  # (a NamedTuple: the tuple of its fields, None if it is None)
                 for x in targs(unopt(v.t)):
                     if x != base and x != f"opt[{base}]":
