@@ -1,0 +1,4 @@
+<Field "a"> <Parameter "b">
+NotImplementedError: inspect: replace() of an object of a subclass of Parameter is not supported
+NotImplementedError: inspect: replace() of an object of a subclass of Signature is not supported
+[exit 0]

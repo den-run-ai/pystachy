@@ -1,0 +1,4 @@
+c Color.RED True
+NotImplementedError: inspect: an enum class as an annotation is not supported
+NotImplementedError: inspect: an enum class as an annotation is not supported
+[exit 1]
