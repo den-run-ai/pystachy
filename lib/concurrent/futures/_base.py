@@ -12,13 +12,15 @@
 __author__ = 'Brian Quinlan (brian@sweetapp.com)'
 
 import collections
-# Pystachy port: no logging (LOGGER, below) and no threading (the note above); sys and traceback
-# report a callback's exception, and Callable and Self type a future's callbacks
+# Pystachy port: no logging (LOGGER, below), no threading (the note above) and no types (Future
+# is a Generic class); sys and traceback report a callback's exception, and typing's names
+# type Future
 import sys
 import time
 import traceback
 from typing import Callable, Generic, Self, TypeVar
 
+# Pystachy port: the type of a future's result (see Future)
 _T = TypeVar("_T")
 
 FIRST_COMPLETED = 'FIRST_COMPLETED'
@@ -57,6 +59,11 @@ _STATE_TO_DESCRIPTION_MAP = {
 # writes it for a program that configures no logging: the message, then the exception
 def _log_exception(msg: str, exc: BaseException) -> None:
     sys.stderr.write(msg + "\n" + "".join(traceback.format_exception(exc)))
+
+# Pystachy port: the number that a future's repr and messages show, where CPython's show id(): an
+# object's identity hash without its sign (the subset has id() of Any values only)
+def _id(o) -> int:
+    return hash(o) & 0xffffffffffff
 
 class Error(Exception):
     """Base class for all future-related exceptions."""
@@ -244,11 +251,9 @@ class Future(Generic[_T]):
                 _log_exception('exception calling callback for %r' % self, exc)
 
     def __repr__(self):
-        # Pystachy port: hash(self), an object's identity hash, where CPython shows id(self) (the
-        # subset has id() of Any values only). The states and their descriptions are written
+        # Pystachy port: _id(self) for id(self). The states and their descriptions are written
         # out, for FINISHED and _STATE_TO_DESCRIPTION_MAP[self._state]: this method is compiled
-        # where an annotation first names a Future[...], which may be before the module's code
-        # has assigned its globals
+        # where an annotation first names a Future[...], and reads no global there
         state = ("pending" if self._state == 'PENDING' else
                  "running" if self._state == 'RUNNING' else
                  "finished" if self._state == 'FINISHED' else "cancelled")
@@ -256,18 +261,18 @@ class Future(Generic[_T]):
             if self._exception:
                 return '<%s at %#x state=%s raised %s>' % (
                     self.__class__.__name__,
-                    hash(self),
+                    _id(self),
                     state,
                     self._exception.__class__.__name__)
             else:
                 return '<%s at %#x state=%s returned %s>' % (
                     self.__class__.__name__,
-                    hash(self),
+                    _id(self),
                     state,
                     self._result_type())
         return '<%s at %#x state=%s>' % (
                 self.__class__.__name__,
-                hash(self),
+                _id(self),
                state)
 
     # Pystachy port: the name of the result's class, of the tuple's item (see __init__)
@@ -440,7 +445,7 @@ class Future(Generic[_T]):
             return True
         else:
             # Pystachy port: (CPython also logs 'Future %s in unexpected state: %s' as critical)
-            sys.stderr.write('Future %s in unexpected state: %s\n' % (hash(self), self._state))
+            sys.stderr.write('Future %s in unexpected state: %s\n' % (_id(self), self._state))
             raise RuntimeError('Future in unexpected state')
 
     def set_result(self, result):
@@ -509,14 +514,21 @@ class Executor(object):
             # Pystachy port: (a closure's variables are assigned before its def)
             end_time = 0.0
 
-        # Pystachy port: zip(*iterables) is written out for one, two and three iterables (zip()
-        # takes no starred argument); map() with none or more is a compile-time error
-        if len(iterables) == 1:
+        # Pystachy port: zip(*iterables) is written out for up to four iterables (zip() takes no
+        # starred argument), for none as the list of no future that CPython's zip() gives; more
+        # iterables raise NotImplementedError, before any call
+        if len(iterables) == 0:
+            fs = [self.submit(fn) for _ in range(0)]
+        elif len(iterables) == 1:
             fs = [self.submit(fn, arg) for arg in iterables[0]]
         elif len(iterables) == 2:
             fs = [self.submit(fn, *args) for args in zip(iterables[0], iterables[1])]
-        else:
+        elif len(iterables) == 3:
             fs = [self.submit(fn, *args) for args in zip(iterables[0], iterables[1], iterables[2])]
+        elif len(iterables) == 4:
+            fs = [self.submit(fn, *args) for args in zip(iterables[0], iterables[1], iterables[2], iterables[3])]
+        else:
+            raise NotImplementedError("Executor.map() of more than four iterables is not supported")
 
         # Yield must be hidden in closure so that the futures are submitted
         # before the first iterator value is required.
