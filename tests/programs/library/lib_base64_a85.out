@@ -1,0 +1,82 @@
+b'' True True
+b'' True
+b'<~~>' True
+b'' 0 True
+b'Ac' True True
+b'Ac' True
+b'<~Ac~>' True
+b'AcMf2' 0 True
+b'Ao@' True True
+b'Ao@' True
+b'<~Ao@~>' True
+b'Ao@YL' 0 True
+b'AoDS' True True
+b'AoDS' True
+b'<~AoDS~>' True
+b'AoDSf' 0 True
+b'AoDTs' True True
+b'AoDTs' True
+b'<~AoDTs~>' True
+b'AoDTs' 0 True
+b'AoDTs@/' True True
+b'AoDTs@/' True
+b'<~AoDTs@/~>' True
+b'AoDTs@/p9-' 0 True
+b'AoDTs@<)' True True
+b'AoDTs@<)' True
+b'<~AoDTs@<)~>' True
+b'AoDTs@<)>J' 0 True
+b'z' True True
+b'z' True
+b'<~z~>' True
+b'z' 1 True
+b'+<VdL' True True
+b'y' True
+b'<~+<VdL~>' True
+b'+<VdL' 0 True
+b'z!!' True True
+b'z!!' True
+b'<~z!!~>' True
+b'zz' 2 True
+b's8W-!' True True
+b's8W-!' True
+b'<~s8W-!~>' True
+b's8W-!' 0 True
+b'!!*-\'"9eu7#RLhG$k3[W&.oNg\'GVB"(`=52*$$(B+<_pR,UFcb-n-Vr/1iJ-0JP==1c70M3&s#]4?Ykm5X@_(6q\'R884cEH9MJ8X:f1+h<)lt#=BSg3>[:ZC?t!MSA7]@cBPD3sCi+\'.E,fo>FEMbNG^4U^I!pHnJ:W<)KS>/9Ll%"IN/`jYOHG]iPa.Q$R$jD4S=Q7DTV8*TUnsrdW2ZetXKAY/Yd(L?[\'d?O\\@K2_]Y2%o^qmn*`5Ta:aN;TJbg"GZd*^:jeCE.%f\\,!5gtgiEi8N\\UjQ5OekiqBum-X60nF?)@o_%qPq"ad`r;HWp' True True
+b'!!*-\'"9eu7#RLhG$k3[W&.oNg\'GVB"(`=52*$$(B+<_pR,UFcb-n-Vr/1iJ-0JP==1c70M3&s#]4?Ykm5X@_(6q\'R884cEH9MJ8X:f1+h<)lt#=BSg3>[:ZC?t!MSA7]@cBPD3sCi+\'.E,fo>FEMbNG^4U^I!pHnJ:W<)KS>/9Ll%"IN/`jYOHG]iPa.Q$R$jD4S=Q7DTV8*TUnsrdW2ZetXKAY/Yd(L?[\'d?O\\@K2_]Y2%o^qmn*`5Ta:aN;TJbg"GZd*^:jeCE.%f\\,!5gtgiEi8N\\UjQ5OekiqBum-X60nF?)@o_%qPq"ad`r;HWp' True
+b'<~!!*-\'"9eu7#RLhG$k3[W&.oNg\'GVB"(`=52*$$(B+<_pR,UFcb-n-Vr/1iJ-0JP==1c70M3&s#]4?Ykm5X@_(6q\'R884cEH9MJ8X:f1+h<)lt#=BSg3>[:ZC?t!MSA7]@cBPD3sCi+\'.E,fo>FEMbNG^4U^I!pHnJ:W<)KS>/9Ll%"IN/`jYOHG]iPa.Q$R$jD4S=Q7DTV8*TUnsrdW2ZetXKAY/Yd(L?[\'d?O\\@K2_]Y2%o^qmn*`5Ta:aN;TJbg"GZd*^:jeCE.%f\\,!5gtgiEi8N\\UjQ5OekiqBum-X60nF?)@o_%qPq"ad`r;HWp~>' True
+b'!!*-\'"9eu7#RLhG$k3[W&.oNg\'GVB"(`=52*$$(B+<_pR,UFcb-n-Vr/1iJ-0JP==1c70M3&s#]4?Ykm5X@_(6q\'R884cEH9MJ8X:f1+h<)lt#=BSg3>[:ZC?t!MSA7]@cBPD3sCi+\'.E,fo>FEMbNG^4U^I!pHnJ:W<)KS>/9Ll%"IN/`jYOHG]iPa.Q$R$jD4S=Q7DTV8*TUnsrdW2ZetXKAY/Yd(L?[\'d?O\\@K2_]Y2%o^qmn*`5Ta:aN;TJbg"GZd*^:jeCE.%f\\,!5gtgiEi8N\\UjQ5OekiqBum-X60nF?)@o_%qPq"ad`r;HWp' 0 True
+b'!!!!' True True
+b'!!!!' True
+b'<~!!!!~>' True
+b'z' 1 True
+b'@:<SQ@:<SQ@3?[8+92BAz!!' True True
+b'@:<SQ@:<SQ@3?[8+92BAz!!' True
+b'<~@:<SQ@:<SQ@3?[8+92BAz!!~>' True
+b'@:<SQ@:<SQ@3?[8+92BAzz' 2 True
+-- wrapcol
+b'!\n!\n*\n-\n\'\n"\n9\ne\nu\n7\n#\nR\nL\nh\nG\n$\nk\n3\n[\nW\n&\n.\no\nN\ng\n\'\nG\nV\nB\n"\n'
+b'i\nJ-\n0J\nP=\n=1\nc7\n0M\n3&\ns#\n]\n~>'
+b'!!\n*-\n\'"\n9e\nu7\n#R\nLh\nG$\nk3\n[W\n&.\noN\ng\'\nGV\nB"\n(`\n=5\n2*\n$$\n(B\n'
+b'i\nJ-\n0J\nP=\n=1\nc7\n0M\n3&\ns#\n]\n~>'
+b'!!*-\'"9\neu7#RLh\nG$k3[W&\n.oNg\'GV\nB"(`=52\n*$$(B+<\n_pR,UFc\nb-n-'
+b'n-V\nr/1iJ-0\nJP==1c7\n0M3&s#]\n~>'
+b'!!*-\'"9eu7#RLhG$k3[W\n&.oNg\'GVB"(`=52*$$(B\n+<_pR,UFcb-n-Vr/1i'
+b'cb-n-Vr/1i\nJ-0JP==1c70M3&s#]~>'
+b'!!*-\'"9eu7#RLhG$k3[W&.oNg\'GVB"(`=52*$$(B+<_pR,UFcb-n-Vr/1iJ-'
+b'Fcb-n-Vr/1iJ-0JP==1c70M3&s#]~>'
+b'<~@\n:E^\n~>' b'<~\n~>'
+b'<~@:E\n_WAS,\nRg~>'
+-- decoding
+b'Hello World!' b'Hello World!' b'Hello World!'
+b'Hello ' b'Hello '
+ValueError b's8W-"' Ascii85 overflow
+ValueError b'87cURD]i,"Ebo80' Ascii85 encoded byte sequences must end with b'~>'
+ValueError b'abzcd' z inside Ascii85 5-tuple
+ValueError b'abycd' y inside Ascii85 5-tuple
+ValueError b'ab\x80' Non-Ascii85 digit found: 
+ValueError b'87 cU' Non-Ascii85 digit found:  
+ValueError b'vwxyz' Non-Ascii85 digit found: v
+ValueError b'y' Non-Ascii85 digit found: y
+ValueError b'<~~' Ascii85 encoded byte sequences must end with b'~>'
+[exit 0]

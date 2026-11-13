@@ -1,0 +1,63 @@
+b'' True True
+True True True
+b'' True True
+b'Zg==' True True
+True True True
+b'Zg==' True True
+b'Zm8=' True True
+True True True
+b'Zm8=' True True
+b'Zm9v' True True
+True True True
+b'Zm9v' True True
+b'Zm9vYg==' True True
+True True True
+b'Zm9vYg==' True True
+b'Zm9vYmE=' True True
+True True True
+b'Zm9vYmE=' True True
+b'Zm9vYmFy' True True
+True True True
+b'Zm9vYmFy' True True
+b'AP/+ECBoZWxsbw==' True True
+True True True
+b'AP_-ECBoZWxsbw==' True True
+b'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0+P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==' True True
+True True True
+b'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0BBQkNERUZHSElKS0xNTk9QUVJTVFVWV1hZWltcXV5fYGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6e3x9fn-AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmqq6ytrq-wsbKztLW2t7i5uru8vb6_wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t_g4eLj5OXm5-jp6uvs7e7v8PHy8_T19vf4-fr7_P3-_w==' True True
+-- altchars
+b'-_--' b'*$**'
+b'\xfb\xff\xbe' b'\xfb\xff\xbe' b'\xfb\xff\xbe'
+AssertionError b'abc'
+AssertionError b'abc'
+AssertionError b'a'
+AssertionError b'a'
+AssertionError b''
+AssertionError b''
+-- characters outside the alphabet
+b'hello' b'hello' b'hello'
+b'\xfb\xff\xbf' b'\xfb\xff\xbf'
+Error b'aGVsbG8' False Incorrect padding
+Error b'aGVsbG8' True Incorrect padding
+Error b'a' False Invalid base64-encoded string: number of data characters (1) cannot be 1 more than a multiple of 4
+Error b'a' True Invalid base64-encoded string: number of data characters (1) cannot be 1 more than a multiple of 4
+b'hello'
+Error b'aGVs!bG8=' True Only base64 data is allowed
+b'hello'
+Error b'aGVsbG8=\n' True Only base64 data is allowed
+Error b'=aGVsbG8' False Incorrect padding
+Error b'=aGVsbG8' True Leading padding not allowed
+b'hello'
+Error b'aGVsbG8==' True Excess padding not allowed
+Error b'aGVsbG8=aGVsbG8=' False Incorrect padding
+Error b'aGVsbG8=aGVsbG8=' True Excess data after padding
+Error b'aGk=aGk=' False Incorrect padding
+Error b'aGk=aGk=' True Excess data after padding
+ValueError string argument should contain only ASCII characters
+ValueError string argument should contain only ASCII characters
+ValueError string argument should contain only ASCII characters
+ValueError string argument should contain only ASCII characters
+ValueError string argument should contain only ASCII characters
+ValueError string argument should contain only ASCII characters
+True
+[exit 0]

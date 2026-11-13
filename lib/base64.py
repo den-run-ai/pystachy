@@ -142,8 +142,28 @@ def urlsafe_b64decode(s) -> bytes:  # Pystachy port: annotated
 
 
 # Base32 encoding/decoding must be done in Python
-# Pystachy port: the four functions below carry their docstrings, which CPython formats from
-# three templates and assigns to __doc__ (a function's attributes cannot be assigned)
+_B32_ENCODE_DOCSTRING = '''
+Encode the bytes-like objects using {encoding} and return a bytes object.
+'''
+_B32_DECODE_DOCSTRING = '''
+Decode the {encoding} encoded bytes-like object or ASCII string s.
+
+Optional casefold is a flag specifying whether a lowercase alphabet is
+acceptable as input.  For security purposes, the default is False.
+{extra_args}
+The result is returned as a bytes object.  A binascii.Error is raised if
+the input is incorrectly padded or if there are non-alphabet
+characters present in the input.
+'''
+_B32_DECODE_MAP01_DOCSTRING = '''
+RFC 4648 allows for optional mapping of the digit 0 (zero) to the
+letter O (oh), and for optional mapping of the digit 1 (one) to
+either the letter I (eye) or letter L (el).  The optional argument
+map01 when not None, specifies which letter the digit 1 should be
+mapped to (when map01 is not None, the digit 0 is always mapped to
+the letter O).  For security purposes the default is None, so that
+0 and 1 are not allowed in the input.
+'''
 _b32alphabet = b'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
 _b32hexalphabet = b'0123456789ABCDEFGHIJKLMNOPQRSTUV'
 _b32tab2: dict[bytes, list[bytes]] = {}  # Pystachy port: annotated
@@ -237,51 +257,23 @@ def _b32decode(alphabet: bytes, s, casefold: bool = False, map01=None) -> bytes:
 
 
 def b32encode(s: bytes) -> bytes:  # Pystachy port: annotated
-    '''
-Encode the bytes-like objects using base32 and return a bytes object.
-'''
     return _b32encode(_b32alphabet, s)
+b32encode.__doc__ = _B32_ENCODE_DOCSTRING.format(encoding='base32')
 
 def b32decode(s, casefold: bool = False, map01=None) -> bytes:  # Pystachy port: annotated
-    '''
-Decode the base32 encoded bytes-like object or ASCII string s.
-
-Optional casefold is a flag specifying whether a lowercase alphabet is
-acceptable as input.  For security purposes, the default is False.
-
-RFC 4648 allows for optional mapping of the digit 0 (zero) to the
-letter O (oh), and for optional mapping of the digit 1 (one) to
-either the letter I (eye) or letter L (el).  The optional argument
-map01 when not None, specifies which letter the digit 1 should be
-mapped to (when map01 is not None, the digit 0 is always mapped to
-the letter O).  For security purposes the default is None, so that
-0 and 1 are not allowed in the input.
-
-The result is returned as a bytes object.  A binascii.Error is raised if
-the input is incorrectly padded or if there are non-alphabet
-characters present in the input.
-'''
     return _b32decode(_b32alphabet, s, casefold, map01)
+b32decode.__doc__ = _B32_DECODE_DOCSTRING.format(encoding='base32',
+                                        extra_args=_B32_DECODE_MAP01_DOCSTRING)
 
 def b32hexencode(s: bytes) -> bytes:  # Pystachy port: annotated
-    '''
-Encode the bytes-like objects using base32hex and return a bytes object.
-'''
     return _b32encode(_b32hexalphabet, s)
+b32hexencode.__doc__ = _B32_ENCODE_DOCSTRING.format(encoding='base32hex')
 
 def b32hexdecode(s, casefold: bool = False) -> bytes:  # Pystachy port: annotated
-    '''
-Decode the base32hex encoded bytes-like object or ASCII string s.
-
-Optional casefold is a flag specifying whether a lowercase alphabet is
-acceptable as input.  For security purposes, the default is False.
-
-The result is returned as a bytes object.  A binascii.Error is raised if
-the input is incorrectly padded or if there are non-alphabet
-characters present in the input.
-'''
     # base32hex does not have the 01 mapping
     return _b32decode(_b32hexalphabet, s, casefold)
+b32hexdecode.__doc__ = _B32_DECODE_DOCSTRING.format(encoding='base32hex',
+                                                    extra_args='')
 
 
 # RFC 4648, Base 16 Alphabet specifies uppercase, but hexlify() returns

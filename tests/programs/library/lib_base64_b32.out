@@ -1,0 +1,51 @@
+b'' True True
+b'' True True
+b'MY======' True True
+b'CO======' True True
+b'MZXQ====' True True
+b'CPNG====' True True
+b'MZXW6===' True True
+b'CPNMU===' True True
+b'MZXW6YQ=' True True
+b'CPNMUOG=' True True
+b'MZXW6YTB' True True
+b'CPNMUOJ1' True True
+b'MZXW6YTBOI======' True True
+b'CPNMUOJ1E8======' True True
+b'AD774EBANBSWY3DP' True True
+b'03VVS410D1IMOR3F' True True
+b'AAAQEAYEAUDAOCAJBIFQYDIOB4IBCEQTCQKRMFYYDENBWHA5DYPSAIJCEMSCKJRHFAUSUKZMFUXC6MBRGIZTINJWG44DSOR3HQ6T4P2AIFBEGRCFIZDUQSKKJNGE2TSPKBIVEU2UKVLFOWCZLJNVYXK6L5QGCYTDMRSWMZ3INFVGW3DNNZXXA4LSON2HK5TXPB4XU634PV7H7AEBQKBYJBMGQ6EITCULRSGY5D4QSGJJHFEVS2LZRGM2TOOJ3HU7UCQ2FI5EUWTKPKFJVKV2ZLNOV6YLDMVTWS23NN5YXG5LXPF5X274BQOCYPCMLRWHZDE4VS6MZXHM7UGR2LJ5JVOW27MNTWW33TO55X7A4HROHZHF43T6R2PK5PWO33XP6DY7F47U6X3PP6HZ7L57Z7P674======' True True
+b'000G40O40K30E209185GO38E1S8124GJ2GAHC5OO34D1M70T3OFI08924CI2A9H750KIKAPC5KN2UC1H68PJ8D9M6SS3IEHR7GUJSFQ085146H258P3KGIAA9D64QJIFA18L4KQKALB5EM2PB9DLONAUBTG62OJ3CHIMCPR8D5L6MR3DDPNN0SBIEDQ7ATJNF1SNKURSFLV7V041GA1O91C6GU48J2KBHI6OT3SGI699754LIQBPH6CQJEE9R7KVK2GQ58T4KMJAFA59LALQPBDELUOB3CLJMIQRDDTON6TBNF5TNQVS1GE2OF2CBHM7P34SLIUCPN7CVK6HQB9T9LEMQVCDJMMRRJETTNV0S7HE7P75SRJUHQFATFMERRNFU3OV5SVKUNRFFU7PVBTVPVFUVS======' True True
+-- casefold and map01
+b'foo' b'fooba' b'foo'
+b'b\xdd\xad\xf3\xbe' b'b\x1d\xad\xf3\xbe' b'b\xdd\xad\xf3\xbe'
+AssertionError b'LL'
+AssertionError b''
+AssertionError b'IL'
+-- errors
+Error b'MZXW6' Incorrect padding
+Error hex b'MZXW6' Incorrect padding
+Error b'MZXW6==' Incorrect padding
+Error hex b'MZXW6==' Incorrect padding
+Error b'MZXW6=======' Incorrect padding
+Error hex b'MZXW6=======' Incorrect padding
+Error b'mzxw6===' Non-base32 digit found
+Error hex b'mzxw6===' Non-base32 digit found
+Error b'M1======' Non-base32 digit found
+b'\xb0'
+Error b'MZ=W6===' Non-base32 digit found
+Error hex b'MZ=W6===' Non-base32 digit found
+Error b'MZXW6Y==' Incorrect padding
+Error hex b'MZXW6Y==' Non-base32 digit found
+Error b'========' Incorrect padding
+Error hex b'========' Incorrect padding
+Error b'M=======' Incorrect padding
+Error hex b'M=======' Incorrect padding
+Error b'MZX=====' Incorrect padding
+Error hex b'MZX=====' Non-base32 digit found
+Error b'MZXW6Y=A' Non-base32 digit found
+Error hex b'MZXW6Y=A' Non-base32 digit found
+Error b'MZXW6YT!' Non-base32 digit found
+Error hex b'MZXW6YT!' Non-base32 digit found
+ValueError string argument should contain only ASCII characters
+[exit 0]
