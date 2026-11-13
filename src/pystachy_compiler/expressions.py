@@ -4768,9 +4768,12 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.complex_cmp(op, a, b)
     if (op == "==" or op == "!=") and (a.t == COMPLEXC) != (b.t == COMPLEXC):
         # a complex number and a value of a builtin type that no complex number equals (CPython
-        # compares them by identity)
+        # compares them by identity); None is the same object as a complex | None that holds it
         o = b.t if a.t == COMPLEXC else a.t
-        if o == "None" or o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
+        if o == "None":
+            c = a if a.t == COMPLEXC else b
+            return Val("false" if op == "==" else "true", "bool") if c.v in self.nn else self.ptr_cmp(op, c, Val("null", "None"))
+        if o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
             return Val("false" if op == "==" else "true", "bool")
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)

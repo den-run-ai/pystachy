@@ -1,0 +1,4 @@
+None None None
+(1+2j) (1+2j) {(1+2j): 'k'} True True ['3.0', '4.0']
+None None 1j
+[exit 0]
