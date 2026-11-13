@@ -68,6 +68,14 @@ private def parseNode (json : Json) : Except String Node := do
       fields json ["op", "dst", "src", "k", "next", "overflow"]
       return .addChecked (← nameField json "dst") (← nameField json "src")
         (← integer (← json.getObjVal? "k")) (← indexField json "next") (← indexField json "overflow")
+  | "add_reg" =>
+      fields json ["op", "dst", "x", "y", "next"]
+      return .addReg (← nameField json "dst") (← nameField json "x") (← nameField json "y")
+        (← indexField json "next")
+  | "add_checked_reg" =>
+      fields json ["op", "dst", "x", "y", "next", "overflow"]
+      return .addRegChecked (← nameField json "dst") (← nameField json "x") (← nameField json "y")
+        (← indexField json "next") (← indexField json "overflow")
   | "length" =>
       fields json ["op", "dst", "list", "next"]
       return .length (← nameField json "dst") (← nameField json "list") (← indexField json "next")
@@ -132,6 +140,7 @@ private def parseFact (json : Json) : Except String Fact := do
   | "ult" => arity 2; return .ult (← arg 1) (← arg 2)
   | "below" => arity 2; return .below (← arg 1) (← arg 2)
   | "off" => arity 3; return .off (← arg 1) (← arg 2) (← num 3)
+  | "sum" => arity 3; return .sum (← arg 1) (← arg 2) (← arg 3)
   | "le" => arity 3; return .le (← arg 1) (← arg 2) (← num 3)
   | "atMost" => arity 2; return .atMost (← arg 1) (← num 2)
   | "ne" => arity 2; return .ne (← arg 1) (← num 2)

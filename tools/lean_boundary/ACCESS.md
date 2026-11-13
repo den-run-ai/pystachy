@@ -46,8 +46,8 @@ by address, class and index. Each can change arbitrarily where the program may w
 list's length to at most 2^62 items, which no memory holds.
 
 Facts relate values: equality, signed and unsigned order, a lower and an upper bound by a
-constant, a difference bound `a + k ≤ b`, `0 ≤ i < n`, an exact offset, inequality to a
-constant, a list's length, a dict lookup's result or live entry, a field's value, and a fact
+constant, a difference bound `a + k ≤ b`, `0 ≤ i < n`, an exact offset, an exact sum of two
+values, inequality to a constant, a list's length, a dict lookup's result or live entry, a field's value, and a fact
 that marks a point no execution reaches. The certificate is an
 untrusted list of facts at each point. Each fact must survive the node before it or follow from
 the facts there, and from the facts listed before it, by one of fixed rules, each proved sound:
@@ -64,20 +64,30 @@ stop` and the index `j = i + c` chain to `j + 1 ≤ n`, which with `j ≥ 0` is 
 loop's test, `stop <= len(xs) + 1`, adds to a length, which with at most 2^62 items cannot wrap.
 Where the stop is a constant, the loop's test bounds `i` above, the test before it bounds the
 length below, and the first must lie under the second.
+Sums prove copies whose index adds a base `b` that no iteration changes (`data[bi + d]`). The
+tests before the loop give `b ≥ -start - c` and, through `t = stop + b`, a checked sum, `t + c ≤ n`;
+the copy's `j = b + i` is a plain sum, which gives the fact `j = b + i` only where `i < stop`,
+`t = stop + b` and lower bounds of `i` and `b` show it fits. Adding `b` to both sides of `i < stop`
+gives `j < t`, which chains to `j + c < n` as above, and the lower bounds add up to `j + c ≥ 0`.
+With a constant stop `k'`, the test computes `t = b + k'`, an offset, and the loop's test bounds
+`i` by `k' - 1`, which gives `j < t` the same way.
 Certificate inference retains the finite positive lower bounds requested by initial
 constants and negative offsets. Thus a loop starting at 1 and advancing by 2 keeps
 `i >= 1` at the join of its initial and later iterations. Each proposed weakening
 is checked by the existing Lean rule; an invalid start or descending induction
 still fails the access proof.
 
-The build checks 40 examples by kernel reduction: 13 shapes the compiler emits and 27
+The build checks 48 examples by kernel reduction: 15 shapes the compiler emits and 33
 corruptions that must fail: a signed test of a possibly negative index, a list write between a
 test and its read or in a range loop's body, a missing or weaker unpacking check, a starred
 tail's read at the length or past an offset that may wrap, a lookup's missing-key branch or an
 iteration's end, a dict write before an entry's reuse, an entry of one dict used with another, a
 reload across a write of another class's field or of the same field of any object, an unguarded
-join, facts assumed at entry or around a loop, and a guarded range loop's read past the test's
-offset, after a list write, or where the test failed. `Audit.lean` checks the theorem's axioms as
+join, facts assumed at entry or around a loop, a guarded range loop's read past the test's
+offset, after a list write, or where the test failed, and a base copy without its test of the
+base, with an unchecked sum of the stop and the base, with a loop that runs to its stop
+inclusive or stores its base, reached where the length test failed, or adding to the base less
+than the loop's constant stop. `Audit.lean` checks the theorem's axioms as
 for the payload checker.
 
 ## How IR reaches the model
@@ -97,9 +107,9 @@ The adapter reads the typed-after snapshot and emits a node for each operation:
   cells cannot borrow its equality facts. This relies on the closure environment's cell ABI.
 - `list.len`, and a word load at the address of a register the IR types as a native list (a
   `List` is `{len, cap, a}`), read a length. `num.cmp` and `int.ucmp` of ints, and `ptr.cmp`,
-  become tests of their branch or `check`. `scalar.bin` adds a constant; an `ovf` whose flag
-  only its block's terminator tests splits its block's rest into the path where the sum fits and
-  the path where it overflows.
+  become tests of their branch or `check`. `scalar.bin` adds a constant or two values; an `ovf`
+  of a constant or of two values whose flag only its block's terminator tests splits its block's
+  rest into the path where the sum fits and the path where it overflows.
 - `unpack_check(n, k)` continues only where `n == k`, and `unpack_ex_check(n, k)` only where
   `n >= k` (runtime.c raises `ValueError` otherwise). Lookups and iteration steps (`dict.find`,
   `dict.int_find_any`, `dict.next`, `set.next` and their kin, and a dict comparison's lookups,
