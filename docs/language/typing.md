@@ -788,7 +788,10 @@ a parameter or constructed field using another class template, an `Iterator[T]` 
 `Iterable[T]` parameter, or an `iter()` call. In a class that takes part in inheritance, a
 constructed field whose annotation, in the class body or at the store, is a type of its own
 (`deps: defaultdict[str, set[str]]`, then `self.deps = defaultdict(set)`) takes the object as
-that type rather than making the class a template. Calls whose fields have
+that type rather than making the class a template. So does a class that the `__init__` of a
+class in a hierarchy takes as a parameter (`Checker(errors: Errors)`), also through another
+such class: it is then compiled as an ordinary class, used or not, so each field its
+`__init__` assigns needs a type. Calls whose fields have
 the same types share a specialization: `Box(1)` and `Box(2)` share one, while `Box("s")`
 uses another. Methods compile when needed; non-template special methods compile when the
 specialization is created.

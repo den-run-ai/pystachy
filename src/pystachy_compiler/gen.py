@@ -1098,7 +1098,9 @@ from src.pystachy_compiler.program import (
     gen_template_fix as program_template_fix,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
+    gen_ann_classes as program_ann_classes,
     gen_fixed_ann as program_fixed_ann,
+    gen_init_param_classes as program_init_param_classes,
     gen_init_makes_tmpl as program_init_makes_tmpl,
     gen_objects as program_objects,
     gen_partly as program_partly,
@@ -3742,6 +3744,12 @@ class Gen:
 
     def fixed_ann(self, a: Node) -> bool:
         return program_fixed_ann(self, a)
+
+    def init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
+        program_init_param_classes(self, st, out)
+
+    def ann_classes(self, a: Node, out: dict[str, bool]) -> None:
+        program_ann_classes(self, a, out)
 
     def init_makes_tmpl(self, n: Node, me: str, fixed: dict[str, bool]) -> bool:
         return program_init_makes_tmpl(self, n, me, fixed)

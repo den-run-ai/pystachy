@@ -329,6 +329,25 @@ def gen_init_template(self, st: Node, hier: bool = False) -> bool:
                 return True  # (a field may hold an object of a class template: typed where the object is made)
     return False
 
+def gen_init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
+    # the program's classes that the annotations of the parameters of class statement st's own
+    # __init__ name (Box, Box | None, list[Box]; a string's where its text is such an expression
+    # of names as the program's classes have them)
+    for d in st.kids[0].kids:
+        if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
+            for p in d.kids[0].kids[1:]:
+                self.ann_classes(p.kids[0], out)
+
+def gen_ann_classes(self, a: Node, out: dict[str, bool]) -> None:
+    if a.kind == "str":
+        if a.s.replace("_", "a").replace(".", "a").replace("[", "a").replace("]", "a").replace(",", "a").replace("|", "a").replace(" ", "a").isalnum():
+            self.ann_classes(self.parse_expr(a.s), out)
+        return
+    if a.kind == "name" and a.s in self.classes:
+        out[a.s] = True
+    for k in a.kids:
+        self.ann_classes(k, out)
+
 def gen_fixed_ann(self, a: Node) -> bool:
     # does annotation a give a field a type of its own: no Any, object or class template (whose
     # specializations are types of their own, see tmpl_ann), as init_template requires of the
@@ -996,13 +1015,33 @@ def gen_program(self, mods: list[Mod]) -> str:
             tag += 1
             ci.tag = tag
     self.cm_exits()  # (decided while the class templates are classes too: see cm_exits)
+    # The classes for which a template is an error, as init_template's hier takes them: those of
+    # a hierarchy, and the classes that the __init__ of one of these takes as a parameter
+    # (Checker(errors: Errors)), which a template would make a template in turn. A program with
+    # such a parameter was rejected while its class stayed a template, so only programs that did
+    # not compile see the class compiled as an ordinary one, used or not
+    fixedcls: dict[str, bool] = {}
+    for ci in self.classes.values():
+        if ci.tag > 0:
+            fixedcls[ci.name] = True
+    grow = True
+    while grow:
+        grow = False
+        for ci in list(self.classes.values()):
+            if ci.name in fixedcls:
+                named: dict[str, bool] = {}
+                self.init_param_classes(ci.node, named)
+                for c in named:
+                    if c not in fixedcls and self.classes[c].exc == "":
+                        fixedcls[c] = True
+                        grow = True
     grow = True
     while grow:
         # the class templates: an __init__ parameter without an annotation, or with one that
         # names a class template (Holder(b: Box)), which then types nothing either
         grow = False
         for ci in self.classes.values():
-            if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node, ci.tag > 0):
+            if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node, ci.name in fixedcls):
                 self.tmpl[ci.name] = True
                 grow = True
     for ci in self.classes.values():
