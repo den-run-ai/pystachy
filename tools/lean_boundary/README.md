@@ -23,7 +23,7 @@ equivalence, exception semantics and LLVM lowering remain unproved.
 
 [REPORT.md](REPORT.md) gives every check's current counts over the whole test corpus and
 lists each function left unproved. `make lean-report` compiles each differential test program
-and deviation once, runs every check on it and rewrites that report; it took about 22
+and deviation once, runs every check on it and rewrites that report; it took about 11
 minutes with four processes. No CI job runs it. Run it after a change to typed IR, to a pass
 a check covers or to a checker, and commit the report when its counts change;
 `python3.13 tools/lean_report.py --status` says which of its inputs (compiler, checkers,
