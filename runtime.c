@@ -2491,7 +2491,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, V<e> counted tuple, S<e> set, F<e>
    frozenset, O<id> object of class number id: the program defines pys_obj_eq/cmp/repr, which dispatch on it. The id
-   has three digits or more (O007, O1234): a letter or the end of the descriptor follows it;
+   has three digits or more (O007, O1234): a letter, a '.' or the end of the descriptor follows it (a union
+   puts a '.', which skip consumes, after a member's descriptor that ends in an id: tags are digits);
    ?<e> None (null) or a value of <e>; E an exception (an Exc);
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
    R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
