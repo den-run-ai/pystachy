@@ -568,7 +568,7 @@ def import_name(call: Node) -> str:
     level = len(name) - len(name.lstrip("."))
     parts = name[level:].split(".")
     for x in parts + (package.split(".") if package != "" else []):
-        if x == "" or x in KEYWORDS or x[0].isdigit() or not all([c == "_" or (c.isascii() and c.isalnum()) for c in x]):
+        if x == "" or x in KEYWORDS or "0" <= x[0] <= "9" or not all([c == "_" or "A" <= c <= "Z" or "a" <= c <= "z" or "0" <= c <= "9" for c in x]):
             return ""  # (no name an import statement can write)
     if level == 0:
         return f"import {name} as"
