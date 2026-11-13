@@ -37,7 +37,8 @@ Here are some of the useful functions provided by this module:
 # source files for signature(), getmembers(), isfunction() and the others to ask, and a name this
 # module lacks is a compile-time error. The module opts in to dynamic Any (comment above) for a
 # parameter's default and annotation and a signature's return annotation, which are values of
-# whatever types the caller gives (docs/dynamic-any-boundaries.md).
+# whatever types the caller gives (docs/dynamic-any-boundaries.md). Parameters, returns and
+# fields are annotated throughout, which is not marked at each one.
 
 # This module is in the public domain.  No warranties.
 
@@ -197,6 +198,8 @@ class Parameter:
 
     __slots__ = ('_name', '_kind', '_default', '_annotation')
 
+    # Pystachy port: the members by their class, for CPython's module constants, and empty
+    # annotated (a class attribute's type is not inferred from a module variable)
     POSITIONAL_ONLY         = _ParameterKind.POSITIONAL_ONLY
     POSITIONAL_OR_KEYWORD   = _ParameterKind.POSITIONAL_OR_KEYWORD
     VAR_POSITIONAL          = _ParameterKind.VAR_POSITIONAL
@@ -253,6 +256,8 @@ class Parameter:
             raise ValueError('{!r} is not a valid parameter name'.format(text))
 
         self._name: str = text
+
+    # Pystachy port: no __reduce__() and __setstate__() (pickling is not supported)
 
     @property
     def name(self) -> str:
@@ -319,12 +324,15 @@ class Parameter:
 
         return formatted
 
+    # Pystachy port: no __replace__ = replace (a method has one name, and copy.replace() is not
+    # supported)
+
     def __repr__(self) -> str:
         return '<{} "{}">'.format(self.__class__.__name__, self)
 
     def __hash__(self) -> int:
-        # Pystachy port: the tuple of the four hashes (hash() takes no tuple that holds a kind or
-        # an Any value)
+        # Pystachy port: the tuple of the four hashes (hash() takes no tuple that holds an Any
+        # value)
         return hash((hash(self._name), hash(self._kind), hash(self._annotation),
                      hash(self._default)))
 
@@ -332,7 +340,7 @@ class Parameter:
         if self is other:
             return True
         if not isinstance(other, Parameter):
-            return False
+            return False  # Pystachy port: for NotImplemented, after which CPython answers False
         return (self._name == other._name and
                 self._kind == other._kind and
                 self._default == other._default and
@@ -366,9 +374,18 @@ class Signature:
         The annotation for the return type of the function if specified.
         If the function has no annotation for its return type, this
         attribute is set to `Signature.empty`.
+    * bind(*args, **kwargs) -> BoundArguments
+        Creates a mapping from positional and keyword arguments to
+        parameters.
+    * bind_partial(*args, **kwargs) -> BoundArguments
+        Creates a partial mapping from positional and keyword arguments
+        to parameters (simulating 'functools.partial' behavior.)
     """
 
     __slots__ = ('_return_annotation', '_parameters')
+
+    # Pystachy port: no _parameter_cls and _bound_arguments_cls (a class is no value, and there
+    # is no BoundArguments: bind() and bind_partial(), which the docstring lists, are left out)
 
     empty: _EmptyType = _empty
 
@@ -379,6 +396,8 @@ class Signature:
         objects and 'return_annotation'.  All arguments are optional.
         """
 
+        # Pystachy port: parameters is a list or None, where CPython takes any iterable, and
+        # params a dict, which keeps its keys' order as CPython's OrderedDict does
         params: dict[str, Parameter] = {}
         if parameters is not None:
             if __validate_parameters__:
@@ -390,6 +409,7 @@ class Signature:
                     name = param.name
 
                     if kind < top_kind:
+                        # Pystachy port: one expression (see Parameter.__init__())
                         msg = (
                             'wrong parameter order: {} parameter before {} '
                             'parameter'
@@ -423,6 +443,8 @@ class Signature:
         self._parameters: types.MappingProxyType[str, Parameter] = _proxy(params)
         self._return_annotation: Any = return_annotation
 
+    # Pystachy port: no from_callable() (a compiled function has no code object to read)
+
     @property
     def parameters(self) -> types.MappingProxyType[str, Parameter]:
         return self._parameters
@@ -439,7 +461,7 @@ class Signature:
         """
 
         if parameters is _VOID_PARAMETERS:
-            parameters = list(self.parameters.values())
+            parameters = list(self.parameters.values())  # Pystachy port: (a list, see __init__())
 
         if return_annotation is _void:
             return_annotation = self._return_annotation
@@ -451,6 +473,10 @@ class Signature:
         return Signature(parameters,
                          return_annotation=return_annotation)
 
+    # Pystachy port: no __replace__ = replace (see Parameter). CPython's _hash_basis() returns a
+    # tuple of the parameters that are not keyword-only, in order, the keyword-only ones by name
+    # and the return annotation; its first two items are these two methods' results, as a tuple
+    # of a list, a dict and an Any value has no type here
     def _positional(self) -> list[Parameter]:
         return [param for param in self.parameters.values()
                       if param.kind != _KEYWORD_ONLY]
@@ -460,6 +486,9 @@ class Signature:
                                   if param.kind == _KEYWORD_ONLY}
 
     def __hash__(self) -> int:
+        # Pystachy port: CPython hashes the basis with the keyword-only parameters as a
+        # frozenset. Here the others' hashes are folded in their order and the keyword-only
+        # ones' combined whatever their order, which agrees with __eq__() too
         h = hash(self._return_annotation)
         for param in self._positional():
             h = hash((h, hash(param)))
@@ -472,10 +501,14 @@ class Signature:
         if self is other:
             return True
         if not isinstance(other, Signature):
-            return False
+            return False  # Pystachy port: for NotImplemented (see Parameter.__eq__())
+        # Pystachy port: the basis item by item (see _positional())
         return (self._positional() == other._positional() and
                 self._keyword_only() == other._keyword_only() and
                 self._return_annotation == other._return_annotation)
+
+    # Pystachy port: no _bind(), bind() and bind_partial() (a call's arguments have fixed types
+    # here, which no BoundArguments holds), and no __reduce__() and __setstate__()
 
     def __repr__(self) -> str:
         return '<{} {}>'.format(self.__class__.__name__, self)

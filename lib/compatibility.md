@@ -1643,8 +1643,9 @@ others. A name the module lacks is a compile-time error
 - **The marker is an object.** `Parameter.empty`, `Signature.empty` and `inspect._empty` are one
   object of a private class, where CPython's is a class, as a class is no value here. `is` tells
   it from every default, `None` included, and its `repr()` is that of CPython's class
-  ([test](../tests/programs/library/lib_inspect_empty.py)); its type is not `type`, and calling
-  it is a compile-time error ([deviation](../tests/deviations/lib_inspect_empty_marker.py)).
+  ([test](../tests/programs/library/lib_inspect_empty.py)); its type is not `type`
+  ([deviation](../tests/deviations/lib_inspect_empty_marker.py)), and calling it is a
+  compile-time error ([error test](../tests/errors/library/lib_inspect_empty_call.py)).
 - **A kind is a member, not an int.** `Parameter("x", 1)` is a compile-time error, where CPython
   looks the member up ([error test](../tests/errors/library/lib_inspect_kind_int.py)), and the
   [limits of `IntEnum` members](#enum) apply: a parameter held as an `Any` value does not give
