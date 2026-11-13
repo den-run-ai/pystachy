@@ -1647,8 +1647,19 @@ Differences from CPython:
   provided: using one is a compile-time error
   ([error tests](../tests/errors/library/lib_importlib_metadata_entry_points.py)).
   `distributions()` takes no arguments.
-- The rest of `importlib` is not provided. Nothing imports a module at run time:
-  `import_module()`, `reload()` and `__import__()` are compile-time errors.
+- `importlib.import_module()` of a module that a string constant names is that module's
+  import statement, where the call is a statement of its own or the value a statement
+  assigns to one variable: `mod = import_module("a.b")` is `import a.b as mod`, run where the
+  call is, with its `ImportError` and the limits of an import statement in that place. A
+  relative name takes a constant package or `__package__`
+  ([test](../tests/programs/library/lib_importlib_import_module.py)). Nothing imports a
+  module at run time, so a name the program computes, and a call whose module is used as a
+  value (returned, passed on, or read inside a larger expression), is a compile-time error
+  where the call is compiled: a module that calls it so in a function the program never
+  calls still compiles
+  ([test](../tests/programs/library/lib_importlib_import_module_uncalled.py)).
+- The rest of `importlib` is not provided: `reload()` and `__import__()` are compile-time
+  errors.
 
 ### `warnings`
 
