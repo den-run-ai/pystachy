@@ -236,6 +236,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
     gen_dyn_xbody as dynamic_dyn_xbody,
+    gen_xdecline as dynamic_xdecline,
     gen_dyn_xhelper as dynamic_dyn_xhelper,
     gen_dyn_xmethod as dynamic_dyn_xmethod,
     gen_empty_ctor as dynamic_empty_ctor,
@@ -1981,6 +1982,9 @@ class Gen:
 
     def dyn_xhelper(self, c: str) -> None:
         return dynamic_dyn_xhelper(self, c)
+
+    def xdecline(self, method: FnInfo, after: bool) -> None:
+        return dynamic_xdecline(self, method, after)
 
     def dyn_xbody(self, c: str) -> None:
         return dynamic_dyn_xbody(self, c)
