@@ -263,7 +263,9 @@ def gen_assert_fails(self, n: Node) -> None:
 
 def gen_unnarrowed(self, bodies: list[list[Node]]) -> dict[str, str]:
     # a copy of narrowed without the names that the code of bodies binds or deletes: what
-    # holds wherever an exception may come from in them
+    # holds wherever an exception may come from in them. No attribute path's fact does (its key
+    # has a "."): what stored the attribute before the raise may be in a branch that ends there,
+    # whose stores the code after that branch does not follow (unions.py's path_undo)
     out: dict[str, str] = {}
     if len(self.narrowed) > 0:
         names: dict[str, bool] = {}
@@ -271,7 +273,7 @@ def gen_unnarrowed(self, bodies: list[list[Node]]) -> dict[str, str]:
             collect(b, names)
             deleted(b, names)
         for nm in self.narrowed:
-            if nm not in names:
+            if nm not in names and "." not in nm:
                 out[nm] = self.narrowed[nm]
     return out
 

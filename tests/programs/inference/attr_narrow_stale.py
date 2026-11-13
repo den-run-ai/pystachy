@@ -223,6 +223,59 @@ def message(e: Ref) -> str:
     return e.node.name()
 
 
+def raised(e: Ref, flag: bool) -> str:
+    if isinstance(e.value, int):
+        try:
+            if flag:
+                e.value = "raised"
+                raise ValueError("x")
+        except ValueError:
+            return f"{e.value}"
+    return "?"
+
+
+def returned(e: Ref, flag: bool, out: list[str]) -> str:
+    if isinstance(e.value, int):
+        try:
+            if flag:
+                e.value = "returned"
+                return "early"
+        finally:
+            out.append(f"{e.value}")
+    return "late"
+
+
+def broke(e: Ref, flag: bool) -> str:
+    if isinstance(e.value, int):
+        while True:
+            if flag:
+                e.value = "broke"
+                break
+            break
+        return f"{e.value}"
+    return "?"
+
+
+def continued(e: Ref) -> str:
+    out: list[str] = []
+    for i in range(2):
+        if isinstance(e.value, int):
+            if i == 0:
+                e.value = "continued"
+                continue
+        out.append(f"{e.value}")
+    return ",".join(out)
+
+
+def asserting(e: Ref) -> str:
+    if isinstance(e.node, Info) and isinstance(e.value, int):
+        try:
+            assert e.value > 100, str(e)
+        except AssertionError:
+            return f"{e.node.name()} {e.value}"
+    return "?"
+
+
 def branch(e: Ref, flag: bool) -> str:
     if isinstance(e.node, Info) and isinstance(e.value, int):
         if flag:
@@ -252,3 +305,6 @@ print(handler(fresh(), [1]))
 print(optional(fresh()))
 print(branch(fresh(), True), branch(fresh(), False))
 print(class_attribute(fresh()), message(fresh()))
+print(raised(fresh(), True), raised(fresh(), False), broke(fresh(), True), broke(fresh(), False))
+seen: list[str] = []
+print(returned(fresh(), True, seen), returned(fresh(), False, seen), seen, continued(fresh()), asserting(fresh()))

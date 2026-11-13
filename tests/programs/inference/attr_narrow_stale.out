@@ -18,4 +18,6 @@ caught var swapped
 None
 var swapped info 7
 all info
+raised ? broke 7
+early late ['returned', '7'] continued var swapped
 [exit 0]

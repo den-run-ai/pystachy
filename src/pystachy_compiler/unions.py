@@ -416,7 +416,10 @@ def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
 # - a loop, whose body runs again after what follows a read in it (path_void in forget).
 # Only fields are paths: a property's read is a call. An if statement's branches, a conditional
 # expression's arms and a failing assertion's message do not follow one another, so what one
-# does is taken back for the other (path_undo) and holds after them where it may have run.
+# does is taken back for the other (path_undo) and holds after them where it may have run. A
+# branch that ends in a raise, break or return is followed by other code of the function all the
+# same: an except clause or a finally block, which start with no fact (unnarrowed), and the code
+# after a loop, where every fact is void (loop).
 
 
 def gen_path_key(self, n: Node) -> str:
@@ -591,8 +594,8 @@ def gen_path_value(self, n: Node, key: str) -> Val:
 def gen_path_again(self, n: Node, key: str, v: Val) -> Val:
     # v, attribute path n's field read again where a fact, live before that read, has a value that
     # is not at hand (path_value): nothing has stored the attribute since the test, so it holds the value the
-    # test read, of the type it narrowed to, which the IR is told (a branch that cannot be
-    # taken, as a payload's read needs its tag's test: union_proof.py)
+    # test read, of the type it narrowed to, which the IR is told by a test of it (a payload's
+    # read needs its tag's test: union_proof.py)
     ps = self.narrowed[key].split("\t")
     born = int(ps[3])
     nt = ps[0]
@@ -609,12 +612,9 @@ def gen_path_again(self, n: Node, key: str, v: Val) -> Val:
         ok = self.ptr_cmp('!=', v, Val('null', 'None')).v
     else:
         return v  # (a narrower union, or None: as the field's type here)
-    good = self.label()
-    bad = self.label()
-    self.cbr(ok, good, bad)
-    self.place(bad)
-    self.unreachable()
-    self.place(good)
+    # (no code reaches the failing branch while path_live is right; it is an error, not an
+    # unreachable, so that a mistake there cannot read one type's payload as another's)
+    self.guard(self.scalar('xor', [Val(ok, 'bool'), Val('true', 'bool')]), "SystemError: an attribute that a test narrowed changed before this read")
     return self.narrow_val(v, nt)
 
 def gen_narrows_path(self, n: Node, test: str, c: Node, truth: bool, out: dict[str, str]) -> None:

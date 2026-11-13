@@ -451,6 +451,9 @@ def gen_loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
     self.branch += 1
     self.stmts(body)
     self.branch -= 1
+    # (what follows the loop also follows its breaks, which may end branches whose stores of
+    # an attribute the code after those branches does not follow: unions.py's path_undo)
+    self.path_void()
     self.wdepth.pop()
     self.loops.pop()
     r = self.brks.pop()
