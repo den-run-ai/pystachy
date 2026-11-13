@@ -1,0 +1,107 @@
+{
+  "base": "63e4e52d",
+  "candidate": "c2da5cff",
+  "review": "Static raw-IR/source adjudication; no compilation or native execution performed in this review.",
+  "raw_evidence_unchanged": true,
+  "common_findings": [
+    "No added class .def load guards in these ten cases (counts by exact global symbol unchanged).",
+    "No unresolved direct calls in candidate IR. The only broad-token unmatched symbols were @list/@slot occurring in metadata strings, not linker references.",
+    "Removed definition/call sites follow the newly lazy imported-specialmethod reachability, with associated constructor/helper discovery renumbering.",
+    "No strengthened allocation attributes found. Drops in allockind/pys_new occur with removed unused Counter constructors in cases01404 and01411.",
+    "All retained candidate function bodies match baseline bodies after explicit generated-symbol identity mapping and exact string/recursive-metadata expansion. This is a supplementary explanation only; raw oracle evidence was not changed."
+  ],
+  "blockers": [],
+  "cases": [
+    {
+      "id": "00117",
+      "case": "dataclass_factory_order.py",
+      "explanation": "Deferred imported deque methods remove uncalled bool/copy/repr/reversed helpers and the list-input constructor used only by those helpers. The empty-input constructor changes from __init__.2 to __init__.1 and Queue.pending.factory calls the matching body. String deque specialization renumbers 3 to 2; call sites and iterator methods follow. Dataclass field/default-factory call ordering and method sizes are unchanged.",
+      "baseDefinitions": 61,
+      "candidateDefinitions": 48
+    },
+    {
+      "id": "00121",
+      "case": "dataclass_generic_field.py",
+      "explanation": "Uncalled deque bool/copy/len/reversed and associated copy/list-input constructor are no longer emitted. Empty-input constructor changes __init__.2 to __init__.1; Queue.values.factory follows it. The two fresh queues, extension, popleft and repr paths remain emitted.",
+      "baseDefinitions": 22,
+      "candidateDefinitions": 16
+    },
+    {
+      "id": "00695",
+      "case": "import_builtin_submodule.py",
+      "explanation": "String-deque constructors for list input and string input exchange __init__.1/__init__.2; main's string call and mods.abcuse.queue's list call switch consistently. Int deque specialization changes 3 to 2. Only uncalled string-deque bool/copy/len/reversed methods disappear; imports and initialization remain.",
+      "baseDefinitions": 46,
+      "candidateDefinitions": 41
+    },
+    {
+      "id": "01401",
+      "case": "lib_collections.py",
+      "explanation": "Deque specialization indices shift 5->4, 7->6 and 13->12 as eager annotation-time discovery is removed. Two uncalled deque-1 methods (__copy__, __reversed__) disappear; retained same-symbol method lengths are unchanged.",
+      "baseDefinitions": 111,
+      "candidateDefinitions": 109
+    },
+    {
+      "id": "01402",
+      "case": "lib_collections_constructors.py",
+      "explanation": "Deque specialization indices shift 3->2 and 12->11. Deque-1 constructor instance numbering permutes across list, tuple, range and empty-tuple inputs with corresponding call sites. Four unused bool/copy/reversed helpers disappear.",
+      "baseDefinitions": 61,
+      "candidateDefinitions": 57
+    },
+    {
+      "id": "01403",
+      "case": "lib_collections_counter.py",
+      "explanation": "Counter specializations shift 8->6,15->13,22->20. Constructor/update/_count_elements template instances reorder with their call sites. Total definitions, IR line count, runtime-call inventory and allocation-attribute counts remain unchanged.",
+      "baseDefinitions": 195,
+      "candidateDefinitions": 195,
+      "identityClosure": {
+        "exact_matches": 195,
+        "distinct_candidate_targets": 195,
+        "candidate_functions": 195,
+        "remaining": []
+      },
+      "identityEvidence": "closed-calls-01403.json"
+    },
+    {
+      "id": "01404",
+      "case": "lib_collections_defaultdict.py",
+      "explanation": "Deferred unused imported Counter/OrderedDict/defaultdict methods and transitively required helper instances disappear (30 definitions net). Remaining specialization and update/factory-repr instance numbers reorder. One pys_new/allockind site disappears with an unused Counter constructor; main retains all five allocation-attribute sites. Exact body/callee-graph matching accounts for all 442 candidate bodies; baseline-only material comprises 28 dead methods and two orphan duplicate counting helper instances.",
+      "baseDefinitions": 472,
+      "candidateDefinitions": 442,
+      "identityClosure": {
+        "exact_matches": 442,
+        "distinct_candidate_targets": 442,
+        "candidate_functions": 442,
+        "remaining": []
+      },
+      "identityEvidence": "closed-calls-01404.json"
+    },
+    {
+      "id": "01410",
+      "case": "lib_collections_operands.py",
+      "explanation": "Fifteen unused implicit special methods across annotation-created Counter, OrderedDict, defaultdict and deque disappear. Defaultdict constructor and shared update/count/factory-repr instance numbers reorder. All eight allocation-attribute sites remain in the same method families.",
+      "baseDefinitions": 189,
+      "candidateDefinitions": 174
+    },
+    {
+      "id": "01411",
+      "case": "lib_collections_ordereddict.py",
+      "explanation": "Unused Counter/defaultdict methods and transitively required counting helpers disappear (18 definitions net); retained Counter4->2/defaultdict4->3 specializations and generic helpers renumber. One unused Counter constructor's pys_new/allockind site disappears; seven main allocation sites and OrderedDict union sites remain. Exact body/callee-graph matching maps 185 baseline bodies onto all 183 candidate bodies; 16 dead methods and two merged duplicate helper instances explain the net decrease.",
+      "baseDefinitions": 201,
+      "candidateDefinitions": 183,
+      "identityClosure": {
+        "exact_matches": 185,
+        "distinct_candidate_targets": 183,
+        "candidate_functions": 183,
+        "remaining": []
+      },
+      "identityEvidence": "closed-calls-01411.json"
+    },
+    {
+      "id": "01719",
+      "case": "python_int_counter.py",
+      "explanation": "Only uncalled Counter.__reversed__ disappears (one definition and its list allocation); other changes are referenced string/function/TBAA ordering. The promoting-integer operations and all nine allocation-attribute sites remain.",
+      "baseDefinitions": 61,
+      "candidateDefinitions": 60
+    }
+  ]
+}

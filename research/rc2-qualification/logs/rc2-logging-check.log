@@ -1,0 +1,5 @@
+| Benchmark | Arguments | CPython | JIT | AOT | CPython/AOT | CPython timed | JIT timed | AOT timed | AOT build |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `logging` | 32 | 0.024 | 3.420 | 0.007 | 3.5x | 0.0032 | 0.0021 | 0.0017 | 12.4 |
+Raw report: /workspace/scratch/2446eb38e476/rc2-logging-check.json
+Largest spread of wall times: 0% (logging jit); least CPU time of a process's wall time: 96% (logging aot)

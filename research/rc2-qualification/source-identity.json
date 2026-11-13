@@ -1,0 +1,19 @@
+{
+  "baseline": {
+    "commit": "63e4e52d298ab21ece81d99aef60b5d4bf0ee764",
+    "tree": "2b06c58a6fe0b41b6240190e750add7bb3c85237"
+  },
+  "local_candidate": {
+    "commit": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+    "tree": "1281c9b2b04f4134c9bb6a3046e6d1d80907ceff"
+  },
+  "pr_1419_synthetic_merge": {
+    "commit": "4244685db375a013d53aa1f9a21d69283ab33ecd",
+    "tree": "1281c9b2b04f4134c9bb6a3046e6d1d80907ceff"
+  },
+  "merged_main": {
+    "commit": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+    "tree": "1281c9b2b04f4134c9bb6a3046e6d1d80907ceff"
+  },
+  "verification": "git show -s --format=%H\\ %T for the candidate, synthetic merge and merged-main commits returned the same tree. Local tests in this package ran on the candidate commit; exact-main post-merge gates were still running when this snapshot was prepared."
+}

@@ -1,0 +1,54 @@
+{
+  "corpus_count": 4493,
+  "cwd": "/workspace/scratch/2446eb38e476/pystachy",
+  "environment": {
+    "LC_ALL": "C",
+    "PYSTACHY_IRCHECK": "1",
+    "PYSTACHY_JOBS": "1",
+    "PYSTACHY_LLVM": "/workspace/scratch/2446eb38e476/toolchain/llvm18/usr/lib/llvm-18/bin"
+  },
+  "inventory_sha256": "cfcf64b74d62ab5c5f418892e82b373276e956b92227b3cf1db8a3e52b6a6b4a",
+  "machine": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "normalization": {
+    "base_prefix": "/workspace/scratch/2446eb38e476/baseline",
+    "candidate_prefix": "/workspace/scratch/2446eb38e476/pystachy",
+    "operation": "base bytes.replace(exact_base_root, exact_candidate_root); candidate unchanged",
+    "other_normalizations": [],
+    "prefix_bytes": 40
+  },
+  "raw_retention": "stdout/stderr/IR plus fixture files for every raw difference or infrastructure error",
+  "script_sha256": "6542b94b796be5e0b55156869485e90068a01f1bea5a755df5b773f84a48f494",
+  "source": {
+    "base": {
+      "binary": "/workspace/scratch/2446eb38e476/baseline/pystachy",
+      "binary_sha256": "ed60757fad3965317a7b1eaebeba8e832c3a9c57b6d3cd2151c97f017c03453c",
+      "binary_size": 6531648,
+      "commit": "63e4e52d298ab21ece81d99aef60b5d4bf0ee764",
+      "git_status": "",
+      "root": "/workspace/scratch/2446eb38e476/baseline",
+      "tree": "2b06c58a6fe0b41b6240190e750add7bb3c85237",
+      "version_status": 0,
+      "version_stderr": "",
+      "version_stdout": "pystachy v0.4.0-rc.2 (commit unknown)\n"
+    },
+    "candidate": {
+      "binary": "/workspace/scratch/2446eb38e476/pystachy/pystachy",
+      "binary_sha256": "d5193ac5c9e90a876947924c556f02c7d6f8fc08fbec3fe32005a081a48903fc",
+      "binary_size": 6581256,
+      "commit": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+      "git_status": "",
+      "root": "/workspace/scratch/2446eb38e476/pystachy",
+      "tree": "1281c9b2b04f4134c9bb6a3046e6d1d80907ceff",
+      "version_status": 0,
+      "version_stderr": "",
+      "version_stdout": "pystachy v0.4.0-rc.2 (commit unknown)\n"
+    }
+  },
+  "source_manifest_sha256": {
+    "base": "08cf09e4d634b0548014617c4b69d9097fc06a889765551978d0848daf59e4d7",
+    "candidate": "952f0ae9f0bc9b8227b59f9cb6d334eeea363ea3dae698ffbe06606608bd9626"
+  },
+  "started_utc": "2026-11-13T04:48:37Z",
+  "timeout_per_compiler_seconds": 180.0,
+  "workers": 2
+}

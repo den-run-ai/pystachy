@@ -1,0 +1,6 @@
+01498 removed ['m._weakref$ReferenceType-1.__hash__'] added [] changed 0
+01499 removed ['m._weakref$ReferenceType-1.__hash__'] added [] changed 0
+01500 removed ['m._weakref$ReferenceType-1.__hash__'] added [] changed 0
+01501 removed ['m._weakref$ReferenceType-1.__hash__'] added [] changed 0
+01502 removed ['m._weakref$ReferenceType-1.__hash__'] added [] changed 0
+02432 removed ['m._weakref$ReferenceType-1.__hash__'] added [] changed 0

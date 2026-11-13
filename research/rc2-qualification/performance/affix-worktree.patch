@@ -1,0 +1,209 @@
+diff --git a/docs/internals.md b/docs/internals.md
+index c4c59baab..d4d255b6b 100644
+--- a/docs/internals.md
++++ b/docs/internals.md
+@@ -165,7 +165,9 @@ header. Nearby indexed reads and bounded searches reuse a hint instead of rescan
+ prefix; this keeps the native lexer's sequential indexing practical for Unicode source.
+ Collection clears all hints before reclaiming memory, and in-place append invalidates the
+ changed string's hint. The cache retains no strings and adds no header fields; uncached or
+-widely separated non-ASCII indexing remains O(n).
++widely separated non-ASCII indexing remains O(n). `startswith()` and `endswith()` with start 0
++and an end at or past the byte length, as their defaults are, compare the whole string's bytes
++and count no code points ([#1301](https://github.com/den-run-ai/pystachy/issues/1301)).
+ 
+ Generic operations such as comparison, hashing, representation and sorting receive a compact
+ type descriptor. The runtime interprets nested container descriptors and calls generated helpers
+diff --git a/runtime.c b/runtime.c
+index a7b5e1904..37df9e5a6 100644
+--- a/runtime.c
++++ b/runtime.c
+@@ -1300,6 +1300,17 @@ static int text_bounds(Str *s, I *st, I *en) {
+   else if (*en < 0 && (*en += n) < 0) *en = 0;
+   return *st <= *en;   /* unlike slices, a start past the end does not match an empty needle */
+ }
++/* start 0 and an end at or past the byte length, which no code-point count exceeds: the whole
++   str, whose byte bounds text_bounds and text_offset would give too, without counting the code
++   points of a receiver that no operation has counted (s.upper().startswith("L"), #1301). The
++   other bounds take an out-of-line path, so that LLVM inlines a call with the default bounds
++   (0 and INT64_MAX), whose test then folds away */
++static int text_whole(Str *s, I st, I en) { return st == 0 && en >= s->len; }
++__attribute__((noinline)) static I text_tail(Str *s, Str *p, I st, I en, int end) {
++  if (!text_bounds(s, &st, &en)) return 0;
++  st = text_offset(s, st); en = text_offset(s, en);
++  return end ? pys_str_endswith(s, p, st, en) : pys_str_startswith(s, p, st, en);
++}
+ I pys_text_find(Str *s, Str *p, I st, I en) {
+   if (!text_bounds(s, &st, &en)) return -1;
+   I at = pys_str_find(s, p, text_offset(s, st), text_offset(s, en));
+@@ -1325,12 +1336,10 @@ I pys_text_count(Str *s, Str *p, I st, I en) {
+   return !p->len ? en - st + 1 : pys_str_count(s, p, text_offset(s, st), text_offset(s, en));
+ }
+ I pys_text_startswith(Str *s, Str *p, I st, I en) {
+-  if (!text_bounds(s, &st, &en)) return 0;
+-  return pys_str_startswith(s, p, text_offset(s, st), text_offset(s, en));
++  return text_whole(s, st, en) ? pys_str_startswith(s, p, 0, s->len) : text_tail(s, p, st, en, 0);
+ }
+ I pys_text_endswith(Str *s, Str *p, I st, I en) {
+-  if (!text_bounds(s, &st, &en)) return 0;
+-  return pys_str_endswith(s, p, text_offset(s, st), text_offset(s, en));
++  return text_whole(s, st, en) ? pys_str_endswith(s, p, 0, s->len) : text_tail(s, p, st, en, 1);
+ }
+ Str *pys_str_replace(Str *s, Str *a, Str *b);
+ Str *pys_str_replace_count(Str *s, Str *a, Str *b, I count);
+diff --git a/tests/programs/strings/str_affix_bounds.out b/tests/programs/strings/str_affix_bounds.out
+new file mode 100644
+index 000000000..66f2efe8c
+--- /dev/null
++++ b/tests/programs/strings/str_affix_bounds.out
+@@ -0,0 +1,120 @@
++'é中ab🦊' [(True, True), (True, False), (True, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 11 [(True, True), (True, False), (True, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 10 [(True, True), (True, False), (True, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 12 [(True, True), (True, False), (True, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 5 [(True, True), (True, False), (True, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 6 [(True, True), (True, False), (True, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (True, False), (True, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -1 [(True, True), (True, False), (True, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, True), (False, False), (False, False)]
++0 -9223372036854775808 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++1 11 [(True, True), (False, False), (False, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-1 11 [(True, True), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++5 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++11 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-9223372036854775808 9223372036854775807 [(True, True), (True, False), (True, False), (False, True), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++9223372036854775807 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++'straße' [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 7 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 6 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 8 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 6 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 7 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, True), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -9223372036854775808 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++1 7 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-1 7 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++6 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++7 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-9223372036854775808 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++9223372036854775807 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++'ÉCOLE' [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 6 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 5 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 7 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 5 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 6 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -9223372036854775808 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++1 6 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-1 6 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++5 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++6 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-9223372036854775808 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++9223372036854775807 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++'é' [(True, True), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 2 [(True, True), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 4 [(True, True), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 2 [(True, True), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -9223372036854775808 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++1 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-1 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++2 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++3 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-9223372036854775808 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++9223372036854775807 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++'x\x00y' [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, False), (False, True), (False, False), (False, False), (False, False)]
++0 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, False), (False, True), (False, False), (False, False), (False, False)]
++0 2 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False)]
++0 4 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, False), (False, True), (False, False), (False, False), (False, False)]
++0 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, False), (False, True), (False, False), (False, False), (False, False)]
++0 4 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, False), (False, True), (False, False), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, False), (False, True), (False, False), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False), (False, False)]
++0 -9223372036854775808 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++1 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False), (False, False)]
++-1 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++3 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++3 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-9223372036854775808 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, False), (False, True), (False, False), (False, False), (False, False)]
++9223372036854775807 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++'' [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -9223372036854775808 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++1 0 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-1 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-9223372036854775808 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++9223372036854775807 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++'ab' [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False)]
++0 2 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False)]
++0 1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False)]
++0 2 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False)]
++0 3 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False)]
++0 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False)]
++0 0 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -1 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++0 -9223372036854775808 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++1 2 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-1 2 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++2 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++2 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++-9223372036854775808 9223372036854775807 [(True, True), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (True, True), (False, False), (False, False)]
++9223372036854775807 9223372036854775807 [(False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False), (False, False)]
++[(True, True, True, False, True), (False, True, True, True, True), (False, True, True, False, False)]
++True True 3 🦊 2 False
++False False 2 é -1 True
++False False 1 b -1 False
++True True False False True
++True True False
++False True True
++[exit 0]
+diff --git a/tests/programs/strings/str_affix_bounds.py b/tests/programs/strings/str_affix_bounds.py
+new file mode 100644
+index 000000000..e0244d972
+--- /dev/null
++++ b/tests/programs/strings/str_affix_bounds.py
+@@ -0,0 +1,25 @@
++# str.startswith() and str.endswith() take the whole str for start 0 and an end at or past its
++# length in bytes, without counting the code points of a receiver that no operation has counted
++# yet (#1301); every other start and end counts them. The receivers come fresh from split() and
++# upper(), and are non-ASCII too: the ends tried are their byte and code-point lengths, between
++# them and past them, negative and out of range, and the start 0, past it and negative
++big = 9223372036854775807
++text = "é中ab🦊 straße ÉCOLE é x\0y  ab"
++needles = ["", "é", "é中", "ab🦊", "🦊", "é", "ß", "x\0", "\0y", "ab", "abc", "é中ab🦊!"]
++for w in text.split(" "):
++    # the defaults first, while nothing has counted w's code points
++    print(repr(w), [(w.startswith(p), w.endswith(p)) for p in needles])
++    n = len(w.encode())
++    m = len(w)
++    for start, end in [(0, n), (0, n - 1), (0, n + 1), (0, m), (0, m + 1), (0, big), (0, 0), (0, -1),
++                       (0, -big - 1), (1, n), (-1, n), (m, big), (n, big), (-big - 1, big), (big, big)]:
++        print(start, end, [(w.startswith(p, start, end), w.endswith(p, start, end)) for p in needles])
++# (upper() maps ASCII letters alone: docs/language/compatibility.md)
++up = [w.upper() + "é🦊" for w in "lorem ipsum ab".split(" ")]
++print([(u.startswith("LOREM"), u.endswith("🦊"), u.endswith("é🦊", 0, big), u.startswith("IPSUMé"), u.endswith("Mé🦊", 0, 7)) for u in up])
++# a fresh receiver that only a whole-str test has seen still counts, indexes and searches
++for w in "é中🦊 aé b".split(" "):
++    print(w.startswith("é"), w.endswith("🦊"), len(w), w[-1:], w.find("🦊"), w.endswith("é", 0, len(w)))
++print("".startswith(""), "".endswith("", 0, big), "".startswith("", 1), "".endswith("x"), "é".startswith("", 0, 2))
++print(("x" + "é中").startswith("xé", 0), ("é中" + "x").endswith("中x", 0, 6), ("é中" + "x").endswith("中x", 0, 2))
++print(("ab" * 3).startswith(("x", "ba"), 0, big), ("é" * 3).endswith(("x", "éé")), ("é" * 3).endswith(("éé",), 0, 3))

@@ -1,0 +1,4 @@
+/workspace/scratch/2446eb38e476/dev-env/bin/python -c 'import glob, py_compile as c; [c.compile(p, doraise=True, invalidation_mode=c.PycInvalidationMode.CHECKED_HASH) for p in ["pystachy.py"] + sorted(glob.glob("src/**/*.py", recursive=True))]'
+tests/run.sh "/workspace/scratch/2446eb38e476/dev-env/bin/python -m pystachy" "jit aot" tests/programs/generics/generic_signature_*.py tests/programs/generics/generic_return_repr_global.py tests/programs/generics/generic_annotations.py tests/programs/generics/generic_mod_default.py tests/programs/generators/gen_yield_union_payload.py tests/programs/strings/str_affix_bounds.py tests/errors/generics/generic_signature_repr_bad.py
+selected 14 cases
+27 passed, 0 failed

@@ -1,0 +1,3 @@
+tests/run.sh ./pystachy "jit aot" tests/programs/generics/*.py tests/errors/generics/*.py tests/programs/generators/*.py tests/programs/strings/*.py
+selected 334 cases
+556 passed, 0 failed

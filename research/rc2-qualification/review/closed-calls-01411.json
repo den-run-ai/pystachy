@@ -1,0 +1,53 @@
+{
+  "class_mapping": {
+    "collections$Counter-4": "collections$Counter-2",
+    "collections$defaultdict-4": "collections$defaultdict-3"
+  },
+  "function_mapping": {
+    "@f.collections$_factory_repr.1": "@f.collections$_factory_repr.4",
+    "@f.collections$_update.1": "@f.collections$_update.13",
+    "@m.collections$defaultdict-1.__init__.1": "@m.collections$defaultdict-1.__init__.2",
+    "@f.collections$_factory_repr.2": "@f.collections$_factory_repr.5",
+    "@f.collections$_update.2": "@f.collections$_update.1",
+    "@f.collections$_update.3": "@f.collections$_update.2",
+    "@f.collections$_update.4": "@f.collections$_update.3",
+    "@f.collections$_update.5": "@f.collections$_update.4",
+    "@f.collections$_update.6": "@f.collections$_update.5",
+    "@f.collections$_update.7": "@f.collections$_update.6",
+    "@f.collections$_update.8": "@f.collections$_update.7",
+    "@f.collections$_factory_repr.3": "@f.collections$_factory_repr.1",
+    "@f.collections$_update.9": "@f.collections$_update.8",
+    "@m.collections$defaultdict-1.__init__.2": "@m.collections$defaultdict-1.__init__.1",
+    "@f.collections$_update.10": "@f.collections$_update.9",
+    "@f.collections$_count.2": "@f.collections$_count.1",
+    "@f.collections$_count_elements.2": "@f.collections$_count_elements.1",
+    "@f.collections$_factory_repr.4": "@f.collections$_factory_repr.2",
+    "@f.collections$_update.11": "@f.collections$_update.10",
+    "@f.collections$_factory_repr.5": "@f.collections$_factory_repr.3",
+    "@f.collections$_update.12": "@f.collections$_update.11",
+    "@f.collections$_update.13": "@f.collections$_update.12"
+  },
+  "ambiguous": {
+    "@m.collections$Counter-1.__missing__": [],
+    "@m.collections$Counter-1.__len__": [],
+    "@m.collections$Counter-1.__iter__": [],
+    "@m.collections$Counter-1.__reversed__": [],
+    "@m.collections$Counter-1.most_common.1": [],
+    "@m.collections$Counter-1.__repr__": [],
+    "@m.collections$Counter-1.update.1": [],
+    "@m.collections$Counter-1.__init__.1": [],
+    "@m.collections$Counter-1.items.1": [],
+    "@m.collections$Counter-1.__setitem__.1": [],
+    "@m.collections$Counter-1.__pos__": [],
+    "@m.collections$Counter-1.__neg__": [],
+    "@m.collections$defaultdict-1.__len__": [],
+    "@m.collections$defaultdict-1.__iter__": [],
+    "@m.collections$defaultdict-1.__reversed__": [],
+    "@m.collections$defaultdict-1.__copy__": []
+  },
+  "remaining": [],
+  "baseline_functions": 201,
+  "candidate_functions": 183,
+  "exact_matches": 185,
+  "distinct_candidate_targets": 183
+}

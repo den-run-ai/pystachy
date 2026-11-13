@@ -1,0 +1,58 @@
+{
+  "source_before": "63e4e52d298ab21ece81d99aef60b5d4bf0ee764",
+  "source_after": "6c2b56fa",
+  "compiler": "CPython 3.13.16 hosted, LLVM18.1.3, AOT default O2",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "affinity": 0,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "samples_ms": {
+    "before": [
+      67.125786,
+      80.415583,
+      67.900253,
+      67.256409,
+      69.188721,
+      85.943877,
+      66.273024,
+      67.000751,
+      64.502332,
+      72.423459,
+      64.186895,
+      66.686526,
+      65.215899,
+      64.34573,
+      65.49382
+    ],
+    "after": [
+      62.210438,
+      64.400491,
+      61.973708,
+      65.484926,
+      60.322444,
+      63.841143,
+      64.310297,
+      61.88716,
+      62.223999,
+      61.769837,
+      61.042139,
+      61.579194,
+      62.688436,
+      64.459248,
+      64.692994
+    ]
+  },
+  "median_ms": {
+    "before": 67.000751,
+    "after": 62.223999
+  },
+  "speedup": 1.0767670364612856,
+  "time_reduction_pct": 7.129400683881881,
+  "gc_stats": {
+    "before": "gc: 2 collections, 3.9 ms; heap peak 59.1 MiB; live 19.5 MiB at the last",
+    "after": "gc: 2 collections, 4.0 ms; heap peak 59.1 MiB; live 19.5 MiB at the last"
+  },
+  "raw_program_ir_identical": true,
+  "output": "980 [(-34562, 'amet'), (-34435, 'ipsum'), (-34306, 'consectetur'), (-34279, 'sed'), (-34253, 'do')]\n39726 2588427\n",
+  "benchmark_sha256": "e17e9c90dbf278baf541801ad04800510e3df2b9dc16afa1f53040bc710e61b7",
+  "limits": "Single machine, 15 interleaved pairs pinned to one logical CPU. Measures subprocess launch plus AOT execution; no pre-667 baseline comparison and no full release qualification."
+}

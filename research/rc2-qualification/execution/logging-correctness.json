@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "status": "ok",
+  "settings": {
+    "compiler": "./pystachy",
+    "benchmarks": [
+      "logging"
+    ],
+    "runs": 1,
+    "smoke": false,
+    "census": null,
+    "timeout": 300.0,
+    "json": "/workspace/scratch/2446eb38e476/rc2-logging-check.json"
+  },
+  "metadata": {
+    "created_utc": "2026-11-13T04:57:05Z",
+    "git_revision": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+    "git_status": "",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "machine": "x86_64",
+    "cpu_count": 9,
+    "load_average": [
+      0.8623046875,
+      0.9189453125,
+      0.796875
+    ],
+    "host_python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "compiler_command": [
+      "/workspace/scratch/2446eb38e476/pystachy/pystachy"
+    ],
+    "compiler_binary_sha256": "d5193ac5c9e90a876947924c556f02c7d6f8fc08fbec3fe32005a081a48903fc",
+    "environment": {
+      "PYSTACHY_JOBS": "2",
+      "PYSTACHY_LLVM": "/workspace/scratch/2446eb38e476/toolchain/llvm18/usr/lib/llvm-18/bin",
+      "PYSTACHY_PROGRAM_CACHE": "0",
+      "PYTHONHASHSEED": "0"
+    },
+    "sources_sha256": {
+      "bench/pyperformance/barnes_hut.py": "e68bffb93b84c4fb44d50dd0de057af886533efc969a5ea9424c1feff381ac3d",
+      "bench/pyperformance/bm_logging.py": "7483fcc7fcb36dd943f3790a324c997c50616ae0334e478c6aaec87a59d0ad00",
+      "bench/pyperformance/bpe_tokeniser.py": "9775aff77bb52efc6fb9828517ead0584552b1cba5afe73ef4d93e13972ca7de",
+      "bench/pyperformance/chaos.py": "228afbb7b936034eb83a616fb8ef88a267653d55906af6bd2f0e117faa4fb702",
+      "bench/pyperformance/comprehensions.py": "77f56acb32f987707f6d75e4867d9aca0ccab8854b1d88f674318f1d53383862",
+      "bench/pyperformance/fannkuch.py": "42d906410ede9419d8f3eceda729b2027d78085f455a0fbb0445e081b53df2cf",
+      "bench/pyperformance/float.py": "cc19566e50f47bc26d78324475260ff9808509266b70fffeff0091d1144388d0",
+      "bench/pyperformance/generators.py": "4c5b29669136d4cf7d51f039253b0fd5a21f35d0dd068e2f35a06a889f8d997f",
+      "bench/pyperformance/go.py": "521cffbc4d15cdd93e0693230143aa274e4e190dd3e5f49cb45c9745565c5a13",
+      "bench/pyperformance/hexiom.py": "988d2adb90f8ab6a67180200436e93290fdb077e218b7339bb4ac7caf1cd2502",
+      "bench/pyperformance/json_dumps.py": "00d75868e820e56f2281e061583d418574b6dda96de180d3cf3adc76cff532c2",
+      "bench/pyperformance/json_loads.py": "51d23d4d8dcc3dea512988ae424988be6bf17d70e9e6d2a09d908799b3319c77",
+      "bench/pyperformance/meteor_contest.py": "876ffc333e293ab11d19298002da139b6ccf88dd50e3e92b9384d4485c3a7340",
+      "bench/pyperformance/nbody.py": "2ec9c9e9c36cf2e819dc1026debbb7f9f901410ae36032795d60057c9f447e30",
+      "bench/pyperformance/nqueens.py": "5ccc5d1f8724daf6550b870d8031120653eef6df0fa93bddeb7afaa5e28f4b53",
+      "bench/pyperformance/pidigits.py": "34bb25524dd905c804a8ad5179f649277eed24b59765bc68df5c8f4c93248c39",
+      "bench/pyperformance/raytrace.py": "e5f71075698d02ac3e91fe99bf43799905c03651be4a41ff574c99790f5d2213",
+      "bench/pyperformance/regex_dna.py": "8f02c6b44688f6c1e3a96bbd0155367f3bf9327e65f42be2967008891e1aa2aa",
+      "bench/pyperformance/regex_effbot.py": "91ead8e732223797be1ed75d57d781ad6682ec25fc9464e41f336e73c842ef5a",
+      "bench/pyperformance/regex_v8.py": "a2bf22b48133192c4931bef3a65f2385337b3f1b1e4359ff67ebebe96821b490",
+      "bench/pyperformance/richards.py": "f290fb528a0086dc5fd98bdf866c591252d8c8a31c80415c051a6ae69c7e0c82",
+      "bench/pyperformance/richards_super.py": "376e2407aaaf91f880d2e53b0853455272183130e157afc56d1539a5f259496f",
+      "bench/pyperformance/scimark.py": "dd34b452b124fb104750aed8c82082fca734695561e221de47147ec13bec7629",
+      "bench/pyperformance/spectral_norm.py": "1f55b1a0cb7931bbdec446be916b762c7fd60cc0e34a3b76cfd02ec4b10bba79",
+      "bench/pyperformance/unpack_sequence.py": "a4c67ad1e0fc2c7dcc102c98042c0b9e08bf1b46ac980b7e1916294e34997a67",
+      "tools/bench_pyperformance.py": "5043d5e4e8fb6bd9e9b34d5fbf17e403398f980373890a22545d48bdc230d25e"
+    },
+    "load_average_end": [
+      1.0341796875,
+      0.9560546875,
+      0.81201171875
+    ]
+  },
+  "benchmarks": [
+    {
+      "name": "logging",
+      "arguments": [
+        "32"
+      ],
+      "output": "logging 32 16320\n",
+      "aot_build_s": 12.411056680000002,
+      "summary": {
+        "cpython": {
+          "wall_s": 0.024199427999974432,
+          "cpu_s": 0.0238239999999994,
+          "loop_s": 0.003248078000069654,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9844860795893429
+        },
+        "jit": {
+          "wall_s": 3.4201504380002916,
+          "cpu_s": 3.4024280000000005,
+          "loop_s": 0.0020707160006168124,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.99481822851902
+        },
+        "aot": {
+          "wall_s": 0.006987572000070941,
+          "cpu_s": 0.006676000000000126,
+          "loop_s": 0.0017484999998487183,
+          "wall_spread": 0.0,
+          "cpu_share_min": 0.9554105488905659
+        }
+      },
+      "runs": {
+        "cpython": [
+          {
+            "command": [
+              "/workspace/scratch/2446eb38e476/dev-env/bin/python",
+              "/workspace/scratch/2446eb38e476/pystachy/bench/pyperformance/bm_logging.py",
+              "32"
+            ],
+            "wall_s": 0.024199427999974432,
+            "stdout": "logging 32 16320\n",
+            "stderr": "seconds 0.003248078000069654\n",
+            "returncode": 0,
+            "cpu_s": 0.0238239999999994,
+            "loop_s": 0.003248078000069654
+          }
+        ],
+        "jit": [
+          {
+            "command": [
+              "/workspace/scratch/2446eb38e476/pystachy/pystachy",
+              "run",
+              "/workspace/scratch/2446eb38e476/pystachy/bench/pyperformance/bm_logging.py",
+              "32"
+            ],
+            "wall_s": 3.4201504380002916,
+            "stdout": "logging 32 16320\n",
+            "stderr": "seconds 0.0020707160006168124\n",
+            "returncode": 0,
+            "cpu_s": 3.4024280000000005,
+            "loop_s": 0.0020707160006168124
+          }
+        ],
+        "aot": [
+          {
+            "command": [
+              "/tmp/pyperformance-qktu6_8x/logging",
+              "32"
+            ],
+            "wall_s": 0.006987572000070941,
+            "stdout": "logging 32 16320\n",
+            "stderr": "seconds 0.0017484999998487183\n",
+            "returncode": 0,
+            "cpu_s": 0.006676000000000126,
+            "loop_s": 0.0017484999998487183
+          }
+        ]
+      }
+    }
+  ],
+  "conditions": {
+    "wall_spread": {
+      "value": 0.0,
+      "where": "logging jit"
+    },
+    "cpu_share_min": {
+      "value": 0.9554105488905659,
+      "where": "logging aot"
+    }
+  }
+}

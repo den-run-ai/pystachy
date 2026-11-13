@@ -1,0 +1,23 @@
+{
+  "review": "Final independent seven-case semantic review; these findings are not output from the bundled preliminary six-case script.",
+  "reviewer": "review_issues",
+  "baseline": "63e4e52d298ab21ece81d99aef60b5d4bf0ee764",
+  "candidate": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+  "case_indices": [
+    1498,
+    1499,
+    1500,
+    1501,
+    1502,
+    2432,
+    2496
+  ],
+  "method": "Retained function bodies compared after resolving @s.N/@dbs.N to the complete string global and recursively expanding TBAA nodes to actual metadata trees; SSA/labels/calls/guards/allocation instructions preserved. Top-level globals and removed-symbol references separately inspected.",
+  "findings": [
+    "Every retained function body is exactly equal under those explicit identity correspondences.",
+    "Only method-set change in each case is omission of internal m._weakref$ReferenceType-1.__hash__; its baseline definition is its sole reference, with no call or pointer references.",
+    "Only global-content change is removal of unused string weak object has gone away; other globals equal modulo string IDs/order.",
+    "No added methods, definition-readiness guards, or changed allocation mode."
+  ],
+  "blockers": []
+}

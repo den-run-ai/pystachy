@@ -1,0 +1,295 @@
+{
+  "review": "CI timing audit; read-only GitHub jobs and retained verification artifacts. No workflows or limits changed.",
+  "runs": [
+    {
+      "run_id": 43365856650,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43365856650",
+      "head_sha": "3bfd889b81772b966ae3df44843c0df447957ecc",
+      "actual_checkout_sha": "3bfd889b81772b966ae3df44843c0df447957ecc",
+      "success": 73,
+      "skipped": 1,
+      "max_job_seconds": 693,
+      "all_jobs_under_900": true,
+      "all_jobs_under_720": true,
+      "slowest_jobs": [
+        {
+          "id": 131692093009,
+          "name": "verify (ubsan-1, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 693,
+          "started_at": "2026-11-13T04:35:36Z",
+          "completed_at": "2026-11-13T04:47:09Z",
+          "head_sha": "3bfd889b81772b966ae3df44843c0df447957ecc",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/43365856650/job/131692093009"
+        },
+        {
+          "id": 131692093017,
+          "name": "verify (hosted, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 684,
+          "started_at": "2026-11-13T04:35:35Z",
+          "completed_at": "2026-11-13T04:46:59Z",
+          "head_sha": "3bfd889b81772b966ae3df44843c0df447957ecc",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/43365856650/job/131692093017"
+        },
+        {
+          "id": 131692093112,
+          "name": "verify (ubsan-3, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 669,
+          "started_at": "2026-11-13T04:36:01Z",
+          "completed_at": "2026-11-13T04:47:10Z",
+          "head_sha": "3bfd889b81772b966ae3df44843c0df447957ecc",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/43365856650/job/131692093112"
+        },
+        {
+          "id": 131692093006,
+          "name": "verify (native-1, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 628,
+          "started_at": "2026-11-13T04:35:35Z",
+          "completed_at": "2026-11-13T04:46:03Z",
+          "head_sha": "3bfd889b81772b966ae3df44843c0df447957ecc",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/43365856650/job/131692093006"
+        }
+      ]
+    },
+    {
+      "run_id": 43366916755,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43366916755",
+      "head_sha": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+      "actual_checkout_sha": "4244685db375a013d53aa1f9a21d69283ab33ecd",
+      "success": 15,
+      "skipped": 1,
+      "max_job_seconds": 678,
+      "all_jobs_under_900": true,
+      "all_jobs_under_720": true,
+      "slowest_jobs": [
+        {
+          "id": 131695381341,
+          "name": "native JIT and variants (worker 0)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 678,
+          "started_at": "2026-11-13T04:45:33Z",
+          "completed_at": "2026-11-13T04:56:51Z",
+          "head_sha": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/43366916755/job/131695381341"
+        },
+        {
+          "id": 131695381550,
+          "name": "verify (cache-gc, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 617,
+          "started_at": "2026-11-13T04:45:30Z",
+          "completed_at": "2026-11-13T04:55:47Z",
+          "head_sha": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/43366916755/job/131695381550"
+        },
+        {
+          "id": 131695381498,
+          "name": "verify (hosted, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 531,
+          "started_at": "2026-11-13T04:46:42Z",
+          "completed_at": "2026-11-13T04:55:33Z",
+          "head_sha": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/43366916755/job/131695381498"
+        },
+        {
+          "id": 131695381479,
+          "name": "verify (native-aot-3, x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "seconds": 522,
+          "started_at": "2026-11-13T04:45:17Z",
+          "completed_at": "2026-11-13T04:53:59Z",
+          "head_sha": "c2da5cfffbe250106cf59576c756e6cdd2c25649",
+          "url": "https://github.com/den-run-ai/pystachy/actions/runs/43366916755/job/131695381479"
+        }
+      ]
+    }
+  ],
+  "artifact_evidence": [
+    {
+      "artifact_id": 14010322795,
+      "group": "gc-self",
+      "profile": "full",
+      "commit": "3bfd889b81772b966ae3df44843c0df447957ecc",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "znver3"
+      },
+      "toolchain": {
+        "python": "Python 3.13.16",
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin"
+      },
+      "group_seconds": 294.296,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 0.727
+        },
+        {
+          "name": "gc-self",
+          "seconds": 289.145
+        }
+      ]
+    },
+    {
+      "artifact_id": 14010708445,
+      "group": "ubsan-1",
+      "profile": "full",
+      "commit": "3bfd889b81772b966ae3df44843c0df447957ecc",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "znver3"
+      },
+      "toolchain": {
+        "python": "Python 3.13.16",
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin"
+      },
+      "group_seconds": 639.716,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 0.745
+        },
+        {
+          "name": "ubsan-1",
+          "seconds": 634.492
+        }
+      ]
+    },
+    {
+      "artifact_id": 14010813207,
+      "group": "hosted",
+      "profile": "full",
+      "commit": "3bfd889b81772b966ae3df44843c0df447957ecc",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "znver3"
+      },
+      "toolchain": {
+        "python": "Python 3.13.16",
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin"
+      },
+      "group_seconds": 500.86,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 0.763
+        },
+        {
+          "name": "tests-cpython",
+          "seconds": 495.505
+        }
+      ]
+    },
+    {
+      "artifact_id": 14010942692,
+      "group": "native-jit-0",
+      "profile": "pr",
+      "commit": "4244685db375a013d53aa1f9a21d69283ab33ecd",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "znver3"
+      },
+      "toolchain": {
+        "python": "Python 3.13.16",
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin"
+      },
+      "group_seconds": 132.338,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 0.712
+        },
+        {
+          "name": "tests-native-jit-0",
+          "seconds": 127.069
+        }
+      ]
+    },
+    {
+      "artifact_id": 14011985127,
+      "group": "cache-gc",
+      "profile": "pr",
+      "commit": "4244685db375a013d53aa1f9a21d69283ab33ecd",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "znver3"
+      },
+      "toolchain": {
+        "python": "Python 3.13.16",
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin"
+      },
+      "group_seconds": 585.482,
+      "steps": [
+        {
+          "name": "bootstrap",
+          "seconds": 0.708
+        },
+        {
+          "name": "runtime-cache",
+          "seconds": 289.87
+        },
+        {
+          "name": "gc-self",
+          "seconds": 290.45
+        }
+      ]
+    }
+  ],
+  "conclusions": [
+    "All jobs in both requested runs completed inside 900 seconds and 720 seconds. Execution durations use GitHub job started_at/completed_at; queue/dependency waiting is excluded.",
+    "The slowest full-profile job has 207 seconds (23 percent) of the 900-second cap remaining, only 27 seconds inside the stricter 720-second headroom target. PR maximum has 222 seconds (24.67 percent) cap headroom, 42 seconds inside that target.",
+    "One observation per profile does not satisfy issues 1178/1179: they require three representative CPU-identified runs, with full Variants included for 1179. This audit does not assess that separate latest Variants run.",
+    "On znver3, gc-self stage times 289.145 seconds on main and 290.450 seconds on the candidate synthetic PR merge are each under 360 seconds (60 percent of the unchanged 600-second guard). This meets the single-size timing threshold, not the at-most-linear source-size scaling requirement in issue 1181.",
+    "No immediate workflow redistribution is justified by these runs. Preserve current caps, worker counts and complete coverage. Repeated exact-source CPU evidence and GC size-sweep evidence remain needed before closing stable-release criteria."
+  ],
+  "step_breakdown": [
+    {
+      "job_id": 131695381341,
+      "cpu": "znver3",
+      "total_seconds": 678,
+      "native_jit_corpus_half_seconds": 138,
+      "sampled_variants_seconds": 272,
+      "native_program_cache_controls_seconds": 248
+    },
+    {
+      "job_id": 131692093017,
+      "cpu": "znver3",
+      "total_seconds": 684,
+      "verify_group_seconds": 506,
+      "shared_pytest_assertions_seconds": 90,
+      "native_pytest_runner_parity_seconds": 61
+    }
+  ]
+}
