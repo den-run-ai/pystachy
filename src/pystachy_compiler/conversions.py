@@ -91,6 +91,28 @@ def gen_index_of(self, v: Val, none: str) -> Val:
         self.err(f"__index__ returned non-int (type {tname(r.t)})")
     return r
 
+def gen_method_index(self, v: Val, dflt: str, none: str) -> Val:
+    # an int argument of a builtin method (xs.pop(i), s.find(sub, start)) that is an Any value or
+    # an object with __index__: its index, as CPython's index protocol gives it (index_of), where
+    # annotating the value as an int would reject a bool and the object. An Any value that is
+    # None stands for dflt where the method takes None for a default (a str method's start, end)
+    if v.t != "dyn" or dflt == "":
+        return self.coerce(self.as_int(self.index_of(v, none)), "int")
+    absent = self.label()
+    given = self.label()
+    end = self.label()
+    ph = Ins("phi", "int", "")
+    self.cbr(self.dyn_test(v, ["None"]), absent, given)
+    self.place(absent)
+    self.incoming(ph, dflt, self.cur)
+    self.br(end)
+    self.place(given)
+    r = self.coerce(self.as_int(self.index_of(v, none)), "int")
+    self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    return Val(self.phi(ph), "int")
+
 def gen_as_float(self, v: Val) -> Val:
     if v.t == "int" or v.t == "bool":
         return self.num_cast(v, "float")

@@ -1,0 +1,12 @@
+20 40 [10, 30, 50]
+[10, 7, 30, 8, 50] ['index', 'arg', 'index']
+2 3 1
+2 2 1 4 True
+x | 07 ['a', 'b,c']
+3 2
+2 a
+3 b
+2 a
+3 b
+['index', 'arg', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index']
+[exit 0]

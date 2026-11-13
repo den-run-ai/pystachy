@@ -1664,7 +1664,7 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             own = self.owned_gen(seq, args[0])
             obj = is_opt(seq.t) or seq.t in self.classes
             a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
-            st = self.ival(a1, "", False).v
+            st = self.ival(a1).v  # (CPython takes start's index too: a bool's, an object's __index__())
             self.gencall = ""
             seq = self.iterable(seq)
             if own == 0 and obj:
@@ -1777,8 +1777,8 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
 def gen_ival(self, n: Node, none: str = "", index: bool = True, recv: Val | None = None, recvnone: str = "") -> Val:
     # an index, slice bound or range() argument: an int, or a bool used as one (as CPython does);
     # an int | None that is None raises none ("Kind: text"). With index, an object gives its
-    # __index__() (not enumerate()'s start, which CPython counts from as it is), which the
-    # sequence recv asks for: one that is None raises recvnone before the call
+    # __index__() (enumerate()'s start too), which the sequence recv asks for: one that is None
+    # raises recvnone before the call
     v = self.expr(n, "int")
     if is_sopt(v.t) and none != "":
         v = self.unwrap(v, none)

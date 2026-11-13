@@ -1,0 +1,20 @@
+20 40 30 [10, 50]
+[10, 7, 8, 50] ['index', 'arg', 'index']
+2 3 1
+2 2 3 0 1 4
+True True 0
+x | 07 ['a', 'b,c'] ['a b', 'c']
+3
+pop TypeError: 'str' object cannot be interpreted as an integer
+insert TypeError: 'str' object cannot be interpreted as an integer
+index TypeError: slice indices must be integers or have an __index__ method
+find TypeError: slice indices must be integers or None or have an __index__ method
+TypeError: 'NoneType' object cannot be interpreted as an integer
+['index', 'arg', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index']
+1 a
+2 b
+2 a
+3 b
+TypeError: 'NoneType' object cannot be interpreted as an integer
+['index', 'arg', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index', 'index']
+[exit 0]

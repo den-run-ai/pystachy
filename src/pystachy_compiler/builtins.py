@@ -2705,6 +2705,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     av = [f"{lt(o.t)} {o.v}"]
     nones: list[str] = []  # optional str arguments: None raises (nmsg) once all are evaluated
     nmsg: list[str] = []
+    nonesat: list[int] = []  # (each one's place among the arguments, for the order of the checks)
     dt = T  # the item type the # descriptor describes
     kx = Val("", "")  # a dict's key that may be None (see nonekey)
     bigkey = Val("", "")  # a promoting int key of a dict of int keys (dict_key_args)
@@ -2714,6 +2715,13 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     idquery = Val("", "")
     idstore = Val("", "")
     alts = Val("", "")  # s.startswith((a, b)) or endswith: the tuple whose items are tried (affix_any)
+    # int arguments that are Any values or objects with __index__: each one's place in av, the
+    # value, the default None stands for (a str method's start or end) and CPython's TypeError.
+    # They are asked for their index once every argument is evaluated, as the method asks
+    asked: list[int] = []
+    askedv: list[Val] = []
+    askedd: list[str] = []
+    askedm: list[str] = []
     i = 0
     for p in spec[c + 1 :].split(","):
         if p == "":
@@ -2800,6 +2808,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 if is_opt(v.t):
                     nones.append(v.v)
                     nmsg.append(self.none_arg(m, 1))
+                    nonesat.append(len(av))
                 alts = Val(v.v, unopt(v.t))
                 v = Val("null", base)  # (each item in its place, in affix_any)
             if is_opt(v.t) and (join or key == "list.extend" or key == "file.writelines"):
@@ -2820,6 +2829,14 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 v = Val(v.v, pt)  # (its items are copied: list[str] extends a list[str | None])
             if span and is_sopt(v.t) and unopt(v.t) != "float":
                 v = Val(self.optint(v, dflt), "int")
+            if p == "int" and (v.t == "dyn" or (v.t in self.classes and "__index__" in self.classes[v.t].methods)):
+                asked.append(len(av))
+                askedv.append(v)
+                askedd.append(dflt if span else "")
+                askedm.append("TypeError: slice indices must be integers or None or have an __index__ method" if span else "TypeError: slice indices must be integers or have an __index__ method" if m == "index" else "TypeError: 'NoneType' object cannot be interpreted as an integer")
+                av.append("i64 0")
+                i += 1
+                continue
             if p == "int":
                 v = self.as_int(v)  # an index or a count may be a bool, as in CPython
             if base == "dict" and i == 0 and v.t == BIG and self.dict_bigkey(o.t) and (m == "get" or m == "pop" or m == "setdefault"):
@@ -2854,6 +2871,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             elif is_opt(v.t) and not slot and unopt(v.t) == pt and (pt == "str" or pt == "bytes"):
                 nones.append(v.v)
                 nmsg.append(self.none_arg(m, i + 1))
+                nonesat.append(len(av))
                 v = Val(v.v, pt)
             elif (is_opt(v.t) or v.t == "None") and slot and p == "*T" and (unopt(v.t) == T or (v.t == "None" and T not in self.classes)) and (base == "list" or base == "vtuple") and m != "append" and m != "insert" and self.optional(T) != "" and not self.isnum(T):
                 pt = self.optional(T)  # xs.index(None): found where xs holds None, as == finds it
@@ -2883,8 +2901,19 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         i += 1
     if i < len(args):
         self.err(f"too many arguments for {m}()")
-    for j in range(len(nones)):
-        self.guard(self.scalar_cmp('eq', Val(nones[j], '%ptr'), Val('null', '%ptr')), nmsg[j])
+    # CPython converts the arguments in the parameters' order: a None where a str is taken raises
+    # before a later argument is asked for its index, and after an earlier one was. startswith()
+    # and endswith() check their prefix last, once their bounds are converted
+    last = m == "startswith" or m == "endswith"
+    nj = 0
+    aj = 0
+    while nj < len(nones) or aj < len(asked):
+        if nj < len(nones) and (aj >= len(asked) or (nonesat[nj] < asked[aj] and not last)):
+            self.guard(self.scalar_cmp('eq', Val(nones[nj], '%ptr'), Val('null', '%ptr')), nmsg[nj])
+            nj += 1
+        else:
+            av[asked[aj]] = "i64 " + self.method_index(askedv[aj], askedd[aj], askedm[aj]).v
+            aj += 1
     if alts.t != "":
         return self.affix_any(alts, m, av, base)
     r = spec[:c]
@@ -3170,8 +3199,16 @@ def gen_tmethod(self, o: Val, m: str, args: list[Node]) -> Val:
     if "?" in x.t:
         self.err(f"cannot infer the type of the argument of tuple.{m}(): give it a type")
     bounds: list[Val] = []
+    asked: list[int] = []  # (the bounds that are Any values or objects with __index__: method_index)
     for j in range(1, len(args)):
-        bounds.append(self.coerce(self.as_int(self.expr(args[j], "int")), "int", f"argument {j + 1} of tuple.index()"))
+        b = self.expr(args[j], "int")
+        if b.t == "dyn" or (b.t in self.classes and "__index__" in self.classes[b.t].methods):
+            asked.append(len(bounds))
+            bounds.append(b)
+        else:
+            bounds.append(self.coerce(self.as_int(b), "int", f"argument {j + 1} of tuple.index()"))
+    for j in asked:
+        bounds[j] = self.method_index(bounds[j], "", "TypeError: slice indices must be integers or have an __index__ method")
     if is_vtuple(o.t):
         size = Val(self.mload('int', o.v), "int")
         span = [Val("0", "int"), size]
