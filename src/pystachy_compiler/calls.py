@@ -1540,8 +1540,9 @@ def gen_call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str = "
         # A direct return-call keeps the open-result marker for an empty callee,
         # while forwarding the caller's separate fresh-display context.
         f = self.instance(f, [v.t for v in vals], nnp, self.curfn.rctx if want == "?" else want, self.curfn.rsoft if want == "?" else resultsoft)
-    if got is not None:
-        got.append(f)
+    if got is not None or self.curfn.ll.startswith("@o.x."):
+        if got is not None:
+            got.append(f)  # (and a class's helper for Any operands reads it too: xdecline)
     elif f.declines:
         self.err(f"{short(f.cls)}.{f.name}() returns NotImplemented for these operands, which only a comparison of objects (==, <, ...) reads: calling it directly is not supported")
     elif f.cls in self.classes and self.may_decline(f):
