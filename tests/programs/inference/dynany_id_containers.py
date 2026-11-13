@@ -53,7 +53,7 @@ def main() -> None:
     print(id(s) == id(t), id(s) == id(any_text))
     grown: list[Any] = []
     before = id(grown)
-    for i in range(1000):
+    for i in range(200):
         grown.append(i)
     print(id(grown) == before, len(grown))
 

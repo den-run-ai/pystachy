@@ -662,11 +662,12 @@ def differing(oracle, other, count):
 
 
 def sample(rows, oracle):
-    """The examples and, of the generated cases under 1,200 characters, the first of each kind of
-    error (its message without what it quotes of the case) and the first six of each kind of value
-    (its type, by API, options and mode). Each row carries upstream's raw outcome as "expected";
-    the outcomes that jsonschema's reference library words (an unresolvable reference) are left
-    out, as the port's wording of some is its own."""
+    """Each example's first run in each mode and, of the generated cases under 700 characters, the
+    first of each kind of outcome: an error's first words, without what it quotes of the case, or
+    a value's type by API and mode. The sample is small because the native test that replays it
+    also runs with a collection at every allocation. Each row carries upstream's raw outcome as
+    "expected"; the outcomes that jsonschema's reference library words (an unresolvable
+    reference) are left out, as the port's wording of some is its own."""
     kept = []
     seen = {}
     examples = sum(2 * len(modes) for _, _, modes in EXAMPLES)
@@ -680,14 +681,16 @@ def sample(rows, oracle):
                                          "RecursionError"):
                     continue
                 words = re.sub(r"'[^']*'|\"[^\"]*\"|\[.*\]|\{.*\}|[-+.0-9e]+|\$\S*", "", expected["message"])
-                kind, most = expected["error"] + ":" + words[:40], 1
+                kind = expected["error"] + ":" + words[:24]
             else:
-                flags = sorted(name for name in row["flags"] if name != "schema")
-                kind, most = f"value:{expected['value'][0]}:{row['api']}:{row['flags'].get('schema_repair_mode')}:{flags}", 6
-            if row["id"] >= examples and len(json.dumps(row)) > 1200:
-                continue
-            seen[kind] = seen.get(kind, 0) + 1
-            if row["id"] < examples or seen[kind] <= most:
+                kind = f"value:{expected['value'][0]}:{row['api']}:{row['flags'].get('schema_repair_mode')}"
+            if row["id"] < examples:
+                keep = row["id"] % 2 == 0
+            else:
+                keep = kind not in seen and len(json.dumps(row)) <= 700
+                if keep:
+                    seen[kind] = True
+            if keep:
                 kept.append(dict(row, id=len(kept), expected=expected))
     return kept
 

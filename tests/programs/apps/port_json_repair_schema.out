@@ -1,4 +1,4 @@
-739 recorded cases, of which upstream raises in 231 and the port differs in 0
+182 recorded cases, of which upstream raises in 115 and the port differs in 0
 anchor {"error": "_WrappedReferencingError", "message": "Unresolvable: #name"}
 own $id {"error": "_WrappedReferencingError", "message": "Unresolvable: #/$defs/n"}
 remote {"error": "_WrappedReferencingError", "message": "Unresolvable: https://example.com/schema.json"}

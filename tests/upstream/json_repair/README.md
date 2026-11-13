@@ -131,7 +131,7 @@ oracle needs `jsonschema`, which upstream validates with and the port
 [replaces](../../../ports/json_repair/PORT.md#schema-guided-repair):
 
 - The fuzz's `schema` family repairs values that nearly fit a generated JSON Schema, in both
-  repair modes, after 124 runs of documented examples. Its oracle pins the two orders that
+  repair modes, after 118 runs of 48 documented examples. Its oracle pins the two orders that
   upstream leaves to the hash seed (an object's additional properties, a schema's required
   names) to the port's. It needs `jsonschema` in the CPython that runs it:
 
@@ -153,7 +153,7 @@ oracle needs `jsonschema`, which upstream validates with and the port
   190,920 instances) gave no difference. A reference that the port leaves out is counted
   (1,899 times there), not compared.
 - CI runs neither. It runs what they recorded:
-  [the native regression](../../../tests/programs/apps/port_json_repair_schema.py) replays 739
+  [the native regression](../../../tests/programs/apps/port_json_repair_schema.py) replays 182
   of the family's cases against upstream's outcomes (its `.in` file, written by `--record`),
   and [the validator's unit tests](../../../tools/test_json_repair_validator.py) hold it to
   `jsonschema`'s answers for [97 hand-written cases](validator_answers.json) (`--answers`).

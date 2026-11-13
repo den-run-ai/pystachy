@@ -138,13 +138,13 @@ class ComparisonTests(unittest.TestCase):
         kept = fuzz.sample(rows, self.output(*outcomes))
         self.assertEqual([row["id"] for row in kept], list(range(len(kept))))
         self.assertEqual([row["input"] for row in kept[:20]],
-                         [row["input"] for row in rows[:examples] if row["id"] % 7 != 1][:20])
+                         [row["input"] for row in rows[:examples:2] if row["id"] % 7 != 1][:20])
         later = [row for row in kept if row["input"] not in {row["input"] for row in rows[:examples]}]
         # One "Expected number" error stands for all of them, and no unresolvable reference is kept.
         self.assertEqual(len([row for row in later if "error" in row["expected"]]), 1)
         self.assertFalse(any(row["expected"].get("error") == "_WrappedReferencingError" for row in kept))
         self.assertTrue(all("id" not in row["expected"] for row in kept))
-        self.assertLess(len(later), (len(rows) - examples) // 2)  # (six values of each kind, of 50 or so kinds)
+        self.assertLess(len(later), 40)  # (one value for each type, API and mode)
         with self.assertRaises(ValueError):
             fuzz.sample(rows, self.output(*outcomes[:-1]))
 
