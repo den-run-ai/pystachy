@@ -1,5 +1,5 @@
-# list() of an empty tuple default, kept in a generic class's list of strs: its array must be one
-# the collector scans, or the strs it holds are freed while in use.
+# list() of an empty tuple default must scan a generic class's list of strs. Keep the
+# live set small under GC stress; bounded short-lived strings also trigger ordinary GC.
 from typing import Generic, Iterable, TypeVar
 
 T = TypeVar("T")
@@ -20,14 +20,14 @@ def fill(n: int) -> Box[str]:
     return box
 
 
-box = fill(2000)
-junk = []
-for i in range(300000):
-    junk.append(str(i) * 20)
+box = fill(64)
+junk = 0
+for i in range(48):
+    junk += len(str(i) * 1048576)
 total = 0
 for s in box.items:
     total += len(s)
-print(total, box.items[0], box.items[1999], len(junk))
+print(total, box.items[0], box.items[63], junk)
 numbers: Box[int] = Box()
 numbers.push(5)
 print(numbers.items, Box[float]((1.5,)).items)

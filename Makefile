@@ -483,6 +483,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_lean_union_split.py
 	$(PY) -m unittest discover -s tools -p test_lean_union_memory.py
 	$(PY) -m unittest discover -s tools -p test_lean_gc.py
+	$(PY) -m unittest discover -s tools -p test_lean_generators.py
 	$(PY) -m unittest discover -s tools -p test_lean_fields.py
 	$(PY) -m unittest discover -s tools -p test_lean_int.py
 	$(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
@@ -508,6 +509,7 @@ check-lean-boundary:
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_split.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_memory.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_gc.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_generators.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_fields.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_int.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p 'test_lean_storage*.py'
@@ -578,6 +580,7 @@ check-lean-guards:
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_split.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_union_memory.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_gc.py
+	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_generators.py
 	LEAN_BOUNDARY_REQUIRED=1 $(PY) -m unittest discover -s tools -p test_lean_fields.py
 	$(PY) tools/check_lean_guard_corpus.py $(LEAN_GUARD_FLAGS)
 

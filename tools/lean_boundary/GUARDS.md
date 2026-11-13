@@ -195,6 +195,21 @@ function, which loads the cell from its environment, is checked as if given that
 a contract that lets the object or its cell escape, or assigns the cell, publishes the cell
 in the caller and lets its content change.
 
+A call of a generator function runs only its entry block: it returns at `gen.start`, which
+suspends the generator before its body. The field check therefore takes a generator's
+post-condition at `gen.start` (its body's stores come later). Each read of its body is
+required at the call, conservatively, since fields only become assigned while it is
+suspended. The union check treats `gen.start` and each `gen.yield` as edges to where the
+generator resumes: its caller runs meanwhile and may write the tracked globals, which are
+reset there, but not the generator's private slots, and boxes stay immutable. `gen.ret` ends
+the function. [`examples/generators.py`](examples/generators.py) has a union local tested
+before a suspension and read after it, a union global that a generator stores, then tests
+again after suspending, and a generator method that assigns a declared field.
+[`test_lean_generators.py`](../test_lean_generators.py) requires a rejection when the local's
+test is removed, when the global's test after the suspension is removed, and when a layout
+corrupted to read that field unflagged reads it right after the call. With the suspension
+made a branch, the same global read is accepted.
+
 [`examples/field_init.py`](examples/field_init.py) has class attribute defaults, a field
 assigned on one path, a list built in a loop, an object join, a tagged hierarchy whose
 calls dispatch on the class word, `super().fmt(...)` before `super().__init__()`, a field
