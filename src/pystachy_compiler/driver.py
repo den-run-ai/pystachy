@@ -357,6 +357,25 @@ def retag_runtime_lists(ll: str) -> str:
     return "\n".join(out) + "\n"
 
 
+def retag_runtime_file(path: str) -> int:
+    # retag_runtime_lists of the IR file at path, in place: 0, or 1 where it cannot be written. A file
+    # that cannot be read (clang wrote none) stays as it is, for llvm-as to report
+    text = ""
+    try:
+        f = open(path, "r", encoding=RAW, newline="")
+        text = f.read()
+        f.close()
+    except OSError:
+        return 0
+    try:
+        f = open(path, "w", encoding=RAW, newline="")
+        f.write(retag_runtime_lists(text))
+        f.close()
+    except OSError:
+        return 1
+    return 0
+
+
 def runtime_c_key(source: str, paths: list[str], times: list[str], strip: str) -> str:
     # Preprocessing captures included headers, environment include paths and
     # target macros. Compile those exact bytes, rather than reopening headers.
@@ -1101,13 +1120,9 @@ def main() -> None:
         code = 0 if chit else timed_sh("runtime.c", sanitize + cbuild)
         if code == 0 and not chit:
             # (between clang and llvm-as: the bitcode cached and linked holds the shared list tags)
-            f = open(rsl, "r", encoding=RAW, newline="")
-            retagged = retag_runtime_lists(f.read())
-            f.close()
-            f = open(rsl, "w", encoding=RAW, newline="")
-            f.write(retagged)
-            f.close()
-            code = timed_sh("runtime.c_assemble", f"{tc[1]} {q(rsl)} -o {q(rcb)}")
+            code = retag_runtime_file(rsl)
+            if code == 0:
+                code = timed_sh("runtime.c_assemble", f"{tc[1]} {q(rsl)} -o {q(rcb)}")
         if code == 0:
             code = timed_sh("runtime.link_optimize", f"{tc[2]} {modules} -o {q(lnk)} && {tc[3]} -O2 {q(lnk)} -o {q(part)}")
         if code == 0 and ccached != "" and not chit and [stat3(p) for p in paths[:2]] == times[:2]:

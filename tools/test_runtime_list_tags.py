@@ -1,7 +1,8 @@
 """runtime.c's list accesses carry the TBAA tags that compiled code gives the same memory.
 
 The driver rewrites clang's access tags through struct List and struct Slot as lowering's "@list"
-and "@slot" tags (driver.retag_runtime_lists). The default suite checks the rewrite on small IR.
+and "@slot" tags (driver.retag_runtime_lists) in the file clang writes (driver.retag_runtime_file).
+The default suite checks the rewrite on small IR and the file step's outcomes.
 Set PYSTACHY_TEST_LLVM to a toolchain directory to compile runtime.c as the driver does, check
 that clang still names both struct types, and assemble the retagged module.
 """
@@ -12,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.pystachy_compiler import driver
@@ -91,6 +93,35 @@ class Retag(unittest.TestCase):
     def test_ir_without_either_type_is_unchanged(self):
         text = CLANG_IR.replace('!"List"', '!"Other"').replace('!"Slot"', '!"Another"')
         self.assertEqual(driver.retag_runtime_lists(text), text)
+
+
+class RetagFile(unittest.TestCase):
+    # driver.retag_runtime_file: the runtime build's step between clang and llvm-as
+    def test_file_is_rewritten_in_place(self):
+        with tempfile.TemporaryDirectory(prefix="pystachy-list-tags-") as tmp:
+            path = Path(tmp) / "runtime-s.ll"
+            path.write_text(CLANG_IR, encoding="latin-1")
+            self.assertEqual(driver.retag_runtime_file(str(path)), 0)
+            self.assertEqual(path.read_text(encoding="latin-1"), driver.retag_runtime_lists(CLANG_IR))
+
+    def test_missing_file_is_left_for_llvm_as(self):
+        with tempfile.TemporaryDirectory(prefix="pystachy-list-tags-") as tmp:
+            path = Path(tmp) / "runtime-s.ll"
+            self.assertEqual(driver.retag_runtime_file(str(path)), 0)
+            self.assertFalse(path.exists(), "no file is made where clang wrote none")
+
+    def test_failed_write_fails_the_build(self):
+        real = open
+
+        def read_only(name, mode="r", *args, **kwargs):
+            if "w" in mode:
+                raise OSError("no space left on device")
+            return real(name, mode, *args, **kwargs)
+        with tempfile.TemporaryDirectory(prefix="pystachy-list-tags-") as tmp:
+            path = Path(tmp) / "runtime-s.ll"
+            path.write_text(CLANG_IR, encoding="latin-1")
+            with patch("builtins.open", read_only):
+                self.assertEqual(driver.retag_runtime_file(str(path)), 1)
 
 
 LLVM = os.environ.get("PYSTACHY_TEST_LLVM", "")
