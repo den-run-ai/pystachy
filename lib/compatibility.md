@@ -973,7 +973,8 @@ calling it, and `del` forgets it, so that the next read calls the method again
 field of the object, where CPython keeps it in the object's `__dict__`, so the method needs
 a return annotation, which gives the field's type. A dataclass's method, a method with other
 parameters, `cached_property(f)` as a call, and the decorator in an enum class or with a
-value of a generic class's type variable are compile-time errors.
+value of a generic class's type variable are compile-time errors. `from functools import *`
+does not bind the name.
 
 ### `operator`
 

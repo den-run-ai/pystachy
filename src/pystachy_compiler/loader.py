@@ -190,6 +190,16 @@ def functools_names(body: Node) -> dict[str, str]:
     return out
 
 
+def functools_calls(n: Node, names: dict[str, str]) -> None:
+    # (functools_classes) a call of one of functools' names that the compiler applies as a
+    # decorator, anywhere in n, is rejected: cached_property(f) makes an object that no class
+    # statement's method is
+    for kid in n.kids:
+        if kid.kind == "call" and dotted(kid.kids[0]) in names:
+            fail(f"{names[dotted(kid.kids[0])]}(...) as a call is not supported: the compiler applies it where it decorates a method of a class statement (@{dotted(kid.kids[0])})", kid.line)
+        functools_calls(kid, names)
+
+
 def functools_classes(n: Node, names: dict[str, str]) -> None:
     # (functools) what functools' cached_property (names: as the module imports it) makes of
     # the methods of the class statements of module body n, as source: the subset has no
@@ -199,6 +209,7 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
     # object's __dict__
     if len(names) == 0:
         return
+    functools_calls(n, names)
     for st in n.kids:
         if st.kind != "class" and st.kind != "subclass":
             continue

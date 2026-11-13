@@ -1,4 +1,4 @@
-# error: lib_functools_cached_property_call.py:10: error: cannot infer the type of class attribute 'v'; annotate it (v: T = ...)
+# error: lib_functools_cached_property_call.py:10: error: cached_property(...) as a call is not supported: the compiler applies it where it decorates a method of a class statement (@cached_property)
 from functools import cached_property
 
 
