@@ -2,6 +2,7 @@
 ast_serialize 0.13.1's vendored crates, MIT; see THIRD_PARTY_NOTICES), building _ast.Node trees with
 Ruff's ranges, error recovery and messages.
 """
+import struct
 import unicodedata
 
 from ._ast import (
@@ -14,7 +15,7 @@ from ._ast import (
     P_TYPEVAR, P_TYPEVARTUPLE, S_ANNASSIGN, S_ASSERT, S_ASSIGN, S_AUGASSIGN, S_BREAK, S_CLASSDEF,
     S_CONTINUE, S_DELETE, S_EXPR, S_FOR, S_FUNCTIONDEF, S_GLOBAL, S_IF, S_IMPORT, S_IMPORTFROM,
     S_MATCH, S_NONLOCAL, S_PASS, S_RAISE, S_RETURN, S_TRY, S_TYPEALIAS, S_WHILE, S_WITH,
-    X_ALIAS, X_ARGUMENTS, X_BYTES_PART, X_COMPREHENSION, X_DECORATOR, X_DICT_ITEM, X_ELIF_ELSE,
+    X_ALIAS, X_ARGUMENTS, X_BODY, X_BYTES_PART, X_COMPREHENSION, X_DECORATOR, X_DICT_ITEM, X_ELIF_ELSE,
     X_EXCEPT_HANDLER, X_FORMAT_SPEC, X_FS_INTERP, X_FS_LITERAL, X_FSTRING_PART, X_IDENTIFIER,
     X_KEYWORD, X_MATCH_CASE, X_PATTERN_KEYWORD, X_STRING_PART, X_WITHITEM,
 )
@@ -1067,12 +1068,12 @@ class Parser:
             text = strip_underscores(self.cur_text())
             self.bump(T_FLOAT)
             n = self.new(E_FLOAT, start)
-            n.fval = float(text.decode())
+            n.s = struct.pack("<d", float(text.decode()))
         elif k == T_COMPLEX:
             text = strip_underscores(self.cur_text())
             self.bump(T_COMPLEX)
             n = self.new(E_COMPLEX, start)
-            n.fval = float(text[:len(text) - 1].decode())
+            n.s = struct.pack("<d", float(text[:len(text) - 1].decode()))
         elif k == T_INT:
             n = self.parse_int_literal(start)
         elif k == T_TRUE or k == T_FALSE:
@@ -1519,8 +1520,10 @@ class Parser:
         node.a = value
         if self.eat(T_EQUAL):
             node.flag = True
-            node.s = self.text(start + 1, value.start)
-            node.s2 = self.text(value.end, self.lexer.start)
+            # (the text before the expression and the text after it, with the first one's length)
+            lead = self.text(start + 1, value.start)
+            node.s = lead + self.text(value.end, self.lexer.start)
+            node.ival = len(lead)
         node.n = -1
         if self.eat(T_EXCLAMATION):
             self.lexer.re_lex_raw_string_in_format_spec()
@@ -2133,7 +2136,7 @@ class Parser:
             if self.at_name_or_soft_keyword():
                 asname = self.parse_identifier(0)
                 a.flag = True
-                a.s2 = asname.s
+                a.a = asname
             else:
                 self.add_error("Expected symbol after `as`", self.lexer.start, self.lexer.end)
         a.start = self.range_start(start)
@@ -2337,7 +2340,10 @@ class Parser:
         n.ys = body
         n.xs = handlers
         n.zs = orelse
-        n.ws = finalbody
+        if len(finalbody) > 0:
+            fb = Node(X_BODY, 0, 0)
+            fb.xs = finalbody
+            n.c = fb
         n.flag = is_star == 1
         return n
 
@@ -3200,10 +3206,10 @@ class Parser:
                 self.bump(k)
                 if k == T_COMPLEX:
                     v = self.new(E_COMPLEX, start)
-                    v.fval = float(text[:len(text) - 1].decode())
+                    v.s = struct.pack("<d", float(text[:len(text) - 1].decode()))
                 else:
                     v = self.new(E_FLOAT, start)
-                    v.fval = float(text.decode())
+                    v.s = struct.pack("<d", float(text.decode()))
             n = Node(M_VALUE, v.start, v.end)
             n.a = v
             return n

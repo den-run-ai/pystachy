@@ -27,8 +27,8 @@ E_TSTRING = 19      # xs: X_FSTRING_PART
 E_STRING = 20       # xs: X_STRING_PART
 E_BYTES = 21        # xs: X_BYTES_PART
 E_INT = 22          # flag: fits i64 (ival), else s: Ruff's display (big); flag2: small (fits u64)
-E_FLOAT = 23        # fval
-E_COMPLEX = 24      # fval: imaginary part
+E_FLOAT = 23        # s: the value as struct packs a double (<d)
+E_COMPLEX = 24      # s: the imaginary part, packed as E_FLOAT's
 E_BOOL = 25         # flag: value
 E_NONE = 26
 E_ELLIPSIS = 27
@@ -56,7 +56,7 @@ S_IF = 50           # a: test; ys: body; xs: X_ELIF_ELSE
 S_WITH = 51         # flag: async; xs: X_WITHITEM; ys: body
 S_MATCH = 52        # a: subject; xs: X_MATCH_CASE
 S_RAISE = 53        # a: exc; b: cause
-S_TRY = 54          # ys: body; xs: X_EXCEPT_HANDLER; zs: orelse; ws: finalbody; flag: is_star
+S_TRY = 54          # ys: body; xs: X_EXCEPT_HANDLER; zs: orelse; c: X_BODY of the finalbody or None; flag: is_star
 S_ASSERT = 55       # a: test; b: msg
 S_IMPORT = 56       # xs: X_ALIAS; flag: lazy
 S_IMPORTFROM = 57   # s: module, flag2: has module; xs: X_ALIAS; n: level; flag: lazy
@@ -82,7 +82,7 @@ M_OR = 77           # xs: patterns
 X_COMPREHENSION = 80  # a: target; b: iter; xs: ifs; flag: async
 X_KEYWORD = 81        # flag: has arg, s: arg, nstart/nend; a: value
 X_ARGUMENTS = 82      # xs: args; ys: X_KEYWORD
-X_ALIAS = 83          # s: name, nstart/nend; flag: has asname, s2: asname, n/ival: asname range
+X_ALIAS = 83          # s: name, nstart/nend; flag: has asname, a: asname (X_IDENTIFIER), n/ival: asname range
 X_WITHITEM = 84       # a: context expr; b: optional vars
 X_EXCEPT_HANDLER = 85  # a: type; flag: has name, s: name, nstart/nend; ys: body
 X_MATCH_CASE = 86     # a: pattern; b: guard; ys: body
@@ -94,9 +94,10 @@ X_STRING_PART = 91    # s: value (UTF-8); n: token flags
 X_BYTES_PART = 92     # s: value; n: token flags
 X_FSTRING_PART = 93   # xs: elements (X_FS_LITERAL, X_FS_INTERP); n: flags
 X_FS_LITERAL = 94     # s: value
-X_FS_INTERP = 95      # a: expression; flag: debug text, s: leading, s2: trailing; n: conversion (-1, 115 s, 114 r, 97 a); b: X_FORMAT_SPEC or None
+X_FS_INTERP = 95      # a: expression; flag: debug text, s: the text before the expression (ival bytes) and after it; n: conversion (-1, 115 s, 114 r, 97 a); b: X_FORMAT_SPEC or None
 X_FORMAT_SPEC = 96    # xs: elements
 X_PATTERN_KEYWORD = 97  # s: attr, nstart/nend; a: pattern
+X_BODY = 98           # xs: statements (a try statement's finalbody, as its c)
 
 P_PARAMETERS = 100    # xs: posonly P_PARAM_DEFAULT; ys: args; zs: kwonly; a: vararg P_PARAMETER; b: kwarg P_PARAMETER
 P_PARAMETER = 101     # s: name, nstart/nend; a: annotation
@@ -114,6 +115,9 @@ CTX_INVALID = 3
 
 
 class Node:
+    # Sixteen eight-byte fields and two flags, 128 bytes: one more field would take the object
+    # past the sizes the allocator serves inline (runtime.c's gc_alloc: under 136 bytes), and
+    # every node would cost a call
     def __init__(self, kind: int, start: int, end: int) -> None:
         self.kind: int = kind
         self.start: int = start
@@ -124,13 +128,10 @@ class Node:
         self.xs: list[Node] = EMPTY
         self.ys: list[Node] = EMPTY
         self.zs: list[Node] = EMPTY
-        self.ws: list[Node] = EMPTY
         self.ints: list[int] = EMPTY_INTS
         self.s = b""
-        self.s2 = b""
         self.n = 0
         self.ival = 0
-        self.fval = 0.0
         self.flag = False
         self.flag2 = False
         self.nstart = 0

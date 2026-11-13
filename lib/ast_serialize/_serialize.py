@@ -443,6 +443,11 @@ class Serializer:
         self.put(TAG_LITERAL_FLOAT)
         self.raw(struct.pack("<d", f))
 
+    def packed_float(self, b: bytes) -> None:
+        # a float that the parser packed already (struct's "<d")
+        self.put(TAG_LITERAL_FLOAT)
+        self.raw(b)
+
     def getvalue(self) -> bytes:
         self.flush()
         return b"".join(self.out)
@@ -607,10 +612,10 @@ class Serializer:
                 self.str_(alias.s)
                 if alias.flag:
                     self.bool_(True)
-                    self.str_(alias.s2)
+                    self.str_(asname_of(alias))
                 else:
                     self.bool_(False)
-                self.imports.append(ImportInfo(0, alias.s, 0, alias.s2, alias.flag, [], [], [],
+                self.imports.append(ImportInfo(0, alias.s, 0, asname_of(alias), alias.flag, [], [], [],
                                                alias.start, alias.end, flags))
             self.location(s.start, s.end)
             if self.cv >= CV_IMPORT_FLAGS:
@@ -737,11 +742,11 @@ class Serializer:
             self.str_(alias.s)
             if alias.flag:
                 self.bool_(True)
-                self.str_(alias.s2)
+                self.str_(asname_of(alias))
             else:
                 self.bool_(False)
             names.append(alias.s)
-            as_names.append(alias.s2)
+            as_names.append(asname_of(alias))
             has_as.append(alias.flag)
         self.imports.append(ImportInfo(1, module, s.n, b"", False, names, as_names, has_as, s.start, s.end, flags))
         self.location(s.start, s.end)
@@ -1055,9 +1060,9 @@ class Serializer:
             self.block(t.zs, t)
         else:
             self.bool_(False)
-        if len(t.ws) > 0:
+        if t.c is not None:
             self.bool_(True)
-            self.block(t.ws, t)
+            self.block(t.c.xs, t)
         else:
             self.bool_(False)
         self.bool_(t.flag)
@@ -1175,12 +1180,12 @@ class Serializer:
             self.location(e.start, e.end)
         elif k == E_FLOAT:
             self.tag(TAG_FLOAT_EXPR)
-            self.float_(e.fval)
+            self.packed_float(e.s)
             self.location(e.start, e.end)
         elif k == E_COMPLEX:
             self.tag(TAG_COMPLEX_EXPR)
             self.float_(0.0)
-            self.float_(e.fval)
+            self.packed_float(e.s)
             self.location(e.start, e.end)
         elif k == E_SUBSCRIPT:
             self.tag(TAG_INDEX)
@@ -1440,7 +1445,7 @@ class Serializer:
             value = child(el.a)
             use_r = False
             if el.flag:
-                self.str_(el.s + self.text[value.start:value.end] + el.s2)
+                self.str_(el.s[:el.ival] + self.text[value.start:value.end] + el.s[el.ival:])
                 self.location(value.start, value.end)
                 if el.n == -1 and el.b is None:
                     use_r = True
@@ -1853,6 +1858,11 @@ def all_params(params: Node) -> list[Node]:
     return out
 
 
+def asname_of(alias: Node) -> bytes:
+    # an X_ALIAS's name after "as" (its a), or b"" without one
+    return alias.a.s if alias.a is not None else b""
+
+
 def relocate(e: Node, start: int, end: int) -> None:
     # relocate_expr: every range of the expression (and of the nodes in it) becomes start..end
     e.start = start
@@ -1868,8 +1878,6 @@ def relocate(e: Node, start: int, end: int) -> None:
     for x in e.ys:
         relocate(x, start, end)
     for x in e.zs:
-        relocate(x, start, end)
-    for x in e.ws:
         relocate(x, start, end)
 
 
@@ -2388,8 +2396,6 @@ class EffectDetector:
         for x in n.ys:
             self.visit_any(x)
         for x in n.zs:
-            self.visit_any(x)
-        for x in n.ws:
             self.visit_any(x)
 
     def visit_any(self, n: Node) -> None:
