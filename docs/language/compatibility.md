@@ -482,9 +482,9 @@ See [object protocols](semantics.md#object-protocols) and
   classes lacking `__iter__` in comprehensions or `str.join`; inheritance-hierarchy
   constructors calling `iter()` or accepting `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
-  fallback for `reversed`; reflected arithmetic between two objects, `__rdivmod__` and `__rpow__`;
-  `int(o)` through `__trunc__`; `NotImplemented`; object or optional
-  numeric power exponents; three-argument object `pow`. Before `**=`, narrow a base-typed
+  fallback for `reversed`; reflected arithmetic between two objects;
+  `int(o)` through `__trunc__`; `NotImplemented`; optional
+  numeric power exponents; `__ipow__` with an object exponent; three-argument object `pow`. Before `**=`, narrow a base-typed
   receiver if only its subclass defines `__ipow__`.
 - **Comparisons:** equality between unrelated ordinary classes outside inheritance
   hierarchies when the left operand has no applicable comparison method; methods whose
@@ -497,7 +497,9 @@ See [object protocols](semantics.md#object-protocols) and
   homogeneous tuple items); unpacking noniterables or wrong-arity tuples; heterogeneous
   starred remainders without a compatible annotation; object slicing through slice-protocol
   methods; nonconstant tuple repetition.
-- **Specific builtins:** `sum(..., start)` with a bool start (use `int(start)`); a
+- **Specific builtins:** `sum(..., start)` with a bool start (use `int(start)`); `sum()` of
+  objects whose class has no `__radd__` without a start, or whose sum changes type after the
+  first addition; a
   `startswith` / `endswith` tuple containing anything beyond `str` / `str | None`.
 - **Function values:** mixing functions without a `Callable` annotation; `Callable[..., R]`;
   keyword calls, wrong arity or incompatible return types through `Callable`; printing

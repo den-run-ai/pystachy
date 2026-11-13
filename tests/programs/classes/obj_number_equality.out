@@ -1,0 +1,23 @@
+  eq 3
+  eq 3
+  eq 3
+  eq 3
+  eq 3
+  eq 3
+  eq 3
+  eq 3
+True True False False True True True False
+  loud eq
+  loud eq
+  loud ne
+  loud eq
+  loud ne
+  loud eq
+  loud eq
+  loud eq
+True True True True True True True True
+False True False True
+  rdivmod 7
+(3, 1) (3, 1)
+TypeError: unsupported operand type(s) for divmod(): 'int' and 'NoneType'
+[exit 0]

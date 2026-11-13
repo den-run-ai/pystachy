@@ -341,16 +341,18 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | Operation | Methods |
 |---|---|
 | Binary operators `+ - * / // % @ & \| ^ << >>` | `__add__` and the corresponding methods |
-| `o ** n`, `pow(o, n)` with builtin `int`, `float` or `bool` exponent | `__pow__` |
+| `o ** n`, `pow(o, n)` with a builtin `int`, `float` or `bool` exponent or an object exponent | `__pow__` |
+| `n ** o`, `pow(n, o)` with a builtin number base | `__rpow__` |
 | `o **= n` with a builtin numeric exponent | `__ipow__`, otherwise `__pow__` |
 | In-place operators | `__iadd__` and counterparts, otherwise the binary method |
 | Unary `-`, `+`, `~` | `__neg__`, `__pos__`, `__invert__` |
-| `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` |
+| `abs(o)`, `divmod(o, x)`, `divmod(x, o)` for a builtin number `x` | `__abs__`, `__divmod__`, `__rdivmod__` |
 | `int(o)`, `float(o)` | `__int__` or `__float__`, otherwise `__index__`, of the object's own class: a derived class's method is chosen through a base-typed reference, and a class with neither raises `TypeError`; the method's result type is checked when the call is compiled |
 | `round(o)`, `round(o, n)` | `__round__`, which may be a template: each call types its result |
 | `math.floor(o)`, `math.ceil(o)`, `math.trunc(o)` | `__floor__`, `__ceil__`, `__trunc__` |
 | A builtin number on the left, as in `2 * o` | `__radd__` and the other reflected arithmetic and bitwise methods |
-| Equality and ordering | `__eq__`, `__ne__` and rich comparisons |
+| Equality and ordering | `__eq__`, `__ne__` and rich comparisons; `x == o` for a number or `str` `x` asks `o.__eq__(x)` |
+| `sum(objects)`, `sum(objects, start)` | `__add__`, and `__radd__` for the first addition to a number; see [sums of objects](#sums-of-objects) |
 | Truth and length | `__bool__`, `__len__` |
 | Representation | `__str__`, `__repr__`, `__format__` |
 | Call, indexing, assignment, deletion | `__call__`, `__getitem__`, `__setitem__`, `__delitem__` |
@@ -360,8 +362,12 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
 Reflected arithmetic methods run only for a builtin `int`, `float` or `bool` on the left, whose
 own method declines an object: `2 * o` calls `o.__rmul__(2)`, with both operands evaluated first.
-Between two objects they remain unsupported, as do `__rdivmod__`, `__rpow__` and an augmented
-assignment that would rebind a number to an object (`n *= o`). Power dispatch with an object exponent, optional numeric exponent, or the
+Between two objects they remain unsupported, as does an augmented
+assignment that would rebind a number to an object (`n *= o`); a variable annotated with both
+types (`n: int | Money`) takes the method's result. `o ** p` of two objects calls
+`o.__pow__(p)`, unless `p` may be of a subclass with its own `__rpow__`, which CPython asks
+first; `o **= p` is `o = o ** p` where no class `o` may be of defines `__ipow__`. Power
+dispatch with an optional numeric exponent, an object exponent of `__ipow__`, or the
 three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
 modulus parameter; two-argument power leaves it at its default. Returning `NotImplemented`
 from an operator remains unsupported.
@@ -402,6 +408,27 @@ unsupported. Generator implementations follow the [generator rules](#generators)
 
 A missing protocol method produces a compilation error using CPython's message.
 An object that is `None` when the operation executes raises the corresponding runtime error.
+
+### Sums of objects
+
+`sum()` adds a class's objects as CPython does: `start + first`, then `sum + item` for each
+next item, in order, each item taken from the iterable just before its addition. With no
+start the first addition is `0 + first`, the item's `__radd__(0)`; no operand is dropped or
+swapped, so a method that records its operands sees CPython's. `sum(items, start=s)` is
+`sum(items, s)`, for numbers too.
+
+The first addition gives the sum's type, which each later addition must keep. `sum()` of no
+items is the start itself: with an object start (`sum(prices, Decimal(0))`) the result has
+that one type, and without a start it is the `int` 0, so `sum(prices)` is an
+[`int | Decimal`](typing.md#objects-beside-scalars), which prints, formats, compares and
+adds as it is and is narrowed with `isinstance()` where a `Decimal` is needed. A class with
+no `__radd__` needs a start. The items may be a list, tuple, set, dict, generator or
+iterator object, and a start may be an object for a sum of numbers.
+
+Floats beside objects in the items (`list[float | Money]`) are rejected unless the start is an
+object: CPython adds floats with a compensated sum until the first object
+(`sum([1e16, 1.0, -1e16], 0.0)` is `1.0`), which additions one by one would not reproduce
+([error test](../../tests/errors/containers/sum_objects_float_items.py)).
 
 <a id="reflection"></a>
 
@@ -600,7 +627,12 @@ and its subclasses. The supported pairs use two of `ArithmeticError`, `FloatingP
 `LookupError`, `IndexError`, `ReferenceError`, `RuntimeError`, `NotImplementedError`,
 `RecursionError`, `TypeError` and `ValueError`; neither may derive from the other.
 Pairs involving e.g. `OSError` (additional fields) or `KeyError` (special string
-conversion) are not supported. Exception classes support fields, constructors, class-body defaults,
+conversion) are not supported. One or both bases may be exception classes of the program, as
+in `class DivisionByZero(DecimalException, ZeroDivisionError)` and
+`class Overflow(Inexact, Rounded)`: the first base gives the object its fields, methods and
+text, and the second, which must define none of its own (below an ancestor the first base
+shares), adds only what catches the exception and what `isinstance()` and `issubclass()`
+report. Exception classes support fields, constructors, class-body defaults,
 methods, docstrings and custom `__str__` / `__repr__`.
 
 A subclass inherits fields and methods and can override `__init__`, `__str__` and

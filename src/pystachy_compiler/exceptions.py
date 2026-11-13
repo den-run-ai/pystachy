@@ -305,6 +305,14 @@ def gen_exc_classes(self, t: Node) -> bool:
             return False
     return True
 
+def gen_exc_overlap(self, a: str, b: str) -> bool:
+    # may an exception be of both classes a and b, of which neither derives from the other: a
+    # class of the program whose two exception bases reach both derives from both
+    for k in self.classes.values():
+        if k.exc != "" and self.derives(k.name, a) and self.derives(k.name, b):
+            return True
+    return False
+
 def gen_exc_isinst(self, v: Val, t: Node) -> Val:
     # isinstance(v, t) of an exception (or an exception object, which may be None), t naming
     # exception classes: decided by v's class where its type decides it, else by its ExcClass
@@ -314,7 +322,7 @@ def gen_exc_isinst(self, v: Val, t: Node) -> Val:
         maybe = False
         for c in names:
             yes = yes or self.derives(v.t, c.s)
-            maybe = maybe or self.derives(c.s, v.t)
+            maybe = maybe or self.derives(c.s, v.t) or self.exc_overlap(v.t, c.s)
         if yes or not maybe:
             return Val(self.ptr_cmp('!=', v, Val('null', 'None')).v if yes and v.v not in self.nn else "true" if yes else "false", "bool")
     sets = self.catch_set(t)

@@ -1,0 +1,17 @@
+0 Rounded Inexact
+1 Rounded Inexact
+2 ZeroDivisionError Signal:signal by zero
+3 TypeError Signal:signal no float
+4 Marker ValueError:tagged
+rounded signal o FalseFalse rounded signal underflow
+Overflow:signal o:FalseTrue True Overflow('o')
+Underflow:signal underflow:FalseTrue True Underflow('u')
+DivisionByZero:signal d:TrueFalse True DivisionByZero('d')
+5 True False
+Overflow [True, True, True, False, False, False, False, True]
+Underflow [True, True, True, False, False, False, False, True]
+DivisionByZero [True, False, False, True, False, False, False, True]
+Conversion [True, False, False, False, True, False, False, True]
+Tagged [False, False, False, False, False, True, True, False]
+tuple DivisionByZero uncaught kind
+[exit 0]

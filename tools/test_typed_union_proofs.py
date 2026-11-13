@@ -1302,6 +1302,53 @@ class UnionProofTests(unittest.TestCase):
                 self.assertTrue(sizes)
                 self.assertLess(max(sizes), 16)
 
+    def test_select_between_none_and_a_fresh_box_carries_its_member(self):
+        # Gen.ubox boxes an object that may be None as select(obj is None, null, ubox(obj)): a
+        # machine pointer whose own type names no union. Its member reaches a later guarded read;
+        # a pointer of unknown provenance in its place, or a read with no None test, does not.
+        mixed = "union[Item,int]"
+        for mode, accepted, message in (("box", True, ""), ("optional-box", True, ""),
+                                        ("unknown", False, "union.payload needs tag int"),
+                                        ("wrong-member", False, "union.payload needs tag Item"),
+                                        ("unguarded", False, "union.tag needs a nonnull proof")):
+            with self.subTest(mode=mode):
+                c = Case("boxed_object_" + mode.replace("-", "_"), ["Item", "int", "bool", "%ptr"])
+                c.g.classes["Item"] = ClassInfo("Item", Node("class", "Item", 1))
+                c.g.utag("Item")
+                c.g.runtime("pys_ubox")
+                c.g.runtime("pys_ubox_opt")
+                c.op("cbr", a=[("%a2", "bool")], b=["object", "number"])
+                c.block("object")
+                bits = c.op("slot.pack", "%slot", a=[("%a0", "Item")])
+                if mode == "optional-box":
+                    box = c.op("rt", "%ptr", "ubox_opt", [(str(c.g.utags["Item"]), "int"), ("%a0", "%ptr"), ("0", "int")])
+                else:
+                    box = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["Item"]), "int"), (bits, "*T")])
+                absent = c.op("ptr.cmp", "bool", "==", [("%a0", "Item"), ("null", "None")])
+                chosen = c.op("select", "%ptr", a=[(absent, "bool"), ("null", "%ptr"), ("%a3" if mode == "unknown" else box, "%ptr")])
+                c.op("br", b=["join"])
+                c.block("number")
+                number = c.op("rt", "%ptr", "ubox", [(str(c.g.utags["int"]), "int"), ("%a1", "*T")])
+                c.op("br", b=["join"])
+                c.block("join")
+                value = c.op("phi", mixed, a=[(chosen, mixed), (number, mixed)], b=["object", "number"])
+                if mode != "unguarded":
+                    none = c.op("ptr.cmp", "bool", "==", [(value, mixed), ("null", "None")])
+                    c.op("cbr", a=[(none, "bool")], b=["miss", "some"])
+                    c.block("some")
+                c.guard(value, "Item", yes="miss", no="hit", typ=mixed)
+                c.block("hit")
+                c.payload(value, "Item" if mode == "wrong-member" else "int", typ=mixed)
+                c.finish_pair()
+                errors = StringIO()
+                with redirect_stderr(errors):
+                    if accepted:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+                        self.assertIn(message, errors.getvalue())
+
     def test_nullable_condition_survives_an_unrelated_join(self):
         for loop in (False, True):
             for pred in ("!=", "=="):
