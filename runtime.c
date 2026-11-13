@@ -2360,28 +2360,39 @@ I pys_m_prod_int(List *l, I start);
 double pys_m_prod_float(List *l, double start);
 List *pys_m_floats(List *l);
 
-static __attribute__((noinline)) double pymod_libm(double a, double b, double *q) {   /* CPython's float_divmod */
+static __attribute__((noinline)) double pyrem_libm(double a, double b) {   /* CPython's float_divmod: the remainder */
+  double m = fmod(a, b);
+  if (m) { if ((b < 0) != (m < 0)) m += b; } else m = copysign(0, b);
+  return m;
+}
+static __attribute__((noinline)) double pyquot_libm(double a, double b) {   /* and the quotient */
   double m = fmod(a, b), d = (a - m) / b;
-  if (m) { if ((b < 0) != (m < 0)) { m += b; d -= 1; } } else m = copysign(0, b);
+  if (m && (b < 0) != (m < 0)) d -= 1;
   if (d) { double f = floor(d); if (d - f > 0.5) f += 1; d = f; } else d = copysign(0, a / b);
-  *q = d; return m;
+  return d;
 }
-static double pymod(double a, double b, double *q) {   /* CPython's float_divmod, for b != 0 */
-  /* whole a and b below 2**53 in magnitude: their int remainder is fmod()'s, with a's sign, and the
-     quotient (a - m) / b is exact and whole, which floor() would leave; on x86-64 before SSE4.1 both
-     are libm calls (pymod_libm, out of line so that LLVM computes neither ahead of this test) */
-  if (fabs(a) < 0x1p53 && fabs(b) < 0x1p53 && (double)(I)a == a && (double)(I)b == b) {
-    uint64_t ua = a < 0 ? 0 - (uint64_t)(I)a : (uint64_t)(I)a, ub = b < 0 ? 0 - (uint64_t)(I)b : (uint64_t)(I)b;
-    uint64_t ur = (ua | ub) >> 32 ? ua % ub : (uint32_t)ua % (uint32_t)ub;   /* (a 32-bit division is quicker) */
-    double m = copysign((double)ur, a), d = (a - m) / b;
-    if (m) { if ((b < 0) != (m < 0)) { m += b; d -= 1; } } else m = copysign(0, b);
-    if (!d) d = copysign(0, a / b);
-    *q = d; return m;
-  }
-  return pymod_libm(a, b, q);
+static int whole_divmod(double a, double b, double *m, double *q) {   /* float_divmod of whole a and b != 0 */
+  /* below 2**53 in magnitude, their int remainder is fmod()'s, with a's sign, and the quotient
+     (a - m) / b is exact and whole, which floor() would leave; on x86-64 before SSE4.1 both are libm
+     calls (pyrem_libm and pyquot_libm, out of line so that LLVM computes neither ahead of this test) */
+  if (!(fabs(a) < 0x1p53 && fabs(b) < 0x1p53 && (double)(I)a == a && (double)(I)b == b)) return 0;
+  uint64_t ua = a < 0 ? 0 - (uint64_t)(I)a : (uint64_t)(I)a, ub = b < 0 ? 0 - (uint64_t)(I)b : (uint64_t)(I)b;
+  uint64_t ur = (ua | ub) >> 32 ? ua % ub : (uint32_t)ua % (uint32_t)ub;   /* (a 32-bit division is quicker) */
+  double r = copysign((double)ur, a), d = (a - r) / b;
+  if (r) { if ((b < 0) != (r < 0)) { r += b; d -= 1; } } else r = copysign(0, b);
+  if (!d) d = copysign(0, a / b);
+  *m = r; *q = d; return 1;
 }
-double pys_fmod(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float modulo by zero"); return pymod(a, b, &q); }
-double pys_ffloordiv(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float floor division by zero"); pymod(a, b, &q); return q; }
+double pys_fmod(double a, double b) {
+  double m, q;
+  if (b == 0) pys_fail("ZeroDivisionError: float modulo by zero");
+  return whole_divmod(a, b, &m, &q) ? m : pyrem_libm(a, b);
+}
+double pys_ffloordiv(double a, double b) {
+  double m, q;
+  if (b == 0) pys_fail("ZeroDivisionError: float floor division by zero");
+  return whole_divmod(a, b, &m, &q) ? q : pyquot_libm(a, b);
+}
 I pys_f2i(double d) {
   if (isnan(d)) pys_fail("ValueError: cannot convert float NaN to integer");
   if (isinf(d)) pys_fail("OverflowError: cannot convert float infinity to integer");
