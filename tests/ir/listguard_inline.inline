@@ -1,0 +1,14 @@
+@cv.0: f.twice
+@main.init: f.fill f.scaled f.scale f.bigloop f.doubled
+@f.scale:
+@f.twice:
+@f.big:
+@f.fill: m.Point.__init__ m.Point.__init__!
+@f.scaled: f.scale f.scale
+@f.doubled: f.twice f.twice
+@f.bigloop: f.big
+@m.Point.__init__:
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: main.init
