@@ -4214,8 +4214,8 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
         r = self.call_fn(f, [b, a], [])
         self.incoming(ph, r.v, self.cur)
     elif b.t in self.classes and b.v not in self.nn:
-        # (an object of another class, which may be None too: None == None is True, None == an
-        # object False)
+        # An object of another class may also be None; compare the two null values
+        # by identity without calling either class's method.
         eqn = self.ptr_cmp('==' if iseq else '!=', b, Val('null', 'None'))
         self.incoming(ph, eqn.v, self.cur)
     else:
