@@ -2,7 +2,8 @@
 
 The parser's source hash is a SHA-1 of every file it reads. A loop over the rounds keeps the
 message schedule in a list; written out, the schedule is sixteen locals and a block reads no
-list, which runs about a quarter fewer instructions when compiled. With --check, the tool
+list, which runs about a quarter fewer instructions when compiled; a block's last byte is read
+first, which leaves the other 63 reads without a bounds check. With --check, the tool
 fails if the file differs from what it writes, and compares the function with hashlib.
 Usage: python3 -I tools/ast_serialize_sha1.py [--check]
 """
@@ -23,7 +24,11 @@ _HEX = "0123456789abcdef"
 
 
 def _block(m: bytes, off: int, h: list[int]) -> None:
-    # the 64-byte block of m at off, into the state h
+    # the 64-byte block of m at off, into the state h. An offset is below 2**62, and the block's
+    # last byte is read first: the compiler then sees that no index below can overflow or pass
+    # the end, and reads the words four bytes at a time with no check
+    off &= 0x3FFFFFFFFFFFFFFF
+    last = m[off + 63]
 '''
 TAIL = '''
 
@@ -55,7 +60,8 @@ def sha1_hex(data: bytes) -> str:
 def generate():
     lines = []
     for i in range(16):
-        lines.append(f"    w{i} = (m[off + {4 * i}] << 24) | (m[off + {4 * i + 1}] << 16) | (m[off + {4 * i + 2}] << 8) | m[off + {4 * i + 3}]")
+        low = "last" if i == 15 else f"m[off + {4 * i + 3}]"
+        lines.append(f"    w{i} = (m[off + {4 * i}] << 24) | (m[off + {4 * i + 1}] << 16) | (m[off + {4 * i + 2}] << 8) | {low}")
     names = ["a", "b", "c", "d", "e"]
     lines += [f"    {name} = h[{i}]" for i, name in enumerate(names)]
     for r in range(80):

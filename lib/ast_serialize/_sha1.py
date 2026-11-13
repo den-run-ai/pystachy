@@ -6,7 +6,11 @@ _HEX = "0123456789abcdef"
 
 
 def _block(m: bytes, off: int, h: list[int]) -> None:
-    # the 64-byte block of m at off, into the state h
+    # the 64-byte block of m at off, into the state h. An offset is below 2**62, and the block's
+    # last byte is read first: the compiler then sees that no index below can overflow or pass
+    # the end, and reads the words four bytes at a time with no check
+    off &= 0x3FFFFFFFFFFFFFFF
+    last = m[off + 63]
     w0 = (m[off + 0] << 24) | (m[off + 1] << 16) | (m[off + 2] << 8) | m[off + 3]
     w1 = (m[off + 4] << 24) | (m[off + 5] << 16) | (m[off + 6] << 8) | m[off + 7]
     w2 = (m[off + 8] << 24) | (m[off + 9] << 16) | (m[off + 10] << 8) | m[off + 11]
@@ -22,7 +26,7 @@ def _block(m: bytes, off: int, h: list[int]) -> None:
     w12 = (m[off + 48] << 24) | (m[off + 49] << 16) | (m[off + 50] << 8) | m[off + 51]
     w13 = (m[off + 52] << 24) | (m[off + 53] << 16) | (m[off + 54] << 8) | m[off + 55]
     w14 = (m[off + 56] << 24) | (m[off + 57] << 16) | (m[off + 58] << 8) | m[off + 59]
-    w15 = (m[off + 60] << 24) | (m[off + 61] << 16) | (m[off + 62] << 8) | m[off + 63]
+    w15 = (m[off + 60] << 24) | (m[off + 61] << 16) | (m[off + 62] << 8) | last
     a = h[0]
     b = h[1]
     c = h[2]
