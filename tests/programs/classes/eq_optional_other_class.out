@@ -1,5 +1,9 @@
 False False True False
+ne False False False
 False True True False
+ne False True True
 True False False True
+ne True False True
 True True True False
+ne True True True
 [exit 0]

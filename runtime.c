@@ -1300,6 +1300,17 @@ static int text_bounds(Str *s, I *st, I *en) {
   else if (*en < 0 && (*en += n) < 0) *en = 0;
   return *st <= *en;   /* unlike slices, a start past the end does not match an empty needle */
 }
+/* start 0 and an end at or past the byte length, which no code-point count exceeds: the whole
+   str, whose byte bounds text_bounds and text_offset would give too, without counting the code
+   points of a receiver that no operation has counted (s.upper().startswith("L"), #1301). The
+   other bounds take an out-of-line path, so that LLVM inlines a call with the default bounds
+   (0 and INT64_MAX), whose test then folds away */
+static int text_whole(Str *s, I st, I en) { return st == 0 && en >= s->len; }
+__attribute__((noinline)) static I text_tail(Str *s, Str *p, I st, I en, int end) {
+  if (!text_bounds(s, &st, &en)) return 0;
+  st = text_offset(s, st); en = text_offset(s, en);
+  return end ? pys_str_endswith(s, p, st, en) : pys_str_startswith(s, p, st, en);
+}
 I pys_text_find(Str *s, Str *p, I st, I en) {
   if (!text_bounds(s, &st, &en)) return -1;
   I at = pys_str_find(s, p, text_offset(s, st), text_offset(s, en));
@@ -1325,12 +1336,10 @@ I pys_text_count(Str *s, Str *p, I st, I en) {
   return !p->len ? en - st + 1 : pys_str_count(s, p, text_offset(s, st), text_offset(s, en));
 }
 I pys_text_startswith(Str *s, Str *p, I st, I en) {
-  if (!text_bounds(s, &st, &en)) return 0;
-  return pys_str_startswith(s, p, text_offset(s, st), text_offset(s, en));
+  return text_whole(s, st, en) ? pys_str_startswith(s, p, 0, s->len) : text_tail(s, p, st, en, 0);
 }
 I pys_text_endswith(Str *s, Str *p, I st, I en) {
-  if (!text_bounds(s, &st, &en)) return 0;
-  return pys_str_endswith(s, p, text_offset(s, st), text_offset(s, en));
+  return text_whole(s, st, en) ? pys_str_endswith(s, p, 0, s->len) : text_tail(s, p, st, en, 1);
 }
 Str *pys_str_replace(Str *s, Str *a, Str *b);
 Str *pys_str_replace_count(Str *s, Str *a, Str *b, I count);
@@ -2491,7 +2500,8 @@ I pys_ceil(double d) { return pys_f2i(ceil(d)); }
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, V<e> counted tuple, S<e> set, F<e>
    frozenset, O<id> object of class number id: the program defines pys_obj_eq/cmp/repr, which dispatch on it. The id
-   has three digits or more (O007, O1234): a letter or the end of the descriptor follows it;
+   has three digits or more (O007, O1234): a letter, a '.' or the end of the descriptor follows it (a union
+   puts a '.', which skip consumes, after a member's descriptor that ends in an id: tags are digits);
    ?<e> None (null) or a value of <e>; E an exception (an Exc);
    U<n>:<tag>:<e>... a tagged union, n program-wide tags and their member descriptors;
    R<n>: a recursive alias edge, n bytes backwards from R to an enclosing descriptor;
@@ -2571,7 +2581,7 @@ static I unum(const char **d) {   /* a count or tag terminated by ':' (compiler-
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'R') { unum(&d); return d; }
-  if (c == 'O' || c == 'P' || c == 'H') { d += 3; while (*d >= '0' && *d <= '9') d++; return d; }
+  if (c == 'O' || c == 'P' || c == 'H') { d += 3; while (*d >= '0' && *d <= '9') d++; return d + (*d == '.'); }   /* (a union member's ends at a '.' before the next member's tag) */
   if (c == 'L' || c == 'V' || c == '?' || c == 'S' || c == 'F') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);

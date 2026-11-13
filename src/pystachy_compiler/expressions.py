@@ -4195,8 +4195,8 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
         r = self.call_fn(f, [b, a], [])
         self.incoming(ph, r.v, self.cur)
     elif b.t in self.classes and b.v not in self.nn:
-        # (an object of another class, which may be None too: None == None is True, None == an
-        # object False)
+        # An object of another class may also be None; compare the two null values
+        # by identity without calling either class's method.
         eqn = self.ptr_cmp('==' if iseq else '!=', b, Val('null', 'None'))
         self.incoming(ph, eqn.v, self.cur)
     else:
@@ -4718,6 +4718,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
         self.cbr(self.cmp2("is", item, a).v, hit, nx)
         self.place(nx)
         identity = True
+    elif self.reference_union(item.t) or self.reference_union(a.t):
+        identity = self.union_same(item, a, hit, ph, value)
     elif identity:
         # (an object, list, dict, set or tuple, also one that may be None, is found
         # by identity first, as the runtime's eqitem finds a list's item: xs in (xs,)
@@ -4760,6 +4762,44 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     self.cbr(c.v, hit, nx)
     self.place(nx)
     return True
+
+def gen_union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+    # Tuple search finds the same underlying object, even in separately boxed reference
+    # unions. Test None before loading a union's tag, then compare only compatible members.
+    # This identity fast path does not instantiate any member's equality method.
+    sides: list[list[str]] = []
+    for x in [item, a]:
+        ms = umembers(unopt(x.t)) if is_union(unopt(x.t)) else [unopt(x.t)]
+        sides.append([m for m in ms if m in self.classes or m == "file"])
+    pairs: list[list[str]] = []
+    for m1 in sides[0]:
+        for m2 in sides[1]:
+            if m1 == m2 or (m1 in self.classes and m2 in self.classes and (self.derives(m1, m2) or self.derives(m2, m1))):
+                pairs.append([m1, m2])
+    nulls = [self.isnull(item), self.isnull(a)]
+    if nulls[0] != "false" and nulls[1] != "false":
+        nx = self.label()
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(self.scalar('and', [Val(nulls[0], 'bool'), Val(nulls[1], 'bool')]), hit, nx)
+        self.place(nx)
+    for pair in pairs:
+        test = "true"
+        for j in range(2):
+            x = item if j == 0 else a
+            if is_union(unopt(x.t)):
+                held = self.utest(x, [pair[j]], (is_opt(x.t) or self.reference_union(x.t)) and x.v not in self.nn)
+                test = held if test == "true" else self.scalar('and', [Val(test, 'bool'), Val(held, 'bool')])
+        same = self.label()
+        nx = self.label()
+        self.cbr(test, same, nx)
+        self.place(same)
+        ps = [x if not is_union(unopt(x.t)) else self.uget(Val(x.v, unopt(x.t)), pair[0] if x is item else pair[1]) for x in [item, a]]
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(self.ptr_cmp('==', ps[0], ps[1]).v, hit, nx)
+        self.place(nx)
+    return len(pairs) > 0 or (nulls[0] != "false" and nulls[1] != "false")
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if self.curfn.cmpops:
