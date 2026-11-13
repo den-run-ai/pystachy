@@ -458,8 +458,10 @@ and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
   ([test](../../tests/programs/classes/class_value_any.py)). `k.attr` and `k.m(args)` read
   the class attribute, or call the class method or static method, of the class it is, where
   the classes that have the name agree on one type; the class object of a class without it
-  raises CPython's `AttributeError`
-  ([test](../../tests/programs/classes/class_value_any_attrs.py)). Its class is not known where
+  raises CPython's `AttributeError`, before a call's arguments are evaluated
+  ([test](../../tests/programs/classes/class_value_any_attrs.py)). A name that a builtin class
+  has itself (`from_bytes`, `join`, `mro`) is a compile error there, as the value may be that
+  class's class object. Its class is not known where
   the program is compiled, so a call of it is a compile error: hold a `type[C]` of a base class
   for that. Exception classes and enum classes are no such values.
 - A builtin class is such a value too: `int`, `str`, `list` and the others, `type(x)` of a
