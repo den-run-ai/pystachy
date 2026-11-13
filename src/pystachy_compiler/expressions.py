@@ -5499,7 +5499,9 @@ def gen_foreign_eq(self, a: Val, b: Val) -> Val:
     # declines, as object's and a dataclass's do for an object of another class), the __eq__
     # of b's class where it takes an a (CPython's reflected call); Val("", "") where neither
     # applies, and CPython finds them not equal
-    if a.t in self.classes and "__eq__" in self.classes[a.t].methods:
+    if a.t in self.classes and "__eq__" in self.classes[a.t].methods and not (a.t == COMPLEXC and b.t != COMPLEXC):
+        # (lib's complex compares complex numbers: CPython's __eq__ declines a value of another
+        # type, returning NotImplemented, so that b's reflected method answers)
         if self.cmp_method(a.t, "__eq__", b.t) != "":
             return self.eqcall(self.classes[a.t].methods["__eq__"], True, a, b)
         if not self.classes[a.t].methods["__eq__"].synthetic:
