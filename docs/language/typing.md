@@ -531,6 +531,22 @@ inside mixed-value equality remain unsupported. Narrow before ordering, containe
 methods on a union receiver or indexing; there is no generic method dispatch.
 Container members are not [inferred](#inferred-unions).
 
+A union may hold one `Callable[[...], R]` beside scalars, lists and dictionaries, for a
+parameter that takes a value or a function that decides it:
+
+```python
+def passes(rule: bool | Callable[[str], bool], name: str) -> bool:
+    if isinstance(rule, bool):
+        return rule
+    return rule(name)
+```
+
+A function, lambda or bound method becomes that member as it becomes a `Callable` variable's
+value. `callable()` tells it from the other members and narrows as `isinstance()` does; a call
+needs the narrowed value. A truth test takes any member, and a function is true. Printing and
+`==` need narrowing first. `callable()` cannot tell two `Callable` types apart, so a union
+holds one, and none beside classes or files.
+
 ## Native reference unions
 
 Explicit unions can also hold up to four native class or `TextIO` types. This lets an
