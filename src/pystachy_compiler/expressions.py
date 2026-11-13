@@ -25,6 +25,8 @@ from src.pystachy_compiler.specs import (
     ITERS,
     MODATTRS,
     NONEVAR,
+    COMPLEXC,
+    COMPLEXS,
     OBJECTC,
     ORDOP,
     PYBUILTINS,
@@ -494,6 +496,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1 if t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split() else 0
     if c.s == "range" and RANGEC in self.classes:
         return -2 if t == RANGEC else 0  # (an object of lib/_pystachy_range.py's class, unless it is None)
+    if c.s == "complex" and COMPLEXC in self.classes:
+        return -2 if t == COMPLEXC else 0  # (and of lib/_pystachy_complex.py's: no int or float is one)
     if c.s in "bytearray memoryview complex range slice type".split():
         return 0
     return -1
@@ -832,6 +836,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lit = Val(fbits(n.s), "float")
         lit.lit = True
         return lit
+    if k == "complex" and COMPLEXC in self.classes:
+        return self.complex_value(Val(fbits("0.0"), "float"), Val(fbits(n.s[:-1]), "float"))  # (1.5j: complex(0.0, 1.5))
     if k == "str":
         self.modchk(n)
         return Val(self.sconst(n.s), "str")
@@ -4341,6 +4347,8 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             return v
     if a.t == "dyn" or b.t == "dyn":
         return self.dyn_arith(op, a, b, shown == op + "=")  # (a dynamic value's, in place where shown is op=: dynamic.py)
+    if (a.t == COMPLEXC or b.t == COMPLEXC) and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):
+        return self.complex_arith(op, a, b, shown)
     if a.t == BIG or b.t == BIG or ((a.t == "int" or a.t == "bool") and (b.t == "int" or b.t == "bool") and self.int_policy(self.line)):
         pr = self.big_binop(op, a, b, shown)  # (promoting ints: bigints.py)
         if pr.t != "":
@@ -4451,6 +4459,52 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'")
     self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'")
     return a
+
+def gen_complex_value(self, re: Val, im: Val) -> Val:
+    # a new complex number of floats re and im: an object of lib/_pystachy_complex.py's class
+    o = self.new_obj(COMPLEXC)
+    self.call_fn(self.classes[COMPLEXC].methods["__init__"], [o], [self.vnode(re), self.vnode(im)], direct=True)
+    return o
+
+def gen_complex_parts(self, v: Val) -> list[Val]:
+    # an operand of complex arithmetic as its two floats: a complex number's parts, and an int's or
+    # a float's float(x) and 0.0, as CPython's TO_COMPLEX converts it (a promoting int too large
+    # for a float raises OverflowError)
+    if v.t == COMPLEXC:
+        ci = self.classes[COMPLEXC]
+        return [Val(self.mload('float', self.fgep(v, ci.fpos[f])), "float") for f in ["real", "imag"]]
+    return [self.as_float(v), Val(fbits("0.0"), "float")]
+
+def gen_complex_arith(self, op: str, a: Val, b: Val, shown: str) -> Val:
+    # a op b of a complex number and a number, in either order: both as their floats, in the order
+    # written (complex_parts), then lib/_pystachy_complex.py's function of op; CPython's TypeError
+    # at compile time for an operator complex numbers do not have (//, %, <<, ...)
+    fn = "_sum" if op == "+" else "_diff" if op == "-" else "_prod" if op == "*" else "_quot" if op == "/" else "_pow" if op == "**" else ""
+    if fn == "":
+        self.err(f"unsupported operand type(s) for {shown if shown != '' else op}: '{tname(a.t)}' and '{tname(b.t)}'")
+    ps = self.complex_parts(a) + self.complex_parts(b)
+    return self.call_fn(self.funcs[COMPLEXS + "$" + fn], [], [self.vnode(x) for x in ps])
+
+def gen_complex_cmp(self, op: str, a: Val, b: Val) -> Val:
+    # a == b or a != b of a complex number and a number, as complex_richcompare: equal parts; a
+    # float equal to the real part, with an imaginary part of 0.0; an int equal to the real part
+    # exactly (a float's comparison with an int), with an imaginary part of 0.0. Ordering is
+    # CPython's TypeError, at compile time
+    if op != "==" and op != "!=":
+        self.err(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'")
+    c = a if a.t == COMPLEXC else b
+    o = b if a.t == COMPLEXC else a
+    cp = self.complex_parts(c)
+    zero = Val(fbits("0.0"), "float")
+    eq = ""
+    if o.t == COMPLEXC:
+        op2 = self.complex_parts(o)
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[0], op2[0]).v, 'bool'), Val(self.num_cmp('==', cp[1], op2[1]).v, 'bool')])
+    elif o.t == "float":
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[0], o).v, 'bool'), Val(self.num_cmp('==', cp[1], zero).v, 'bool')])
+    else:
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[1], zero).v, 'bool'), Val(self.cmp2("==", cp[0], self.as_int(o) if o.t == "bool" else o).v, 'bool')])
+    return Val(eq, "bool") if op == "==" else Val(self.scalar('xor', [Val(eq, 'bool'), Val('true', 'bool')]), "bool")
 
 def gen_compare(self, n: Node) -> Val:
     tc = self.refl_type_cmp(n)  # (type(a) is C, type(a) == type(b): reflection.py)
@@ -4675,6 +4729,14 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if (a.t == COMPLEXC or b.t == COMPLEXC) and (op == "==" or op == "!=") and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):
+        return self.complex_cmp(op, a, b)
+    if (op == "==" or op == "!=") and (a.t == COMPLEXC) != (b.t == COMPLEXC):
+        # a complex number and a value of a builtin type that no complex number equals (CPython
+        # compares them by identity)
+        o = b.t if a.t == COMPLEXC else a.t
+        if o == "None" or o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
+            return Val("false" if op == "==" else "true", "bool")
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":

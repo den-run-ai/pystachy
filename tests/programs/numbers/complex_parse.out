@@ -1,0 +1,62 @@
+'1+2j' (1+2j)
+' ( 1.5-2j ) ' (1.5-2j)
+'j' 1j
+'-j' -1j
+'+J' 1j
+'1_0+2_0j' (10+20j)
+'1__0' ValueError: could not convert string to complex: '1__0'
+'nanj' nanj
+'infj' infj
+'-INFINITYj' -infj
+'1+' ValueError: complex() arg is a malformed string
+'' ValueError: complex() arg is a malformed string
+' ' ValueError: complex() arg is a malformed string
+'()' ValueError: complex() arg is a malformed string
+'(1' ValueError: complex() arg is a malformed string
+'1)' ValueError: complex() arg is a malformed string
+'1j)' ValueError: complex() arg is a malformed string
+'(1j' ValueError: complex() arg is a malformed string
+'1e5' (100000+0j)
+'1e5j' 100000j
+'1e' ValueError: complex() arg is a malformed string
+'1e+j' ValueError: complex() arg is a malformed string
+'1.e-3j' 0.001j
+'.5j' 0.5j
+'+.5-.5J' (0.5-0.5j)
+'1+-2j' ValueError: complex() arg is a malformed string
+'1-+2j' ValueError: complex() arg is a malformed string
+'1+j' (1+1j)
+'1-j' (1-1j)
+'inf+nanj' (inf+nanj)
+'-nan-infj' (nan-infj)
+'1_j' ValueError: could not convert string to complex: '1_j'
+'_1' ValueError: could not convert string to complex: '_1'
+'1_' ValueError: could not convert string to complex: '1_'
+'0x10' ValueError: complex() arg is a malformed string
+'1 j' ValueError: complex() arg is a malformed string
+'1j ' 1j
+'\t1\n' (1+0j)
+'1+2j+3' ValueError: complex() arg is a malformed string
+'--1' ValueError: complex() arg is a malformed string
+'+-1j' ValueError: complex() arg is a malformed string
+'1e1_0' (10000000000+0j)
+'1_0e1_0j' 100000000000j
+'1.0_1' (1.01+0j)
+'١٢+٣j' (12+3j)
+'\xa01+1j\u2003' (1+1j)
+'1é' ValueError: complex() arg is a malformed string
+'1+2j\x00' ValueError: complex() arg is a malformed string
+'1_2\x00' ValueError: could not convert string to complex: '1_2\x00'
+'NaN' (nan+0j)
+'-0' (-0+0j)
+'-0j' -0j
+'(-0-0j)' (-0-0j)
+'1e400' (inf+0j)
+'-1e400j' -infj
+'1e-400j' 0j
+'infinityj' infj
+'infinj' ValueError: complex() arg is a malformed string
+'nanj_' ValueError: could not convert string to complex: 'nanj_'
+'j1' ValueError: complex() arg is a malformed string
+'1jj' ValueError: complex() arg is a malformed string
+[exit 0]

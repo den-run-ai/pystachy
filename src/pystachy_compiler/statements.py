@@ -22,6 +22,7 @@ from src.pystachy_compiler.specs import (
     OPTTYPES,
     ORDOP,
     PYBUILTINS,
+    COMPLEXC,
     RANGEC,
     SPECIAL,
     TYPESMOD,
@@ -317,7 +318,7 @@ def gen_default_problem(self, e: Node, t: str) -> str:
         return f"cannot infer the type of an empty {e.kind} as a default value; annotate the parameter"
     if e.kind == "badattr":
         return e.s
-    if e.kind in UNSUPPORTED:
+    if e.kind in UNSUPPORTED and not (e.kind == "complex" and COMPLEXC in self.classes):
         return UNSUPPORTED[e.kind]
     for k in e.kids:
         if e.kind == "call" and k is e.kids[0] and k.kind == "name":

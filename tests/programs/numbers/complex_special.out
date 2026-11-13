@@ -1,0 +1,22 @@
+div0 ZeroDivisionError: complex division by zero
+rdiv0 ZeroDivisionError: complex division by zero
+fdiv0 ZeroDivisionError: complex division by zero
+pow0neg ZeroDivisionError: 0.0 to a negative or complex power
+pow0c ZeroDivisionError: 0.0 to a negative or complex power
+pow00 (1+0j)
+powbig (nan+nanj)
+powovf OverflowError: complex exponentiation
+powneg (-0.12-0.16j)
+powc (1.5384778027279442+1.2779225526272695j)
+powimag (0.20787957635076193+0j)
+powreal (0.20787957635076193+0j)
+abs 1.4142135623730951e+308
+absovf OverflowError: absolute value too large
+absinfnan inf
+absnan nan
+quotinf (nan+nanj)
+prodinf (inf+nanj)
+prodbig (nan+infj)
+reprs [(nan-infj), (1+nanj), (-inf+0j), nanj]
+eqnan (False, True)
+[exit 0]
