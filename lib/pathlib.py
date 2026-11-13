@@ -569,6 +569,20 @@ class PosixPath(PurePosixPath):
         with self.open(mode='w', encoding=encoding, errors=errors, newline=newline) as f:
             return f.write(data)
 
+    def read_bytes(self) -> bytes:
+        """
+        Open the file in bytes mode, read it, and close the file.
+        """
+        with open(str(self), 'rb') as f:
+            return f.read()
+
+    def write_bytes(self, data: bytes) -> int:
+        """
+        Open the file in bytes mode, write to it, and close the file.
+        """
+        with open(str(self), 'wb') as f:
+            return f.write(data)
+
     def iterdir(self):
         """Yield path objects of the directory contents.
 
