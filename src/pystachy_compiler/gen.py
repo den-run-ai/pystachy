@@ -4621,8 +4621,8 @@ class Gen:
     def complex_arith(self, op: str, a: Val, b: Val, shown: str) -> Val:
         return expressions_complex_arith(self, op, a, b, shown)
 
-    def complex_cmp(self, op: str, a: Val, b: Val) -> Val:
-        return expressions_complex_cmp(self, op, a, b)
+    def complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val:
+        return expressions_complex_cmp(self, op, a, b, checked)
 
     def exc_id(self, v: Val) -> Val:
         return expressions_exc_id(self, v)
