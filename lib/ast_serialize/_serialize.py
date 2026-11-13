@@ -354,7 +354,9 @@ class Serializer:
             self.n = 0
 
     def put(self, x: int) -> None:
-        n = self.room(1)
+        n = self.n
+        if n >= self.cap:
+            n = self.room(1)
         self.buf[n] = x
         self.n = n + 1
 
@@ -372,17 +374,23 @@ class Serializer:
             self.out.append(b)
 
     def tag(self, t: int) -> None:
-        n = self.room(1)
+        n = self.n
+        if n >= self.cap:
+            n = self.room(1)
         self.buf[n] = t
         self.n = n + 1
 
     def end(self) -> None:
-        n = self.room(1)
+        n = self.n
+        if n >= self.cap:
+            n = self.room(1)
         self.buf[n] = TAG_END
         self.n = n + 1
 
     def int_(self, i: int) -> None:
-        n = self.room(10)
+        n = self.n
+        if n + 10 > self.cap:
+            n = self.room(10)
         buf = self.buf
         if -10 <= i < 118:
             buf[n] = (i + 10) << 1

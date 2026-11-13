@@ -79,6 +79,17 @@ def _ident_table() -> list[bool]:
 IDENT: list[bool] = _ident_table()
 
 
+def _keyword_first_table() -> list[bool]:
+    # by byte value: whether a keyword of KEYWORDS starts with it
+    t = [False] * 256
+    for k in KEYWORDS:
+        t[k[0]] = True
+    return t
+
+
+KEYWORD_FIRST: list[bool] = _keyword_first_table()
+
+
 def char_width(b: int) -> int:
     # the length of the UTF-8 sequence whose first byte is b
     if b < 0x80:
@@ -568,25 +579,30 @@ class Lexer:
                     return kind
             return self.lex_string(quote)
         is_ascii = first < 0x80
-        while self.pos < n:
-            c = src[self.pos]
+        pos = self.pos  # (a local for the loop: the field is stored once after it)
+        while pos < n:
+            c = src[pos]
             if c < 0x80:
                 if IDENT[c]:
-                    self.pos += 1
+                    pos += 1
                     continue
                 break
-            cp = decode_char(src, self.pos)
+            cp = decode_char(src, pos)
             if is_xid_continue(cp):
                 is_ascii = False
-                self.pos += char_width(c)
+                pos += char_width(c)
                 continue
             break
+        self.pos = pos
         if not is_ascii:
             self.flags |= F_NON_ASCII_NAME
             return T_NAME
-        if self.pos - self.tok > 8:
+        tok = self.tok
+        # a keyword has at most 8 characters and starts with one of KEYWORD_FIRST's: other
+        # names need no slice of the text to look up
+        if pos - tok > 8 or not KEYWORD_FIRST[src[tok]]:
             return T_NAME
-        return KEYWORDS.get(src[self.tok:self.pos], T_NAME)
+        return KEYWORDS.get(src[tok:pos], T_NAME)
 
     def try_double_char_prefix(self, a: int, b: int) -> bool:
         # (a is the first prefix character, b the second)
