@@ -1,4 +1,4 @@
-# error: lib_importlib_import_module_computed.py:8: error: expected _module_named_by_a_string_constant, got str
+# error: lib_importlib_import_module_computed.py:8: error: importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone
 import importlib
 import sys
 

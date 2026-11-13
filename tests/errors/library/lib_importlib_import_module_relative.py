@@ -1,4 +1,4 @@
-# error: lib_importlib_import_module_relative.py:5: error: expected _module_named_by_a_string_constant, got str
+# error: lib_importlib_import_module_relative.py:5: error: importlib.import_module() is supported where a string constant names the module and the call binds one variable or stands alone
 import importlib
 
 # (CPython: TypeError: the 'package' argument is required to perform a relative import for '.path')

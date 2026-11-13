@@ -587,7 +587,7 @@ def import_calls(n: Node, names: dict[str, bool], made: list[int]) -> None:
     # module, which binds the variable: mod = import_module("a.b") is import a.b as mod. It
     # runs where the call would, and raises its ImportError there. Pystachy resolves a
     # program's imports while it compiles the program, so a call that names the module any
-    # other way stays a call of lib/importlib's function, which no argument fits.
+    # other way stays a call of lib/importlib's function, which Gen.call_fn rejects.
     for i in range(len(n.kids)):
         st = n.kids[i]
         call: Node | None = None
