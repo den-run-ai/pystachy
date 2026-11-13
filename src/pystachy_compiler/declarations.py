@@ -56,6 +56,7 @@ from src.pystachy_compiler.utils import (
     is_callable,
     is_const,
     is_dict,
+    is_aset,
     is_fset,
     is_gen,
     is_list,
@@ -280,7 +281,7 @@ def gen_ann(self, n: Node) -> str:
             return self.ctype("list", [ts[0]])
         if base == "dict" and len(ts) == 2:
             return self.ctype("dict", ts) if self.key_problem(ts[0]) == "" else "!" + self.key_problem(ts[0])
-        if (base == "set" or base == "frozenset") and len(ts) == 1:
+        if (base == "set" or base == "frozenset" or base == "aset") and len(ts) == 1:
             return self.ctype(base, ts) if self.elem_problem(ts[0]) == "" else "!" + self.elem_problem(ts[0])
         if base == "tuple" and (len(ts) > 0 or n.kids[1].kind == "tuple" or n.kids[1].kind == "starred"):
             return self.ctype("tuple", ts)  # (tuple[()] is the empty tuple's, as tuple[*Ts] of no types is)
@@ -328,13 +329,24 @@ def gen_ann_base(self, b: Node) -> str:
     # typing's name in lower case (callable, optional, union, ...), with Mapping a dict, Sequence
     # a list and MutableSet a set; or "!" and why not
     base = b.s
+    abcset = False  # (collections.abc's Set, not typing's, which is the builtin set)
     if b.kind == "attr":
         base = self.typing_attr(b).lower()  # typing.List[int]
+        abcset = base == "set" and self.dotted(b) != "" and self.imported(self.dotted(b)).startswith("collections.abc.")
     elif base != "list" and base != "dict" and base != "tuple" and base != "set" and base != "frozenset":
+        abcset = self.imported(base) == "collections.abc.Set"
         base = self.typing_name(base)
         if base.startswith("!"):
             return base
         base = base.lower()
+    if base == "abstractset":
+        return "aset"  # (typing.AbstractSet[T]: a set or a frozenset, utils.is_aset)
+    if abcset:
+        # collections.abc.Set[T] is a set[T], as its annotation has always been taken, until the
+        # program gives one a frozenset: it is then compiled again with each an AbstractSet's
+        # type (coerce's hint), which programs that compile without one never see
+        self.abcsets = True
+        return "aset" if "abstract-sets" in self.hints else "set"
     if base == "mapping" or base == "mutablemapping":
         return "dict"  # (collections.abc's and typing's: what a dict is)
     if base == "sequence" or base == "mutablesequence":
@@ -1007,9 +1019,9 @@ def gen_wider(self, a: str, b: str) -> str:
         k = self.wider(targs(a)[0], targs(b)[0])  # (tuple keys whose items may be None)
         w = self.wider(targs(a)[1], targs(b)[1])
         return self.ctype("dict", [k, w]) if k != "" and w != "" else ""
-    if is_set(a) and is_set(b) and is_fset(a) == is_fset(b):
+    if is_set(a) and is_set(b) and (is_fset(a) == is_fset(b) or is_aset(a) or is_aset(b)):
         w = self.wider(selem(a), selem(b))  # (tuple elements whose items may be None)
-        return self.ctype("frozenset" if is_fset(a) else "set", [w]) if w != "" else ""
+        return self.ctype("aset" if is_aset(a) or is_aset(b) else "frozenset" if is_fset(a) else "set", [w]) if w != "" else ""
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
         return ""
     bs = targs(b)
@@ -1078,6 +1090,8 @@ def gen_widens(self, a: str, b: str) -> bool:
         return a == "None" or (not is_sopt(b) and self.widens(unopt(a), unopt(b))) or (b == BIGOPT and a == "opt[int]")
     if is_gen(a) and is_gen(b) and gsend(b) == "None" and gelem(a) == gelem(b):
         return True  # (a generator that takes S from send() as one that next() alone resumes)
+    if is_aset(b):
+        return is_set(a) and selem(a) == selem(b)  # (a set or a frozenset as an AbstractSet of its elements: the same object)
     if b in self.classes:
         return a == "None" or (a in self.classes and self.derives(a, b))
     if is_union(b):

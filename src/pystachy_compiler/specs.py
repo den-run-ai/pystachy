@@ -78,6 +78,7 @@ HEX = "0123456789ABCDEF"
 # the type of a local that only None has been assigned so far (see none_type): a pointer, which
 # only comparisons with None may read until a binding of another value types it
 NONEVAR = "opt[None]"
+EMPTYFS = "emptyfs"  # frozenset() where nothing types its elements: it is empty, a frozenset[T] or an AbstractSet[T] for any T (Gen.coerce)
 NONE_ITEM = "opt[?]"  # the item type of a container that holds only None so far (Gen.none_container)
 # the type of an int in a module that opts in to promoting ints (# pystachy: python-int): two words,
 # an LLVM {i64, ptr} (bigints.py). Its "+" keeps it apart from every class name

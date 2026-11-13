@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, int_program, show
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, EMPTYFS, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     lib_file,
@@ -179,6 +179,10 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
         return "builtins" if what == "__module__" else tname(c)
     if c == BIG:
         c = "int"  # (a promoting int's class is int: bigints.py)
+    if c.startswith("aset["):
+        self.err("type() of an AbstractSet value is not supported: it is a set or a frozenset, which its type does not tell")
+    if c == EMPTYFS:
+        return "builtins" if what == "__module__" else "frozenset"
     if c == "None" or c in BUILTIN_TYPES or is_list(c) or is_dict(c) or is_tuple(c) or is_vtuple(c) or is_set(c) or is_kw(c):
         b = "NoneType" if c == "None" else "list" if is_list(c) else "dict" if is_dict(c) or is_kw(c) else "tuple" if is_tuple(c) or is_vtuple(c) else c[: c.find("[")] if is_set(c) else c
         return "builtins" if what == "__module__" else b
