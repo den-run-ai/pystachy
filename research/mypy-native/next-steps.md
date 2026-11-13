@@ -70,6 +70,46 @@ checked against main's compiler:
 | `r4_function_doc.py` | A function's `__doc__` cannot be read. |
 | `r5_function_level_import.py` | A function cannot import a module that module-level code does not import (`base64.main()`). |
 
+## `librt.base64`
+
+The mypy-port session confirmed that `librt.base64` was free. It is on branch
+`claude/confident-einstein-ep3lh6-librt-base64`, stacked on #1276 (`lib/librt/`, the pinned
+`librt==0.16.0` for recordings), and needs `binascii` only, not the `base64` branch.
+
+librt 0.16.0's extension is not `base64` under another name. Read from its
+`base64/librt_base64.c` (sdist SHA-256
+`ac38d6d8d66bf3d744148dbbc0b8e193e195a51e364ed55e224631f5721891fc`) and confirmed against the wheel:
+
+- It decodes what `base64.b64decode()` decodes, with the same results.
+- Where `base64` raises `binascii.Error`, it raises a plain `ValueError("Incorrect padding")`,
+  whatever `binascii`'s message is.
+- One character followed by three or more padding characters at the end (`b"a==="`) raises
+  `RuntimeError("base64_decode failed")`: the C code sets a `ValueError` and then overwrites it.
+- An argument of another type raises `TypeError` with its own messages; the port raises the
+  decoders' at run time and makes the encoders' a compile-time error.
+
+`tools/librt_base64_check.py` on that branch runs the port on CPython beside the extension:
+1,416,764 calls agree (`--rounds 200000 --seed 99`).
+
+## `signal` needs a way to run handlers
+
+The class-objects session's sweep of CPython's `Lib` (440 modules) finds `_signal` as the first
+error of 29 modules, and asked whether this session takes it; it does. What main has:
+
+- The runtime's SIGINT handler ends the program at once, printing `KeyboardInterrupt`
+  (`runtime.c`, `on_sigint`), or notes the signal while the I/O layer is busy. Nothing raises an
+  exception between two statements, so there is no point at which a Python handler could run.
+- `_thread.interrupt_main()` raises `KeyboardInterrupt` for SIGINT and does nothing for other
+  signals.
+- `os.kill()` is not on main (#1385 adds process calls for `subprocess`).
+
+So `signal.signal(sig, handler)` with a Python function needs new runtime work: a pending-signal
+flag and places where compiled code tests it. A first step that needs none of that is the
+module's constants and `Signals`, `SIG_DFL` and `SIG_IGN` set through `sigaction`,
+`raise_signal()`, `strsignal()`, `valid_signals()` and `getsignal()`, with a Python handler
+rejected. That covers `signal.SIGKILL` in `mypy/dmypy_os.py` and the imports of `subprocess`.
+Signal numbers differ between Linux and macOS, so they come from the runtime. Not started.
+
 ## `configparser` waits for mapping wrappers
 
 Issue #1328 lists `configparser` and `ChainMap` as remaining. A port that keeps CPython's
