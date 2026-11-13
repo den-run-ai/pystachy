@@ -1219,8 +1219,6 @@ def gen_hash_value(self, v: Val) -> Val:
         return self.hash_value(self.ntup(v))
     if t in self.nts:
         return self.obj_hash(v)  # (its class's own __hash__)
-    if self.cx_union(t) and not is_opt(t):
-        return self.usplit("hash", [v], 0, "int")  # (a complex number's by its class's __hash__: union splitting)
     if not self.hashable(t):
         self.err(f"hash() of {typestr(t)} is not supported")
     return Val(self.rt("pys_hash", "i64", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.hash_desc(t))}"]), "int")

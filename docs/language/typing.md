@@ -421,8 +421,9 @@ claim.
 A `complex` member, as mypy's `int | bool | float | complex | str` holds one, narrows with
 `isinstance()`; truth tests, `str()`, `repr()`, printing, `format()` and f-string
 specifications, `==` and `!=` (across members, so `1 == 1+0j` is true), `+`, `-`, `*`, `/`
-and `**` of numeric members, `abs()` and `hash()` select its operations by the tag. Ordering,
-other builtins, and the equality of containers that hold such a union require narrowing first.
+and `**` of numeric members, and `abs()` select its operations by the tag. Ordering, `hash()`
+(as of any union), other builtins, and the equality of containers that hold such a union
+require narrowing first.
 
 ### Inferred unions
 

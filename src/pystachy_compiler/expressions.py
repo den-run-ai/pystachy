@@ -3599,7 +3599,10 @@ def gen_unary(self, n: Node) -> Val:
     m = UNARY[op]
     if v.t in self.classes and m in self.classes[v.t].methods:
         self.notnone(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
-        return self.call_fn(self.classes[v.t].methods[m], [v], [])
+        r = self.call_fn(self.classes[v.t].methods[m], [v], [])
+        if v.t == COMPLEXC:
+            self.nn[r.v] = True  # (lib's __neg__ makes an object, its __pos__ returns the one it got)
+        return r
     if v.infer_from != "":
         self.err(f"cannot infer what {v.infer_from}() returns: its recursive return type is unresolved; annotate its return type")
     self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")

@@ -234,6 +234,11 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
         src = bases[0]
         v = self.coerce(v, src)
     if not is_opt(v.t):
+        if src == COMPLEXC and not none_ok and v.v not in self.nn:
+            # (a complex number's object may be None, a complex | None's, which a union without
+            # None holds no box for: Pystachy's TypeError, where CPython stores the None)
+            self.notnone(v, f"TypeError: a value used as {typestr(t)} is None; annotate it {typestr(t)} | None")
+            self.nn[v.v] = True
         return Val(self.ubox(v, src), t).identity(v)
     if not none_ok:
         if self.join_hint(t, v.t):

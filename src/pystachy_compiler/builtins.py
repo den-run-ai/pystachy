@@ -2521,7 +2521,9 @@ def gen_complex_new(self, args: list[Node]) -> Val:
     if i.t == "str":
         self.err("complex() second arg can't be a string")
     if r.t == "str":
-        return self.call_fn(self.funcs[COMPLEXS + "$_from_str"], [], [self.vnode(r)])
+        made = self.call_fn(self.funcs[COMPLEXS + "$_from_str"], [], [self.vnode(r)])
+        self.nn[made.v] = True  # (a new object)
+        return made
     if r.t not in nums:
         self.err(f"complex() first argument must be a string or a number, not '{tname(r.t)}'")
     if i.t != "" and i.t not in nums:
@@ -2537,7 +2539,9 @@ def gen_complex_new(self, args: list[Node]) -> Val:
         return self.complex_value(rp[0], rp[1])
     ip = self.complex_parts(i)
     flags = [Val("true" if v.t == COMPLEXC else "false", "bool") for v in [r, i]]
-    return self.call_fn(self.funcs[COMPLEXS + "$_two"], [], [self.vnode(x) for x in [rp[0], rp[1], flags[0], ip[0], ip[1], flags[1]]])
+    made = self.call_fn(self.funcs[COMPLEXS + "$_two"], [], [self.vnode(x) for x in [rp[0], rp[1], flags[0], ip[0], ip[1], flags[1]]])
+    self.nn[made.v] = True  # (a new object)
+    return made
 
 def gen_range_fields(self, v: Val) -> list[str]:
     # start, stop and step of range object v, which is not None (lib/_pystachy_range.py's fields,

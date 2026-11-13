@@ -1,6 +1,6 @@
 # complex numbers as members of closed scalar unions, as mypy's constant folding holds them
 # (ConstantValue = int | bool | float | complex | str): isinstance() narrowing, arithmetic that
-# splits by member, equality across members (1 == 1+0j), str/repr/format, abs() and hash()
+# splits by member, equality across members (1 == 1+0j), str/repr/format and abs()
 from typing import Optional
 
 ConstantValue = int | bool | float | complex | str
@@ -34,7 +34,7 @@ def fold(op: str, left: ConstantValue, right: ConstantValue) -> ConstantValue | 
 
 def numeric(v: int | float | complex, w: int | complex | str) -> None:
     print(v == 1, v != 2j, 1 == v, v == "s", v == w, w != v, v == 2.5)
-    print(-v, v * 2, v ** 2, v / 2, v + 1j, abs(v), hash(v) == hash(v), type(v).__name__)
+    print(-v, v * 2, v ** 2, v / 2, v + 1j, abs(v), type(v).__name__)
     print(format(v, ".1f"), f"{v:>8}|{v}|{v!r}", str(v), bool(v))
 
 
