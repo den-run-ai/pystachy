@@ -1409,7 +1409,10 @@ Str *pys_float_hex(double d) {                /* float.hex(): CPython spells zer
   if (d == 0) return cstr(signbit(d) ? "-0x0.0p+0" : "0x0.0p+0");
   return pys_str(b, fsnprintf(b, 40, "%.13a", d));
 }
-I pys_float_is_integer(double d) { return isfinite(d) && d == floor(d); }
+I pys_float_is_integer(double d) {          /* below 2**52 in magnitude, d is whole where its truncation equals it;
+                                                from there every finite float is (no floor(): see pys_floor) */
+  return fabs(d) < 0x1p52 ? d == (double)(I)d : isfinite(d);
+}
 /* int() and float() of a string follow Python's grammar (whitespace around the number, a sign,
    digits with single underscores between them, 0x/0o/0b prefixes), not strtoll/strtod's */
 static void repr_str(Buf *b, Str *s);
@@ -2016,7 +2019,11 @@ double pys_m_radians(double x);
 I pys_m_isfinite(double x) { return isfinite(x); }
 I pys_m_isinf(double x) { return isinf(x); }
 I pys_m_isnan(double x) { return isnan(x); }
-I pys_m_trunc(double x) { return pys_f2i(trunc(x)); }
+static __attribute__((noinline)) I trunc_far(double x) { return pys_f2i(trunc(x)); }
+I pys_m_trunc(double x) {                    /* math.trunc(x): the conversion truncates wherever it is defined */
+  if (x >= -0x1p63 && x < 0x1p63) return (I)x;   /* (NaN fails both) */
+  return trunc_far(x);
+}
 /* Portions derived from CPython's Modules/mathmodule.c: Copyright (c) 2001-2024 Python Software
    Foundation; All Rights Reserved; used under the PSF License Agreement (see THIRD_PARTY_NOTICES). */
 I pys_m_isclose(double a, double b, double rel_tol, double abs_tol);
@@ -2353,11 +2360,25 @@ I pys_m_prod_int(List *l, I start);
 double pys_m_prod_float(List *l, double start);
 List *pys_m_floats(List *l);
 
-static double pymod(double a, double b, double *q) {   /* CPython's float_divmod */
+static __attribute__((noinline)) double pymod_libm(double a, double b, double *q) {   /* CPython's float_divmod */
   double m = fmod(a, b), d = (a - m) / b;
   if (m) { if ((b < 0) != (m < 0)) { m += b; d -= 1; } } else m = copysign(0, b);
   if (d) { double f = floor(d); if (d - f > 0.5) f += 1; d = f; } else d = copysign(0, a / b);
   *q = d; return m;
+}
+static double pymod(double a, double b, double *q) {   /* CPython's float_divmod, for b != 0 */
+  /* whole a and b below 2**53 in magnitude: their int remainder is fmod()'s, with a's sign, and the
+     quotient (a - m) / b is exact and whole, which floor() would leave; on x86-64 before SSE4.1 both
+     are libm calls (pymod_libm, out of line so that LLVM computes neither ahead of this test) */
+  if (fabs(a) < 0x1p53 && fabs(b) < 0x1p53 && (double)(I)a == a && (double)(I)b == b) {
+    uint64_t ua = a < 0 ? 0 - (uint64_t)(I)a : (uint64_t)(I)a, ub = b < 0 ? 0 - (uint64_t)(I)b : (uint64_t)(I)b;
+    uint64_t ur = (ua | ub) >> 32 ? ua % ub : (uint32_t)ua % (uint32_t)ub;   /* (a 32-bit division is quicker) */
+    double m = copysign((double)ur, a), d = (a - m) / b;
+    if (m) { if ((b < 0) != (m < 0)) { m += b; d -= 1; } } else m = copysign(0, b);
+    if (!d) d = copysign(0, a / b);
+    *q = d; return m;
+  }
+  return pymod_libm(a, b, q);
 }
 double pys_fmod(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float modulo by zero"); return pymod(a, b, &q); }
 double pys_ffloordiv(double a, double b) { double q; if (b == 0) pys_fail("ZeroDivisionError: float floor division by zero"); pymod(a, b, &q); return q; }
@@ -2367,7 +2388,14 @@ I pys_f2i(double d) {
   if (!(d >= -9223372036854775808.0 && d < 9223372036854775808.0)) pys_fail("OverflowError: float too large for a 64-bit int");
   return (I)d;
 }
-I pys_round(double d) { return pys_f2i(nearbyint(d)); }
+static __attribute__((noinline)) I round_far(double d) { return pys_f2i(nearbyint(d)); }
+I pys_round(double d) {                      /* round(d): half to even, nearbyint()'s in the default rounding mode */
+  /* below 2**52 in magnitude, adding and then subtracting 2**52 with d's sign rounds d to a whole
+     float in that mode, exactly; from there d is whole. nearbyint() is a libm call on x86-64 before
+     SSE4.1 (round_far, out of line so that LLVM does not compute it ahead of this test) */
+  if (fabs(d) < 0x1p52) { double big = copysign(0x1p52, d), r = d + big; return (I)(r - big); }
+  return round_far(d);
+}
 I pys_round_int(I x, I n) {                  /* round(x, n) of an int: x, or for n < 0 the nearest multiple of
                                                 10**-n, ties to the even multiple */
   if (n >= 0) return x;
@@ -2399,8 +2427,17 @@ double pys_round_n(double x, I n) {           /* round(x, n): half-even on the e
   if (isinf(r)) pys_fail("OverflowError: rounded value too large to represent");
   return copysign(r, x);
 }
-I pys_floor(double d) { return pys_f2i(floor(d)); }
-I pys_ceil(double d) { return pys_f2i(ceil(d)); }
+static __attribute__((noinline)) I floor_far(double d) { return pys_f2i(floor(d)); }
+static __attribute__((noinline)) I ceil_far(double d) { return pys_f2i(ceil(d)); }
+I pys_floor(double d) {                      /* math.floor(d): where the conversion is defined, it truncates toward 0,
+                                                and a negative d below its truncation is one less */
+  if (d >= -0x1p63 && d < 0x1p63) { I t = (I)d; return t - (d < (double)t); }   /* (NaN fails both) */
+  return floor_far(d);                       /* (floor() is a libm call on x86-64 before SSE4.1) */
+}
+I pys_ceil(double d) {                       /* math.ceil(d): as pys_floor, one more above the truncation */
+  if (d >= -0x1p63 && d < 0x1p63) { I t = (I)d; return t + (d > (double)t); }
+  return ceil_far(d);
+}
 
 /* ---------- generic repr / equality / ordering driven by a type descriptor ----------
    i int, f float, b bool, s str, L<e> list, D<k><v> dict, T<n><e...> tuple, V<e> counted tuple, S<e> set, F<e>
