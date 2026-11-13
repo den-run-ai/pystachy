@@ -255,6 +255,11 @@ The parser benchmark: 1,381,548,169 with main's compiler and the port at `c8d192
 1,329,405,242 with the new byte reads; 1,337,473,777 with the lowering alone; 1,286,461,196
 with both (6.9% fewer).
 
+Timed together on one core (best of nine rounds, median of five runs): the extension 0.095 s;
+the port at `ff997414` 0.131 s, 1.38 times it; the same built with #1447's lowering 0.124 s,
+1.30 times. The time moves less than the instruction count: the bounds checks that went were
+branches the processor predicted.
+
 The hashlib port of #1288 (head `8ff1e487`, `sha1/hashlib-bench.py`) does not gain as written:
 sha1 66.8 to 67.2, sha256 125.3 to 124.3, md5 58.5 to 58.5 instructions a byte. Its rounds are a
 loop over a list of words, and LLVM does not know that values loaded from a list or carried
