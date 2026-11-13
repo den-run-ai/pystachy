@@ -1,0 +1,13 @@
+0 0 True 0
+{'x'}
+7 True False ['apple', 'date', 'fig', 'kiwi', 'lime', 'pear', 'plum'] True
+8 True True
+6 True True True False 50
+60 True True False False -29
+[0, 3, 8, 16, 24, -1] [-1, 0, 3, 8, 16, 24, 100]
+2 True True False ['a', 'b']
+4 0 0 True
+True False [1, 2, 5, 9]
+None frozenset({'z'})
+[-1, 0, 3, 8, 16, 24] ['s', 't']
+[exit 0]
