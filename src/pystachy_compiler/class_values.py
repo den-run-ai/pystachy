@@ -320,6 +320,8 @@ def gen_class_value_issub(self, k: Val, t: Node) -> Val:
         return out
     if anyclass:
         return Val("true", "bool")  # (every class derives from object, NoneType too)
+    if o.t == "fn[b:object]":
+        return Val("true", "bool")  # (object, read through a variable: every class derives from it, as where it is named)
     if o.t == "exctype" or o.t.startswith("fn[b:"):
         return Val("false", "bool")  # (an exception class, or a builtin type such as int: no class k may be derives from one)
     if not is_clsval(unopt(o.t)):
