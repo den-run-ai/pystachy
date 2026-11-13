@@ -13,9 +13,10 @@ __author__ = 'Brian Quinlan (brian@sweetapp.com)'
 
 import collections
 # Pystachy port: no logging (LOGGER, below), no threading (the note above) and no types (Future
-# is a Generic class); sys and traceback report a callback's exception, and typing's names
-# type Future
+# is a Generic class); sys and traceback report a callback's exception, typing's names type
+# Future, and builtins gives the module its TimeoutError (see below)
 import sys
+from builtins import TimeoutError
 import time
 import traceback
 from typing import Callable, Generic, Self, TypeVar
@@ -73,9 +74,9 @@ class CancelledError(Error):
     """The Future was cancelled."""
     pass
 
-# Pystachy port: imported, where CPython assigns TimeoutError = TimeoutError (a module-level
-# assignment that reads the name it binds does not find the builtin)
-from builtins import TimeoutError  # make local alias for the standard exception
+# Pystachy port: no TimeoutError = TimeoutError, a local alias for the standard exception: a
+# module-level assignment that reads the name it binds does not find the builtin, so the alias
+# is imported above
 
 class InvalidStateError(Error):
     """The operation is not allowed in this state."""
