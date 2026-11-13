@@ -191,6 +191,8 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             if self.classes[clsof(unopt(o.t))].methods[f.s].deco != "classmethod" and self.classes[clsof(unopt(o.t))].methods[f.s].deco != "staticmethod":
                 self.err(f"{f.s}() called through a class object ({typestr(o.t)}) is supported for class methods and static methods: call a method on its object, o.{f.s}()")
             return self.class_value_method(o, f.s, args, want, resultsoft)  # (through a class object)
+        if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) == "object" and len([c for c in self.class_value_kinds("object") if f.s in self.classes[c].methods]) > 0 and len(self.class_value_having(f.s, True)) > 0:
+            return self.class_value_method(o, f.s, args, want, resultsoft)  # (through any class's class object)
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)
         if f.s != "close" and r.t != BFILE:  # (__enter__() and __iter__() return the file: it stays open)
