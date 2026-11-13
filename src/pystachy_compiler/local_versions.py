@@ -45,9 +45,14 @@ def local_versions(f: FnInfo, body: list[Node]) -> list[Node]:
     marks: list[bool] = []
     tests: list[str] = []
     marked = False
+    # (f's local names, for sentinel_test: walked once, and only for a function that has a
+    # sentinel parameter, not once for each if statement of every function: tools/scaling.py)
+    loc: dict[str, bool] = {}
+    if len(f.sentinels) > 0:
+        local_names(f.node.kids[2].kids, loc)
     for n in body:
         marks.append(n.kind == "assign" and n.s == "" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s not in blocked)
-        tests.append(sentinel_test(f, n))
+        tests.append(sentinel_test(f, n, loc))
         marked = marked or marks[len(marks) - 1] or tests[len(tests) - 1] != ""
     if not marked:
         return []  # (copied only when a store is marked: it runs for every function)
@@ -65,14 +70,12 @@ def local_versions(f: FnInfo, body: list[Node]) -> list[Node]:
     return out
 
 
-def sentinel_test(f: FnInfo, n: Node) -> str:
+def sentinel_test(f: FnInfo, n: Node, loc: dict[str, bool]) -> str:
     # the sentinel parameter p (FnInfo.sentinels) of if p is S: ..., with no else, statement n
-    # of f's body; else ""
-    if n.kind != "if" or len(n.kids[2].kids) > 0:
+    # of f's body, whose local names loc holds; else ""
+    if n.kind != "if" or len(n.kids[2].kids) > 0 or len(f.sentinels) == 0:
         return ""
     t = n.kids[0]
-    loc: dict[str, bool] = {}
-    local_names(f.node.kids[2].kids, loc)
     if t.kind == "cmp" and t.s == "is" and t.kids[0].kind == "name" and t.kids[1].kind == "name" and t.kids[0].s in f.sentinels and f.sentinels[t.kids[0].s] == t.kids[1].s and t.kids[1].s not in f.params and t.kids[1].s not in loc:
         # (S must be the module's sentinel: a parameter or local spelled so is another object,
         # which Gen.static compares at run time, so p = v is no straight-line rebinding then)
