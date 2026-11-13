@@ -25,7 +25,7 @@ These programs can compile and run with different results, errors or timing of e
 | Negative float to a fractional power | `ValueError`; CPython returns a complex number. |
 | NaN identity | Unboxed NaNs have no identity, including inside scalar union boxes: `nan in [nan]` is false. Container equality and sorting treat a shared NaN as distinct values. `hash(nan)` is 0, rather than an identity hash. |
 | Empty `list[float]` | `sum(xs)` returns `0.0`, `sum(xs, 1)` returns `1.0`, and `math.prod(xs)` returns `1.0`; CPython preserves the integer start. |
-| Native JSON | Typed `JSONValue` rejects integers outside 64 bits; dynamic `Any` decoding promotes them. Decoding nests to CPython's 9,998 containers; encoding is limited by recursion depth and a 2,000-container cap. See [JSON limits](../../lib/compatibility.md#json). |
+| Native JSON | Typed `JSONValue` rejects integers outside 64 bits; dynamic `Any` decoding promotes them. `loads()` and `dumps()` nest to CPython's 9,998 containers; `dump()` is limited by recursion depth and a 2,000-container cap. See [JSON limits](../../lib/compatibility.md#json). |
 
 **Masked arithmetic:** in `x & y`, a tree of `+`, `-`, `*` and `<<` under either
 operand (including nested `&`, `|`, `^`) retains the low 64 bits at each step; shift
@@ -209,9 +209,9 @@ extensions and glibc's bounds fallback inspect mappings once and allow the defau
 guard gap above an accessible predecessor; failed `/proc/self/maps` inspection retains the
 platform bounds. Extensions use the importing thread's bounds. See [native recursion depth](../internals.md#native-recursion-depth)
 for margins, platform limits and implementation details. Recursive aliases retain
-a separate budget; JSON encoding retains its 2,000-container cap (roughly 1,000 encoded
-containers at the default recursion limit), and JSON decoding nests without calls past its
-first 64 containers.
+a separate budget; `json.dump()` retains its 2,000-container cap (roughly 1,000 encoded
+containers at the default recursion limit), and `json.loads()` and `json.dumps()` nest without
+calls past their first 64 containers.
 
 #### Exception contents
 

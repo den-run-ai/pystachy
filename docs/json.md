@@ -142,13 +142,18 @@ Deliberate limits:
   JSON array from a unicode string` (or `object`). The first 64 containers are two counted
   calls each; deeper ones are decoded without calls, so neither `sys.setrecursionlimit()` nor
   the native stack bounds them.
-- Encoding is native recursion, which `sys.setrecursionlimit()` bounds (#1021): each encoded
-  container is a single counted call (two for a dict of `Any` values). At the default limit
-  of 1,000, about 1,000 containers encode (500 such dicts); deeper nesting raises
-  `RecursionError: maximum recursion depth exceeded`. Under a raised limit, a fixed bound of
-  2,000 containers keeps the encoder within an 8 MiB native stack in every measured
-  configuration, and raises CPython's message, `while encoding a JSON object`. CPython's C
-  encoder accepts 9,998 containers on Linux at any recursion limit
+- `dumps()` nests as CPython's C encoder does on Linux, with or without an `indent`: 9,998
+  containers at any recursion limit, and beyond them `RecursionError: maximum recursion depth
+  exceeded while encoding a JSON object`. The first 64 containers are a counted call each (two
+  for a dict of `Any` values); deeper ones are encoded without calls. For `Any` values, a
+  `default()` conversion in progress counts as a container does, and a call of `default()`
+  needs one more level, where it raises `RecursionError: maximum recursion depth exceeded`:
+  9,997 conversions and containers around a call.
+- `dump()` is native recursion, a counted call for each container, which
+  `sys.setrecursionlimit()` bounds as it bounds CPython's `dump()`, whose encoder is Python
+  code (#1021): about 1,000 containers at the default limit. Under a raised limit, a fixed
+  bound of 2,000 containers keeps it within an 8 MiB native stack in every measured
+  configuration, where CPython's goes on
   ([deviation](../tests/deviations/json_limits.py)). Circular serialization raises
   `ValueError: Circular reference detected`.
 - Input is `str`; bytes/bytearray input, configured `JSONDecoder` constructors,
@@ -430,7 +435,7 @@ python3.13 tools/json_check.py --native --gc-stress
 
 The regular fixtures compare against CPython's standard `json`; the separate
 [JSON limit fixture](../tests/deviations/json_limits.py) records deliberate integer
-and encoder depth differences. The [runtime limit fixture](../tests/deviations/recursive_alias_limits.py)
+and `dump()` depth differences. The [runtime limit fixture](../tests/deviations/recursive_alias_limits.py)
 checks deep values, cycles and reuse after exception unwinding.
 [`tests/programs/library/json_scanner.py`](../tests/programs/library/json_scanner.py) covers the byte scanner's
 boundaries: positions after multibyte text, documents holding lone surrogates,

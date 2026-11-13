@@ -1,7 +1,7 @@
 # pystachy: dynamic-any
-# The Any decoder and encoder share json's bounds on nesting: the recursion limit, then 2,000
-# containers. Below both they match CPython; past 2,000 containers (under a raised limit) they
-# raise CPython's RecursionError messages.
+# The Any decoder and encoder nest as json's do and as CPython's: at the default recursion limit
+# and under a raised one, with CPython's RecursionError messages past the bound of 9,998
+# containers (tests/programs/inference/dynany_json_deep_nesting.py has the bound).
 import json
 import sys
 from typing import Any

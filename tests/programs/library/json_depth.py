@@ -1,7 +1,6 @@
-# JSON nesting counts against sys.setrecursionlimit() like other native recursion, and stops at
-# 2,000 containers. Below both bounds, typed decoding, raw_decode() and encoding match CPython;
-# past 2,000 containers (under a raised limit) they raise CPython's RecursionError messages,
-# which CPython's own codec raises past its larger bound.
+# Typed decoding, raw_decode() and encoding of nested JSON match CPython, at the default recursion
+# limit and under a raised one, and past the codec's bound of 9,998 containers they raise
+# CPython's RecursionError messages (tests/programs/library/json_deep_nesting.py has the bound).
 import json
 import sys
 

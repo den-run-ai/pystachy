@@ -145,9 +145,14 @@ def _floatstr(value: float, allow_nan: bool) -> str:
 class _Writer:
     def __init__(self, skipkeys: bool, ensure_ascii: bool, check_circular: bool, allow_nan: bool,
                  sort_keys: bool, item_separator: str, key_separator: str, default: Any,
-                 pretty: bool, indent: str) -> None:
+                 pretty: bool, indent: str, one_shot: bool) -> None:
         self.pretty = pretty  # (an indent was given: each item goes on its own line)
         self.indent = indent
+        # dumps() nests as CPython's C encoder does, whatever the recursion limit: 9,998 containers
+        # and default() conversions in progress, of which the first 64 are calls of write() and
+        # the deeper ones deep()'s. dump() is CPython's Python encoder: a call for each, which
+        # the recursion limit bounds.
+        self.calls_free = 64 if one_shot else 20000
         self.skipkeys = skipkeys
         self.ascii = ensure_ascii
         self.circular = check_circular
@@ -169,7 +174,7 @@ class _Writer:
             for parent in self.open:
                 if value is parent:
                     raise ValueError("Circular reference detected")
-        if depth >= 2000:  # (json's bound on nesting: _Parser.value())
+        if depth >= 2000:  # (dump()'s bound: calls for each container, within the native stack)
             raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
         self.open.append(value)
 
@@ -213,6 +218,9 @@ class _Writer:
         elif isinstance(value, float):
             out.append(_floatstr(value, self.nan))
         elif isinstance(value, list) or isinstance(value, tuple):
+            if depth + self.chain >= self.calls_free:
+                self.deep(value, depth)
+                return
             self.enter(value, depth)
             out.append("[")
             separator = self.item_separator
@@ -233,6 +241,9 @@ class _Writer:
             out.append("]")
             self.open.pop()
         elif isinstance(value, dict):
+            if depth + self.chain >= self.calls_free:
+                self.deep(value, depth)
+                return
             self.enter(value, depth)
             out.append("{")
             # (as CPython's: the first line break comes with the first key written, so a dict
@@ -290,15 +301,15 @@ class _Writer:
         elif self.default is not None:
             # a chain of default() calls, each converting the value the one before returned, in a
             # loop: each value is checked for a circular reference and held until the chain's last
-            # is written. Only containers count against the nesting limit; the chain is bounded as
-            # CPython 3.13's C recursion limit on Linux bounds its encoder (10,000 levels), whose
-            # call of default() is the one that raises
+            # is written. The chain is bounded as CPython 3.13's C recursion limit on Linux bounds
+            # its encoder, whose call of default() is the one that raises: 9,997 conversions in
+            # progress and containers around them
             n = len(self.open)
             while True:
                 self.enter(value, 0)
                 self.calls += 1
                 self.chain += 1
-                if self.chain + depth > 10000:
+                if self.chain + depth > (9997 if self.calls_free == 64 else 10000):
                     raise RecursionError("maximum recursion depth exceeded")
                 value = self.default(value)
                 if value is None or isinstance(value, (str, int, float, list, tuple, dict)):
@@ -309,6 +320,194 @@ class _Writer:
                 self.open.pop()
         else:
             raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+    def deep(self, value: Any, depth: int) -> None:
+        # The container at depth and all that it holds, as write() and entry() write them, with
+        # the open containers and default() conversions on lists where those have them in their
+        # calls: nesting then counts against neither the recursion limit nor the native stack,
+        # and stops where CPython's C encoder does, at 9,998 containers and conversions in
+        # progress. That encoder counts a container before it looks for a circular reference,
+        # and so does this.
+        out = self.out
+        circular = self.circular
+        pretty = self.pretty
+        opened: set[int] = set()
+        if circular:
+            for parent in self.open:
+                opened.add(id(parent))
+        # each open container (0 a list or tuple, 1 a dict, 2 a dict in sorted order), or 3: a
+        # chain of default() conversions, whose last value is written above it
+        kinds: list[int] = []
+        values: list[Any] = []  # (the container)
+        at: list[int] = []  # (the next item's or key's index, or the number of a chain's conversions)
+        # of each open dict:
+        keys: list[list[Any]] = []  # (its keys, or each sorted key and then its value)
+        calls: list[int] = []  # (default() calls when it was opened: after one, it may have changed)
+        wrote: list[bool] = []  # (it wrote an entry)
+        held: list[Any] = []  # (the values that chains converted)
+        while True:
+            if isinstance(value, list) or isinstance(value, tuple) or isinstance(value, dict):
+                if depth + self.chain >= 9998:
+                    raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
+                if circular:
+                    if id(value) in opened:
+                        raise ValueError("Circular reference detected")
+                    opened.add(id(value))
+                depth += 1
+                values.append(value)
+                at.append(0)
+                if pretty:
+                    # (as write(): what precedes a container's first item, and what separates two)
+                    self.inners.append("\n" + self.indent * depth)
+                    self.separators.append(self.item_separator + self.inners[-1])
+                if isinstance(value, dict):
+                    out.append("{")
+                    wrote.append(False)
+                    calls.append(self.calls)
+                    if self.sort_keys:
+                        kinds.append(2)
+                        pairs: list[Any] = []
+                        for k, v in sorted(value.items()):
+                            pairs.append(k)
+                            pairs.append(v)
+                        keys.append(pairs)
+                    else:
+                        kinds.append(1)
+                        keys.append(list(value))
+                else:
+                    out.append("[")
+                    kinds.append(0)
+                    if pretty and len(value) > 0:
+                        out.append(self.inners[-1])
+            elif value is None:
+                # (a scalar, as write() writes it: a call of write() here would make the two one
+                # recursion)
+                out.append("null")
+            elif value is True:
+                out.append("true")
+            elif value is False:
+                out.append("false")
+            elif isinstance(value, str):
+                _quote(out, value, self.ascii)
+            elif isinstance(value, int):
+                out.append(str(value))
+            elif isinstance(value, float):
+                out.append(_floatstr(value, self.nan))
+            elif self.default is not None:
+                # (a chain of default() calls, as write()'s)
+                n = 0
+                while True:
+                    if circular:
+                        if id(value) in opened:
+                            raise ValueError("Circular reference detected")
+                        opened.add(id(value))
+                    held.append(value)
+                    n += 1
+                    self.calls += 1
+                    self.chain += 1
+                    if self.chain + depth > 9997:
+                        raise RecursionError("maximum recursion depth exceeded")
+                    value = self.default(value)
+                    if value is None or isinstance(value, (str, int, float, list, tuple, dict)):
+                        break
+                kinds.append(3)
+                values.append(None)
+                at.append(n)
+                continue
+            else:
+                raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+            # the next value to write: the next item of the innermost open container that has
+            # one, after closing those that have none
+            while True:
+                if len(kinds) == 0:
+                    return
+                kind = kinds[-1]
+                i = at[-1]
+                if kind == 0:
+                    items = values[-1]
+                    if i < len(items):
+                        if i > 0:
+                            out.append(self.separators[-1] if pretty else self.item_separator)
+                        at[-1] = i + 1
+                        value = items[i]
+                        break
+                    # (a list that had an item when it was opened has its items on their own lines)
+                    if pretty and i > 0:
+                        out.append("\n" + self.indent * (depth - 1))
+                    out.append("]")
+                elif kind == 3:
+                    # (the chain's last value is written: its conversions are over)
+                    self.chain -= i
+                    while i > 0:
+                        if circular:
+                            opened.discard(id(held[-1]))
+                        held.pop()
+                        i -= 1
+                else:
+                    found = False
+                    names = keys[-1]
+                    if kind == 2:
+                        while i < len(names):
+                            k = names[i]
+                            i += 2
+                            if not self.skips(k):
+                                value = names[i - 1]
+                                found = True
+                                break
+                    else:
+                        # (write()'s walk of a dict that default() calls may change)
+                        container = values[-1]
+                        while True:
+                            if i == len(names):
+                                if i > 0 and self.calls != calls[-1]:
+                                    seen = {x: True for x in names if self.supported_key(x)}
+                                    names.extend([x for x in container if not self.skips(x) and (not self.supported_key(x) or x not in seen)])
+                                if i == len(names):
+                                    break
+                            k = names[i]
+                            i += 1
+                            if not self.skips(k):
+                                if not self.supported_key(k):
+                                    present = self.calls == calls[-1]
+                                    if not present:
+                                        for live in container:
+                                            if live is k:
+                                                present = True
+                                                break
+                                    if present:
+                                        self.key(k)
+                                elif self.calls == calls[-1] or k in container:
+                                    value = container[k]
+                                    found = True
+                                    break
+                    at[-1] = i
+                    if found:
+                        # (entry(), but for its call of write())
+                        s = self.key(k)
+                        if wrote[-1]:
+                            out.append(self.separators[-1] if pretty else self.item_separator)
+                        elif pretty:
+                            out.append(self.inners[-1])
+                        wrote[-1] = True
+                        _quote(out, s, self.ascii)
+                        out.append(self.key_separator)
+                        break
+                    if pretty and wrote[-1]:
+                        out.append("\n" + self.indent * (depth - 1))
+                    out.append("}")
+                    keys.pop()
+                    calls.pop()
+                    wrote.pop()
+                if kind != 3:
+                    if circular:
+                        opened.discard(id(values[-1]))
+                    if pretty:
+                        self.inners.pop()
+                        self.separators.pop()
+                    depth -= 1
+                kinds.pop()
+                values.pop()
+                at.pop()
 
     def entry(self, k: Any, v: Any, first: bool, depth: int) -> bool:
         # writes k: v of a dict, after an item separator unless first; False where skipkeys
@@ -350,7 +549,7 @@ def dumps(obj: Any, *, skipkeys: bool = False, ensure_ascii: bool = True, check_
         item_separator = separators[0]
         key_separator = separators[1]
     w = _Writer(skipkeys, ensure_ascii, check_circular, allow_nan, sort_keys, item_separator, key_separator, default,
-                indent is not None, _indent_text(indent))
+                indent is not None, _indent_text(indent), True)
     w.write(obj, 0)
     return "".join(w.out)
 
@@ -359,8 +558,15 @@ def dump(obj: Any, fp: TextIO, *, skipkeys: bool = False, ensure_ascii: bool = T
          allow_nan: bool = True, indent: Any = None, separators: tuple[str, str] | None = None,
          default: Any = None, sort_keys: bool = False) -> None:
     """Write the text dumps() returns to fp (one write, where CPython writes it in pieces)."""
-    fp.write(dumps(obj, skipkeys=skipkeys, ensure_ascii=ensure_ascii, check_circular=check_circular,
-                   allow_nan=allow_nan, indent=indent, separators=separators, default=default, sort_keys=sort_keys))
+    item_separator = ", " if indent is None else ","
+    key_separator = ": "
+    if separators is not None:
+        item_separator = separators[0]
+        key_separator = separators[1]
+    w = _Writer(skipkeys, ensure_ascii, check_circular, allow_nan, sort_keys, item_separator, key_separator, default,
+                indent is not None, _indent_text(indent), False)
+    w.write(obj, 0)
+    fp.write("".join(w.out))
 
 
 def _raw_decode(s: str, idx: int = 0) -> tuple[Any, int]:

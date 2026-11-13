@@ -930,7 +930,7 @@ def _indent_text(indent: JSONValue) -> str:
 
 class _Encoder:
     def __init__(self, ensure_ascii: bool, allow_nan: bool, sort_keys: bool,
-                 item_separator: str, key_separator: str, pretty: bool, indent: str) -> None:
+                 item_separator: str, key_separator: str, pretty: bool, indent: str, calls: int) -> None:
         self.ascii = ensure_ascii
         self.nan = allow_nan
         self.sort_keys = sort_keys
@@ -938,6 +938,8 @@ class _Encoder:
         self.key_separator = key_separator
         self.pretty = pretty  # (an indent was given: each item goes on its own line)
         self.indent = indent
+        # (how many nested containers are a call of write() each: the deeper ones are deep()'s)
+        self.calls = calls
         self.out: list[str] = []
         self.lists: list[list[JSONValue]] = []
         self.dicts: list[dict[str, JSONValue]] = []
@@ -959,10 +961,13 @@ class _Encoder:
         elif isinstance(value, str):
             _quote(self.out, value, self.ascii)
         elif isinstance(value, list):
+            if depth >= self.calls:
+                self.deep(value, depth)
+                return
             for list_parent in self.lists:
                 if value is list_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+            if depth >= 2000:  # (dump()'s bound: one call for each container, within the native stack)
                 raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.lists.append(value)
             self.out.append("[")
@@ -983,10 +988,13 @@ class _Encoder:
             self.out.append("]")
             self.lists.pop()
         elif isinstance(value, dict):
+            if depth >= self.calls:
+                self.deep(value, depth)
+                return
             for dict_parent in self.dicts:
                 if value is dict_parent:
                     raise ValueError("Circular reference detected")
-            if depth >= 2000:  # (the decoder's bound on nesting, as value() explains)
+            if depth >= 2000:  # (dump()'s bound: one call for each container, within the native stack)
                 raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
             self.dicts.append(value)
             self.out.append("{")
@@ -1009,6 +1017,116 @@ class _Encoder:
             self.out.append("}")
             self.dicts.pop()
 
+    def deep(self, value: JSONValue, depth: int) -> None:
+        # The container at depth and all that it holds, as write() writes them, with the open
+        # containers on lists where write() has them in its calls: nesting then counts against
+        # neither the recursion limit nor the native stack, and stops where CPython's C encoder
+        # does, at 9,998 containers. That encoder counts a container before it looks for a
+        # circular reference, and so does this.
+        out = self.out
+        opened: set[int] = set()
+        for list_parent in self.lists:
+            opened.add(id(list_parent))
+        for dict_parent in self.dicts:
+            opened.add(id(dict_parent))
+        arrays: list[bool] = []
+        lists: list[list[JSONValue]] = []
+        dicts: list[dict[str, JSONValue]] = []
+        keys: list[list[str]] = []
+        at: list[int] = []
+        separators: list[str] = []
+        while True:
+            if isinstance(value, list):
+                if depth >= 9998:
+                    raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
+                if id(value) in opened:
+                    raise ValueError("Circular reference detected")
+                opened.add(id(value))
+                arrays.append(True)
+                lists.append(value)
+                at.append(0)
+                out.append("[")
+                depth += 1
+                if self.pretty:
+                    inner = "\n" + self.indent * depth
+                    separators.append(self.item_separator + inner)
+                    if len(value) > 0:
+                        out.append(inner)
+            elif isinstance(value, dict):
+                if depth >= 9998:
+                    raise RecursionError("maximum recursion depth exceeded while encoding a JSON object")
+                if id(value) in opened:
+                    raise ValueError("Circular reference detected")
+                opened.add(id(value))
+                arrays.append(False)
+                dicts.append(value)
+                keys.append(sorted(value) if self.sort_keys else list(value))
+                at.append(0)
+                out.append("{")
+                depth += 1
+                if self.pretty:
+                    inner = "\n" + self.indent * depth
+                    separators.append(self.item_separator + inner)
+                    if len(value) > 0:
+                        out.append(inner)
+            elif value is None:
+                # (a scalar, as write() writes it: a call of write() here would make the two one
+                # recursion, and its ordinary path the slower for it)
+                out.append("null")
+            elif isinstance(value, bool):
+                out.append("true" if value else "false")
+            elif isinstance(value, int):
+                out.append(str(value))
+            elif isinstance(value, float):
+                if value != value or value == float("inf") or value == -float("inf"):
+                    if not self.nan:
+                        raise ValueError("Out of range float values are not JSON compliant: " + repr(value))
+                    out.append("NaN" if value != value else "Infinity" if value > 0.0 else "-Infinity")
+                else:
+                    out.append(repr(value))
+            elif isinstance(value, str):
+                _quote(out, value, self.ascii)
+            # the next value to write: the next item of the innermost open container that has
+            # one, after closing those that have none
+            while True:
+                if len(arrays) == 0:
+                    return
+                i = at[-1]
+                if arrays[-1]:
+                    items = lists[-1]
+                    if i < len(items):
+                        if i > 0:
+                            out.append(separators[-1] if self.pretty else self.item_separator)
+                        at[-1] = i + 1
+                        value = items[i]
+                        break
+                    if self.pretty and i > 0:
+                        out.append("\n" + self.indent * (depth - 1))
+                    out.append("]")
+                    opened.discard(id(items))
+                    lists.pop()
+                else:
+                    names = keys[-1]
+                    if i < len(names):
+                        if i > 0:
+                            out.append(separators[-1] if self.pretty else self.item_separator)
+                        at[-1] = i + 1
+                        _quote(out, names[i], self.ascii)
+                        out.append(self.key_separator)
+                        value = dicts[-1][names[i]]
+                        break
+                    if self.pretty and i > 0:
+                        out.append("\n" + self.indent * (depth - 1))
+                    out.append("}")
+                    opened.discard(id(dicts[-1]))
+                    dicts.pop()
+                    keys.pop()
+                arrays.pop()
+                at.pop()
+                if self.pretty:
+                    separators.pop()
+                depth -= 1
+
 
 def dumps(obj: JSONValue, *, ensure_ascii: bool = True, allow_nan: bool = True,
           sort_keys: bool = False, indent: JSONValue = None,
@@ -1019,8 +1137,10 @@ def dumps(obj: JSONValue, *, ensure_ascii: bool = True, allow_nan: bool = True,
     if separators is not None:
         item_separator = separators[0]
         key_separator = separators[1]
+    # (as CPython's C encoder, which nests 9,998 containers whatever the recursion limit: the
+    # first 64 are a call each)
     encoder = _Encoder(ensure_ascii, allow_nan, sort_keys, item_separator, key_separator, indent is not None,
-                       _indent_text(indent))
+                       _indent_text(indent), 64)
     encoder.write(obj, 0)
     return "".join(encoder.out)
 
@@ -1029,5 +1149,14 @@ def dump(obj: JSONValue, fp: TextIO, *, ensure_ascii: bool = True, allow_nan: bo
          sort_keys: bool = False, indent: JSONValue = None,
          separators: tuple[str, str] | None = None) -> None:
     """Write the text dumps() returns to fp (one write, where CPython writes it in pieces)."""
-    fp.write(dumps(obj, ensure_ascii=ensure_ascii, allow_nan=allow_nan, sort_keys=sort_keys, indent=indent,
-                   separators=separators))
+    item_separator = ", " if indent is None else ","
+    key_separator = ": "
+    if separators is not None:
+        item_separator = separators[0]
+        key_separator = separators[1]
+    # (as CPython's dump(), whose encoder is Python code: every container is a call, which the
+    # recursion limit bounds)
+    encoder = _Encoder(ensure_ascii, allow_nan, sort_keys, item_separator, key_separator, indent is not None,
+                       _indent_text(indent), 2001)
+    encoder.write(obj, 0)
+    fp.write("".join(encoder.out))
