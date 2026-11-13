@@ -1,0 +1,5 @@
+SUB 11 sub True 10 base True 1
+CHANGED 21 CHANGED 21 changed True 20 base True 1
+changed 20 CHANGED 21
+own True 20 OWN 21
+[exit 0]
