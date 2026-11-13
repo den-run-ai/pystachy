@@ -308,7 +308,8 @@ class Ins:
         self.k = 0
         # an rt op's descriptor of the static type it works on (for its # parameter): RUNTIME's U?
         # is U when it holds a class (O<id>), or an exception (E) in a program that makes objects of
-        # exception classes
+        # exception classes; a call's "inline" where listguard's copy of a loop marks it to be
+        # inlined (alwaysinline: gen_listguard)
         self.x = ""
         self.r: list[int] = NONUMS  # the numbers of the values it defines, given when it was built
         self.a: list[Val] = NOVALS  # operands, in evaluation order (an rt op's typed as RUNTIME spells its parameters)

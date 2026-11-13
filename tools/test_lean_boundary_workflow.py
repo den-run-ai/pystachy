@@ -224,7 +224,7 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
                     self.assertTrue(all((ROOT / path).is_file() for path in programs))
                 self.assertEqual(lines, expected)
 
-    def test_corpus_and_opt_in_dependencies_are_pinned_and_installed_before_checks(self):
+    def test_corpus_opt_in_and_widening_dependencies_are_pinned_and_installed_before_checks(self):
         ci = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)
         verification = ci["jobs"]["verification"]
         steps = verification["steps"]
@@ -242,7 +242,8 @@ class LeanBoundaryWorkflowTests(unittest.TestCase):
                     opted = row["group"] == "opt-in" or row["group"].startswith(
                         ("dynany-optin-", "python-int-optin-"))
                     lean_full = row["machine"] == "x86_64" and row["group"] == "gc-jit-1"
-                    self.assertEqual(self.selects_matrix_row(dependency["if"], row), opted or lean_full)
+                    widening_full = event != "pull_request" and row["group"] == "runtime-cache"
+                    self.assertEqual(self.selects_matrix_row(dependency["if"], row), opted or lean_full or widening_full)
 
     def test_missing_merge_parent_runs_lean(self):
         self.merge_pr("docs/typed-ir.md")
