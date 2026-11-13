@@ -231,10 +231,12 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         if self.curfn.ll + v.v in self.wide:
             self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
         self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
-    if (is_fset(unopt(v.t)) or v.t == EMPTYFS or (is_tuple(v.t) and ("frozenset[" in v.t or EMPTYFS in v.t))) and self.abcsets and "abstract-sets" not in self.hints and not self.final and not self.rtmode:
+    if (is_fset(unopt(v.t)) or v.t == EMPTYFS or (is_tuple(v.t) and ("frozenset[" in v.t or EMPTYFS in v.t))) and self.abcsets and "abstract-sets" not in self.hints and not self.final and not self.rtmode and len(self.newhints) == 0 and self.xtry == "" and self.drying == 0:
         # a frozenset where a set is expected, in a program that annotates collections.abc.Set,
         # a set until now: the next pass compiles each as an AbstractSet's type, which takes a
-        # frozenset (ann_base); if that is not what expects a set here, this error is its too
+        # frozenset (ann_base); if that is not what expects a set here, this error is its too.
+        # Only where this error ends the pass: one that another hint or a declined comparison
+        # retries (err) may not be the program's, and must not change what its annotations mean
         self.newhints["abstract-sets"] = "1"
     hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
     if is_aset(unopt(v.t)) and is_set(unopt(t)):
