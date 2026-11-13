@@ -4192,6 +4192,11 @@ def gen_eqcall(self, f: FnInfo, iseq: bool, a: Val, b: Val) -> Val:
         self.place(lrefl)
         r = self.call_fn(f, [b, a], [])
         self.incoming(ph, r.v, self.cur)
+    elif b.t in self.classes and b.v not in self.nn:
+        # (an object of another class, which may be None too: None == None is True, None == an
+        # object False)
+        eqn = self.ptr_cmp('==' if iseq else '!=', b, Val('null', 'None'))
+        self.incoming(ph, eqn.v, self.cur)
     else:
         # None == None is True; None == <anything else> is False
         self.incoming(ph, same if b.t == "None" else ("false" if iseq else "true"), lnull)
@@ -4777,6 +4782,28 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return Val("false" if op == "==" else "true", "bool") if c.v in self.nn else self.ptr_cmp(op, c, Val("null", "None"))
         if o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
             return Val("false" if op == "==" else "true", "bool")
+        if self.enum_intlike(o):
+            # an IntEnum's or IntFlag's member, an int in CPython, whose int.__eq__ leaves a
+            # complex number to complex's: its int payload compares as an int does (lib/enum.py's
+            # __eq__ takes no complex number); a member that may be None equals only None
+            ev = b if a.t == COMPLEXC else a
+            cx = a if a.t == COMPLEXC else b
+            if ev.v in self.nn:
+                return self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+            lnull = self.label()
+            lval = self.label()
+            lend = self.label()
+            ph = Ins("phi", "bool", "")
+            self.cbr(self.ptr_cmp('==', ev, Val('null', 'None')).v, lnull, lval)
+            self.place(lnull)
+            self.incoming(ph, self.ptr_cmp(op, cx, Val('null', 'None')).v, self.cur)
+            self.br(lend)
+            self.place(lval)
+            ecr = self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+            self.incoming(ph, ecr.v, self.cur)
+            self.br(lend)
+            self.place(lend)
+            return Val(self.phi(ph), "bool")
         if o in self.classes:
             # an object of another class: complex's __eq__ (lib's, for dynamic Any values) declines
             # it, as CPython's returns NotImplemented, so the object's own __eq__ or __ne__ answers,
@@ -5504,8 +5531,8 @@ def gen_comparable(self, t: str, u: str) -> bool:
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
         return True  # (a promoting int is a number, also where it may be None: bigints.py)
-    if COMPLEXC in [t, u] and all(x in [COMPLEXC, "int", "float", "bool", BIG] for x in [t, u]):
-        return True  # (a complex number with a zero imaginary part equals its real part: complex_cmp)
+    if COMPLEXC in [t, u] and all(x in [COMPLEXC, "int", "float", "bool", BIG] or self.enum_intlike(x) for x in [t, u]):
+        return True  # (a complex number with a zero imaginary part equals its real part, also an int-like enum member's: complex_cmp)
     return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
 def gen_foreign_eq(self, a: Val, b: Val) -> Val:
