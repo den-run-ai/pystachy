@@ -269,3 +269,22 @@ where values enter, and a block's last byte read first.
 
 `parser-speed/keep-bitcode-clang.sh` is the `clang` wrapper (used as `PYSTACHY_LLVM`'s clang)
 that kept the linked module of a build, to read the optimized IR of one function.
+
+## Checks that CI runs and the local gates do not
+
+Three of this round's pull requests failed their first CI run on a check that `make` and the
+six gates (`check-recordings lint check-ir check-runtime check-repository check-fast`) never
+run. Each is quick to run before a push:
+
+| Change | What CI ran | What it wanted |
+|---|---|---|
+| A new `PYSTACHY_*` setting (#1444) | `tools/test_cached_run.py` (Lint, and `make test-program-cache` in the variants jobs) | The setting named in `docs/program-cache.md`'s table |
+| `runtime.c`'s allocator (#1445) | every `tools/test_runtime_*.py` but `test_runtime_asan.py` (variants jobs) | `test_runtime_jitfast.py` compares the JIT tier's copy of the fast path with `gc_alloc` |
+| A lowering (#1447) | `tools/lint_controls.py 'test_*verif*.py' 'test_compiler_state*.py'` (Lint) | `test_llvm_verification.py` named the old lowering of its probe's masked add |
+
+`tools/lint-run.sh TREE LOGDIR` runs the 38 unit-test commands of a tree's `lint.yml` one by
+one. It must find the pinned interpreter's own `python3` first on `PATH`: a symbolic link to it
+elsewhere loses the virtual environment's packages, and three suites then fail for want of
+`packaging` and pytest. `tools/irsame-classify.sh` and `tools/irsame-path-only.sh` say, program
+by program, what `make irsame` counts as different; `tools/gates3.sh` is the build, tests, gates
+and `opt-in` sequence used for every branch here.
