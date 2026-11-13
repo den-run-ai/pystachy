@@ -45,9 +45,7 @@ def _read_source(fnam: str) -> bytes:
             data = f.read()
     except OSError as e:
         raise ValueError(_os_error_text(str(e)))
-    try:
-        data.decode()
-    except UnicodeDecodeError:
+    if _utf8_error(data)[0] >= 0:
         raise ValueError("stream did not contain valid UTF-8")
     return data
 
@@ -73,13 +71,56 @@ def _ignore_list(items: list[tuple[int, list[bytes]]]) -> list[tuple[int, list[s
     return out
 
 
+def _utf8_error(data: bytes) -> tuple[int, int]:
+    # where the first invalid UTF-8 sequence of data starts and ends (Rust's valid_up_to() and
+    # error_len(), the whole rest for a sequence cut short), (-1, -1) for none
+    i = 0
+    n = len(data)
+    while i < n:
+        c = data[i]
+        if c < 0x80:
+            i += 1
+            continue
+        if 0xC2 <= c <= 0xDF:
+            need = 1
+            lo = 0x80
+            hi = 0xBF
+        elif 0xE0 <= c <= 0xEF:
+            need = 2
+            lo = 0xA0 if c == 0xE0 else 0x80
+            hi = 0x9F if c == 0xED else 0xBF
+        elif 0xF0 <= c <= 0xF4:
+            need = 3
+            lo = 0x90 if c == 0xF0 else 0x80
+            hi = 0x8F if c == 0xF4 else 0xBF
+        else:
+            return i, i + 1
+        if i + 1 >= n:
+            return i, n
+        if not (lo <= data[i + 1] <= hi):
+            return i, i + 1
+        for k in range(2, need + 1):
+            if i + k >= n:
+                return i, n
+            if not (0x80 <= data[i + k] <= 0xBF):
+                return i, i + k
+        i += need + 1
+    return -1, -1
+
+
 def _source_bytes(fnam: str, source) -> bytes:  # (source: str | bytes | None, specialized per call)
+    # the extension takes a str or a UTF-8 bytes source, or reads the file (as PyO3 converts it)
     if source is None:
         return _read_source(fnam)
     if isinstance(source, str):
-        return source.encode()
+        try:
+            return source.encode()
+        except UnicodeEncodeError:
+            raise TypeError("Source must be str or bytes")
     if isinstance(source, bytes):
-        source.decode()
+        pos, end = _utf8_error(source)
+        if pos >= 0:
+            raise UnicodeDecodeError("utf-8", source, pos, end, "invalid utf-8")
         return source
     raise TypeError("Source must be str or bytes")
 
