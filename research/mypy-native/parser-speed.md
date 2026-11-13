@@ -190,6 +190,12 @@ consumer that gains, this was not submitted; the UMAP session was told. #1442 by
 
 ### The allocator's inline path: #1445
 
+Its first CI run failed `tools/test_runtime_jitfast.py`, which CI's "native JIT and variants"
+jobs run with every `tools/test_runtime_*.py` and no make target does: the JIT tier has its own
+copy of the fast path (`lower_module.py`'s `JITFAST`), which that test compares with
+`gc_alloc` size by size. The copy keeps its 136-byte cutoff, where it calls the slow path; the
+test now says so and checks both. A change to `runtime.c` needs those tests run locally.
+
 `gc_alloc` popped a free slot inline only below 136 bytes. Two million 20-field objects:
 465.0 M instructions against 576.0 M. The parser with its earlier 152-byte nodes: 1.913 G
 against 1.947 G; with today's 128-byte nodes it does not change. A first version tested
@@ -234,9 +240,16 @@ Two separate costs:
   (`gen_low32`, branch `claude/confident-einstein-ep3lh6-rotate32`) computes a masked expression
   in `%i32` when a side is a constant from 0 to 2**32 - 1 and the other holds only int literals,
   constants and variables under `+ - * & | ^`, `<<` by a literal below 32 and `>>` of a variable
-  by a literal below 64: 221 of the 224 become `rol`. A first version wrote the rotation itself,
+  by a literal below 64: 221 of the 224 become `rol`. It is draft #1447. A first version wrote the rotation itself,
   with a term for `x`'s bits from 32 up; it cost an instruction where LLVM does not know `x`'s
   range, and the generic rules need no such term.
+
+`make irsame REF=bf699eb5` reports 289 of 4,494 programs for #1447. Compiled one by one with
+both compilers: 33 have IR that the lowering changed (the compiler itself, users of `random` and
+`binascii`, the masked-int cases); in 242 one string constant holds the reference compiler's
+own library path (`build/ref/lib/`); 14 are rejections whose message names that path, which the
+tool leaves alone inside quotes. No exit status and no other message text differs. The 256 would
+be reported for any reference.
 
 The parser benchmark: 1,381,548,169 with main's compiler and the port at `c8d19249`;
 1,329,405,242 with the new byte reads; 1,337,473,777 with the lowering alone; 1,286,461,196
