@@ -1,0 +1,9 @@
+mods: init mods
+mods.shapes: init mods.shapes
+1 __main__.FEBRUARY 3 4 True True 1
+[__main__.JANUARY, __main__.FEBRUARY, __main__.MARCH] 2 3 ['__main__.JANUARY', '__main__.FEBRUARY', '__main__.MARCH'] __main__.MARCH 3
+LOW __main__.HIGH HIGH True [__main__.LOW, __main__.HIGH] LOW LOW True False
+yes __main__.NO yes no True [__main__.YES, __main__.NO] True word yes
+__main__.LEFT/LEFT __main__.RIGHT RIGHT [__main__.LEFT, __main__.RIGHT]
+enum_global_days.TUESDAY enum_global_days.MONDAY 0 enum_global_days.MONDAY 1 0
+[exit 0]

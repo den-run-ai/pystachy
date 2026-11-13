@@ -9,7 +9,7 @@ internal constant global (Data "classrec", lowered in lower_module.py) emitted o
 that reach such a site, which LLVM's globaldce and llvm-link --only-needed drop otherwise.
 """
 from __future__ import annotations
-from src.pystachy_compiler.diagnostics import dynamic_program, int_program, shown
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_program, shown
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
@@ -3063,22 +3063,25 @@ def gen_enum_member(self, n: Node, want: str) -> Val:
     if self.enum_intlike(c):
         self.mem_store(Val(self.fgep(o, ci.fpos[" enum int"]), "*int"), self.coerce(v, "int"))
     if len(n.kids) > 1:
-        gen_enum_init(self, o, n.kids[0])
+        gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     return o
 
 
-def gen_enum_init(self, o: Val, v: Node) -> None:
+def gen_enum_init(self, o: Val, v: Node, count: list[Node]) -> None:
     # the __init__ of member o's enum class, called as EnumType calls it once the member has its
-    # _name_ and _value_: with the items of its value v where that is a tuple, else with v. It is
-    # a call of the method, whose result is dropped: no constructor checks that it is None
+    # _name_ and _value_: with the items of its value v where that is a tuple, else with v. One
+    # that the Loader made of the class's __new__ (enum_new_init) takes the value as written,
+    # which the _value_ may differ from, after the number of names before it (count) where its
+    # body asks for that. It is a call of the method, whose result is dropped: no constructor
+    # checks that it is None
     f = self.classes[o.t].methods["__init__"]
-    items = v.kids if v.kind == "tuple" else [v]
+    items = count + (v.kids if v.kind == "tuple" else [v])
     args = [x for x in items]
-    if f.node.line > v.line:
+    if f.node.line // LINES == v.line // LINES and f.node.line > v.line:
         # EnumType calls __init__ once the class body has run. Here the member is initialized
         # where the body binds it, before the def statement below it has evaluated its
         # defaults: a parameter that the value's items leave out is given its default value,
-        # a literal, with the call
+        # a literal, with the call (not one of a base class in another module, whose def ran)
         for j in range(len(items) + 1, len(f.params)):
             d = f.defaults[j]
             if j == f.vararg or j == f.kwarg or d.kind == "noann":
@@ -3101,7 +3104,7 @@ def gen_enum_alias(self, n: Node, want: str) -> Val:
         o = self.new_obj(ci.name)
         self.setfield(o, self.field(o, "_name_"), "_name_", Val(self.sconst(n.kids[1].s), "str"))
         self.setfield(o, self.field(o, "_value_"), "_value_", v)
-        gen_enum_init(self, o, n.kids[0])
+        gen_enum_init(self, o, n.kids[2] if len(n.kids) > 2 else n.kids[0], n.kids[3:])
     self.class_default(ci, n.s)
     t = ci.ftypes[n.s]
     return Val(self.mload(t, ci.fglob[n.s]), t)

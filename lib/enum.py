@@ -12,7 +12,7 @@ from types import MappingProxyType
 __all__ = [
         'EnumType', 'EnumMeta',
         'Enum', 'IntEnum', 'StrEnum', 'Flag', 'IntFlag', 'ReprEnum',
-        'auto', 'unique',
+        'auto', 'unique', 'global_enum',
         ]
 
 
@@ -864,3 +864,28 @@ def unique(enumeration):
     # (the compiler checks the members of an enum class that @unique decorates, and reports its
     # aliases as an error: CPython's ValueError where the class statement runs)
     return enumeration
+
+
+def global_enum(cls):
+    """
+    decorator that makes the repr() of an enum member reference its module
+    instead of its class; also exports all members to the enum's module's
+    global namespace
+    """
+    # (the compiler applies @global_enum to the statement of an enum class it decorates, whose
+    # repr() and str() it makes and whose members' names it binds in the module: Loader's
+    # enum_classes. No other call reaches this function)
+    raise TypeError("global_enum() is supported as the decorator of an enum class statement")
+
+
+def _simple_enum(etype):
+    """
+    Class decorator that converts a normal class into an :class:`Enum`.  No
+    safety checks are done, and some advanced behavior (such as
+    :func:`__init_subclass__`) is not available.  Enum creation can be faster
+    using :func:`_simple_enum`.
+    """
+    # (the compiler makes the enum class of a class statement that @_simple_enum(etype)
+    # decorates, as it makes one of a statement that derives from etype: Loader's enum_classes.
+    # No other call reaches this function)
+    raise TypeError("_simple_enum() is supported as the decorator of a class statement")
