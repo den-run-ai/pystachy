@@ -4500,16 +4500,49 @@ def gen_complex_arith(self, op: str, a: Val, b: Val, shown: str) -> Val:
     fn = "_sum" if op == "+" else "_diff" if op == "-" else "_prod" if op == "*" else "_quot" if op == "/" else "_pow" if op == "**" else ""
     if fn == "":
         self.err(f"unsupported operand type(s) for {shown if shown != '' else op}: '{tname(a.t)}' and '{tname(b.t)}'")
+    # (a complex number's object may be None, a complex | None's: CPython's TypeError names it)
+    sym = shown if shown != "" else "** or pow()" if op == "**" else op
+    an = a.t == COMPLEXC and a.v not in self.nn
+    bn = b.t == COMPLEXC and b.v not in self.nn
+    anull = self.ptr_cmp('==', a, Val('null', 'None')).v if an else ""
+    bnull = self.ptr_cmp('==', b, Val('null', 'None')).v if bn else ""
+    if an and bn:
+        self.guard(self.scalar('and', [Val(anull, 'bool'), Val(bnull, 'bool')]), f"TypeError: unsupported operand type(s) for {sym}: 'NoneType' and 'NoneType'")
+    if an:
+        self.guard(anull, f"TypeError: unsupported operand type(s) for {sym}: 'NoneType' and '{tname(b.t)}'")
+    if bn:
+        self.guard(bnull, f"TypeError: unsupported operand type(s) for {sym}: '{tname(a.t)}' and 'NoneType'")
     ps = self.complex_parts(a) + self.complex_parts(b)
-    return self.call_fn(self.funcs[COMPLEXS + "$" + fn], [], [self.vnode(x) for x in ps])
+    r = self.call_fn(self.funcs[COMPLEXS + "$" + fn], [], [self.vnode(x) for x in ps])
+    self.nn[r.v] = True  # (each function makes a new object)
+    return r
 
-def gen_complex_cmp(self, op: str, a: Val, b: Val) -> Val:
+def gen_complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val:
     # a == b or a != b of a complex number and a number, as complex_richcompare: equal parts; a
     # float equal to the real part, with an imaginary part of 0.0; an int equal to the real part
     # exactly (a float's comparison with an int), with an imaginary part of 0.0. Ordering is
-    # CPython's TypeError, at compile time
+    # CPython's TypeError, at compile time. checked: a complex operand is known not to be None
     if op != "==" and op != "!=":
         self.err(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'")
+    nulls = [self.ptr_cmp('==', x, Val('null', 'None')).v for x in [a, b] if x.t == COMPLEXC and x.v not in self.nn] if not checked else []
+    if len(nulls) > 0:
+        # (a complex number's object may be None, a complex | None's, which equals only None)
+        anynull = nulls[0] if len(nulls) == 1 else self.scalar('or', [Val(nulls[0], 'bool'), Val(nulls[1], 'bool')])
+        none = self.label()
+        some = self.label()
+        end = self.label()
+        ph = Ins("phi", "bool", "")
+        self.cbr(anynull, none, some)
+        self.place(none)
+        eqn = self.scalar('and', [Val(nulls[0], 'bool'), Val(nulls[1], 'bool')]) if len(nulls) == 2 else "false"
+        self.incoming(ph, eqn if op == "==" else self.scalar('xor', [Val(eqn, 'bool'), Val('true', 'bool')]), self.cur)
+        self.br(end)
+        self.place(some)
+        r = self.complex_cmp(op, a, b, True)
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), "bool")
     c = a if a.t == COMPLEXC else b
     o = b if a.t == COMPLEXC else a
     cp = self.complex_parts(c)

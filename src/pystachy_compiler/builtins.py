@@ -2526,6 +2526,10 @@ def gen_complex_new(self, args: list[Node]) -> Val:
         self.err(f"complex() first argument must be a string or a number, not '{tname(r.t)}'")
     if i.t != "" and i.t not in nums:
         self.err(f"complex() second argument must be a number, not '{tname(i.t)}'")
+    # (a complex number's object may be None, a complex | None's: CPython's TypeError)
+    self.notnone(r, "TypeError: complex() first argument must be a string or a number, not 'NoneType'")
+    if i.t != "":
+        self.notnone(i, "TypeError: complex() second argument must be a number, not 'NoneType'")
     if i.t == "" and r.t == COMPLEXC:
         return r  # (complex(c) of a complex number is that object)
     rp = self.complex_parts(r)
