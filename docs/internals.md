@@ -165,7 +165,9 @@ header. Nearby indexed reads and bounded searches reuse a hint instead of rescan
 prefix; this keeps the native lexer's sequential indexing practical for Unicode source.
 Collection clears all hints before reclaiming memory, and in-place append invalidates the
 changed string's hint. The cache retains no strings and adds no header fields; uncached or
-widely separated non-ASCII indexing remains O(n).
+widely separated non-ASCII indexing remains O(n). `startswith()` and `endswith()` with start 0
+and an end at or past the byte length, as their defaults are, compare the whole string's bytes
+and count no code points ([#1301](https://github.com/den-run-ai/pystachy/issues/1301)).
 
 Generic operations such as comparison, hashing, representation and sorting receive a compact
 type descriptor. The runtime interprets nested container descriptors and calls generated helpers

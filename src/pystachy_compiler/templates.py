@@ -211,7 +211,10 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
         for f in s.methods.values():
             # the special methods that are no templates, which Pystachy calls implicitly (its
             # others are compiled where they are called, as templates are)
-            if not f.generic and f.bad == "" and f.ll not in self.compiled:
+            # An annotation can create this class before module globals and flow
+            # information are declared. The program's later method pass compiles
+            # these early specializations after their declarations are ready.
+            if self.compiling and not f.generic and f.bad == "" and f.ll not in self.compiled:
                 fr = self.save()
                 self.modlevel = False
                 self.lenient = False

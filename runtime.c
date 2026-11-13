@@ -1300,6 +1300,17 @@ static int text_bounds(Str *s, I *st, I *en) {
   else if (*en < 0 && (*en += n) < 0) *en = 0;
   return *st <= *en;   /* unlike slices, a start past the end does not match an empty needle */
 }
+/* start 0 and an end at or past the byte length, which no code-point count exceeds: the whole
+   str, whose byte bounds text_bounds and text_offset would give too, without counting the code
+   points of a receiver that no operation has counted (s.upper().startswith("L"), #1301). The
+   other bounds take an out-of-line path, so that LLVM inlines a call with the default bounds
+   (0 and INT64_MAX), whose test then folds away */
+static int text_whole(Str *s, I st, I en) { return st == 0 && en >= s->len; }
+__attribute__((noinline)) static I text_tail(Str *s, Str *p, I st, I en, int end) {
+  if (!text_bounds(s, &st, &en)) return 0;
+  st = text_offset(s, st); en = text_offset(s, en);
+  return end ? pys_str_endswith(s, p, st, en) : pys_str_startswith(s, p, st, en);
+}
 I pys_text_find(Str *s, Str *p, I st, I en) {
   if (!text_bounds(s, &st, &en)) return -1;
   I at = pys_str_find(s, p, text_offset(s, st), text_offset(s, en));
@@ -1325,12 +1336,10 @@ I pys_text_count(Str *s, Str *p, I st, I en) {
   return !p->len ? en - st + 1 : pys_str_count(s, p, text_offset(s, st), text_offset(s, en));
 }
 I pys_text_startswith(Str *s, Str *p, I st, I en) {
-  if (!text_bounds(s, &st, &en)) return 0;
-  return pys_str_startswith(s, p, text_offset(s, st), text_offset(s, en));
+  return text_whole(s, st, en) ? pys_str_startswith(s, p, 0, s->len) : text_tail(s, p, st, en, 0);
 }
 I pys_text_endswith(Str *s, Str *p, I st, I en) {
-  if (!text_bounds(s, &st, &en)) return 0;
-  return pys_str_endswith(s, p, text_offset(s, st), text_offset(s, en));
+  return text_whole(s, st, en) ? pys_str_endswith(s, p, 0, s->len) : text_tail(s, p, st, en, 1);
 }
 Str *pys_str_replace(Str *s, Str *a, Str *b);
 Str *pys_str_replace_count(Str *s, Str *a, Str *b, I count);
