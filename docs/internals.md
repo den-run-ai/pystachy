@@ -762,6 +762,33 @@ tool pair. This opt-in does not change the existing combined-cache hit contract 
 cache headers independently on those hits. Cache directories must remain trusted
 local storage; no shared-cache trust or additional platform support is implied.
 
+<a id="profile-guided-builds"></a>
+
+### Profile-guided builds
+
+`build` can optimize an executable with a profile of its own runs, in three steps:
+
+```sh
+PYSTACHY_PROFILE_GENERATE=prof pystachy build app.py -o app-profiling
+./app-profiling typical-input        # each run writes prof/default_*.profraw
+llvm-profdata merge -o app.profdata prof/*.profraw
+PYSTACHY_PROFILE_USE=app.profdata pystachy build app.py -o app
+```
+
+The settings give clang's `-fprofile-generate=DIR` and `-fprofile-use=FILE` to the one step
+that runs LLVM's passes over the program and the runtime it needs as one module, so the
+profile also covers the runtime code inlined into the program; the generating build's link takes
+the flag too, for LLVM's profile runtime. The runtime's own build takes neither: its modules are
+compiled apart, each would carry the module flag that a profile adds, and LLVM refuses to link
+two. `llvm-profdata` must be the toolchain's own, since the raw format follows LLVM's version.
+Only `build` reads the settings.
+
+Generator functions are left out of the profile (`noprofile`, which the generating build adds
+to each): LLVM 18 aborts where it applies a profile to one, so they are compiled as without a
+profile, and the code that calls them is still profiled. A profile is used only where the
+program has not changed since it was made: LLVM compiles a function whose code differs without
+it, and warns.
+
 ### Compiler stage timings
 
 Set `PYSTACHY_TIMING=1` to emit tab-separated stderr records with a monotonic
@@ -836,6 +863,8 @@ are required before promotion. `make verify` keeps the standard tier.
 | `PYSTACHY_RUNTIME_C_CACHE=1` | Opt in to Linux default-flag C-runtime bitcode reuse across compiler producers; `0` (default) disables it |
 | `PYSTACHY_CFLAGS` | Extra clang flags for runtime compilation and AOT linking; part of the cache key |
 | `PYSTACHY_AOT_OPT=0\|1\|2` | Experimental ordinary `build` program optimization/codegen tier; `2` is the default. Runtime compilation, raw IR, JIT and extensions keep their existing tiers. Use `make BOOTSTRAP_AOT_OPT=1` for the temporary bootstrap stage only. |
+| `PYSTACHY_PROFILE_GENERATE=DIR` | Make `build` write an executable that records a raw profile in `DIR` each time it runs; see [profile-guided builds](#profile-guided-builds) |
+| `PYSTACHY_PROFILE_USE=FILE` | Make `build` optimize with the indexed profile `FILE`; not together with `PYSTACHY_PROFILE_GENERATE` |
 | `PYSTACHY_DEBUG_LINES=1` | Emit deterministic Python file, function and instruction line metadata in LLVM IR; AOT retains DWARF line tables. No local variable descriptions; part of the runtime and program cache keys. See [source attribution](../bench/source_attribution/README.md) for JIT and profiler limits. |
 | `PYSTACHY_TIMING=1` | Print monotonic compiler [stage durations](#compiler-stage-timings) to stderr; nested totals overlap |
 | `PYSTACHY_IRCHECK=1` | Verify typed IR before lowering and after transforming passes |
