@@ -1,0 +1,28 @@
+dist2 53.375
+dist2 62.0625
+dist2 52.125
+dist2 0.0
+dist2 past IndexError list index out of range
+dist2 negative 62.0625
+window 0 6 5
+window 3 10 1887
+window -5 4 3095
+window -3 6 3475
+window 17 3 IndexError list index out of range
+window 18 3 IndexError list index out of range
+window 2 1 0
+window 2 0 0
+window -21 3 IndexError list index out of range
+window 4611686018427387904 3 IndexError list index out of range
+scatter 8
+[0, 10, 23, 38, 55, 74, 95, 70]
+scatter past IndexError list index out of range
+[0, 10, 20, 30, 45, 62, 81, 102]
+scatter negative 8
+[2, 16, 32, 30, 40, 50, 60, 78]
+shared 0 10 150.0
+shared 4 9 IndexError list index out of range
+shared 6 10 IndexError list index out of range
+shared -4 8 169.5
+moving -42
+[exit 0]

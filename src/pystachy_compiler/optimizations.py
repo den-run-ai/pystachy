@@ -657,6 +657,67 @@ def guard_offset(self, vs: Values, v: str, idx: str, sums: dict[str, Ins], index
     return NO_OFFSET
 
 
+def guard_base(a: Val, defined: dict[str, bool], loads: dict[str, Ins]) -> str:
+    # the key of operand a where it is an int that a range loop's copy may add to its index as a base
+    # (guard_base_offset), which no iteration changes: a register that the loop does not define (the
+    # register), or the loop's load of a local slot that it never stores ("slot S"); "" otherwise
+    v = a.v
+    if a.t != "int":
+        return ""
+    if v in loads:
+        return "slot " + loads[v].a[0].v
+    if (v.startswith("%t") or v.startswith("%a")) and v not in defined:
+        return v
+    return ""
+
+
+def guard_base_sum(self, vs: Values, i: Ins, idx: str, sums: dict[str, Ins], index: dict[str, bool], defined: dict[str, bool], loads: dict[str, Ins], found: list[Ins]) -> tuple[str, int]:
+    # (b, c) where the checked or nsw sum i adds a base b (guard_base: its key) to a range loop's
+    # index plus the constant c (guard_offset), in either order, and i is put in found;
+    # ("", NO_OFFSET) where it does not
+    if i.s != "+" and i.s != "add":
+        return ("", NO_OFFSET)
+    for k in range(2):
+        b = guard_base(i.a[k], defined, loads)
+        c = guard_offset(self, vs, i.a[1 - k].v, idx, sums, index)
+        if b != "" and c != NO_OFFSET:
+            found.append(i)
+            return (b, c)
+    return ("", NO_OFFSET)
+
+
+def guard_base_offset(self, vs: Values, v: str, idx: str, sums: dict[str, Ins], index: dict[str, bool], defined: dict[str, bool], loads: dict[str, Ins], found: list[Ins]) -> tuple[str, int]:
+    # (b, c) where value v is a range loop's index plus a base b plus the constant c: a sum that
+    # guard_base_sum takes (and puts in found), or one plus or minus an int literal. ("", c) where
+    # v is the index plus c alone (guard_offset), and ("", NO_OFFSET) where it is none of these
+    c = guard_offset(self, vs, v, idx, sums, index)
+    if c != NO_OFFSET:
+        return ("", c)
+    w = self.canon(vs, v)
+    if w not in sums:
+        return ("", NO_OFFSET)
+    i = sums[w]
+    b, c = guard_base_sum(self, vs, i, idx, sums, index, defined, loads, found)
+    if b != "":
+        return (b, c)
+    add = i.s == "+" or i.s == "add"
+    x = i.a[0].v
+    y = i.a[1].v
+    inner = ""
+    k = 0
+    if guard_literal(y) and -GUARD_OFFSET <= int(y) <= GUARD_OFFSET:
+        inner = self.canon(vs, x)
+        k = int(y) if add else -int(y)
+    elif add and guard_literal(x) and -GUARD_OFFSET <= int(x) <= GUARD_OFFSET:
+        inner = self.canon(vs, y)
+        k = int(x)
+    if inner in sums:
+        b, c = guard_base_sum(self, vs, sums[inner], idx, sums, index, defined, loads, found)
+        if b != "" and -GUARD_OFFSET <= c + k <= GUARD_OFFSET:
+            return (b, c + k)
+    return ("", NO_OFFSET)
+
+
 def call_counts(fns: list[IFn]) -> dict[str, int]:
     # how many times fns' IR names each function (by symbol), as a call's callee or as a value,
     # an operand that a Callable or a store takes (Gen.callsites)
@@ -689,6 +750,16 @@ class GuardPlan:
         self.stores: list[Ins] = []
         self.folds: list[Ins] = []
         self.inline: list[Ins] = []
+        self.start = 0  # (the range's first value)
+        # the bases that indexes add (guard_base's keys: "slot S" or a register), the smallest constant
+        # added with each, a load of each slot base, and each list with each base it is indexed by
+        # ("<list key>\t<base key>") with the largest constant added with that pair
+        self.bases: list[str] = []
+        self.least: dict[str, int] = {}
+        self.base_load: dict[str, Ins] = {}
+        self.pairs: list[str] = []
+        self.pmost: dict[str, int] = {}
+        self.basesums: list[Ins] = []  # (the checked sums b + i of accepted indexes: the copy's add none)
 
 
 def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at: dict[str, int], sums: dict[str, Ins]) -> GuardPlan | None:
@@ -730,6 +801,7 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
         return None
     plan = GuardPlan(lp, pre)
     plan.region = region
+    plan.start = int(start)
     # a call of a function that the program names nowhere else (Gen.callsites), which LLVM inlines
     # as an internal function's last call: once the copy calls it too, LLVM would inline neither
     # call, and the copy would run slower than the loop did (#1300). The copy's call is inlined
@@ -784,19 +856,40 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
                     continue  # (an access the copy keeps checked; it changes no list's length)
                 if i.s == "list.set" and (int_lists() or dynamic_program()):
                     continue  # (an item assignment stays checked where a list may hold numeric identities)
-                c = guard_offset(self, vs, i.a[1].v, idx, sums, index)
+                found: list[Ins] = []
+                base, c = guard_base_offset(self, vs, i.a[1].v, idx, sums, index, defined, loads, found)
                 key = o.v if o.v not in defined else "slot " + loads[o.v].a[0].v if o.v in loads else ""
-                if c == NO_OFFSET or key == "" or int(start) + c < 0:
+                if c == NO_OFFSET or key == "" or (base == "" and int(start) + c < 0):
                     continue
-                if key not in plan.most:
+                for summed in found:
+                    if summed.op == "ovf" and len([x for x in plan.basesums if x is summed]) == 0:
+                        plan.basesums.append(summed)
+                if key not in plan.list_type:
                     plan.lists.append(key)
-                    plan.most[key] = c
                     plan.list_type[key] = o.t
                     if key.startswith("slot "):
                         plan.slot_load[key] = loads[o.v]
-                elif c > plan.most[key]:
+                if base == "" and key not in plan.most:
                     plan.most[key] = c
-                keys[f"{key} {c}"] = True
+                elif base == "" and c > plan.most[key]:
+                    plan.most[key] = c
+                elif base != "":
+                    # (a base's test before the loop checks start + c >= 0 for its smallest c)
+                    if base not in plan.least:
+                        plan.bases.append(base)
+                        plan.least[base] = c
+                        for v in loads:
+                            if base == "slot " + loads[v].a[0].v:
+                                plan.base_load[base] = loads[v]
+                    elif c < plan.least[base]:
+                        plan.least[base] = c
+                    pair = key + "\t" + base
+                    if pair not in plan.pmost:
+                        plan.pairs.append(pair)
+                        plan.pmost[pair] = c
+                    elif c > plan.pmost[pair]:
+                        plan.pmost[pair] = c
+                keys[f"{key} {base} {c}"] = True
                 if i.s == "list.get":
                     plan.reads.append(i)
                 else:
@@ -825,8 +918,8 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
             continue
         owner = length.a[0].v
         key = owner if owner not in defined else "slot " + loads[owner].a[0].v if owner in loads else ""
-        c = guard_offset(self, vs, test.a[0].v, idx, sums, index)
-        if key != "" and c != NO_OFFSET and f"{key} {c}" in keys:
+        base, c = guard_base_offset(self, vs, test.a[0].v, idx, sums, index, defined, loads, [])
+        if key != "" and c != NO_OFFSET and f"{key} {base} {c}" in keys:
             plan.folds.append(last)
     return plan
 
@@ -844,7 +937,11 @@ def gen_listguard(self, fn: IFn) -> int:
     # copy where each such list, as the loop starts, has stop <= len(xs) - c for its largest c: then
     # 0 <= i + c < len(xs) for every i the loop takes, as no length changes while it runs. Otherwise
     # the loop runs as compiled, raising IndexError where CPython raises it, after the same
-    # iterations. The copy keeps every other check. A coroutine is left as it is (a caller may
+    # iterations. An index may also add a base b that no iteration changes (guard_base: data[bi + d]);
+    # then the tests check start + c + b >= 0 for b's smallest c, compute stop + b, checked, and need
+    # stop + b <= len(xs) - c for each list's largest c with b; the copy reads b once, from the
+    # tests, and adds it without an overflow check (guard_loop). The copy keeps every other check.
+    # A coroutine is left as it is (a caller may
     # change a list while it is suspended), as is a loop that a try statement covers or that holds
     # another loop or more than GUARD_OPS ops. How many accesses the copies leave unchecked
     if fn.coro or len(fn.loops) == 0:
@@ -913,6 +1010,23 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
                         fn.fa[tmpname(fn.n)] = True
     fn.n += 1
     test = Blk(f"L{fn.n}")
+    # each base's register: a slot base's is the test's load of the slot, which the copy reads in
+    # place of the loop's loads of it (the loop never stores the slot), so that the tests and the
+    # copy's indexes name one value
+    based: dict[str, str] = {}
+    dropped: dict[int, bool] = {}  # (by result: the loop's loads of a slot base, which the copy leaves out)
+    for base in plan.bases:
+        if not base.startswith("slot "):
+            based[base] = base
+            continue
+        fn.n += 1
+        based[base] = tmpname(fn.n)
+        for b in fn.blocks:
+            if b.label in region:
+                for i in b.code:
+                    if i.op == "mem.load" and "slot " + i.a[0].v == base:
+                        numbers[i.r[0]] = fn.n
+                        dropped[i.r[0]] = True
     reads: dict[int, bool] = {}
     for i in plan.reads:
         reads[i.r[0]] = True
@@ -922,6 +1036,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
     for i in folds:
         slow[i.b[1]] = True
     copies: list[Blk] = []
+    fitted: dict[str, bool] = {}  # (the copy's overflow flags of b + i sums, which it no longer computes)
     last = 0
     n = 0
     for j in range(len(fn.blocks)):
@@ -931,6 +1046,8 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         last = j
         c = Blk(labels[b.label])
         for i in b.code:
+            if len(i.r) == 1 and i.r[0] in dropped:
+                continue
             d = clone_instruction(i, numbers, labels)
             if i.op == "rt" and i.s == "list.get" and len(i.r) == 1 and i.r[0] in reads and b.label not in slow:
                 d.op = "list.load"  # (as listget makes it: the slot pys_list_get would have returned)
@@ -948,6 +1065,19 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
             elif i.op == "cbr" and len([x for x in folds if x is i]) > 0:
                 d.a = [Val("true", "bool")]  # (listfast's check, which the test before the loop makes)
                 n += 1
+            elif i.op == "ovf" and len([x for x in plan.basesums if x is i]) > 0:
+                # b + i, an index's base and the loop's index: start + b >= -c and stop + b fit, which
+                # the tests before the loop check, so b + i does, for every i the loop takes
+                fitted[tmpname(d.r[2])] = True
+                d.op = "scalar.bin"
+                d.s = "add"
+                d.x = "nsw"
+                d.r = [d.r[1]]
+            elif i.op == "check" and len(d.a) == 1 and d.a[0].v in fitted:
+                d.op = "br"  # (the overflow check of such a sum: it never fails)
+                d.s = ""
+                d.x = ""
+                d.a = []
             elif i.op == "call" and len([x for x in plan.inline if x is i]) > 0:
                 d.x = "inline"  # (its callee's only call but the loop's: guard_plan)
             c.code.append(d)
@@ -982,8 +1112,47 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         cur.code.append(skip)
         tests.append(nxt)
         cur = nxt
-    for k in range(len(plan.lists)):
-        key = plan.lists[k]
+    # each base b's tests: start + c + b >= 0 for its smallest c, then s = stop + b, checked; where
+    # either fails, the loop runs as compiled
+    ends: dict[str, str] = {}  # (each base's s)
+    for base in plan.bases:
+        if base.startswith("slot "):
+            src = plan.base_load[base]
+            load = Ins("mem.load", src.t, "")
+            load.a = [src.a[0]]
+            load.r = [int(based[base][2:])]
+            cur.code.append(load)
+        low = Ins("scalar.cmp", "bool", "sle")
+        low.a = [Val(str(-(plan.start + plan.least[base])), "int"), Val(based[base], "int")]
+        fn.n += 1
+        low.r = [fn.n]
+        cur.code.append(low)
+        fn.n += 1
+        nxt = Blk(f"L{fn.n}")
+        branch = Ins("cbr", "", "")
+        branch.a = [Val(tmpname(low.r[0]), "bool")]
+        branch.b = [nxt.label, lp.head]
+        cur.code.append(branch)
+        tests.append(nxt)
+        cur = nxt
+        self.runtime("llvm.sadd.with.overflow.i64")
+        add = Ins("ovf", "int", "+")
+        add.a = [Val(lp.stop.v, "int"), Val(based[base], "int")]
+        add.r = [fn.n + 1, fn.n + 2, fn.n + 3]
+        fn.n += 3
+        cur.code.append(add)
+        ends[base] = tmpname(add.r[1])
+        fn.n += 1
+        nxt = Blk(f"L{fn.n}")
+        branch = Ins("cbr", "", "")
+        branch.a = [Val(tmpname(add.r[2]), "bool")]
+        branch.b = [lp.head, nxt.label]
+        cur.code.append(branch)
+        tests.append(nxt)
+        cur = nxt
+    plain = [key for key in plan.lists if key in plan.most]
+    for k in range(len(plain)):
+        key = plain[k]
         length = Ins("list.len", "int", "")
         length.a = [Val(lists[key], plan.list_type[key])]
         fn.n += 1
@@ -1004,7 +1173,43 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         cur.code.append(fits)
         target = labels[lp.head]  # (each list's test in turn, then the copy)
         nxt = cur
-        if k < len(plan.lists) - 1:
+        if k < len(plain) - 1 or len(plan.pairs) > 0:
+            fn.n += 1
+            nxt = Blk(f"L{fn.n}")
+            tests.append(nxt)
+            target = nxt.label
+        branch = Ins("cbr", "", "")
+        branch.a = [Val(tmpname(fits.r[0]), "bool")]
+        branch.b = [target, lp.head]
+        cur.code.append(branch)
+        cur = nxt
+    # each list and base b that an index adds: stop + b <= len(xs) - c for the pair's largest c,
+    # which keeps b + i + c < len(xs) for every i the loop takes
+    for k in range(len(plan.pairs)):
+        pair = plan.pairs[k]
+        key = pair[: pair.find("\t")]
+        base = pair[pair.find("\t") + 1 :]
+        length = Ins("list.len", "int", "")
+        length.a = [Val(lists[key], plan.list_type[key])]
+        fn.n += 1
+        length.r = [fn.n]
+        cur.code.append(length)
+        limit = tmpname(fn.n)
+        if plan.pmost[pair] != 0:
+            less = Ins("scalar.bin", "int", "sub")
+            less.a = [Val(limit, "int"), Val(str(plan.pmost[pair]), "int")]
+            fn.n += 1
+            less.r = [fn.n]
+            cur.code.append(less)
+            limit = tmpname(fn.n)
+        fits = Ins("scalar.cmp", "bool", "sle")
+        fits.a = [Val(ends[base], "int"), Val(limit, "int")]
+        fn.n += 1
+        fits.r = [fn.n]
+        cur.code.append(fits)
+        target = labels[lp.head]
+        nxt = cur
+        if k < len(plan.pairs) - 1:
             fn.n += 1
             nxt = Blk(f"L{fn.n}")
             tests.append(nxt)

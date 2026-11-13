@@ -554,7 +554,7 @@ before the next pass. Normal compilation does not add these verification scans.
 |---|---|
 | `charslots` | For a private local assigned once in the IR from a string index, keep the indexed code point if the store dominates every read and each read only compares it to a one-byte ASCII string literal. Indexing and its exceptions stay at the assignment. |
 | `listget` | Replace a list read in a sequence loop or an invariant forward range loop with an unchecked load when the loop test proves the index valid and effects preserve the list's length; a loop over a `bytes`, which never changes in place, reads each byte inline as it is lowered |
-| `listguard` | Give an innermost forward range loop whose ops change no list's length a copy whose item reads and assignments, at the index plus a constant, of lists the loop does not rebind are unchecked (`list.load`, `list.store`), and run the copy where tests before the loop find every such list long enough; give inline list reads and stores TBAA tags |
+| `listguard` | Give an innermost forward range loop whose ops change no list's length a copy whose item reads and assignments, at the index plus a constant (and a base no iteration changes), of lists the loop does not rebind are unchecked (`list.load`, `list.store`), and run the copy where tests before the loop find every such list long enough; give inline list reads and stores TBAA tags |
 | `dictfuse` | Reuse a known dictionary entry across membership tests, reads and updates of the same dictionary/key, until a mutation or user-code effect invalidates it |
 | `tupleiter` | Traverse tuple slots directly instead of materializing a list |
 | `listfast` | Inline a checked fast path for arbitrary `list[int]` and `bytes` reads, retaining the runtime fallback for negative or out-of-range indices |
@@ -616,7 +616,14 @@ the item inline as `list.set` does where no module opts in to promoting ints or 
 before the loop run the copy where every such list has `stop <= len(xs) - c` for its largest
 `c`, which keeps `0 <= i + c < len(xs)` for every `i` the loop takes; a list that a local not yet
 assigned would hold, and any shorter list, run the loop as compiled, which raises `IndexError`
-(or `UnboundLocalError`) after the same iterations as CPython. The copy doubles the loop's code.
+(or `UnboundLocalError`) after the same iterations as CPython. An index may also add a base that
+no iteration changes, an `int` local the loop never stores or a value it does not define, as in
+`data[bi + d]` (`tests/programs/containers/list_guard_base.py`). For each base `b`, the tests
+check `start + c + b >= 0` for its smallest `c` and compute `stop + b`, checked; each list then
+needs `stop + b <= len(xs) - c` for its largest `c` with that base. Where a test fails, as for a
+negative index that Python reads from the end, the loop runs as compiled. The copy reads `b` once,
+from the tests, and adds it to the index without an overflow check, since the tests keep `b + i`
+within `stop + b` (`tests/ir/list_guard_base.py`). The copy doubles the loop's code.
 A call in the loop of a function that the program calls nowhere else is `alwaysinline` in the
 copy, and the callee's ops count toward the 400. LLVM inlines an internal function's only call
 almost whatever its size, but each of two calls only if it is cheap: the copy's second call once
