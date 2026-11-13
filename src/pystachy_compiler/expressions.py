@@ -4838,6 +4838,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return dc
     if (a.t == COMPLEXC or b.t == COMPLEXC) and (op == "==" or op == "!=") and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):
         return self.complex_cmp(op, a, b)
+    if (op == "==" or op == "!=") and COMPLEXC in [a.t, b.t] and (is_sopt(a.t) or is_sopt(b.t)):
+        return self.optcmp(op, a, b)  # (an int, float or bool | None: None equals only None, a number as complex_cmp compares it)
     if (op == "==" or op == "!=") and (a.t == COMPLEXC) != (b.t == COMPLEXC):
         # a complex number and a value of a builtin type that no complex number equals (CPython
         # compares them by identity); None is the same object as a complex | None that holds it
@@ -5620,7 +5622,7 @@ def gen_comparable(self, t: str, u: str) -> bool:
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
         return True  # (a promoting int is a number, also where it may be None: bigints.py)
-    if COMPLEXC in [t, u] and all(x in [COMPLEXC, "int", "float", "bool", BIG] or self.enum_intlike(x) for x in [t, u]):
+    if COMPLEXC in [t, u] and all(x in [COMPLEXC, "int", "float", "bool", BIG] or is_sopt(x) or self.enum_intlike(x) for x in [t, u]):
         return True  # (a complex number with a zero imaginary part equals its real part, also an int-like enum member's: complex_cmp)
     if COMPLEXC in [t, u] and any(x in self.classes and x != COMPLEXC and self.classes[x].tag != 0 for x in [t, u]):
         return True  # (an object of a class with subclasses, one of which may take a complex number: inherit_cmp)
