@@ -242,6 +242,9 @@ def gen_desc(self, t: str, use: str) -> str:
     return gen_plain_desc(self, t, use)
 
 
+DIGITS = "0123456789"  # (the last character of a class's descriptor, O<id>)
+
+
 def gen_plain_desc(self, t: str, use: str) -> str:
     # (t's own constructor is no recursive alias's, though its parts may hold one: see gen_rec_desc)
     if is_union(unopt(t)):
@@ -249,12 +252,12 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t)) or (self.num_union(unopt(t)) and all([op in ORDOP or op == "==" for op in use.split()]))):
             self.err("closed union operations require narrowing with isinstance() first")
         members = umembers(unopt(t))
-        # (a class's member, a complex number's, last: its O<id> is read up to the next letter, and
-        # no member's tag digits may follow it; runtime.c finds a member by its tag, umember)
-        members = [m for m in members if m not in self.classes] + [m for m in members if m in self.classes]
         d = "U" + str(len(members)) + ":"
-        for m in members:
-            d += str(self.utag(m)) + ":" + self.desc(m, use)
+        for i in range(len(members)):
+            md = self.desc(members[i], use)
+            # (a class's O<id> runs to the first non-digit, so a '.' ends one that would run into
+            # the next member's tag, also within a container's descriptor: LO000.2:i)
+            d += str(self.utag(members[i])) + ":" + md + ("." if i + 1 < len(members) and md[-1:] in DIGITS else "")
         return ("?" if is_opt(t) else "") + d
     # type descriptor for the runtime's generic repr (use "repr"), equality ("==") or ordering
     # ("<", ">", ...; a list or tuple compares its items with == first)
@@ -379,9 +382,10 @@ def gen_rec_desc_body(self, t: str, use: str, active: dict[str, int], offset: in
             self.err("closed union operations require narrowing with isinstance() first")
         ms = umembers(t)
         out = "U" + str(len(ms)) + ":"
-        for m in ms:
-            out += str(self.utag(m)) + ":"
-            out += gen_rec_desc(self, m, use, active, offset + len(out))
+        for i in range(len(ms)):
+            out += str(self.utag(ms[i])) + ":"
+            md = gen_rec_desc(self, ms[i], use, active, offset + len(out))
+            out += md + ("." if i + 1 < len(ms) and md[-1:] in DIGITS else "")  # (as gen_plain_desc's)
         return out
     if is_list(t):
         return "L" + gen_rec_desc(self, held(elem(t)), use, active, offset + 1)

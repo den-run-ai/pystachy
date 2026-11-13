@@ -2571,7 +2571,7 @@ static I unum(const char **d) {   /* a count or tag terminated by ':' (compiler-
 static const char *skip(const char *d) {
   char c = *d++;
   if (c == 'R') { unum(&d); return d; }
-  if (c == 'O' || c == 'P' || c == 'H') { d += 3; while (*d >= '0' && *d <= '9') d++; return d; }
+  if (c == 'O' || c == 'P' || c == 'H') { d += 3; while (*d >= '0' && *d <= '9') d++; return d + (*d == '.'); }   /* (a union member's ends at a '.' before the next member's tag) */
   if (c == 'L' || c == 'V' || c == '?' || c == 'S' || c == 'F') return skip(d);
   if (c == 'D') return skip(skip(d));
   if (c == 'T') for (int n = *d++ - '0'; n > 0; n--) d = skip(d);

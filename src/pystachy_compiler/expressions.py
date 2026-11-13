@@ -4585,8 +4585,10 @@ def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
             self.cbr(self.utest(v, [m], False), hit, miss)
         self.place(hit)
         r = ""
-        if not is_union(unopt(o.t)) and not is_opt(o.t) and eq_kind(m) != eq_kind(o.t) and not (m == "None" and o.t in self.classes):
-            # (but an object, a complex number's, may be None, which None equals: cmp2's identity test)
+        obj = o.t in self.classes and o.t != COMPLEXC
+        if not is_union(unopt(o.t)) and not is_opt(o.t) and not obj and eq_kind(m) != eq_kind(o.t) and not (m == "None" and o.t in self.classes):
+            # (but an object, a complex number's, may be None, which None equals: cmp2's identity
+            # test; and an object of another class answers by its own __eq__, also reflected)
             r = "false" if op == "==" else "true"
         else:
             x = Val("null", "None") if m == "None" else self.uget(Val(v.v, unopt(v.t)), m)
