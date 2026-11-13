@@ -4243,16 +4243,18 @@ def dyn_class_members(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> Non
     self.cbr(self.ptr_cmp("==", Val(self.dyn_typeof(o), "dyntype"), Val(self.rtdata("pys_dyntype_type"), "dyntype")).v, box, other)
     self.place(box)
     rec = Val(self.mload("%ptr", self.maddr("%ptr", o.v, "1")), "%ptr")
+    lacking = self.label()
     for c in kinds:
-        hit = self.label()
+        kind = kinds[c]
+        hit = lacking if kind == "" else self.label()
         rest = self.label()
         self.cbr(self.scalar_cmp("eq", rec, Val(self.refl_record(c), "%ptr")), hit, rest)
-        self.place(hit)
-        kind = kinds[c]
-        shown = self.refl_type_name(c, "__name__")
         if kind == "":
-            self.raise_("AttributeError", self.sconst(f"type object '{shown}' has no attribute '{name}'"))
-        elif kind == "method" and key.startswith("get."):
+            self.place(rest)
+            continue  # (the classes without the name share one case, below)
+        self.place(hit)
+        shown = self.refl_type_name(c, "__name__")
+        if kind == "method" and key.startswith("get."):
             self.raise_("NotImplementedError", self.sconst(f"{shown}.{name} of a class held as an Any value is not supported as a value: it is a method (call it)"))
         elif kind == "attr" or kind == "method":
             dyn_class_arm(self, f, key, c, name, kind, args)
@@ -4262,6 +4264,11 @@ def dyn_class_members(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> Non
             self.br(other)
         self.place(rest)
     self.br(other)
+    if "" in kinds.values():
+        self.place(lacking)
+        # (CPython's AttributeError, with the name of the class, which its record holds)
+        cname = Val(self.mload("str", self.maddr("%ptr", rec.v, "0")), "str")
+        self.raise_("AttributeError", self.concat([Val(self.sconst("type object '"), "str"), cname, Val(self.sconst(f"' has no attribute '{name}'"), "str")]).v)
     self.place(other)
 
 
