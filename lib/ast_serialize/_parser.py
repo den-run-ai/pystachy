@@ -862,6 +862,16 @@ class Parser:
         return self.missing(X_IDENTIFIER)
 
     def parse_name(self, ctx: int) -> Node:
+        lx = self.lexer
+        if lx.kind == T_NAME:
+            # (parse_identifier()'s first case, without making its node)
+            start = lx.start
+            end = lx.end
+            name = self.bump_name()
+            nn = Node(E_NAME, start, end)
+            nn.s = name
+            nn.n = CTX_LOAD if len(name) > 0 else CTX_INVALID
+            return nn
         ident = self.parse_identifier(ctx)
         n = Node(E_NAME, ident.start, ident.end)
         n.s = ident.s
@@ -1279,6 +1289,18 @@ class Parser:
 
     def parse_attribute_expression(self, value: Node, start: int, ctx: int) -> Node:
         self.bump(T_DOT)
+        lx = self.lexer
+        if lx.kind == T_NAME:
+            # (parse_identifier()'s first case, without making its node)
+            astart = lx.start
+            aend = lx.end
+            name = self.bump_name()
+            na = self.new(E_ATTRIBUTE, start)
+            na.a = value
+            na.s = name
+            na.nstart = astart
+            na.nend = aend
+            return na
         attr = self.parse_identifier(ctx)
         n = self.new(E_ATTRIBUTE, start)
         n.a = value
