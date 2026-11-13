@@ -810,7 +810,9 @@ class OriginalPytestParity(TemporarySuite):
                                    "def test_invalid():\n    with pytest.raises(TypeError):\n"
                                    f"        pytest.raises({expected})\n")
                 actual = runner.run_module(path, self.root, self.work, "aot", compiler, sys.executable, 120)
-                self.assertIn(actual.state, {"compile-error", "execution-error"}, actual.events)
+                # The compiler rejects the test, which is left out and reported: no case of it passes.
+                self.assertEqual((actual.state, actual.cases, actual.events), ("empty", [], []))
+                self.assertEqual(list(actual.uncompiled), ["test_suite.py::test_invalid"])
 
     @unittest.skipUnless(os.environ.get("PYSTACHY_PYTEST_NATIVE_COMPILER"), "native compiler opt-in required")
     def test_native_failures_do_not_hide_cleanup(self):

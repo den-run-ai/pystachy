@@ -992,9 +992,11 @@ class FormParity(TemporarySuite):
                 assert info.value.code == 2
         """)
         actual = runner.run_module(path, self.root, self.work, "jit", shlex.split(NATIVE), sys.executable, 180)
-        self.assertEqual(actual.state, "execution-error")
+        # The compiler rejects the test, which is left out: nothing of it ran or passed.
+        self.assertEqual((actual.state, actual.cases), ("empty", []))
         # The diagnostic names the test's line beside the generated one.
-        self.assertRegex(actual.stderr, r"test_suite\.py:12 \[generated test_suite\.py:\d+\]: error: ")
+        self.assertRegex(actual.uncompiled["test_suite.py::test_reused"],
+                         r"test_suite\.py:12 \[generated test_suite\.py:\d+\]: error: ")
         command = shlex.split(NATIVE)
         if len(command) == 1 and os.path.isabs(command[0]):
             relative = os.path.relpath(command[0])
