@@ -84,7 +84,16 @@ class InvalidStateError(Error):
 # Pystachy port: no _Waiter, _AsCompletedWaiter, _FirstCompletedWaiter, _AllCompletedWaiter,
 # _AcquireFutures, _create_and_install_waiters() and _yield_finished_futures(): they let wait()
 # and as_completed() sleep until another thread finishes a future, and here no other thread
-# runs. While CPython would wait, no future changes, so a wait is _wait()'s
+# runs. While CPython would wait, no future changes, so a wait is _wait()'s. A waiter also
+# records the futures that finish in the order they do, which as_completed() yields them in:
+# here each future that finishes takes the next number of this count as its _order
+_finished = 0
+
+def _next_finished() -> int:
+    global _finished
+    _finished += 1
+    return _finished
+
 _DEADLOCK = " would wait for ever, as Pystachy runs no other thread to finish the future"
 
 def _wait(what: str, timeout) -> None:
@@ -147,10 +156,11 @@ def as_completed(fs, timeout=None):
 
         # Pystachy port: waiter.event.wait(wait_timeout) and the waiter's finished futures: the
         # pending futures that the program's own code has finished since the last yield, in
-        # the order given (CPython's waiter has them in the order they finished in). Where
-        # there is none, none finishes during the wait either
+        # the order they finished in (see _next_finished()). Where there is none, none
+        # finishes during the wait either
         finished = [f for f in pending
                     if f._state in [CANCELLED_AND_NOTIFIED, FINISHED]]
+        finished.sort(key=lambda f: f._order)
         if not finished:
             if timeout is None:
                 _wait("as_completed()", None)
@@ -241,6 +251,7 @@ class Future(Generic[_T]):
         if _call is not None:
             self._result = _call[0]
         self._exception: BaseException | None = None
+        self._order: int = 0  # Pystachy port: (see _next_finished())
         self._done_callbacks: list[Callable[[Self], None]] = []
 
     def _invoke_callbacks(self):
@@ -439,6 +450,8 @@ class Future(Generic[_T]):
         """
         if self._state == CANCELLED:
             self._state = CANCELLED_AND_NOTIFIED
+            # Pystachy port: (waiter.add_cancelled(self), see _next_finished())
+            self._order = _next_finished()
             return False
         elif self._state == PENDING:
             self._state = RUNNING
@@ -457,6 +470,7 @@ class Future(Generic[_T]):
             raise InvalidStateError('{}: {!r}'.format(self._state, self))
         self._result = (result,)  # Pystachy port: (see __init__)
         self._state = FINISHED
+        self._order = _next_finished()  # Pystachy port: (waiter.add_result(self))
         self._invoke_callbacks()
 
     def set_exception(self, exception):
@@ -468,6 +482,7 @@ class Future(Generic[_T]):
             raise InvalidStateError('{}: {!r}'.format(self._state, self))
         self._exception = exception
         self._state = FINISHED
+        self._order = _next_finished()  # Pystachy port: (waiter.add_exception(self))
         self._invoke_callbacks()
 
 
