@@ -1,13 +1,25 @@
 # Copyright 2009 Brian Quinlan. All Rights Reserved.
 # Licensed to PSF under a Contributor Agreement.
 
+# Pystachy port of CPython 3.13.16's Lib/concurrent/futures/_base.py (lib/provenance.md), for the
+# one thread a Pystachy program runs (docs/concurrency.md). An executor runs a call before
+# submit() returns (thread.py), so its futures are finished; a future is pending only where a
+# program makes a Future() itself, and nothing but that program's own code can finish it. So the
+# module needs no lock, condition or waiter, and a wait that only another thread could end
+# raises RuntimeError, as _thread's does, or sleeps for its timeout. Each change is marked
+# "Pystachy port".
+
 __author__ = 'Brian Quinlan (brian@sweetapp.com)'
 
 import collections
-import logging
-import threading
+# Pystachy port: no logging (LOGGER, below) and no threading (the note above); sys and traceback
+# report a callback's exception, and Callable and Self type a future's callbacks
+import sys
 import time
-import types
+import traceback
+from typing import Callable, Generic, Self, TypeVar
+
+_T = TypeVar("_T")
 
 FIRST_COMPLETED = 'FIRST_COMPLETED'
 FIRST_EXCEPTION = 'FIRST_EXCEPTION'
@@ -39,8 +51,12 @@ _STATE_TO_DESCRIPTION_MAP = {
     FINISHED: "finished"
 }
 
-# Logger for internal use by the futures package.
-LOGGER = logging.getLogger("concurrent.futures")
+# Pystachy port: no LOGGER = logging.getLogger("concurrent.futures"): logging is compiled with
+# dynamic Any, which a program that only submits calls would pay for. What CPython logs there, an
+# exception that a callback raises, is written to sys.stderr as logging's last resort handler
+# writes it for a program that configures no logging: the message, then the exception
+def _log_exception(msg: str, exc: BaseException) -> None:
+    sys.stderr.write(msg + "\n" + "".join(traceback.format_exception(exc)))
 
 class Error(Exception):
     """Base class for all future-related exceptions."""
@@ -50,150 +66,28 @@ class CancelledError(Error):
     """The Future was cancelled."""
     pass
 
-TimeoutError = TimeoutError  # make local alias for the standard exception
+# Pystachy port: imported, where CPython assigns TimeoutError = TimeoutError (a module-level
+# assignment that reads the name it binds does not find the builtin)
+from builtins import TimeoutError  # make local alias for the standard exception
 
 class InvalidStateError(Error):
     """The operation is not allowed in this state."""
     pass
 
-class _Waiter(object):
-    """Provides the event that wait() and as_completed() block on."""
-    def __init__(self):
-        self.event = threading.Event()
-        self.finished_futures = []
+# Pystachy port: no _Waiter, _AsCompletedWaiter, _FirstCompletedWaiter, _AllCompletedWaiter,
+# _AcquireFutures, _create_and_install_waiters() and _yield_finished_futures(): they let wait()
+# and as_completed() sleep until another thread finishes a future, and here no other thread
+# runs. While CPython would wait, no future changes, so a wait is _wait()'s
+_DEADLOCK = " would wait for ever, as Pystachy runs no other thread to finish the future"
 
-    def add_result(self, future):
-        self.finished_futures.append(future)
-
-    def add_exception(self, future):
-        self.finished_futures.append(future)
-
-    def add_cancelled(self, future):
-        self.finished_futures.append(future)
-
-class _AsCompletedWaiter(_Waiter):
-    """Used by as_completed()."""
-
-    def __init__(self):
-        super(_AsCompletedWaiter, self).__init__()
-        self.lock = threading.Lock()
-
-    def add_result(self, future):
-        with self.lock:
-            super(_AsCompletedWaiter, self).add_result(future)
-            self.event.set()
-
-    def add_exception(self, future):
-        with self.lock:
-            super(_AsCompletedWaiter, self).add_exception(future)
-            self.event.set()
-
-    def add_cancelled(self, future):
-        with self.lock:
-            super(_AsCompletedWaiter, self).add_cancelled(future)
-            self.event.set()
-
-class _FirstCompletedWaiter(_Waiter):
-    """Used by wait(return_when=FIRST_COMPLETED)."""
-
-    def add_result(self, future):
-        super().add_result(future)
-        self.event.set()
-
-    def add_exception(self, future):
-        super().add_exception(future)
-        self.event.set()
-
-    def add_cancelled(self, future):
-        super().add_cancelled(future)
-        self.event.set()
-
-class _AllCompletedWaiter(_Waiter):
-    """Used by wait(return_when=FIRST_EXCEPTION and ALL_COMPLETED)."""
-
-    def __init__(self, num_pending_calls, stop_on_exception):
-        self.num_pending_calls = num_pending_calls
-        self.stop_on_exception = stop_on_exception
-        self.lock = threading.Lock()
-        super().__init__()
-
-    def _decrement_pending_calls(self):
-        with self.lock:
-            self.num_pending_calls -= 1
-            if not self.num_pending_calls:
-                self.event.set()
-
-    def add_result(self, future):
-        super().add_result(future)
-        self._decrement_pending_calls()
-
-    def add_exception(self, future):
-        super().add_exception(future)
-        if self.stop_on_exception:
-            self.event.set()
-        else:
-            self._decrement_pending_calls()
-
-    def add_cancelled(self, future):
-        super().add_cancelled(future)
-        self._decrement_pending_calls()
-
-class _AcquireFutures(object):
-    """A context manager that does an ordered acquire of Future conditions."""
-
-    def __init__(self, futures):
-        self.futures = sorted(futures, key=id)
-
-    def __enter__(self):
-        for future in self.futures:
-            future._condition.acquire()
-
-    def __exit__(self, *args):
-        for future in self.futures:
-            future._condition.release()
-
-def _create_and_install_waiters(fs, return_when):
-    if return_when == _AS_COMPLETED:
-        waiter = _AsCompletedWaiter()
-    elif return_when == FIRST_COMPLETED:
-        waiter = _FirstCompletedWaiter()
-    else:
-        pending_count = sum(
-                f._state not in [CANCELLED_AND_NOTIFIED, FINISHED] for f in fs)
-
-        if return_when == FIRST_EXCEPTION:
-            waiter = _AllCompletedWaiter(pending_count, stop_on_exception=True)
-        elif return_when == ALL_COMPLETED:
-            waiter = _AllCompletedWaiter(pending_count, stop_on_exception=False)
-        else:
-            raise ValueError("Invalid return condition: %r" % return_when)
-
-    for f in fs:
-        f._waiters.append(waiter)
-
-    return waiter
-
-
-def _yield_finished_futures(fs, waiter, ref_collect):
-    """
-    Iterate on the list *fs*, yielding finished futures one by one in
-    reverse order.
-    Before yielding a future, *waiter* is removed from its waiters
-    and the future is removed from each set in the collection of sets
-    *ref_collect*.
-
-    The aim of this function is to avoid keeping stale references after
-    the future is yielded and before the iterator resumes.
-    """
-    while fs:
-        f = fs[-1]
-        for futures_set in ref_collect:
-            futures_set.remove(f)
-        with f._condition:
-            f._waiters.remove(waiter)
-        del f
-        # Careful not to keep a reference to the popped value
-        yield fs.pop()
+def _wait(what: str, timeout) -> None:
+    # the wait for a future that is not done and that only this thread could finish: for ever
+    # (RuntimeError, as _thread's acquire() of a lock that no thread would release), or for the
+    # seconds of the timeout, as CPython's Condition.wait() and Event.wait() sleep them
+    if timeout is None:
+        raise RuntimeError("deadlock: " + what + _DEADLOCK)
+    elif timeout > 0:
+        time.sleep(timeout)
 
 
 def as_completed(fs, timeout=None):
@@ -217,46 +111,48 @@ def as_completed(fs, timeout=None):
     if timeout is not None:
         end_time = timeout + time.monotonic()
 
-    fs = set(fs)
-    total_futures = len(fs)
-    with _AcquireFutures(fs):
-        finished = set(
-                f for f in fs
-                if f._state in [CANCELLED_AND_NOTIFIED, FINISHED])
-        pending = fs - finished
-        waiter = _create_and_install_waiters(fs, _AS_COMPLETED)
-    finished = list(finished)
-    try:
-        yield from _yield_finished_futures(finished, waiter,
-                                           ref_collect=(fs,))
+    # Pystachy port: the futures are kept in the order given, each once, where CPython keeps
+    # sets of them and a waiter that records those that finish: it yields the finished ones in
+    # the order of a set, which is no particular one, and here it is the order given
+    seen = set()
+    futures = []
+    for f in fs:
+        if f not in seen:
+            seen.add(f)
+            futures.append(f)
+    total_futures = len(futures)
+    finished = [f for f in futures
+                if f._state in [CANCELLED_AND_NOTIFIED, FINISHED]]
+    pending = [f for f in futures
+               if f._state not in [CANCELLED_AND_NOTIFIED, FINISHED]]
+    for f in finished:
+        yield f
 
-        while pending:
+    while pending:
+        if timeout is None:
+            wait_timeout = None
+        else:
+            wait_timeout = end_time - time.monotonic()
+            if wait_timeout < 0:
+                raise TimeoutError(
+                        '%d (of %d) futures unfinished' % (
+                        len(pending), total_futures))
+
+        # Pystachy port: waiter.event.wait(wait_timeout) and the waiter's finished futures: the
+        # pending futures that the program's own code has finished since the last yield, in
+        # the order given (CPython's waiter has them in the order they finished in). Where
+        # there is none, none finishes during the wait either
+        finished = [f for f in pending
+                    if f._state in [CANCELLED_AND_NOTIFIED, FINISHED]]
+        if not finished:
             if timeout is None:
-                wait_timeout = None
+                _wait("as_completed()", None)
             else:
-                wait_timeout = end_time - time.monotonic()
-                if wait_timeout < 0:
-                    raise TimeoutError(
-                            '%d (of %d) futures unfinished' % (
-                            len(pending), total_futures))
-
-            waiter.event.wait(wait_timeout)
-
-            with waiter.lock:
-                finished = waiter.finished_futures
-                waiter.finished_futures = []
-                waiter.event.clear()
-
-            # reverse to keep finishing order
-            finished.reverse()
-            yield from _yield_finished_futures(finished, waiter,
-                                               ref_collect=(fs, pending))
-
-    finally:
-        # Remove waiter from unfinished futures
-        for f in fs:
-            with f._condition:
-                f._waiters.remove(waiter)
+                _wait("as_completed()", wait_timeout)
+        pending = [f for f in pending
+                   if f._state not in [CANCELLED_AND_NOTIFIED, FINISHED]]
+        for f in finished:
+            yield f
 
 DoneAndNotDoneFutures = collections.namedtuple(
         'DoneAndNotDoneFutures', 'done not_done')
@@ -286,81 +182,100 @@ def wait(fs, timeout=None, return_when=ALL_COMPLETED):
         futures. Duplicate futures given to *fs* are removed and will be
         returned only once.
     """
-    fs = set(fs)
-    with _AcquireFutures(fs):
-        done = {f for f in fs
-                   if f._state in [CANCELLED_AND_NOTIFIED, FINISHED]}
-        not_done = fs - done
-        if (return_when == FIRST_COMPLETED) and done:
-            return DoneAndNotDoneFutures(done, not_done)
-        elif (return_when == FIRST_EXCEPTION) and done:
-            if any(f for f in done
-                   if not f.cancelled() and f.exception() is not None):
-                return DoneAndNotDoneFutures(done, not_done)
-
-        if len(done) == len(fs):
+    # Pystachy port: the set has a name of its own (a parameter keeps its type)
+    fset = set(fs)
+    done = {f for f in fset
+               if f._state in [CANCELLED_AND_NOTIFIED, FINISHED]}
+    not_done = fset - done
+    if (return_when == FIRST_COMPLETED) and done:
+        return DoneAndNotDoneFutures(done, not_done)
+    elif (return_when == FIRST_EXCEPTION) and done:
+        if any(f for f in done
+               if not f.cancelled() and f.exception() is not None):
             return DoneAndNotDoneFutures(done, not_done)
 
-        waiter = _create_and_install_waiters(fs, return_when)
+    if len(done) == len(fset):
+        return DoneAndNotDoneFutures(done, not_done)
 
-    waiter.event.wait(timeout)
-    for f in fs:
-        with f._condition:
-            f._waiters.remove(waiter)
-
-    done.update(waiter.finished_futures)
-    return DoneAndNotDoneFutures(done, fs - done)
+    # Pystachy port: _create_and_install_waiters()'s check of return_when, then the wait, during
+    # which no future finishes: the sets are those above
+    if return_when != FIRST_COMPLETED and return_when != FIRST_EXCEPTION and return_when != ALL_COMPLETED:
+        raise ValueError("Invalid return condition: %r" % return_when)
+    _wait("wait()", timeout)
+    return DoneAndNotDoneFutures(done, fset - done)
 
 
 def _result_or_cancel(fut, timeout=None):
+    # Pystachy port: no del fut, which breaks a reference cycle for CPython's reference counts
     try:
-        try:
-            return fut.result(timeout)
-        finally:
-            fut.cancel()
+        return fut.result(timeout)
     finally:
-        # Break a reference cycle with the exception in self._exception
-        del fut
+        fut.cancel()
 
 
-class Future(object):
+class Future(Generic[_T]):
     """Represents the result of an asynchronous computation."""
 
-    def __init__(self):
+    # Pystachy port: a generic class of the result's type, where CPython's is a class of object
+    # with __class_getitem__ = classmethod(types.GenericAlias): a field has one type, so
+    # Future[int] holds an int's result and Future[None] that of a call that returns None, and a
+    # program that makes a future itself names its type (Future[int](), f: Future[int] =
+    # Future()). The result is held in a tuple of one item, None before there is one.
+    # _call, which CPython's __init__ does not take, is an executor's (thread.py): a tuple of
+    # that field's first value, whose type binds _T; the tuple of a call that returns None
+    # binds nothing (no type variable is None), fits the annotation's first member and leaves
+    # _T to the Future[None] that the executor names
+    def __init__(self, _call: tuple[tuple[None] | None] | tuple[tuple[_T] | None] | None = None) -> None:
         """Initializes the future. Should not be called by clients."""
-        self._condition = threading.Condition()
-        self._state = PENDING
-        self._result = None
-        self._exception = None
-        self._waiters = []
-        self._done_callbacks = []
+        # Pystachy port: no _condition and no _waiters (see the note on _Waiter above); the
+        # fields are annotated
+        self._state: str = PENDING
+        self._result: tuple[_T] | None = None
+        if _call is not None:
+            self._result = _call[0]
+        self._exception: BaseException | None = None
+        self._done_callbacks: list[Callable[[Self], None]] = []
 
     def _invoke_callbacks(self):
         for callback in self._done_callbacks:
             try:
                 callback(self)
-            except Exception:
-                LOGGER.exception('exception calling callback for %r', self)
+            except Exception as exc:
+                _log_exception('exception calling callback for %r' % self, exc)
 
     def __repr__(self):
-        with self._condition:
-            if self._state == FINISHED:
-                if self._exception:
-                    return '<%s at %#x state=%s raised %s>' % (
-                        self.__class__.__name__,
-                        id(self),
-                        _STATE_TO_DESCRIPTION_MAP[self._state],
-                        self._exception.__class__.__name__)
-                else:
-                    return '<%s at %#x state=%s returned %s>' % (
-                        self.__class__.__name__,
-                        id(self),
-                        _STATE_TO_DESCRIPTION_MAP[self._state],
-                        self._result.__class__.__name__)
-            return '<%s at %#x state=%s>' % (
+        # Pystachy port: hash(self), an object's identity hash, where CPython shows id(self) (the
+        # subset has id() of Any values only). The states and their descriptions are written
+        # out, for FINISHED and _STATE_TO_DESCRIPTION_MAP[self._state]: this method is compiled
+        # where an annotation first names a Future[...], which may be before the module's code
+        # has assigned its globals
+        state = ("pending" if self._state == 'PENDING' else
+                 "running" if self._state == 'RUNNING' else
+                 "finished" if self._state == 'FINISHED' else "cancelled")
+        if self._state == 'FINISHED':
+            if self._exception:
+                return '<%s at %#x state=%s raised %s>' % (
                     self.__class__.__name__,
-                    id(self),
-                   _STATE_TO_DESCRIPTION_MAP[self._state])
+                    hash(self),
+                    state,
+                    self._exception.__class__.__name__)
+            else:
+                return '<%s at %#x state=%s returned %s>' % (
+                    self.__class__.__name__,
+                    hash(self),
+                    state,
+                    self._result_type())
+        return '<%s at %#x state=%s>' % (
+                self.__class__.__name__,
+                hash(self),
+               state)
+
+    # Pystachy port: the name of the result's class, of the tuple's item (see __init__)
+    def _result_type(self) -> str:
+        r = self._result
+        if r is not None:
+            return r[0].__class__.__name__
+        return "NoneType"
 
     def cancel(self):
         """Cancel the future if possible.
@@ -368,43 +283,41 @@ class Future(object):
         Returns True if the future was cancelled, False otherwise. A future
         cannot be cancelled if it is running or has already completed.
         """
-        with self._condition:
-            if self._state in [RUNNING, FINISHED]:
-                return False
+        if self._state in [RUNNING, FINISHED]:
+            return False
 
-            if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
-                return True
+        if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
+            return True
 
-            self._state = CANCELLED
-            self._condition.notify_all()
+        self._state = CANCELLED
 
         self._invoke_callbacks()
         return True
 
     def cancelled(self):
         """Return True if the future was cancelled."""
-        with self._condition:
-            return self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]
+        return self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]
 
     def running(self):
         """Return True if the future is currently executing."""
-        with self._condition:
-            return self._state == RUNNING
+        return self._state == RUNNING
 
     def done(self):
         """Return True if the future was cancelled or finished executing."""
-        with self._condition:
-            return self._state in [CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED]
+        return self._state in [CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED]
 
     def __get_result(self):
         if self._exception is not None:
-            try:
-                raise self._exception
-            finally:
-                # Break a reference cycle with the exception in self._exception
-                self = None
+            # Pystachy port: no try/finally that sets self to None (it breaks a reference cycle
+            # for CPython's reference counts)
+            raise self._exception
         else:
-            return self._result
+            # Pystachy port: the tuple's item (see __init__); a finished future without an
+            # exception holds one
+            r = self._result
+            if r is not None:
+                return r[0]
+            raise InvalidStateError('{}: {!r}'.format(self._state, self))
 
     def add_done_callback(self, fn):
         """Attaches a callable that will be called when the future finishes.
@@ -418,14 +331,17 @@ class Future(object):
                 called immediately.  These callables are called in the
                 order that they were added.
         """
-        with self._condition:
-            if self._state not in [CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED]:
-                self._done_callbacks.append(fn)
-                return
+        if self._state not in [CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED]:
+            # Pystachy port: a list holds callables of one type, so each callback is kept as a
+            # function of this future that returns None, which calls it
+            def call(future: Self) -> None:
+                fn(future)
+            self._done_callbacks.append(call)
+            return
         try:
             fn(self)
-        except Exception:
-            LOGGER.exception('exception calling callback for %r', self)
+        except Exception as exc:
+            _log_exception('exception calling callback for %r' % self, exc)
 
     def result(self, timeout=None):
         """Return the result of the call that the future represents.
@@ -445,24 +361,19 @@ class Future(object):
             Exception: If the call raised then that exception will be
                 raised.
         """
-        try:
-            with self._condition:
-                if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
-                    raise CancelledError()
-                elif self._state == FINISHED:
-                    return self.__get_result()
+        if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
+            raise CancelledError()
+        elif self._state == FINISHED:
+            return self.__get_result()
 
-                self._condition.wait(timeout)
+        _wait("result()", timeout)
 
-                if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
-                    raise CancelledError()
-                elif self._state == FINISHED:
-                    return self.__get_result()
-                else:
-                    raise TimeoutError()
-        finally:
-            # Break a reference cycle with the exception in self._exception
-            self = None
+        if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
+            raise CancelledError()
+        elif self._state == FINISHED:
+            return self.__get_result()
+        else:
+            raise TimeoutError()
 
     def exception(self, timeout=None):
         """Return the exception raised by the call that the future represents.
@@ -482,20 +393,19 @@ class Future(object):
                 given timeout.
         """
 
-        with self._condition:
-            if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
-                raise CancelledError()
-            elif self._state == FINISHED:
-                return self._exception
+        if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
+            raise CancelledError()
+        elif self._state == FINISHED:
+            return self._exception
 
-            self._condition.wait(timeout)
+        _wait("exception()", timeout)
 
-            if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
-                raise CancelledError()
-            elif self._state == FINISHED:
-                return self._exception
-            else:
-                raise TimeoutError()
+        if self._state in [CANCELLED, CANCELLED_AND_NOTIFIED]:
+            raise CancelledError()
+        elif self._state == FINISHED:
+            return self._exception
+        else:
+            raise TimeoutError()
 
     # The following methods should only be used by Executors and in tests.
     def set_running_or_notify_cancel(self):
@@ -522,36 +432,26 @@ class Future(object):
             RuntimeError: if this method was already called or if
                 set_result() or set_exception() was called.
         """
-        with self._condition:
-            if self._state == CANCELLED:
-                self._state = CANCELLED_AND_NOTIFIED
-                for waiter in self._waiters:
-                    waiter.add_cancelled(self)
-                # self._condition.notify_all() is not necessary because
-                # self.cancel() triggers a notification.
-                return False
-            elif self._state == PENDING:
-                self._state = RUNNING
-                return True
-            else:
-                LOGGER.critical('Future %s in unexpected state: %s',
-                                id(self),
-                                self._state)
-                raise RuntimeError('Future in unexpected state')
+        if self._state == CANCELLED:
+            self._state = CANCELLED_AND_NOTIFIED
+            return False
+        elif self._state == PENDING:
+            self._state = RUNNING
+            return True
+        else:
+            # Pystachy port: (CPython also logs 'Future %s in unexpected state: %s' as critical)
+            sys.stderr.write('Future %s in unexpected state: %s\n' % (hash(self), self._state))
+            raise RuntimeError('Future in unexpected state')
 
     def set_result(self, result):
         """Sets the return value of work associated with the future.
 
         Should only be used by Executor implementations and unit tests.
         """
-        with self._condition:
-            if self._state in {CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED}:
-                raise InvalidStateError('{}: {!r}'.format(self._state, self))
-            self._result = result
-            self._state = FINISHED
-            for waiter in self._waiters:
-                waiter.add_result(self)
-            self._condition.notify_all()
+        if self._state in {CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED}:
+            raise InvalidStateError('{}: {!r}'.format(self._state, self))
+        self._result = (result,)  # Pystachy port: (see __init__)
+        self._state = FINISHED
         self._invoke_callbacks()
 
     def set_exception(self, exception):
@@ -559,17 +459,12 @@ class Future(object):
 
         Should only be used by Executor implementations and unit tests.
         """
-        with self._condition:
-            if self._state in {CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED}:
-                raise InvalidStateError('{}: {!r}'.format(self._state, self))
-            self._exception = exception
-            self._state = FINISHED
-            for waiter in self._waiters:
-                waiter.add_exception(self)
-            self._condition.notify_all()
+        if self._state in {CANCELLED, CANCELLED_AND_NOTIFIED, FINISHED}:
+            raise InvalidStateError('{}: {!r}'.format(self._state, self))
+        self._exception = exception
+        self._state = FINISHED
         self._invoke_callbacks()
 
-    __class_getitem__ = classmethod(types.GenericAlias)
 
 class Executor(object):
     """This is an abstract base class for concrete asynchronous executors."""
@@ -610,8 +505,18 @@ class Executor(object):
         """
         if timeout is not None:
             end_time = timeout + time.monotonic()
+        else:
+            # Pystachy port: (a closure's variables are assigned before its def)
+            end_time = 0.0
 
-        fs = [self.submit(fn, *args) for args in zip(*iterables)]
+        # Pystachy port: zip(*iterables) is written out for one, two and three iterables (zip()
+        # takes no starred argument); map() with none or more is a compile-time error
+        if len(iterables) == 1:
+            fs = [self.submit(fn, arg) for arg in iterables[0]]
+        elif len(iterables) == 2:
+            fs = [self.submit(fn, *args) for args in zip(iterables[0], iterables[1])]
+        else:
+            fs = [self.submit(fn, *args) for args in zip(iterables[0], iterables[1], iterables[2])]
 
         # Yield must be hidden in closure so that the futures are submitted
         # before the first iterator value is required.

@@ -3,6 +3,10 @@
 
 """Execute computations asynchronously using threads or processes."""
 
+# Pystachy port of CPython 3.13.16's Lib/concurrent/futures/__init__.py (lib/provenance.md):
+# ThreadPoolExecutor runs each call on the one thread a Pystachy program has (thread.py), and
+# there is no ProcessPoolExecutor. Each change is marked "Pystachy port".
+
 __author__ = 'Brian Quinlan (brian@sweetapp.com)'
 
 from concurrent.futures._base import (FIRST_COMPLETED,
@@ -16,6 +20,9 @@ from concurrent.futures._base import (FIRST_COMPLETED,
                                       Executor,
                                       wait,
                                       as_completed)
+# Pystachy port: imported here, where CPython's module __getattr__() imports it at its first use
+# (a module has no __getattr__() and __dir__()); no ProcessPoolExecutor, in __all__ either
+from concurrent.futures.thread import ThreadPoolExecutor
 
 __all__ = (
     'FIRST_COMPLETED',
@@ -29,26 +36,5 @@ __all__ = (
     'Executor',
     'wait',
     'as_completed',
-    'ProcessPoolExecutor',
     'ThreadPoolExecutor',
 )
-
-
-def __dir__():
-    return __all__ + ('__author__', '__doc__')
-
-
-def __getattr__(name):
-    global ProcessPoolExecutor, ThreadPoolExecutor
-
-    if name == 'ProcessPoolExecutor':
-        from .process import ProcessPoolExecutor as pe
-        ProcessPoolExecutor = pe
-        return pe
-
-    if name == 'ThreadPoolExecutor':
-        from .thread import ThreadPoolExecutor as te
-        ThreadPoolExecutor = te
-        return te
-
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
