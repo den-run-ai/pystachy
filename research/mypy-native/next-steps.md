@@ -91,6 +91,9 @@ librt 0.16.0's extension is not `base64` under another name. Read from its
 `tools/librt_base64_check.py` on that branch runs the port on CPython beside the extension:
 1,416,764 calls agree (`--rounds 200000 --seed 99`).
 
+On that branch `import mypy.ipc` gets past line 22 and stops at `mypy/ipc.py:36`, `import socket`:
+the next first error of those modules has no owner (issue #1310 asks for `socket`).
+
 ## `signal` needs a way to run handlers
 
 The class-objects session's sweep of CPython's `Lib` (440 modules) finds `_signal` as the first
