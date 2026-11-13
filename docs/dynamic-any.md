@@ -287,6 +287,16 @@ differ. For example, returning `tuple[int, str]` as `tuple[int, Any]` boxes its
 second item. Conversion in the other direction checks and unboxes dynamic items
 (`tests/programs/inference/dynany_tuple_items.py`).
 
+A `frozenset[Any]` crosses into a `frozenset[T]` or `AbstractSet[T]` annotation the same
+way, where `T` is `int`, `str` or a class of the program: nothing changes a frozenset, so
+a new frozenset of its elements has no alias to miss. Each element is checked as a `T`
+before the set is made (`TypeError: expected int, got str`). The new set keeps the
+elements' hashes and iteration order without calling `__hash__` or `__eq__`; only its
+identity differs. A `set[Any]` does not cross, since a copy would not see later changes,
+and other element types remain compile-time rejections. Coverage:
+`dynany_frozenset_crossing.py`, `tests/deviations/dynany_frozenset_item_check.py`,
+`tests/errors/containers/abstract_set_any_set.py` and `frozenset_any_tuple_items.py`.
+
 ### Generator channels
 
 `yield from` boxes compatible typed yields into an `Any` yield channel, and checks

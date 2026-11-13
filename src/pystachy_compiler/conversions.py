@@ -4,13 +4,14 @@ from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.diagnostics import shown
 from src.pystachy_compiler.ir import Ins, Val, tmpname
 from src.pystachy_compiler.names import short
-from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, NONEVAR, ORDOP, REFL
+from src.pystachy_compiler.specs import BIG, BIGOPT, DUNDER, EMPTYFS, NONEVAR, ORDOP, REFL
 from src.pystachy_compiler.bigints import big_viewable, held
 from src.pystachy_compiler.utils import (
     elem,
     is_callable,
     is_dict,
     is_fn,
+    is_aset,
     is_fset,
     is_kw,
     is_list,
@@ -214,6 +215,18 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
     if is_sopt(t) and v.t == unopt(t):
         return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t).identity(v)  # representation-only boxing
+    if v.t == "frozenset[dyn]" and is_fset(unopt(t)) and self.fset_unboxes(selem(unopt(t))):
+        # a frozenset of Any values where a frozenset[T] or an AbstractSet[T] is expected: no code
+        # changes it, so it crosses as a tuple does, a new frozenset of its elements, each checked
+        # as a T where it is unboxed (docs/dynamic-any.md; runtime.c's pys_set_unbox). A set of
+        # Any values does not: a copy would not see what its other holders add
+        et = selem(unopt(t))
+        dt = self.dyn_class_type(et) if et in self.classes else self.dyn_type(et)
+        return Val(self.rt("pys_set_unbox", "ptr", [f"ptr {v.v}", f"ptr {dt}", f"i64 {self.key_kind(et)}"]), t)
+    if v.t == EMPTYFS and is_fset(unopt(t)):
+        # frozenset() that nothing typed, where a frozenset[T] or an AbstractSet[T] is expected:
+        # an empty one of T's (a new object: CPython's is one object, which only `is` tells)
+        return Val(self.rt("pys_set_new", "ptr", [f"i64 {self.key_kind(selem(unopt(t)))}"]), t)
     if self.reboxes(v.t, t):
         # a tuple with an int where t holds an int | None (also deeper): a new tuple, of boxes
         return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
@@ -226,13 +239,29 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         if self.curfn.ll + v.v in self.wide:
             self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
         self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
+    if (is_fset(unopt(v.t)) or v.t == EMPTYFS or (is_tuple(v.t) and ("frozenset[" in v.t or EMPTYFS in v.t))) and self.abcsets and "abstract-sets" not in self.hints and not self.final and not self.rtmode and len(self.newhints) == 0 and self.xtry == "" and self.drying == 0:
+        # a frozenset where a set is expected, in a program that annotates collections.abc.Set,
+        # a set until now: the next pass compiles each as an AbstractSet's type, which takes a
+        # frozenset (ann_base); if that is not what expects a set here, this error is its too.
+        # Only where this error ends the pass: one that another hint or a declined comparison
+        # retries (err) may not be the program's, and must not change what its annotations mean
+        self.newhints["abstract-sets"] = "1"
     hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
+    if is_aset(unopt(v.t)) and is_set(unopt(t)):
+        hint = " (an AbstractSet value is a set or a frozenset: make one of it, set(x) or frozenset(x))"
     if is_fn(t) and is_fn(v.t):
         hint = " (each function is a type of its own: a variable, a list's items or a dict's values hold one function)"
     if hint == "" and self.curfn.ll in self.guessed:
         hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
+
+def gen_fset_unboxes(self, et: str) -> bool:
+    # can a frozenset of Any values become one of et's (coerce): et's values are a box's payload
+    # as a set holds them, of one DynType (an int of 64 bits, a str, an object of a class)
+    if et == "int" or et == "str":
+        return True
+    return et in self.classes and et not in self.tmpl and self.classes[et].exc == ""
 
 def gen_desc(self, t: str, use: str) -> str:
     if "rec[" in t:
@@ -279,6 +308,10 @@ def gen_plain_desc(self, t: str, use: str) -> str:
     if is_dict(t):
         a = targs(t)
         return "D" + self.desc(held(a[0]), use) + self.desc(held(a[1]), use if use == "repr" else "==")  # (a tuple of ints as the dict holds it: bigints.held)
+    if t == EMPTYFS:
+        return "Fi"  # (frozenset() that nothing typed: empty, and so printed and compared)
+    if is_aset(t) and use == "repr":
+        self.err("printing an AbstractSet value is not supported: it is a set or a frozenset, which print differently; print set(x) or frozenset(x)")
     if is_set(t):
         # (S<e> a set, F<e> a frozenset: equal, or ordered as subsets, by their elements)
         return ("F" if is_fset(t) else "S") + self.desc(held(selem(t)), "repr" if use == "repr" else "==")  # (a tuple of ints as the set holds it: bigints.held)

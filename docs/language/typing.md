@@ -103,10 +103,27 @@ The supported `collections.abc` annotations use concrete container types:
 | `Mapping[K, V]`, `MutableMapping[K, V]` | `dict[K, V]` |
 | `Sequence[T]`, `MutableSequence[T]` | `list[T]` |
 | `MutableSet[T]` | `set[T]` |
+| `Set[T]` | `set[T]`, or an abstract set (below) once the program gives one a frozenset |
 | `Callable[[A, B], R]` | The same `Callable` as `typing` |
 
 These types are invariant. A tuple or string is not a `Sequence`, and `isinstance()`
 tests of these annotations are decided using the compiled type.
+
+`typing.AbstractSet[T]` is an abstract set: a value that is a `set[T]` or a `frozenset[T]`,
+taken without a copy. Code reads it with `len()`, `in`, loops, comparisons and the set
+operators and methods that change nothing, whose results are abstract sets too, and passes
+it as the other operand of a set's own operators and methods (`s -= other`). What depends on
+which of the two it is, is a compile error: printing it, `isinstance()` against `set` or
+`frozenset`, `type()`, the methods and in-place operators that change a set, and using it
+where a `set[T]` is annotated; `set(x)` and `frozenset(x)` make one of it.
+`collections.abc.Set[T]` stays a `set[T]`, which a program may change and print, while the
+program gives it only sets. Once a frozenset is given where one is annotated, every
+`collections.abc.Set[T]` of the program is an abstract set.
+
+`frozenset()` that nothing types is empty for good: it is a `frozenset[T]` or an abstract set
+of any `T` where one is expected, as in `_EMPTY: tuple[frozenset[Any], frozenset[Any]] =
+(frozenset(), frozenset())` returned as a `tuple[AbstractSet[T], AbstractSet[T]]`. Each such
+use makes a new empty frozenset, which only `is` tells from CPython's single one.
 `str | os.PathLike[str]` simplifies to `str`, because paths must be strings;
 `os.fspath()` returns its string argument. Other `PathLike` annotations are unsupported.
 

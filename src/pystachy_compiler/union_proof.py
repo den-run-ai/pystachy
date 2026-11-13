@@ -498,7 +498,7 @@ class UnionProof:
             return targs(receiver)[0]
         if receiver.startswith("dict[") and (t == "*K" or t == "*V"):
             return targs(receiver)[0 if t == "*K" else 1]
-        if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[")) and t == "*T":
+        if (receiver.startswith("list[") or receiver.startswith("set[") or receiver.startswith("frozenset[") or receiver.startswith("aset[")) and t == "*T":
             return targs(receiver)[0]
         return t
 

@@ -5,11 +5,12 @@ from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
-from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, EMPTYFS, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     elem,
     identity_abi,
+    is_fset,
     is_opt,
     is_sopt,
     is_tuple,
@@ -19,6 +20,7 @@ from src.pystachy_compiler.utils import (
     optnames,
     runtime_decl,
     rtsym,
+    selem,
     targs,
     typestr,
     unopt,
@@ -562,7 +564,9 @@ def gen_reboxes(self, a: str, b: str) -> bool:
             x = "int"  # (coerce narrows a promoting int item first, as 64-bit storage takes it: bigints.py)
         dyn = x != y and ((y == "dyn" and self.dyn_boxable(x) == "") or (x == "dyn" and self.dyn_boxable(y) == ""))
         big = y == "int+" and x == "int"  # (a promoting int holds it, bigints.py; the other way, coerce tests)
-        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn and not big:
+        fs = x == EMPTYFS and is_fset(unopt(y))  # (frozenset() that nothing typed: an empty one of y's, coerce)
+        fs = fs or (x == "frozenset[dyn]" and x != y and is_fset(unopt(y)) and self.fset_unboxes(selem(unopt(y))))  # (one of Any values: a checked copy, coerce)
+        if not self.widens(x, y) and not (is_sopt(y) and x == unopt(y)) and not self.uboxes(x, y) and not self.reboxes(x, y) and not dyn and not big and not fs:
             return False
     return True
 

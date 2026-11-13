@@ -495,6 +495,7 @@ from src.pystachy_compiler.containers import (
     gen_dict_any_method as containers_dict_any_method,
     gen_dkey as containers_dkey,
     gen_elem_problem as containers_elem_problem,
+    gen_emptyfs_pair as containers_emptyfs_pair,
     gen_fromkeys as containers_fromkeys,
     gen_hash_classes as containers_hash_classes,
     gen_hash_desc as containers_hash_desc,
@@ -547,6 +548,7 @@ from src.pystachy_compiler.conversions import (
     gen_as_int as conversions_as_int,
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
+    gen_fset_unboxes as conversions_fset_unboxes,
     gen_floats as conversions_floats,
     gen_ufloats as conversions_ufloats,
     gen_from_slot as conversions_from_slot,
@@ -1482,6 +1484,7 @@ class Gen:
         self.intglobals: dict[str, str] = {}  # single-binding module int literals, after normal read checks
         self.rangeused = False  # code addresses an object of lib's range class (declared then: lower_module)
         self.objectused = False  # and of lib's object class, which object() makes
+        self.abcsets = False  # an annotation names collections.abc.Set, which holds a frozenset once a pass is told so (ann_base, coerce)
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
@@ -2802,6 +2805,9 @@ class Gen:
 
     def desc(self, t: str, use: str) -> str:
         return conversions_desc(self, t, use)
+
+    def fset_unboxes(self, et: str) -> bool:
+        return conversions_fset_unboxes(self, et)
 
     def ctype(self, base: str, ts: list[str], canon: bool = True) -> str:
         return declarations_ctype(self, base, ts, canon)
@@ -5063,6 +5069,9 @@ class Gen:
 
     def set_kind(self, et: str) -> str:
         return containers_set_kind(self, et)
+
+    def emptyfs_pair(self, a: Val, b: Val) -> list[Val]:
+        return containers_emptyfs_pair(self, a, b)
 
     def set_rekind(self, v: Val, et: str) -> Val:
         return containers_set_rekind(self, v, et)
