@@ -5614,6 +5614,8 @@ def gen_comparable(self, t: str, u: str) -> bool:
         # an int-like enum member as the int it is in CPython, and None the object of a complex
         # number that may be None)
         return any(eq_kind("int" if self.enum_intlike(m1) else m1) == eq_kind("int" if self.enum_intlike(m2) else m2) or "None" in [m1, m2] and COMPLEXC in [m1, m2] for m1 in sides[0] for m2 in sides[1])
+    if any(COMPLEXC in side for side in sides) and any(x in self.classes and x != COMPLEXC and self.classes[x].tag != 0 for x in [unopt(t), unopt(u)]):
+        return True  # (a union holding complex numbers and an object of a class with subclasses, one of which may take it: inherit_cmp)
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
