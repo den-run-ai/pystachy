@@ -4592,10 +4592,12 @@ def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
             self.cbr(self.utest(v, [m], False), hit, miss)
         self.place(hit)
         r = ""
-        obj = o.t in self.classes and o.t != COMPLEXC
-        if not is_union(unopt(o.t)) and not is_opt(o.t) and not obj and eq_kind(m) != eq_kind(o.t) and not (m == "None" and o.t in self.classes):
+        km = eq_kind(m)
+        ko = eq_kind(o.t)
+        if not is_union(unopt(o.t)) and not is_opt(o.t) and km != "" and ko != "" and km != ko and not (m == "None" and o.t in self.classes):
             # (but an object, a complex number's, may be None, which None equals: cmp2's identity
-            # test; and an object of another class answers by its own __eq__, also reflected)
+            # test; an object of another class answers by its own __eq__, also reflected; and two
+            # containers of one kind, a list[int] and a list[float], compare their items)
             r = "false" if op == "==" else "true"
         else:
             x = Val("null", "None") if m == "None" else self.uget(Val(v.v, unopt(v.t)), m)
@@ -4609,9 +4611,18 @@ def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
 
 
 def eq_kind(t: str) -> str:
-    # what kind of value equality compares a value of scalar type t with: numbers with numbers
-    # (exactly, across int, float, bool and complex), strs with strs, None with None
-    return "num" if t in ["int", "float", "bool", BIG, COMPLEXC] else t
+    # what kind of value equality compares a value of type t with, where a value of another kind is
+    # never equal to it in CPython: numbers (exactly, across int, float, bool and complex), strs,
+    # bytes, None, lists, dicts, tuples or sets; "" for an object's, whose __eq__ may take anything
+    if t in ["int", "float", "bool", BIG, COMPLEXC]:
+        return "num"
+    if t == "str" or t == "bytes" or t == "None":
+        return t
+    if is_list(t) or is_dict(t) or is_set(t):
+        return t[: t.find("[")].replace("frozenset", "set")
+    if is_tuple(t) or is_vtuple(t):
+        return "tuple"
+    return ""
 
 def gen_compare(self, n: Node) -> Val:
     tc = self.refl_type_cmp(n)  # (type(a) is C, type(a) == type(b): reflection.py)
@@ -5610,14 +5621,12 @@ def gen_comparable(self, t: str, u: str) -> bool:
         o = u if t == "dyn" else t
         return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
     sides = [(["None"] if is_opt(x) else []) + (umembers(unopt(x)) if is_union(unopt(x)) else [unopt(x)]) for x in [t, u]]
-    if any(COMPLEXC in side for side in sides) and all(m in [COMPLEXC, "int", "float", "bool", BIG, "str", "None"] or self.enum_intlike(m) for side in sides for m in side):
-        # (a complex number, or a union holding one, and scalars: complex_ueq compares them member
-        # by member, which no runtime union descriptor does; numbers equal numbers across types,
-        # an int-like enum member as the int it is in CPython, and None the object of a complex
-        # number that may be None)
-        return any(eq_kind("int" if self.enum_intlike(m1) else m1) == eq_kind("int" if self.enum_intlike(m2) else m2) or "None" in [m1, m2] and COMPLEXC in [m1, m2] for m1 in sides[0] for m2 in sides[1])
-    if any(COMPLEXC in side for side in sides) and any(x in self.classes and x != COMPLEXC and self.classes[x].tag != 0 for x in [unopt(t), unopt(u)]):
-        return True  # (a union holding complex numbers and an object of a class with subclasses, one of which may take it: inherit_cmp)
+    if any(COMPLEXC in side for side in sides) and (len(sides[0]) > 1 or len(sides[1]) > 1):
+        # (a union holding complex numbers, or a complex number and a union: complex_ueq compares
+        # them member by member, which no runtime union descriptor does; equal where any two
+        # members may be, as the rules below find them: numbers across types, an int-like enum
+        # member, a list[int] and a list[float], an object's __eq__, None and a complex | None)
+        return any(self.comparable(m1, m2) for m1 in sides[0] for m2 in sides[1])
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
