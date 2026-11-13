@@ -224,6 +224,10 @@ class IntEnum(ReprEnum):
         return repr(self._value_)
 
     def __format__(self, format_spec: str) -> str:
+        # (int's and str's __format__: with an empty spec, str() of the object, which a class's
+        # own __str__ makes)
+        if format_spec == "":
+            return str(self)
         return format(self._value_, format_spec)
 
     def __hash__(self) -> int:
@@ -343,6 +347,10 @@ class StrEnum(ReprEnum):
         return self._value_
 
     def __format__(self, format_spec: str) -> str:
+        # (int's and str's __format__: with an empty spec, str() of the object, which a class's
+        # own __str__ makes)
+        if format_spec == "":
+            return str(self)
         return format(self._value_, format_spec)
 
     def __hash__(self) -> int:
@@ -763,6 +771,10 @@ class IntFlag(Flag):
         return repr(self._value_)
 
     def __format__(self, format_spec: str) -> str:
+        # (int's and str's __format__: with an empty spec, str() of the object, which a class's
+        # own __str__ makes)
+        if format_spec == "":
+            return str(self)
         return format(self._value_, format_spec)
 
     def __hash__(self) -> int:
