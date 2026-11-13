@@ -3768,6 +3768,8 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 inv = "!"
             if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
+            if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes):
+                continue  # (lib's complex compares complex numbers: CPython's declines an object of another class)
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
                 # (and so do the int and str methods of an IntEnum's and a StrEnum's members, as
                 # int's and str's return it for None and for an object of a class not derived from
@@ -4782,10 +4784,14 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return Val("false" if op == "==" else "true", "bool") if c.v in self.nn else self.ptr_cmp(op, c, Val("null", "None"))
         if o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
             return Val("false" if op == "==" else "true", "bool")
-        if self.enum_intlike(o):
+        mown = "__eq__" if op == "==" else "__ne__"
+        own = a.t != COMPLEXC and o in self.classes and any([mown in self.classes[ck].methods and not lib_source(self.classes[ck].methods[mown].node.line, self.libdir, "enum.py") for ck in self.cmp_kinds(o)])
+        if self.enum_intlike(o) and not own:
             # an IntEnum's or IntFlag's member, an int in CPython, whose int.__eq__ leaves a
             # complex number to complex's: its int payload compares as an int does (lib/enum.py's
-            # __eq__ takes no complex number); a member that may be None equals only None
+            # __eq__ takes no complex number); a member that may be None equals only None. (With
+            # the member on the left, its class's own __eq__, or __ne__, answers instead: own;
+            # with the complex number on the left, complex's own comparison takes any int.)
             ev = b if a.t == COMPLEXC else a
             cx = a if a.t == COMPLEXC else b
             if ev.v in self.nn:
@@ -4804,6 +4810,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             self.br(lend)
             self.place(lend)
             return Val(self.phi(ph), "bool")
+        if o in self.classes and self.classes[o].tag != 0:
+            # (an object of a class with subclasses, whose comparison methods its runtime class
+            # decides: inherit_cmp, where complex's own __eq__ declines it, cmp_pick)
+            return self.inherit_cmp(op, a, b)
         if o in self.classes:
             # an object of another class: complex's __eq__ (lib's, for dynamic Any values) declines
             # it, as CPython's returns NotImplemented, so the object's own __eq__ or __ne__ answers,
@@ -5533,6 +5543,8 @@ def gen_comparable(self, t: str, u: str) -> bool:
         return True  # (a promoting int is a number, also where it may be None: bigints.py)
     if COMPLEXC in [t, u] and all(x in [COMPLEXC, "int", "float", "bool", BIG] or self.enum_intlike(x) for x in [t, u]):
         return True  # (a complex number with a zero imaginary part equals its real part, also an int-like enum member's: complex_cmp)
+    if COMPLEXC in [t, u] and any(x in self.classes and x != COMPLEXC and self.classes[x].tag != 0 for x in [t, u]):
+        return True  # (an object of a class with subclasses, one of which may take a complex number: inherit_cmp)
     return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
 def gen_foreign_eq(self, a: Val, b: Val) -> Val:
