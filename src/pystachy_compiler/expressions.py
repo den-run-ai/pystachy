@@ -4577,7 +4577,8 @@ def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
     # differ (a str, a number, None), which no value of the other kind equals in CPython
     v = a if is_union(unopt(a.t)) else b
     o = b if v is a else a
-    members = (["None"] if is_opt(v.t) else []) + umembers(unopt(v.t))
+    # (a class's union, complex | C, is a null box where it is None, as a union | None's is)
+    members = (["None"] if is_opt(v.t) or (self.reference_union(v.t) and v.v not in self.nn) else []) + umembers(unopt(v.t))
     end = self.label()
     ph = Ins("phi", "bool", "")
     for i in range(len(members)):
@@ -4792,6 +4793,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
         self.cbr(self.cmp2("is", item, a).v, hit, nx)
         self.place(nx)
         identity = True
+    elif is_union(u) or is_union(unopt(a.t)):
+        identity = self.union_same(item, a, hit, ph, value)  # (a union's object, list or dict: as below)
     elif identity:
         # (an object, list, dict, set or tuple, also one that may be None, is found
         # by identity first, as the runtime's eqitem finds a list's item: xs in (xs,)
@@ -4834,6 +4837,50 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     self.cbr(c.v, hit, nx)
     self.place(nx)
     return True
+
+def gen_union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+    # titem_eq's identity test where tuple item or x is a union's value (or a union | None's): a
+    # branch to hit (where phi ph, if any, takes value) where both hold the same object, list or
+    # dict, also a complex number whose parts are NaN, or both are None, and on in a new block
+    # where not; False if neither may be. (A number has no identity here, see the deviation about
+    # NaN, and a str's is its value; equality finds a scalar union's None, but a union of classes
+    # calls no __eq__ unless it holds complex numbers: #1432.)
+    sides: list[list[str]] = []
+    for x in [item, a]:
+        ms = umembers(unopt(x.t)) if is_union(unopt(x.t)) else [unopt(x.t)]
+        sides.append([m for m in ms if m in self.classes or m == "file" or is_list(m) or is_dict(m) or is_set(m) or is_tuple(m) or is_vtuple(m)])
+    pairs: list[list[str]] = []
+    for m1 in sides[0]:
+        for m2 in sides[1]:
+            if m1 == m2 or (m1 in self.classes and m2 in self.classes and (self.derives(m1, m2) or self.derives(m2, m1))):
+                pairs.append([m1, m2])
+    if len(pairs) == 0 and not self.reference_union(item.t) and not self.reference_union(a.t):
+        return False
+    nulls = [self.isnull(item), self.isnull(a)]
+    if nulls[0] != "false" and nulls[1] != "false":
+        nx = self.label()
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(self.scalar('and', [Val(nulls[0], 'bool'), Val(nulls[1], 'bool')]), hit, nx)
+        self.place(nx)
+    for pair in pairs:
+        test = "true"
+        for j in range(2):
+            x = item if j == 0 else a
+            if is_union(unopt(x.t)):
+                # (a class's union is a null box where it is None, as a union | None's is)
+                held = self.utest(x, [pair[j]], (is_opt(x.t) or self.reference_union(x.t)) and x.v not in self.nn)
+                test = held if test == "true" else self.scalar('and', [Val(test, 'bool'), Val(held, 'bool')])
+        same = self.label()
+        nx = self.label()
+        self.cbr(test, same, nx)
+        self.place(same)
+        ps = [x if not is_union(unopt(x.t)) else self.uget(Val(x.v, unopt(x.t)), pair[0] if x is item else pair[1]) for x in [item, a]]
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(self.ptr_cmp('==', ps[0], ps[1]).v, hit, nx)
+        self.place(nx)
+    return len(pairs) > 0 or (nulls[0] != "false" and nulls[1] != "false")
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if self.curfn.cmpops:
@@ -4986,10 +5033,12 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                     method = "__eq__"
                 if method in methods and self.cmp_method(lhs.t, method, rhs.t) == "":
                     return self.inherit_cmp(op, a, b)
-    if (op == "==" or op == "!=") and any(self.enum_intlike(x.t) for x in [a, b]) and any(is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t)) for x in [a, b]):
+    cxu = [x for x in [a, b] if is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))]
+    if (op == "==" or op == "!=") and len(cxu) > 0 and (any(self.enum_intlike(x.t) for x in [a, b]) or any(self.reference_union(x.t) for x in cxu)):
         # (an int-like enum member, an int in CPython, and a union holding complex numbers: member
         # by member, so that a complex member compares the int as complex_cmp does, which the
-        # member's __eq__ in lib/enum.py does not)
+        # member's __eq__ in lib/enum.py does not; and complex | C, whose object compares as one
+        # of C's does, also by inherit_cmp, rather than the union's box)
         return self.complex_ueq(op, a, b)
     if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
         return self.inherit_cmp(op, a, b)

@@ -577,8 +577,13 @@ expected type. Field and property reads and stores dispatch on the member. A rea
 an attribute a member lacks raises CPython's `AttributeError`; a store that would add
 an attribute to a member's object is rejected, since a native layout has no instance
 dictionary. `None`, frozen dataclasses and classes with only `__slots__` raise CPython's
-errors. `is` and `is not` compare the objects themselves, `None` included. Narrow a local
-to a member before equality comparison, truth testing or formatting. Containers remain
+errors. `is` and `is not` compare the objects themselves, `None` included, as a tuple's `in`,
+`count()` and `index()` do, calling no `__eq__`
+([#1432](https://github.com/den-run-ai/pystachy/issues/1432)). Narrow a local to a member
+before equality comparison, truth testing or formatting. Beside only objects, a `complex`
+member makes a reference union, `complex | C`, whose `==` and `!=`, also in a tuple's
+searches, compare member by member: complex numbers by value, an object by its class's
+`__eq__`, else by identity. Containers remain
 invariant, and no reference union is [inferred](#inferred-unions). This adds deterministic
 native execution, without profiles, an interpreter, runtime compilation or speculative
 assumptions; boxing and dispatch have costs, so no performance improvement is claimed.

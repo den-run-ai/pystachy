@@ -147,7 +147,11 @@ def gen_union_type(self, ts: list[str]) -> str:
     for m in ms:
         if self.umember_problem(m) != "":
             return "!" + self.umember_problem(m)
-    refs = [m for m in ms if m == "file" or (m in self.classes and m != COMPLEXC)]  # (a complex number is a scalar member)
+    refs = [m for m in ms if m == "file" or m in self.classes]
+    if COMPLEXC in refs and len(refs) != len(ms):
+        # (a complex number is a scalar member beside scalars or containers, and a reference
+        # member beside only objects and files: complex | C)
+        refs.remove(COMPLEXC)
     if len(refs) > 0:
         if len(refs) != len(ms):
             return "!reference unions cannot mix native references with scalar or container members"
