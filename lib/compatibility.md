@@ -17,7 +17,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Text](#text) | [`textwrap`](#textwrap), [`unicodedata`](#unicodedata), [`shlex`](#shlex), [`keyword`](#keyword), [`curses.ascii`](#cursesascii), [`string`](#string), [`difflib`](#difflib), [`gettext`](#gettext) |
 | [Regular expressions](#regular-expressions) | [`re`](#re), [`fnmatch`](#fnmatch) |
 | [Data formats and markup](#data-formats-and-markup) | [`json`](#json), [`tomllib`](#tomllib), [`csv`](#csv), [`html` and `html.parser`](#html-and-htmlparser), [`urllib.parse`](#urllibparse) |
-| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`hashlib`](#hashlib), [`codecs`](#codecs) |
+| [Binary data and encodings](#binary-data-and-encodings) | [`struct`](#struct), [`binascii`](#binascii), [`hashlib`](#hashlib), [`hmac`](#hmac), [`codecs`](#codecs) |
 | [Collections and functional tools](#collections-and-functional-tools) | [`collections`](#collections), [`copy`](#copy), [`enum`](#enum), [`heapq`](#heapq), [`itertools`](#itertools), [`functools`](#functools), [`operator`](#operator), [`contextlib`](#contextlib) |
 | [Numbers and randomness](#numbers-and-randomness) | [`random`](#random), [`statistics`](#statistics), [`mpz`](#mpz) |
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
@@ -526,6 +526,22 @@ and `block_size`; they take `usedforsecurity`, which changes nothing here.
   `"sha-1"`, are unsupported hash types.
 - The hash objects are of one class, `hashlib.HASH`, which CPython has as `_hashlib.HASH`; their
   repr is an object's. The constructors are Python functions, not builtins.
+
+### `hmac`
+
+`hmac` is a subset implementation of CPython's module over [`hashlib`](#hashlib), written from
+RFC 2104. `new(key, msg, digestmod)` and `digest(key, msg, digest)` take the hash as its name
+(`"sha256"`) or as a `hashlib` constructor (`hashlib.sha256`), and `HMAC` objects have `update()`,
+`digest()`, `hexdigest()`, `copy()`, `name`, `digest_size` and `block_size`, with CPython's
+results ([test](../tests/programs/library/lib_hmac.py)). `compare_digest()` compares two `bytes`
+or two ASCII `str`s in time that depends on the second one's length only.
+
+- Keys and messages are `bytes`. A `str` is a compile-time error, where CPython raises
+  `TypeError`.
+- The hashes are `hashlib`'s four. Another name raises `hashlib.new()`'s `ValueError`, where
+  CPython computes the HMAC ([deviation](../tests/deviations/lib_hmac_sha512.py)).
+- The `HMAC` class takes the hash's name; a constructor goes through `new()` or `digest()`. A
+  module as `digestmod` (PEP 247) is not supported.
 
 ### `codecs`
 
