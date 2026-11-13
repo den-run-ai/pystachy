@@ -189,6 +189,7 @@ TBAA_DEPTH_TYPE = 9  # (the scalar type nodes of TBAA_DEPTH's and TBAA_LIMIT's t
 TBAA_LIMIT_TYPE = 10
 TBAA_FLOOR = 11  # the native stack's floor, the state's third word (#1015), and its type node
 TBAA_FLOOR_TYPE = 12
+LISTLEN_RANGE = 13  # !range of a list's length in a program: never negative
 # a program's TBAA of object fields (fieldtbaa): its access tags are numbered from here, in the order
 # lowering first tags each field, and the type nodes they name follow them (lower_module); the
 # members a class's struct may have, each with its size, which is its alignment too, and the name

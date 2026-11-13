@@ -15,7 +15,10 @@ keeps the feature paths available. Every executable prints what CPython prints. 
 Linux (CI's); another LLVM may inline differently. A list store has no symbol of its own: in the
 module -O2 makes of the captured one (the driver's own step, clang -O2), the plain program's
 pys_list_set must store its item alone, and the python-int program's also its companion entry
-and pending mark (STORE), so that the check sees them where they belong.
+and pending mark (STORE), so that the check sees them where they belong. That item store carries
+lowering's "@slot" tag, which the driver gives runtime.c's accesses through struct Slot
+(retag_runtime_lists), and the program's own loads of a list's length carry its "@list" tag: in
+one module of one TBAA type each, LLVM tells an item from a length across inlined runtime code.
 
 Allocations (allocelide, #1017): compiled code's objects that hold no reference (only ints,
 floats and bools) come from pys_new, which -O2 sees as an allocation and deletes where nothing
@@ -93,6 +96,17 @@ OPT_IN_ONLY = ["mpz_digits", "mpz_cmp_float", "big_eq", "dbfind", "sbfind", "jeq
 # companion entry and pending mark
 LIST_SET = re.compile(r"^define [^\n]*@pys_list_set\(.*?^}$", re.M | re.S)
 STORE = re.compile(r"^\s+store ", re.M)
+TAGGED = re.compile(r"!tbaa !(\d+)")
+
+
+def tag_base(ll: str, line: str) -> tuple[str, int]:
+    """The struct type name and offset of the TBAA access tag that a load or store line names."""
+    tag = TAGGED.search(line)
+    if tag is None:
+        return ("", -1)
+    ops = re.search(rf"^!{tag.group(1)} = !{{(.*)}}$", ll, re.M).group(1).split(", ")
+    name = re.search(rf"^{re.escape(ops[0])} = !{{!\"([^\"]*)\"", ll, re.M).group(1)
+    return (name, int(ops[2][4:]))
 # objects that never escape (allocelide: none is allocated) and objects that a list keeps (each is)
 TEMPS = '''class Vec:
     def __init__(self, x: float, y: float, z: float) -> None:
@@ -266,10 +280,19 @@ def main():
                 if name in ("plain", "python-int"):
                     o2 = temp / f"{label}-{name}-O2.bc"
                     run([real["clang"], "-O2", "-c", "-emit-llvm", str(capture), "-o", str(o2)], env)
-                    body = LIST_SET.search(run([real["llvm-dis"], str(o2), "-o", "-"], env).decode())
+                    o2ll = run([real["llvm-dis"], str(o2), "-o", "-"], env).decode()
+                    body = LIST_SET.search(o2ll)
                     if body is None:
                         raise RuntimeError(f"{label} {name}: the module -O2 made defines no pys_list_set")
                     stores[name] = len(STORE.findall(body.group(0)))
+                    if name == "plain":
+                        item = [ln for ln in body.group(0).split("\n") if STORE.match(ln)]
+                        if [tag_base(o2ll, ln) for ln in item] != [("@slot", 0)]:
+                            raise RuntimeError(f"{label}: -O2's pys_list_set stores its item with {[tag_base(o2ll, ln) for ln in item]}, "
+                                               "expected lowering's @slot tag (retag_runtime_lists)")
+                        lengths = [ln for ln in ll.split("\n") if re.match(r"^\s+%\S+ = load i64, ptr .*!range", ln)]
+                        if ("@list", 0) not in [tag_base(ll, ln) for ln in lengths]:
+                            raise RuntimeError(f"{label}: the program loads no list length with lowering's @list tag")
             if kept["plain"]:
                 raise RuntimeError(f"{label}: the plain program's executable keeps opt-in runtime code: {sorted(kept['plain'])}")
             if stores["plain"] != 1 or stores["python-int"] < 2:
