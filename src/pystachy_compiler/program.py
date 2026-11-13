@@ -328,21 +328,33 @@ def gen_init_template(self, st: Node, hier: bool = False) -> bool:
     return False
 
 def gen_init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
-    # the program's classes that the annotations of the parameters of class statement st's own
-    # __init__ name (Box, Box | None, list[Box]; a string's where its text is such an expression
-    # of names as the program's classes have them)
+    # the program's classes that, were one a class template, would make class statement st one
+    # by a parameter of its own __init__ (init_template's rule, which this follows: no decorator,
+    # a parameter that is not *args or **kwargs, and a name where tmpl_ann looks for a template:
+    # Box, Box | None, list[Box]; a string's where its text is such an expression of names as the
+    # program's classes have them). A class that any other annotation names stays as it was: a
+    # template or not, that annotation compiled
+    if len(st.kids) > 1 or (st.s in self.nts and st.s not in self.cnts):
+        return
     for d in st.kids[0].kids:
         if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
             for p in d.kids[0].kids[1:]:
-                self.ann_classes(p.kids[0], out)
+                if p.kind == "param":
+                    self.ann_classes(p.kids[0], out)
 
 def gen_ann_classes(self, a: Node, out: dict[str, bool]) -> None:
+    # (as tmpl_ann reads annotation a: of a generic class's subscript, the arguments only)
     if a.kind == "str":
         if a.s.replace("_", "a").replace(".", "a").replace("[", "a").replace("]", "a").replace(",", "a").replace("|", "a").replace(" ", "a").isalnum():
             self.ann_classes(self.parse_expr(a.s), out)
         return
-    if a.kind == "name" and a.s in self.classes:
-        out[a.s] = True
+    if a.kind == "name":
+        if a.s in self.classes:
+            out[a.s] = True
+        return
+    if a.kind == "index" and a.kids[0].kind == "name" and a.kids[0].s in self.tparams:
+        self.ann_classes(a.kids[1], out)
+        return
     for k in a.kids:
         self.ann_classes(k, out)
 
