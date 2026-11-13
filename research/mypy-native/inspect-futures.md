@@ -29,11 +29,15 @@ First errors in the last sweep:
 
 | First error | Modules | Open PR |
 |---|---:|---|
-| `mypy/nodes.py:444` inheritance with generic class templates | 114 | the merged #1298, #1335, #1350, #1352, #1373 and #1391 do not cover it |
-| `mypyc/ir/rtypes.py:321` cannot infer the type of field `_may_be_immortal` | 28 | not checked |
-| `mypy/ipc.py:22` module `librt.base64` | 26 | none |
-| `mypy/checker.py:3636` bare `Final` in `TypeChecker`, a class with three bases | 7 | #1280 keeps the rejection for a class that is not compiled (cause not confirmed) |
+| `mypy/nodes.py:444` inheritance with generic class templates | 114 | #1277 (`MypyFile.alias_deps = defaultdict(set)`), which this trial tree did not merge |
+| `mypyc/ir/rtypes.py:321` cannot infer the type of field `_may_be_immortal` | 28 | #1295 with #1286 (`may_be_immortal and HAVE_IMMORTAL`), not merged here |
+| `mypy/ipc.py:22` module `librt.base64` | 26 | none; `base64` itself is on branch `claude/confident-einstein-ep3lh6-base64` |
+| `mypy/checker.py:3636` bare `Final` in `TypeChecker`, a class with three bases | 7 | probably #1415 (`TypeChecker(errors: Errors)` is a class template); not confirmed |
 | `ast` | 7 | none |
+
+The "Open PR" column was corrected on 2026-11-13 from the mypy-port session's
+`PROGRESS-2026-11-12.md` (branch `claude/gifted-ride-6d430y-research`): the trial tree left out
+#1277, #1295, #1402 and #1415. See [next-steps.md](next-steps.md).
 
 The trial tree is evidence about first errors, not a tested integration: table and
 import-list conflicts were merged by hand, and its compiler was built one commit of #1388
