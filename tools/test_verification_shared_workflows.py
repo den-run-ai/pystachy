@@ -66,6 +66,9 @@ class SharedCompilerWorkflowTests(unittest.TestCase):
         rows = coverage['runtime']['strategy']['matrix']['include']
         self.assertEqual([(row['suites'], row['shard']) for row in rows],
                          [('corpus', f'{index}/6') for index in range(6)] + [('ffi', '')])
+        hosted = coverage['hosted']['strategy']['matrix']['include']
+        self.assertEqual([(row['suites'], row['shard']) for row in hosted],
+                         [('corpus', f'{index}/10') for index in range(10)] + [('ffi ir', ''), ('cache unit', '')])
         self.assertNotIn('needs', coverage['hosted'])  # Hosted instrumentation stays independent.
         self.assertEqual(coverage['runtime-report']['needs'], 'runtime')
         self.assertEqual(coverage['hosted-report']['needs'], 'hosted')
