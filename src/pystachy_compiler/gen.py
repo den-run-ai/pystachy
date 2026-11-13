@@ -443,6 +443,7 @@ from src.pystachy_compiler.calls import (
     gen_call_callable as calls_call_callable,
     gen_call_fn as calls_call_fn,
     gen_call_value as calls_call_value,
+    gen_class_new as calls_class_new,
     gen_callable_pat as calls_callable_pat,
     gen_close_temp as calls_close_temp,
     gen_dispatches as calls_dispatches,
@@ -478,6 +479,30 @@ from src.pystachy_compiler.calls import (
     gen_to_callable as calls_to_callable,
     gen_unbound_call as calls_unbound_call,
     gen_virtual_call as calls_virtual_call,
+)
+from src.pystachy_compiler.class_values import (
+    gen_class_value_named as class_values_class_value_named,
+    gen_class_value_problem as class_values_class_value_problem,
+    gen_class_value as class_values_class_value,
+    gen_class_value_static as class_values_class_value_static,
+    gen_class_value_annotated as class_values_class_value_annotated,
+    gen_class_value_box as class_values_class_value_box,
+    gen_class_value_isa as class_values_class_value_isa,
+    gen_class_value_unbox as class_values_class_value_unbox,
+    gen_class_value_typed as class_values_class_value_typed,
+    gen_class_value_kinds as class_values_class_value_kinds,
+    gen_class_value_bases as class_values_class_value_bases,
+    gen_class_value_holds as class_values_class_value_holds,
+    gen_class_value_of as class_values_class_value_of,
+    gen_class_value_name as class_values_class_value_name,
+    gen_class_value_asks as class_values_class_value_asks,
+    gen_class_value_cmp as class_values_class_value_cmp,
+    gen_class_value_is as class_values_class_value_is,
+    gen_class_value_sub as class_values_class_value_sub,
+    gen_class_value_isinst as class_values_class_value_isinst,
+    gen_class_value_issub as class_values_class_value_issub,
+    gen_class_value_dynamic as class_values_class_value_dynamic,
+    gen_class_value_call as class_values_class_value_call,
 )
 from src.pystachy_compiler.containers import (
     gen_list_id_kind as containers_list_id_kind,
@@ -1391,6 +1416,16 @@ class Gen:
         # an object of a class whose code does not track it may be of (identity_box)
         self.idoff: dict[str, bool] = {}
         self.idfull = False
+        # (class_values.py) the files of modules that opt in to dynamic Any whose classes are
+        # read as class boxes (the driver's, kept across passes); those that read one as a typed
+        # class object in this pass, but those that name type[C] of an ordinary class themselves;
+        # the modules' statements, and the files of the modules that name one (clsann -1: not
+        # looked for yet)
+        self.clsany: dict[int, bool] = {}
+        self.clsused: dict[int, bool] = {}
+        self.clsbodies: list[Node] = []
+        self.clsannfiles: dict[int, bool] = {}
+        self.clsann = -1
         # Fixed for a compilation pass; dry traversal retains these program policies,
         # and a restart makes a fresh Gen before disabling hints or tracking everything.
         self.idtry = True  # try checked identity-inert module hints on this pass
@@ -4701,11 +4736,80 @@ class Gen:
     def adapter_ret(self, ft: str, ps: list[str]) -> str:
         return calls_adapter_ret(self, ft, ps)
 
+    def class_value_named(self, c: str) -> bool:
+        return class_values_class_value_named(self, c)
+
+    def class_value_problem(self, c: str) -> str:
+        return class_values_class_value_problem(self, c)
+
+    def class_value(self, c: str) -> Val:
+        return class_values_class_value(self, c)
+
+    def class_value_static(self, c: str, mod: str, line: int) -> bool:
+        return class_values_class_value_static(self, c, mod, line)
+
+    def class_value_annotated(self, file: int) -> bool:
+        return class_values_class_value_annotated(self, file)
+
+    def class_value_box(self, v: Val) -> Val:
+        return class_values_class_value_box(self, v)
+
+    def class_value_isa(self, v: Val, t: str) -> str:
+        return class_values_class_value_isa(self, v, t)
+
+    def class_value_unbox(self, v: Val, t: str) -> Val:
+        return class_values_class_value_unbox(self, v, t)
+
+    def class_value_typed(self, v: Val, known: bool) -> bool:
+        return class_values_class_value_typed(self, v, known)
+
+    def class_value_kinds(self, c: str) -> list[str]:
+        return class_values_class_value_kinds(self, c)
+
+    def class_value_bases(self, c: str, top: str) -> list[str]:
+        return class_values_class_value_bases(self, c, top)
+
+    def class_value_holds(self, t: str) -> bool:
+        return class_values_class_value_holds(self, t)
+
+    def class_value_of(self, v: Val, known: bool) -> Val:
+        return class_values_class_value_of(self, v, known)
+
+    def class_value_name(self, v: Val, what: str) -> Val:
+        return class_values_class_value_name(self, v, what)
+
+    def class_value_asks(self, op: str, a: Val, b: Val) -> bool:
+        return class_values_class_value_asks(self, op, a, b)
+
+    def class_value_cmp(self, op: str, a: Val, b: Val) -> Val:
+        return class_values_class_value_cmp(self, op, a, b)
+
+    def class_value_is(self, k: Val, c: str) -> Val:
+        return class_values_class_value_is(self, k, c)
+
+    def class_value_sub(self, c: str, k: Val) -> Val:
+        return class_values_class_value_sub(self, c, k)
+
+    def class_value_isinst(self, v: Val, k: Val, known: bool) -> Val:
+        return class_values_class_value_isinst(self, v, k, known)
+
+    def class_value_issub(self, k: Val, t: Node) -> Val:
+        return class_values_class_value_issub(self, k, t)
+
+    def class_value_dynamic(self, t: Node) -> bool:
+        return class_values_class_value_dynamic(self, t)
+
+    def class_value_call(self, c: Val, args: list[Node]) -> Val:
+        return class_values_class_value_call(self, c, args)
+
     def call_callable(self, o: Val, args: list[Node]) -> Val:
         return calls_call_callable(self, o, args)
 
     def call_value(self, v: Val, args: list[Node], want: str, resultsoft: bool = False) -> Val:
         return calls_call_value(self, v, args, want, resultsoft)
+
+    def class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
+        return calls_class_new(self, c, args, want, resultsoft, typeargs)
 
     def bound(self, s: str) -> bool:
         return calls_bound(self, s)

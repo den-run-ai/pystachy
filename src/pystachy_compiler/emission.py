@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, unionnames
 from src.pystachy_compiler.bigints import narrows
-from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
+from src.pystachy_compiler.diagnostics import ClassBoxes, Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
 from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
@@ -34,6 +34,11 @@ def gen_err(self, msg: str) -> None:
         raise Rejoin()
     if len(self.newhints) > 0 and not self.final:
         raise Rejoin()  # (an error after a join may come of the narrower type it widens: see Rejoin)
+    if len(self.clsused) > 0:
+        # (it may come of a class read as a typed class object where a module that opts in to
+        # dynamic Any, and names no type[C], made a class box of it before: compiled again so,
+        # see ClassBoxes)
+        raise ClassBoxes()
     if len(self.making) > 0:
         # an error in a template's function: say which call made it compile
         for i in range(len(self.making) - 1, -1, -1):

@@ -8,6 +8,7 @@ from src.pystachy_compiler.names import short
 from src.pystachy_compiler.specs import BIG, BIGOPT, ITERS, NONE_ITEM, NONEVAR, OBJECTC, OPTTYPES, TYPEMODS
 from src.pystachy_compiler.syntax import Node, made_var, mentions, mk
 from src.pystachy_compiler.utils import (
+    is_clsval,
     ListLayout,
     atomic_list,
     bool_for_int,
@@ -213,6 +214,8 @@ def gen_set_display(self, n: Node, want: str, folded: bool, returnctx: bool = Fa
                 et = v.t
     if not given and is_tuple(jt):
         et = self.none_items(jt)  # (None among the strs of a tuple's item: str | None)
+    if not given and is_clsval(jt):
+        et = jt  # (class objects: of a base class their classes have in common)
     if et == "":
         self.err("cannot infer the type of a set of None")
     if self.elem_problem(et) != "":
@@ -761,7 +764,7 @@ def gen_key_items(self, t: str) -> bool:
     # objects too)
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not is_clsval(x) and not self.key_class(u) and not (is_tuple(u) and self.key_items(u)):
             return False
     return True
 
@@ -1057,6 +1060,9 @@ def gen_to_str(self, v: Val) -> Val:
         return Val(self.rt("pys_exc_str", "ptr", [f"ptr {v.v}"]), "str")
     if t == "exctype":
         return Val(self.rt("pys_exc_type", "ptr", [f"ptr {v.v}"]), "str")
+    if is_clsval(unopt(t)):
+        # (an ordinary class's class object, or None: runtime.c's repr of its record, <class 'M.Q'>)
+        return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(t, 'repr'))}"]), "str")
     if t == "opt[exc]" or t == "opt[exctype]":
         # (an __exit__'s exception, or its class: str(e), or "None")
         ln = self.label()
@@ -1227,7 +1233,7 @@ def gen_hashable(self, t: str) -> bool:
     # can hash() take a value of type t (but an object's, obj_hash): a number, a str, None, an
     # object, a tuple of such items, or one of these that may be None
     u = unopt(t)
-    if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or self.key_class(u):
+    if u == "int" or u == BIG or u == "bool" or u == "float" or u == "str" or u == "bytes" or u == "None" or u == "exctype" or is_clsval(u) or self.key_class(u):
         return True
     return (is_tuple(u) or is_vtuple(u)) and all(self.hashable(x) for x in targs(u))
 
@@ -1255,6 +1261,6 @@ def gen_repr(self, v: Val) -> Val:
         self.err(f"cannot convert {v.t} to str")
     if v.t == "exc":
         return Val(self.rt("pys_exc_repr", "ptr", [f"ptr {v.v}"]), "str")
-    if unopt(v.t) == "exctype":
+    if unopt(v.t) == "exctype" or is_clsval(unopt(v.t)):
         return self.to_str(v)  # (a class's repr is its str)
     return Val(self.rt("pys_repr", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}"]), "str")

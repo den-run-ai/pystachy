@@ -234,7 +234,7 @@ def tname(t: str) -> str:
         return "BaseException"
     if t == "dyn":
         return "Any"  # (whose type is its value's: dynamic.py)
-    if t == "exctype":
+    if t == "exctype" or is_clsval(t):
         return "type"
     if is_gen(t):
         return "generator"
@@ -517,6 +517,18 @@ def is_callable(t: str) -> bool:
     return t.startswith("callable[")
 
 
+def is_clsval(t: str) -> bool:
+    # type[C]: the class object of ordinary class C of the program, or of a class deriving from it
+    # (or NoneType's, which type(x) gives of an x that is None): a pointer to that class's
+    # reflection record, a constant, which is the class's one class object (class_values.py)
+    return t.startswith("type[")
+
+
+def clsof(t: str) -> str:
+    # the class C of class object type type[C]
+    return t[5:-1]
+
+
 def callable_shown(t: str) -> str:
     # callable[R,A,B] as typing writes it: Callable[[A, B], R] (its types still to be shown)
     ts = targs(t)
@@ -777,8 +789,8 @@ def key_problem(t: str) -> str:
     # why t cannot be a dict's key type, or "": keys are ints, strs, or tuples whose items are ints,
     # bools, strs, str | None or such tuples (runtime.c hashes and compares them by descriptor), and
     # objects, also as such items (Gen.key_problem)
-    if t == "int" or t == "str" or t == "bytes" or t == "exctype" or (is_tuple(t) and key_items(t)):
-        return ""  # (an exception class's class object is hashed and compared by identity)
+    if t == "int" or t == "str" or t == "bytes" or t == "exctype" or is_clsval(t) or (is_tuple(t) and key_items(t)):
+        return ""  # (a class object is hashed and compared by identity)
     if is_opt(t):
         return f"dict keys must be int or str, not {typestr(t)} (a key cannot be None)"
     return f"dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not {typestr(t)}"
@@ -821,7 +833,7 @@ def bool_for_int(a: str, b: str) -> bool:
 def key_items(t: str) -> bool:
     for x in targs(t):
         u = unopt(x)
-        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not (is_tuple(u) and key_items(u)):
+        if x != "int" and x != "bool" and u != "str" and u != "bytes" and x != "exctype" and not is_clsval(x) and not (is_tuple(u) and key_items(u)):
             return False
     return True
 

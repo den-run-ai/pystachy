@@ -6,7 +6,7 @@ from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
-from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
+from src.pystachy_compiler.utils import elem, is_clsval, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
     # is a value of type a one of union type b (or b | None) once boxed: a member's (one that
@@ -528,6 +528,14 @@ def gen_join_type(self, a: str, b: str) -> str:
         return self.ctype("tuple", ts)
     if a == b:
         return a
+    if is_clsval(unopt(a)) or is_clsval(unopt(b)):
+        # class objects: those of a class that both classes derive from; with another value, where
+        # the module opts in to dynamic Any, an Any value (the class's box, which such a module's
+        # locations held before class objects were typed: class_values.py)
+        j = self.join(a, b)
+        if j != "" or not self.dyn_policy(self.line):
+            return j
+        return "dyn" if self.dyn_boxable(a) == "" and self.dyn_boxable(b) == "" else ""
     if (a == BIG and b == "int") or (b == BIG and a == "int"):
         return BIG  # (a promoting int holds both: bigints.py)
     if (a == BIG and b in ["bool", "float", "str"]) or (b == BIG and a in ["bool", "float", "str"]):

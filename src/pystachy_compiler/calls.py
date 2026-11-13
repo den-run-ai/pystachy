@@ -11,6 +11,7 @@ from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, M
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
+    is_clsval,
     opaque_class,
     atomic_dict,
     identity_abi,
@@ -141,29 +142,7 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 # (an enum class's lookup by value: its EnumType object's __call__)
                 self.class_ready(f)
                 return self.obj_call(self.expr(self.enum_view(f.s, f.line), ""), args, want, resultsoft)
-            if self.classes[f.s].bad != "":
-                self.err(self.classes[f.s].bad)
-            if self.classes[f.s].mod in GLUE and self.curfn.mod != self.classes[f.s].mod:
-                m = self.classes[f.s].mod
-                self.err(f"{m}.{short(f.s)}() cannot be called: Pystachy's {m} module makes its objects (with {', '.join([x for x in GLUE[m] if x != short(f.s)])})")
-            ab = self.abstract_of(f.s)
-            if len(ab) > 0:
-                # an object of a class with abstract methods (ABCMeta): CPython evaluates the
-                # arguments, and object.__new__ raises its TypeError
-                for a in args:
-                    self.expr(a.kids[0] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" else a, "")
-                names = ", ".join([f"'{n}'" for n in ab])
-                self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(f.s)} without an implementation for abstract method{'s' if len(ab) > 1 else ''} {names}"))
-                return Val("null", f.s)
-            if f.s in self.tmpl:
-                # a class template: the types of the arguments pick the specialization, whose
-                # object call_fn makes once it has them (in made[0])
-                made = [Val("", f.s)]
-                self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
-                return made[0]
-            o = self.new_obj(f.s)
-            self.init_result(self.call_fn(self.classes[f.s].methods["__init__"], [o], args, direct=True))
-            return o
+            return self.class_new(f.s, args, want, resultsoft, typeargs)
         if f.s in self.mvars:
             self.not_callable(f.s, self.gtype(f.s))
             return self.obj_call(self.expr(f, ""), args, want, resultsoft)
@@ -176,6 +155,9 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
                 return self.exit_value(vals)
             return self.exc_value("OSError" if f.s == "IOError" or f.s == "EnvironmentError" else f.s, vals)
         return self.builtin(f.s, args, want, resultsoft)
+    if f.kind == "attr" and f.s == "__class__" and self.refl_typeof(f) is not None and self.class_value_named(unopt(self.dry(f.kids[0]))) and (not self.dyn_policy(self.line) or is_clsval(self.dry(f))):
+        # o.__class__(args): a call of the class object of o's class (class_values.py)
+        return self.obj_call(self.expr(f, ""), args, want, resultsoft)
     if f.kind == "attr":
         c = self.curfn.cls
         if c != "" and self.classes[c].exc != "" and f.kids[0].kind == "name" and f.kids[0].s not in self.ltype and self.derives(c, f.kids[0].s) and f.kids[0].s != c and len(args) > 0 and args[0].kind == "name" and len(self.curfn.params) > 0 and args[0].s == self.curfn.params[0] and (f.kids[0].s in self.classes or not self.bound(f.kids[0].s)):
@@ -362,6 +344,33 @@ def gen_star_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: 
         return self.dyn_method_found(receiver, f.s, out, dynh)
     return self.call(mk("call", n.s, n.line, [f] + out), want, resultsoft, typeargs)
 
+def gen_class_new(self, c: str, args: list[Node], want: str, resultsoft: bool = False, typeargs: str = "") -> Val:
+    # c(args) of ordinary class c of the program: an object of it, which its __init__ fills (a
+    # call that names the class, or one of a class object that is c's: class_values.py)
+    if self.classes[c].bad != "":
+        self.err(self.classes[c].bad)
+    if self.classes[c].mod in GLUE and self.curfn.mod != self.classes[c].mod:
+        m = self.classes[c].mod
+        self.err(f"{m}.{short(c)}() cannot be called: Pystachy's {m} module makes its objects (with {', '.join([x for x in GLUE[m] if x != short(c)])})")
+    ab = self.abstract_of(c)
+    if len(ab) > 0:
+        # an object of a class with abstract methods (ABCMeta): CPython evaluates the
+        # arguments, and object.__new__ raises its TypeError
+        for a in args:
+            self.expr(a.kids[0] if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar" else a, "")
+        names = ", ".join([f"'{n}'" for n in ab])
+        self.raise_("TypeError", self.sconst(f"Can't instantiate abstract class {short(c)} without an implementation for abstract method{'s' if len(ab) > 1 else ''} {names}"))
+        return Val("null", c)
+    if c in self.tmpl:
+        # a class template: the types of the arguments pick the specialization, whose
+        # object call_fn makes once it has them (in made[0])
+        made = [Val("", c)]
+        self.init_result(self.call_fn(self.classes[c].methods["__init__"], made, args, want, resultsoft=resultsoft, typeargs=typeargs))
+        return made[0]
+    o = self.new_obj(c)
+    self.init_result(self.call_fn(self.classes[c].methods["__init__"], [o], args, direct=True))
+    return o
+
 def gen_static_callee(self, f: Node) -> bool:
     # does evaluating callee f (or the object of o.m) read nothing a call's arguments may change:
     # a def, class, builtin or module's function, super(), or a variable's empty container that
@@ -430,7 +439,7 @@ def gen_not_callable(self, name: str, t: str) -> None:
     # a call of variable name's value (c() for an object c), of type t: CPython's TypeError,
     # unless it has __call__ or is a function (is_fn); a builtin's name bound as a variable is
     # rejected as such
-    if is_fn(t) or is_callable(unopt(t)) or unopt(t) == "exctype" or t == "dyn":
+    if is_fn(t) or is_callable(unopt(t)) or unopt(t) == "exctype" or is_clsval(unopt(t)) or t == "dyn":
         return
     if short(name) in PYBUILTINS or t == "":
         self.err(f"'{name}' is a variable, so it cannot be called")
@@ -449,6 +458,8 @@ def gen_obj_call(self, o: Val, args: list[Node], want: str, resultsoft: bool = F
         return self.dyn_call_value(o, args)  # (the function its box holds: dynamic.py)
     if unopt(o.t) == "exctype":
         return self.exc_call(o, args)  # (an exception class's class object: an object of its class)
+    if is_clsval(unopt(o.t)):
+        return self.class_value_call(o, args)  # (an ordinary class's class object: class_values.py)
     if o.t not in self.classes or "__call__" not in self.classes[o.t].methods:
         self.err(f"'{tname(unopt(o.t))}' object is not callable")
     if self.cached_wrapper(o.t):

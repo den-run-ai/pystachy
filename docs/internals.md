@@ -256,7 +256,10 @@ program that uses none of these constructs compiles to the IR it compiled to bef
 Where a run-time choice remains, the code dispatches on the value's exact type, the way method
 calls already do: None first (where it may be), then a union's member tag, then an object's class
 tag (`refl_split`). Each concrete class's arm then reads the class's **reflection record**, an
-internal constant global that is emitted only for classes that reach such a site:
+internal constant global that is emitted only for classes that reach such a site. The record is
+also the class's class object where the class is a [value](language/semantics.md#classes-as-values)
+(`class_values.py`): a `type[C]` value is a pointer to it, compared and hashed by identity, and
+a call compares it with the record of each class it may be to run that class's constructor. Its words:
 
 | Word | Contents |
 |---|---|

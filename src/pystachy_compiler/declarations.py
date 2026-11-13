@@ -45,6 +45,8 @@ from src.pystachy_compiler.specs import (
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
 from src.pystachy_compiler.utils import (
+    is_clsval,
+    clsof,
     opaque_class,
     lib_source,
     clone,
@@ -222,6 +224,10 @@ def gen_ann(self, n: Node) -> str:
         # type[BaseException], as __exit__ takes the class of the exception: exctype, which is the
         # exception itself (its class is what it shows)
         return "exctype"
+    elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s == "type" and n.kids[1].kind == "name" and self.class_value_named(n.kids[1].s):
+        # type[C] of an ordinary class C of the program: its class object, or that of a class
+        # deriving from it (class_values.py)
+        return "type[" + n.kids[1].s + "]"
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.taliases:
         return self.alias_ann(n)
     elif k == "index" and n.kids[0].kind == "name" and n.kids[0].s in self.tparams:
@@ -936,7 +942,7 @@ def gen_optional(self, t: str) -> str:
     if is_union(t):
         # (a union that holds a class's objects may be None, as the class's objects may)
         return t if len([m for m in umembers(t) if m in self.classes]) > 0 else self.ctype("opt", [t])
-    if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
+    if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or is_clsval(t) or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""
 
@@ -973,6 +979,10 @@ def gen_join(self, a: str, b: str) -> str:
             if self.derives(b, c):
                 return c
             c = self.classes[c].base
+    if is_clsval(a) and is_clsval(b):
+        # class objects: of the nearest base class that both classes derive from
+        j = self.join(clsof(a), clsof(b))
+        return "type[" + j + "]" if j in self.classes else ""
     if a == "None" or b == "None":
         return self.optional(b if a == "None" else a)
     if is_opt(a) or is_opt(b):
@@ -990,6 +1000,8 @@ def gen_wider(self, a: str, b: str) -> str:
     if self.rec_type(a) == self.rec_type(b):
         return b
     if a in self.classes and b in self.classes:
+        return self.join(a, b)
+    if is_clsval(a) and is_clsval(b):
         return self.join(a, b)
     if self.isnum(a) or self.isnum(b):
         return ""
@@ -1080,6 +1092,9 @@ def gen_widens(self, a: str, b: str) -> bool:
         return True  # (a generator that takes S from send() as one that next() alone resumes)
     if b in self.classes:
         return a == "None" or (a in self.classes and self.derives(a, b))
+    if is_clsval(b):
+        # (the class object of a class is one of its base classes' too)
+        return is_clsval(a) and self.derives(clsof(a), clsof(b))
     if is_union(b):
         # (its box: the tags are the program's, the same in every union)
         if a == "None":
@@ -2289,6 +2304,12 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         local_names(guess_scope(f), asg)
         if e.s not in asg:
             return "exctype"
+    if k == "name" and self.class_value_named(e.s) and (not self.dyn_policy(e.line) or self.class_value_static(e.s, f.mod, e.line)):
+        # an ordinary class: its class object (unless a local of the method has its name)
+        asg = {}
+        local_names(guess_scope(f), asg)
+        if e.s not in asg:
+            return "type[" + e.s + "]"
     p = self.imported_ref(e) if k == "name" or k == "attr" else ""
     if p in MODFUNCS:
         # a builtin module's function (math.sqrt, or sqrt from-imported), unless a local of the
@@ -2723,6 +2744,8 @@ def gen_none_field_store(self, o: Val, name: str, v: Val) -> None:
     self.refine_field(ci, name, t)
 
 def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
+    if is_clsval(unopt(o.t)):
+        self.err(f"the attributes of a class object ({typestr(o.t)}) other than __name__, __qualname__ and __module__ are not supported (.{name}): read a class attribute through the class's name, C.{name}")
     if o.t == "exctype":
         self.err(f"the attributes of the class of an exception (type[BaseException]) other than __name__ are not supported (.{name})")
     if name == "__class__" and (o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != "")):

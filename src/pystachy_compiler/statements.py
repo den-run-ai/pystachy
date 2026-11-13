@@ -33,6 +33,7 @@ from src.pystachy_compiler.specs import (
 from src.pystachy_compiler.patterns import unsupported_match, unsupported_reason
 from src.pystachy_compiler.syntax import Node, mk, names_in, starred_target
 from src.pystachy_compiler.utils import (
+    is_clsval,
     bool_for_int,
     elem,
     empty_result_type,
@@ -309,7 +310,7 @@ def gen_hoist(self, f: FnInfo) -> None:
 def gen_default_problem(self, e: Node, t: str) -> str:
     # why default value e of a parameter of type t ("": a template's) cannot be compiled, as far
     # as its form shows, or ""
-    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "":
+    if e.kind == "name" and e.s in self.classes and self.classes[e.s].exc == "" and (self.class_value_problem(e.s) != "" or (self.dyn_policy(e.line) and not self.class_value_static(e.s, "", e.line))):
         return f"class '{short(e.s)}' cannot be used as a value (classes are not values: call it, or read an attribute, C.x)"
     if e.kind == "name" and e.s in PYBUILTINS and "$" not in e.s and not e.s[0].islower() and not is_excname(e.s):
         return f"the builtin '{e.s}' cannot be used as a value (not supported)"
@@ -1754,6 +1755,14 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
         return v  # (for_seq steps through its numbers)
     if v.t in self.classes:
         return self.obj_iterator(v, msg, f"'{tname(v.t)}' object is not iterable")
+    if is_tuple(v.t) and len(targs(v.t)) > 1 and all(is_clsval(x) for x in targs(v.t)) and not all(x == targs(v.t)[0] for x in targs(v.t)):
+        # (class objects of several classes, for k in (A, B): of the base class they have in
+        # common, the same pointers)
+        jt = targs(v.t)[0]
+        for x in targs(v.t)[1:]:
+            jt = self.join(jt, x) if jt != "" else ""
+        if jt != "":
+            v = self.coerce(v, self.ctype("tuple", [jt for x in targs(v.t)]))
     if is_tuple(v.t) and BIG in targs(v.t) and all(x == "int" or x == BIG for x in targs(v.t)):
         # (64-bit and promoting ints, as the latter, read from its slots also without tupleiter: a
         # list holds 64-bit ints, bigints.py)

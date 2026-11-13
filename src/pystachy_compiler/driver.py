@@ -5,7 +5,7 @@ import sys
 import tempfile
 import time
 from src.pystachy_compiler import cached_run, diagnostics, program_cache
-from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin, fail
+from src.pystachy_compiler.diagnostics import MAXNEST, RAW, ClassBoxes, NeedSliceEH, Rejoin, fail
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
@@ -48,6 +48,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/builtins.py',
     'src/pystachy_compiler/calls.py',
     'src/pystachy_compiler/cached_run.py',
+    'src/pystachy_compiler/class_values.py',
     'src/pystachy_compiler/cache_toolchain.py',
     'src/pystachy_compiler/containers.py',
     'src/pystachy_compiler/conversions.py',
@@ -119,6 +120,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     idfull = False
     idtry = True
     slice_eh = False
+    # The files of modules that opt in to dynamic Any whose classes are read as class boxes, not
+    # as typed class objects (Gen.class_value_static): each one whose typed reads a pass did not
+    # compile with (ClassBoxes), after which the program is compiled from the start, as if those
+    # reads had never been typed.
+    clsany: dict[int, bool] = {}
     while True:
         attempt = timing_start()
         g = Gen()
@@ -131,6 +137,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
+        g.clsany = clsany
         ld = Loader(dirs)
         ld.ext = ext
         try:
@@ -139,7 +146,16 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
             timing_end("program.load", loaded)
             return g.program(mods)
         except Rejoin as retry:
-            if isinstance(retry, NeedSliceEH):
+            if isinstance(retry, ClassBoxes):
+                for k in g.clsused:
+                    clsany[k] = True
+                hints = {}
+                xnot = {}
+                passes = 0
+                idfull = False
+                idtry = True
+                slice_eh = False
+            elif isinstance(retry, NeedSliceEH):
                 slice_eh = True
             elif g.idevent != "" and not idfull:
                 if idtry and len(g.idhint) > 0:

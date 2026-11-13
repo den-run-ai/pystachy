@@ -326,7 +326,16 @@ proves an int or bool payload for arithmetic and comparisons. Bool `&`, `|` and
 In an opted-in module, ordinary user classes and builtin classes can be stored in
 `Any`, passed to functions, and used as dictionary keys. `type(value)` returns a
 canonical class value; `value.__class__` does likewise unless an explicit
-attribute overrides it. For example:
+attribute overrides it. An ordinary class that no `Any` location holds is a typed
+[class object](language/semantics.md#classes-as-values) (`type[C]`), as in other
+modules: a call of it runs the class's constructor without the limits below, and
+`type[C]` annotates it. Storing it in `Any` gives its class value, the same object,
+and a `type[C]` location takes one back, [checking](#deviations) that it is `C` or a
+class deriving from it
+([test](../tests/programs/inference/dynany_class_objects.py)). Where a program does
+not compile with typed class objects, its opted-in modules that have no `type[C]`
+annotation are compiled with class values throughout, as before they were typed
+([test](../tests/programs/inference/dynany_class_boxes_kept.py)). For example:
 
 ```python
 # pystachy: dynamic-any
@@ -802,7 +811,9 @@ rejects: no method can return `NotImplemented`, so the first one that runs gives
 - A concrete annotation that receives an `Any` value raises `TypeError` where its type differs
   (CPython does not check annotations). `int` takes no `bool` and `float` no `int` this way,
   so that a typed variable never prints another value than CPython's. So does the storage that
-  [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it.
+  [keeps its first type](#selecting-dynamic-storage) when an `Any` value reaches it. A
+  `type[C]` location takes the class value of `C` or of a class deriving from it
+  (`tests/deviations/dynany_class_object_check.py`).
 
 - The newly supported native `list[int]`/`Any` boundary checks dynamic writes against
   native storage. CPython accepts a str, float or bool in the annotated list; this
