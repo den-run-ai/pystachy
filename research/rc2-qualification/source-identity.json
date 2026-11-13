@@ -15,5 +15,12 @@
     "commit": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
     "tree": "1281c9b2b04f4134c9bb6a3046e6d1d80907ceff"
   },
-  "verification": "git show -s --format=%H\\ %T for the candidate, synthetic merge and merged-main commits returned the same tree. Local tests in this package ran on the candidate commit; exact-main post-merge gates were still running when this snapshot was prepared."
+  "verification": "git show -s --format=%H\\ %T for the candidate, synthetic merge and merged-main commits returned the same tree. Local tests in this package ran on the candidate commit; exact-main post-merge gates were still running when this snapshot was prepared.",
+  "post_merge_qualification": {
+    "source_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+    "release_gates": "CI, Installation, Lint and Packages all completed successfully.",
+    "report": "post-merge/report.json",
+    "initial_observations_retained": true,
+    "aggregate_integrity": "clean for x86_64 and aarch64:35 groups,58/58 stages,0 failures, repository and additional coverage validation passed"
+  }
 }

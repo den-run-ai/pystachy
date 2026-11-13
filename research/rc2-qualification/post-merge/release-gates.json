@@ -1,0 +1,54 @@
+{
+  "source_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+  "source_tree": "1281c9b2b04f4134c9bb6a3046e6d1d80907ceff",
+  "version": "v0.4.0-rc.2",
+  "workflow_selection": "Newest exact-main push run per tools/release_gate.py",
+  "release_gates": {
+    "CI": {
+      "id": 43369125958,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-13T05:00:24Z",
+      "updated_at": "2026-11-13T05:44:56Z"
+    },
+    "Installation": {
+      "id": 43369125928,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125928",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-13T05:00:24Z",
+      "updated_at": "2026-11-13T05:09:28Z"
+    },
+    "Lint": {
+      "id": 43369125876,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125876",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-13T05:00:24Z",
+      "updated_at": "2026-11-13T05:10:31Z"
+    },
+    "Packages": {
+      "id": 43369125857,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125857",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-13T05:00:24Z",
+      "updated_at": "2026-11-13T05:06:43Z"
+    }
+  },
+  "performance_smoke": [
+    {
+      "id": 43369126014,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369126014",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "published": false
+}

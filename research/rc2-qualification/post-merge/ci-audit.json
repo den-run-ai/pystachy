@@ -1,0 +1,421 @@
+{
+  "run_id": 43369125958,
+  "run_url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958",
+  "source": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+  "source_tree": "1281c9b2b04f4134c9bb6a3046e6d1d80907ceff",
+  "source_tree_equality": "Root independently verified equality with qualified c2da5cff and PR merge4244685d.",
+  "run_attempt": 1,
+  "result": "success",
+  "total_jobs": 74,
+  "successful_jobs": 73,
+  "skipped_jobs": [
+    {
+      "id": 131702507533,
+      "name": "native JIT and variants (worker ${{ matrix.worker }})",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702507533",
+      "conclusion": "skipped",
+      "execution_seconds": 0.0,
+      "created_to_started_seconds": 0.0,
+      "cpu": null
+    }
+  ],
+  "failed_jobs": [],
+  "workflow_created_at": "2026-11-13T05:00:24Z",
+  "workflow_completed_at": "2026-11-13T05:44:56Z",
+  "workflow_elapsed_seconds": 2672.0,
+  "job_timing_scope": "Execution is GitHub job started_at\u2192completed_at. created_to_started is pre-execution waiting and is reported separately; workflow duration includes bootstrap dependencies, queue waiting and parallel work. Aggregate summary.seconds is verification critical path, not one job duration.",
+  "max_job_execution_seconds": 684.0,
+  "all_jobs_within_900s": true,
+  "all_jobs_within_720s": true,
+  "maximum_pre_execution_wait_seconds": 1880.0,
+  "minimum_cap_headroom_seconds": 216,
+  "minimum_cap_headroom_percent": 24,
+  "slowest_jobs": [
+    {
+      "id": 131702506066,
+      "name": "verify (gc-aot-2, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506066",
+      "conclusion": "success",
+      "execution_seconds": 684.0,
+      "created_to_started_seconds": 329.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506134,
+      "name": "verify (python-int-optin-0, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506134",
+      "conclusion": "success",
+      "execution_seconds": 684.0,
+      "created_to_started_seconds": 1306.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506214,
+      "name": "verify (ubsan-0, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506214",
+      "conclusion": "success",
+      "execution_seconds": 675.0,
+      "created_to_started_seconds": 1513.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702505997,
+      "name": "verify (native-2, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702505997",
+      "conclusion": "success",
+      "execution_seconds": 670.0,
+      "created_to_started_seconds": 194.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506106,
+      "name": "verify (ubsan-3, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506106",
+      "conclusion": "success",
+      "execution_seconds": 669.0,
+      "created_to_started_seconds": 1319.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506131,
+      "name": "verify (python-int-optin-2, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506131",
+      "conclusion": "success",
+      "execution_seconds": 667.0,
+      "created_to_started_seconds": 1189.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506065,
+      "name": "verify (native-1, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506065",
+      "conclusion": "success",
+      "execution_seconds": 649.0,
+      "created_to_started_seconds": 875.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506137,
+      "name": "verify (python-int-optin-1, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506137",
+      "conclusion": "success",
+      "execution_seconds": 649.0,
+      "created_to_started_seconds": 1427.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506173,
+      "name": "verify (dynany-optin-1, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506173",
+      "conclusion": "success",
+      "execution_seconds": 636.0,
+      "created_to_started_seconds": 995.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506227,
+      "name": "verify (contracts, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506227",
+      "conclusion": "success",
+      "execution_seconds": 636.0,
+      "created_to_started_seconds": 1515.0,
+      "cpu": "znver3"
+    }
+  ],
+  "gc_jobs": [
+    {
+      "id": 131702506049,
+      "name": "verify (gc-self, x86_64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506049",
+      "conclusion": "success",
+      "execution_seconds": 317.0,
+      "created_to_started_seconds": 843.0,
+      "cpu": "znver3"
+    },
+    {
+      "id": 131702506323,
+      "name": "verify (gc-self, aarch64)",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958/job/131702506323",
+      "conclusion": "success",
+      "execution_seconds": 292.0,
+      "created_to_started_seconds": 1839.0,
+      "cpu": "neoverse-n2"
+    }
+  ],
+  "aggregate_integrity": [
+    {
+      "machine": "x86_64",
+      "commit": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "dirty": false,
+      "profile": "full",
+      "group": "all",
+      "required_groups": 35,
+      "observed_groups": 35,
+      "required_stages": 58,
+      "observed_stages": 58,
+      "passed_stages": 58,
+      "failed_stages": 0,
+      "repository_validate_report": "pass; checked against full harness group contract on tree-equivalent c2da5cff checkout",
+      "additional_coverage_assertions": "pass: complete group set, shard totals, GC corpus/syntax totals and stressed sample coverage, each opt-in exact case\u00d7mode set, scaling shape union",
+      "observed_and_expected_counts": {
+        "native": 7113,
+        "opt_off": 7113,
+        "python_free": 7113,
+        "ubsan": 9272,
+        "gc_jit_with_stressed_sample": 4636,
+        "gc_aot_with_stressed_sample": 4636,
+        "gc_ir_cases": 4390,
+        "gc_ir_syntax_cases": 254,
+        "dynamic_any_unique_case_mode_pairs": 4694,
+        "promoting_int_unique_case_mode_pairs": 4694
+      },
+      "source_counts": {
+        "corpus_cases": 4390,
+        "mode_checks": 4636,
+        "rejection_tests": 1913,
+        "suite_checks": 7113,
+        "syntax_cases": 254,
+        "test_programs": 2347
+      },
+      "fixed_points": {
+        "ir_identical": true,
+        "ir_sha256": "e3a9d14f1c6564901895aabb3e818710eb5994dae9c192c6da5d931ecc1d89b8",
+        "runtime_ir_identical": true,
+        "runtime_ir_sha256": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830"
+      },
+      "gc_self": {
+        "seconds": 290.38,
+        "compiler_interval": 5000,
+        "ir_identical": true
+      },
+      "ci_timing": {
+        "max_group_seconds": 660.175,
+        "critical_path_seconds": 903.041,
+        "runner_seconds": 16763.188,
+        "timing_scope": "verification only; bootstrap then parallel groups; excludes queue, setup and artifact transfer"
+      },
+      "toolchain": {
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin",
+        "python": "Python 3.13.16"
+      }
+    },
+    {
+      "machine": "aarch64",
+      "commit": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "dirty": false,
+      "profile": "full",
+      "group": "all",
+      "required_groups": 35,
+      "observed_groups": 35,
+      "required_stages": 58,
+      "observed_stages": 58,
+      "passed_stages": 58,
+      "failed_stages": 0,
+      "repository_validate_report": "pass; checked against full harness group contract on tree-equivalent c2da5cff checkout",
+      "additional_coverage_assertions": "pass: complete group set, shard totals, GC corpus/syntax totals and stressed sample coverage, each opt-in exact case\u00d7mode set, scaling shape union",
+      "observed_and_expected_counts": {
+        "native": 7113,
+        "opt_off": 7113,
+        "python_free": 7113,
+        "ubsan": 9272,
+        "gc_jit_with_stressed_sample": 4636,
+        "gc_aot_with_stressed_sample": 4636,
+        "gc_ir_cases": 4390,
+        "gc_ir_syntax_cases": 254,
+        "dynamic_any_unique_case_mode_pairs": 4694,
+        "promoting_int_unique_case_mode_pairs": 4694
+      },
+      "source_counts": {
+        "corpus_cases": 4390,
+        "mode_checks": 4636,
+        "rejection_tests": 1913,
+        "suite_checks": 7113,
+        "syntax_cases": 254,
+        "test_programs": 2347
+      },
+      "fixed_points": {
+        "ir_identical": true,
+        "ir_sha256": "e3a9d14f1c6564901895aabb3e818710eb5994dae9c192c6da5d931ecc1d89b8",
+        "runtime_ir_identical": true,
+        "runtime_ir_sha256": "cd645bebc4fea57b4824b5393843fea99bb31880a31a79dd825e1f34c388f830"
+      },
+      "gc_self": {
+        "seconds": 266.19,
+        "compiler_interval": 5000,
+        "ir_identical": true
+      },
+      "ci_timing": {
+        "max_group_seconds": 411.365,
+        "critical_path_seconds": 718.353,
+        "runner_seconds": 11164.33,
+        "timing_scope": "verification only; bootstrap then parallel groups; excludes queue, setup and artifact transfer"
+      },
+      "toolchain": {
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin",
+        "python": "Python 3.13.16"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "id": 14013581992,
+      "name": "x86_64-verification-python-int-optin-0",
+      "run_id": 43369125958,
+      "local_report": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/x86_64-verification-python-int-optin-0/verification.json",
+      "report_bytes": 233070,
+      "report_sha256": "a779e249754c2543e71ef116193c2ea60a60dca126d4a1ac0feba81045d590bd",
+      "local_zip": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/x86_64-verification-python-int-optin-0/artifact.zip",
+      "zip_sha256": "93675612f1cda29e45a8c4e5df7712fcfdbee5f7bf9a769202ddde056e896a8c",
+      "source": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "profile": "full",
+      "group": "python-int-optin-0",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "znver3"
+      },
+      "summary": {
+        "steps": 2,
+        "passed": 2,
+        "failed": 0,
+        "seconds": 652.124
+      }
+    },
+    {
+      "id": 14013372434,
+      "name": "aarch64-verification",
+      "run_id": 43369125958,
+      "local_report": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/aarch64-verification/verification.json",
+      "report_bytes": 2097594,
+      "report_sha256": "e8882ad6baf3c1774f62f8c5b2f8ad92c9676f53f4cda1fbd3dcd28bfcc405f1",
+      "local_zip": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/aarch64-verification/artifact.zip",
+      "zip_sha256": "aeb86ebae44bd4037409140e3832636bc6213f7ec1c27344d2914c3b25ac08f1",
+      "source": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "profile": "full",
+      "group": "all",
+      "platform": {
+        "cpu": "neoverse-n2",
+        "machine": "aarch64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "summary": {
+        "steps": 58,
+        "passed": 58,
+        "failed": 0,
+        "seconds": 718.353
+      }
+    },
+    {
+      "id": 14012958694,
+      "name": "aarch64-verification-gc-self",
+      "run_id": 43369125958,
+      "local_report": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/aarch64-verification-gc-self/verification.json",
+      "report_bytes": 9229,
+      "report_sha256": "d11be618c94dda5472e0fcb758cd5b458b9c8376bd23f57fe17f7e0b218c8cb0",
+      "local_zip": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/aarch64-verification-gc-self/artifact.zip",
+      "zip_sha256": "f2a75184c3dbcb902279f6f995a0dc926ff87fd011d60c411e329ae56a7ca3df",
+      "source": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "profile": "full",
+      "group": "gc-self",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "aarch64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "neoverse-n2"
+      },
+      "summary": {
+        "steps": 2,
+        "passed": 2,
+        "failed": 0,
+        "seconds": 270.295
+      }
+    },
+    {
+      "id": 14012931261,
+      "name": "x86_64-verification-gc-self",
+      "run_id": 43369125958,
+      "local_report": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/x86_64-verification-gc-self/verification.json",
+      "report_bytes": 9223,
+      "report_sha256": "a030da6714d0309bdd9c601230737cb7ebcf969d2cabe46506a2b2a4d9805bcd",
+      "local_zip": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/x86_64-verification-gc-self/artifact.zip",
+      "zip_sha256": "bb49ebe8821641f62860f61e0a50695a1bd0f5c530ea318c31be452f20777861",
+      "source": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "profile": "full",
+      "group": "gc-self",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "znver3"
+      },
+      "summary": {
+        "steps": 2,
+        "passed": 2,
+        "failed": 0,
+        "seconds": 295.553
+      }
+    },
+    {
+      "id": 14012789607,
+      "name": "x86_64-verification",
+      "run_id": 43369125958,
+      "local_report": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/x86_64-verification/verification.json",
+      "report_bytes": 2097346,
+      "report_sha256": "701ec76e281f1ad3c0fa18e8a8ae65a52a7c509f36d2d66c09b475cb220b732b",
+      "local_zip": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/x86_64-verification/artifact.zip",
+      "zip_sha256": "50430ce749789d67da52bde6a2f55c8425801236f47b60d991f19b8aea7c220f",
+      "source": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "profile": "full",
+      "group": "all",
+      "platform": {
+        "cpu": "graniterapids",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "summary": {
+        "steps": 58,
+        "passed": 58,
+        "failed": 0,
+        "seconds": 903.041
+      }
+    },
+    {
+      "id": 14012428618,
+      "name": "x86_64-verification-gc-aot-2",
+      "run_id": 43369125958,
+      "local_report": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/x86_64-verification-gc-aot-2/verification.json",
+      "report_bytes": 9549,
+      "report_sha256": "990834ec000c1488de24d6fd5fa0d2dea900398e67c63f2d3baa824ab928880b",
+      "local_zip": "/workspace/scratch/2446eb38e476/rc2-exact-main-ci-artifacts/x86_64-verification-gc-aot-2/artifact.zip",
+      "zip_sha256": "f460f1bfa7ceb64589468458039f1242cb500161420ca08916568447cc31be01",
+      "source": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "profile": "full",
+      "group": "gc-aot-2",
+      "platform": {
+        "system": "Linux 7.0.0-1017-azure",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "cpu": "znver3"
+      },
+      "summary": {
+        "steps": 2,
+        "passed": 2,
+        "failed": 0,
+        "seconds": 660.175
+      }
+    }
+  ],
+  "limitations": [
+    "This single exact-main run supports RC2 qualification, not closure of three-run CPU-specific CI headroom requirements1178/1179. Separate full Variants repetition is not established here.",
+    "The znver3 gc-self stage290.380s is48.397% of the600s guard and satisfies the single-size\u226460% target. It does not demonstrate at-most-linear compiler-source-size growth required by1181.",
+    "Existing scaling-0/scaling-1 checks passed their complete declared shape set; those groups are distinct from the GC source-size sweep in1181.",
+    "No workflows, timeout caps, worker limits, cases or gates were changed; no retries or cancellations were requested."
+  ]
+}

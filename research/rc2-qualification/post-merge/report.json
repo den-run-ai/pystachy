@@ -1,0 +1,104 @@
+{
+  "source_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+  "source_tree": "1281c9b2b04f4134c9bb6a3046e6d1d80907ceff",
+  "release_gates": {
+    "CI": {
+      "id": 43369125958,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125958",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-13T05:00:24Z",
+      "updated_at": "2026-11-13T05:44:56Z"
+    },
+    "Installation": {
+      "id": 43369125928,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125928",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-13T05:00:24Z",
+      "updated_at": "2026-11-13T05:09:28Z"
+    },
+    "Lint": {
+      "id": 43369125876,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125876",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-13T05:00:24Z",
+      "updated_at": "2026-11-13T05:10:31Z"
+    },
+    "Packages": {
+      "id": 43369125857,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369125857",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-13T05:00:24Z",
+      "updated_at": "2026-11-13T05:06:43Z"
+    }
+  },
+  "performance_smoke": {
+    "run": {
+      "id": 43369126014,
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43369126014",
+      "head_sha": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    "base": "3bfd889b81772b966ae3df44843c0df447957ecc",
+    "head": "bf699eb5ba0bc8ba2371f4d1740683be59594f58",
+    "workloads": 11,
+    "metrics": 49,
+    "samples_per_base_and_head_metric": 3,
+    "all_metric_statuses": "ok",
+    "words_included": false
+  },
+  "aggregate_integrity": {
+    "result": "clean",
+    "report": "ci-audit.json",
+    "machines": [
+      "x86_64",
+      "aarch64"
+    ],
+    "required_groups_per_machine": 35,
+    "passed_stages_per_machine": 58,
+    "failed_stages": 0,
+    "repository_validate_report": "pass",
+    "additional_group_shard_optin_pair_checks": "pass"
+  },
+  "publication": "This evidence update does not publish a release or package.",
+  "limitations": [
+    "Exact-main workflow completion does not establish all v0.4.0 stable criteria.",
+    "Repeated representative CPU timing, full Variants coverage and GC source-size scaling remain separately assessed.",
+    "Performance smoke excludes words and does not close the residual words/GC regression."
+  ],
+  "ci_execution": {
+    "successful_jobs": 73,
+    "expected_skipped_jobs": 1,
+    "failed_jobs": 0,
+    "max_job_seconds": 684.0,
+    "longest_job_cpu": "znver3",
+    "workflow_elapsed_seconds": 2672.0,
+    "maximum_pre_execution_wait_seconds": 1880.0,
+    "timing_limit_scope": "job execution excludes queue and dependency waiting"
+  },
+  "gc_self": [
+    {
+      "machine": "x86_64",
+      "seconds": 290.38,
+      "ir_identical": true,
+      "guard_seconds": 600,
+      "single_size_target_seconds": 360
+    },
+    {
+      "machine": "aarch64",
+      "seconds": 266.19,
+      "ir_identical": true,
+      "guard_seconds": 600,
+      "single_size_target_seconds": 360
+    }
+  ],
+  "artifact_retention": "Both original aggregate ZIPs, compressed aggregate verification JSONs, and selected CPU/GC/opt-in verification reports are retained. The 4.1MB opt-in raw ZIP and flattened extra reports are omitted; signed temporary download URLs are omitted."
+}

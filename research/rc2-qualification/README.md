@@ -11,7 +11,7 @@ This research snapshot records the local comparison and focused execution checks
 | PR #1419 CI synthetic merge | `4244685db375a013d53aa1f9a21d69283ab33ecd` | `1281c9b2b04f4134c9bb6a3046e6d1d80907ceff` |
 | Merged main, PR #1419 | `bf699eb5ba0bc8ba2371f4d1740683be59594f58` | `1281c9b2b04f4134c9bb6a3046e6d1d80907ceff` |
 
-`git show -s --format='%H %T'` verified the three equal candidate trees. [source-identity.json](source-identity.json) records the mapping. Local results below were produced on the candidate commit; post-merge exact-main gates were still running when this snapshot was prepared. The research commit is based on the candidate and adds only this evidence directory.
+`git show -s --format='%H %T'` verified the three equal candidate trees. [source-identity.json](source-identity.json) records the mapping. Local results below were produced on the candidate commit before the exact-main gates completed. The later post-merge results are recorded separately below; all four required gates passed at `bf699eb5`. The research branch is based on the candidate and adds only this evidence directory.
 
 ## Recorded results
 
@@ -91,7 +91,28 @@ PYSTACHY_PROGRAM_CACHE=0 PYTHONHASHSEED=0 \
   --benchmarks logging --runs 1 --json "$WORK/logging-check.json"
 ```
 
-## CI timing and bounded performance evidence
+## Post-merge exact-main qualification
+
+[post-merge/release-gates.json](post-merge/release-gates.json) records the newest exact-main push runs selected under `tools/release_gate.py`, all completed successfully at `bf699eb5ba0bc8ba2371f4d1740683be59594f58`:
+
+| Gate | Successful run |
+|---|---|
+| CI | [43369125958](https://github.com/den-run-ai/pystachy/actions/runs/43369125958) |
+| Installation | [43369125928](https://github.com/den-run-ai/pystachy/actions/runs/43369125928) |
+| Lint | [43369125876](https://github.com/den-run-ai/pystachy/actions/runs/43369125876) |
+| Packages | [43369125857](https://github.com/den-run-ai/pystachy/actions/runs/43369125857) |
+
+The exact-main CI run completed with 73 successful jobs, one expected skipped job and zero failures. Its longest job took 684 seconds; both tied longest jobs ran on `znver3`. [The independent aggregate audit](post-merge/ci-audit.json) found both `x86_64` and `aarch64` reports clean at the exact source, with the `full` profile and `all` group, all 35 required groups and 58 of 58 stages passed. Repository `validate_report` and additional complete-group, shard-total, opt-in case/mode-pair and coverage checks passed with zero failures. The retained aggregates have identical compiler/runtime fixed-point hashes.
+
+Exact-main `gc-self` stages took 290.380 seconds on `znver3` and 266.190 seconds on `neoverse-n2`, both below the single-size 360-second target. This does not establish the separate source-size scaling requirement. Job timing excludes pre-execution waiting: the complete workflow took 2,672 seconds, including dependencies, queues and parallel work. Workflow coverage counts use the CI harness inventory; the 4,493-case local IR oracle uses its separately recorded inventory.
+
+[post-merge/report.json](post-merge/report.json) links the qualification findings. Both original aggregate ZIPs and compressed aggregate verification JSONs are retained in [post-merge/ci-artifacts/](post-merge/ci-artifacts/), together with selected CPU/GC/opt-in verification reports. The larger 4.1 MB raw opt-in ZIP and flattened extra reports are omitted; their verification report and original artifact digest remain recorded.
+
+[Performance smoke run 43369126014](https://github.com/den-run-ai/pystachy/actions/runs/43369126014) also passed. [Its complete JSON](post-merge/performance-smoke.json) compares baseline `3bfd889b81772b966ae3df44843c0df447957ecc` with exact main `bf699eb5`, covering 11 workloads and 49 metrics with three base and three head samples per metric. All metrics reported `ok`; no regression warning was triggered. This smoke set excludes the historical words workload, so it does not close that residual GC/performance concern.
+
+These exact-main results supplement the historical local and pre-merge observations below. They record successful qualification workflows without claiming the remaining repeated-CPU, full-Variants or GC-scaling stable criteria are complete, and without publishing a release.
+
+## Historical CI timing and bounded performance evidence
 
 [ci/audit.json](ci/audit.json) and compressed job/step records cover full-profile main run [43365856650](https://github.com/den-run-ai/pystachy/actions/runs/43365856650) at `3bfd889b` and candidate PR run [43366916755](https://github.com/den-run-ai/pystachy/actions/runs/43366916755). The latter ran synthetic merge `4244685d`. Both completed successfully with one intentionally skipped job; maximum job execution times were 693 and 678 seconds, respectively, below 720 and 900 seconds. Queue/dependency waiting is excluded. Artifact reports identify the sampled CPU as `znver3` and preserve toolchain/source identity.
 
@@ -105,8 +126,9 @@ The sampled `gc-self` stage times were 289.145 and 290.450 seconds, below 360 se
 - `comparison/result-hashes.tsv.gz` preserves stdout/stderr/IR existence, size and SHA256 for all 4,493 cases. Compressed inventory and both full tracked-source manifests preserve input/sidecar/source hashes. Read them with `gzip -dc`.
 - [logs/](logs/) contains both bootstrap logs and all requested focused, hosted, changed-case, program-GC-stress and logging logs. [execution/logging-correctness.json](execution/logging-correctness.json) includes exact source/binary identity and all three outputs.
 - [ci/artifacts/](ci/artifacts/) contains the retrieved verification/Variants JSONs and their original ZIPs. Temporary signed download URLs are deliberately omitted.
+- [post-merge/](post-merge/) adds the completed exact-main gates, independently validated aggregate audit, retained aggregate/CPU reports, raw job metadata and exact-main performance smoke. Earlier pre-merge records remain unchanged.
 - [SHA256SUMS](SHA256SUMS) covers all packaged files except itself.
 
 **Raw per-case stdout, stderr and IR are not durable in this research branch.** They remain in the transient scratch directory `/workspace/scratch/2446eb38e476/rc2-retained-comparison/cases/`, where every raw difference was retained for review. No raw 19 MB compressed material-case archive is uploaded. Reproduce them with the pinned inputs and harness above; hashes and decisions are durable here, while raw path references in the JSON are historical local paths. The supplementary review scripts retain their original local-path assumptions and require path adaptation after reproducing the raw data.
 
-This package does not certify post-merge packaging, publication, all-platform installation, or all stable-release gates. IR comparison alone does not exercise the runtime C fast path; the native execution, Unicode checks and bounded benchmark provide separate evidence. The pre-existing circular-from-import issue [#1398](https://github.com/den-run-ai/pystachy/issues/1398), including optional-import-handler preservation, remains outside these changes.
+This package records successful exact-main CI, Installation, Lint and Packages gates. It does not publish a release or package, establish all-platform support, or complete all stable-release criteria. IR comparison alone does not exercise the runtime C fast path; the native execution, Unicode checks and bounded benchmark provide separate evidence. The pre-existing circular-from-import issue [#1398](https://github.com/den-run-ai/pystachy/issues/1398), including optional-import-handler preservation, remains outside these changes.
