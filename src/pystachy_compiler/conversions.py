@@ -249,6 +249,9 @@ def gen_plain_desc(self, t: str, use: str) -> str:
         if not ((use == "repr" and self.value_union(t)) or (use == "==" and self.ueq_type(t)) or (self.num_union(unopt(t)) and all([op in ORDOP or op == "==" for op in use.split()]))):
             self.err("closed union operations require narrowing with isinstance() first")
         members = umembers(unopt(t))
+        # (a class's member, a complex number's, last: its O<id> is read up to the next letter, and
+        # no member's tag digits may follow it; runtime.c finds a member by its tag, umember)
+        members = [m for m in members if m not in self.classes] + [m for m in members if m in self.classes]
         d = "U" + str(len(members)) + ":"
         for m in members:
             d += str(self.utag(m)) + ":" + self.desc(m, use)

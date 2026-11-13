@@ -2114,6 +2114,24 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         # Both value and spec run once, before the selected native member formats
         # or raises. A nonempty spec is legal for some members and not for others.
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        if COMPLEXC in umembers(unopt(v.t)):
+            # (a complex number formats by its class's __format__, which runtime.c's pys_format does
+            # not call: chosen by its tag first)
+            hit = self.label()
+            other = self.label()
+            done = self.label()
+            ph = Ins("phi", "str", "")
+            self.cbr(self.utest(v, [COMPLEXC], is_opt(v.t)), hit, other)
+            self.place(hit)
+            text = self.call_fn(self.classes[COMPLEXC].methods["__format__"], [self.uget(Val(v.v, unopt(v.t)), COMPLEXC), sv], [], direct=True)
+            self.incoming(ph, text.v, self.cur)
+            self.br(done)
+            self.place(other)
+            text = Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}", f"ptr {sv.v}"]), "str")
+            self.incoming(ph, text.v, self.cur)
+            self.br(done)
+            self.place(done)
+            return Val(self.phi(ph), "str")
         return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}", f"ptr {sv.v}"]), "str")
     if v.t == "None":
         if spec.kind == "str":
@@ -4506,6 +4524,34 @@ def gen_complex_cmp(self, op: str, a: Val, b: Val) -> Val:
         eq = self.scalar('and', [Val(self.num_cmp('==', cp[1], zero).v, 'bool'), Val(self.cmp2("==", cp[0], self.as_int(o) if o.t == "bool" else o).v, 'bool')])
     return Val(eq, "bool") if op == "==" else Val(self.scalar('xor', [Val(eq, 'bool'), Val('true', 'bool')]), "bool")
 
+def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
+    # a == b or a != b where a union holds a complex number, whose equality runtime.c's union
+    # descriptors do not compare (1 == 1+0j across members): each member's comparison, chosen by
+    # the tag, as cmp2 compiles it for the member's type (complex_cmp, ...), and None's
+    v = a if is_union(unopt(a.t)) else b
+    members = (["None"] if is_opt(v.t) else []) + umembers(unopt(v.t))
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    for i in range(len(members)):
+        m = members[i]
+        hit = self.label()
+        miss = self.label() if i + 1 < len(members) else ""
+        if miss == "":
+            self.br(hit)
+        elif m == "None":
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, hit, miss)
+        else:
+            self.cbr(self.utest(v, [m], False), hit, miss)
+        self.place(hit)
+        x = Val("null", "None") if m == "None" else self.uget(Val(v.v, unopt(v.t)), m)
+        r = self.cmp2(op, x, b) if v is a else self.cmp2(op, a, x)
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
+
 def gen_compare(self, n: Node) -> Val:
     tc = self.refl_type_cmp(n)  # (type(a) is C, type(a) == type(b): reflection.py)
     if tc is not None:
@@ -4837,6 +4883,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
+        if (op == "==" or op == "!=") and any([is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t)) for x in [a, b]]):
+            return self.complex_ueq(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
         if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):

@@ -1,27 +1,32 @@
 """Numeric operations on explicit, finite unions, using native typed lowering."""
 from __future__ import annotations
 from src.pystachy_compiler.ir import Ins, Val
+from src.pystachy_compiler.specs import COMPLEXC
 from src.pystachy_compiler.syntax import mk
 from src.pystachy_compiler.utils import is_opt, is_union, tname, typestr, umembers, unopt
 
 def unarith(op: str, t: str) -> bool:
     # does gen_unumeric compile no binary op of an operand of type t, a closed union or one or
     # None: an operator it has not, or a member that is no number (its two errors, below)
-    if op not in ["+", "-", "*", "/", "//", "%"]:
+    cx = is_union(unopt(t)) and COMPLEXC in umembers(unopt(t))
+    if op not in ["+", "-", "*", "/", "//", "%"] + (["**"] if cx else []):
         return True
-    return len([m for m in umembers(unopt(t)) if m not in ["int", "float", "bool", "None"]]) > 0
+    return len([m for m in umembers(unopt(t)) if m not in ["int", "float", "bool", "None", COMPLEXC]]) > 0
 
 
 def gen_unumeric(self, op: str, a: Val, b: Val, shown: str, unary: bool) -> Val:
-    if op not in (["+", "-"] if unary else ["+", "-", "*", "/", "//", "%"]):
+    # (a complex number, as an operand or a member, takes part as complex_arith computes it: each
+    # member's case is arith's of its value, and ** too, where one is complex)
+    cx = any([unopt(v.t) == COMPLEXC or (is_union(unopt(v.t)) and COMPLEXC in umembers(unopt(v.t))) for v in ([a] if unary else [a, b])])
+    if op not in (["+", "-"] if unary else ["+", "-", "*", "/", "//", "%"] + (["**"] if cx else [])):
         self.err("closed numeric union arithmetic supports +, -, *, /, //, % and unary + or -; narrow other operations first")
     nominal: list[str] = []
     for v in [a] if unary else [a, b]:
         for m in umembers(unopt(v.t)) if is_union(unopt(v.t)) else [unopt(v.t)]:
-            if m not in ["int", "float", "bool", "None"]:
+            if m not in ["int", "float", "bool", "None", COMPLEXC]:
                 self.err("closed union arithmetic requires narrowing with isinstance() first" + self.unarrowed(a if is_union(unopt(a.t)) else b))
             if m != "None":
-                nominal.append("float" if m == "float" or op == "/" else "int")
+                nominal.append(COMPLEXC if cx else "float" if m == "float" or op == "/" else "int")
     result = self.unumeric_case(op, a, b, shown, unary)
     # An explicitly None operand can make every path raise. Keep a numeric
     # placeholder for the surrounding expression's type checking, never None.
