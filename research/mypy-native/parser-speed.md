@@ -132,14 +132,15 @@ allocator's fast path, so there is no missing link-time step.
 
 ## Order of work that the numbers suggest
 
-1. TBAA tags for `str` and `bytes` payload and header accesses (item 3 above): a compiler change
-   that helps every scanner, small in code, and needing the full verification that a wrong tag
-   deserves.
+As first written, with what the third round (below) found:
+
+1. TBAA tags for `str` and `bytes` accesses: measured, no gain on this workload. Not submitted.
 2. `bytearray` (#493), which removes the pending-byte list here and the chunk lists of
-   `librt.internal`'s `WriteBuffer` and `io.BytesIO`.
-3. Nodes by kind and identifiers as offsets in the port (item 1).
-4. Allocation without clearing for constructors that store every field first.
-5. Profile-guided builds, once `-fprofile-use` survives the runtime's build.
+   `librt.internal`'s `WriteBuffer` and `io.BytesIO`. Not started: the largest piece left.
+3. Nodes by kind and identifiers as offsets in the port. Not started.
+4. Allocation without clearing for constructors that store every field first. Not started; the
+   allocator's inline path for larger objects is #1445.
+5. Profile-guided builds: #1444.
 
 ## What the UMAP session reported
 
@@ -163,3 +164,90 @@ at `8afc7dd2` on branch `claude/dreamy-shannon-bb3cu1`.
 
 The two-roots cause is the list form of item 3 above, so tags for `str` and `bytes` accesses and
 its header hoisting belong to one piece of work; whoever starts tells the other.
+
+## Third round: alias tags, the allocator and SHA-1
+
+Measured on 2026-11-13 with LLVM 18.1.3, by callgrind unless a time is given. The parser
+benchmark is `parser-speed/bench2.py` over mypy's 143 files, and every build below prints the
+same checksum of its output.
+
+### Tags for `str` and `bytes` accesses: no gain here
+
+On the UMAP session's list tags (#1442, head `0e7c9690`), a program's inline reads of a
+`bytes`'s length and bytes were tagged under the same root, as a struct of their own
+(`parser-speed/str-tags-experiment.diff`: `gen_bytes_read`, the `bytes` loop and `len()`; 207
+length loads and 157 byte loads of the parser carry the tags).
+
+| Program | Without | With |
+|---|---:|---:|
+| Parser benchmark | 1,378,529,497 | 1,378,529,536 |
+| `parser-speed/scan.py`, which keeps its cursor in a field, on 1 MiB | 32,703,269 | 30,850,846 |
+
+The scanner here keeps its cursor in a local, so nothing in its loops stores to memory that an
+untagged load could alias. A program that keeps the cursor in a field gains 5.7%. With no
+consumer that gains, this was not submitted; the UMAP session was told. #1442 by itself gives
+1.3785 G against main's 1.3815 G.
+
+### The allocator's inline path: #1445
+
+`gc_alloc` popped a free slot inline only below 136 bytes. Two million 20-field objects:
+465.0 M instructions against 576.0 M. The parser with its earlier 152-byte nodes: 1.913 G
+against 1.947 G; with today's 128-byte nodes it does not change. A first version tested
+`__builtin_constant_p(n)`, which is decided while the runtime is compiled, before a program's
+call is inlined: the path was dead, and the test was removed.
+
+### SHA-1: where 43.8 instructions a byte went
+
+The source hash is 14% of the parser's instructions. `parser-speed/sha1/shabench.py` hashes
+1 MiB with the port's `_sha1.py`; the figures are the difference between three rounds and one,
+per byte.
+
+| Version | Instructions a byte |
+|---|---:|
+| C, rounds in a loop (`sha1-looped.c`), `clang -O2` | 45.3 |
+| C, rounds written out as the port's are (`sha1-unrolled.c`), `clang -O2` | 21.8 |
+| Port at `c8d19249`, main's compiler | 43.8 |
+| with `if off < 0 or off + 64 > len(m): raise` first | 35.7 |
+| with `off &= 0x3FFFFFFFFFFFFFC0` and that guard | 38.4 |
+| with `if off < 0: raise` and the last byte read first | 35.8 |
+| with `off &= 0x3FFFFFFFFFFFFFC0` and the last byte read first | 32.7 |
+| with `off &= 0x3FFFFFFFFFFFFFFF` and the last byte read first (the port now) | 32.4 |
+| `c8d19249` with the 32-bit lowering (below) | 34.1 |
+| the port now with the 32-bit lowering | 23.0 |
+
+Two separate costs:
+
+- **Byte reads.** Each of the 64 reads had an index overflow check, a bounds check, the
+  negative-index path and a spill: about nine instructions. A guard written as a signed
+  comparison lets LLVM drop the overflow checks (correlated value propagation) but not the
+  bounds checks: its constraint elimination does not carry `off + 64 <= len` to the unsigned
+  `off + k < len` tests. Reading the highest index first gives it an unsigned fact, and with the
+  offset's top bits cleared it knows the additions cannot wrap: 63 bounds checks go, and the
+  byte reads merge into sixteen 4-byte loads with `bswap`. Clearing the low six bits as well
+  turns the additions into `or`s and loses the merge. This is a change to the port's generator
+  only (`tools/ast_serialize_sha1.py`, on #1435's branch).
+- **Rotations.** `((x << c) | (x >> (32 - c))) & 0xFFFFFFFF` stayed two 64-bit shifts: LLVM
+  treats the `or` of disjoint bits as an addition and reassociates it into the round's sum, after
+  which the backend finds 18 of the 224 rotations. Written as 32-bit operations
+  (`sha1/rotate-generic.ll`), LLVM makes `llvm.fshl.i32` of them where it knows `x` to be below
+  2**32, and leaves the same three operations as before where it does not. The compiler change
+  (`gen_low32`, branch `claude/confident-einstein-ep3lh6-rotate32`) computes a masked expression
+  in `%i32` when a side is a constant from 0 to 2**32 - 1 and the other holds only int literals,
+  constants and variables under `+ - * & | ^`, `<<` by a literal below 32 and `>>` of a variable
+  by a literal below 64: 221 of the 224 become `rol`. A first version wrote the rotation itself,
+  with a term for `x`'s bits from 32 up; it cost an instruction where LLVM does not know `x`'s
+  range, and the generic rules need no such term.
+
+The parser benchmark: 1,381,548,169 with main's compiler and the port at `c8d19249`;
+1,329,405,242 with the new byte reads; 1,337,473,777 with the lowering alone; 1,286,461,196
+with both (6.9% fewer).
+
+The hashlib port of #1288 (head `8ff1e487`, `sha1/hashlib-bench.py`) does not gain as written:
+sha1 66.8 to 67.2, sha256 125.3 to 124.3, md5 58.5 to 58.5 instructions a byte. Its rounds are a
+loop over a list of words, and LLVM does not know that values loaded from a list or carried
+round the loop are below 2**32. Its owner preferred a general compiler change to C block
+functions in `runtime.c`, and was sent these figures with what would let its loops gain: masks
+where values enter, and a block's last byte read first.
+
+`parser-speed/keep-bitcode-clang.sh` is the `clang` wrapper (used as `PYSTACHY_LLVM`'s clang)
+that kept the linked module of a build, to read the optimized IR of one function.
