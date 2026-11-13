@@ -4775,6 +4775,19 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             return Val("false" if op == "==" else "true", "bool") if c.v in self.nn else self.ptr_cmp(op, c, Val("null", "None"))
         if o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
             return Val("false" if op == "==" else "true", "bool")
+        if o in self.classes:
+            # an object of another class: complex's __eq__ declines it, as CPython's returns
+            # NotImplemented, so the object's own __eq__ or __ne__ answers, else identity (also
+            # between two None values)
+            obj = b if a.t == COMPLEXC else a
+            cx = a if a.t == COMPLEXC else b
+            om = self.classes[o].methods
+            if op == "!=" and "__ne__" in om and self.cmp_method(o, "__ne__", COMPLEXC) != "":
+                return self.eqcall(om["__ne__"], False, obj, cx)
+            if "__eq__" in om and self.cmp_method(o, "__eq__", COMPLEXC) != "":
+                ceq = self.eqcall(om["__eq__"], True, obj, cx)
+                return ceq if op == "==" else Val(self.scalar('xor', [Val(ceq.v, 'bool'), Val('true', 'bool')]), "bool")
+            return self.ptr_cmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
