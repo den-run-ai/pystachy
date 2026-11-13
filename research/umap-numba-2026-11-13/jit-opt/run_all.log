@@ -1,0 +1,196 @@
+== tiny
+tiny.py                      wall                     default    0.035  opt2    0.036  paired 1.021
+tiny.py                      peak_rss_mib             default   59.773  opt2   61.078  paired 1.023
+tiny.py                      program.frontend         default    0.000  opt2    0.000  paired 1.008
+tiny.py                      program.jit_optimize     default    0.014  opt2    0.015  paired 1.043
+tiny.py                      program.jit_codegen      default    0.004  opt2    0.004  paired 0.986
+== padded
+padded.py                    wall                     default    0.077  opt2    0.087  paired 1.124
+padded.py                    peak_rss_mib             default   61.773  opt2   64.105  paired 1.038
+padded.py                    program.frontend         default    0.029  opt2    0.029  paired 1.011
+padded.py                    program.jit_optimize     default    0.024  opt2    0.033  paired 1.361
+padded.py                    program.jit_codegen      default    0.004  opt2    0.005  paired 0.995
+== imports
+imports.py                   wall                     default    1.591  opt2    2.905  paired 1.833
+imports.py                   peak_rss_mib             default   82.926  opt2   83.934  paired 1.013
+imports.py                   program.frontend         default    0.202  opt2    0.206  paired 1.025
+imports.py                   program.jit_optimize     default    0.250  opt2    1.548  paired 5.735
+imports.py                   program.jit_codegen      default    1.062  opt2    1.091  paired 1.061
+== router
+route.py                     wall                     default    1.312  opt2    2.234  paired 1.713
+route.py                     peak_rss_mib             default   80.707  opt2   79.664  paired 0.988
+route.py                     program.frontend         default    0.169  opt2    0.168  paired 0.992
+route.py                     program.jit_optimize     default    0.202  opt2    1.163  paired 5.759
+route.py                     program.jit_codegen      default    0.878  opt2    0.847  paired 0.967
+== umap
+umap_core.py                 wall                     default   11.160  opt2   10.631  paired 0.956
+umap_core.py                 peak_rss_mib             default  118.352  opt2  118.633  paired 1.004
+umap_core.py                 program.frontend         default    0.037  opt2    0.038  paired 1.036
+umap_core.py                 program.jit_optimize     default    0.058  opt2    0.183  paired 3.235
+umap_core.py                 program.jit_codegen      default    0.112  opt2    0.117  paired 1.063
+umap_core.py                 timer.data               default    0.040  opt2    0.041  paired 1.026
+umap_core.py                 timer.knn                default    5.375  opt2    4.580  paired 0.868
+umap_core.py                 timer.graph              default    0.094  opt2    0.098  paired 1.032
+umap_core.py                 timer.layout             default    5.462  opt2    5.510  paired 1.011
+== nbody
+nbody.py                     wall                     default    0.140  opt2    0.121  paired 0.952
+nbody.py                     peak_rss_mib             default   62.031  opt2   63.586  paired 1.025
+nbody.py                     program.frontend         default    0.004  opt2    0.003  paired 0.917
+nbody.py                     program.jit_optimize     default    0.023  opt2    0.044  paired 1.965
+nbody.py                     program.jit_codegen      default    0.018  opt2    0.018  paired 0.932
+== spectral
+spectral.py                  wall                     default    0.088  opt2    0.097  paired 1.131
+spectral.py                  peak_rss_mib             default   61.422  opt2   63.086  paired 1.027
+spectral.py                  program.frontend         default    0.002  opt2    0.002  paired 1.015
+spectral.py                  program.jit_optimize     default    0.019  opt2    0.031  paired 1.631
+spectral.py                  program.jit_codegen      default    0.013  opt2    0.013  paired 0.976
+== mandel
+mandel.py                    wall                     default    0.094  opt2    0.098  paired 1.036
+mandel.py                    peak_rss_mib             default   62.027  opt2   62.906  paired 1.014
+mandel.py                    program.frontend         default    0.001  opt2    0.001  paired 1.020
+mandel.py                    program.jit_optimize     default    0.018  opt2    0.023  paired 1.243
+mandel.py                    program.jit_codegen      default    0.008  opt2    0.008  paired 1.027
+== sieve
+sieve.py                     wall                     default    0.211  opt2    0.219  paired 1.023
+sieve.py                     peak_rss_mib             default  122.336  opt2  122.473  paired 1.001
+sieve.py                     program.frontend         default    0.001  opt2    0.001  paired 1.024
+sieve.py                     program.jit_optimize     default    0.017  opt2    0.026  paired 1.474
+sieve.py                     program.jit_codegen      default    0.009  opt2    0.008  paired 0.980
+== fib
+fib.py                       wall                     default    0.094  opt2    0.103  paired 1.052
+fib.py                       peak_rss_mib             default   60.992  opt2   62.398  paired 1.023
+fib.py                       program.frontend         default    0.001  opt2    0.001  paired 1.044
+fib.py                       program.jit_optimize     default    0.016  opt2    0.020  paired 1.226
+fib.py                       program.jit_codegen      default    0.006  opt2    0.007  paired 1.074
+== dictcount
+dictcount.py                 wall                     default    0.220  opt2    0.223  paired 1.031
+dictcount.py                 peak_rss_mib             default   95.332  opt2   95.336  paired 1.000
+dictcount.py                 program.frontend         default    0.002  opt2    0.002  paired 0.987
+dictcount.py                 program.jit_optimize     default    0.018  opt2    0.028  paired 1.657
+dictcount.py                 program.jit_codegen      default    0.012  opt2    0.011  paired 0.934
+== words
+words.py                     wall                     default    0.132  opt2    0.151  paired 1.080
+words.py                     peak_rss_mib             default  113.539  opt2  117.559  paired 1.035
+words.py                     program.frontend         default    0.002  opt2    0.002  paired 1.106
+words.py                     program.jit_optimize     default    0.018  opt2    0.027  paired 1.490
+words.py                     program.jit_codegen      default    0.010  opt2    0.011  paired 1.046
+== pp_chaos
+chaos.py                     wall                     default    0.188  opt2    0.293  paired 1.562
+chaos.py                     peak_rss_mib             default   98.555  opt2   98.781  paired 1.003
+chaos.py                     program.frontend         default    0.013  opt2    0.011  paired 0.856
+chaos.py                     program.jit_optimize     default    0.047  opt2    0.153  paired 3.228
+chaos.py                     program.jit_codegen      default    0.063  opt2    0.059  paired 0.952
+chaos.py                     timer.loop               default    0.040  opt2    0.040  paired 0.984
+== pp_float
+float.py                     wall                     default    0.108  opt2    0.117  paired 1.070
+float.py                     peak_rss_mib             default   93.703  opt2   93.762  paired 1.001
+float.py                     program.frontend         default    0.003  opt2    0.003  paired 1.106
+float.py                     program.jit_optimize     default    0.020  opt2    0.034  paired 1.692
+float.py                     program.jit_codegen      default    0.014  opt2    0.012  paired 0.872
+float.py                     timer.loop               default    0.050  opt2    0.048  paired 0.960
+== pp_nbody
+nbody.py                     wall                     default    0.157  opt2    0.185  paired 1.154
+nbody.py                     peak_rss_mib             default   62.637  opt2   63.688  paired 1.017
+nbody.py                     program.frontend         default    0.004  opt2    0.004  paired 0.915
+nbody.py                     program.jit_optimize     default    0.022  opt2    0.048  paired 2.159
+nbody.py                     program.jit_codegen      default    0.021  opt2    0.020  paired 0.973
+nbody.py                     timer.loop               default    0.086  opt2    0.087  paired 1.038
+== pp_raytrace
+raytrace.py                  wall                     default    0.220  opt2    0.301  paired 1.394
+raytrace.py                  peak_rss_mib             default   98.898  opt2   98.070  paired 0.992
+raytrace.py                  program.frontend         default    0.017  opt2    0.017  paired 0.949
+raytrace.py                  program.jit_optimize     default    0.050  opt2    0.144  paired 3.033
+raytrace.py                  program.jit_codegen      default    0.086  opt2    0.075  paired 0.882
+raytrace.py                  timer.loop               default    0.038  opt2    0.038  paired 0.993
+== pp_scimark
+scimark.py                   wall                     default    0.163  opt2    0.244  paired 1.486
+scimark.py                   peak_rss_mib             default   66.359  opt2   66.566  paired 1.001
+scimark.py                   program.frontend         default    0.012  opt2    0.011  paired 0.926
+scimark.py                   program.jit_optimize     default    0.039  opt2    0.125  paired 3.160
+scimark.py                   program.jit_codegen      default    0.050  opt2    0.049  paired 0.973
+scimark.py                   timer.loop               default    0.035  opt2    0.037  paired 1.059
+== pp_spectral_norm
+spectral_norm.py             wall                     default    0.084  opt2    0.099  paired 1.180
+spectral_norm.py             peak_rss_mib             default   64.949  opt2   65.340  paired 1.006
+spectral_norm.py             program.frontend         default    0.002  opt2    0.002  paired 0.923
+spectral_norm.py             program.jit_optimize     default    0.019  opt2    0.035  paired 1.805
+spectral_norm.py             program.jit_codegen      default    0.015  opt2    0.015  paired 1.010
+spectral_norm.py             timer.loop               default    0.027  opt2    0.026  paired 1.003
+== pp_fannkuch
+fannkuch.py                  wall                     default    0.258  opt2    0.270  paired 1.047
+fannkuch.py                  peak_rss_mib             default   94.188  opt2   94.145  paired 1.000
+fannkuch.py                  program.frontend         default    0.002  opt2    0.002  paired 1.017
+fannkuch.py                  program.jit_optimize     default    0.018  opt2    0.032  paired 1.746
+fannkuch.py                  program.jit_codegen      default    0.013  opt2    0.011  paired 0.904
+fannkuch.py                  timer.loop               default    0.206  opt2    0.204  paired 0.990
+== pp_nqueens
+nqueens.py                   wall                     default    0.297  opt2    0.317  paired 1.113
+nqueens.py                   peak_rss_mib             default   99.121  opt2   99.207  paired 1.001
+nqueens.py                   program.frontend         default    0.003  opt2    0.003  paired 1.044
+nqueens.py                   program.jit_optimize     default    0.021  opt2    0.046  paired 2.084
+nqueens.py                   program.jit_codegen      default    0.015  opt2    0.016  paired 0.944
+nqueens.py                   timer.loop               default    0.232  opt2    0.234  paired 1.026
+== pp_regex_dna
+regex_dna.py                 wall                     default    1.717  opt2    2.989  paired 1.759
+regex_dna.py                 peak_rss_mib             default   99.734  opt2   99.871  paired 1.001
+regex_dna.py                 program.frontend         default    0.164  opt2    0.167  paired 1.057
+regex_dna.py                 program.jit_optimize     default    0.245  opt2    1.451  paired 5.833
+regex_dna.py                 program.jit_codegen      default    1.055  opt2    1.099  paired 1.041
+regex_dna.py                 timer.loop               default    0.165  opt2    0.169  paired 1.023
+== pp_regex_effbot
+regex_effbot.py              wall                     default    1.662  opt2    2.846  paired 1.697
+regex_effbot.py              peak_rss_mib             default  109.938  opt2  108.926  paired 0.991
+regex_effbot.py              program.frontend         default    0.158  opt2    0.151  paired 0.952
+regex_effbot.py              program.jit_optimize     default    0.219  opt2    1.437  paired 6.569
+regex_effbot.py              program.jit_codegen      default    0.914  opt2    0.975  paired 1.060
+regex_effbot.py              timer.loop               default    0.299  opt2    0.235  paired 0.784
+== pp_regex_v8
+regex_v8.py                  wall                     default    4.150  opt2    5.811  paired 1.403
+regex_v8.py                  peak_rss_mib             default  128.520  opt2  133.660  paired 1.040
+regex_v8.py                  program.frontend         default    0.227  opt2    0.233  paired 1.038
+regex_v8.py                  program.jit_optimize     default    0.323  opt2    1.903  paired 5.900
+regex_v8.py                  program.jit_codegen      default    1.810  opt2    1.999  paired 1.122
+regex_v8.py                  timer.loop               default    0.388  opt2    0.335  paired 0.845
+== pp_richards
+richards.py                  wall                     default    0.236  opt2    0.301  paired 1.280
+richards.py                  peak_rss_mib             default   66.043  opt2   65.645  paired 0.994
+richards.py                  program.frontend         default    0.015  opt2    0.015  paired 0.999
+richards.py                  program.jit_optimize     default    0.063  opt2    0.160  paired 2.541
+richards.py                  program.jit_codegen      default    0.114  opt2    0.090  paired 0.767
+richards.py                  timer.loop               default    0.016  opt2    0.012  paired 0.709
+== pp_go
+go.py                        wall                     default    0.199  opt2    0.282  paired 1.393
+go.py                        peak_rss_mib             default   79.895  opt2   79.754  paired 0.998
+go.py                        program.frontend         default    0.014  opt2    0.013  paired 0.930
+go.py                        program.jit_optimize     default    0.046  opt2    0.138  paired 2.987
+go.py                        program.jit_codegen      default    0.068  opt2    0.067  paired 0.990
+go.py                        timer.loop               default    0.047  opt2    0.043  paired 0.914
+== pp_hexiom
+hexiom.py                    wall                     default    0.304  opt2    0.488  paired 1.572
+hexiom.py                    peak_rss_mib             default   97.910  opt2   97.258  paired 0.993
+hexiom.py                    program.frontend         default    0.033  opt2    0.035  paired 1.093
+hexiom.py                    program.jit_optimize     default    0.068  opt2    0.264  paired 3.892
+hexiom.py                    program.jit_codegen      default    0.122  opt2    0.104  paired 0.856
+hexiom.py                    timer.loop               default    0.057  opt2    0.058  paired 1.021
+== pp_json_loads
+json_loads.py                wall                     default    1.155  opt2    1.265  paired 1.111
+json_loads.py                peak_rss_mib             default  101.227  opt2  100.695  paired 0.995
+json_loads.py                program.frontend         default    0.055  opt2    0.058  paired 1.067
+json_loads.py                program.jit_optimize     default    0.085  opt2    0.281  paired 3.373
+json_loads.py                program.jit_codegen      default    0.219  opt2    0.189  paired 0.861
+json_loads.py                timer.loop               default    0.755  opt2    0.698  paired 0.912
+== pp_json_dumps
+json_dumps.py                wall                     default    0.298  opt2    0.352  paired 1.181
+json_dumps.py                peak_rss_mib             default   99.676  opt2   99.582  paired 0.999
+json_dumps.py                program.frontend         default    0.027  opt2    0.027  paired 1.012
+json_dumps.py                program.jit_optimize     default    0.034  opt2    0.095  paired 2.719
+json_dumps.py                program.jit_codegen      default    0.065  opt2    0.063  paired 0.988
+json_dumps.py                timer.loop               default    0.145  opt2    0.142  paired 0.985
+== pp_generators
+generators.py                wall                     default    0.305  opt2    0.325  paired 1.052
+generators.py                peak_rss_mib             default  114.473  opt2  114.438  paired 1.000
+generators.py                program.frontend         default    0.008  opt2    0.008  paired 0.966
+generators.py                program.jit_optimize     default    0.032  opt2    0.065  paired 2.006
+generators.py                program.jit_codegen      default    0.034  opt2    0.031  paired 0.902
+generators.py                timer.loop               default    0.183  opt2    0.173  paired 0.935
+done in 475s

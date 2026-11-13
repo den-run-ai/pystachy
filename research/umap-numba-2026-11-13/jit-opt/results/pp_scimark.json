@@ -1,0 +1,217 @@
+{
+ "program": [
+  "bench/pyperformance/scimark.py",
+  "2"
+ ],
+ "rounds": 3,
+ "runs": {
+  "default": [
+   {
+    "wall": 0.16434814900003403,
+    "peak_rss_mib": 66.50390625,
+    "program.cache_lookup": 1.0071e-05,
+    "program.load": 0.006184058,
+    "program.prepare": 0.001753817,
+    "program.discover": 0.004919058,
+    "program.analysis": 0.000382763,
+    "program.optimize": 0.000979325,
+    "program.finalize": 0.0002776,
+    "program.lower": 0.001560502,
+    "program.attempt": 0.016236657,
+    "program.frontend": 0.016290035,
+    "runtime.cache_lookup": 0.00033026,
+    "program.jit_runner.lljit": 5.2332e-05,
+    "program.jit_optimize": 0.039553545,
+    "driver.prepare_run": 0.058322307,
+    "program.jit_load": 0.001998283,
+    "program.jit_codegen": 0.050131032,
+    "timer.loop": 0.035129418998621986
+   },
+   {
+    "wall": 0.15569059500012372,
+    "peak_rss_mib": 66.359375,
+    "program.cache_lookup": 7.777e-06,
+    "program.load": 0.004342567,
+    "program.prepare": 0.00131873,
+    "program.discover": 0.003441647,
+    "program.analysis": 0.000214865,
+    "program.optimize": 0.000680135,
+    "program.finalize": 0.000189579,
+    "program.lower": 0.001048869,
+    "program.attempt": 0.011376278,
+    "program.frontend": 0.0114169,
+    "runtime.cache_lookup": 0.000238989,
+    "program.jit_runner.lljit": 3.6742e-05,
+    "program.jit_optimize": 0.03860332,
+    "driver.prepare_run": 0.051944492,
+    "program.jit_load": 0.001932225,
+    "program.jit_codegen": 0.049757764,
+    "timer.loop": 0.03528588300014235
+   },
+   {
+    "wall": 0.16344682700037083,
+    "peak_rss_mib": 66.2734375,
+    "program.cache_lookup": 7.332e-06,
+    "program.load": 0.004731746,
+    "program.prepare": 0.001417292,
+    "program.discover": 0.003745736,
+    "program.analysis": 0.000237304,
+    "program.optimize": 0.000730764,
+    "program.finalize": 0.000209089,
+    "program.lower": 0.001161319,
+    "program.attempt": 0.01235869,
+    "program.frontend": 0.0124,
+    "runtime.cache_lookup": 0.000273508,
+    "program.jit_runner.lljit": 4.02e-05,
+    "program.jit_optimize": 0.039214555,
+    "driver.prepare_run": 0.053565595,
+    "program.jit_load": 0.002088756,
+    "program.jit_codegen": 0.054007318,
+    "timer.loop": 0.0362429249980778
+   }
+  ],
+  "opt2": [
+   {
+    "wall": 0.24424407100013923,
+    "peak_rss_mib": 66.56640625,
+    "program.cache_lookup": 7.445e-06,
+    "program.load": 0.004318613,
+    "program.prepare": 0.001313425,
+    "program.discover": 0.003416163,
+    "program.analysis": 0.000245188,
+    "program.optimize": 0.000652496,
+    "program.finalize": 0.000197339,
+    "program.lower": 0.001142654,
+    "program.attempt": 0.011414256,
+    "program.frontend": 0.011455056,
+    "runtime.cache_lookup": 0.000237499,
+    "program.jit_runner.lljit": 3.535e-05,
+    "program.jit_optimize": 0.124978099,
+    "driver.prepare_run": 0.138298871,
+    "program.jit_load": 0.002157041,
+    "program.jit_codegen": 0.048795802,
+    "timer.loop": 0.037195785000221804
+   },
+   {
+    "wall": 0.2571318999998766,
+    "peak_rss_mib": 66.58984375,
+    "program.cache_lookup": 8.08e-06,
+    "program.load": 0.004369948,
+    "program.prepare": 0.001360396,
+    "program.discover": 0.003479073,
+    "program.analysis": 0.00023225,
+    "program.optimize": 0.000756763,
+    "program.finalize": 0.000213751,
+    "program.lower": 0.001138794,
+    "program.attempt": 0.011696035,
+    "program.frontend": 0.011739565,
+    "runtime.cache_lookup": 0.000282397,
+    "program.jit_runner.lljit": 3.6935e-05,
+    "program.jit_optimize": 0.130708112,
+    "driver.prepare_run": 0.144500139,
+    "program.jit_load": 0.001917612,
+    "program.jit_codegen": 0.051759116,
+    "timer.loop": 0.04095621400119853
+   },
+   {
+    "wall": 0.23869758900036686,
+    "peak_rss_mib": 66.3515625,
+    "program.cache_lookup": 8.043e-06,
+    "program.load": 0.004342293,
+    "program.prepare": 0.00133835,
+    "program.discover": 0.003471177,
+    "program.analysis": 0.00022592,
+    "program.optimize": 0.000680975,
+    "program.finalize": 0.000194236,
+    "program.lower": 0.001056076,
+    "program.attempt": 0.011438156,
+    "program.frontend": 0.011479671,
+    "runtime.cache_lookup": 0.000249188,
+    "program.jit_runner.lljit": 3.7491e-05,
+    "program.jit_optimize": 0.123645726,
+    "driver.prepare_run": 0.137143687,
+    "program.jit_load": 0.002038409,
+    "program.jit_codegen": 0.046178777,
+    "timer.loop": 0.03596505899895419
+   }
+  ]
+ },
+ "summary": {
+  "wall": {
+   "default": 0.16344682700037083,
+   "opt2": 0.24424407100013923
+  },
+  "peak_rss_mib": {
+   "default": 66.359375,
+   "opt2": 66.56640625
+  },
+  "program.cache_lookup": {
+   "default": 7.777e-06,
+   "opt2": 8.043e-06
+  },
+  "program.load": {
+   "default": 0.004731746,
+   "opt2": 0.004342293
+  },
+  "program.prepare": {
+   "default": 0.001417292,
+   "opt2": 0.00133835
+  },
+  "program.discover": {
+   "default": 0.003745736,
+   "opt2": 0.003471177
+  },
+  "program.analysis": {
+   "default": 0.000237304,
+   "opt2": 0.00023225
+  },
+  "program.optimize": {
+   "default": 0.000730764,
+   "opt2": 0.000680975
+  },
+  "program.finalize": {
+   "default": 0.000209089,
+   "opt2": 0.000197339
+  },
+  "program.lower": {
+   "default": 0.001161319,
+   "opt2": 0.001138794
+  },
+  "program.attempt": {
+   "default": 0.01235869,
+   "opt2": 0.011438156
+  },
+  "program.frontend": {
+   "default": 0.0124,
+   "opt2": 0.011479671
+  },
+  "runtime.cache_lookup": {
+   "default": 0.000273508,
+   "opt2": 0.000249188
+  },
+  "program.jit_runner.lljit": {
+   "default": 4.02e-05,
+   "opt2": 3.6935e-05
+  },
+  "program.jit_optimize": {
+   "default": 0.039214555,
+   "opt2": 0.124978099
+  },
+  "driver.prepare_run": {
+   "default": 0.053565595,
+   "opt2": 0.138298871
+  },
+  "program.jit_load": {
+   "default": 0.001998283,
+   "opt2": 0.002038409
+  },
+  "program.jit_codegen": {
+   "default": 0.050131032,
+   "opt2": 0.048795802
+  },
+  "timer.loop": {
+   "default": 0.03528588300014235,
+   "opt2": 0.037195785000221804
+  }
+ }
+}

@@ -1,0 +1,43 @@
+== richards
+richards.py      hit wall           default    0.235  opt2    0.172  paired 0.733
+richards.py      hit timer.loop     default    0.184  opt2    0.125  paired 0.669
+richards.py      miss default  wall 14.135
+richards.py      miss opt2     wall 0.807
+== regex_effbot
+regex_effbot.py  hit wall           default    3.119  opt2    2.730  paired 0.844
+regex_effbot.py  hit timer.loop     default    3.063  opt2    2.678  paired 0.849
+regex_effbot.py  miss default  wall 17.835
+regex_effbot.py  miss opt2     wall 6.109
+== regex_v8
+regex_v8.py      hit wall           default    3.808  opt2    3.177  paired 0.824
+regex_v8.py      hit timer.loop     default    2.105  opt2    1.763  paired 0.845
+regex_v8.py      miss default  wall 19.805
+regex_v8.py      miss opt2     wall 7.790
+== generators
+generators.py    hit wall           default    1.852  opt2    1.919  paired 1.043
+generators.py    hit timer.loop     default    1.761  opt2    1.841  paired 1.045
+generators.py    miss default  wall 15.372
+generators.py    miss opt2     wall 2.260
+== nbody
+nbody.py         hit wall           default    1.009  opt2    1.034  paired 1.036
+nbody.py         hit timer.loop     default    0.953  opt2    0.983  paired 1.036
+nbody.py         miss default  wall 15.008
+nbody.py         miss opt2     wall 2.000
+== raytrace
+raytrace.py      hit wall           default    0.323  opt2    0.299  paired 1.003
+raytrace.py      hit timer.loop     default    0.268  opt2    0.251  paired 0.986
+raytrace.py      miss default  wall 14.363
+raytrace.py      miss opt2     wall 0.985
+== imports
+imports.py       hit wall           default    0.050  opt2    0.050  paired 0.994
+imports.py       miss default  wall 15.417
+imports.py       miss opt2     wall 3.592
+== umap
+umap_core.py     hit wall           default   10.773  opt2   10.859  paired 1.002
+umap_core.py     hit timer.data     default    0.043  opt2    0.042  paired 1.023
+umap_core.py     hit timer.knn      default    4.734  opt2    4.805  paired 1.015
+umap_core.py     hit timer.graph    default    0.105  opt2    0.119  paired 1.008
+umap_core.py     hit timer.layout   default    5.820  opt2    5.754  paired 1.008
+umap_core.py     miss default  wall 25.976
+umap_core.py     miss opt2     wall 11.478
+exit 0

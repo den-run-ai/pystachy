@@ -1,0 +1,217 @@
+{
+ "program": [
+  "bench/pyperformance/regex_dna.py",
+  "4"
+ ],
+ "rounds": 3,
+ "runs": {
+  "default": [
+   {
+    "wall": 1.7953671630002646,
+    "peak_rss_mib": 99.7578125,
+    "program.cache_lookup": 8.316e-06,
+    "program.load": 0.063409589,
+    "program.prepare": 0.01896685,
+    "program.discover": 0.037859133,
+    "program.analysis": 0.004469732,
+    "program.optimize": 0.027328765,
+    "program.finalize": 0.004097602,
+    "program.lower": 0.016681745,
+    "program.attempt": 0.173033168,
+    "program.frontend": 0.173061235,
+    "runtime.cache_lookup": 0.000283651,
+    "program.jit_runner.lljit": 6.8123e-05,
+    "program.jit_optimize": 0.24457207,
+    "driver.prepare_run": 0.432247516,
+    "program.jit_load": 0.025727471,
+    "program.jit_codegen": 1.07516878,
+    "timer.loop": 0.1945623860001433
+   },
+   {
+    "wall": 1.6997432309999567,
+    "peak_rss_mib": 99.5625,
+    "program.cache_lookup": 7.616e-06,
+    "program.load": 0.058954786,
+    "program.prepare": 0.016486954,
+    "program.discover": 0.037276768,
+    "program.analysis": 0.004076982,
+    "program.optimize": 0.02670268,
+    "program.finalize": 0.003894798,
+    "program.lower": 0.016114687,
+    "program.attempt": 0.163723329,
+    "program.frontend": 0.16375147,
+    "runtime.cache_lookup": 0.000284092,
+    "program.jit_runner.lljit": 4.7906e-05,
+    "program.jit_optimize": 0.22905154,
+    "driver.prepare_run": 0.407500748,
+    "program.jit_load": 0.02594303,
+    "program.jit_codegen": 1.055254521,
+    "timer.loop": 0.15223935100038943
+   },
+   {
+    "wall": 1.7170162330003222,
+    "peak_rss_mib": 99.734375,
+    "program.cache_lookup": 1.024e-05,
+    "program.load": 0.057165963,
+    "program.prepare": 0.015970043,
+    "program.discover": 0.036781388,
+    "program.analysis": 0.004355207,
+    "program.optimize": 0.025486664,
+    "program.finalize": 0.00385,
+    "program.lower": 0.014378247,
+    "program.attempt": 0.158206037,
+    "program.frontend": 0.158235023,
+    "runtime.cache_lookup": 0.000339456,
+    "program.jit_runner.lljit": 5.0814e-05,
+    "program.jit_optimize": 0.269016051,
+    "driver.prepare_run": 0.443064621,
+    "program.jit_load": 0.030225547,
+    "program.jit_codegen": 1.016593331,
+    "timer.loop": 0.16522876900035044
+   }
+  ],
+  "opt2": [
+   {
+    "wall": 2.980685022999751,
+    "peak_rss_mib": 99.71875,
+    "program.cache_lookup": 1.109e-05,
+    "program.load": 0.077856842,
+    "program.prepare": 0.018549963,
+    "program.discover": 0.043704653,
+    "program.analysis": 0.004770609,
+    "program.optimize": 0.032401389,
+    "program.finalize": 0.005584401,
+    "program.lower": 0.022094815,
+    "program.attempt": 0.205231547,
+    "program.frontend": 0.205263873,
+    "runtime.cache_lookup": 0.000354446,
+    "program.jit_runner.lljit": 5.4481e-05,
+    "program.jit_optimize": 1.426486263,
+    "driver.prepare_run": 1.648027669,
+    "program.jit_load": 0.030658591,
+    "program.jit_codegen": 1.076904212,
+    "timer.loop": 0.1658212080001249
+   },
+   {
+    "wall": 2.989234061999923,
+    "peak_rss_mib": 100.1328125,
+    "program.cache_lookup": 7.78e-06,
+    "program.load": 0.058519909,
+    "program.prepare": 0.017088327,
+    "program.discover": 0.036592589,
+    "program.analysis": 0.003990032,
+    "program.optimize": 0.026008177,
+    "program.finalize": 0.00378943,
+    "program.lower": 0.01588181,
+    "program.attempt": 0.162069196,
+    "program.frontend": 0.16209661,
+    "runtime.cache_lookup": 0.000311718,
+    "program.jit_runner.lljit": 5.6511e-05,
+    "program.jit_optimize": 1.450844364,
+    "driver.prepare_run": 1.627923614,
+    "program.jit_load": 0.026210684,
+    "program.jit_codegen": 1.09853879,
+    "timer.loop": 0.1755786089997855
+   },
+   {
+    "wall": 3.0720949250007834,
+    "peak_rss_mib": 99.87109375,
+    "program.cache_lookup": 8.393e-06,
+    "program.load": 0.060319734,
+    "program.prepare": 0.015867667,
+    "program.discover": 0.039475858,
+    "program.analysis": 0.004395109,
+    "program.optimize": 0.026990486,
+    "program.finalize": 0.004190291,
+    "program.lower": 0.015778138,
+    "program.attempt": 0.16724056,
+    "program.frontend": 0.167266021,
+    "runtime.cache_lookup": 0.000276204,
+    "program.jit_runner.lljit": 5.1413e-05,
+    "program.jit_optimize": 1.478882788,
+    "driver.prepare_run": 1.661014275,
+    "program.jit_load": 0.032759117,
+    "program.jit_codegen": 1.153056882,
+    "timer.loop": 0.16896747200007667
+   }
+  ]
+ },
+ "summary": {
+  "wall": {
+   "default": 1.7170162330003222,
+   "opt2": 2.989234061999923
+  },
+  "peak_rss_mib": {
+   "default": 99.734375,
+   "opt2": 99.87109375
+  },
+  "program.cache_lookup": {
+   "default": 8.316e-06,
+   "opt2": 8.393e-06
+  },
+  "program.load": {
+   "default": 0.058954786,
+   "opt2": 0.060319734
+  },
+  "program.prepare": {
+   "default": 0.016486954,
+   "opt2": 0.017088327
+  },
+  "program.discover": {
+   "default": 0.037276768,
+   "opt2": 0.039475858
+  },
+  "program.analysis": {
+   "default": 0.004355207,
+   "opt2": 0.004395109
+  },
+  "program.optimize": {
+   "default": 0.02670268,
+   "opt2": 0.026990486
+  },
+  "program.finalize": {
+   "default": 0.003894798,
+   "opt2": 0.004190291
+  },
+  "program.lower": {
+   "default": 0.016114687,
+   "opt2": 0.01588181
+  },
+  "program.attempt": {
+   "default": 0.163723329,
+   "opt2": 0.16724056
+  },
+  "program.frontend": {
+   "default": 0.16375147,
+   "opt2": 0.167266021
+  },
+  "runtime.cache_lookup": {
+   "default": 0.000284092,
+   "opt2": 0.000311718
+  },
+  "program.jit_runner.lljit": {
+   "default": 5.0814e-05,
+   "opt2": 5.4481e-05
+  },
+  "program.jit_optimize": {
+   "default": 0.24457207,
+   "opt2": 1.450844364
+  },
+  "driver.prepare_run": {
+   "default": 0.432247516,
+   "opt2": 1.648027669
+  },
+  "program.jit_load": {
+   "default": 0.02594303,
+   "opt2": 0.030658591
+  },
+  "program.jit_codegen": {
+   "default": 1.055254521,
+   "opt2": 1.09853879
+  },
+  "timer.loop": {
+   "default": 0.16522876900035044,
+   "opt2": 0.16896747200007667
+  }
+ }
+}

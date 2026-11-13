@@ -1,0 +1,10 @@
+umap_core.py                 wall                     default    8.960  opt2    8.816  paired 0.984
+umap_core.py                 peak_rss_mib             default  118.551  opt2  118.914  paired 1.003
+umap_core.py                 program.frontend         default    0.265  opt2    0.229  paired 0.926
+umap_core.py                 program.jit_optimize     default    0.062  opt2    0.189  paired 3.052
+umap_core.py                 program.jit_codegen      default    0.124  opt2    0.121  paired 0.971
+umap_core.py                 timer.data               default    0.042  opt2    0.039  paired 0.905
+umap_core.py                 timer.knn                default    2.392  opt2    2.106  paired 0.827
+umap_core.py                 timer.graph              default    0.108  opt2    0.094  paired 0.926
+umap_core.py                 timer.layout             default    5.784  opt2    5.733  paired 1.008
+exit 0

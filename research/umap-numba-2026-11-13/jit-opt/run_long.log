@@ -1,0 +1,71 @@
+== long_richards
+richards.py                  wall                     default    0.406  opt2    0.432  paired 1.069
+richards.py                  peak_rss_mib             default   66.730  opt2   65.996  paired 0.989
+richards.py                  program.frontend         default    0.015  opt2    0.015  paired 1.016
+richards.py                  program.jit_optimize     default    0.065  opt2    0.161  paired 2.361
+richards.py                  program.jit_codegen      default    0.119  opt2    0.092  paired 0.764
+richards.py                  timer.loop               default    0.171  opt2    0.131  paired 0.702
+== long_regex_effbot
+regex_effbot.py              wall                     default    4.371  opt2    4.980  paired 1.144
+regex_effbot.py              peak_rss_mib             default  116.066  opt2  117.965  paired 1.017
+regex_effbot.py              program.frontend         default    0.160  opt2    0.158  paired 0.978
+regex_effbot.py              program.jit_optimize     default    0.232  opt2    1.437  paired 6.359
+regex_effbot.py              program.jit_codegen      default    0.925  opt2    1.009  paired 1.096
+regex_effbot.py              timer.loop               default    2.967  opt2    2.316  paired 0.790
+== long_regex_v8
+regex_v8.py                  wall                     default    5.674  opt2    7.012  paired 1.275
+regex_v8.py                  peak_rss_mib             default  128.676  opt2  133.477  paired 1.032
+regex_v8.py                  program.frontend         default    0.231  opt2    0.253  paired 1.096
+regex_v8.py                  program.jit_optimize     default    0.325  opt2    1.924  paired 6.064
+regex_v8.py                  program.jit_codegen      default    1.714  opt2    1.990  paired 1.185
+regex_v8.py                  timer.loop               default    1.898  opt2    1.581  paired 0.839
+== long_go
+go.py                        wall                     default    0.564  opt2    0.628  paired 1.129
+go.py                        peak_rss_mib             default   98.398  opt2   98.129  paired 0.997
+go.py                        program.frontend         default    0.013  opt2    0.013  paired 0.988
+go.py                        program.jit_optimize     default    0.043  opt2    0.141  paired 3.129
+go.py                        program.jit_codegen      default    0.070  opt2    0.066  paired 0.959
+go.py                        timer.loop               default    0.411  opt2    0.382  paired 0.932
+== long_json_loads
+json_loads.py                wall                     default    4.200  opt2    4.310  paired 1.013
+json_loads.py                peak_rss_mib             default  101.090  opt2  100.801  paired 0.997
+json_loads.py                program.frontend         default    0.054  opt2    0.055  paired 1.021
+json_loads.py                program.jit_optimize     default    0.091  opt2    0.314  paired 3.456
+json_loads.py                program.jit_codegen      default    0.224  opt2    0.196  paired 0.882
+json_loads.py                timer.loop               default    3.713  opt2    3.703  paired 0.962
+== long_chaos
+chaos.py                     wall                     default    0.434  opt2    0.523  paired 1.207
+chaos.py                     peak_rss_mib             default   99.461  opt2   99.652  paired 1.002
+chaos.py                     program.frontend         default    0.011  opt2    0.011  paired 1.003
+chaos.py                     program.jit_optimize     default    0.043  opt2    0.143  paired 3.268
+chaos.py                     program.jit_codegen      default    0.060  opt2    0.057  paired 0.937
+chaos.py                     timer.loop               default    0.295  opt2    0.289  paired 0.978
+== long_raytrace
+raytrace.py                  wall                     default    0.409  opt2    0.495  paired 1.195
+raytrace.py                  peak_rss_mib             default   99.570  opt2   99.098  paired 0.995
+raytrace.py                  program.frontend         default    0.018  opt2    0.017  paired 1.005
+raytrace.py                  program.jit_optimize     default    0.051  opt2    0.136  paired 2.717
+raytrace.py                  program.jit_codegen      default    0.089  opt2    0.086  paired 0.944
+raytrace.py                  timer.loop               default    0.223  opt2    0.228  paired 1.041
+== long_scimark
+scimark.py                   wall                     default    0.496  opt2    0.589  paired 1.191
+scimark.py                   peak_rss_mib             default   69.676  opt2   69.613  paired 0.999
+scimark.py                   program.frontend         default    0.013  opt2    0.012  paired 0.947
+scimark.py                   program.jit_optimize     default    0.040  opt2    0.133  paired 3.337
+scimark.py                   program.jit_codegen      default    0.054  opt2    0.050  paired 0.905
+scimark.py                   timer.loop               default    0.366  opt2    0.372  paired 1.016
+== long_nbody
+nbody.py                     wall                     default    0.984  opt2    1.024  paired 1.060
+nbody.py                     peak_rss_mib             default   62.613  opt2   63.680  paired 1.017
+nbody.py                     program.frontend         default    0.004  opt2    0.004  paired 1.012
+nbody.py                     program.jit_optimize     default    0.023  opt2    0.046  paired 2.093
+nbody.py                     program.jit_codegen      default    0.022  opt2    0.021  paired 0.954
+nbody.py                     timer.loop               default    0.903  opt2    0.929  paired 1.041
+== long_generators
+generators.py                wall                     default    1.961  opt2    1.822  paired 0.941
+generators.py                peak_rss_mib             default  114.789  opt2  114.812  paired 1.001
+generators.py                program.frontend         default    0.011  opt2    0.009  paired 0.810
+generators.py                program.jit_optimize     default    0.038  opt2    0.077  paired 1.974
+generators.py                program.jit_codegen      default    0.035  opt2    0.037  paired 1.092
+generators.py                timer.loop               default    1.813  opt2    1.663  paired 0.915
+done in 261s

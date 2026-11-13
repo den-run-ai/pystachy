@@ -1,0 +1,131 @@
+{
+ "program": [
+  "/tmp/claude-0/-home-user-pystachy/d93c2c20-f8ea-590f-9162-601d62fd95f8/scratchpad/jitopt-meas/work/umap_core.py",
+  "10000",
+  "16",
+  "10",
+  "15",
+  "200",
+  "7"
+ ],
+ "rounds": 5,
+ "misses": {
+  "default": {
+   "wall": 25.975612412999908,
+   "timer.data": 0.056,
+   "timer.knn": 5.115,
+   "timer.graph": 0.106,
+   "timer.layout": 6.626
+  },
+  "opt2": {
+   "wall": 11.478440202999991,
+   "timer.data": 0.042,
+   "timer.knn": 4.954,
+   "timer.graph": 0.099,
+   "timer.layout": 5.469
+  }
+ },
+ "hits": {
+  "default": [
+   {
+    "wall": 10.403610243000003,
+    "timer.data": 0.049,
+    "timer.knn": 4.488,
+    "timer.graph": 0.105,
+    "timer.layout": 5.706
+   },
+   {
+    "wall": 10.8173873249998,
+    "timer.data": 0.043,
+    "timer.knn": 4.784,
+    "timer.graph": 0.106,
+    "timer.layout": 5.825
+   },
+   {
+    "wall": 10.958000698999967,
+    "timer.data": 0.043,
+    "timer.knn": 4.878,
+    "timer.graph": 0.097,
+    "timer.layout": 5.885
+   },
+   {
+    "wall": 10.393433680000271,
+    "timer.data": 0.043,
+    "timer.knn": 4.659,
+    "timer.graph": 0.103,
+    "timer.layout": 5.531
+   },
+   {
+    "wall": 10.772828234000372,
+    "timer.data": 0.041,
+    "timer.knn": 4.734,
+    "timer.graph": 0.124,
+    "timer.layout": 5.82
+   }
+  ],
+  "opt2": [
+   {
+    "wall": 11.025164325000333,
+    "timer.data": 0.04,
+    "timer.knn": 5.049,
+    "timer.graph": 0.119,
+    "timer.layout": 5.754
+   },
+   {
+    "wall": 10.819248171999789,
+    "timer.data": 0.052,
+    "timer.knn": 4.626,
+    "timer.graph": 0.099,
+    "timer.layout": 5.975
+   },
+   {
+    "wall": 10.858668488000148,
+    "timer.data": 0.042,
+    "timer.knn": 5.026,
+    "timer.graph": 0.156,
+    "timer.layout": 5.576
+   },
+   {
+    "wall": 10.414239403000465,
+    "timer.data": 0.044,
+    "timer.knn": 4.693,
+    "timer.graph": 0.1,
+    "timer.layout": 5.52
+   },
+   {
+    "wall": 11.057544854000298,
+    "timer.data": 0.042,
+    "timer.knn": 4.805,
+    "timer.graph": 0.125,
+    "timer.layout": 6.029
+   }
+  ]
+ },
+ "summary": {
+  "wall": {
+   "default": 10.772828234000372,
+   "opt2": 10.858668488000148,
+   "paired": 1.0020018141877627
+  },
+  "timer.data": {
+   "default": 0.043,
+   "opt2": 0.042,
+   "paired": 1.0232558139534884
+  },
+  "timer.knn": {
+   "default": 4.734,
+   "opt2": 4.805,
+   "paired": 1.0149978876214618
+  },
+  "timer.graph": {
+   "default": 0.105,
+   "opt2": 0.119,
+   "paired": 1.0080645161290323
+  },
+  "timer.layout": {
+   "default": 5.82,
+   "opt2": 5.754,
+   "paired": 1.0084121976866456
+  }
+ }
+}
