@@ -105,9 +105,9 @@ def decode_char(src: bytes, i: int) -> int:
 class FStringContext:
     # lexer/interpolated_string.rs's InterpolatedStringContext
     def __init__(self, flags: int, nesting: int, spec_depth: int) -> None:
-        self.flags = flags
-        self.nesting = nesting
-        self.spec_depth = spec_depth
+        self.flags: int = flags
+        self.nesting: int = nesting
+        self.spec_depth: int = spec_depth
 
     def copy(self) -> "FStringContext":
         return FStringContext(self.flags, self.nesting, self.spec_depth)
@@ -150,45 +150,44 @@ class LexerCheckpoint:
                  nesting: int, cols: list[int], chars: list[int], has_pending: bool,
                  pending_col: int, pending_char: int, fstrings: list[FStringContext],
                  nerrors: int) -> None:
-        self.kind = kind
-        self.start = start
-        self.end = end
-        self.flags = flags
-        self.pos = pos
-        self.state = state
-        self.nesting = nesting
-        self.cols = cols
-        self.chars = chars
-        self.has_pending = has_pending
-        self.pending_col = pending_col
-        self.pending_char = pending_char
-        self.fstrings = fstrings
-        self.nerrors = nerrors
+        self.kind: int = kind
+        self.start: int = start
+        self.end: int = end
+        self.flags: int = flags
+        self.pos: int = pos
+        self.state: int = state
+        self.nesting: int = nesting
+        self.cols: list[int] = cols
+        self.chars: list[int] = chars
+        self.has_pending: bool = has_pending
+        self.pending_col: int = pending_col
+        self.pending_char: int = pending_char
+        self.fstrings: list[FStringContext] = fstrings
+        self.nerrors: int = nerrors
 
 
 class Lexer:
     def __init__(self, src: bytes, mode: int, start_offset: int) -> None:
-        self.src = src
-        self.n = len(src)
-        self.mode = mode
-        self.pos = 0
-        self.tok = 0  # where the token being lexed starts (Cursor::start_token)
-        self.kind = T_ENDOFFILE
-        self.start = start_offset
-        self.end = start_offset
+        self.src: bytes = src
+        self.n: int = len(src)
+        self.mode: int = mode
+        self.pos: int = 0
+        self.tok: int = 0  # where the token being lexed starts (Cursor::start_token)
+        self.kind: int = T_ENDOFFILE
+        self.start: int = start_offset
+        self.end: int = start_offset
         self.flags = 0
+        self.state: int = S_AFTER_NEWLINE
+        self.nesting: int = 0
         if mode == MODE_PARENTHESIZED_EXPRESSION:
             self.state = S_OTHER
             self.nesting = 1
-        else:
-            self.state = S_AFTER_NEWLINE
-            self.nesting = 0
         # the indentation stack: columns (tabs to multiples of 2) and characters
         self.cols: list[int] = []
         self.chars: list[int] = []
-        self.has_pending = False
-        self.pending_col = 0
-        self.pending_char = 0
+        self.has_pending: bool = False
+        self.pending_col: int = 0
+        self.pending_char: int = 0
         self.fstrings: list[FStringContext] = []
         self.err_start: list[int] = []
         self.err_end: list[int] = []

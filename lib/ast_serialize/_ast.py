@@ -115,9 +115,9 @@ CTX_INVALID = 3
 
 class Node:
     def __init__(self, kind: int, start: int, end: int) -> None:
-        self.kind = kind
-        self.start = start
-        self.end = end
+        self.kind: int = kind
+        self.start: int = start
+        self.end: int = end
         self.a: Node | None = None
         self.b: Node | None = None
         self.c: Node | None = None

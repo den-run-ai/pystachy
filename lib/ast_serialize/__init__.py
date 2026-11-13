@@ -23,12 +23,26 @@ from ._sha1 import sha1_hex
 __all__ = ["parse", "parse_type_string"]
 
 
+def _os_error_text(s: str) -> str:
+    # Rust's io::Error display: "[Errno 2] No such file or directory: 'x'" is
+    # "No such file or directory (os error 2)"
+    if s.startswith("[Errno "):
+        close = s.find("]")
+        num = s[7:close]
+        rest = s[close + 2:]
+        colon = rest.find(": '")
+        if colon >= 0:
+            rest = rest[:colon]
+        return rest + " (os error " + num + ")"
+    return s
+
+
 def _read_source(fnam: str) -> bytes:
     try:
         with open(fnam, "rb") as f:
             data = f.read()
     except OSError as e:
-        raise ValueError(str(e.strerror) + " (os error " + str(e.errno) + ")")
+        raise ValueError(_os_error_text(str(e)))
     try:
         data.decode()
     except UnicodeDecodeError:
@@ -36,8 +50,13 @@ def _read_source(fnam: str) -> bytes:
     return data
 
 
-def _error_dict(e: SyntaxError_) -> dict[str, int | str | bool]:
-    d: dict[str, int | str | bool] = {}
+# the values of the dict parse() returns last
+AstDataValue = bool | str | list[tuple[int, list[str]]] | list[tuple[int, str]]
+ErrorValue = int | str | bool
+
+
+def _error_dict(e: SyntaxError_) -> dict[str, ErrorValue]:
+    d: dict[str, ErrorValue] = {}
     d["line"] = e.line
     d["column"] = e.column
     d["message"] = e.message
@@ -52,16 +71,27 @@ def _ignore_list(items: list[tuple[int, list[bytes]]]) -> list[tuple[int, list[s
     return out
 
 
+def _source_bytes(fnam: str, source) -> bytes:  # (source: str | bytes | None, specialized per call)
+    if source is None:
+        return _read_source(fnam)
+    if isinstance(source, str):
+        return source.encode()
+    if isinstance(source, bytes):
+        source.decode()
+        return source
+    raise TypeError("Source must be str or bytes")
+
+
 def parse(
     fnam: str,
-    source: str | bytes | None = None,
+    source=None,
     skip_function_bodies: bool = False,
     python_version: tuple[int, int] | None = None,
     platform: str | None = None,
     always_true: list[str] | None = None,
     always_false: list[str] | None = None,
     cache_version: int = 0,
-) -> tuple[bytes, list[dict[str, int | str | bool]], list[tuple[int, list[str]]], bytes, dict[str, object]]:
+) -> tuple[bytes, list[dict[str, ErrorValue]], list[tuple[int, list[str]]], bytes, dict[str, AstDataValue]]:
     if python_version is None:
         python_version = (sys.version_info[0], sys.version_info[1])
     if platform is None:
@@ -70,18 +100,13 @@ def parse(
         always_true = []
     if always_false is None:
         always_false = []
-    if source is None:
-        raw = _read_source(fnam)
-    elif isinstance(source, str):
-        raw = source.encode()
-    else:
-        raw = source
-        raw.decode()
+    raw = _source_bytes(fnam, source)
     return _parse_bytes(fnam, raw, skip_function_bodies,
                         Options(python_version, platform, always_true, always_false, cache_version))
 
 
-def _parse_bytes(fnam: str, raw: bytes, skip_function_bodies: bool, options: Options):
+def _parse_bytes(fnam: str, raw: bytes, skip_function_bodies: bool, options: Options
+                 ) -> tuple[bytes, list[dict[str, ErrorValue]], list[tuple[int, list[str]]], bytes, dict[str, AstDataValue]]:
     source_hash = sha1_hex(raw)
     if raw.find(b"\r") >= 0:
         text = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
@@ -145,7 +170,7 @@ def _parse_bytes(fnam: str, raw: bytes, skip_function_bodies: bool, options: Opt
     skipped = ser.skipped_lines
     type_ignores = [t for t in type_ignores if t[0] not in skipped]
     mypy_ignores = [t for t in mypy_ignores if t[0] not in skipped]
-    ast_data: dict[str, object] = {}
+    ast_data: dict[str, AstDataValue] = {}
     ast_data["is_partial_package"] = is_stub_package and ser.top_level_getattr
     ast_data["mypy_ignores"] = _ignore_list(mypy_ignores)
     ast_data["uses_template_strings"] = ser.uses_template_strings

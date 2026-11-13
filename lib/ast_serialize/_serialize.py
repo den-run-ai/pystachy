@@ -154,27 +154,27 @@ OPERATOR_TEXT: list[bytes] = [b"+", b"-", b"*", b"@", b"/", b"%", b"**", b"<<", 
 class Options:
     def __init__(self, python_version: tuple[int, int], platform: str, always_true: list[str],
                  always_false: list[str], cache_version: int) -> None:
-        self.python_version = python_version
-        self.platform = platform.encode()
+        self.python_version: tuple[int, int] = python_version
+        self.platform: bytes = platform.encode()
         self.always_true: list[bytes] = [s.encode() for s in always_true]
         self.always_false: list[bytes] = [s.encode() for s in always_false]
-        self.cache_version = cache_version
+        self.cache_version: int = cache_version
 
 
 class TypeComment:
     def __init__(self, kind: int, expr: Node | None, args: list[Node], msg: str) -> None:
-        self.kind = kind
-        self.expr = expr  # (the type, or the return type of a function comment)
-        self.args = args
-        self.msg = msg
+        self.kind: int = kind
+        self.expr: Node | None = expr  # (the type, or the return type of a function comment)
+        self.args: list[Node] = args
+        self.msg: str = msg
 
 
 class SyntaxError_:
     def __init__(self, line: int, column: int, message: str, blocker: bool) -> None:
-        self.line = line
-        self.column = column
-        self.message = message
-        self.blocker = blocker
+        self.line: int = line
+        self.column: int = column
+        self.message: str = message
+        self.blocker: bool = blocker
 
 
 class ImportInfo:
@@ -182,17 +182,17 @@ class ImportInfo:
     def __init__(self, kind: int, name: bytes, relative: int, as_name: bytes, has_as: bool,
                  names: list[bytes], as_names: list[bytes], has_as_names: list[bool],
                  start: int, end: int, flags: int) -> None:
-        self.kind = kind
-        self.name = name
-        self.relative = relative
-        self.as_name = as_name
-        self.has_as = has_as
-        self.names = names
-        self.as_names = as_names
-        self.has_as_names = has_as_names
-        self.start = start
-        self.end = end
-        self.flags = flags
+        self.kind: int = kind
+        self.name: bytes = name
+        self.relative: int = relative
+        self.as_name: bytes = as_name
+        self.has_as: bool = has_as
+        self.names: list[bytes] = names
+        self.as_names: list[bytes] = as_names
+        self.has_as_names: list[bool] = has_as_names
+        self.start: int = start
+        self.end: int = end
+        self.flags: int = flags
 
 
 class LineIndex:
@@ -200,15 +200,15 @@ class LineIndex:
     per-line ASCII flags."""
 
     def __init__(self, text: bytes) -> None:
-        self.text = text
-        starts = [0]
+        self.text: bytes = text
+        starts: list[int] = [0]
         p = text.find(b"\n")
         while p >= 0:
             starts.append(p + 1)
             p = text.find(b"\n", p + 1)
-        self.starts = starts
-        self.ascii = is_ascii(text)
-        self.bom = len(text) >= 3 and text[0] == 0xEF and text[1] == 0xBB and text[2] == 0xBF
+        self.starts: list[int] = starts
+        self.ascii: bool = is_ascii(text)
+        self.bom: bool = len(text) >= 3 and text[0] == 0xEF and text[1] == 0xBB and text[2] == 0xBF
         # str::lines(): a line per newline, but no empty last line after a final newline
         self.non_ascii_lines: list[bool] = []
         if not self.ascii:
@@ -285,13 +285,13 @@ class Serializer:
                  tokens: Parser | None, type_comments: dict[int, TypeComment]) -> None:
         self.out: list[bytes] = []
         self.imports: list[ImportInfo] = []
-        self.text = text
-        self.li = li
-        self.options = options
-        self.cv = options.cache_version
-        self.skip_function_bodies = skip_function_bodies
-        self.tokens = tokens
-        self.type_comments = type_comments
+        self.text: bytes = text
+        self.li: LineIndex = li
+        self.options: Options = options
+        self.cv: int = options.cache_version
+        self.skip_function_bodies: bool = skip_function_bodies
+        self.tokens: Parser | None = tokens
+        self.type_comments: dict[int, TypeComment] = type_comments
         self.in_class = False
         self.in_function = False
         self.current_unreachable = False
@@ -1963,12 +1963,12 @@ def reverse_cmp_op(op: int) -> int:
 class VersionInfo:
     # kind 0 whole, 1 index, 2 slice; begin/end with has_ flags
     def __init__(self, kind: int, index: int, has_begin: bool, begin: int, has_end: bool, end: int) -> None:
-        self.kind = kind
-        self.index = index
-        self.has_begin = has_begin
-        self.begin = begin
-        self.has_end = has_end
-        self.end = end
+        self.kind: int = kind
+        self.index: int = index
+        self.has_begin: bool = has_begin
+        self.begin: int = begin
+        self.has_end: bool = has_end
+        self.end: int = end
 
 
 def contains_sys_version_info(e: Node) -> VersionInfo | None:
@@ -2173,7 +2173,7 @@ def true_like(t: int) -> bool:
 
 class IfAnalyzer:
     def __init__(self, options: Options) -> None:
-        self.options = options
+        self.options: Options = options
         self.tail_unreachable = False
         self.seen_mypy_true = False
         self.seen_mypy_false = False
@@ -2241,7 +2241,7 @@ def has_externally_visible_effect(body: list[Node], params: Node, check_attribut
 
 class EffectDetector:
     def __init__(self, first_param: bytes) -> None:
-        self.first_param = first_param
+        self.first_param: bytes = first_param
         self.defines_attributes = False
         self.contains_yield = False
 
@@ -2383,10 +2383,10 @@ TC_PART_INVALID_IGNORE = 4
 
 class CommentPart:
     def __init__(self, kind: int, codes: list[bytes], text: bytes, is_mypy: bool) -> None:
-        self.kind = kind
-        self.codes = codes
-        self.text = text
-        self.is_mypy = is_mypy
+        self.kind: int = kind
+        self.codes: list[bytes] = codes
+        self.text: bytes = text
+        self.is_mypy: bool = is_mypy
 
 
 def parse_error_codes(after_ignore: bytes) -> list[bytes] | None:

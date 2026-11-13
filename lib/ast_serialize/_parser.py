@@ -243,9 +243,9 @@ class RecursionLimit(Exception):
 
 class Parser:
     def __init__(self, src: bytes, mode: int) -> None:
-        self.src = src
-        self.mode = mode
-        self.lexer = Lexer(src, mode, 0)
+        self.src: bytes = src
+        self.mode: int = mode
+        self.lexer: Lexer = Lexer(src, mode, 0)
         # every token, trivia too (Ruff's TokenSource::tokens)
         self.tok_kind: list[int] = []
         self.tok_start: list[int] = []
@@ -254,12 +254,12 @@ class Parser:
         self.err_start: list[int] = []
         self.err_end: list[int] = []
         self.err_msg: list[str] = []
-        self.prev_token_end = 0
-        self.recovery_context = 0
-        self.token_id = 0
-        self.depth_remaining = MAX_RECURSION_DEPTH
-        self.max_nesting_depth = MAX_RECURSION_DEPTH - 2
-        self.pp = False  # is_parenthesized of the ParsedExpr last returned
+        self.prev_token_end: int = 0
+        self.recovery_context: int = 0
+        self.token_id: int = 0
+        self.depth_remaining: int = MAX_RECURSION_DEPTH
+        self.max_nesting_depth: int = MAX_RECURSION_DEPTH - 2
+        self.pp: bool = False  # is_parenthesized of the ParsedExpr last returned
         self.do_bump_lexer()
 
     # ---------------------------------------------------------------- tokens
@@ -3312,12 +3312,12 @@ class Parser:
 class ParserCheckpoint:
     def __init__(self, lexer: LexerCheckpoint, ntokens: int, nerrors: int, token_id: int,
                  prev_token_end: int, recovery_context: int) -> None:
-        self.lexer = lexer
-        self.ntokens = ntokens
-        self.nerrors = nerrors
-        self.token_id = token_id
-        self.prev_token_end = prev_token_end
-        self.recovery_context = recovery_context
+        self.lexer: LexerCheckpoint = lexer
+        self.ntokens: int = ntokens
+        self.nerrors: int = nerrors
+        self.token_id: int = token_id
+        self.prev_token_end: int = prev_token_end
+        self.recovery_context: int = recovery_context
 
 
 def set_expr_ctx(e: Node, ctx: int) -> None:
@@ -3585,11 +3585,11 @@ class StringParser:
     f-string middle's text); err_msg is set (with its range) if an escape is invalid."""
 
     def __init__(self, src: bytes, start: int, end: int, flags: int) -> None:
-        self.src = src
-        self.start = start
-        self.end = end
-        self.pos = start
-        self.flags = flags
+        self.src: bytes = src
+        self.start: int = start
+        self.end: int = end
+        self.pos: int = start
+        self.flags: int = flags
         self.err_msg = ""
         self.err_start = 0
         self.err_end = 0
