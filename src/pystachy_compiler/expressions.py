@@ -3769,9 +3769,11 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 return [sides[i], m, inv]
     return []
 
-def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
+def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
     # Compare concrete runtime types, including None. Both operands matter: Python gives
     # the right operand's reflected comparison priority when its class is a strict subtype.
+    # lenient (tuple search, titem_eq): a pair whose method does not take the other operand,
+    # an error for ==, finds them not equal, as the search did before it dispatched on classes.
     # Each pair of the operands' alternatives (cmp_alts) is compiled as concrete_cmp compiles
     # it (cmp_widen: a template's parameter takes the operand as its static type), but pairs
     # whose code is the same (cmp_key) share one arm, and alternatives of a whose pairs share
@@ -3813,6 +3815,8 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
             rows.append(row)
         group.append(row_of[s])
     if len(keys) == 1:
+        if lenient and keys[0].startswith("bad "):
+            return Val("false" if op == "==" else "true", "bool")
         return self.ptr_cmp('==' if op == '==' else '!=', a, b) if keys[0] == "is" else self.concrete_cmp(op, pairs[0][0], pairs[0][1])
     arms = [self.label() for k in keys]
     tos = [[arms[i] for i in rw] for rw in rows]
@@ -3849,7 +3853,7 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val) -> Val:
                 i = rows[g][yi]
                 if i not in placed:
                     placed[i] = True
-                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end)
+                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end, lenient)
                 if yi == 0 and sb != "-" and sb != "":
                     self.place(sb)
                     self.cmp_tags(b, ys, tos[g])
@@ -3935,11 +3939,15 @@ def uniform(to: list[str]) -> bool:
             return False
     return True
 
-def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str) -> None:
+def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool = False) -> None:
     # arm l of inherit_cmp, for key k: what concrete_cmp compiles for pair p, and then end, where
-    # phi ph takes its result ("is": the identity of the operands, which each alternative is)
+    # phi ph takes its result ("is": the identity of the operands, which each alternative is;
+    # lenient: a method that does not take the other operand finds them not equal)
     self.place(l)
-    r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1])
+    if lenient and k.startswith("bad "):
+        r = Val("false" if op == "==" else "true", "bool")
+    else:
+        r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1])
     if not self.term:
         self.incoming(ph, r.v, self.cur)
         self.br(end)
@@ -4607,11 +4615,25 @@ def gen_exc_eq(self, t: str, what: str = "") -> None:
                 what = what if what != "" else "between exceptions" if t == "exc" else f"between values of type {typestr(t)}"
                 self.err(f"== {what} is not supported where an exception class defines {m} ({short(c.name)} does): compare objects of the class itself, or use 'is'")
 
-def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, lenient: bool = False) -> bool:
     # whether tuple item is x, or item == x, as CPython's PyObject_RichCompareBool(item, x, Py_EQ)
     # tests it for in, index() and count(): a branch to hit (where phi ph, if any, takes value)
-    # where it is, and on in a new block where it is not; False if no branch can reach hit
+    # where it is, and on in a new block where it is not; False if no branch can reach hit.
+    # lenient (a member of a union of classes, titem_union): objects compare as inherit_cmp's
+    # lenient comparison compares them, which no method that cannot take the other makes an error
+    if item.t != "dyn" and a.t != "dyn" and (self.reference_union(item.t) or self.reference_union(a.t)):
+        return self.titem_union(item, a, hit, ph, value)
     u = unopt(item.t)
+    if lenient and (item.t == "file" or a.t == "file"):
+        # (a file compares by identity alone, as CPython's do)
+        if not self.isref(item.t) or not self.isref(a.t):
+            return False
+        nf = self.label()
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(self.ptr_cmp('==', item, a).v, hit, nf)
+        self.place(nf)
+        return True
     identity = (item.t in self.classes or is_list(u) or is_dict(u) or is_set(u) or is_tuple(u) or is_vtuple(u)) and self.isref(a.t)
     if (item.t == "dyn" or a.t == "dyn") and self.comparable(item.t, a.t):
         # (an Any value: the same value first, also a float's, as the runtime's dyn_eqitem tests
@@ -4644,8 +4666,13 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     if not paired and not nested and not setpair and not self.comparable(item.t, a.t) and self.boxwider(item.t, a.t) == "":
         # item == x of types whose values are never equal: CPython still calls the
         # item's __eq__(x), or where the item's class has none (a builtin type's
-        # declines) x's __eq__(item); with neither, they are not equal
-        c = self.foreign_eq(item, a)
+        # declines) x's __eq__(item); with neither, they are not equal. An object of a class
+        # with subclasses calls its runtime class's (#1430), as == does (inherit_cmp)
+        runtime = [x for x in [item.t, a.t] if x in self.classes and self.classes[x].exc == "" and self.classes[x].tag != 0 and len(self.cmp_kinds(x)) > 1]
+        if len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)):
+            c = self.inherit_cmp("==", item, a, True)
+        else:
+            c = self.foreign_eq(item, a)
         if c.t != "":
             nx = self.label()
             if ph is not None:
@@ -4656,6 +4683,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     if paired:
         r = self.rt("pys_eq_pair", "i64", ["i64 " + self.to_slot(item), "i64 " + self.to_slot(a), f"ptr {self.sconst(self.desc(item.t, '=='))}", f"ptr {self.sconst(self.desc(a.t, '=='))}"])
         c = self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
+    elif lenient and (item.t in self.classes or a.t in self.classes):
+        c = self.inherit_cmp("==", item, a, True)
     else:
         c = self.cmp2("==", item, a)
     nx = self.label()
@@ -4664,6 +4693,44 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     self.cbr(c.v, hit, nx)
     self.place(nx)
     return True
+
+def gen_titem_union(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+    # titem_eq where tuple item or x is a union of classes' objects or files (#1432): None where
+    # it is a null box, else its member's object, chosen by the tag, compared as an object of that
+    # class is, the same object first (titem_eq, lenient); the other side may be such a union too
+    v = item if self.reference_union(item.t) else a
+    o = a if v is item else item
+    done = self.label()
+    found = False
+    if v.v not in self.nn:
+        # (a class's union holds None as a null box, as a class's object is null)
+        some = self.label()
+        none = self.label()
+        self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, none, some)
+        self.place(none)
+        nv = Val("null", "None")
+        if self.titem_eq(nv if v is item else o, o if v is item else nv, hit, ph, value, True):
+            found = True
+        self.br(done)
+        self.place(some)
+    ms = umembers(unopt(v.t))
+    for i in range(len(ms)):
+        arm = self.label()
+        nx = self.label() if i + 1 < len(ms) else done
+        if i + 1 < len(ms):
+            self.cbr(self.utest(v, [ms[i]], False), arm, nx)
+        else:
+            self.br(arm)
+        self.place(arm)
+        x = self.uget(Val(v.v, unopt(v.t)), ms[i])
+        self.nn[x.v] = True
+        if self.titem_eq(x if v is item else o, o if v is item else x, hit, ph, value, True):
+            found = True
+        self.br(done)
+        if i + 1 < len(ms):
+            self.place(nx)
+    self.place(done)
+    return found
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if self.curfn.cmpops:
