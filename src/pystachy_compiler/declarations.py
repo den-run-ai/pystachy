@@ -371,7 +371,7 @@ def gen_literal_ann(self, items: list[Node], line: int) -> str:
             ts.append(t)
     if len(ts) == 0:
         return "!unsupported type annotation"
-    return ts[0] if len(ts) == 1 else self.union_type(ts)
+    return ts[0] if len(ts) == 1 else self.union_type(narrowed(ts))  # (a union holds 64-bit ints, as an annotated one: ann)
 
 def gen_ann_items(self, xs: list[Node]) -> list[str]:
     # the types annotations xs denote, those of tuple[...] or of Callable[[...], R]'s parameters:
