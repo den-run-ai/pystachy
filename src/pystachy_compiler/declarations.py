@@ -2442,11 +2442,15 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return bad[0]
         return self.ctype("tuple", ts) if "" not in ts and len(ts) == len(e.kids) else ""
     if k == "set" and len(e.kids) > 0 and len([x for x in e.kids if x.kind == "starred"]) == 0:
-        # {a, b, ...}: a set of its first item's type, as a list display is a list of its (the
-        # display's other items are then compiled as items of that type: set_display)
+        # {a, b, ...}: a set of its items' type, where they all have one (set_display compiles
+        # them as items of the first's: items of other types type nothing, so that a class the
+        # program does not use is left out as it was, not compiled into an error)
         t = self.guess(e.kids[0], f)
         if t == "" or t.startswith("!"):
             return t
+        for x in e.kids[1:]:
+            if self.guess(x, f) != t:
+                return ""
         return self.ctype("set", [t]) if "?" not in t and t != "None" and self.elem_problem(t) == "" else ""
     if k == "dict" and len(e.kids) > 0 and len(e.kids) % 2 == 0:
         kt = self.guess(e.kids[0], f)
@@ -2480,6 +2484,34 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         if e.s == "*" and (is_list(b) or b == "str") and a in ["int", "bool", BIG]:
             return b
     return ""
+
+def gen_class_reads(self, e: Node, f: FnInfo, t: str) -> bool:
+    # is e, a class-body or parameter default of an imported module, made only of constants and
+    # of class attributes read through their classes (C.k, as class_attr reads it), alone or in
+    # displays whose items guess types alike, and of the type t expected ("": any)? Such a value
+    # compiles as guess types it, so default_problem need not refuse it for the class's name (a
+    # class is no value, but C.k names none), and its class or function is compiled, not left out
+    g = self.guess(e, f) if reads_only(self, e, f) else ""
+    return g != "" and not g.startswith("!") and "?" not in g and (t == "" or g == t)
+
+def reads_only(self, e: Node, f: FnInfo) -> bool:
+    # (class_reads) a constant but None, C.k of a class attribute k that class C's body or a
+    # base's binds, a tuple of such values, or a list, set or dict display of them whose items
+    # (a dict's keys, and its values) all have the type guess gives the first
+    if e.kind == "attr":
+        c = e.kids[0]
+        return c.kind == "name" and c.s in self.classes and c.s not in self.nts and c.s not in self.tmpl and e.s in self.classes[c.s].fdefault and e.s not in self.classes[c.s].methods
+    if e.kind != "tuple" and e.kind != "list" and e.kind != "set" and e.kind != "dict":
+        return is_const(e) and e.kind != "None" and e.kind != "noann"
+    if len(e.kids) == 0:
+        return False
+    for i in range(len(e.kids)):
+        if not reads_only(self, e.kids[i], f):
+            return False
+        j = i % 2 if e.kind == "dict" else 0
+        if e.kind != "tuple" and i > j and self.guess(e.kids[i], f) != self.guess(e.kids[j], f):
+            return False
+    return True
 
 def gen_guess_iter(self, a: Node, f: FnInfo) -> str:
     # the type of iter(a) (guess, see iter_): a file itself, an object's iterator object, or the

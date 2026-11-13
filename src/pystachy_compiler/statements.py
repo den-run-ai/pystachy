@@ -241,7 +241,7 @@ def gen_early_default(self, f: FnInfo, j: int) -> None:
         f.dglob[j] = self.classes[f.cls].fglob[f.params[j]]
         return
     t = f.ptypes[j]
-    bad = self.default_problem(f.defaults[j], t) if f.mod != "" else ""
+    bad = self.default_problem(f.defaults[j], t) if f.mod != "" and not self.class_reads(f.defaults[j], FnInfo("", "", f.node, ""), t) else ""
     if bad != "":
         f.dglob[j] = "!" + bad
         return
@@ -280,7 +280,7 @@ def gen_hoist(self, f: FnInfo) -> None:
         if (f.dglob[j] == "" or early) and (not is_const(d) or (identity_default(d) and self.fn_identity(f))):
             t = f.ptypes[j] if f.bad == "" else ""  # (an unsupported annotation is no type)
             self.line = d.line
-            bad = self.default_problem(d, t) if f.mod != "" else ""
+            bad = self.default_problem(d, t) if f.mod != "" and not self.class_reads(d, FnInfo("", "", f.node, ""), t) else ""
             if bad != "":
                 # a function of an imported module: the default is an error only where a call
                 # needs it, if evaluating it when the def runs does nothing
@@ -342,7 +342,8 @@ def gen_hoist_class(self, ci: ClassInfo) -> None:
             self.err(f"enum class {short(ci.name)} is not supported: it derives from {short(ci.base)}, an enum class of another module (an enum class derives from Enum, IntEnum, StrEnum, Flag, IntFlag, str or int and Enum, or an enum class of its own module)")
     for st in ci.node.kids[0].kids if ci.mod != "" and ci.bad == "" else []:
         if st.kind == "annassign" and len(st.kids) == 3 and st.kids[0].kind == "name":
-            why = self.default_problem(st.kids[2], ci.ftypes[st.kids[0].s])
+            t = ci.ftypes[st.kids[0].s]
+            why = self.default_problem(st.kids[2], t) if not self.class_reads(st.kids[2], FnInfo("", "", ci.node, ""), t) else ""
             if why != "":
                 ci.bad = f"class {shown(ci.name)} is not supported: {why}"
     if ci.bad != "":
