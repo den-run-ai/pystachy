@@ -1,4 +1,4 @@
-# error: lib_functools_cached_property_generic.py:13: error: TypeVar 'T' is only supported in the annotations of a module-level function's parameters and return, which make the function a template, and of a generic class (Generic[T]) with an __init__, whose objects bind it
+# error: lib_functools_cached_property_generic.py:13: error: TypeVar 'T' is only supported in the annotations of
 from functools import cached_property
 from typing import Generic, TypeVar
 
