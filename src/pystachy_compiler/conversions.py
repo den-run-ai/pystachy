@@ -224,7 +224,7 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         if what == "":
             what = "a value used as " + typestr(t)
         if self.curfn.ll + v.v in self.wide:
-            self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global or a field (a call may change it): copy it to a local variable, and test that")
+            self.err(f"{what} may be None ({typestr(v.t)}), and a test does not narrow a global, nor a field past a call or a store that may change it: copy it to a local variable, and test that")
         self.err(f"{what} may be None ({typestr(v.t)}); test it with 'is not None' first")
     hint = " (write a float literal like 1.0, or use float())" if t == "float" and v.t == "int" else ""
     if is_fn(t) and is_fn(v.t):

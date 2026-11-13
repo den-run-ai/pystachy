@@ -203,6 +203,11 @@ def gen_call(self, n: Node, want: str, resultsoft: bool = False, typeargs: str =
             if f.s == "copy" and len(args) == 0:
                 return self.refl_dict_copy(f.kids[0])  # (vars(x).copy(): reflection.py)
             self.err(VARS_USES)
+        if len(self.narrowed) > 0 and self.anyopt:
+            fk = self.path_key(f)
+            if fk != "" and fk in self.narrowed and is_callable(self.path_type(fk, {}, "")):
+                # (a field that a test narrowed to its union's Callable, called as a Callable variable is: unions.py)
+                return self.obj_call(self.expr(f, ""), args, want, resultsoft)
         o = self.expr(f.kids[0], self.default_want(f.kids[0], f.s, args, ""))
         self.mcall = n
         r = self.method(o, f.s, args, want, resultsoft)

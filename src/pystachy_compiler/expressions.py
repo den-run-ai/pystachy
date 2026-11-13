@@ -140,6 +140,8 @@ def gen_narrows(self, n: Node, truth: bool, out: dict[str, str]) -> None:
         nt = self.callable_narrow(t, truth) if is_union(unopt(t)) else ""
         if nt != "":
             out[nm] = nt  # (a union's Callable member, or the others)
+    elif len(self.preadn) > 0:
+        self.narrows_leaf(n, truth, out)  # (a test of an attribute path the statement has read: unions.py)
 
 def gen_callable_narrow(self, t: str, truth: bool) -> str:
     # the type of a value of union type t (or t | None) where callable(x) is truth: its Callable
@@ -184,7 +186,9 @@ def gen_narrow_by(self, test: Node, truth: bool) -> dict[str, str]:
 
 def gen_forget(self, body: list[Node], tgt: Node) -> dict[str, str]:
     # a loop: what it binds (in body, and its target tgt) may be None on its later passes, and
-    # after it; a copy of the state after it is returned
+    # after it; a copy of the state after it is returned. (An attribute's fact does not outlast
+    # the loop's start: its body runs again after what it does: unions.py's path_void.)
+    self.path_void()
     if len(self.narrowed) > 0:
         names: dict[str, bool] = {}
         collect(body, names)
@@ -386,7 +390,12 @@ def gen_has(self, t: str, a: str) -> int:
     return 0
 
 def gen_static_type(self, n: Node, typed: bool = False) -> str:
-    # the type of a variable read that cannot fail, or "" (typed: in isinstance or hasattr)
+    # the type of a variable read that cannot fail, or "" (typed: in isinstance or hasattr); and
+    # there of an attribute that a test narrowed, whose read is of the value the test read
+    # (unions.py's path_value)
+    if typed and n.kind == "attr" and len(self.narrowed) > 0 and self.anyopt:
+        pk = self.path_key(n)
+        return self.path_type(pk, {}, "") if pk != "" and pk in self.narrowed else ""
     if n.kind != "name" or n.chk:
         return ""
     if self.whole != 0 and n.s in self.nonevars:
@@ -957,6 +966,11 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
     if k == "enumalias":
         return self.enum_alias(n, want)  # (an enum member's alias: the member whose value it has)
     if k == "attr":
+        pk = self.path_key(n) if self.anyopt else ""
+        if pk != "" and pk in self.narrowed:
+            pv = self.path_value(n, pk)  # (an attribute that a test narrowed: the value it read, unions.py)
+            if pv.t != "":
+                return pv
         path = self.dotted(n)
         if path != "" and path[: path.rfind(".")] not in MODATTRS:
             self.modchk(n)
@@ -1096,8 +1110,20 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             self.fn_attr_read(o, n.s)
         self.glue_field(o, n.s)
         self.fieldcmp = n is self.cmpnode  # (o.f is None: see none_field)
+        plive = pk != "" and pk in self.narrowed and self.path_type(pk, {}, "") != ""
+        pcall = self.pcall
+        pmark = self.path_mark()
         fv = self.getfield(o, self.field(o, n.s), n.s)
         self.fieldcmp = False
+        if pk != "":
+            # (a field's load stores no attribute: what it writes is its own, the box of a number
+            # that has an identity for Any values, dynamic.py)
+            self.path_undo(pmark, [], [])
+            self.pcall = pcall
+        if pk != "" and fv.v.startswith("%") and (is_opt(fv.t) or is_union(fv.t) or fv.t in self.classes):
+            if plive:
+                return self.path_again(n, pk, fv)  # (a test narrowed it, and the value it read is not at hand here: unions.py)
+            self.path_read(n, fv, self.pseq, self.cur)  # (a field's load, which a test of it may narrow: unions.py)
         return fv
     if k == "index":
         return self.index(n, want)
@@ -3148,6 +3174,7 @@ def gen_iter_ret(self, e: Node) -> Val:
     return v
 
 def gen_listcomp(self, n: Node, want: str, mode: str = "", into: str = "", arg: IterArg | None = None, kind: str = "list", resultsoft: bool = False) -> Val:
+    self.path_void()  # (a loop: no attribute's fact outlasts its start, unions.py)
     # [e for t in it if c] runs as a loop appending to a fresh list (or to list into, of type
     # want, as xs.extend(e for ...) does item by item); t is scoped to it. mode any/all:
     # any(e for ...) / all(...) instead, stopping at the deciding element. kind "set": {e for
@@ -3375,6 +3402,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
     l2 = self.label()
     l3 = self.label()
     self.cbr(c, l1, l2)
+    pcall = self.pcall  # (what may change an attribute in one arm has not happened in the other: unions.py's path_undo)
+    pmark = self.path_mark()
     self.place(l1)
     pre = self.narrow_by(n.kids[0], True)
     self.branch += 1  # (neither arm surely rebinds a template parameter whose argument is None)
@@ -3390,6 +3419,11 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         a = self.coerce(a, want)  # (a function where a Callable is expected: made one in its arm)
     # an arm that ends the program (sys.exit()) has no edge to the join, and no value
     e1 = "" if self.term else self.cur
+    ykeys: list[str] = []
+    yvals: list[int] = []
+    self.path_undo(pmark, ykeys, yvals)
+    ycall = self.pcall
+    self.pcall = pcall
     self.br(l3)
     self.place(l2)
     self.narrowed = pre
@@ -3412,6 +3446,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         a = self.convert_at(a, b.t, e1)  # (arms of two types after all: the first as the union, boxed at its edge)
         e1 = self.convedge
     self.narrowed = self.forget_walrus(pre, n.kids[1:])
+    self.path_redo(ykeys, yvals)
+    self.pcall = max(self.pcall, ycall)
     e2 = "" if self.term else self.cur
     t = b.t if e1 == "" or (a.t == "None" and e2 != "") else a.t
     if e1 != "" and e2 != "" and a.t != b.t and (want == "" or is_opt(want)) and is_opt(self.join(a.t, b.t)):

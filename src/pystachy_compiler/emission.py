@@ -5,7 +5,7 @@ from src.pystachy_compiler.bigints import narrows
 from src.pystachy_compiler.diagnostics import Rejoin, fail, int_lists
 from src.pystachy_compiler.names import short
 from src.pystachy_compiler.ir import Blk, Data, Frame, Ins, Val, tmpname, one_num
-from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
+from src.pystachy_compiler.specs import BIGOPT, CHECKED, LIST_READS, LIST_WRITES, NARROWED, PATH_OPS, RTL, RTSYM, STR_HEADER_SIZE, TEXT_OPS, UNICODE_AUDIT
 from src.pystachy_compiler.utils import (
     RtFn,
     elem,
@@ -81,6 +81,13 @@ def gen_save(self) -> Frame:
     fr.nonesites = self.nonesites
     fr.nonepending = self.nonepending
     fr.narrowed = self.narrowed
+    fr.preadn = self.preadn
+    fr.preadv = self.preadv
+    fr.preads = self.preads
+    fr.preadb = self.preadb
+    fr.pdoms = self.pdoms
+    fr.psess = self.psess
+    fr.pfield = self.pfield
     fr.lkk = self.lkk
     fr.branch = self.branch
     fr.modlevel = self.modlevel
@@ -137,6 +144,13 @@ def gen_restore(self, fr: Frame) -> None:
     self.nonesites = fr.nonesites
     self.nonepending = fr.nonepending
     self.narrowed = fr.narrowed
+    self.preadn = fr.preadn
+    self.preadv = fr.preadv
+    self.preads = fr.preads
+    self.preadb = fr.preadb
+    self.pdoms = fr.pdoms
+    self.psess = fr.psess
+    self.pfield = fr.pfield
     self.lkk = fr.lkk
     self.branch = fr.branch
     self.modlevel = fr.modlevel
@@ -171,6 +185,8 @@ def gen_add(self, i: Ins) -> None:
         self.place(self.label())
     if self.source_lines.enabled:
         i.line = self.line
+    if i.op in PATH_OPS:
+        self.path_event(i, PATH_OPS[i.op])  # (what a narrowed attribute path's facts do not outlast: unions.py)
     self.blk.code.append(i)
 
 def gen_put(self, i: Ins, k: int) -> None:

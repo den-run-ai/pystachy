@@ -552,6 +552,13 @@ class Frame:
         self.nonesites: dict[str, list[Node]] = {}
         self.nonepending: dict[str, bool] = {}
         self.narrowed: dict[str, str] = {}
+        self.preadn: list[Node] = []
+        self.preadv: list[Val] = []
+        self.preads: list[int] = []
+        self.preadb: list[str] = []
+        self.pdoms: dict[str, bool] = {}
+        self.psess: list[int] = []
+        self.pfield = ""
         self.lkk: dict[str, str] = {}
         self.branch = 0
         self.modlevel = False
