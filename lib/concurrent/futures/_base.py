@@ -66,6 +66,20 @@ def _log_exception(msg: str, exc: BaseException) -> None:
 def _id(o) -> int:
     return hash(o) & 0xffffffffffff
 
+# Pystachy port: the name of the class of a future's result, which its repr shows. The subset
+# has type(x).__name__ of the builtin types and of objects of classes (#486), which the result's
+# static type selects here; a function, a method or an object that is called has no class to
+# name, and is shown as a function
+def _class_name(value) -> str:
+    if value is None:
+        return "NoneType"
+    elif isinstance(value, (bool, int, float, str, bytes, list, dict, tuple, set, frozenset)):
+        return value.__class__.__name__
+    elif callable(value):
+        return "function"
+    else:
+        return value.__class__.__name__
+
 class Error(Exception):
     """Base class for all future-related exceptions."""
     pass
@@ -287,11 +301,11 @@ class Future(Generic[_T]):
                 _id(self),
                state)
 
-    # Pystachy port: the name of the result's class, of the tuple's item (see __init__)
+    # Pystachy port: self._result.__class__.__name__, of the tuple's item (see __init__)
     def _result_type(self) -> str:
         r = self._result
         if r is not None:
-            return r[0].__class__.__name__
+            return _class_name(r[0])
         return "NoneType"
 
     def cancel(self):

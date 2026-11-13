@@ -1574,8 +1574,14 @@ the futures in a list, `wait(futures).done` and `result()`
   logging configuration does not change that report.
 - `submit()` from an `atexit` callback runs the call; CPython's raises `RuntimeError`, its
   worker threads having stopped ([deviation](../tests/deviations/lib_concurrent_futures_atexit.py)).
-  A future's repr shows its identity hash where CPython's shows `id()`. Without `max_workers`,
-  the private `_max_workers` is 5, CPython's value where the CPU count is unknown.
+  Without `max_workers`, the private `_max_workers` is 5, CPython's value where the CPU count is
+  unknown.
+- A future's repr shows its identity hash where CPython's shows `id()`, and names the class of
+  its result as far as the subset names classes (#486): an object whose class defines
+  `__call__` is shown as a `function`
+  ([deviation](../tests/deviations/lib_concurrent_futures_repr_callable.py)), and a call that
+  returns a generator or a file is rejected
+  ([error test](../tests/errors/library/lib_concurrent_futures_generator.py)).
 
 ### `atexit`
 
