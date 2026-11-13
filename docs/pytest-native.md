@@ -241,6 +241,11 @@ This hosted tool currently targets Linux and macOS.
   of a class or function, and the argument's name and index for another object.
   Only syntax is read, so an ID of a value that a call computes (a string that
   `make()` returns) is not known: give `ids=`, or the comparison reports it.
+  A value computed from a constant of a module beside the tests is read too, such
+  as `len(ALPHABET) + 1` after `from package.constants import ALPHABET`: the
+  constant is the one module-level number, string, bytes or `None` literal that
+  its module binds to the name. The program checks the value where it binds the
+  parameter and stops a run in which another module has changed it.
 - Tables the collector can read without running test code: a list or tuple,
   `range()`, comprehensions over literals, `+`, `*`, slices, f-strings,
   `sorted()`, `zip()`, `enumerate()`, `itertools.product()` and similar pure calls,

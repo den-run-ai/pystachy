@@ -312,6 +312,14 @@ def table_length(actual: int, expected: int, name: str) -> None:
                     + str(expected) + ": the module changes it while it is imported")
 
 
+def parameter_value(actual: str, expected: str, source: str) -> None:
+    """Stop a run whose parameter is not the value the collector read through an import for the test's ID."""
+    if actual != expected:
+        unsupported("parameter " + source + " is " + actual + " where the collector read " + expected
+                    + " from the sources: the program computes another value, or a module changes what the "
+                    "test module imports")
+
+
 # The outcomes of the running unittest case's subtests, in order, and whether one is
 # running: only then is a subTest block's failure reported apart and the test continued.
 subtest_outcomes: list[str] = []

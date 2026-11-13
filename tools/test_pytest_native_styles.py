@@ -1918,6 +1918,122 @@ class UncompiledTests(TemporarySuite):
                 self.assertTrue(results[0].assertion_operands)
 
 
+CONSTANTS = {
+    "pkg/__init__.py": "from .constants import ALPHABET, LIMIT\n",
+    "pkg/constants.py": 'ALPHABET = "abc"\nLIMIT: int = 5\nRATIO = 0.5\nNAMES = ["a", "b"]\n'
+                        "TWICE = 1\nTWICE = 2\nMADE = len(ALPHABET)\nKEPT = 7\n\n\n"
+                        "def change():\n    global KEPT\n    KEPT = 8\n",
+    "tests/test_ids.py": textwrap.dedent("""
+        import pytest
+        from pkg import ALPHABET, LIMIT as TOP
+        from pkg.constants import RATIO, NAMES
+
+
+        @pytest.mark.parametrize("size, text", [
+            (len(ALPHABET) + 0, "abc"),
+            (len(ALPHABET) + 1, ALPHABET + "d"),
+            (TOP, ALPHABET),
+            pytest.param(TOP * 2, "x" * TOP, id="named"),
+        ])
+        def test_sizes(size, text):
+            assert size >= 3
+            assert isinstance(text, str)
+
+
+        @pytest.mark.parametrize("ratio", [RATIO, RATIO * 2, -TOP])
+        def test_ratio(ratio):
+            assert ratio != 0
+
+
+        @pytest.mark.parametrize("names", [NAMES, [ALPHABET]])
+        def test_names(names):
+            assert len(names) >= 1
+    """),
+}
+CONSTANT_IDS = ["test_sizes[3-abc]", "test_sizes[4-abcd]", "test_sizes[5-abc]", "test_sizes[named]",
+                "test_ratio[0.5]", "test_ratio[1.0]", "test_ratio[-5]", "test_names[names0]", "test_names[names1]"]
+
+
+@unittest.skipUnless(importlib.util.find_spec("pytest"), "real pytest required for independent oracle")
+class ImportedConstantTests(TemporarySuite):
+    """A case is named after a value computed from a constant another module binds."""
+
+    files = UncompiledTests.files
+    run_python = UncompiledTests.run_python
+
+    def test_ids_follow_constants_of_modules_beside_the_tests(self):
+        status, _, error, report = self.run_python(CONSTANTS, str(self.root / "tests"))
+        self.assertEqual((status, report["qualification"]), (0, "pytest-matched"), error + json.dumps(report))
+        self.assertEqual([case.split("::", 1)[1] for case in report["results"][0]["cases"]], CONSTANT_IDS)
+        # The program checks each value an ID was read from; a named case and a list need none.
+        generated = "".join(path.read_text() for path in self.work.rglob("test_ids.py"))
+        self.assertIn("_pyn_support.parameter_value(repr(_pyn_param_0), '3', ", generated)
+        self.assertIn(""", "'abcd'", """, generated)
+        self.assertEqual(generated.count("_pyn_support.parameter_value("), 8, generated)
+
+    def test_a_changed_constant_stops_the_run(self):
+        # pytest names the case after the value the test module imported: the conftest's.
+        files = dict(CONSTANTS)
+        files["tests/conftest.py"] = "import pkg\n\npkg.ALPHABET = 'zzzzzz'\n"
+        files["tests/test_ids.py"] = ("import pytest\nfrom pkg import ALPHABET\n\n\n"
+                                      "@pytest.mark.parametrize('size', [len(ALPHABET), 9])\n"
+                                      "def test_sizes(size):\n    assert size >= 3\n")
+        status, output, error, report = self.run_python(files, str(self.root / "tests"))
+        self.assertEqual(status, 2, output + error)
+        self.assertEqual(report["results"][0]["state"], "execution-error")
+        self.assertIn("parameter len(ALPHABET) is 6 where the collector read 3 from the sources", output + error)
+
+    def test_only_one_literal_binding_is_read(self):
+        table = {
+            "TWICE": "value0",  # (bound twice)
+            "MADE": "value0",   # (a call's value)
+            "KEPT": "value0",   # (a function rebinds it)
+            "NAMES": "value0",  # (a list: pytest names it by position)
+            "RATIO": "0.5",
+        }
+        files = dict(CONSTANTS)
+        del files["tests/test_ids.py"]
+        for index, name in enumerate(table):
+            files[f"tests/test_{index}.py"] = (f"import pytest\nfrom pkg.constants import {name}\n\n\n"
+                                               f"@pytest.mark.parametrize('value', [{name}])\n"
+                                               "def test_value(value):\n    assert value\n")
+        # A second binding in the test module, and a rebinding in one of its functions.
+        files["tests/test_twice.py"] = ("import pytest\nfrom pkg.constants import RATIO\n"
+                                        "from pkg import LIMIT as RATIO\n\n\n"
+                                        "@pytest.mark.parametrize('value', [RATIO + 1])\n"
+                                        "def test_value(value):\n    assert value\n")
+        files["tests/test_global.py"] = ("import pytest\nfrom pkg.constants import RATIO\n\n\n"
+                                         "def change():\n    global RATIO\n    RATIO = 3\n\n\n"
+                                         "@pytest.mark.parametrize('value', [RATIO + 1])\n"
+                                         "def test_value(value):\n    assert value\n")
+        # ids= names the case: the program has no value to check.
+        files["tests/test_named.py"] = ("import pytest\nfrom pkg.constants import RATIO\n\n\n"
+                                        "@pytest.mark.parametrize('value', [RATIO], ids=['half'])\n"
+                                        "def test_value(value):\n    assert value\n")
+        paths = self.files(files)
+        results = runner.run_suite(paths, self.root, self.work, "python", [], sys.executable, 60)
+        ids = {result.path: [case.split("[", 1)[1][:-1] for case in result.cases] for result in results}
+        expected = {f"tests/test_{index}.py": [label] for index, label in enumerate(table.values())}
+        expected.update({"tests/test_twice.py": ["value0"], "tests/test_global.py": ["value0"],
+                         "tests/test_named.py": ["half"]})
+        self.assertEqual(ids, expected)
+        self.assertEqual({result.state for result in results}, {"passed"}, [result.error for result in results])
+        generated = {path.name: path.read_text() for path in self.work.rglob("test_*.py")}
+        self.assertEqual([name for name, text in sorted(generated.items()) if "parameter_value(" in text],
+                         ["test_4.py"])
+
+    @unittest.skipUnless(NATIVE, "native compiler opt-in required")
+    def test_native_jit_and_aot_check_the_values(self):
+        paths = [path for path in self.files(CONSTANTS) if path.name.startswith("test_")]
+        for mode in ("jit", "aot"):
+            with self.subTest(mode=mode):
+                results = runner.run_suite(paths, self.root, self.work / mode, mode, shlex.split(NATIVE),
+                                           sys.executable, 300)
+                expected = runner.oracle(paths, self.root, self.work / "oracle", sys.executable, 120)
+                self.assertEqual(runner.compare(results, expected), [], results[0].error + results[0].stderr)
+                self.assertEqual([case.split("::", 1)[1] for case in results[0].cases], CONSTANT_IDS)
+
+
 class StyleRejections(TemporarySuite):
     def test_unsupported_forms_are_collection_errors(self):
         unit = "import unittest\nimport pytest\nclass Case(unittest.TestCase):\n"

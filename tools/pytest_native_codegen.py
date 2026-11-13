@@ -45,6 +45,12 @@ class Opaque:
 
 
 @dataclass
+class Read:
+    """A parameter value the collector read through an imported constant, for the program to check."""
+    value: object
+
+
+@dataclass
 class Parameter:
     names: list[str]
     values: list[list[str]]
@@ -448,6 +454,11 @@ def _own_nodes(function):
         pending.extend(ast.iter_child_nodes(node))
 
 
+def _scalar(value):
+    """Whether pytest names a parameter of this value after the value: a number, string, bytes or None."""
+    return value is None or type(value) in (bool, int, float, str, bytes)
+
+
 def _statement_names(statement):
     """The names a module-level statement binds."""
     if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -491,6 +502,9 @@ class Generator:
         self.module_names = {}
         self.external = {}
         self.external_nodes = {}
+        self.external_constants = {}
+        # Whether the last evaluate(..., external=True) read an imported constant.
+        self.read_external = False
         self.external_reasons = {}
         self.fixed_names = None
         # What the test module reads as __file__ and __name__: pytest imports the original
@@ -657,10 +671,12 @@ class Generator:
                 self.error(node, "expected a literal or an expression of earlier literal constants")
             return value
 
-    def evaluate(self, node, env=None, track=False, partial=False):
+    def evaluate(self, node, env=None, track=False, partial=False, external=False):
         """The value of an expression over literals that runs no test code, else UNKNOWN.
 
-        partial allows a result with UNREAD items, which shows a table's rows.
+        partial allows a result with UNREAD items, which shows a table's rows. external
+        also reads constants that `from` imports bind (external_constant), and sets
+        read_external when the value depends on one.
 
         Reads literals, earlier constants, arithmetic, comparisons, subscripts, f-strings,
         comprehensions and calls of pure builtins and itertools functions (STATIC_CALLS):
@@ -763,6 +779,11 @@ class Generator:
                     if track:
                         self.metadata_constants.add(node.id)
                     return value
+                if external:
+                    value = self.external_constant(node.id)
+                    if value is not UNKNOWN:
+                        self.read_external = True
+                        return value
                 raise Unknown
             if isinstance(node, (ast.Tuple, ast.List)):
                 items = []
@@ -1005,6 +1026,15 @@ class Generator:
         static = self.evaluate(node)
         if static is not UNKNOWN:
             return static
+        # A value computed from a constant of a module beside the tests, such as
+        # len(ALPHABET) + 1: pytest names the case after the value, which the generated
+        # program checks where it binds the parameter (Read).
+        self.read_external = False
+        static = self.evaluate(node, external=True)
+        if static is not UNKNOWN and self.read_external:
+            if isinstance(static, (list, tuple)):
+                return [Read(item) if _scalar(item) else item for item in static]
+            return Read(static) if _scalar(static) else static
         if isinstance(node, ast.Lambda):
             return Opaque("<lambda>")
         if isinstance(node, ast.Name) and (node.id in self.named or (
@@ -1146,6 +1176,8 @@ class Generator:
                     value = self.described(row)
                 else:
                     value = [self.described(item) for item in row.elts]
+                if isinstance(value, Read) and not single_value:
+                    value = Opaque()  # (a row that is one value, as any other the collector cannot read)
                 if isinstance(value, Opaque) and not single_value:
                     if source is None:
                         # A row some expression makes: read once, then by position.
@@ -1164,10 +1196,16 @@ class Generator:
                                    for i in range(len(names))]
             if not isinstance(items, (list, tuple)) or len(items) != len(names):
                 self.error(decorator, what + " row width does not match argument names")
+            # The values read through imported constants, by position, for the program to check.
+            read = {position: item.value for position, item in enumerate(items) if isinstance(item, Read)}
+            items = [item.value if isinstance(item, Read) else item for item in items]
             # Inline tables have no observable outer container. Retain their actual
             # row expressions once; named tables retain the original stored values.
+            label = explicit_id if explicit_id is not None else ids[index] if ids is not None else None
+            if label is not None and not isinstance(label, str):
+                label = str(label)
             variables = []
-            for name, expression in zip(names, expressions):
+            for position, (name, expression) in enumerate(zip(names, expressions)):
                 variable = f"_pyn_param_{self.counter}"
                 self.counter += 1
                 annotation = annotations.get(name)
@@ -1184,14 +1222,16 @@ class Generator:
                         annotation.value, str) else ast.unparse(annotation)
                     # Strings preserve CPython's annotation evaluation count.
                     declaration += ": " + repr(hint)
-                (self.late if source is not None and isinstance(table, ast.Name) else prelude).append(
-                    f"{declaration} = {ast.unparse(expression)}")
+                target = self.late if source is not None and isinstance(table, ast.Name) else prelude
+                target.append(f"{declaration} = {ast.unparse(expression)}")
+                if position in read and label is None:
+                    # The case is named after this value, which the collector read from
+                    # another module's source.
+                    target.append(f"_pyn_support.parameter_value(repr({variable}), {repr(read[position])!r}, "
+                                  f"{ast.unparse(row if source is None else expression)!r})")
                 variables.append(variable)
             result.append(variables)
             row_marks.append(marks)
-            label = explicit_id if explicit_id is not None else ids[index] if ids is not None else None
-            if label is not None and not isinstance(label, str):
-                label = str(label)
             generated_ids.append(self.parameter_id("", label, index) if label is not None else "-".join(
                 self.parameter_id(name, item, index) for name, item in zip(names, items)))
         counts = {value: generated_ids.count(value) for value in generated_ids}
@@ -1506,6 +1546,55 @@ class Generator:
         if name not in self.imported:
             return None
         return self.external_class(*self.imported[name], depth)
+
+    def external_constant(self, name):
+        """The number, string, bytes or None that a `from` import binds to name, else UNKNOWN.
+
+        Read as this module's own constants are, from syntax: the one module-level
+        binding of the name in the module beside the tests that defines it, through the
+        modules that pass it on. The program checks each value a test ID was made from.
+        """
+        if name in self.external_constants:
+            return self.external_constants[name]
+        value = self.external_constants[name] = UNKNOWN
+        if (name not in self.imported or self.resolve is None
+                or sum(_statement_names(statement).count(name) for statement in self.tree.body) != 1
+                or any(isinstance(node, ast.Global) and name in node.names for node in ast.walk(self.tree))):
+            return value
+        level, module, original = self.imported[name]
+        path = self.path
+        for _ in range(8):
+            found = self.resolve(path, level, module, original) if original != "*" else None
+            if found is None:
+                break
+            path = found[2]
+            try:
+                tree = ast.parse(found[0])
+            except (SyntaxError, RecursionError, ValueError):
+                break
+            bindings = [statement for statement in tree.body if original in _statement_names(statement)]
+            if (len(bindings) != 1 or _statement_names(bindings[0]).count(original) != 1
+                    or any(isinstance(node, ast.Global) and original in node.names for node in ast.walk(tree))):
+                break
+            statement = bindings[0]
+            if isinstance(statement, ast.ImportFrom):
+                level, module = statement.level, statement.module
+                original = next(alias.name for alias in statement.names if (alias.asname or alias.name) == original)
+                continue
+            single = (isinstance(statement, ast.Assign) and len(statement.targets) == 1
+                      and isinstance(statement.targets[0], ast.Name)
+                      or isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name)
+                      and statement.value is not None)
+            if single:
+                try:
+                    literal = ast.literal_eval(statement.value)
+                except (ValueError, TypeError, SyntaxError, MemoryError, RecursionError):
+                    break
+                if _scalar(literal):
+                    value = literal
+            break
+        self.external_constants[name] = value
+        return value
 
     def external_node(self, level, module, original, depth=0):
         """(generator of its module, class node) of a class another module defines, or None.
