@@ -721,6 +721,13 @@ static inline __attribute__((always_inline)) void *gc_alloc(I n, int atomic) {
   if ((uint64_t)n < 136) {             /* fast path, inlined: pop a zeroed slot of a class 16..136 */
     W **h = &pys_fl[2 * (n < 8 ? 0 : (n + 8) / 8 - 2) + atomic], *p = *h;
     if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
+  } else if (__builtin_constant_p(n) && !atomic && (uint64_t)n < SMALL) {
+    /* a larger scanned object whose size is a constant where the call is compiled, as a class's
+       objects' is: its class is known there, and its slots come zeroed as the smaller ones' do
+       (only atomic classes are LAZY), so the same pop. A size that only the run knows, and the
+       copy of this function that is not inlined, keep the call */
+    W **h = &pys_fl[2 * cls(n)], *p = *h;
+    if (__builtin_expect(p != 0, 1)) { *h = (W *)~*p; *p = 0; return p; }
   }
   return gc_slow(n, atomic);
 }
