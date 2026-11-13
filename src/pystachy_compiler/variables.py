@@ -1677,6 +1677,11 @@ def gen_default_want(self, r: Node, m: str, args: list[Node], vt: str) -> str:
     return ""
 
 def gen_new_global(self, name: str, t: str) -> None:
+    if self.xtry.startswith("narrow:") and self.holds_union(t, []):
+        # (a union isinstance(x, (A, B)) narrowed x to would type a global that a function's
+        # store creates (global items; items = x) for code outside the attempt: declined, as
+        # none_global_resolve declines one that only None was given so far)
+        self.err(f"'{short(name)}' would take a union that a narrowing made")
     if len(self.hints) > 0 and "global:" + name in self.hints:
         t = self.hints["global:" + name]  # (a join's type: as if annotated, see join_hint)
     elif t == NONEVAR:
