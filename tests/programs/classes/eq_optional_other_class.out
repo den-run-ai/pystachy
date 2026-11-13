@@ -1,0 +1,5 @@
+False False True False
+False True True False
+True False False True
+True True True False
+[exit 0]
