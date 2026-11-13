@@ -441,8 +441,9 @@ class ContractTests(unittest.TestCase):
                       "python-int-optin"):
             self.assertNotIn(alias, groups)  # Compatibility aliases must not duplicate CI work.
         for group in ("gc-self", "gc-ir-0", "gc-ir-1", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1", "gc-aot-2", "ubsan-0", "ubsan-1",
-                      "ubsan-2", "ubsan-3", "ubsan-4", "python-free-0", "python-free-1", "python-free-2", "python-free-3", "runtime-cache"):
+                      "ubsan-2", "ubsan-3", "ubsan-4", "python-free-0", "python-free-1", "python-free-2", "python-free-3"):
             self.assertEqual(groups[group], ["bootstrap", group])
+        self.assertEqual(groups["runtime-cache"], ["bootstrap", "runtime-cache", "annotation-widening"])
         self.assertNotIn("gc-aot-3", groups)
         self.assertEqual(groups["hosted"], ["bootstrap", "tests-cpython"])  # one job: the IR oracle and its sample
         for shard in ("0", "1", "2"):
@@ -823,12 +824,40 @@ class ContractTests(unittest.TestCase):
                 with self.subTest(group=group, mutation=mutate), self.assertRaises(ValueError):
                     merge.validate_report(data, group, groups[group])
 
+    def test_full_widening_requires_its_runtime_cache_owner_and_complete_evidence(self):
+        groups = merge.load_groups()
+        owner, former = "runtime-cache", "python-int-optin-2"
+        self.assertEqual(groups[owner], ["bootstrap", owner, "annotation-widening"])
+        self.assertEqual(groups[former], ["bootstrap", former])
+        valid = report(owner, groups[owner])
+        merge.validate_report(valid, owner, groups[owner])
+        # Passing totals cannot hide a missing stage or a duplicate on its former worker.
+        for group, duplicate in ((owner, False), (former, True)):
+            changed = report(group, groups[group])
+            if duplicate:
+                changed["steps"].append(copy.deepcopy(valid["steps"][-1]))
+            else:
+                changed["steps"].pop()
+            count = len(changed["steps"])
+            changed["summary"].update(steps=count, passed=count)
+            with self.subTest(group=group), self.assertRaisesRegex(ValueError, "step names/order differ"):
+                merge.validate_report(changed, group, groups[group])
+        changed = copy.deepcopy(valid)
+        changed["steps"][-1]["result"] = "fail"
+        with self.assertRaisesRegex(ValueError, "annotation-widening: step did not pass"):
+            merge.validate_report(changed, owner, groups[owner])
+        for mutate in (lambda evidence: evidence.update(profile="pr"),
+                       lambda evidence: evidence["cases"].pop()):
+            changed = copy.deepcopy(valid)
+            mutate(changed["steps"][-1]["widening"])
+            with self.subTest(mutation=mutate), self.assertRaisesRegex(ValueError, "incomplete or changed annotation-widening"):
+                merge.validate_report(changed, owner, groups[owner])
+
     def test_python_int_reports_require_exact_modes_shards_and_source_identity(self):
         groups = merge.load_groups()
         for index in range(merge.PYTHON_INT_SHARDS):
             group = f"python-int-optin-{index}"
-            tail = ["annotation-widening"] if index == 2 else []
-            self.assertEqual(groups[group], ["bootstrap", group, *tail])
+            self.assertEqual(groups[group], ["bootstrap", group])
             valid = report(group, groups[group])
             merge.validate_report(valid, group, groups[group])
             mutations = [lambda d: d.update(shard_count=8),
@@ -1321,6 +1350,34 @@ class PullRequestProfileTests(unittest.TestCase):
             with self.subTest(missing=group), self.assertRaisesRegex(ValueError, "missing report groups"):
                 self.merge()
             self.write(group, self.data[group])
+
+    def test_scaling_halves_keep_exact_coverage_across_pr_workers(self):
+        self.assertEqual(self.groups["benchmarks"], ["bootstrap", "benchmarks", "example-cli", "scaling-0"])
+        self.assertEqual(self.groups["native-aot-3"], ["bootstrap", "tests-native-aot-3", "scaling-1"])
+        result = self.merge()
+        self.assertEqual({step["name"]: step["ci_group"] for step in result["steps"]
+                          if step["name"] in merge.SCALING_STEPS},
+                         {"scaling-0": "benchmarks", "scaling-1": "native-aot-3"})
+        second = self.data["native-aot-3"]["steps"][-1]
+        # Plausible passing summaries cannot hide a missing or duplicated half.
+        for group, duplicate in (("native-aot-3", False), ("benchmarks", True)):
+            changed = copy.deepcopy(self.data[group])
+            if duplicate:
+                changed["steps"].append(copy.deepcopy(second))
+            else:
+                changed["steps"].pop()
+            count = len(changed["steps"])
+            changed["summary"].update(steps=count, passed=count)
+            self.write(group, changed)
+            with self.subTest(group=group), self.assertRaisesRegex(ValueError, "step names/order differ"):
+                self.merge()
+            self.write(group, self.data[group])
+        # Both worker reports must still cover every scaling shape exactly once.
+        changed = copy.deepcopy(self.data["native-aot-3"])
+        changed["steps"][-1]["shapes"][0] = self.data["benchmarks"]["steps"][-1]["shapes"][0]
+        self.write("native-aot-3", changed)
+        with self.assertRaisesRegex(ValueError, "each once"):
+            self.merge()
 
     def test_profile_selection_and_scope_cannot_be_downgraded_or_fabricated(self):
         for group, mutate in (
