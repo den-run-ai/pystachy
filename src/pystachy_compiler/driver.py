@@ -9,7 +9,7 @@ from src.pystachy_compiler.diagnostics import MAXNEST, RAW, NeedSliceEH, Rejoin,
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.lexer import Lexer
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc
+from src.pystachy_compiler.lower_module import OBJHOOKS, OBJHOOKS_MAIN, address_runtime_ir, jit_alloc, unprofiled_generators
 from src.pystachy_compiler.names import RENAMED
 from src.pystachy_compiler.parser import Parser
 from src.pystachy_compiler.specs import JIT_INLINE, LIBS, LINKDL, MODULES, OPTS, PLATFORM
@@ -472,18 +472,6 @@ def aot_optimization() -> str:
     return value
 
 
-def unprofiled_generators(ir: str) -> str:
-    # The IR of a build that writes profiles, with noprofile on each generator function (a
-    # presplitcoroutine, the only functions that carry the attribute): LLVM 18 aborts where it
-    # applies a profile to one, so none is recorded for them, and they are compiled as without one
-    out: list[str] = []
-    for line in ir.split("\n"):
-        if line.startswith("define ") and ") presplitcoroutine" in line:
-            line = line.replace(") presplitcoroutine", ") presplitcoroutine noprofile")
-        out.append(line)
-    return "\n".join(out)
-
-
 def aot_profile() -> list[str]:
     # Profile-guided builds of an executable: clang's flag for the step that optimizes the program
     # and the runtime it needs as one module, and its flag for the link. PYSTACHY_PROFILE_GENERATE
@@ -491,7 +479,7 @@ def aot_profile() -> list[str]:
     # PYSTACHY_PROFILE_USE names the indexed profile that llvm-profdata merge makes of them. The
     # runtime's own build takes neither flag: its modules, compiled apart, would each carry the
     # module flag that the profile adds, and LLVM cannot link two of them. A generating build
-    # leaves generator functions out of the profile (unprofiled_generators)
+    # leaves generator functions out of the profile (lower_module's unprofiled_generators)
     gen = os.getenv("PYSTACHY_PROFILE_GENERATE", "")
     use = os.getenv("PYSTACHY_PROFILE_USE", "")
     if gen != "" and use != "":
