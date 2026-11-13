@@ -98,6 +98,7 @@ CPython runs the source.
 | `_pyrandom` | `Modules/_randommodule.c`, `Python/pyhash.c` | `_random.Random`'s Mersenne Twister, seeding and state; float hashing for float seeds |
 | `binascii` (`_pystachy_binascii`) | `Modules/binascii.c`, `Python/pystrhex.c` | All twelve functions of the C module, with its errors and messages |
 | `hashlib` | `Lib/hashlib.py`, `Modules/_hashopenssl.c` for the API; RFC 1321 and FIPS 180-4 for the algorithms | MD5, SHA-1, SHA-224 and SHA-256 on 32-bit words in Pystachy's ints, as one class of hash object with the C type's docstrings and `new()`'s message |
+| `hmac` | `Lib/hmac.py` for the API and docstrings; RFC 2104 for the algorithm | HMAC over `lib/hashlib.py`'s hash objects, with the hash given by name or by constructor, and a constant-time `compare_digest()` in place of `_operator`'s |
 | `atexit` (`_pystachy_atexit`) | `Modules/atexitmodule.c` (SHA-256 `a61f11e295d38463b36524e51b8eba64d5a84022bb7df7b3c0ccd8aa9fe9521b`) | `register()`, `_clear()`, `_run_exitfuncs()` and `_ncallbacks()`, with the C module's order of callbacks; `unregister()` raises `NotImplementedError` |
 | `abc` (`_pystachy_abc`) | `Lib/abc.py` (SHA-256 `e558702a95cdce3febd289da021715d2b92bc43995b8a1bc58dfa1c3d8010287`), `Modules/_abc.c`, `Objects/typeobject.c` | `ABC`, `ABCMeta`, `abstractmethod()` and the deprecated decorators, which the compiler applies, with `object.__new__`'s `TypeError` for an abstract class; their docstrings |
 | `_codecs` (`_pystachy_codecs`) | `Modules/_codecsmodule.c`, `Objects/unicodeobject.c`, `Objects/stringlib/codecs.h` | The UTF-8, Latin-1, ASCII and charmap codec functions, `encode()`, `decode()` and the error handler registry, with the C module's errors and messages; the other codecs raise `NotImplementedError` |
@@ -210,6 +211,9 @@ signatures and docstrings.
 `hashlib`, whose hash objects are OpenSSL's: 16,085 comparisons of the digests and attributes of random
 data of every length up to 259 bytes and some longer ones, hashed whole and in pieces with digests
 and copies between them; `new()`'s error for an unknown name; and the docstrings.
+`tools/hmac_check.py` runs `lib/hmac.py` over `lib/hashlib.py` on CPython and compares it with
+CPython's `hmac`: 8,000 comparisons of digests, attributes, copies, `digest()` and
+`compare_digest()` for random keys and messages around the block size.
 
 `tools/itertools_check.py` runs `lib/_pystachy_itertools.py` on CPython and compares it with the
 C module (`Modules/itertoolsmodule.c`, SHA-256
