@@ -1,9 +1,14 @@
-"""Tests of the Lean verification report's tallies, rendering and input digests (lean_report.py).
+"""Tests of the Lean verification report's tallies, rendering and input digests, and of how its
+workers compile programs and share results (lean_report.py).
 
 They need no Lean checker: records are made by hand, as check_program makes them, and the
 committed report is checked for its form, not rerun."""
+import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -150,6 +155,43 @@ class StatusTests(unittest.TestCase):
         found = report.inputs()
         self.assertEqual(set(found), set(report.INPUTS))
         self.assertTrue(all(len(item["digest"]) == 16 and type(item["clean"]) is bool for item in found.values()))
+
+
+class WorkerTests(unittest.TestCase):
+    PROGRAM = report.ROOT / "tools/lean_boundary/examples/generators.py"
+
+    def test_workers_share_each_result_by_its_kind_and_key(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database = report.results_database(Path(directory) / "results.db")
+            one, other, access = (report.Shared(database, kind) for kind in ("lean", "lean", "access"))
+            key = ("/checker", "0" * 64)
+            self.assertNotIn(key, other)
+            one[key] = {"accepted": True, "nodes": 3, "payloads": 1}
+            self.assertIn(key, other)
+            self.assertEqual(other[key], {"accepted": True, "nodes": 3, "payloads": 1})
+            self.assertIsNone(access.get(key))
+
+    def test_a_forked_compilation_writes_the_snapshot_inspect_compiler_does(self):
+        # (byte for byte: the records' digests and checks are the tool's own run's)
+        _, digest = report.inspect(str(self.PROGRAM), 120)
+        env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "inspection"
+            subprocess.run([sys.executable, str(report.ROOT / "tools/inspect_compiler.py"), str(self.PROGRAM),
+                            "--output", str(output), "--typed-after-only", "--guard-evidence"],
+                           env=dict(env, PYSTACHY_HOME=str(report.ROOT)), check=True, capture_output=True, timeout=120)
+            self.assertEqual(digest, hashlib.sha256((output / "typed-after.json").read_bytes()).hexdigest())
+
+    def test_a_rejected_program_and_a_compilation_past_its_time_fail(self):
+        with tempfile.TemporaryDirectory() as directory:
+            program = Path(directory) / "rejected.py"
+            program.write_text("x: int = 'one'\nprint(x)\n")
+            with self.assertRaisesRegex(ValueError, "inspection rejected"):
+                report.inspect(str(program), 120)
+            output = Path(directory) / "late"
+            output.mkdir()
+            with self.assertRaises(subprocess.TimeoutExpired):
+                report.compiled(self.PROGRAM, output, dict(os.environ), 0.01)
 
 
 class CommittedReportTests(unittest.TestCase):

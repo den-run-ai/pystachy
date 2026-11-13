@@ -10,11 +10,18 @@ fit claims, inline arithmetic and storage guards (check_lean_storage) in the pro
 imports reach a module that opts in to them. tools/lean_boundary/REPORT.md records the counts,
 each function left unproved and digests of the inputs; --status compares those digests with the
 checkout. A rejection is an investigation target, not by itself a compiler bug.
+
+Each worker process forks a child to compile each program, with the compiler it imported once.
+Workers share, in an SQLite table, the results of checks that a library's functions repeat across
+programs: Lean's result for each candidate and the access model's for each normalized function
+(Shared). Each value is computed from its key's content alone, so no record depends on which worker
+checked which program, or in what order.
 """
 from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import gc
 import hashlib
 import json
 import multiprocessing
@@ -22,19 +29,24 @@ import os
 from pathlib import Path
 import platform
 import re
+import select
+import signal
+import sqlite3
 import subprocess
 import sys
 import tempfile
 import time
+import traceback
 
 import check_lean_access as access
 import check_lean_boundary as boundary
 import check_lean_corpus as corpus
 import check_lean_fields as fields
-import check_lean_gc as gc
+import check_lean_gc as collector
 import check_lean_guards as guards
 import check_lean_storage as storage
 import check_lean_storage_corpus as storage_corpus
+import inspect_compiler
 
 ROOT = corpus.ROOT
 REPORT = ROOT / "tools/lean_boundary/REPORT.md"
@@ -69,7 +81,7 @@ MARK = "<!-- lean-report "
 MESSAGE = 160  # characters of a reason kept in the report
 LISTED = 25  # rejected functions listed per check; the record file keeps all
 
-_verdicts = {}  # a worker's access results by normalized function (check_lean_access.check_all)
+_verdicts = {}  # access results by normalized function (check_lean_access.check_all; a worker's: Shared)
 
 
 def git(*args):
@@ -88,23 +100,79 @@ def inputs():
 
 
 def inspect(program, timeout):
-    """The typed-after snapshot of one program with guard evidence, and its SHA-256."""
+    """The typed-after snapshot of one program with guard evidence, and its SHA-256: what
+    `tools/inspect_compiler.py PROGRAM --typed-after-only --guard-evidence` writes, but compiled by
+    its worker in a child of this process (compiled)."""
     env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
-    env["PYSTACHY_HOME"] = str(ROOT)
+    # (inspect_compiler's run_worker checks the IR it compiles)
+    env.update(PYSTACHY_HOME=str(ROOT), PYSTACHY_IRCHECK="1")
     path = corpus.located(program)
     if path.with_suffix(".path").is_file():
         env["PYSTACHY_PATH"] = path.with_suffix(".path").read_text().strip()
     with tempfile.TemporaryDirectory(prefix="pystachy-lean-report-") as directory:
-        output = Path(directory) / "inspection"
-        completed = subprocess.run([sys.executable, str(ROOT / "tools/inspect_compiler.py"), str(path),
-                                    "--output", str(output), "--typed-after-only", "--guard-evidence",
-                                    "--timeout", str(timeout)], cwd=ROOT, env=env,
-                                   capture_output=True, text=True, timeout=timeout + 60)
+        output = Path(directory)
+        code = compiled(path, output, env, timeout)
+        if not (output / "report.json").is_file():
+            raise ValueError(f"inspection error: the compilation exited {code} without a report")
         report = json.loads((output / "report.json").read_text())
-        if completed.returncode or report.get("status") != "ok":
+        if code or report.get("status") != "ok":
             messages = "; ".join(d.get("message", "") for d in report.get("diagnostics", []))
             raise ValueError(f"inspection {report.get('status')}: {messages}")
-        return boundary.read_snapshot(output / "typed-after.json", boundary.MAX_PROGRAM_BYTES)
+        # (parsing JSON makes no reference cycles, but the collector, tracing the objects it
+        # makes, took half the time)
+        collecting = gc.isenabled()
+        gc.disable()
+        try:
+            return boundary.read_snapshot(output / "typed-after.json", boundary.MAX_PROGRAM_BYTES)
+        finally:
+            if collecting:
+                gc.enable()
+
+
+def compiled(path, output, env, timeout):
+    """Run inspect_compiler's worker, as `inspect_compiler.py --_worker` does, on path into the
+    directory output, in a child forked from this process: it imported the compiler once, so no
+    program starts Python and imports it again, and each still compiles in a process of its own.
+    The child's exit status; past timeout seconds it is killed."""
+    from src.pystachy_compiler import diagnostics, driver  # noqa: F401 (the child's compiler)
+    arguments = argparse.Namespace(source=str(path.absolute()), output=str(output), function="",
+                                   typed_after_only=True, guard_evidence=True)
+    done, finished = os.pipe()  # (finished closes when the child exits)
+    gc.freeze()  # (the child's collections then leave this process's objects and their pages alone)
+    child = os.fork()
+    if child == 0:
+        code = 2
+        try:
+            os.close(done)
+            os.chdir(ROOT)
+            os.environ.clear()
+            os.environ.update(env)
+            os.dup2(os.open(os.devnull, os.O_RDWR), 0)
+            os.dup2(0, 1)
+            os.dup2(os.open(output / "worker.stderr", os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644), 2)
+            # (a compilation allocates millions of objects that reference counting frees: at its
+            # default thresholds, the collector took a fifth of a large program's compilation;
+            # the child exits after one, with no more memory at its peak)
+            gc.set_threshold(100000, 50, 100)
+            code = inspect_compiler.worker(arguments)
+        except BaseException:
+            traceback.print_exc()
+        finally:
+            try:
+                sys.stdout.flush()
+                sys.stderr.flush()
+            finally:
+                os._exit(code)
+    gc.unfreeze()
+    os.close(finished)
+    try:
+        if not select.select([done], [], [], timeout)[0]:
+            os.kill(child, signal.SIGKILL)
+            os.waitpid(child, 0)
+            raise subprocess.TimeoutExpired(str(path), timeout)
+        return os.waitstatus_to_exitcode(os.waitpid(child, 0)[1])
+    finally:
+        os.close(done)
 
 
 def unproved(records, count, reason=("message", "error", "why")):
@@ -132,7 +200,7 @@ def payload_check(snapshot, checker, _):
 
 
 def access_check(snapshot, _, access_checker):
-    report, _ = access.check_all(snapshot, access_checker, _verdicts)
+    report, _ = access.check_all(snapshot, access_checker, _verdicts, guards.snapshot_effects(snapshot))
     totals = report["totals"]
     return {"access": counted(totals["access_functions"], totals["accesses"], totals["proved_accesses"],
                               report["functions"], "accesses")}
@@ -143,7 +211,6 @@ def guard_checks(snapshot, checker, access_checker):
     report, _ = guards.check_all(snapshot, checker, access_checker, field_results=(results, contracts))
     removals = [r for r in report["records"] if r.get("scope") == guards.REMOVALS]
     unions = [r for r in report["records"] if r.get("scope") != guards.REMOVALS]
-    gc_report, _ = gc.check_all(snapshot, checker)
     return {
         "null": counted(len(removals), report["removed_checks"], report["proved_removed_checks"], removals,
                         "obligations"),
@@ -154,9 +221,13 @@ def guard_checks(snapshot, checker, access_checker):
         "fields": counted(len(results), sum(r.get("obligations", 0) for r in results),
                           sum(r.get("obligations", 0) for r in results if r["status"] == "accepted"),
                           results, "obligations"),
-        "gc": counted(gc_report["functions"], gc_report["obligations"], gc_report["proved_obligations"],
-                      gc_report["records"], "obligations"),
     }
+
+
+def gc_check(snapshot, checker, _):
+    report, _ = collector.check_all(snapshot, checker)
+    return {"gc": counted(report["functions"], report["obligations"], report["proved_obligations"],
+                          report["records"], "obligations")}
 
 
 def storage_checks(snapshot, _, __):
@@ -174,6 +245,62 @@ def storage_checks(snapshot, _, __):
     }
 
 
+class Shared(dict):
+    """Results a run's workers share: in this process's memory and as rows of an SQLite database
+    (made by main), so that a library's function one worker checked is not checked again by
+    another. A key is the content its value is computed from alone (a checker and its input), so
+    whichever worker computes a value computes the same one."""
+
+    def __init__(self, database, kind):
+        super().__init__()
+        self.kind = kind
+        self.connection = sqlite3.connect(database, timeout=600, isolation_level=None)
+        self.connection.execute("PRAGMA synchronous=OFF")
+
+    def __getitem__(self, key):
+        if not dict.__contains__(self, key):
+            row = self.connection.execute("SELECT value FROM results WHERE key = ?",
+                                          (self.kind + repr(key),)).fetchone()
+            if row is None:
+                raise KeyError(key)
+            dict.__setitem__(self, key, json.loads(row[0]))
+        return dict.__getitem__(self, key)
+
+    def __contains__(self, key):
+        return self.get(key) is not None
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        self.connection.execute("INSERT OR IGNORE INTO results VALUES (?, ?)",
+                                (self.kind + repr(key), json.dumps(value, sort_keys=True)))
+
+
+def keep_results(database):
+    """A worker's caches, shared with the run's other workers: access results by normalized
+    function (check_lean_access.check_all), access-model attempts of removed checks
+    (check_lean_guards.prove_removals) and Lean's results by candidate
+    (check_lean_boundary.checker_result)."""
+    global _verdicts
+    _verdicts = Shared(database, "access")
+    guards._removal_attempts = Shared(database, "removals")
+    boundary.RESULTS = Shared(database, "lean")
+
+
+def results_database(path):
+    """A new database for Shared: one table of each result by its kind and key."""
+    with sqlite3.connect(path) as connection:
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("CREATE TABLE results (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+    connection.close()
+    return str(path)
+
+
 def check_program(program, promoting, timeout, checker, access_checker):
     """One program's record: each check's counts and unproved functions, or why none ran."""
     started = time.monotonic()
@@ -182,13 +309,15 @@ def check_program(program, promoting, timeout, checker, access_checker):
         snapshot, digest = inspect(program, timeout)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         return dict(record, error=" ".join(str(error).split())[:MESSAGE], seconds=round(time.monotonic() - started, 1))
-    record.update(snapshot_sha256=digest, checks={})
-    for run in (payload_check, access_check, guard_checks) + ((storage_checks,) if promoting else ()):
+    record.update(snapshot_sha256=digest, checks={}, timing={"inspect": round(time.monotonic() - started, 2)})
+    for run in (payload_check, access_check, guard_checks, gc_check) + ((storage_checks,) if promoting else ()):
+        begun = time.monotonic()
         try:
             record["checks"].update(run(snapshot, checker, access_checker))
         except (boundary.Unsupported, OSError, ValueError, KeyError, subprocess.SubprocessError,
                 RecursionError) as error:
             record.setdefault("failed", {})[run.__name__] = " ".join(str(error).split())[:MESSAGE]
+        record["timing"][run.__name__] = round(time.monotonic() - begun, 2)
     record["seconds"] = round(time.monotonic() - started, 1)
     return record
 
@@ -399,8 +528,10 @@ def main(argv=None):
     promoting = set(storage_corpus.select(remaining))
     # (processes: a thread holds the interpreter while it checks a snapshot)
     context = multiprocessing.get_context("forkserver")
-    with args.records.open("a") as output, concurrent.futures.ProcessPoolExecutor(
-            args.jobs, mp_context=context) as pool:
+    with tempfile.TemporaryDirectory(prefix="pystachy-lean-report-") as shared, \
+            args.records.open("a") as output, concurrent.futures.ProcessPoolExecutor(
+                args.jobs, mp_context=context, initializer=keep_results,
+                initargs=(results_database(Path(shared) / "results.db"),)) as pool:
         work = [pool.submit(check_program, program, program in promoting, args.timeout, args.checker,
                             args.access_checker) for program in remaining]
         for done in concurrent.futures.as_completed(work):

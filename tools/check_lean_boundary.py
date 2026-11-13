@@ -11,6 +11,7 @@ import argparse
 import atexit
 from collections import deque
 import hashlib
+import heapq
 import json
 import os
 from pathlib import Path
@@ -174,44 +175,53 @@ def live_locations(nodes):
     guard matters only when a successor's obligations need it; the normal backward
     propagation already retains those. Dead copies similarly need no source facts.
     """
-    reads = [{node["value"]} if node["op"] == "payload" else set() for node in nodes]
+    targets = [successors(node) for node in nodes]
     predecessors = [[] for _ in nodes]
-    for index, node in enumerate(nodes):
-        for target in successors(node):
+    for index, out in enumerate(targets):
+        for target in out:
             predecessors[target].append(index)
     live = [set() for _ in nodes]
-    pending = deque(range(len(nodes) - 1, -1, -1))
+    # (the least fixed point, which any order of visits reaches: later nodes first, as each
+    # depends on its successors)
+    pending = [-index for index in range(len(nodes))]
+    heapq.heapify(pending)
     queued = [True] * len(nodes)
     while pending:
-        index = pending.popleft()
+        index = -heapq.heappop(pending)
         queued[index] = False
         node = nodes[index]
-        later = set().union(*(live[target] for target in successors(node)))
+        out = targets[index]
+        later = live[out[0]].union(*(live[target] for target in out[1:])) if out else set()
         if node["op"] == "copy":
             # A copy's source matters only when its assigned value will be read.
             # Keeping dead copy sources live can grow a certificate quadratically.
-            needed = node["dst"] in later
-            later.discard(node["dst"])
-            if needed:
+            if node["dst"] in later:
+                later.discard(node["dst"])
                 later.add(node["src"])
         elif node["op"] == "havoc":
             later.discard(node["dst"])
-        else:
-            later |= reads[index]
+        elif node["op"] == "payload":
+            later.add(node["value"])
         if later != live[index]:
             live[index] = later
             for predecessor in predecessors[index]:
                 if not queued[predecessor]:
                     queued[predecessor] = True
-                    pending.append(predecessor)
+                    heapq.heappush(pending, -predecessor)
     return live
 
 
 def infer_certificate(nodes, entry=0):
     """Suggest forward must-facts: each confines a location's tag to a set. Lean independently
     checks every transfer. Facts about locations no later node reads are dropped: a successor
-    that needs one still reads it, so its predecessors keep it too."""
+    that needs one still reads it, so its predecessors keep it too. Nodes whose facts do not
+    change share them."""
     live = live_locations(nodes)
+    targets = [successors(node) for node in nodes]
+    edges = [0] * len(nodes)
+    for out in targets:
+        for target in out:
+            edges[target] += 1
     facts = [None] * len(nodes)
     facts[entry] = {}
     pending = deque([entry])
@@ -220,16 +230,18 @@ def infer_certificate(nodes, entry=0):
     fact_count = 0
     iterations = 0
     while pending:
+        # (in this order: the resource bound counts its visits and facts)
         index = pending.popleft()
         queued[index] = False
         known = facts[index]
         node = nodes[index]
         outgoing = known
-        if node["op"] in {"copy", "havoc"}:
-            outgoing = {value: tags for value, tags in known.items() if value != node["dst"]}
+        if node["op"] in {"copy", "havoc"} and (node["dst"] in known or node.get("src") in known):
+            outgoing = dict(known)
+            outgoing.pop(node["dst"], None)
             if node["op"] == "copy" and node["src"] in known:
                 outgoing[node["dst"]] = known[node["src"]]
-        for edge, target in enumerate(successors(node)):
+        for edge, target in enumerate(targets[index]):
             transferred = outgoing
             if node["op"] == "guard":
                 value, tested = node["value"], frozenset(node["tags"])
@@ -238,16 +250,34 @@ def infer_certificate(nodes, entry=0):
                     transferred[value] = known[value] & tested if value in known else tested
                 elif value in known:
                     transferred[value] = known[value] - tested
-            transferred = {value: tags for value, tags in transferred.items() if value in live[target]}
+            if not live[target].issuperset(transferred.keys()):
+                transferred = {value: tags for value, tags in transferred.items() if value in live[target]}
             previous = facts[target]
-            merged = (dict(transferred) if previous is None else
-                      {value: previous[value] | transferred[value] for value in previous.keys() & transferred.keys()})
-            if merged != previous:
-                fact_count += len(merged) - len(previous or ())
-                facts[target] = merged
-                if not queued[target]:
-                    queued[target] = True
-                    pending.append(target)
+            merged = transferred
+            if previous is not None and edges[target] == 1:
+                # (a node's facts only lose locations and gain tags, and so do those it gives: they
+                # are the join with what it gave before)
+                if transferred == previous:
+                    continue
+            elif previous is not None:
+                # (the locations both know, each with the tags of either: unchanged unless one is
+                # lost or gains a tag)
+                merged, changed = {}, len(transferred) < len(previous)
+                for value, tags in previous.items():
+                    other = transferred.get(value)
+                    if other is None:
+                        changed = True
+                    elif other is tags or other <= tags:
+                        merged[value] = tags
+                    else:
+                        merged[value], changed = tags | other, True
+                if not changed:
+                    continue
+            fact_count += len(merged) - len(previous or ())
+            facts[target] = merged
+            if not queued[target]:
+                queued[target] = True
+                pending.append(target)
         iterations += 1
         if iterations > 200000 or fact_count > MAX_FACTS:
             raise Unsupported("candidate inference exceeds the prototype's resource bound")
@@ -983,6 +1013,9 @@ class Server:
 _servers = threading.local()
 _started = []
 _started_lock = threading.Lock()
+# (a corpus run's: each checker's result by the SHA-256 of a candidate it checked, as Lean's
+# result depends on the candidate line alone; None keeps none)
+RESULTS = None
 
 
 def checker_result(checker, encoded, timeout):
@@ -991,6 +1024,15 @@ def checker_result(checker, encoded, timeout):
     so no candidate's result depends on another's."""
     require(encoded.endswith("\n") and encoded.count("\n") == 1, "a candidate is one line")
     path = str(Path(checker).resolve())
+    if RESULTS is not None:
+        key = (path, hashlib.sha256(encoded.encode()).hexdigest())
+        if key not in RESULTS:
+            RESULTS[key] = checked_result(path, encoded, timeout)
+        return dict(RESULTS[key])
+    return checked_result(path, encoded, timeout)
+
+
+def checked_result(path, encoded, timeout):
     if getattr(_servers, "owner", None) != os.getpid():
         _servers.owner, _servers.by_path = os.getpid(), {}
     server = _servers.by_path.get(path)

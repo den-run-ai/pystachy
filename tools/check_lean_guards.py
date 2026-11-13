@@ -489,6 +489,11 @@ def union_items(typ):
     return typ.startswith("tuple[") and any(union_members(item) is not None for item in targs(typ))
 
 
+# (while check_all runs: each function's union_provenance by its context, and by the transports its
+# calls name, which is all it reads of them; check_all reads each function's several times)
+_PROVENANCE = []
+
+
 def union_provenance(fn, context=None):
     """Conservative union value/address provenance, independent of guard facts.
 
@@ -499,6 +504,21 @@ def union_provenance(fn, context=None):
     field word some view types as a union, and a tuple item whose type is one, hold union values
     whose loads are unions by type; their objects and tuples are not storage, except to a raw
     access, which may read such a word under any type."""
+    if context is None or not _PROVENANCE:
+        return provenance(fn, context)
+    memo = _PROVENANCE[-1]
+    if (id(fn), id(context)) not in memo:
+        # (the entry holds the function and context, whose identities no other object takes meanwhile)
+        memo[id(fn), id(context)] = (fn, context, frozenset(
+            op["text"] for block in fn["blocks"] for op in block["operations"] if op["op"] == "call"), {})
+    _, _, calls, found = memo[id(fn), id(context)]
+    transports = calls & context["transports"]
+    if transports not in found:
+        found[transports] = provenance(fn, context)
+    return found[transports]
+
+
+def provenance(fn, context):
     roots = {f"%a{n}" for n, p in enumerate(fn["parameters"])
              if union_members(p["representation"]) is not None}
     operations = [op for block in fn["blocks"] for op in block["operations"]]
@@ -2080,6 +2100,14 @@ def prove_removals(snapshot, fn, removed, effects_of, checker=boundary.DEFAULT_C
 def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.DEFAULT_CHECKER, field_results=None):
     """field_results: check_lean_fields.check_all's (results, contracts) for the snapshot, or None to
     compute it where a union field is loaded (initialized_classes)."""
+    _PROVENANCE.append({})
+    try:
+        return checked(snapshot, checker, access_checker, field_results)
+    finally:
+        _PROVENANCE.pop()
+
+
+def checked(snapshot, checker, access_checker, field_results):
     boundary.check_header(snapshot)
     boundary.require("nullcheck_evidence" in snapshot and "union_tags" in snapshot,
                      "guard inventory missing: inspect with --guard-evidence")
@@ -2117,7 +2145,7 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER, access_checker=access.
             continue
         if removed:
             if effects_of is None:
-                effects_of = summaries(snapshot)
+                effects_of = snapshot_effects(snapshot)
             proved = prove_removals(snapshot, record["before"], removed, effects_of, checker, access_checker)
             records.append(proved)
             codes.append(boundary.OUTCOMES[proved["status"]])

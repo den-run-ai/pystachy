@@ -180,22 +180,27 @@ def rename(fact, x, y):
                  else part for index, part in enumerate(fact))  # (a cell's class is no value)
 
 
-def survives(node, fact):
+def surviving(node, facts):
+    """The facts node leaves true, in order."""
     op = node["op"]
     if "dst" in node:
-        return node["dst"] not in mentions(fact)
+        return [fact for fact in facts if node["dst"] not in mentions(fact)]
     if op == "lists":
-        return fact[0] != "len"
+        return [fact for fact in facts if fact[0] != "len"]
     if op == "dicts":
-        return fact[0] not in ("found", "entry")
+        return [fact for fact in facts if fact[0] not in ("found", "entry")]
     if op == "write_field":
         # (another field of the same class, of any object, is other memory, as is any field of
         # a class the write lists as unrelated)
-        return fact[0] != "cell" or (fact[2] == node["class"] and fact[3] != node["index"]) or (
-            fact[2] in node["unrelated"])
+        return [fact for fact in facts if fact[0] != "cell" or (
+            fact[2] == node["class"] and fact[3] != node["index"]) or fact[2] in node["unrelated"]]
     if op == "heap":
-        return fact[0] != "cell"
-    return True
+        return [fact for fact in facts if fact[0] != "cell"]
+    return list(facts)
+
+
+def survives(node, fact):
+    return bool(surviving(node, (fact,)))
 
 
 def no_wrap(facts, src, k):
@@ -310,8 +315,10 @@ def generated_unbounded(facts, node, edge):
     return []
 
 
-def immediates(node, edge, facts):
-    kept = [fact for fact in facts if survives(node, fact)]
+def immediates(node, edge, facts, kept=None):
+    """The facts after node's edge: those it leaves (kept: surviving's, if known), then those it
+    makes."""
+    kept = surviving(node, facts) if kept is None else kept
     return kept + [fact for fact in generated(facts, node, edge) if fact not in kept]
 
 
@@ -484,7 +491,7 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
     index = set(facts)
     by_name = {}
     for fact in facts:
-        for part in set(mentions(fact)):
+        for part in mention_set(fact):
             by_name.setdefault(part, []).append(fact)
     premises = {}
     pending = deque(fact for fact in new if fact in index)
@@ -502,7 +509,7 @@ def closure(start, new, relevant, lower_bounds=(), kinds=None):
             facts.append(derived)
             index.add(derived)
             premises[derived] = needs
-            for part in set(mentions(derived)):
+            for part in mention_set(derived):
                 by_name.setdefault(part, []).append(derived)
             pending.append(derived)
             if len(facts) > MAX_FACTS_AT:
@@ -702,10 +709,13 @@ def reads(node):
 
 def liveness(nodes, predecessors):
     live = [set() for _ in nodes]
-    pending = deque(range(len(nodes) - 1, -1, -1))
+    # (the least fixed point, which any order of visits reaches: later nodes first, as each
+    # depends on its successors)
+    pending = [-index for index in range(len(nodes))]
+    heapq.heapify(pending)
     queued = [True] * len(nodes)
     while pending:
-        index = pending.popleft()
+        index = -heapq.heappop(pending)
         queued[index] = False
         node = nodes[index]
         later = set().union(*(live[target] for target in successors(node)))
@@ -716,7 +726,7 @@ def liveness(nodes, predecessors):
             for predecessor in predecessors[index]:
                 if not queued[predecessor]:
                     queued[predecessor] = True
-                    pending.append(predecessor)
+                    heapq.heappush(pending, -predecessor)
     return live
 
 
@@ -787,10 +797,11 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
         if visits > 400000:
             raise Unsupported("certificate inference exceeds the prototype's resource bound")
         node = nodes[index]
+        kept = surviving(node, known[index])
         for edge, target in enumerate(successors(node)):
             if target == entry:
                 continue
-            start = immediates(node, edge, known[index])
+            start = immediates(node, edge, known[index], kept)
             new = generated(known[index], node, edge)
             if kinds is not None:
                 # (only the kinds of fact the obligations can use: deref's needs no bounds)
@@ -806,7 +817,7 @@ def infer_certificate(nodes, entry=0, chain=0, kinds=None):
                     merged = [f for f in known[target] if f in arriving]
                 justification = ([], {})
             else:
-                relevant = (live[target] | set().union(*(set(mentions(fact)) for fact in start))) if new else live[target]
+                relevant = (live[target] | set().union(*map(mentions, start))) if new else live[target]
                 facts, premises = closure(start, new, relevant, lower_bounds, kinds)
                 merged = prune(facts, live[target], chain)
                 justification = (facts, premises)
@@ -1745,13 +1756,14 @@ def access_functions(snapshot):
     return found
 
 
-def check_all(snapshot, checker=DEFAULT_CHECKER, verdicts=None):
+def check_all(snapshot, checker=DEFAULT_CHECKER, verdicts=None, effects_of=None):
     """Check every function of the snapshot with an unchecked access. The report's fields and
     the exit code of the worst result. verdicts, a dict, keeps each checked result by its
     normalized nodes and checker, so that another snapshot's identical function (a library's,
-    in a corpus) reuses it: inference and Lean see only those nodes."""
+    in a corpus) reuses it: inference and Lean see only those nodes. effects_of: the snapshot's
+    summaries, if a caller has them."""
     check_header(snapshot)
-    effects_of = summaries(snapshot)
+    effects_of = summaries(snapshot) if effects_of is None else effects_of
     records = []
     for symbol, count in access_functions(snapshot):
         record = {"function": symbol, "accesses": count}

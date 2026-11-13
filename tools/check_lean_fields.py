@@ -31,7 +31,6 @@ construction, which the closure function, loading the cell from its environment,
 so is an icall of a Callable the function made, through an adapter that only passes it on.
 """
 import argparse
-from collections import deque
 import heapq
 import json
 from pathlib import Path
@@ -351,49 +350,62 @@ def closure_shapes(fn, private, loops, adapters=None):
 
 def facts(nodes, keep=None):
     """Forward may-facts of a graph: each location's possible tags at each node, kept only where a
-    later node reads the location (a payload or a guard) or keep names it at a node (a probe)."""
+    later node reads the location (a payload or a guard) or keep names it at a node (a probe).
+    Nodes whose facts do not change share them: a caller must not change a node's facts."""
     keep = keep or {}
     successors = [boundary.successors(node) for node in nodes]
     predecessors = [[] for _ in nodes]
     for index, targets in enumerate(successors):
         for target in targets:
             predecessors[target].append(index)
+    # (the least fixed point, which any order of visits reaches: later nodes first, as each
+    # depends on its successors)
     live = [set() for _ in nodes]
-    pending = deque(range(len(nodes) - 1, -1, -1))
+    pending = [-index for index in range(len(nodes))]
+    heapq.heapify(pending)
     queued = [True] * len(nodes)
     while pending:
-        index = pending.popleft()
+        index = -heapq.heappop(pending)
         queued[index] = False
         node = nodes[index]
-        later = set().union(*(live[t] for t in successors[index])) if successors[index] else set()
+        targets = successors[index]
+        if not targets:
+            later = set()
+        elif len(targets) == 1:
+            later = set(live[targets[0]])
+        else:
+            later = live[targets[0]].union(*(live[t] for t in targets[1:]))
         if node["op"] == "copy":
-            needed = node["dst"] in later
-            later.discard(node["dst"])
-            if needed:
+            if node["dst"] in later:
+                later.discard(node["dst"])
                 later.add(node["src"])
         elif node["op"] == "havoc":
             later.discard(node["dst"])
         elif node["op"] in {"payload", "guard"}:
             later.add(node["value"])
-        later |= keep.get(index, set())
+        if keep.get(index):
+            later |= keep[index]
         if later != live[index]:
             live[index] = later
             for predecessor in predecessors[index]:
                 if not queued[predecessor]:
                     queued[predecessor] = True
-                    pending.append(predecessor)
+                    heapq.heappush(pending, -predecessor)
+    alone = [len(froms) == 1 for froms in predecessors]
     state = [None] * len(nodes)
     state[0] = {}
     pending, queued, work = [0], {0}, 0
     while pending:
-        # (in node order: a graph is emitted mostly forward, so few nodes are visited again)
+        # (in node order: a graph is emitted mostly forward, so few nodes are visited again; the
+        # resource bound counts the facts of each change, so the order is part of the result)
         index = heapq.heappop(pending)
         queued.discard(index)
         known = state[index]
         node = nodes[index]
         out = known
-        if node["op"] in {"copy", "havoc"}:
-            out = {k: v for k, v in known.items() if k != node["dst"]}
+        if node["op"] in {"copy", "havoc"} and (node["dst"] in known or node.get("src") in known):
+            out = dict(known)
+            out.pop(node["dst"], None)
             if node["op"] == "copy" and node["src"] in known:
                 out[node["dst"]] = known[node["src"]]
         for edge, target in enumerate(successors[index]):
@@ -405,17 +417,36 @@ def facts(nodes, keep=None):
                     moved[node["value"]] = known[node["value"]] & tested if node["value"] in known else tested
                 elif node["value"] in known:
                     moved[node["value"]] = known[node["value"]] - tested
-            moved = {k: v for k, v in moved.items() if k in live[target]}
+            if not live[target].issuperset(moved.keys()):
+                moved = {k: v for k, v in moved.items() if k in live[target]}
             previous = state[target]
-            merged = moved if previous is None else {k: previous[k] | moved[k] for k in previous.keys() & moved.keys()}
-            if merged != previous:
-                state[target] = merged
-                work += len(merged)
-                if work > 64 * boundary.MAX_FACTS:
-                    raise boundary.Unsupported("field facts exceed the prototype's resource bound")
-                if target not in queued:
-                    queued.add(target)
-                    heapq.heappush(pending, target)
+            if previous is not None and alone[target]:
+                # (a node's facts only lose locations and gain tags, and so do those it gives: they
+                # are the join with what it gave before)
+                if moved == previous:
+                    continue
+            elif previous is not None:
+                # (the locations both know, each with the tags of either: unchanged unless one
+                # is lost or gains a tag)
+                merged, changed = {}, len(moved) < len(previous)
+                for k, v in previous.items():
+                    w = moved.get(k)
+                    if w is None:
+                        changed = True
+                    elif w is v or w <= v:
+                        merged[k] = v
+                    else:
+                        merged[k], changed = v | w, True
+                if not changed:
+                    continue
+                moved = merged
+            state[target] = moved
+            work += len(moved)
+            if work > 64 * boundary.MAX_FACTS:
+                raise boundary.Unsupported("field facts exceed the prototype's resource bound")
+            if target not in queued:
+                queued.add(target)
+                heapq.heappush(pending, target)
     return state
 
 

@@ -596,6 +596,8 @@ class Observer:
                     if self.guard_evidence and name == "nullcheck":
                         self.nullcheck_evidence.append({"before": before, "after": after,
                                                         "reported_rewrites": result})
+                if before is not None and not self.typed_after_only:
+                    # (typed-after-only records no pass records or diffs: only guard evidence)
                     # Function metadata is not itself a typed operation rewrite.
                     previous, current = self.render(before), self.render(after)
                     changed = previous != current

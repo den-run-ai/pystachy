@@ -294,10 +294,20 @@ def holds_pointer(typ):
     return typ not in NUMERIC and typ != "None"
 
 
-def normalize(snapshot, fn, memory=None):
+def signatures(snapshot):
+    """Each function's declared parameter and return types, by its symbol: a call is checked and
+    assumed by its callee's, whatever its operands' and result's views say, as a store and a load are
+    by the memory's. A call's operands are its callee's parameters but those of type None, which take
+    none, then numeric identity companions (check_lean_guards.argument_parameters)."""
+    return {other["symbol"]: ([other["parameters"][i]["representation"] for i in argument_parameters(other["parameters"])],
+                              other.get("return_representation") or "") for other in snapshot["functions"]}
+
+
+def normalize(snapshot, fn, memory=None, declared=None):
     """The finite-tag candidate of fn. memory: (memory_types' words, {open global: {suffix: tags} or
     None}); with it, a load of a word assumes what the program's stores of it are checked to hold, and
-    meta["stored"] gives the facts the open globals' stores of fn have, by which check_all infers them."""
+    meta["stored"] gives the facts the open globals' stores of fn have, by which check_all infers them.
+    declared: signatures(snapshot), if the caller has them."""
     words, invariants = memory or ({}, {})
     context = {"classes": snapshot.get("classes") or {}, "layouts": snapshot.get("class_layouts") or {}}
     # (the boundary validator refuses list.store, which writes memory its guard model does not hold:
@@ -317,12 +327,7 @@ def normalize(snapshot, fn, memory=None):
         raise boundary.Unsupported(f"outside the boundary validator: {error}") from error
     holes = snapshot.get("holes")
     descriptors = snapshot.get("key_descriptors") or {}
-    # (each callee's declared parameter and return types: a call is checked and assumed by them,
-    # whatever its operands' and result's views say, as a store and a load are by the memory's)
-    # (a call's operands are its callee's parameters but those of type None, which take none, then
-    # numeric identity companions: check_lean_guards.argument_parameters)
-    declared = {other["symbol"]: ([other["parameters"][i]["representation"] for i in argument_parameters(other["parameters"])],
-                                  other.get("return_representation") or "") for other in snapshot["functions"]}
+    declared = signatures(snapshot) if declared is None else declared
     producers, types = {}, {f"%a{n}": p["representation"] for n, p in enumerate(fn["parameters"])}
     for block in fn["blocks"]:
         for op in block["operations"]:
@@ -929,7 +934,7 @@ def relevant(fn, declared, stored=frozenset()):
     return restricts(made) or bool(open_results(made))
 
 
-def infer_invariants(snapshot, words, opened, rounds=3):
+def infer_invariants(snapshot, words, opened, rounds=3, declared=None):
     """What each open global holds, {suffix: tags} or None (unknown): the facts its stores' values
     have, with null (a global starts as null), found again with the loads assuming them until they
     hold. Only a guess: Lean checks each store of a global against what its loads then assume."""
@@ -949,7 +954,7 @@ def infer_invariants(snapshot, words, opened, rounds=3):
         held, unknown = {}, set()
         for fn, keys in storing:
             try:
-                _, meta = normalize(snapshot, fn, (words, invariants))
+                _, meta = normalize(snapshot, fn, (words, invariants), declared)
             except (boundary.Unsupported, ValueError, KeyError, RecursionError):
                 unknown |= keys
                 continue
@@ -973,7 +978,8 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
     declared = {fn["symbol"]: [fn["parameters"][i]["representation"] for i in argument_parameters(fn["parameters"])]
                 for fn in snapshot["functions"]}
     words, opened = memory_types(snapshot)
-    invariants = infer_invariants(snapshot, words, opened)
+    typed = signatures(snapshot)
+    invariants = infer_invariants(snapshot, words, opened, declared=typed)
     context = {"classes": snapshot.get("classes") or {}, "layouts": snapshot.get("class_layouts") or {}}
     for fn in snapshot["functions"]:
         producers = {f"%t{n}": op for block in fn["blocks"] for op in block["operations"] for n in op["results"]}
@@ -984,7 +990,7 @@ def check_all(snapshot, checker=boundary.DEFAULT_CHECKER):
         if not relevant(fn, declared, stored):
             continue
         try:
-            candidate, meta = normalize(snapshot, fn, (words, invariants))
+            candidate, meta = normalize(snapshot, fn, (words, invariants), typed)
             origins = meta.pop("origins")
             meta.pop("stored")
             encoded = boundary.encode(candidate)

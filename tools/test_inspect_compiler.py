@@ -123,6 +123,20 @@ class InspectionTests(unittest.TestCase):
         self.assertEqual([stage["status"] for stage in report["stages"]], ["skipped", "completed", "completed"])
         self.assertEqual(report["attempts"][-1]["dynamic_boundary"], reference["attempts"][-1]["dynamic_boundary"])
 
+    def test_guard_evidence_keeps_nullcheck_inputs_but_typed_after_only_records_no_passes(self):
+        # (the Lean report's mode: each nullcheck's input and output are in the snapshot)
+        program = self.source(LOOP)
+        full, complete = self.inspect(program, "complete", ("--guard-evidence",))
+        self.assertEqual(full.returncode, 0, full.stderr)
+        light, quick = self.inspect(program, "quick", ("--typed-after-only", "--guard-evidence"))
+        self.assertEqual(light.returncode, 0, light.stderr)
+        snapshot = self.snapshot(quick, "typed-after")
+        self.assertEqual(snapshot, self.snapshot(complete, "typed-after"))
+        self.assertGreater(len(snapshot["nullcheck_evidence"]), 0)
+        self.assertFalse((quick / "passes").exists())
+        self.assertEqual(self.report(quick)["passes"], [])
+        self.assertTrue(any(item["name"] == "nullcheck" for item in self.report(complete)["passes"]))
+
     def test_dynamic_boundary_records_transitive_graph_outside_snapshot_filter(self):
         self.source("def number(text: str) -> int:\n    return int(text)\n", "boundary_leaf.py")
         self.source("import boundary_leaf\ndef number(text: str) -> int:\n"
