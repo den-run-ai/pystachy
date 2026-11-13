@@ -3772,6 +3772,29 @@ def gen_decl_flag(self) -> str:
         self.global_var("@d.declined", "bool")
     return "@d.declined"
 
+def gen_declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: list[bool]) -> Val:
+    # f(me, arg) of a comparison method that may return NotImplemented (may_decline), as a bool.
+    # decl takes True, and decl_flag's variable is cleared before the code of the call, for the
+    # caller to read after it; unless the one function called is compiled and has no such
+    # return for these operands: the call is then as it was before methods could decline, and
+    # as one that takes the result as it is, which decline rejects
+    got: list[FnInfo] = []
+    if self.term:
+        self.place(self.label())  # (dead code: in a block of its own, as add starts one)
+    blk = self.blk
+    at = len(blk.code)
+    r = self.coerce(self.call_fn(f, [me, arg], [], direct=direct, got=got), "bool")
+    if len(got) == 1 and (got[0].inst or got[0].ll in self.compiled) and not got[0].declines and got[0].ll not in self.building:
+        got[0].plain = where(self.line)
+        return r
+    clear = Ins("mach.store", "", "")  # (mstore, before the code of the call)
+    clear.a = [Val(self.decl_flag(), "%ptr"), Val("false", "bool")]
+    if self.source_lines.enabled:
+        clear.line = self.line
+    blk.code.insert(at, clear)
+    decl.append(True)
+    return r
+
 def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
     # every method CPython tries for op between objects of the concrete classes at and bt, in
     # its order (each as cmp_pick gives the first): the next is called where one returns
@@ -4162,26 +4185,9 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[b
             # where the operand's class has no subclass and no method declines. An except
             # clause may catch it, and return NotImplemented)
             arg = Val("null", lhs.t)
-        got: list[FnInfo] = []
-        if self.term:
-            self.place(self.label())  # (dead code: in a block of its own, as add starts one)
-        blk = self.blk
-        at = len(blk.code)
-        r = self.coerce(self.call_fn(f, [lhs, arg], [], direct=True, got=got), "bool")
+        r = self.declining_call(f, lhs, arg, True, decl if decl is not None else [])
         if known:
             self.nn.pop(rhs.v, False)
-        if len(got) == 1 and (got[0].inst or got[0].ll in self.compiled) and not got[0].declines and got[0].ll not in self.building:
-            # (its code, compiled, has no return of NotImplemented for these operands: the call
-            # is as it was before methods could decline, and as one that takes the result as it
-            # is, which decline rejects)
-            got[0].plain = where(self.line)
-        elif decl is not None:
-            clear = Ins("mach.store", "", "")  # (mstore, before the code of the call)
-            clear.a = [Val(self.decl_flag(), "%ptr"), Val("false", "bool")]
-            if self.source_lines.enabled:
-                clear.line = self.line
-            blk.code.insert(at, clear)
-            decl.append(True)
         return Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool") if p[2] == "!" else r
     if op == "==" or op == "!=":
         # object.__eq__ declines, then Python falls back to object identity.
