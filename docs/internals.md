@@ -663,8 +663,9 @@ tier's cleanup (inlining, `mem2reg`, `instcombine` and `simplifycfg`): loop opti
 vectorization and an inliner without the `PYSTACHY_JIT_INLINE` budget, as an AOT build gets, but
 over the program alone, since this tier still calls the precompiled runtime. Optimizing costs time
 at each launch that only a program whose loops run long enough repays, so the default stays `1`
-([#430](https://github.com/den-run-ai/pystachy/issues/430)). Coroutines are lowered by the
-pipeline itself, and the allocator's late inlining (`JITLATE`) follows it as before.
+([#430](https://github.com/den-run-ai/pystachy/issues/430); measurements in
+[performance](performance.md#start-up-and-memory)). Coroutines are lowered by the pipeline itself,
+and the allocator's late inlining (`JITLATE`) follows it as before.
 
 `PYSTACHY_JIT_CODEGEN=0` selects `-O0` code generation. This can reduce startup for large
 programs, but the generated code can run slower. The default (`2`) keeps ORC's own level of code

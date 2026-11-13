@@ -255,6 +255,15 @@ execution; benchmark the complete workload. Unset or `2` retains ORC's own level
 generation. See [#430](https://github.com/den-run-ai/pystachy/issues/430) for the measured
 tradeoff; it is independent of `PYSTACHY_JIT_INLINE`.
 
+`PYSTACHY_JIT_OPT=2` trades the other way: LLVM's `-O2` pipeline replaces the JIT's cleanup.
+Without the program cache, every launch then spends longer optimizing: the program cache report's
+import-heavy command took 2.91 s instead of 1.59 s (1.55 s in `opt` instead of 0.25 s). Loops run
+faster or slower by workload: the timed loops of pyperformance's richards 0.70×, regex_effbot
+0.79× and regex_v8 0.84×, but nbody and raytrace 1.04×. A program cache hit runs the optimized
+executable without compiling (richards 0.73×, regex_v8 0.82×, the UMAP probe unchanged). Calls into
+the runtime remain calls, which AOT builds optimize with the program. These are paired medians on
+one x86-64 core ([results](../bench/results/jit-opt2-2026-11-13.json)).
+
 A program that builds `list(range(4194305))` peaks at **34.2 MiB RSS in v0.4.0-alpha.3's AOT
 executable, against 171.2 MiB in CPython 3.13.18**, a 5.0× reduction. The JIT's processes,
 which include LLVM's, peak at 91.1 MiB. These are medians of five runs per mode,
