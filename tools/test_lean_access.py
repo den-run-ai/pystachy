@@ -237,7 +237,7 @@ class AdapterTests(SnapshotFixture):
                          {"@f.item": 1, "@f.last": 1, "@f.pair": 2, "@f.ends": 2, "@f.tail3": 4,
                           "@f.class_lookup": 2, "@f.total": 1, "@f.odd_lengths": 1, "@f.ranked": 1,
                           "@f.counted": 3, "@f.global_lookup": 1, "@f.smoothed": 4, "@f.pairs": 4, "@f.shifted": 2,
-                          "@m.Cache.lookup": 1})
+                          "@f.rows": 2, "@m.Cache.lookup": 1})
 
     def test_selection_and_snapshot_header_are_checked(self):
         with self.assertRaisesRegex(ValueError, "exactly one function"):
@@ -580,7 +580,7 @@ class ProvedCheckerTests(SnapshotFixture):
         code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.total")
         self.assertEqual((code, report["status"], report["checked"]), (0, "accepted", True))
         code, report = run("--snapshot", str(self.snapshot_path), "--all")
-        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 30))
+        self.assertEqual((code, report["status"], report["totals"]["proved_accesses"]), (0, "accepted", 32))
         with tempfile.TemporaryDirectory() as temporary:
             emitted = Path(temporary) / "candidate.json"
             code, report = run("--snapshot", str(self.snapshot_path), "--function", "@f.item", "--emit", str(emitted))
