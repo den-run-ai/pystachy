@@ -2497,8 +2497,9 @@ def gen_range_prim(self, name: str, args: list[Node]) -> Val:
 def gen_complex_new(self, args: list[Node]) -> Val:
     # complex(real=0, imag=0), as complex_new_impl: each argument evaluated in turn, then a string
     # alone parsed (lib/_pystachy_complex.py's _from_str), a complex number alone itself, a number
-    # alone (float(x), 0.0), and real + imag * 1j of the floats of two (_two); CPython's TypeError
-    # at compile time for an argument of another type
+    # alone (float(x), 0.0), and real + imag * 1j of the floats of two (_two). A string with a
+    # second argument raises CPython's TypeError when called; an argument of another type is
+    # CPython's TypeError at compile time
     given: list[str] = []
     nodes: list[Node] = []
     for a in args:
@@ -2517,10 +2518,10 @@ def gen_complex_new(self, args: list[Node]) -> Val:
     r = vals[given.index("real")] if "real" in given else Val("0", "int")
     i = vals[given.index("imag")] if "imag" in given else Val("", "")
     nums = ["int", "float", "bool", BIG, COMPLEXC]
-    if r.t == "str" and i.t != "":
-        self.err("complex() can't take second arg if first is a string")
-    if i.t == "str":
-        self.err("complex() second arg can't be a string")
+    if (r.t == "str" and i.t != "") or i.t == "str":
+        # (checked before the first argument's type, as complex_new_impl does)
+        self.guard("true", "TypeError: complex() can't take second arg if first is a string" if r.t == "str" else "TypeError: complex() second arg can't be a string")
+        return Val("null", COMPLEXC)
     if r.t == "str":
         made = self.call_fn(self.funcs[COMPLEXS + "$_from_str"], [], [self.vnode(r)])
         self.nn[made.v] = True  # (a new object)
