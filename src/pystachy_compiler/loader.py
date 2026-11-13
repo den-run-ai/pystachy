@@ -269,6 +269,9 @@ def functools_classes(n: Node, names: dict[str, str]) -> None:
                     if d.kind == "def" and d.s == op:
                         root = d
                         have[op] = True
+            for d in kept:
+                if (d.kind == "assign" or d.kind == "annassign") and d.kids[0].kind == "name" and d.kids[0].s in ORDERINGS:
+                    fail(f"@total_ordering of class {st.s}, whose body assigns {d.kids[0].s}, is not supported (the decorator reads the methods that def statements of the body define)", d.line)
             if root is None:
                 if st.kind == "subclass" and len([x for x in st.kids[1:] if x.kind != "typeparams" and dotted(x) != "object"]) > 0:
                     fail(f"@total_ordering of class {st.s}, whose body defines none of __lt__, __le__, __gt__ and __ge__, is not supported (an inherited one is not read)", c.line)
