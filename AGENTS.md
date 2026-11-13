@@ -92,7 +92,7 @@ make lint check-recordings
 | Compiler/runtime/library behavior | Full `make verify` or required CI matrix on the reviewed tree before merge-ready; report missing/failed stages |
 | Compiler refactor or behavior change | `make irsame REF=<base-sha>` (CI does not run it): compare IR, diagnostics and exit status; explain every new rejection. REF uses its own `lib/`; corpus parity is not all-shape coverage ([#434](https://github.com/den-run-ai/pystachy/issues/434), [#595](https://github.com/den-run-ai/pystachy/issues/595)) |
 | GC/ownership/layout | Focused JIT/AOT with `PYSTACHY_GC_STRESS_PROGRAM=1`, full GC groups and relevant `listprobe`, `dictprobe`, `eqprobe`, `fileprobe`, `unicodeprobe`, `weakrefprobe`. `Str` layout is duplicated in `pyext.c`, `pyembed.c` and emitted constants |
-| Lowering/effects/ABI | `make check-ir check-runtime`; affected `tests/ir/*.calls`/effects. `check_runtime.py` counts literal `pys_*` names even in comments but misses dynamically built names |
+| Lowering/effects/ABI | `make check-ir check-runtime`; affected `tests/ir/*.calls`/effects; `make lean-report` for Lean-checked passes. `check_runtime.py` counts literal `pys_*` names, comments too, not built ones |
 | FFI/embedding/extensions | `make test-ffi`; CPython twins plus real native alias/lifetime calls; ndarray/BLAS views need `make blas-check` with both providers |
 | Driver/cache | `make test-cache`, including invalidation and failures |
 | New setting/tool/module | Result-affecting `PYSTACHY_*` settings go in verify's ignored-environment list and [settings table](docs/internals.md#environment-variables); shell tools in the Python-free whitelist; compiler modules in `COMPILER_SOURCES` (checked by `check-runtime`) |

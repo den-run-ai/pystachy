@@ -21,6 +21,16 @@ Python adapters, including lost inventories, exceptional edges and forged facts.
 Parsing, inference, specialization, collector roots and lifetime, general optimization
 equivalence, exception semantics and LLVM lowering remain unproved.
 
+[REPORT.md](REPORT.md) gives every check's current counts over the whole test corpus and
+lists each function left unproved. `make lean-report` compiles each differential test program
+and deviation once, runs every check on it and rewrites that report; it took about MINUTES
+minutes with four processes. No CI job runs it. Run it after a change to typed IR, to a pass
+a check covers or to a checker, and commit the report when its counts change;
+`python3.13 tools/lean_report.py --status` says which of its inputs (compiler, checkers,
+corpus) changed since. It keeps each program's result in `build/lean-report.jsonl` as it
+finishes, and `--resume` continues an interrupted run. The dated sweeps in each check's
+document explain the rejections it lists.
+
 [GUARDS.md](GUARDS.md) describes the bounded null/union CI examples and the strict
 full-corpus inventory command; full-corpus acceptance is not claimed. Removed null
 checks are proved with the [access model](ACCESS.md)'s field, global and effect rules
@@ -282,8 +292,9 @@ this needed: slice bounds of an `Any` value and `sum()` of `Any` values read int
 payloads that no tag test guarded (their compiler guards are
 [#1227](https://github.com/den-run-ai/pystachy/pull/1227)), and two length-hint
 and iterator helpers kept the names of landing blocks that lowering dropped.
-CI runs the same check on every code change, so a compiler change that leaves a
-payload read unproved fails.
+Main and manual CI runs the same check (the x86-64 `gc-jit-1` group), so a compiler
+change that leaves a payload read unproved fails there; [REPORT.md](REPORT.md) has the
+current counts.
 
 ## Trust and coverage limits
 
@@ -325,10 +336,10 @@ build/workflow files or development tool pins; it also runs on every main push
 and manual dispatch. PR selection uses the cumulative merge diff and runs
 conservatively if its history is missing. Five workflow tests exercise the
 actual selector against temporary Git histories. `make check-lean-corpus` runs in
-the x86_64 verification group `opt-in` of every PR that changes code, and in
-`runtime-cache` on main and manual runs; a sixth test keeps both jobs on one
-Lean archive; that target first runs the corpus tool's own tests
-(`tools/test_lean_corpus.py`). Both jobs download the pinned, SHA-256-checked
+the x86-64 verification group `gc-jit-1` on main and manual runs, and code PRs check
+the bounded examples in `contracts` ([GUARDS.md](GUARDS.md)); a sixth test keeps Lint
+and verification on one Lean archive; that target first runs the corpus tool's own
+tests (`tools/test_lean_corpus.py`). Both download the pinned, SHA-256-checked
 Linux Lean release; no PR job is added. Lean is not a compiler, runtime or
 installation dependency.
 

@@ -1001,7 +1001,12 @@ Code PRs and full CI retain `make check-lean-guards` in the x86 `contracts` grou
 `lean-guards.json`. The selection and its limits are recorded in
 [GUARDS.md](../tools/lean_boundary/GUARDS.md). These enforce bounded null/union guard,
 field-initialization and collector-scanning coverage; the strict full-corpus guard command remains an investigation tool with
-unsupported forms, not a passing whole-corpus gate. Arithmetic reports separately
+unsupported forms, not a passing whole-corpus gate. No CI job runs every check over the
+whole corpus: `make lean-report` does, locally, and rewrites the small committed
+[report](../tools/lean_boundary/REPORT.md) of their counts and unproved functions. Run it
+after a change to typed IR, to a pass a Lean check covers or to a checker, and commit the
+report when it changes; `python3.13 tools/lean_report.py --status` names the inputs that
+changed since. Arithmetic reports separately
 count actual checked overflow reconstructions and other observed arithmetic.
 All sweeps use two local processes within existing jobs and their 15-minute limits.
 On full runs, the corpus and integer proofs start after `gc-jit-1` finishes;
