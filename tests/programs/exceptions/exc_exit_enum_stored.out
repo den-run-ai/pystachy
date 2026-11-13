@@ -1,0 +1,10 @@
+0 status 0 SystemExit(<Status.OK: 0>)
+saved 0 status 0 SystemExit(<Status.OK: 0>)
+1 status 3 SystemExit(<Status.FAILED: 3>)
+saved 1 status 3 SystemExit(<Status.FAILED: 3>)
+2 mixed status SystemExit(<Mixed.FOUR: 4>)
+saved 2 mixed status SystemExit(<Mixed.FOUR: 4>)
+3  SystemExit()
+saved 3 None SystemExit(None)
+finally
+[exit 3]

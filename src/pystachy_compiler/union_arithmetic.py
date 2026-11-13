@@ -110,6 +110,8 @@ def gen_usplit(self, name: str, vals: list[Val], i: int, want: str) -> Val:
     result_type = self.union_type([r.t for r in results])
     if result_type.startswith("!"):
         self.err(f"unsupported call {name}() of {typestr(u.t)}: its members' results ({', '.join([typestr(r.t) for r in results])}) have no union")
+    if result_type == "None":
+        return Val("null", "None")  # (each member's call gave None, as time.sleep()'s: nothing to join, and LLVM has no void phi)
     ph = Ins("phi", result_type, "")
     for j in range(len(results)):
         r = self.convert_at(results[j], result_type, edges[j])
