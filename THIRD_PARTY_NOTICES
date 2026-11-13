@@ -176,6 +176,11 @@ lib/_pystachy_iterators.py is Pystachy's own, written after the iterator types o
 setobject.c, whose behaviour and messages it follows; it is derived from Python and is used under
 the same license and copyright notice.
 
+lib/_pystachy_complex.py is Pystachy's own complex type, written after CPython 3.13.16's
+Objects/complexobject.c, whose arithmetic, parsing and messages it follows, and runtime.c's
+pys_cx_abs and pys_cx_pow follow that file's _Py_c_abs, complex_pow, c_powi and _Py_c_pow; they
+are derived from Python and are used under the same license and copyright notice.
+
 lib/codecs.py is CPython 3.13.16's Lib/codecs.py with the edits lib/compatibility.md lists,
 each marked in the source; it is derived from Python and is used under the same license and
 copyright notice. lib/_pystachy_codecs.py ports the codec functions of CPython 3.13.16's
