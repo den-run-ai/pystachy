@@ -50,6 +50,11 @@ throwing stand-in for `ast_serialize.parse()`. Nothing was built or run here; th
 | A parser in the subset that writes the same bytes | A full Python 3.14 tokenizer and parser plus the serializer, several thousand lines; the wheel is a byte-for-byte oracle under CPython | Follows every change of the format (`cache_version`) |
 | A CPython-compatible `ast` module for `fastparse.py` | The same parser, plus about 100 node classes and dispatch by computed method names | The path mypy is leaving |
 
+Decided on 2026-11-13: the second route, a parser in the subset. Work started on branch
+`claude/confident-einstein-ep3lh6-ast-serialize`, based on #1276's head `c4397feb`, with the
+extension (0.13.1, already in the development venv beside mypy 2.4.1 and librt 0.16.0) as the
+byte-for-byte oracle under CPython.
+
 The compiler's own parser cannot serve as is: its `Node` keeps a line and no columns or end
 positions (`src/pystachy_compiler/syntax.py`), and it rewrites what it parses.
 
