@@ -197,6 +197,10 @@ the same results or errors, with the same next position (`--rounds 20000 --seed 
 
 `tools/ast_serialize_check.py` runs `lib/ast_serialize/` on CPython and compares all five elements of `parse()`'s result with ast-serialize 0.13.1's extension, for seven option sets (target versions 3.8, 3.11, 3.13 and 3.14, platforms linux, win32 and darwin, cache versions 0, 5 and 7, `always_true` and `always_false` names, body skipping), over every Python file of mypy 2.4.1's and mypyc's sources (246 files), CPython 3.13.16's `Lib/` (1,771, 4 of them with syntax errors), the site-packages of the pinned development tools (1,671, mypy's 761 typeshed stubs among them) and this repository's `lib/`, `src/` and `tests/` (5,206, 228 of them with syntax errors): all are identical. So are 18,000 random corruptions of windows of those sources (`--fuzz`; 15,599 have syntax errors, whose messages, positions and recovered trees match) and `parse_type_string()` on the 4,070 string annotations and type comments of those files and hand-written cases, for cache versions 0, 5 and 7 (`--type-strings`). `tools/ast_serialize_tables.py` generates the identifier tables of `lib/ast_serialize/_unicode.py` from Unicode 17.0.0's `DerivedCoreProperties.txt` (the unicode-ident crate's version) and `lib/ast_serialize/_names16.py`, the names and aliases of Unicode 16.0.0 (unicode_names2's) that CPython 3.13's `unicodedata` lacks; with them every non-ASCII identifier character, first or not, parses as in the extension (298,316 sources), and so does a `\N{...}` escape of each of Unicode 16.0's 40,013 names.
 
+`lib/ast_serialize/_sha1.py`, the SHA-1 of the source hash, is written by
+`tools/ast_serialize_sha1.py`, which with `--check` fails if the file is not what it writes and
+compares the function with `hashlib` for 264 lengths.
+
 `tools/binascii_check.py` runs `lib/_pystachy_binascii.py` on CPython, compares the results and
 errors of 420,000 calls of its functions, mostly at the edges of their inputs, with those of the C
 module (`Modules/binascii.c`, SHA-256
