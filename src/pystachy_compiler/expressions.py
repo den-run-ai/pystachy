@@ -4963,6 +4963,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                     method = "__eq__"
                 if method in methods and self.cmp_method(lhs.t, method, rhs.t) == "":
                     return self.inherit_cmp(op, a, b)
+    if (op == "==" or op == "!=") and any(self.enum_intlike(x.t) for x in [a, b]) and any(is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t)) for x in [a, b]):
+        # (an int-like enum member, an int in CPython, and a union holding complex numbers: member
+        # by member, so that a complex member compares the int as complex_cmp does, which the
+        # member's __eq__ in lib/enum.py does not)
+        return self.complex_ueq(op, a, b)
     if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
         return self.inherit_cmp(op, a, b)
     ka = self.exc_kinds(a.t) if op == "==" or op == "!=" or op in REFL else []
@@ -5593,11 +5598,12 @@ def gen_comparable(self, t: str, u: str) -> bool:
         o = u if t == "dyn" else t
         return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
     sides = [(["None"] if is_opt(x) else []) + (umembers(unopt(x)) if is_union(unopt(x)) else [unopt(x)]) for x in [t, u]]
-    if any(COMPLEXC in side for side in sides) and all(m in [COMPLEXC, "int", "float", "bool", BIG, "str", "None"] for side in sides for m in side):
+    if any(COMPLEXC in side for side in sides) and all(m in [COMPLEXC, "int", "float", "bool", BIG, "str", "None"] or self.enum_intlike(m) for side in sides for m in side):
         # (a complex number, or a union holding one, and scalars: complex_ueq compares them member
         # by member, which no runtime union descriptor does; numbers equal numbers across types,
-        # and None the object of a complex number that may be None)
-        return any(eq_kind(m1) == eq_kind(m2) or "None" in [m1, m2] and COMPLEXC in [m1, m2] for m1 in sides[0] for m2 in sides[1])
+        # an int-like enum member as the int it is in CPython, and None the object of a complex
+        # number that may be None)
+        return any(eq_kind("int" if self.enum_intlike(m1) else m1) == eq_kind("int" if self.enum_intlike(m2) else m2) or "None" in [m1, m2] and COMPLEXC in [m1, m2] for m1 in sides[0] for m2 in sides[1])
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
