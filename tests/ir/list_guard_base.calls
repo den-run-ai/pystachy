@@ -1,0 +1,8 @@
+@main.init: pys_list_new_atomic pys_list_append pys_list_append pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_list_append pys_list_append pys_list_new_atomic pys_list_append pys_list_append pys_list_append pys_str_float pys_write pys_write pys_repr pys_write pys_write pys_str_int pys_write pys_write
+@f.dist2: pys_list_get pys_list_get pys_raise
+@f.bump: pys_list_get pys_list_set pys_list_get pys_raise
+@f.moving: pys_list_get pys_raise
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: pys_init pys_finish
