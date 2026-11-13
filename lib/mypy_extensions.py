@@ -7,10 +7,16 @@ unchanged. The native integer names are int: CPython's i64(x) is int(x), and an 
 names one is an int's (Pystachy's int is a checked 64-bit integer, a valid i64; it does not wrap
 u8 or i32, as CPython's int does not). They are aliases of int here, so i64 is int and
 i64.__name__ is 'int', where CPython's are distinct classes.
+
+FlexibleAlias is the generic class that typeshed's stub declares, for type aliases: as mypy
+expands it, an alias whose value is FlexibleAlias[T, X] stands for X (mypy's
+Bogus = FlexibleAlias[T, T] makes Bogus[list[int]] a list[int]). Its subscripts are types only
+in annotations; CPython's FlexibleAlias is an object whose subscripts make objects that hold X.
 """
-from typing import Callable, TypeVar
+from typing import Callable, Generic, TypeVar
 
 _T = TypeVar("_T")
+_U = TypeVar("_U")
 
 
 def trait(cls: _T) -> _T:
@@ -29,3 +35,7 @@ u64 = int
 u32 = int
 u16 = int
 u8 = int
+
+
+class FlexibleAlias(Generic[_T, _U]):
+    pass

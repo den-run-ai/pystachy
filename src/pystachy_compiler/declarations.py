@@ -17,6 +17,7 @@ from src.pystachy_compiler.specs import (
     EXCATTRS,
     EXCFIELDS,
     EXCINIT,
+    FLEXIBLE_ALIAS,
     FROZENERR,
     GLUE,
     IOPS,
@@ -582,6 +583,8 @@ def gen_alias_problem(self, e: Node) -> str:
         if nm == "Optional":
             return "typing.Optional requires a single type"
         return f"{nm} accepts only a single type" if nm in ["Required", "NotRequired", "ReadOnly"] else f"{p} accepts only single type"
+    if b.kind == "name" and b.s == FLEXIBLE_ALIAS and (n != 2 or starred):
+        return "!mypy_extensions.FlexibleAlias takes two type arguments here, FlexibleAlias[T, X]: the alias's type variables, then the type it stands for"
     if starred:
         return ""  # (*Ts: as many as it unpacks)
     if b.kind == "name" and b.s in self.taliases:
@@ -726,7 +729,7 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
     if self.unaliased > TYPE_SIZE:
         self.err(f"the type aliases this annotation names expand to more than {TYPE_SIZE} nodes (not supported: simplify them)")
     if k == "name" and a.s in self.taliases and a.s not in seen and (self.taliases[a.s].kind == "assign" or self.taliases[a.s].kids[0].s == ""):
-        return self.unalias(clone(self.alias_value(a.s)), seen + [a.s])
+        return self.unalias(flexible_value(clone(self.alias_value(a.s))), seen + [a.s])
     if k == "index" and a.kids[0].kind == "name" and a.kids[0].s in self.taliases and a.kids[0].s not in seen:
         name = a.kids[0].s
         tps = self.alias_params(name)
@@ -736,10 +739,18 @@ def gen_unalias(self, a: Node, seen: list[str]) -> Node:
         # (the type arguments replace the type parameters first: in type Pair[Row] = ..., Row is
         # the parameter, not the module's alias Row)
         v = self.subst_ann(clone(self.alias_value(name)), tps, [self.unalias(x, seen) for x in xs])
-        return self.unalias(v, seen + [name])
+        return self.unalias(flexible_value(v), seen + [name])
     for i in range(len(a.kids)):
         a.kids[i] = self.unalias(a.kids[i], seen)
     return a
+
+def flexible_value(v: Node) -> Node:
+    # (unalias) type alias value v, or X where v is mypy_extensions' FlexibleAlias[T, X]: mypy
+    # expands such an alias to its last type argument, so mypy's Bogus = FlexibleAlias[T, T] makes
+    # Bogus[list[int]] a list[int] (alias_problem rejects other numbers of type arguments)
+    if v.kind == "index" and v.kids[0].kind == "name" and v.kids[0].s == FLEXIBLE_ALIAS and v.kids[1].kind == "tuple" and len(v.kids[1].kids) == 2:
+        return v.kids[1].kids[1]
+    return v
 
 def gen_subst_ann(self, n: Node, tps: list[str], args: list[Node]) -> Node:
     # annotation n (a copy) with type parameters tps replaced by annotations args
