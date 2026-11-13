@@ -332,13 +332,14 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         # absolute value and hash of complex numbers, each given as its two floats
         if self.curfn.mod != COMPLEXS or not lib_source(self.curfn.node.line, self.libdir, COMPLEXS + ".py"):
             self.err(f"name '{name}' is not defined")
-        csigs: dict[str, str] = {"__pys_complex_quot": "tuple[float,float]:4", "__pys_complex_pow": "tuple[float,float]:4",
-                                 "__pys_complex_abs": "float:2", "__pys_complex_hash": "int:2"}
-        if name not in csigs or any([a.kind in ["kw", "starred", "dstar"] for a in args]) or len(args) != int(csigs[name].split(":")[1]):
+        csigs: dict[str, str] = {"pys_complex_quot": "tuple[float,float]:4", "pys_complex_pow": "tuple[float,float]:4",
+                                 "pys_complex_abs": "float:2", "pys_complex_hash": "int:2"}
+        c = name[2:]
+        if c not in csigs or any([a.kind in ["kw", "starred", "dstar"] for a in args]) or len(args) != int(csigs[c].split(":")[1]):
             self.err(f"name '{name}' is not defined")
         fs = [self.coerce(self.expr(a, "float"), "float", f"an argument of {name}") for a in args]
-        ct = csigs[name].split(":")[0]
-        return Val(self.rt(name[2:], rtt(ct), [f"double {f.v}" for f in fs]), ct)
+        ct = csigs[c].split(":")[0]
+        return Val(self.rt(c, rtt(ct), [f"double {f.v}" for f in fs]), ct)
     if name.startswith("__pys_mpz_"):
         # Only the shipped wrapper can create or consume these opaque pointers.
         # Using int for the handle would hide references from numeric containers.
