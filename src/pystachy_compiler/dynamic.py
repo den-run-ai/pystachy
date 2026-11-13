@@ -3287,10 +3287,20 @@ def gen_dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) 
     hit = self.label()
     nxt = self.label()
     tb = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), Val(self.dyntypes[c], "dyntype"))
+    if c == COMPLEXC:
+        # (lib's complex takes a number only, CPython's returning NotImplemented for another value,
+        # whose TypeError the fallback raises: "a" + 1j concatenates no str)
+        ok = self.scalar("and", [Val(ok, "bool"), Val(self.dyn_test(a, ["int", "bool", "float"]), "bool")])
     self.cbr(tb.v if ok == "true" else self.scalar("and", [tb, Val(ok, "bool")]), hit, nxt)
     self.place(hit)
     x = self.dyn_payload(b, c)
-    self.dyn_return(f, self.expr(mk("call", "", self.line, [mk("attr", r, self.line, [self.vnode(x)]), self.vnode(a)]), ""))
+    if c == COMPLEXC:
+        # its float, as TO_COMPLEX converts the number, also a promoting int too wide for an int
+        # parameter: _radd & co. (lib/_pystachy_complex.py)
+        fa = self.dyn_float(a)
+        self.dyn_return(f, self.expr(mk("call", "", self.line, [mk("attr", "_" + r[2:-2], self.line, [self.vnode(x)]), self.vnode(fa)]), ""))
+    else:
+        self.dyn_return(f, self.expr(mk("call", "", self.line, [mk("attr", r, self.line, [self.vnode(x)]), self.vnode(a)]), ""))
     self.place(nxt)
 
 
@@ -3532,6 +3542,11 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         return
     if key.startswith("get."):
         r = self.expr(mk("attr", key[4:], line, [xn]), "")
+    elif key.startswith("set.") and x.t == COMPLEXC:
+        # (CPython's complex has real and imag read-only, whose typed stores are compile errors:
+        # at run time here, as this dispatcher serves the objects of other classes too)
+        self.raise_("AttributeError", self.sconst("readonly attribute"))
+        return
     elif key.startswith("set."):
         self.assign(mk("attr", key[4:], line, [xn]), args[0])
         r = Val("null", "None")

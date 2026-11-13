@@ -1,0 +1,26 @@
+TypeError: can only concatenate str (not "complex") to str
+TypeError: unsupported operand type(s) for -: 'str' and 'complex'
+TypeError: can't multiply sequence by non-int of type 'complex'
+TypeError: unsupported operand type(s) for /: 'str' and 'complex'
+TypeError: unsupported operand type(s) for ** or pow(): 'str' and 'complex'
+TypeError: can only concatenate list (not "complex") to list
+TypeError: unsupported operand type(s) for -: 'list' and 'complex'
+TypeError: can't multiply sequence by non-int of type 'complex'
+TypeError: unsupported operand type(s) for /: 'list' and 'complex'
+TypeError: unsupported operand type(s) for ** or pow(): 'list' and 'complex'
+TypeError: can only concatenate tuple (not "complex") to tuple
+TypeError: unsupported operand type(s) for -: 'tuple' and 'complex'
+TypeError: can't multiply sequence by non-int of type 'complex'
+TypeError: unsupported operand type(s) for /: 'tuple' and 'complex'
+TypeError: unsupported operand type(s) for ** or pow(): 'tuple' and 'complex'
+TypeError: unsupported operand type(s) for +: 'NoneType' and 'complex'
+TypeError: unsupported operand type(s) for -: 'NoneType' and 'complex'
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'complex'
+TypeError: unsupported operand type(s) for /: 'NoneType' and 'complex'
+TypeError: unsupported operand type(s) for ** or pow(): 'NoneType' and 'complex'
+TypeError: unsupported operand type(s) for +: 'Left' and 'complex'
+TypeError: unsupported operand type(s) for -: 'Left' and 'complex'
+TypeError: unsupported operand type(s) for *: 'Left' and 'complex'
+TypeError: unsupported operand type(s) for /: 'Left' and 'complex'
+TypeError: unsupported operand type(s) for ** or pow(): 'Left' and 'complex'
+[exit 0]
