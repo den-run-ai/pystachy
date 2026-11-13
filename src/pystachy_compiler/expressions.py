@@ -4185,7 +4185,8 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[b
             # where the operand's class has no subclass and no method declines. An except
             # clause may catch it, and return NotImplemented)
             arg = Val("null", lhs.t)
-        r = self.declining_call(f, lhs, arg, True, decl if decl is not None else [])
+        unread: list[bool] = []
+        r = self.declining_call(f, lhs, arg, True, decl if decl is not None else unread)
         if known:
             self.nn.pop(rhs.v, False)
         return Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool") if p[2] == "!" else r
