@@ -1,0 +1,30 @@
+1,466,213,913 (100.0%)  PROGRAM TOTALS
+Ir                    file:function
+--------------------------------------------------------------------------------
+243,821,555 (16.63%)  /home/user/wt-astser/lib/ast_serialize/_sha1.py:f.ast_serialize$_parse_bytes
+148,283,238 (10.11%)  ./string/../sysdeps/x86_64/multiarch/memset-vec-unaligned-erms.S:__memset_avx2_unaligned_erms
+ 91,831,116 ( 6.26%)  /home/user/wt-astser/lib/ast_serialize/_lexer.py:m.ast_serialize$_lexer$Lexer.next_token
+ 77,061,346 ( 5.26%)  /home/user/wt-astser/runtime.py:pys_bytes_from_list
+ 73,066,507 ( 4.98%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:m.ast_serialize$_serialize$Serializer.int_
+ 69,804,118 ( 4.76%)  /home/user/wt-astser/lib/_pystachy_binascii.py:main
+ 55,480,885 ( 3.78%)  /home/user/wt-astser/lib/ast_serialize/_lexer.py:m.ast_serialize$_lexer$Lexer.lex_identifier
+ 54,590,180 ( 3.72%)  ./string/../sysdeps/x86_64/multiarch/memmove-vec-unaligned-erms.S:__memcpy_avx_unaligned_erms
+ 54,213,958 ( 3.70%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:m.ast_serialize$_serialize$Serializer.raw
+ 41,495,652 ( 2.83%)  /home/user/wt-astser/lib/ast_serialize/_parser.py:m.ast_serialize$_parser$Parser.do_bump
+ 37,498,687 ( 2.56%)  /home/user/wt-astser/runtime.py:f.ast_serialize$_parse_bytes
+ 28,738,027 ( 1.96%)  ???:pys_str_slice
+ 27,149,264 ( 1.85%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:m.ast_serialize$_serialize$LineIndex.line_of
+ 27,019,903 ( 1.84%)  ???:scan
+ 26,780,735 ( 1.83%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:m.ast_serialize$_serialize$Serializer.location
+ 22,833,180 ( 1.56%)  /home/user/wt-astser/runtime.py:main
+ 19,429,783 ( 1.33%)  ???:gc_slow
+ 17,150,092 ( 1.17%)  /home/user/wt-astser/lib/ast_serialize/_parser.py:m.ast_serialize$_parser$Parser.do_bump_lexer
+ 16,025,632 ( 1.09%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:m.ast_serialize$_serialize$Serializer.expr'2
+ 15,419,470 ( 1.05%)  ???:pys_dict_get
+ 14,503,041 ( 0.99%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:m.ast_serialize$_serialize$LineIndex.column
+ 13,892,050 ( 0.95%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:f.ast_serialize$_parse_bytes
+ 12,398,055 ( 0.85%)  /home/user/wt-astser/lib/ast_serialize/_parser.py:m.ast_serialize$_parser$Parser.is_list_element
+ 11,184,685 ( 0.76%)  /home/user/wt-astser/lib/ast_serialize/_parser.py:m.ast_serialize$_parser$Parser.parse_binary_expression_or_higher_recursive
+  9,313,825 ( 0.64%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:m.ast_serialize$_serialize$Serializer.expr
+  8,978,210 ( 0.61%)  /home/user/wt-astser/lib/ast_serialize/_parser.py:m.ast_serialize$_parser$Parser.parse_lhs_expression_inner
+  8,812,078 ( 0.60%)  /home/user/wt-astser/lib/ast_serialize/_serialize.py:m.ast_serialize$_serialize$Serializer.stmt'2

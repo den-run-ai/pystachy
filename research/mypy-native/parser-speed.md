@@ -48,6 +48,46 @@ source. Collection itself is cheap: 12 ms of 270.
 - `parse_name()` and `parse_attribute_expression()` made an identifier node only to copy it into
   the node they return (`269eec3e`): 5% of the instructions, and one collection in ten.
 
+## Second round, with line-level profiles
+
+`PYSTACHY_DEBUG_LINES=1` gives callgrind file and line for code that LLVM inlined
+([`parser-speed/profile-lines.txt`](parser-speed/profile-lines.txt)). It showed two things the
+function-level profile hid:
+
+- 16.6% of the instructions were the port's own SHA-1 of each source file (the source hash),
+  59 instructions a byte. Written out with the schedule in sixteen locals it is 44; C is about 10.
+  The rounds compile cleanly; what remains is 32-bit arithmetic in 64-bit ints (rotates are not
+  recognized, the sixteen words and the state spill) and nine instructions for each byte read
+  (an overflow-checked `off + k` and a bounds check).
+- 4.8% was `binascii.crc32` in the benchmark itself. `parser-speed/bench2.py` computes its
+  checksum after the timed loop; the figures below use it.
+
+| Build | Time (median of 5) | Against the extension | Instructions |
+|---|---:|---:|---:|
+| Rust extension 0.13.1 under CPython | 0.093 s | 1 | not counted |
+| Port at `e84dab75` | 0.215 s | 2.30 | 1.946 G |
+| Port at `c8d19249` | 0.137 s | 1.46 | 1.381 G |
+| Port at `c8d19249`, profile-guided build (#1444) | 0.126 s | 1.36 | 1.231 G |
+
+Since `269eec3e`: a local cursor in the identifier loop and no slice for names that cannot be
+keywords (3%); a syntax node of 128 bytes in place of 152, which the allocator serves inline
+(`gc_alloc` pops a free slot inline only under 136 bytes; 2%); the unrolled SHA-1 (6%).
+
+Profile-guided builds: clang's flags through `PYSTACHY_CFLAGS` break the runtime's build (two
+modules each get a "CG Profile" module flag). Applied to the whole-program step only they work,
+except that LLVM 18's optimizer aborts where a profile is applied to a generator function
+(a presplit coroutine; found by bisecting the profile by function), so a generating build marks
+those `noprofile`. Draft #1444 adds `PYSTACHY_PROFILE_GENERATE` and `PYSTACHY_PROFILE_USE`.
+
+Open, larger than a port change:
+
+1. SHA-1 and the other digests as C kernels in the runtime, for `hashlib` (#1288) and this port:
+   asked of #1288's session.
+2. `gc_alloc`'s inline pop for every size class that is cleared when its free list is refilled,
+   where the size is a constant at the call (objects of 136 bytes and more call `gc_slow` today).
+3. `bytearray` (#493), alias tags for `str` and `bytes` (after the UMAP session's list tags),
+   allocation without clearing: as listed below.
+
 ## What was tried and did not help
 
 | Experiment | Result |
