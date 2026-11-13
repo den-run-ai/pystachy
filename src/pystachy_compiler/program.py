@@ -4,7 +4,7 @@ import os
 import sys
 from src.pystachy_compiler.callbacks import specialize_callbacks
 from src.pystachy_compiler.reflection import refl_needs_eh, refl_props
-from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, needs_eh, none_assigns, reads_builtin
+from src.pystachy_compiler.analysis import all_imports, collect, defines, module_ints, module_reads, module_strs, name_nodes, needs_eh, none_assigns, reads_builtin
 from src.pystachy_compiler.diagnostics import Rejoin, dynamic_program, fail, shown
 from src.pystachy_compiler.dynamic import comparison_properties, comparison_storage
 from src.pystachy_compiler.generators import reads_cause, reads_handled, uses_protocol
@@ -202,6 +202,60 @@ def gen_generic_subclass(self, st: Node) -> str:
         self.genargs[st.s][g] = args
         st.kids[j] = b.kids[0]
     return ""
+
+def gen_iter_abc(self, st: Node) -> str:
+    # "Iterator" or "Iterable" where class statement st, without decorators, has one base,
+    # typing's or collections.abc's (subscripted or not, with no TypeVarTuple), and a body that
+    # defines the methods that abstract base requires, __iter__ and __next__ (__iter__): the base
+    # then gives the class nothing it uses (its __iter__ mixin is the class's own); else ""
+    b = st.kids[1]
+    r = self.imported_ref(b.kids[0] if b.kind == "index" else b)  # (the import, not an annotation's name: a class base is evaluated)
+    r = r[r.rfind(".") + 1 :] if r in ["typing.Iterator", "typing.Iterable", "collections.abc.Iterator", "collections.abc.Iterable"] else ""
+    if r == "" or len(st.kids[0].kids) != 1 or (b.kind == "index" and not self.inert_subscript(b.kids[1])):
+        return ""
+    names: dict[str, bool] = {}
+    name_nodes(b, names)
+    if len([x for x in names if x in self.tvtuples]) > 0:
+        return ""
+    defs = [d.s for d in st.kids[0].kids[0].kids if d.kind == "def"]
+    if "__iter__" not in defs or (r == "Iterator" and "__next__" not in defs):
+        return ""
+    return r
+
+def gen_inert_subscript(self, n: Node) -> bool:
+    # can a class base's subscript n be left out where the class statement runs, as nothing of it
+    # can raise or run the program's code: type variables, builtin types the program does not
+    # rebind, typing's and collections.abc's names, strings (forward references), None and ...,
+    # and subscripts and tuples of those (set[T]); not a call, nor an attribute read through a
+    # module, which a circular import may not have bound yet
+    if n.kind == "name":
+        ref = self.imported_ref(n)
+        return n.s in self.typevars or ref.startswith("typing.") or ref.startswith("collections.abc.") or (n.s in ["int", "str", "float", "bool", "bytes", "object", "list", "dict", "set", "frozenset", "tuple", "type"] and not self.bound(n.s))
+    if n.kind == "str" or n.kind == "None" or n.kind == "ellipsis":
+        return True
+    if n.kind == "index" or n.kind == "tuple":
+        for k in n.kids:
+            if not self.inert_subscript(k):
+                return False
+        return True
+    return False
+
+def gen_iterabc_derived(self, c: str) -> bool:
+    # does class c (or a specialization's origin) derive from a class whose base was collections.abc's
+    # Iterator or Iterable (iter_abc), whose objects have ABCMeta's attributes too
+    while c in self.classes:
+        if c in self.iterabc or self.classes[c].origin in self.iterabc:
+            return True
+        c = self.classes[c].base
+    return False
+
+def subscript_tvars(n: Node, typevars: list[str], out: list[str]) -> None:
+    # the type variables that a base's subscript n names anywhere, in order of first appearance,
+    # as CPython's __parameters__ lists them (Iterator[set[T]]: T)
+    if n.kind == "name" and n.s in typevars and n.s not in out:
+        out.append(n.s)
+    for k in n.kids:
+        subscript_tvars(k, typevars, out)
 
 def gen_implicit_tparams(self, st: Node) -> list[str]:
     # class S(A[T], B), without Generic[...]: the type variables that its subscripted bases, of
@@ -895,10 +949,11 @@ def gen_abstract_of(self, c: str) -> list[str]:
     return sorted(out)
 
 def gen_abc_class(self, c: str) -> bool:
-    # does class c derive from abc.ABC, or from a class whose statement passes metaclass=ABCMeta
+    # does class c derive from abc.ABC, or from a class whose statement passes metaclass=ABCMeta,
+    # or whose base was collections.abc's Iterator or Iterable (iter_abc): ABCMeta makes it
     while c in self.classes:
-        if c == "abc$ABC" or c in self.abcmeta:
-            return True
+        if c == "abc$ABC" or c in self.abcmeta or c in self.iterabc or self.classes[c].origin in self.iterabc:
+            return True  # (collections.abc's Iterator and Iterable are ABCMeta's too: iter_abc)
         c = self.classes[c].base
     return False
 
@@ -967,6 +1022,17 @@ def gen_program(self, mods: list[Mod]) -> str:
                 gk = self.generic_traits(st)
                 self.tparams[st.s] = self.generic_base(st.kids[gk])
                 st.kids = [st.kids[j] for j in range(len(st.kids)) if j != gk]
+            elif st.kind == "subclass" and len(st.kids) == 2 and self.iter_abc(st) != "":
+                # class C(Iterator[T]) of typing or collections.abc, which defines the methods
+                # that abstract base requires (iter_abc): a class of its own, generic in the type
+                # variables its subscript names, as with Generic[T] (the base gives it nothing it
+                # uses; ABCMeta's attributes are rejected where reflection would show them)
+                m.body.kids[i] = st.kids[0]
+                self.iterabc[st.s] = True
+                tvs: list[str] = []
+                subscript_tvars(st.kids[1], self.typevars, tvs)
+                if len(tvs) > 0:
+                    self.tparams[st.s] = tvs
             elif st.kind == "subclass" and len(self.implicit_tparams(st)) > 0:
                 # class S(Visitor[T]): generic in the type variables that its bases' subscripts
                 # name, as with Generic[T] first (PEP 484), which generic_subclass passes on
