@@ -458,6 +458,23 @@ def gen_loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
         self.elsebrks = r
     return r
 
+def gen_decline(self, n: Node) -> Node:
+    # return NotImplemented of a comparison method (may_decline): the method declines its
+    # operand, and CPython then asks the other operand's method, or compares identities, or
+    # raises TypeError. It sets decl_flag's variable, which the comparison that called the
+    # method reads as it returns (concrete_cmp), and returns False: the statement this gives
+    # back, compiled in place of n. No code may run between the two, so a finally block that the
+    # return would run is rejected; and so is a call that takes the method's result as it is
+    # (call_fn), which would read False
+    for x in self.exits:
+        if x.kind == "finally":
+            self.err("return NotImplemented inside a try statement with a finally block, or a with statement, is not supported")
+    if self.curfn.plain != "":
+        self.err(f"{short(self.curfn.cls)}.{self.curfn.name}() returns NotImplemented, which only a comparison of objects (==, <, ...) reads: the call at {self.curfn.plain}, which takes its result as it is, is not supported")
+    self.curfn.declines = True
+    self.mstore('bool', 'true', self.decl_flag())
+    return mk("return", "", n.line, [mk("False", "", n.kids[0].line, [])])
+
 def gen_leave(self, depth: int) -> bool:
     # leaving the code inside exits[depth:] (break, continue, return, the end of a with block):
     # what each exit requires, innermost first, each in a block that the landing block around
@@ -791,6 +808,8 @@ def gen_stmt_main(self, n: Node) -> None:
     elif k == "return":
         if self.modlevel:
             self.err("'return' outside function")
+        if len(n.kids) == 1 and n.kids[0].kind == "name" and n.kids[0].s == "NotImplemented" and not self.bound("NotImplemented") and self.may_decline(self.curfn):
+            n = self.decline(n)
         if "?" in self.ret and self.qforward.get(self.curfn.ll, False) and len(n.kids) == 0:
             # Forwarding used to choose a concrete empty-result default at the
             # call. Preserve it when None needs a complete optional layout.
@@ -803,6 +822,9 @@ def gen_stmt_main(self, n: Node) -> None:
                 # Compiling the expression may have recursively called this
                 # instance and fixed its old void ABI, including via another function.
                 self.err(f"cannot infer what {short(self.curfn.name)}() returns: recursion already used None; annotate its return type")
+            if self.curfn.ret == "bool" and v.t != "bool" and v.t != "None":
+                # (a comparison method that calls itself before its first return: instance)
+                self.err(f"cannot infer what {short(self.curfn.name)}() returns: recursion already used bool; annotate its return type")
             if "?" in v.t and self.qforward.get(self.curfn.ll, False) and self.returned_none():
                 self.adopt(empty_result_type(v.t, self.curfn.rctx))
                 v = Val(v.v, self.ret)

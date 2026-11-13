@@ -121,7 +121,9 @@ def gen_load_name(self, name: str) -> Val:
         if name in self.owned and not self.appending:
             self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (what reads it may keep it: str_append)
         r = self.mem_load(Val(self.lreg[name], "*" + t)).v
-        if name == self.selfname and name not in self.compvars:
+        if (name == self.selfname or (name in self.curfn.nnp and self.may_decline(self.curfn))) and name not in self.compvars:
+            # (and, in a comparison method that may return NotImplemented, a parameter whose
+            # object is known not to be None, which it may pass on: to super().__eq__(other))
             self.nn[r] = True
         val = Val(r, t)
         if name in self.idbox and numeric_identity(t):

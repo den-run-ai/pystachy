@@ -1,0 +1,26 @@
+Outer.__eq__
+Inner.__eq__ -1
+Inner.__eq__ -1
+Inner.__eq__ 2
+True
+Outer.__eq__
+Inner.__eq__ -1
+Inner.__eq__ -1
+Inner.__eq__ 2
+False
+Outer.__eq__
+Inner.__eq__ -1
+Inner.__eq__ -1
+Inner.__eq__ 2
+True
+Outer.__lt__
+Inner.__eq__ -1
+Inner.__eq__ 4
+True
+Outer.__lt__
+Inner.__eq__ 4
+TypeError '<' not supported between instances of 'Outer' and 'Outer'
+Outer.__lt__
+Inner.__eq__ 4
+TypeError '<' not supported between instances of 'Outer' and 'Outer'
+[exit 0]
