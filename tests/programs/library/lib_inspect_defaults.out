@@ -1,0 +1,18 @@
+i i=42 <Parameter "i=42"> 42 42 int
+s s='text' <Parameter "s='text'"> text 'text' str
+f f=2.5 <Parameter "f=2.5"> 2.5 2.5 float
+b b=True <Parameter "b=True"> True True bool
+n n=None <Parameter "n=None"> None None NoneType
+t t=(1, 'one', None) <Parameter "t=(1, 'one', None)"> (1, 'one', None) (1, 'one', None) tuple
+big big=-9223372036854775765 <Parameter "big=-9223372036854775765"> -9223372036854775765 -9223372036854775765 int
+e e <Parameter "e"> <class 'inspect._empty'> <class 'inspect._empty'> no default
+f(*, i=42, s='text', f=2.5, b=True, n=None, t=(1, 'one', None), big=-9223372036854775765, e)
+u0=None None
+u1=7 int 8
+u2=3.0 float 6.0
+u3='sss' str SSS
+u4=True bool False
+(*, l=[1, 'two', 3.0], empty=[], d={'a': 1, 'b': None}, ints=[1, 2, 3], o=Point(7), c=<Color.RED: 1>)
+True True False True True False
+ints=[1, 2, 3, 4] o=Point(8) 4 two 1
+[exit 0]

@@ -1,0 +1,53 @@
+x <Parameter "x"> x POSITIONAL_ONLY <class 'inspect._empty'> <class 'inspect._empty'> True True
+y: 'int' <Parameter "y: 'int'"> int True
+x <Parameter "x"> x POSITIONAL_OR_KEYWORD <class 'inspect._empty'> <class 'inspect._empty'> True True
+y: 'int' <Parameter "y: 'int'"> int True
+*x <Parameter "*x"> x VAR_POSITIONAL <class 'inspect._empty'> <class 'inspect._empty'> True True
+*y: 'int' <Parameter "*y: 'int'"> int True
+x <Parameter "x"> x KEYWORD_ONLY <class 'inspect._empty'> <class 'inspect._empty'> True True
+y: 'int' <Parameter "y: 'int'"> int True
+**x <Parameter "**x"> x VAR_KEYWORD <class 'inspect._empty'> <class 'inspect._empty'> True True
+**y: 'int' <Parameter "**y: 'int'"> int True
+x=1 x: 'str' = 's' <Parameter "x=None"> n: None = 2.5
+x=1 x: 'str' = 's' <Parameter "x=None"> n: None = 2.5
+x=1 x: 'str' = 's' <Parameter "x=None"> n: None = 2.5
+ValueError: variadic positional parameters cannot have default values
+ValueError: variadic positional parameters cannot have default values
+ValueError: variadic keyword parameters cannot have default values
+ValueError: variadic keyword parameters cannot have default values
+a
+_
+_a1
+A9
+match
+type
+__x__
+ValueError: '1a' is not a valid parameter name
+ValueError: 'a b' is not a valid parameter name
+ValueError: 'a-b' is not a valid parameter name
+ValueError: 'a.b' is not a valid parameter name
+ValueError: 'class' is not a valid parameter name
+ValueError: 'None' is not a valid parameter name
+ValueError: 'import' is not a valid parameter name
+ValueError: ' a' is not a valid parameter name
+ValueError: 'a$' is not a valid parameter name
+ValueError: '$a' is not a valid parameter name
+ValueError: '.' is not a valid parameter name
+ValueError: '.x' is not a valid parameter name
+ValueError: '0' is not a valid parameter name
+class None=0
+IndexError: string index out of range
+implicit0 implicit0 POSITIONAL_ONLY implicit12=3
+ValueError: implicit arguments must be passed as positional or keyword arguments, not positional-only
+ValueError: implicit arguments must be passed as positional or keyword arguments, not keyword-only
+ValueError: implicit arguments must be passed as positional or keyword arguments, not variadic keyword
+TypeError: name must be a str, not a int
+TypeError: name must be a str, not a NoneType
+TypeError: name must be a str, not a list
+ValueError: name is a required attribute for Parameter
+ValueError: value None is not a valid Parameter.kind
+ValueError: value None is not a valid Parameter.kind
+ValueError: variadic keyword parameters cannot have default values
+AttributeError: property 'name' of 'Parameter' object has no setter
+x True True
+[exit 0]
