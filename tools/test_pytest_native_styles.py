@@ -863,6 +863,8 @@ def test_recwarn(recwarn):
 
 # Tests a native compiler rejects: each calls typed code in a way only CPython can run.
 UNCOMPILED = """
+import dis
+
 import pytest
 
 
@@ -908,22 +910,73 @@ class TestGroup:
 
 def test_end():
     assert twice(5) == 10
+
+
+def test_bytecode():
+    assert "RETURN_VALUE" in dis.opmap
 """
 UNCOMPILED_CASES = {"test_wrong_type", "test_values[1]", "test_values[one]", "test_values[3]",
-                    "TestGroup::test_missing_argument"}
+                    "TestGroup::test_missing_argument", "test_bytecode"}
 
 # A stand-in for the compiler that rejects a program whose test modules have a line with
 # REJECTED, naming the first as the compiler names a line, and otherwise runs it in CPython.
+# An import of such a name is a module or a name it lacks; a use of one that no import of the
+# file binds is an undefined name.
 REJECTING_COMPILER = """
-import pathlib, runpy, sys
+import pathlib, re, runpy, sys
 assert sys.argv[1] == "run"
 for file in sorted(pathlib.Path(sys.argv[2]).parent.glob("test_*.py")):
-    for number, line in enumerate(file.read_text().splitlines(), 1):
-        if "REJECTED" in line:
-            print(f"{file}:{number}: error: rejected (compiling f() for the call at {file}:{number})", file=sys.stderr)
-            sys.exit(1)
+    lines = file.read_text().splitlines()
+    imported = {name for line in lines if re.match(r"(import|from) ", line) for name in re.findall(r"REJECTED_\\w+", line)}
+    for number, line in enumerate(lines, 1):
+        found = re.search(r"REJECTED(_\\w+)?", line)
+        if not found:
+            continue
+        if line.startswith("import "):
+            reason = "module 'missing' is not supported"
+        elif line.startswith("from "):
+            reason = f"cannot import name '{found.group(0)}' from 'values'"
+        elif found.group(1) and found.group(0) not in imported:
+            reason = f"name '{found.group(0)}' is not defined"
+        else:
+            reason = f"rejected (compiling f() for the call at {file}:{number})"
+        print(f"{file}:{number}: error: {reason}", file=sys.stderr)
+        sys.exit(1)
 sys.argv = sys.argv[2:]
 runpy.run_path(sys.argv[0], run_name="__main__")
+"""
+
+# Imports the stand-in rejects: a module, and one name of a from-import's three.
+UNIMPORTED = """
+from __future__ import annotations
+
+import json as REJECTED_json
+import os.path
+from values import (
+    KEPT,
+    REJECTED_name,
+    other as renamed,
+)
+
+
+def test_uses_the_module():
+    assert REJECTED_json.dumps([1]) == "[1]"
+
+
+def test_uses_the_name():
+    assert REJECTED_name == 2
+
+
+def test_uses_the_others():
+    assert KEPT + renamed == 4 and os.path.basename("a/b") == "b"
+
+
+class TestGroup:
+    def test_method_uses_the_module(self):
+        assert REJECTED_json.loads("2") == 2
+
+    def test_kept(self):
+        assert KEPT == 1
 """
 
 REJECTED = """
@@ -1482,6 +1535,55 @@ class UncompiledTests(TemporarySuite):
         self.assertEqual((status, report["qualification"]), (2, "unverified"), error)
         self.assertEqual(len(report["results"][0]["uncompiled"]), 5)
 
+    def test_imports_the_compiler_cannot_make_are_left_out_with_their_users(self):
+        status, output, error, report = self.run_rejecting({
+            "values.py": "KEPT = 1\nREJECTED_name = 2\nother = 3\n", "test_imports.py": UNIMPORTED})
+        result = report["results"][0]
+        self.assertEqual(status, 2, error)
+        self.assertEqual(report["qualification"], "partly-compiled", error)
+        self.assertEqual([case.split("::", 1)[1] for case in result["cases"]],
+                         ["test_uses_the_others", "TestGroup::test_kept"])
+        # The module's import goes whole; the from-import loses the one name it lacks.
+        self.assertEqual(list(result["unimported"]), [
+            "4: import json as REJECTED_json",
+            "6: from values import ( KEPT, REJECTED_name, other as renamed, ) (REJECTED_name)"])
+        self.assertIn("error: module 'missing' is not supported", result["unimported"]["4: import json as REJECTED_json"])
+        self.assertEqual({case.split("::", 1)[1] for case in result["uncompiled"]},
+                         {"test_uses_the_module", "test_uses_the_name", "TestGroup::test_method_uses_the_module"})
+        # A test left out for such a name gives both diagnostics.
+        self.assertRegex(result["uncompiled"]["test_imports.py::test_uses_the_name"],
+                         r"error: name 'REJECTED_name' is not defined; its import was left out: "
+                         r"test_imports\.py:6 \[generated test_imports\.py:\d+\]: error: cannot import name")
+        self.assertIn("NOT IMPORTED test_imports.py:4: import json as REJECTED_json", output)
+        self.assertIn("2 passed, 3 not compiled, 2 imports left out", output)
+
+    def test_an_import_left_out_is_no_success_though_no_test_uses_it(self):
+        status, output, error, report = self.run_rejecting({"test_unused.py": textwrap.dedent("""
+            import json as REJECTED_json
+
+            def test_only():
+                assert True
+        """)})
+        self.assertEqual(status, 2, error)
+        self.assertEqual(report["qualification"], "partly-compiled")
+        self.assertEqual(report["results"][0]["cases"], ["test_unused.py::test_only"])
+        self.assertEqual(report["results"][0]["uncompiled"], {})
+        self.assertIn("1 passed, 1 import left out", output)
+        self.assertEqual(report["mismatches"], [])
+
+    def test_imports_that_are_not_left_out(self):
+        future = "from __future__ import annotations, REJECTED_x\n"
+        self.assertIsNone(runner.import_region(future, 1, "REJECTED_x"))
+        self.assertIsNone(runner.import_region("from values import *\n", 1))
+        self.assertIsNone(runner.import_region("try:\n    import x\nexcept ImportError:\n    pass\n", 2))
+        self.assertIsNone(runner.import_region("def f():\n    import x\n", 2))
+        self.assertEqual(runner.import_region("import a.b, c as d\n", 1), (1, 1, ["a", "d"], "pass"))
+        self.assertEqual(runner.import_region("from m import (a,\n  b as c)\n", 2, "b"), (1, 2, ["c"], "from m import a"))
+        # The only name of a from-import takes the statement with it.
+        self.assertEqual(runner.import_region("from m import a\n", 1, "a"), (1, 1, ["a"], "pass"))
+        self.assertEqual(runner.blanked("from m import (a,\n  b)\nx = 1\n", 1, 2, "from m import a"),
+                         "from m import a\n\nx = 1\n")
+
     def test_other_differences_are_still_differences(self):
         # The test left out is the one that made a later test pass under pytest.
         status, _, error, report = self.run_rejecting({"test_order.py": textwrap.dedent("""
@@ -1556,6 +1658,10 @@ class UncompiledTests(TemporarySuite):
                                  ["test_first", "TestGroup::test_fine", "TestGroup::test_last", "test_end"])
                 # The calls that led the compiler to the rejected line blame the test.
                 self.assertIn("compiling test_left.twice(str)", results[0].uncompiled["test_left.py::test_values[3]"])
+                # A module the compiler does not have: its import goes, then the test that uses it.
+                self.assertEqual(list(results[0].unimported), ["2: import dis"])
+                self.assertRegex(results[0].uncompiled["test_left.py::test_bytecode"],
+                                 "name 'dis' is not defined; its import was left out: .*module 'dis' is not supported")
                 self.assertTrue(results[0].assertion_operands)
 
 

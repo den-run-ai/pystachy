@@ -72,6 +72,10 @@ class Result:
     # compiler rejected their test, which the runner then left out (leave_out()). They
     # are not in cases, and a run that has any never succeeds.
     uncompiled: dict[str, str] = field(default_factory=dict)
+    # Imports of the test module that the compiler could not make and the runner left
+    # out, as "line: statement", each with the reason. The tests that use their names
+    # are in uncompiled; a run that has any never succeeds either.
+    unimported: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -726,11 +730,34 @@ def test_region(source: str, line: int, cases: list[str]) -> tuple[int, int] | N
     return None
 
 
-def blanked(source: str, first: int, last: int) -> str:
-    """source with lines first..last replaced by one `pass`, every other line where it was."""
+def import_region(source: str, line: int, name: str | None = None) -> tuple[int, int, list[str], str] | None:
+    """The module-level import statement a line of a test module is in, to leave out.
+
+    Returns its lines, the names that go, and what replaces it: `pass`, or the statement
+    without name where it is one of several that a from-import lists.
+    """
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError, RecursionError):
+        return None
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)) and node.lineno <= line <= node.end_lineno:
+            if isinstance(node, ast.ImportFrom) and (node.module == "__future__" or node.names[0].name == "*"):
+                return None
+            going = [alias for alias in node.names if alias.name == name]
+            if isinstance(node, ast.ImportFrom) and going and len(going) < len(node.names):
+                node.names = [alias for alias in node.names if alias.name != name]
+                return node.lineno, node.end_lineno, [alias.asname or alias.name for alias in going], ast.unparse(node)
+            return (node.lineno, node.end_lineno,
+                    [alias.asname or alias.name.split(".")[0] for alias in node.names], "pass")
+    return None
+
+
+def blanked(source: str, first: int, last: int, replacement: str = "pass") -> str:
+    """source with lines first..last replaced by one statement, every other line where it was."""
     lines = source.split("\n")
     indent = lines[first - 1][:len(lines[first - 1]) - len(lines[first - 1].lstrip())]
-    lines[first - 1:last] = [indent + "pass", *[""] * (last - first)]
+    lines[first - 1:last] = [indent + replacement, *[""] * (last - first)]
     return "\n".join(lines)
 
 
@@ -972,33 +999,74 @@ def run_suite(paths: list[Path], root: Path, work: Path, mode: str, compiler: li
         its file would make without that test, and each case this removes is recorded
         with the diagnostic. An error in no test (a module's own statement, a helper or a
         fixture that no call leads to from a test, the package under test) blames none.
+
+        Where the rejected line is an import statement of a test module itself (a module
+        the compiler does not have, a name it does not provide), the statement is left
+        out instead. The tests that use the names it binds are then rejected for those
+        names, and left out in their turn with the import's diagnostic beside their own.
         """
         text = value.stderr or value.stdout
         offset = len(tree.conftests)
-        for index, line in blamed_lines(text, {str(file): index
-                                               for index, file in enumerate(generated_files[offset:])}):
+        files = {str(file): index for index, file in enumerate(generated_files[offset:])}
+        reason = next((entry for entry in translate(text, sources_of(used)).splitlines() if "error:" in entry),
+                      text.strip())[:2000]
+
+        def without(path, first, last, replacement="pass"):
+            """The modules with those lines of a test module blanked, and what build() changed."""
+            kept = texts[path], [(result.cases, result.state, result.error) for result in results]
+            texts[path] = blanked(texts[path], first, last, replacement)
+            return build(True), kept
+
+        def restore(path, kept):
+            texts[path] = kept[0]
+            for result, (cases, state, error) in zip(results, kept[1]):
+                result.cases, result.state, result.error = cases, state, error
+
+        for index, line in blamed_lines(text, files):
             path = paths[index]
             original = original_line(used[offset + index], line)
             region = test_region(texts[path], original, results[index].cases) if original else None
             if region is None:
                 continue
-            kept = texts[path], [(result.cases, result.state, result.error) for result in results]
-            texts[path] = blanked(texts[path], *region)
-            rebuilt = build(True)
+            rebuilt, kept = without(path, *region)
             if rebuilt is None or all(set(result.cases) >= set(cases) for result, (cases, _, _) in zip(results, kept[1])):
                 # (What is left is not a module the runner collects, or has every case still.)
-                texts[path] = kept[0]
-                for result, (cases, state, error) in zip(results, kept[1]):
-                    result.cases, result.state, result.error = cases, state, error
+                restore(path, kept)
                 continue
-            reason = next((entry for entry in translate(text, sources_of(used)).splitlines() if "error:" in entry),
-                          text.strip())[:2000]
+            # A name whose import was left out: that import's diagnostic is the cause.
+            missing = re.search(r"error: name '(\w+)' is not defined", reason)
+            if missing and missing.group(1) in unimported:
+                reason += "; its import was left out: " + unimported[missing.group(1)]
             for result, (cases, _, _) in zip(results, kept[1]):
                 for case in cases:
                     if case not in result.cases:
                         result.uncompiled[case] = reason
             return rebuilt
+        own = re.search("(" + "|".join(re.escape(file) for file in sorted(files, key=len, reverse=True))
+                        + r"):(\d+): error:", text) if files else None
+        if own:
+            index = files[own.group(1)]
+            path = paths[index]
+            original = original_line(used[offset + index], int(own.group(2)))
+            # (One name of several, where the module lacks only that one.)
+            lacking = re.search(r"error: cannot import name '(\w+)' from ", reason)
+            region = import_region(texts[path], original, lacking.group(1) if lacking else None) if original else None
+            if region is not None:
+                first_line, last_line, names, replacement = region
+                statement = " ".join(line.strip() for line in texts[path].split("\n")[first_line - 1:last_line])
+                rebuilt, kept = without(path, first_line, last_line, replacement)
+                if rebuilt is None:
+                    restore(path, kept)
+                    return None
+                key = f"{first_line}: {statement}"
+                results[index].unimported[key + (f" ({', '.join(names)})" if replacement != "pass" else "")] = reason
+                for name in names:
+                    unimported[name] = reason
+                return rebuilt
         return None
+
+    # Names whose import statements were left out, with the diagnostics (leave_out).
+    unimported: dict[str, str] = {}
 
     status, value, used = attempts(instrumented)
     left = 0
@@ -1123,7 +1191,8 @@ def oracle(paths: list[Path], root: Path, work: Path, python: str, timeout: floa
                 "stdout": ran.stdout if ran is not None else "", "stderr": stderr}
 
 
-UNCOMPILED = "the native program does not have every case: the compiler rejected tests, which the runner left out"
+UNCOMPILED = ("the native program is not all of the suite: the compiler rejected tests or imports of the test "
+              "modules, which the runner left out")
 
 
 def compare(results: list[Result], reference: dict) -> list[str]:
@@ -1133,6 +1202,7 @@ def compare(results: list[Result], reference: dict) -> list[str]:
         return ["oracle: " + reference["error"]]
     errors = []
     left = {case for result in results for case in result.uncompiled}
+    unimported = any(result.unimported for result in results)
     cases = [case for result in results for case in result.cases]
     if cases != [case for case in reference["cases"] if case not in left] or not left <= set(reference["cases"]):
         errors.append("collected test IDs/order differ from pytest")
@@ -1147,7 +1217,7 @@ def compare(results: list[Result], reference: dict) -> list[str]:
         errors.append("setup/call/teardown outcomes differ from pytest")
     if any(result.state not in {"passed", "test-failed", "empty"} for result in results):
         errors.append("native collection/build/execution did not complete")
-    if left:
+    if left or unimported:
         errors.append(UNCOMPILED)
     return errors
 
@@ -1269,7 +1339,8 @@ def execute(args) -> int:
     differences = compare(results, reference) if reference is not None else []
     mismatches = outcome_differences(results, reference) if reference is not None else []
     uncompiled = sum(len(result.uncompiled) for result in results)
-    if (differences or uncompiled
+    unimported = sum(len(result.unimported) for result in results)
+    if (differences or uncompiled or unimported
             or any(result.state in {"collection-error", "compile-error", "execution-error"} for result in results)):
         status = 2
     elif not any(result.cases for result in results):
@@ -1295,6 +1366,9 @@ def execute(args) -> int:
         reasons: dict[str, list[str]] = {}
         for case, reason in result.uncompiled.items():
             reasons.setdefault(reason, []).append(case)
+        for statement, reason in result.unimported.items():
+            print(f"NOT IMPORTED {result.path}:{statement}")
+            print(textwrap.indent(clipped(reason), "    "))
         for reason, cases in reasons.items():
             for case in cases:
                 print(f"NOT COMPILED {case}")
@@ -1336,6 +1410,8 @@ def execute(args) -> int:
                                      "subtests skipped") if counts.get(name))
     if uncompiled:
         summary += (", " if summary else "") + f"{uncompiled} not compiled"
+    if unimported:
+        summary += (", " if summary else "") + f"{unimported} import{'s' if unimported > 1 else ''} left out"
     if summary:
         verdict = ("; UNVERIFIED" if not args.compare else "" if differences == [UNCOMPILED]
                    else "; pytest comparison failed" if differences or reference is None else "")

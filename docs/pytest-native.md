@@ -99,13 +99,21 @@ NOT COMPILED tests/test_api.py::test_rejects_text[one]
     tests/test_api.py:20 [generated test_api.py:19]: error: expected int, got str
 ```
 
-Such a run exits with 2, never 0: pytest ran cases that the program does not have.
-Its `qualification` is `partly-compiled` when everything that compiled matches
-pytest, and a test that needed the missing one's side effects shows as a
-`MISMATCH`. An error that no test explains fails the build as before: a module's
-own statements, a fixture, a helper that no call leads to from a test, or the
-package under test. So does a test named by a node ID. No test runs twice, because
-a program whose build fails has not started.
+An import statement of a test module that the compiler cannot make is left out in
+the same way: `import pickle`, for a module Pystachy does not have, or the one name
+of `from functools import reduce, total_ordering` that its module lacks. The tests
+that use the name are then rejected for it and left out in their turn, with both
+diagnostics; the rest of the module runs. The statement is printed as
+`NOT IMPORTED` and listed in the JSON's `unimported`.
+
+Such a run exits with 2, never 0: pytest ran cases, or an import, that the program
+does not have. Its `qualification` is `partly-compiled` when everything that
+compiled matches pytest, and a test that needed the side effects of something left
+out shows as a `MISMATCH`. An error that neither a test nor such an import explains
+fails the build as before: a module's other statements, a fixture, a helper that no
+call leads to from a test, a `conftest.py`, or the package under test. So does a
+test named by a node ID. No test runs twice, because a program whose build fails
+has not started.
 
 `--root` defaults to the current directory, and selected files must be inside it.
 Tests may be in several directories and in packages. The generated program mirrors
@@ -403,7 +411,7 @@ pytest. Missing cases, missing call phases, duplicate events, interrupted runs,
 malformed reports and disagreement with process status are execution errors.
 Test stdout cannot impersonate the report protocol. Exit codes are 0 for success,
 1 for test failures, 2 for collection/build/execution/oracle errors and for cases
-[left out](#run-a-suite) because they do not compile, and 5 for no
+or imports [left out](#run-a-suite) because they do not compile, and 5 for no
 tests. A matching intentionally failing suite still returns 1.
 
 ```sh
