@@ -1098,6 +1098,8 @@ from src.pystachy_compiler.program import (
     gen_template_fix as program_template_fix,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
+    gen_fixed_ann as program_fixed_ann,
+    gen_init_makes_tmpl as program_init_makes_tmpl,
     gen_objects as program_objects,
     gen_partly as program_partly,
     gen_path_of as program_path_of,
@@ -3729,14 +3731,20 @@ class Gen:
     def derives(self, c: str, base: str) -> bool:
         return program_derives(self, c, base)
 
-    def init_template(self, st: Node) -> bool:
-        return program_init_template(self, st)
+    def init_template(self, st: Node, hier: bool = False) -> bool:
+        return program_init_template(self, st, hier)
 
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)
 
     def makes_tmpl(self, n: Node) -> bool:
         return program_makes_tmpl(self, n)
+
+    def fixed_ann(self, a: Node) -> bool:
+        return program_fixed_ann(self, a)
+
+    def init_makes_tmpl(self, n: Node, me: str, fixed: dict[str, bool]) -> bool:
+        return program_init_makes_tmpl(self, n, me, fixed)
 
     def tmpl_ann(self, a: Node) -> bool:
         return program_tmpl_ann(self, a)
