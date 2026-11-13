@@ -12,10 +12,15 @@ The machine is a shared 4-vCPU Xeon at 2.1 GHz with AVX2.
 | Rust extension 0.13.1 under CPython | 0.1015 s | 1 | not counted |
 | Port at `e84dab75`, compiled ahead of time | 0.264 s | 2.60 | 1.949 G |
 | Port at `13ab65ce` | 0.208 s | 2.05 | 1.621 G |
+| Port at `269eec3e` | 0.188 s | 1.88 | 1.540 G |
 
-`13ab65ce` is byte for byte the extension on mypy and mypyc (seven option sets), CPython's `Lib/`
-(two), this repository's `tests/` and `lib/`, 4,000 damaged sources and 405 type strings; its 9
-test checks pass in JIT/AOT, hosted and GC-stressed.
+The first three rows were timed together and the last in a later run, in which the first build
+again took 0.264 s and the extension 0.100 s.
+
+`269eec3e` is byte for byte the extension on mypy and mypyc (seven option sets), CPython's `Lib/`
+(two), this repository's `tests/` and `lib/`, 6,000 damaged sources and 405 type strings; its 9
+test checks pass in JIT/AOT, hosted and GC-stressed, with the six make gates and the `opt-in`
+verify group.
 
 ## What the first profile showed
 
@@ -40,6 +45,8 @@ source. Collection itself is cheap: 12 ms of 270.
 - `int_()` no longer recurses.
 - `LineIndex.line_of()` tries the line found last and the next one before searching.
 - The parser kept a fourth token array, of flags, that nothing read.
+- `parse_name()` and `parse_attribute_expression()` made an identifier node only to copy it into
+  the node they return (`269eec3e`): 5% of the instructions, and one collection in ten.
 
 ## What was tried and did not help
 
