@@ -993,6 +993,11 @@ def gen_join(self, a: str, b: str) -> str:
         # dynamic Any keeps the Any values it makes of them, whose calls run their
         # constructors, unless one is typed so)
         return "type[object]" if clsof(a) == "object" or clsof(b) == "object" or not self.dyn_policy(self.line) else ""
+    if (is_clsval(a) or self.refl_builtin_class(a) != "") and (is_clsval(b) or self.refl_builtin_class(b) != ""):
+        # (builtin classes named, int and str, or one and an ordinary class's class object: any
+        # class's. A module that opts in to dynamic Any keeps the Any values it makes of them
+        # unless a class object is typed so)
+        return "type[object]" if a == "type[object]" or b == "type[object]" or not self.dyn_policy(self.line) else ""
     if a == "None" or b == "None":
         return self.optional(b if a == "None" else a)
     if is_opt(a) or is_opt(b):

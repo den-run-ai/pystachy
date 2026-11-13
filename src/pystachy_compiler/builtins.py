@@ -1,6 +1,6 @@
 """Builtins component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
-from src.pystachy_compiler.utils import is_union, umembers
+from src.pystachy_compiler.utils import clsof, is_union, umembers
 from src.pystachy_compiler.diagnostics import int_lists
 from src.pystachy_compiler.ir import Data, Ins, IterArg, Loop, Reduce, Val
 from src.pystachy_compiler.lexer import Lexer, codepoint, utf8len
@@ -516,6 +516,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         hasharg = self.expr(args[0], "")
         if self.dyn_policy(self.line) and self.refl_builtin_class(hasharg.t) != "":
             hasharg = self.dyn_box(hasharg)
+        elif self.refl_builtin_class(hasharg.t) != "":
+            hasharg = self.class_value_builtin(hasharg)  # (a builtin class named: its class object)
         return self.hash_value(hasharg)
     if name == "format" and 1 <= len(args) <= 2 and len([a for a in args if a.kind == "kw"]) == 0:
         # format(v, spec): what the f-string field {v:spec} gives, v.__format__(spec)
@@ -556,7 +558,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.err(f"unsupported call type({tv.t}): type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
         if self.class_value_named(tv.t) or (is_union(unopt(tv.t)) and self.class_value_objects(tv.t)):
             return self.class_value_of(tv, self.knownobj(args[0]))  # (an object's class: its class object, class_values.py)
-        self.err("type(x) as a value (a class object) is supported for objects of the program's classes (#7); of other values, type(x).__name__, x.__class__.__name__, type(x) is C and type(a) == type(b) are (#486)")
+        return self.class_value_type(tv, self.knownobj(args[0]))  # (another value's: its builtin class's)
     if name == "callable" and len(args) == 1 and args[0].kind != "kw" and args[0].kind != "starred":
         # decided by the static type: an object is callable where its class defines __call__
         # and it is not None
@@ -653,7 +655,7 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             # class object type() gives of an exception that is None)
             return self.ptr_cmp('!=', v, self.exc_none_class())
         return self.exc_isinst(Val(v.v, "exc"), args[1])
-    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[0].kind != "starred" and args[1].kind != "starred" and self.class_value_holds(self.dry(args[0])):
+    if name == "issubclass" and len(args) == 2 and args[0].kind != "kw" and args[1].kind != "kw" and args[0].kind != "starred" and args[1].kind != "starred" and (self.class_value_holds(self.dry(args[0])) or (self.refl_builtin_class(self.dry(args[0])) != "" and not self.puretype(args[1], False))):
         # issubclass(t, c) of an ordinary class's class object t, c no exception class
         # (class_values.py)
         return self.class_value_issub(self.expr(args[0], ""), args[1])
@@ -703,7 +705,9 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
                     # (type(x) of a union's object in a module that opts in to dynamic Any: the
                     # class value of an ordinary class, as its class object)
                     clsv = self.class_value_unbox(clsv, "type[object]")
-                if self.class_value_named(v.t) or v.t == "None" or is_union(unopt(v.t)):
+                if self.class_value_named(v.t) or v.t == "None" or is_union(unopt(v.t)) or clsof(unopt(clsv.t)) == "object":
+                    # (any class's class object may be a builtin class's, which a value that is
+                    # no object of the program is an instance of)
                     return self.class_value_isinst(v, clsv, self.knownobj(args[0]))
                 self.unwrap(clsv, "TypeError: isinstance() arg 2 must be a type, a tuple of types, or a union")
                 return Val("false", "bool")
@@ -866,6 +870,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             self.key_check(keyv, f"{name}()")
     if len(vals) == 1 and len(kws) == 0 and name in ["str", "repr", "bool", "id"] and self.dyn_policy(self.line) and self.refl_builtin_class(vals[0].t) != "":
         vals[0] = self.dyn_box(vals[0])
+    elif len(vals) == 1 and len(kws) == 0 and (name == "str" or name == "repr") and self.refl_builtin_class(vals[0].t) != "":
+        vals[0] = self.class_value_builtin(vals[0])  # (a builtin class named: its class object)
     if len(vals) == 1 and len(kws) == 0 and vals[0].t == "dyn" and name in ["len", "str", "repr", "int", "float", "bool", "id", "abs"]:
         return self.dyn_builtin(name, vals[0])  # (by its box's type: dynamic.py)
     if name == "sum" and len(kws) == 0 and 1 <= len(vals) <= 2 and (vals[0].t == "dyn" or vals[0].t == "list[dyn]" or (len(vals) == 2 and vals[1].t == "dyn")):
