@@ -251,7 +251,6 @@ class Parser:
         self.tok_kind: list[int] = []
         self.tok_start: list[int] = []
         self.tok_end: list[int] = []
-        self.tok_flags: list[int] = []
         self.err_start: list[int] = []
         self.err_end: list[int] = []
         self.err_msg: list[str] = []
@@ -272,7 +271,6 @@ class Parser:
                 self.tok_kind.append(k)
                 self.tok_start.append(lx.start)
                 self.tok_end.append(lx.end)
-                self.tok_flags.append(lx.flags)
                 continue
             break
 
@@ -321,7 +319,6 @@ class Parser:
         self.tok_kind.append(kind)
         self.tok_start.append(lx.start)
         self.tok_end.append(lx.end)
-        self.tok_flags.append(lx.flags)
         self.do_bump_lexer()
         self.token_id += 1
 
@@ -391,7 +388,6 @@ class Parser:
         del self.tok_kind[cp.ntokens:]
         del self.tok_start[cp.ntokens:]
         del self.tok_end[cp.ntokens:]
-        del self.tok_flags[cp.ntokens:]
         del self.err_start[cp.nerrors:]
         del self.err_end[cp.nerrors:]
         del self.err_msg[cp.nerrors:]
@@ -416,7 +412,6 @@ class Parser:
         del self.tok_kind[nl_index:]
         del self.tok_start[nl_index:]
         del self.tok_end[nl_index:]
-        del self.tok_flags[nl_index:]
         # (TokenSource::bump: the trivia token is kept, the parser's position does not move)
         lx = self.lexer
         k = lx.kind
@@ -424,7 +419,6 @@ class Parser:
             self.tok_kind.append(k)
             self.tok_start.append(lx.start)
             self.tok_end.append(lx.end)
-            self.tok_flags.append(lx.flags)
             self.do_bump_lexer()
 
     def finish_tokens(self) -> None:
@@ -434,7 +428,6 @@ class Parser:
             self.tok_kind.pop()
             self.tok_start.pop()
             self.tok_end.pop()
-            self.tok_flags.pop()
         lx = self.lexer
         if len(lx.err_start) == 0:
             return

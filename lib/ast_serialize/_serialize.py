@@ -148,6 +148,11 @@ TC_FUNCTION = 1
 TC_INVALID = 2
 
 BYTE: list[bytes] = [bytes([b]) for b in range(256)]
+# The serializer's pending bytes (Serializer.buf) start with room for BUF_FIRST and grow to
+# BUF_MAX; bytes values of up to RAW_INLINE bytes are copied into them
+BUF_FIRST = 64
+BUF_MAX = 4096
+RAW_INLINE = 32
 OPERATOR_TEXT: list[bytes] = [b"+", b"-", b"*", b"@", b"/", b"%", b"**", b"<<", b">>", b"|", b"^", b"&", b"//"]
 
 
@@ -207,6 +212,7 @@ class LineIndex:
             starts.append(p + 1)
             p = text.find(b"\n", p + 1)
         self.starts: list[int] = starts
+        self.hint = 0  # the index of the line that line_of() found last: offsets come mostly in order
         self.ascii: bool = is_ascii(text)
         self.bom: bool = len(text) >= 3 and text[0] == 0xEF and text[1] == 0xBB and text[2] == 0xBF
         # str::lines(): a line per newline, but no empty last line after a final newline
@@ -221,16 +227,28 @@ class LineIndex:
                 self.non_ascii_lines.append(not is_ascii(text[s:e]))
 
     def line_of(self, offset: int) -> int:
-        # 1-based line of offset (binary search of the line starts)
+        # 1-based line of offset: the line found last or the next one, else a binary search of
+        # the line starts on the side of that line where the offset lies
         starts = self.starts
+        n = len(starts)
+        h = self.hint
         lo = 0
-        hi = len(starts)
+        hi = h
+        if starts[h] <= offset:
+            if h + 1 == n or offset < starts[h + 1]:
+                return h + 1
+            if h + 2 == n or offset < starts[h + 2]:
+                self.hint = h + 1
+                return h + 2
+            lo = h + 3
+            hi = n
         while lo < hi:
             mid = (lo + hi) // 2
             if starts[mid] <= offset:
                 lo = mid + 1
             else:
                 hi = mid
+        self.hint = lo - 1 if lo > 0 else 0
         return lo
 
     def line_start(self, line: int) -> int:
@@ -280,7 +298,10 @@ def count_chars(text: bytes, start: int, end: int) -> int:
 class Serializer:
     def __init__(self, text: bytes, li: LineIndex, options: Options, skip_function_bodies: bool,
                  tokens: Parser | None, type_comments: dict[int, TypeComment]) -> None:
-        self.out: list[bytes] = []
+        self.out: list[bytes] = []  # the chunks written so far
+        self.buf: list[int] = [0] * BUF_FIRST  # the bytes after them, n of them (put())
+        self.cap: int = BUF_FIRST
+        self.n = 0
         self.imports: list[ImportInfo] = []
         self.text: bytes = text
         self.li: LineIndex = li
@@ -308,60 +329,119 @@ class Serializer:
         self.o_end_col = 0
 
     # -- primitives
+    # The output is a list of chunks that getvalue() joins. Tags and ints are single bytes
+    # mostly, so they are not chunks of their own: they are stored in buf, a list of cap ints
+    # of which the first n are pending, and flush() makes one chunk of those. A writer asks
+    # room() for the bytes it is about to store, then stores them without further tests.
+    def room(self, k: int) -> int:
+        # the index at which the next byte goes, with room for k bytes (k <= cap)
+        if self.n + k > self.cap:
+            self.flush()
+            if self.cap < BUF_MAX:
+                self.cap *= 4
+                self.buf = [0] * self.cap
+        return self.n
+
+    def flush(self) -> None:
+        n = self.n
+        if n > 0:
+            # a nearly full list is converted whole and the bytes cut to n (a slice of the list
+            # would be eight times its bytes); of a nearly empty one, only its slice
+            if n * 2 >= self.cap:
+                self.out.append(bytes(self.buf)[:n])
+            else:
+                self.out.append(bytes(self.buf[:n]))
+            self.n = 0
+
+    def put(self, x: int) -> None:
+        n = self.room(1)
+        self.buf[n] = x
+        self.n = n + 1
+
+    def raw(self, b: bytes) -> None:
+        # the bytes of b as they are: a short one through buf, a long one as a chunk
+        k = len(b)
+        if k <= RAW_INLINE or k * 8 <= self.cap:
+            n = self.room(k)
+            buf = self.buf
+            for i in range(k):
+                buf[n + i] = b[i]
+            self.n = n + k
+        else:
+            self.flush()
+            self.out.append(b)
+
     def tag(self, t: int) -> None:
-        self.out.append(BYTE[t])
+        n = self.room(1)
+        self.buf[n] = t
+        self.n = n + 1
 
     def end(self) -> None:
-        self.out.append(BYTE[TAG_END])
+        n = self.room(1)
+        self.buf[n] = TAG_END
+        self.n = n + 1
 
     def int_(self, i: int) -> None:
-        out = self.out
+        n = self.room(10)
+        buf = self.buf
         if -10 <= i < 118:
-            out.append(BYTE[(i + 10) << 1])
+            buf[n] = (i + 10) << 1
+            self.n = n + 1
         elif -100 <= i <= 16283:
             x = ((i + 100) << 2) | 1
-            out.append(bytes([x & 255, x >> 8]))
+            buf[n] = x & 255
+            buf[n + 1] = x >> 8
+            self.n = n + 2
         elif -10000 <= i <= 536860911:
             x = ((i + 10000) << 3) | 3
-            out.append(bytes([x & 255, (x >> 8) & 255, (x >> 16) & 255, x >> 24]))
+            buf[n] = x & 255
+            buf[n + 1] = (x >> 8) & 255
+            buf[n + 2] = (x >> 16) & 255
+            buf[n + 3] = x >> 24
+            self.n = n + 4
         else:
-            out.append(BYTE[15])
+            # 15, then the length and sign as a short int (at most 8 bytes, so one byte: no
+            # call of int_() from itself, which would keep it from being inlined), then the bytes
             neg = i < 0
             v = -i if neg else i
-            bs: list[int] = []
+            m = n + 2
             while v > 0:
-                bs.append(v & 255)
+                buf[m] = v & 255
+                m += 1
                 v >>= 8
-            if len(bs) == 0:
-                bs.append(0)
-            self.int_((len(bs) << 1) | (1 if neg else 0))
-            out.append(bytes(bs))
+            if m == n + 2:
+                buf[m] = 0
+                m += 1
+            buf[n] = 15
+            buf[n + 1] = ((((m - n - 2) << 1) | (1 if neg else 0)) + 10) << 1
+            self.n = m
 
     def tagged_int(self, i: int) -> None:
-        self.out.append(BYTE[TAG_LITERAL_INT])
+        self.put(TAG_LITERAL_INT)
         self.int_(i)
 
     def str_(self, b: bytes) -> None:
-        self.out.append(BYTE[TAG_LITERAL_STR])
+        self.put(TAG_LITERAL_STR)
         self.int_(len(b))
-        self.out.append(b)
+        self.raw(b)
 
     def bool_(self, b: bool) -> None:
-        self.out.append(BYTE[1] if b else BYTE[0])
+        self.put(1 if b else 0)
 
     def none(self) -> None:
-        self.out.append(BYTE[TAG_LITERAL_NONE])
+        self.put(TAG_LITERAL_NONE)
 
     def float_(self, f: float) -> None:
-        self.out.append(BYTE[TAG_LITERAL_FLOAT])
-        self.out.append(struct.pack("<d", f))
+        self.put(TAG_LITERAL_FLOAT)
+        self.raw(struct.pack("<d", f))
 
     def getvalue(self) -> bytes:
+        self.flush()
         return b"".join(self.out)
 
     # -- locations
     def location(self, start: int, end: int) -> None:
-        self.out.append(BYTE[TAG_LOCATION])
+        self.put(TAG_LOCATION)
         if self.override:
             self.int_(self.o_line)
             self.int_(self.o_col)
@@ -1061,11 +1141,11 @@ class Serializer:
             total = 0
             for part in e.xs:
                 total += len(part.s)
-            self.out.append(BYTE[TAG_LITERAL_STR])
+            self.put(TAG_LITERAL_STR)
             self.int_(total)
             self.has_surrogates = False
             for part in e.xs:
-                self.out.append(part.s)
+                self.raw(part.s)
                 self.check_surrogate_codepoint(part)
             if self.cv >= CV_UNICODE_SURROGATE:
                 self.bool_(self.has_surrogates)
@@ -1546,10 +1626,10 @@ class Serializer:
                         total = 0
                         for part in key.xs:
                             total += len(part.s)
-                        self.out.append(BYTE[TAG_LITERAL_STR])
+                        self.put(TAG_LITERAL_STR)
                         self.int_(total)
                         for part in key.xs:
-                            self.out.append(part.s)
+                            self.raw(part.s)
                     else:
                         self.none()
                 self.tag(TAG_LIST_GEN)
