@@ -832,7 +832,7 @@ class Parser:
     def bump_name(self) -> bytes:
         text = self.cur_text()
         if self.lexer.flags & F_NON_ASCII_NAME:
-            text = unicodedata.normalize("NFKC", text.decode()).encode()
+            text = nfkc(text)
         self.bump(T_NAME)
         return text
 
@@ -3307,6 +3307,25 @@ class Parser:
         n.xs = patterns
         n.ys = keywords
         return n
+
+
+# The identifier characters whose NFKC (unicode-normalization 0.1.25, Unicode 16 and 17) differs
+# from CPython 3.13's (Unicode 15.1): compatibility decompositions of characters added since
+NFKC_EXTRA: dict[str, str] = {
+    "\ua7f1": "S", "\U0001ccf0": "0", "\U0001ccf1": "1", "\U0001ccf2": "2", "\U0001ccf3": "3",
+    "\U0001ccf4": "4", "\U0001ccf5": "5", "\U0001ccf6": "6", "\U0001ccf7": "7", "\U0001ccf8": "8",
+    "\U0001ccf9": "9",
+}
+
+
+def nfkc(name: bytes) -> bytes:
+    text = name.decode()
+    if name.find(b"\xea\x9f\xb1") >= 0 or name.find(b"\xf0\x9c\xb3") >= 0:
+        out: list[str] = []
+        for ch in text:
+            out.append(NFKC_EXTRA.get(ch, ch))
+        text = "".join(out)
+    return unicodedata.normalize("NFKC", text).encode()
 
 
 class ParserCheckpoint:
