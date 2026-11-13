@@ -568,7 +568,11 @@ str indexing and slice bounds call a boxed index object's `__index__`; list assi
 deletion do too. Dictionary keys and user-defined `__getitem__` arguments retain the original
 object. A typed list, str, tuple or bytes takes an `Any` index by the same protocol, and so
 does `range()`: an `int`, a `bool` or an object's `__index__()`, with CPython's `TypeError`
-for any other value (`tests/programs/inference/dynany_index_typed_sequences.py`). No
+for any other value (`tests/programs/inference/dynany_index_typed_sequences.py`). The
+integer arguments of typed list, tuple and str methods (`xs.pop(i)`, `xs.insert(i, x)`,
+the bounds of `index()`, `find()` and `count()`, a width or a count) and `enumerate()`'s
+start take an `Any` value so too, once every argument is evaluated; `None` is a str
+method's omitted bound (`tests/programs/inference/dynany_index_method_args.py`). No
 annotation is checked there, unlike at a typed parameter. Slicing accepts dynamic bounds: after evaluating every bound and validating
 the receiver, it converts step, start and stop in that order. A dict hashes a slice
 key before raising its `KeyError`. Slice conversion preserves these rules

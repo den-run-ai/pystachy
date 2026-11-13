@@ -542,6 +542,7 @@ from src.pystachy_compiler.conversions import (
     gen_as_float as conversions_as_float,
     gen_as_int as conversions_as_int,
     gen_index_of as conversions_index_of,
+    gen_method_index as conversions_method_index,
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
     gen_floats as conversions_floats,
@@ -2763,6 +2764,9 @@ class Gen:
 
     def index_of(self, v: Val, none: str) -> Val:
         return conversions_index_of(self, v, none)
+
+    def method_index(self, v: Val, dflt: str, none: str) -> Val:
+        return conversions_method_index(self, v, dflt, none)
 
     def as_float(self, v: Val) -> Val:
         return conversions_as_float(self, v)
