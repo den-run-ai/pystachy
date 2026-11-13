@@ -1,0 +1,15 @@
+1	umap_core_stacklg	1.570
+1	umap_core_stacklg2	0.931
+1	numba:strict	0.759
+2	umap_core_stacklg2	0.895
+2	numba:strict	0.753
+2	umap_core_stacklg	1.632
+3	numba:strict	0.751
+3	umap_core_stacklg	1.561
+3	umap_core_stacklg2	0.917
+4	umap_core_stacklg	1.696
+4	umap_core_stacklg2	0.899
+4	numba:strict	0.679
+5	umap_core_stacklg2	1.053
+5	numba:strict	0.777
+5	umap_core_stacklg	1.766

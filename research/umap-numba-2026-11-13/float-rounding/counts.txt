@@ -1,0 +1,41 @@
+bench_dictcount libm:
+bench_dictkeys libm:
+bench_dictlookup libm:
+bench_fib libm:
+bench_itertools_loops libm:
+bench_json_records libm:
+bench_list_reads libm:
+bench_listindex libm:
+bench_mandel libm:
+bench_memo libm:
+bench_nbody libm:
+bench_optional_scalars libm:
+bench_setdisplay libm:
+bench_sieve libm:
+bench_spectral libm:
+bench_words libm:
+bench_pyperformance_barnes_hut libm: sin=340 cos=200
+bench_pyperformance_bm_logging libm:
+bench_pyperformance_bpe_tokeniser libm:
+bench_pyperformance_chaos libm: pow=53991 trunc=12995
+bench_pyperformance_comprehensions libm:
+bench_pyperformance_fannkuch libm:
+bench_pyperformance_float libm: sin=100000 cos=100000
+bench_pyperformance_generators libm:
+bench_pyperformance_go libm: log=13812
+bench_pyperformance_hexiom libm:
+bench_pyperformance_json_dumps libm:
+bench_pyperformance_json_loads libm: pow=1
+bench_pyperformance_meteor_contest libm:
+bench_pyperformance_nbody libm: pow=200030
+bench_pyperformance_nqueens libm:
+bench_pyperformance_pidigits libm:
+bench_pyperformance_raytrace libm: tan=1
+bench_pyperformance_regex_dna libm: trunc=1 fmod=800000
+bench_pyperformance_regex_effbot libm:
+bench_pyperformance_regex_v8 libm:
+bench_pyperformance_richards libm:
+bench_pyperformance_richards_super libm:
+bench_pyperformance_scimark libm: fmod=51 sin=2000
+bench_pyperformance_spectral_norm libm:
+bench_pyperformance_unpack_sequence libm:
