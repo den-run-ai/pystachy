@@ -2116,6 +2116,24 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         # Both value and spec run once, before the selected native member formats
         # or raises. A nonempty spec is legal for some members and not for others.
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        if COMPLEXC in umembers(unopt(v.t)):
+            # (a complex number formats by its class's __format__, which runtime.c's pys_format does
+            # not call: chosen by its tag first)
+            hit = self.label()
+            other = self.label()
+            done = self.label()
+            ph = Ins("phi", "str", "")
+            self.cbr(self.utest(v, [COMPLEXC], is_opt(v.t)), hit, other)
+            self.place(hit)
+            text = self.call_fn(self.classes[COMPLEXC].methods["__format__"], [self.uget(Val(v.v, unopt(v.t)), COMPLEXC), sv], [], direct=True)
+            self.incoming(ph, text.v, self.cur)
+            self.br(done)
+            self.place(other)
+            text = Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}", f"ptr {sv.v}"]), "str")
+            self.incoming(ph, text.v, self.cur)
+            self.br(done)
+            self.place(done)
+            return Val(self.phi(ph), "str")
         return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}", f"ptr {sv.v}"]), "str")
     if v.t == "None":
         if spec.kind == "str":
@@ -3583,7 +3601,10 @@ def gen_unary(self, n: Node) -> Val:
     m = UNARY[op]
     if v.t in self.classes and m in self.classes[v.t].methods:
         self.notnone(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
-        return self.call_fn(self.classes[v.t].methods[m], [v], [])
+        r = self.call_fn(self.classes[v.t].methods[m], [v], [])
+        if v.t == COMPLEXC:
+            self.nn[r.v] = True  # (lib's __neg__ makes an object, its __pos__ returns the one it got)
+        return r
     if v.infer_from != "":
         self.err(f"cannot infer what {v.infer_from}() returns: its recursive return type is unresolved; annotate its return type")
     self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")
@@ -4548,6 +4569,62 @@ def gen_complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val
         eq = self.scalar('and', [Val(self.num_cmp('==', cp[1], zero).v, 'bool'), Val(self.cmp2("==", cp[0], self.as_int(o) if o.t == "bool" else o).v, 'bool')])
     return Val(eq, "bool") if op == "==" else Val(self.scalar('xor', [Val(eq, 'bool'), Val('true', 'bool')]), "bool")
 
+def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
+    # a == b or a != b where a union is one side and a complex number, or a union holding one, is
+    # either side; runtime.c's union descriptors compare no complex member (1 == 1+0j across
+    # members). The union's members are chosen by the tag, None first: each value compared with
+    # the other side by cmp2 (complex_cmp, or this again for another union), but where their kinds
+    # differ (a str, a number, None), which no value of the other kind equals in CPython
+    v = a if is_union(unopt(a.t)) else b
+    o = b if v is a else a
+    # (a class's union, complex | C, is a null box where it is None, as a union | None's is)
+    members = (["None"] if is_opt(v.t) or (self.reference_union(v.t) and v.v not in self.nn) else []) + umembers(unopt(v.t))
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    for i in range(len(members)):
+        m = members[i]
+        hit = self.label()
+        miss = self.label() if i + 1 < len(members) else ""
+        if miss == "":
+            self.br(hit)
+        elif m == "None":
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, hit, miss)
+        else:
+            self.cbr(self.utest(v, [m], False), hit, miss)
+        self.place(hit)
+        r = ""
+        km = eq_kind(m)
+        ko = eq_kind(o.t)
+        if not is_union(unopt(o.t)) and not is_opt(o.t) and km != "" and ko != "" and km != ko and not (m == "None" and o.t in self.classes):
+            # (but an object, a complex number's, may be None, which None equals: cmp2's identity
+            # test; an object of another class answers by its own __eq__, also reflected; and two
+            # containers of one kind, a list[int] and a list[float], compare their items)
+            r = "false" if op == "==" else "true"
+        else:
+            x = Val("null", "None") if m == "None" else self.uget(Val(v.v, unopt(v.t)), m)
+            r = (self.cmp2(op, x, o) if v is a else self.cmp2(op, o, x)).v
+        self.incoming(ph, r, self.cur)
+        self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
+
+
+def eq_kind(t: str) -> str:
+    # what kind of value equality compares a value of type t with, where a value of another kind is
+    # never equal to it in CPython: numbers (exactly, across int, float, bool and complex), strs,
+    # bytes, None, lists, dicts, tuples or sets; "" for an object's, whose __eq__ may take anything
+    if t in ["int", "float", "bool", BIG, COMPLEXC]:
+        return "num"
+    if t == "str" or t == "bytes" or t == "None":
+        return t
+    if is_list(t) or is_dict(t) or is_set(t):
+        return t[: t.find("[")].replace("frozenset", "set")
+    if is_tuple(t) or is_vtuple(t):
+        return "tuple"
+    return ""
+
 def gen_compare(self, n: Node) -> Val:
     tc = self.refl_type_cmp(n)  # (type(a) is C, type(a) == type(b): reflection.py)
     if tc is not None:
@@ -4716,8 +4793,8 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
         self.cbr(self.cmp2("is", item, a).v, hit, nx)
         self.place(nx)
         identity = True
-    elif self.reference_union(item.t) or self.reference_union(a.t):
-        identity = self.union_same(item, a, hit, ph, value)
+    elif is_union(u) or is_union(unopt(a.t)):
+        identity = self.union_same(item, a, hit, ph, value)  # (a union's object, list or dict: as below)
     elif identity:
         # (an object, list, dict, set or tuple, also one that may be None, is found
         # by identity first, as the runtime's eqitem finds a list's item: xs in (xs,)
@@ -4762,18 +4839,23 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     return True
 
 def gen_union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
-    # Tuple search finds the same underlying object, even in separately boxed reference
-    # unions. Test None before loading a union's tag, then compare only compatible members.
-    # This identity fast path does not instantiate any member's equality method.
+    # titem_eq's identity test where tuple item or x is a union's value (or a union | None's): a
+    # branch to hit (where phi ph, if any, takes value) where both hold the same object, list or
+    # dict, also a complex number whose parts are NaN, or both are None, and on in a new block
+    # where not; False if neither may be. (A number has no identity here, see the deviation about
+    # NaN, and a str's is its value; equality finds a scalar union's None, but a union of classes
+    # calls no __eq__ unless it holds complex numbers: #1432.)
     sides: list[list[str]] = []
     for x in [item, a]:
         ms = umembers(unopt(x.t)) if is_union(unopt(x.t)) else [unopt(x.t)]
-        sides.append([m for m in ms if m in self.classes or m == "file"])
+        sides.append([m for m in ms if m in self.classes or m == "file" or is_list(m) or is_dict(m) or is_set(m) or is_tuple(m) or is_vtuple(m)])
     pairs: list[list[str]] = []
     for m1 in sides[0]:
         for m2 in sides[1]:
             if m1 == m2 or (m1 in self.classes and m2 in self.classes and (self.derives(m1, m2) or self.derives(m2, m1))):
                 pairs.append([m1, m2])
+    if len(pairs) == 0 and not self.reference_union(item.t) and not self.reference_union(a.t):
+        return False
     nulls = [self.isnull(item), self.isnull(a)]
     if nulls[0] != "false" and nulls[1] != "false":
         nx = self.label()
@@ -4786,6 +4868,7 @@ def gen_union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str
         for j in range(2):
             x = item if j == 0 else a
             if is_union(unopt(x.t)):
+                # (a class's union is a null box where it is None, as a union | None's is)
                 held = self.utest(x, [pair[j]], (is_opt(x.t) or self.reference_union(x.t)) and x.v not in self.nn)
                 test = held if test == "true" else self.scalar('and', [Val(test, 'bool'), Val(held, 'bool')])
         same = self.label()
@@ -4950,6 +5033,13 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                     method = "__eq__"
                 if method in methods and self.cmp_method(lhs.t, method, rhs.t) == "":
                     return self.inherit_cmp(op, a, b)
+    cxu = [x for x in [a, b] if is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))]
+    if (op == "==" or op == "!=") and len(cxu) > 0 and (any(self.enum_intlike(x.t) for x in [a, b]) or any(self.reference_union(x.t) for x in cxu)):
+        # (an int-like enum member, an int in CPython, and a union holding complex numbers: member
+        # by member, so that a complex member compares the int as complex_cmp does, which the
+        # member's __eq__ in lib/enum.py does not; and complex | C, whose object compares as one
+        # of C's does, also by inherit_cmp, rather than the union's box)
+        return self.complex_ueq(op, a, b)
     if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
         return self.inherit_cmp(op, a, b)
     ka = self.exc_kinds(a.t) if op == "==" or op == "!=" or op in REFL else []
@@ -4967,6 +5057,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
+        if (op == "==" or op == "!=") and any([x.t == COMPLEXC or (is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))) for x in [a, b]]):
+            return self.complex_ueq(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
         if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
@@ -5577,6 +5669,13 @@ def gen_comparable(self, t: str, u: str) -> bool:
         # (an Any value may be any value that a box can hold: dynamic.py)
         o = u if t == "dyn" else t
         return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
+    sides = [(["None"] if is_opt(x) else []) + (umembers(unopt(x)) if is_union(unopt(x)) else [unopt(x)]) for x in [t, u]]
+    if any(COMPLEXC in side for side in sides) and (len(sides[0]) > 1 or len(sides[1]) > 1):
+        # (a union holding complex numbers, or a complex number and a union: complex_ueq compares
+        # them member by member, which no runtime union descriptor does; equal where any two
+        # members may be, as the rules below find them: numbers across types, an int-like enum
+        # member, a list[int] and a list[float], an object's __eq__, None and a complex | None)
+        return any(self.comparable(m1, m2) for m1 in sides[0] for m2 in sides[1])
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):

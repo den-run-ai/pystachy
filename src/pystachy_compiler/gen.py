@@ -255,6 +255,7 @@ from src.pystachy_compiler.unions import (
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
     gen_num_union as unions_num_union,
+    gen_cx_union as unions_cx_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
@@ -797,6 +798,7 @@ from src.pystachy_compiler.expressions import (
     gen_complex_parts as expressions_complex_parts,
     gen_complex_arith as expressions_complex_arith,
     gen_complex_cmp as expressions_complex_cmp,
+    gen_complex_ueq as expressions_complex_ueq,
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
@@ -4633,6 +4635,9 @@ class Gen:
     def complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val:
         return expressions_complex_cmp(self, op, a, b, checked)
 
+    def complex_ueq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_complex_ueq(self, op, a, b)
+
     def exc_id(self, v: Val) -> Val:
         return expressions_exc_id(self, v)
 
@@ -5196,6 +5201,9 @@ class Gen:
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def cx_union(self, t: str) -> bool:
+        return unions_cx_union(self, t)
 
     def num_union(self, t: str) -> bool:
         return unions_num_union(self, t)

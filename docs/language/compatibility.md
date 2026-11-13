@@ -24,6 +24,7 @@ These programs can compile and run with different results, errors or timing of e
 | `int ** negative int` | `ValueError`; `0 ** -1` still raises `ZeroDivisionError`. |
 | Negative float to a fractional power | `ValueError`; CPython returns a complex number. |
 | `complex` identity | Each imaginary literal, operation and `complex()` of a number makes a new object; CPython shares a module's equal constants, so `x = 1j; y = 1j; x is y` is true there ([deviation](../../tests/deviations/complex_identity.py)). A NaN part hashes as a NaN does (below). |
+| `None` as `complex` in a union | A `complex` that holds `None`, stored where a union without `None` is declared, raises `TypeError`; CPython stores `None`, which mypy rejects ([deviation](../../tests/deviations/complex_union_none.py)). |
 | NaN identity | Unboxed NaNs have no identity, including inside scalar union boxes: `nan in [nan]` is false. Container equality and sorting treat a shared NaN as distinct values. `hash(nan)` is 0, rather than an identity hash. |
 | Empty `list[float]` | `sum(xs)` returns `0.0`, `sum(xs, 1)` returns `1.0`, and `math.prod(xs)` returns `1.0`; CPython preserves the integer start. |
 | Native JSON | Typed `JSONValue` rejects integers outside 64 bits; dynamic `Any` decoding promotes them. Nesting is limited by recursion depth and a 2,000-container cap. See [JSON limits](../../lib/compatibility.md#json). |
@@ -659,8 +660,9 @@ See [user exception classes](semantics.md#user-exception-classes) and
   objects, mixed-type variables/returns/`dict.get` defaults, or aliases / `type(x) is object` without any
   module calling `object()`. See [sentinels](semantics.md#sentinels).
 - **Complex numbers:** ordering, `//`, `%`, `divmod()`, `round()`, `int()`, `float()` and `math`
-  of one; an `int` or `float` where `complex` is declared; `sum()`; unions with other scalars or
-  containers; dynamic `Any` values; attribute assignment and subclasses. See
+  of one; an `int` or `float` where `complex` is declared; `sum()`; ordering, `hash()` or
+  container equality of unions that hold one; dynamic `Any` values; attribute assignment and
+  subclasses. See
   [complex numbers](semantics.md#complex-numbers).
 - **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`, `_pystachy_complex`.
 - **Arguments:** unsupported keywords; optional `key=` when items lack a supported natural
