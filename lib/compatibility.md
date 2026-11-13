@@ -23,7 +23,7 @@ the [module guide](README.md#module-guide) summarizes what each module supports.
 | [Dates and times](#dates-and-times) | [`datetime`](#datetime) |
 | [Files, OS and command line](#files-os-and-command-line) | [`io`](#io), [Binary files](#binary-files), [Path modules](#path-modules), [`pathlib`](#pathlib), [`glob`](#glob), [`shutil`](#shutil), [`argparse`](#argparse), [`getopt`](#getopt) |
 | [Processes and threads](#processes-and-threads) | [`_thread`](#_thread), [`threading`](#threading), [`atexit`](#atexit) |
-| [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
+| [Runtime services](#runtime-services) | [`abc`](#abc), [`types`](#types), [`inspect`](#inspect), [`warnings`](#warnings), [`logging`](#logging), [`traceback`](#traceback), [`weakref` and `_weakref` (prototype)](#weakref-and-_weakref-prototype) |
 | [Native interoperability](#native-interoperability) | [`ctypes`](#ctypes) |
 | [Removed modules](#removed-modules) | `_imp`, `_ast`, `opcode` |
 
@@ -1597,6 +1597,83 @@ reading or assigning a field is a compile-time error, where CPython raises `Attr
   CPython, also in an optional import, but any use of one is a compile-time error
   ([error test](../tests/errors/reflection/types_unsupported_name.py)): Pystachy has no such objects, or
   none that behave exactly as CPython's.
+
+### `inspect`
+
+`inspect` is a subset (`lib/inspect.py`) of CPython 3.13.16's module, with its code: `Parameter`
+and `Signature` as objects that a program makes itself, the kinds (`_ParameterKind`, whose
+members are `Parameter.POSITIONAL_ONLY` to `Parameter.VAR_KEYWORD` and the module's
+`_POSITIONAL_ONLY` to `_VAR_KEYWORD`), the marker `Parameter.empty`, `formatannotation()` and
+`cleandoc()`. What CPython's module finds out about live objects is not provided, as a compiled
+program has no code objects, frames, class dictionaries or source files to ask: `signature()`,
+`Signature.from_callable()`, `bind()`, `bind_partial()` and `BoundArguments`, `getmembers()`, the
+`is...()` tests, `getsource()`, `getdoc()`, `get_annotations()`, `unwrap()`, `stack()` and the
+others. A name the module lacks is a compile-time error
+([error tests](../tests/errors/library/lib_inspect_signature_function.py)).
+
+- `Parameter(name, kind, *, default=empty, annotation=empty)` checks its arguments as CPython's
+  does, with its errors and messages; `name`, `kind`, `default`, `annotation`, `replace()`,
+  `str()`, `repr()`, `==` and `hash()` are CPython's
+  ([test](../tests/programs/library/lib_inspect_parameter.py),
+  [replace](../tests/programs/library/lib_inspect_replace.py),
+  [equality](../tests/programs/library/lib_inspect_eq.py)). A kind is a member of an `IntEnum`
+  class, numbered from 0, with a `description` and its name as its `str()`
+  ([test](../tests/programs/library/lib_inspect_kind.py)).
+- `Signature(parameters=None, *, return_annotation=empty)` checks the order of its parameters'
+  kinds, their defaults and their names as CPython's does; `parameters`, `return_annotation`,
+  `replace()`, `str()`, `format()` with `max_width`, `repr()`, `==` and `hash()` are CPython's
+  ([test](../tests/programs/library/lib_inspect_signature.py)).
+- The module is compiled with [dynamic `Any`](../docs/dynamic-any.md), so that a default, an
+  annotation and a return annotation hold a value of any type that
+  [can become an `Any` value](../docs/dynamic-any.md#the-typeddynamic-contract). A module that
+  does not opt in passes numbers, strs, bools, `None`, tuples, values of a union type, list and
+  dict displays, a `list[int]`, objects of its classes, enum members and functions, and reads
+  them back with their types and identity
+  ([test](../tests/programs/library/lib_inspect_defaults.py)), also in the shapes of mypyc's
+  `get_text_signature()` ([test](../tests/programs/library/lib_inspect_consumer.py)). Bytes, sets,
+  other existing lists and dicts of typed items and `IntEnum` members, a kind among them, are
+  compile-time errors ([error tests](../tests/errors/library/lib_inspect_default_bytes.py)). One
+  variable that holds the marker and then a default of another type, as mypyc's
+  `default: object` does, needs a module that opts in, where it is an `Any` variable
+  ([test](../tests/programs/library/lib_inspect_any.py),
+  [error test](../tests/errors/library/lib_inspect_default_object.py)). A program whose module
+  that does not opt in makes a `Parameter` is compiled with every module
+  [tracking numeric identity](../docs/dynamic-any.md#identity-scope), as its objects cross
+  into that module.
+- **The marker is an object.** `Parameter.empty`, `Signature.empty` and `inspect._empty` are one
+  object of a private class, where CPython's is a class, as a class is no value here. `is` tells
+  it from every default, `None` included, and its `repr()` is that of CPython's class
+  ([test](../tests/programs/library/lib_inspect_empty.py)); its type is not `type`, and calling
+  it is a compile-time error ([deviation](../tests/deviations/lib_inspect_empty_marker.py)).
+- **A kind is a member, not an int.** `Parameter("x", 1)` is a compile-time error, where CPython
+  looks the member up ([error test](../tests/errors/library/lib_inspect_kind_int.py)), and the
+  [limits of `IntEnum` members](#enum) apply: a parameter held as an `Any` value does not give
+  its `kind`, which `isinstance(value, inspect.Parameter)` or a typed variable does
+  ([error test](../tests/errors/library/lib_inspect_any_kind.py)).
+- **Parameters are a list.** `Signature()` and `Signature.replace()` take a `list[Parameter]` or
+  `None`, where CPython takes any iterable
+  ([error test](../tests/errors/library/lib_inspect_parameters_tuple.py)). `parameters` is a
+  [`MappingProxyType`](#types) of a dict in the parameters' order, where CPython's is of an
+  `OrderedDict`, which its `repr()` shows
+  ([deviation](../tests/deviations/lib_inspect_parameters_repr.py)).
+- **Names are tested over ASCII.** `str.isidentifier()` is not supported, and the module has no
+  tables of the other characters that identifiers hold: a name that only such characters could
+  make an identifier raises `NotImplementedError`, where CPython accepts `café`
+  ([deviation](../tests/deviations/lib_inspect_name_not_ascii.py)).
+- **Annotations that are classes.** `formatannotation()` writes a builtin class as CPython does
+  ([test](../tests/programs/library/lib_inspect_annotation.py)), and a class of the program where
+  it is a value, in a module that opts in. An enum class is an object of `EnumType` here, which
+  does not know its module: formatting it raises `NotImplementedError`
+  ([deviation](../tests/deviations/lib_inspect_enum_annotation.py)). Typing forms and generic
+  aliases (`list[int]`) are no values, so CPython's formatting of them is left out, as is
+  `formatannotationrelativeto()`.
+- **Copies are made by name.** A class of the program can derive from `Parameter` or `Signature`
+  ([test](../tests/programs/library/lib_inspect_subclass.py)), but `replace()` of its object
+  raises `NotImplementedError`, where CPython calls `type(self)`
+  ([deviation](../tests/deviations/lib_inspect_subclass_replace.py)). `__replace__()`,
+  `__reduce__()` and `__setstate__()` are not provided.
+- `hash()` of a parameter or a signature agrees with `==`, but its value is not CPython's, as a
+  str's is not.
 
 ### `warnings`
 

@@ -292,6 +292,11 @@ and Lib/test/test_keyword.py from the same commit; their headers pin the source 
 and identify exclusions. These sources and tests use the same PSF license and copyright
 notice. Every source adaptation is marked # Pystachy port:.
 
+lib/inspect.py is Pystachy's subset of CPython 3.13.16's Lib/inspect.py (lib/provenance.md), whose
+authors it names and whose notice it keeps ("This module is in the public domain. No warranties.");
+it keeps the functions, classes, docstrings and comments it copies, and each change is marked
+# Pystachy port:. It is derived from Python and is used under the same license and copyright notice.
+
 lib/datetime.py is CPython 3.13.16's Lib/_pydatetime.py (which Lib/datetime.py re-exports) with
 the edits lib/README.md lists, each marked # Pystachy port:. Where CPython's C module differs, the
 edits follow Modules/_datetimemodule.c and the strftime() of Modules/timemodule.c at commit
