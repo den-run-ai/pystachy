@@ -2740,7 +2740,7 @@ def gen_none_field_store(self, o: Val, name: str, v: Val) -> None:
 
 def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
     if is_clsval(unopt(o.t)):
-        self.err(f"the attributes of a class object ({typestr(o.t)}) other than __name__, __qualname__ and __module__ are not supported (.{name}): read a class attribute through the class's name, C.{name}")
+        self.err(f"the attributes of a class object ({typestr(o.t)}) other than its names and its class's attributes, the names the class body binds, are not supported (.{name})")
     if o.t == "exctype":
         self.err(f"the attributes of the class of an exception (type[BaseException]) other than __name__ are not supported (.{name})")
     if name == "__class__" and (o.t == "exc" or (o.t in self.classes and self.classes[o.t].exc != "")):

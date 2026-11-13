@@ -445,6 +445,11 @@ and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
   first, then each argument once. A value that is `None`, or an abstract class's class object,
   raises CPython's `TypeError`. Every class the value may be (`C` and the classes deriving from
   it) must take the call's arguments: another signature is a compile error.
+- `k.attr` reads a class attribute, a name the class body binds, of the class `k` is, and
+  `k.m(args)` calls that class's class method or static method, as `type(x).attr` and
+  `x.__class__.m()` do through an object's class; a class method's `cls` is that class
+  ([test](../../tests/programs/classes/class_value_attrs.py)). The calls through each class
+  `k` may be share one result type.
 - `isinstance(x, k)` and `issubclass(k, b)` take a class object `k`; `b` is a class object or
   names a class ([test](../../tests/programs/classes/class_value_tests.py)). A value of another
   type is an instance of no class of the program.
@@ -457,7 +462,7 @@ and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
   holding the class object ([test](../../tests/programs/imports/import_attr_class_alias_fnbefore.py)).
 
 The [rejected forms](compatibility.md#reflection) include class objects of unrelated classes in
-one variable, attributes read through a class object and builtin types as values. In a module
+one variable, instance methods called through a class object and builtin types as values. In a module
 that opts in to dynamic `Any`, a class object stored as `Any` is that prototype's
 [class value](../dynamic-any.md#class-values-and-type-keyed-registries).
 

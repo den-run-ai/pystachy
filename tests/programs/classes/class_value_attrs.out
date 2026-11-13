@@ -1,0 +1,14 @@
+0 shape 1.0 Shape:shape:0 Shape X 0.0 1
+4 square 4.0 Square:square:4 Square X 16.0 2
+0 circle 1.0 Circle:circle:0 Circle (x) 0.0 2
+4 Q circle Square:square:4 ['Shape=nn', 'Square=nn', 'Circle=nn']
+shape/Shape:shape:0/1.0 square/Square:square:4/4.0 circle/Circle:circle:0/1.0
+(ab) AB ['a', 'b', 'a', 'b'] 4 4
+AttributeError: 'NoneType' object has no attribute 'label'
+circle Circle:circle:0
+AttributeError: type object 'NoneType' has no attribute 'label'
+AttributeError: type object 'NoneType' has no attribute 'describe'
+Circle=noted ['noted']
+AttributeError: 'NoneType' object has no attribute 'note' ['noted']
+AttributeError: type object 'NoneType' has no attribute 'note' ['noted']
+[exit 0]

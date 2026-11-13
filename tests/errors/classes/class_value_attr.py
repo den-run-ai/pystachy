@@ -1,5 +1,6 @@
-# error: the attributes of a class object (type[A]) other than __name__, __qualname__ and __module__ are not supported (.n)
-# a class attribute is read through the class's name, not through a class object (#7)
+# error: the attributes of a class object (type[A]) other than its names and its class's attributes, the names the class body binds, are not supported (.n)
+# CPython raises AttributeError: n is an attribute of A's objects, which __init__ assigns, not
+# of the class (#7)
 class A:
     def __init__(self) -> None:
         self.n = 1

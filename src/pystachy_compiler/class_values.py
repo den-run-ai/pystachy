@@ -423,3 +423,110 @@ def gen_class_value_call(self, c: Val, args: list[Node]) -> Val:
         return Val("null", base)
     self.place(end)
     return Val(self.phi(ph), base)
+
+
+# the names NoneType's class object has itself (dir(type(None))): a class attribute of such a
+# name is not read through a class object, which may be NoneType's (but __doc__, a str)
+NONETYPE_NAMES = "__bool__ __class__ __delattr__ __dir__ __doc__ __eq__ __format__ __ge__ __getattribute__ __getstate__ __gt__ __hash__ __init__ __init_subclass__ __le__ __lt__ __ne__ __new__ __reduce__ __reduce_ex__ __repr__ __setattr__ __sizeof__ __str__ __subclasshook__"
+
+
+def gen_class_value_attr(self, k: Val, name: str) -> Val:
+    # k.name of class object k, a class attribute (a name the class body binds): that of the
+    # class k is, which is C's unless a class deriving from C binds the name anew. NoneType's
+    # class object (type(x) of an x that is None) has none: CPython's AttributeError
+    base = clsof(unopt(k.t))
+    k = self.unwrap(k, f"AttributeError: 'NoneType' object has no attribute '{name}'")
+    t = self.classes[base].ftypes[name]
+    kinds = self.class_value_kinds(base)
+    for c in kinds:
+        if k.v == self.refl_record(c):
+            return self.coerce(self.class_attr(mk("name", c, self.line, []), name), t)  # (the class a constant names)
+    if name in NONETYPE_NAMES.split() and not (name == "__doc__" and t == "str"):
+        self.err(f"reading {name} through a class object ({typestr(k.t)}) is not supported: the value may be NoneType's class object, which has its own {name}")
+    end = self.label()
+    ph = Ins("phi", t, "")
+    vals: list[Val] = []
+    edges: list[str] = []
+    for c in kinds:
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.class_value_is(k, c).v, hit, miss)
+        self.place(hit)
+        v = self.coerce(self.class_attr(mk("name", c, self.line, []), name), t)
+        self.incoming(ph, v.v, self.cur)
+        vals.append(v)
+        edges.append(self.cur)
+        self.br(end)
+        self.place(miss)
+    if name == "__doc__":
+        # (NoneType's own, which CPython reads of the class object of None)
+        v = Val(self.sconst("The type of the None singleton."), "str")
+        self.incoming(ph, v.v, self.cur)
+        vals.append(v)
+        edges.append(self.cur)
+        self.br(end)
+    else:
+        self.raise_("AttributeError", self.sconst(f"type object 'NoneType' has no attribute '{name}'"))
+        if len(kinds) == 0:
+            return Val("undef", t)
+    self.place(end)
+    # (a number keeps the identity of the class attribute it is, as a read through the class does)
+    return self.numeric_phi(Val(self.phi(ph), t), vals, edges)
+
+
+def gen_class_value_method(self, k: Val, name: str, args: list[Node], want: str, resultsoft: bool) -> Val:
+    # k.name(args) of class object k, a method of its class: the call that names the class k is
+    # (C.name(args): a static method, or a class method, whose cls is that class). CPython reads
+    # k.name first, which None and NoneType's class object do not have, then evaluates the
+    # arguments, then calls; the result has the type that the calls through each class k may
+    # be share
+    base = clsof(unopt(k.t))
+    for a in args:
+        if a.kind == "starred" or a.kind == "dstar":
+            self.err("a method call through a class held as a value is not supported with * or ** arguments: pass them one by one")
+    k = self.unwrap(k, f"AttributeError: 'NoneType' object has no attribute '{name}'")
+    if not k.v.startswith("@"):
+        self.guard(self.ptr_cmp("==", k, Val(self.refl_record("None"), k.t)).v, f"AttributeError: type object 'NoneType' has no attribute '{name}'")
+    nodes: list[Node] = []
+    for a in args:
+        x = a.kids[0] if a.kind == "kw" else a
+        y = x if pure_arg(x) else self.vnode(self.expr(x, ""))
+        nodes.append(mk("kw", a.s, a.line, [y]) if a.kind == "kw" else y)
+    kinds = self.class_value_kinds(base)
+    for c in kinds:
+        if k.v == self.refl_record(c):
+            return self.class_call(mk("name", c, self.line, []), name, nodes, want, resultsoft)  # (the class a constant names)
+    t = ""
+    for c in kinds:
+        self.making.append(f"calling {short(c)}.{name}(), of a class that the {typestr(k.t)} at {where(self.line)} may be")
+        rt = self.dry(mk("call", "", self.line, [mk("attr", name, self.line, [mk("name", c, self.line, [])])] + nodes), want)
+        self.making.pop()
+        j = rt if t == "" or t == rt else self.join(t, rt)
+        if j == "":
+            self.err(f"{short(base)}.{name}() returns {typestr(t)}, and {short(c)}.{name}() of a class deriving from it {typestr(rt)}: a call through a class object has one type")
+        t = j
+    valued = t != "" and t != "None"
+    end = self.label()
+    ph = Ins("phi", t if valued else "int", "")
+    vals: list[Val] = []
+    edges: list[str] = []
+    for c in kinds:
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.class_value_is(k, c).v, hit, miss)
+        self.place(hit)
+        self.making.append(f"calling {short(c)}.{name}(), of a class that the {typestr(k.t)} at {where(self.line)} may be")
+        r = self.class_call(mk("name", c, self.line, []), name, nodes, want, resultsoft)
+        self.making.pop()
+        if not self.term:
+            if valued:
+                r = self.coerce(r, t)
+                self.incoming(ph, r.v, self.cur)
+                vals.append(r)
+                edges.append(self.cur)
+            self.br(end)
+        self.place(miss)
+    self.raise_("AttributeError", self.sconst(f"type object 'NoneType' has no attribute '{name}'"))
+    self.place(end)
+    # (a number that a call returns keeps its identity, as the call through the class does)
+    return self.numeric_phi(Val(self.phi(ph), t), vals, edges) if valued else Val("null", "None")

@@ -688,8 +688,9 @@ See [reflection rules](semantics.md#reflection).
   remain unsupported.
 - **[Class objects](semantics.md#classes-as-values):** those of classes without a base class in
   common in one variable or container; of class templates, generic classes and builtin types;
-  `typing.Type[C]`; attributes and methods read through one (`k.x`, `k.m()`) other than its
-  names; a call with `*` / `**` arguments, or with arguments that the constructor of a class it
+  `typing.Type[C]`; an instance method called through one (`k.m(o)`), a method read as a value
+  (`k.m`), an assignment through one (`k.x = v`) and other attributes than its names and its
+  class's attributes; a call with `*` / `**` arguments, or with arguments that the constructor of a class it
   may be does not take; `isinstance()` / `issubclass()` with a tuple holding one; `k == o`
   where the class of object `o` defines `__eq__` outside a hierarchy; `isinstance()` of an
   `Any` value with one. A class whose body assigns `__module__` or `__qualname__`,
