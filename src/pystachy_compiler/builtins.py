@@ -2705,6 +2705,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
     av = [f"{lt(o.t)} {o.v}"]
     nones: list[str] = []  # optional str arguments: None raises (nmsg) once all are evaluated
     nmsg: list[str] = []
+    nonesat: list[int] = []  # (each one's place among the arguments, for the order of the checks)
     dt = T  # the item type the # descriptor describes
     kx = Val("", "")  # a dict's key that may be None (see nonekey)
     bigkey = Val("", "")  # a promoting int key of a dict of int keys (dict_key_args)
@@ -2807,6 +2808,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
                 if is_opt(v.t):
                     nones.append(v.v)
                     nmsg.append(self.none_arg(m, 1))
+                    nonesat.append(len(av))
                 alts = Val(v.v, unopt(v.t))
                 v = Val("null", base)  # (each item in its place, in affix_any)
             if is_opt(v.t) and (join or key == "list.extend" or key == "file.writelines"):
@@ -2869,6 +2871,7 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
             elif is_opt(v.t) and not slot and unopt(v.t) == pt and (pt == "str" or pt == "bytes"):
                 nones.append(v.v)
                 nmsg.append(self.none_arg(m, i + 1))
+                nonesat.append(len(av))
                 v = Val(v.v, pt)
             elif (is_opt(v.t) or v.t == "None") and slot and p == "*T" and (unopt(v.t) == T or (v.t == "None" and T not in self.classes)) and (base == "list" or base == "vtuple") and m != "append" and m != "insert" and self.optional(T) != "" and not self.isnum(T):
                 pt = self.optional(T)  # xs.index(None): found where xs holds None, as == finds it
@@ -2898,10 +2901,19 @@ def gen_bmethod(self, o: Val, m: str, args: list[Node], first: bool = False) -> 
         i += 1
     if i < len(args):
         self.err(f"too many arguments for {m}()")
-    for j in range(len(nones)):
-        self.guard(self.scalar_cmp('eq', Val(nones[j], '%ptr'), Val('null', '%ptr')), nmsg[j])
-    for j in range(len(asked)):
-        av[asked[j]] = "i64 " + self.method_index(askedv[j], askedd[j], askedm[j]).v
+    # CPython converts the arguments in the parameters' order: a None where a str is taken raises
+    # before a later argument is asked for its index, and after an earlier one was. startswith()
+    # and endswith() check their prefix last, once their bounds are converted
+    last = m == "startswith" or m == "endswith"
+    nj = 0
+    aj = 0
+    while nj < len(nones) or aj < len(asked):
+        if nj < len(nones) and (aj >= len(asked) or (nonesat[nj] < asked[aj] and not last)):
+            self.guard(self.scalar_cmp('eq', Val(nones[nj], '%ptr'), Val('null', '%ptr')), nmsg[nj])
+            nj += 1
+        else:
+            av[asked[aj]] = "i64 " + self.method_index(askedv[aj], askedd[aj], askedm[aj]).v
+            aj += 1
     if alts.t != "":
         return self.affix_any(alts, m, av, base)
     r = spec[:c]
