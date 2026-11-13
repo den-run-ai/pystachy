@@ -431,7 +431,7 @@ A class of the program is a value: `k = Button`, a default (`kind=Widget`), an a
 an item of a list, tuple or set, a dict's key or value (`{Leaf: 1}`). `type[C]`, with `| None`,
 annotates it: the class object of `C` or of a class deriving from `C`. Class objects of
 different classes in a conditional expression or a display have the type of the nearest base
-class those classes share. `type(x)` and `x.__class__` of an object are its class's class
+class those classes share, or `type[object]` where they share none. `type(x)` and `x.__class__` of an object are its class's class
 object, so `type(self)(...)` makes an object of the object's own class; `cls` in a class method
 is the class it was called on. Each class has one class object: `is`, `==` and `hash()` compare
 and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
@@ -450,6 +450,14 @@ and hash it by identity ([test](../../tests/programs/classes/class_values.py)).
   `x.__class__.m()` do through an object's class; a class method's `cls` is that class
   ([test](../../tests/programs/classes/class_value_attrs.py)). The calls through each class
   `k` may be share one result type.
+- `type[object]`, also written `type`, is the class object of any ordinary class of the
+  program: a registry of unrelated classes, a dict keyed by `type(node)`, and `type(x)` of an
+  object of a union of classes. It is compared, hashed, named and printed as any class object,
+  and `isinstance(x, k)` and `issubclass(k, C)` test it
+  ([test](../../tests/programs/classes/class_value_any.py)). Its class is not known where the
+  program is compiled, so a call, a class attribute or a method through it is a compile error:
+  hold a `type[C]` of a base class for those. Builtin types such as `int` and exception classes
+  are no such values.
 - `isinstance(x, k)` and `issubclass(k, b)` take a class object `k`; `b` is a class object or
   names a class ([test](../../tests/programs/classes/class_value_tests.py)). A value of another
   type is an instance of no class of the program.

@@ -32,7 +32,7 @@ from src.pystachy_compiler.ir import Data, Ins, Val
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.specs import ITERS, OBJECTC, RANGEC
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.utils import clsof, is_clsval, is_opt, is_union, pure_arg, typestr, unopt
+from src.pystachy_compiler.utils import clsof, is_clsval, is_opt, is_union, pure_arg, typestr, umembers, unopt
 
 NONETYPE_ARGS = "NoneType takes no arguments"
 
@@ -182,13 +182,16 @@ def gen_class_value_unbox(self, v: Val, t: str) -> Val:
 def gen_class_value_kinds(self, c: str) -> list[str]:
     # the classes whose class object a type[c] value may be: c and the classes deriving from it
     # that have objects (in the order of their class statements)
+    if c == "object":
+        # (type[object]: every class whose class object is a value)
+        return [k.name for k in self.classes.values() if not k.excluded and self.class_value_problem(k.name) == ""]
     return [k.name for k in self.classes.values() if k.exc == "" and not k.excluded and k.bad == "" and k.origin == "" and k.name not in self.tmpl and self.derives(k.name, c)]
 
 
 def gen_class_value_bases(self, c: str, top: str) -> list[str]:
     # c and the classes it derives from that are top or derive from it: the classes that
     # isinstance() of an object of c, and issubclass() of c's class object, are true of
-    return [k.name for k in self.classes.values() if k.exc == "" and self.derives(c, k.name) and self.derives(k.name, top)]
+    return [k.name for k in self.classes.values() if k.exc == "" and self.derives(c, k.name) and (top == "object" or self.derives(k.name, top))]
 
 
 def gen_class_value_holds(self, t: str) -> bool:
@@ -216,7 +219,17 @@ def gen_class_value_of(self, v: Val, known: bool) -> Val:
             problem = self.class_value_problem(leaf.c)
             if problem != "":
                 self.err(problem)
-    return Val(self.refl_class_of(v, known).v, "type[" + t + "]")
+    # (an object of one of several classes without a common base, a union's: any class's)
+    return Val(self.refl_class_of(v, known).v, "type[" + (t if t in self.classes else "object") + "]")
+
+
+def gen_class_value_objects(self, t: str) -> bool:
+    # is t the type of objects whose type(x) is a typed class object: an ordinary class, or a
+    # union of ordinary classes (which may hold None)
+    u = unopt(t)
+    if is_union(u):
+        return all(self.class_value_named(unopt(m)) for m in umembers(u))
+    return self.class_value_named(u)
 
 
 def gen_class_value_name(self, v: Val, what: str) -> Val:
@@ -365,7 +378,13 @@ def gen_class_value_dynamic(self, t: Node) -> bool:
     if t.kind == "call" or (t.kind == "attr" and t.s == "__class__"):
         x = self.refl_typeof(t)
     if x is not None:
-        if not self.class_value_named(unopt(self.dry(x))):
+        xt = self.dry(x)
+        if is_union(unopt(xt)) and self.class_value_objects(xt):
+            # (an object of a union of ordinary classes: type(x) is the class object of one of
+            # them, or its class value in a module that opts in to dynamic Any, which
+            # isinstance() takes as that class object)
+            return True
+        if not self.class_value_named(unopt(xt)):
             return False
         # (where a module opts in to dynamic Any, type(x) may be a class box: class_value_typed)
         return not self.dyn_policy(self.line) or is_clsval(unopt(self.dry(t)))
@@ -383,6 +402,8 @@ def gen_class_value_call(self, c: Val, args: list[Node]) -> Val:
     # runs its own constructor with the values. NoneType's class object, which type(x) gives of
     # an x that is None, makes None of no arguments, as CPython's does
     base = clsof(unopt(c.t))
+    if base == "object":
+        self.err("calling a class object that may be any class's (type[object]) is not supported: hold it as type[C] of a class C whose constructors take the arguments")
     nodes: list[Node] = []
     for a in args:
         if a.kind == "starred" or a.kind == "dstar":

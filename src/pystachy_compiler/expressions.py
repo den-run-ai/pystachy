@@ -1075,7 +1075,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             return Val(self.rt(fn, "ptr", [f"ptr {o.v}"]), "str")
         if is_clsval(unopt(o.t)) and (n.s == "__name__" or n.s == "__qualname__" or n.s == "__module__"):
             return self.class_value_name(o, n.s)  # (an ordinary class's class object: class_values.py)
-        if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) not in self.nts and n.s in self.classes[clsof(unopt(o.t))].fdefault and n.s not in self.classes[clsof(unopt(o.t))].methods:
+        if is_clsval(unopt(o.t)) and clsof(unopt(o.t)) in self.classes and clsof(unopt(o.t)) not in self.nts and n.s in self.classes[clsof(unopt(o.t))].fdefault and n.s not in self.classes[clsof(unopt(o.t))].methods:
             return self.class_value_attr(o, n.s)  # (a class attribute, through the class object)
         if n.s == "__class__" and self.class_value_named(o.t) and not self.dyn_policy(self.line) and "__class__" not in self.classes[o.t].ftypes and "__class__" not in self.classes[o.t].methods:
             return self.class_value_of(o, self.knownobj(n.kids[0]))  # (an object's class: its class object)
@@ -3413,6 +3413,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         t = self.join(a.t, b.t)  # x if c else None: T | None
     if e1 != "" and e2 != "" and a.t != b.t and is_clsval(a.t) and is_clsval(b.t) and self.join(a.t, b.t) != "":
         t = self.join(a.t, b.t)  # (class objects: of the nearest base class their classes have in common)
+    elif e1 != "" and e2 != "" and a.t != b.t and is_clsval(a.t) and is_clsval(b.t) and unopt(want) == "type[object]":
+        t = "type[object]"  # (of classes without one, where any class's class object is wanted)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == "dyn":
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == BIG:
