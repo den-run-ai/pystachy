@@ -47,11 +47,6 @@ KEYS = "#keys"  # (a dict's key array's location: the value's own is its value a
 # engine's sre_match (about 1,300 blocks and 4,500 instructions) is checked; its graph keeps
 # the checker's node bound.
 MAX_BLOCKS, MAX_INSTRUCTIONS = 4096, 16384
-# A generator's own operations, as the boundary validator reads them: its first resumption, a
-# suspension resuming at its target (whose results, the value sent in, no generator uses: the
-# validator refuses a use of one) and its end; gen.promise without a handle reads its own
-# promise, a pointer the runtime made.
-GENERATOR_OPS = {"gen.start": "br", "gen.yield": "br", "gen.ret": "ret.none"}
 
 
 def short(typ):
@@ -307,22 +302,14 @@ def normalize(snapshot, fn, memory=None):
     context = {"classes": snapshot.get("classes") or {}, "layouts": snapshot.get("class_layouts") or {}}
     # (the boundary validator refuses list.store, which writes memory its guard model does not hold:
     # here it is a write, validated as the runtime write it stores as; and generators, validated as
-    # the function their operations' edges make)
-    def validated(op):
+    # the function their operations' edges make, boundary.generator_validation)
+    def renamed(op):
         op = dict(op, type=short(op["type"]), operands=[dict(a, type=short(a["type"])) for a in op["operands"]])
-        if op["op"] == "list.store":
-            return dict(op, op="rt", text="list.set")
-        if op["op"] in GENERATOR_OPS:
-            return dict(op, op=GENERATOR_OPS[op["op"]], operands=[], results=[])
-        if op["op"] == "gen.promise" and not op["operands"]:
-            return dict(op, op="rt", text="gen.promise")  # (its own promise: the runtime's word)
-        return op
+        return dict(op, op="rt", text="list.set") if op["op"] == "list.store" else op
     validation = dict(snapshot, functions=[dict(
-        fn, recursion=dict(fn["recursion"], generator=False, coroutine=False),
+        boundary.generator_validation(fn, renamed),
         return_representation=short(fn.get("return_representation") or ""),
-        parameters=[dict(p, representation=short(p.get("representation") or "")) for p in fn["parameters"]],
-        slots=[validated(op) for op in fn["slots"]],
-        blocks=[dict(block, operations=[validated(op) for op in block["operations"]]) for block in fn["blocks"]])])
+        parameters=[dict(p, representation=short(p.get("representation") or "")) for p in fn["parameters"]])])
     try:
         boundary.normalize_snapshot(validation, fn["symbol"], MAX_BLOCKS, MAX_INSTRUCTIONS)
     except ValueError as error:

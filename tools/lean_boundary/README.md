@@ -258,7 +258,9 @@ checks of the trusted Python bridge in addition to the kernel-checked model
 examples; they do not prove its fidelity.
 
 Generator functions, stores into boxes or descriptors and unknown operations
-are explicitly refused. No selected function is silently skipped. The Python
+are explicitly refused here; the union, field and collector checks model a
+generator's suspensions themselves ([GUARDS.md](GUARDS.md#field-initialization),
+[GC.md](GC.md)). No selected function is silently skipped. The Python
 bridge allows at most 4,096 instructions, 1,024 blocks, 16,384 normalized nodes,
 65,536 certificate facts holding 262,144 tags, 4 MiB candidate JSON, a 4 MiB
 snapshot (512 MiB with `--all`) and 200,000 inference iterations; the native

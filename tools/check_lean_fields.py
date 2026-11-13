@@ -498,7 +498,7 @@ class Context:
         symbol = fn["symbol"]
         if symbol not in self.validated:
             try:
-                boundary.normalize_snapshot(dict(self.snapshot, functions=[fn]), symbol)
+                boundary.normalize_snapshot(dict(self.snapshot, functions=[boundary.generator_validation(fn)]), symbol)
                 self.validated[symbol] = None
             except boundary.Unsupported as error:
                 self.validated[symbol] = error
@@ -983,7 +983,10 @@ def emit(ctx, fn, contracts, known):
             for pos, value in uses:
                 obj = addresses[value][0] if value in addresses else value
                 require(obj, relevant, site, "escapes")
-            if kind in {"ret", "ret.none"}:
+            if kind in {"ret", "ret.none", "gen.start"}:
+                # (a call of a generator function returns at gen.start, before its body runs: its
+                # post-condition holds there, and its body's reads are required at the call, as
+                # fields only become assigned while it is suspended)
                 for p in given:
                     probes["returns"].append((len(g.nodes), p))
                     keep.setdefault(len(g.nodes), set()).update(field(holder(p), k) for k in relevant(holder(p)))
@@ -1018,7 +1021,7 @@ def emit(ctx, fn, contracts, known):
                     for obj, k in sorted(stored(args[0], truth)):
                         assign(obj, lambda o, k=k: {k}, (label, offset, obj, f"flag {k} {truth}"), strict=False)
                     g.emit({"op": "jump", "next": goto(target, label)})
-            elif kind in {"ret", "ret.none", "unreachable"} or (kind in {"raise", "throw"} and not targets):
+            elif kind in {"ret", "ret.none", "unreachable", "gen.ret"} or (kind in {"raise", "throw"} and not targets):
                 g.emit({"op": "stop"})
             elif targets:
                 for target in targets[:-1]:
