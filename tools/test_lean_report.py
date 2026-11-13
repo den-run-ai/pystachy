@@ -53,7 +53,7 @@ class SummaryTests(unittest.TestCase):
                                                       item("@f.h", "error", None, "union read %t3 at L4:2")])),
                    record("b.py", union=row(2, 0, 1, [item("@f.k", "unsupported", None, "generators are outside")]))]
         other = report.summarize(records)["checks"]["union"]["other"]
-        self.assertEqual(other, [{"status": "error", "reason": "union read at", "programs": 1, "functions": 1},
+        self.assertEqual(other, [{"status": "error", "reason": "union read", "programs": 1, "functions": 1},
                                  {"status": "unsupported", "reason": "generators are outside", "programs": 2,
                                   "functions": 2}])
 
@@ -78,6 +78,8 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(report.kind("union read has no declared source domain: %t33"),
                          "union read has no declared source domain")
         self.assertEqual(report.kind("gives an object to unsupported ['@m.A.__init__']"), "gives an object to unsupported")
+        self.assertEqual(report.kind("union payload bits of no known member at L67:4"),
+                         "union payload bits of no known member")
 
     def test_reasons_are_short_text(self):
         found = report.unproved([{"function": "@f", "status": "rejected", "obligations": 1,

@@ -201,7 +201,8 @@ def base(symbol):
 def kind(reason):
     """A reason without the values, sites and names that make each function's own."""
     reason = re.sub(r"\[[^\]]*\]|'[^']*'|%[\w.]+|\bL?\d+(:\d+)?\b", "", reason)
-    return " ".join(reason.split()).rstrip(" :") or "(no reason)"
+    reason = re.sub(r"\s+(at|in|of|to)$", "", " ".join(reason.split()).rstrip(" :"))
+    return reason or "(no reason)"
 
 
 def summarize(records):
@@ -414,7 +415,7 @@ def main(argv=None):
     records.sort(key=lambda record: record["program"].encode())
     summary = summarize(records)
     args.output.write_text(render(summary, meta(header, records)))
-    print(json.dumps({key: {k: v for k, v in row.items() if k != "unproved"}
+    print(json.dumps({key: {k: v if isinstance(v, int) else len(v) for k, v in row.items()}
                       for key, row in summary["checks"].items()}, sort_keys=True))
     return 1 if summary["failed"] else 0
 
