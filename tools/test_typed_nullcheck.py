@@ -85,7 +85,8 @@ def compiled(off=False):
         captured[fn.f.name] = [i for b in fn.blocks for i in b.code]
         lower(g, fn)
 
-    env = {"PYSTACHY_OPT": "-nullcheck" if off else ""}
+    # (constargs off: one_branch's c is True at its one call, which would decide its if)
+    env = {"PYSTACHY_OPT": "-constargs,-nullcheck" if off else "-constargs"}
     with patch.object(Gen, "lower", capture), patch.dict(os.environ, env):
         Gen().program(Loader([]).program("nullcheck.py", SOURCE))
     return captured

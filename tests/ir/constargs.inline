@@ -1,0 +1,21 @@
+@main.init: f.repair f.loads f.shout f.shout m.Parser.__init__ m.Parser.parse m.Parser.apply
+@f.heavy: m.Helper.__init__ m.Helper.run
+@f.repair:
+@f.clean:
+@f.loads: f.repair
+@f.upper:
+@f.shout: f.upper
+@f.wrap:
+@f.ruled:
+@m.Helper.__init__:
+@m.Helper.run:
+@m.Parser.__init__:
+@m.Parser.attach:
+@m.Parser.parse:
+@v.m.Parser.resolve:
+@m.Parser.resolve: v.m.Parser.resolve
+@m.Parser.apply: v.m.Parser.resolve
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@main: main.init
