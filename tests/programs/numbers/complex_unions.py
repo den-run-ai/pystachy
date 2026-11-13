@@ -59,4 +59,4 @@ for x in xs:
     maybe = x
     print(maybe, maybe == 2, f"{maybe}")
 table: dict[str, int | complex] = {"a": 1, "b": 2j}
-print(table, [abs(t) for t in table.values()])
+print(table, [t == 1 for t in table.values()], [str(t) for t in table.values()])

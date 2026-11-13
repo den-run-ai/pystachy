@@ -434,6 +434,22 @@
       "issue": "https://github.com/den-run-ai/pystachy/issues/907"
     },
     {
+      "case": "tests/programs/numbers/complex_unions.py",
+      "mode": "jit",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/complex_unions.py:38: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got complex",
+      "reason": "Arithmetic on an int | float | complex union returns a promoting int into a closed numeric union, which has no promoting-int payload.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
+      "case": "tests/programs/numbers/complex_unions.py",
+      "mode": "aot",
+      "category": "unsupported-storage",
+      "diagnostic": "tests/programs/numbers/complex_unions.py:38: error: expected !int in a closed union is not supported (use scalar, list/dict or native class/file types), got complex",
+      "reason": "Arithmetic on an int | float | complex union returns a promoting int into a closed numeric union, which has no promoting-int payload.",
+      "issue": "https://github.com/den-run-ai/pystachy/issues/907"
+    },
+    {
       "case": "tests/programs/reflection/reflect_dataclasses.py",
       "mode": "jit",
       "category": "unsupported-storage",
