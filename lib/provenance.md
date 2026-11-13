@@ -114,6 +114,7 @@ CPython runs the source.
 | `traceback` | `Lib/traceback.py` (SHA-256 `d81f560ce5f09e217bc81a40cb9881d51720121661d1488834a7b2c72618a1a2`) | The exception-only formatting of `format_exception()` and its relatives, with causes, as `TracebackException` gives it for an exception whose `__traceback__` is `None`; empty stacks |
 | `_pystachy_percent` | `Objects/unicodeobject.c` (SHA-256 `68a5618c520f5b348e9e2abe1a77688c4b0c1f377d86f79e3399b41b445c24ab`) | `PyUnicode_Format()`, for `%` of a format string that only the run time knows, with its errors and messages |
 | `_pystachy_iterators` | `Objects/listobject.c`, `tupleobject.c`, `unicodeobject.c`, `rangeobject.c`, `dictobject.c`, `setobject.c` | Iterator classes of `iter()` over builtin containers, with CPython's exhaustion and size-change checks and messages |
+| `librt.internal` | librt 0.16.0's `internal/librt_internal.c` (SHA-256 `c9bb928d585188f83980bcc5ab2c3c26f68ce0620dbe2f2b84d241e770ce41a2`; MIT, see THIRD_PARTY_NOTICES) | mypy's cache codec: `ReadBuffer`, `WriteBuffer` (chunks joined by `getvalue()`) and every function, with the extension's byte formats, errors, messages and read positions; `extract_symbol()` keeps a stack rather than recursing |
 
 `re/_constants.py` retains upstream opcode/flag numbers. `tools/re_tables.py`
 generates `re/_unicode.py` from CPython's Unicode functions, including group-name
@@ -186,6 +187,12 @@ SHA-256 `bd2f762ac481caabd817f6b94de19f3788ae7635406d06770b7972aafad03632`, whos
 `Objects/stringlib/codecs.h`, SHA-256
 `d126faea1dcf3f3b19a256237e5e87bdaa006dbc5b26fb0b5267f9a1dcbab3b4`), and compares the 39
 functions' signatures.
+
+`tools/librt_check.py` runs `lib/librt/internal.py` on CPython and compares it with librt 0.16.0's
+extension: 20,000 rounds of random values (at the integer formats' boundaries, random strings, bytes
+and float bit patterns) give the same bytes and read back the same values, and 560,000 reads and
+`extract_symbol()` calls of random nested cache objects and their truncations and corruptions give
+the same results or errors, with the same next position (`--rounds 20000 --seed 7`).
 
 `tools/binascii_check.py` runs `lib/_pystachy_binascii.py` on CPython, compares the results and
 errors of 420,000 calls of its functions, mostly at the edges of their inputs, with those of the C

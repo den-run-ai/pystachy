@@ -1,0 +1,64 @@
+0 14
+1 16
+-1 12
+-10 00
+-11 6501
+117 fe
+118 6903
+-100 0100
+-101 5b350100
+16283 fdff
+16284 63350300
+-10000 03000000
+-10001 0f1e1127
+536860911 fbffffff
+536860912 0f24f0d8ff1f
+2147483648 0f2400000080
+-2147483648 0f2600000080
+4611686018427400249 0f343930000000000040
+-9223372036854775808 0f360000000000000080
+9223372036854775807 0f34ffffffffffffff7f
+255 8d05
+256 9105
+65536 83380900
+0 1 14
+1 2 1661
+11 14 2e68c3a96c6c6f20
+7 11 28f09f908d20736e
+117 118 fe78787878787878
+118 120 6903797979797979
+16283 16285 fdff7a7a7a7a7a7a
+16284 16288 6335030077777777
+0 14
+2 1800ff
+256 910500010203
+0.0 0000000000000000
+-0.0 0000000000000080
+1.5 000000000000f83f
+-2.25 00000000000002c0
+1e+308 a0c8eb85f3cce17f
+5e-324 0100000000000000
+inf 000000000000f07f
+-inf 000000000000f0ff
+0.1 9a9999999999b93f
+33268 0
+True True
+True [0.0, -0.0, 1.5, -2.25, 1e+308, 5e-324, inf, -inf, 0.1]
+True False [0, 7, 254, 255]
+101 041c6e616d65030f280010a5 0816611662ff 99
+ValueError(reading past the buffer end) ValueError(reading past the buffer end) ValueError(reading past the buffer end) ValueError(reading past the buffer end) ValueError(reading past the buffer end) ValueError(reading past the buffer end) ValueError(reading past the buffer end) 
+ValueError(reading past the buffer end) ValueError(invalid str size) ValueError(invalid bytes size) ValueError(invalid bool value) ValueError(reading past the buffer end) 15 ValueError(Unsupported tag: 15) 
+5 ValueError(reading past the buffer end) ValueError(reading past the buffer end) ValueError(invalid bool value) ValueError(reading past the buffer end) 30 ValueError(reading past the buffer end) 
+2 ValueError('utf-8' codec can't decode byte 0xff in position 0: invalid start byte) b'\xff\xfe' ValueError(invalid bool value) ValueError(reading past the buffer end) 24 ValueError(reading past the buffer end) 
+-9 ValueError(invalid str size) ValueError(invalid bytes size) ValueError(invalid bool value) ValueError(reading past the buffer end) 2 ValueError(reading past the buffer end) 
+ValueError(reading past the buffer end) ValueError(invalid str size) ValueError(invalid bytes size) ValueError(invalid bool value) ValueError(reading past the buffer end) 15 ValueError(Unsupported tag: 15) 
+16222 ValueError(reading past the buffer end) ValueError(reading past the buffer end) ValueError(invalid bool value) ValueError(reading past the buffer end) 9 ValueError(Unsupported tag: 9) 
+ValueError Unsupported tag: 9
+ValueError Unsupported tag: 50
+ValueError Unsupported tag: 254
+ValueError Unexpected instance tag: 90
+ValueError unsupported size
+ValueError reading past the buffer end 65
+UnicodeDecodeError 'utf-8' codec can't decode byte 0xff in position 0: invalid start byte 255
+4001 7
+[exit 0]
