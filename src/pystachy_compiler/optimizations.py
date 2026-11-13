@@ -861,9 +861,9 @@ def guard_plan(self, fn: IFn, lp: Loop, vs: Values, pl: dict[str, list[int]], at
                 key = o.v if o.v not in defined else "slot " + loads[o.v].a[0].v if o.v in loads else ""
                 if c == NO_OFFSET or key == "" or (base == "" and int(start) + c < 0):
                     continue
-                for s in found:
-                    if s.op == "ovf" and len([x for x in plan.basesums if x is s]) == 0:
-                        plan.basesums.append(s)
+                for summed in found:
+                    if summed.op == "ovf" and len([x for x in plan.basesums if x is summed]) == 0:
+                        plan.basesums.append(summed)
                 if key not in plan.list_type:
                     plan.lists.append(key)
                     plan.list_type[key] = o.t
@@ -1014,7 +1014,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
     # place of the loop's loads of it (the loop never stores the slot), so that the tests and the
     # copy's indexes name one value
     based: dict[str, str] = {}
-    skip: dict[int, bool] = {}  # (by result: the loop's loads of a slot base, which the copy leaves out)
+    dropped: dict[int, bool] = {}  # (by result: the loop's loads of a slot base, which the copy leaves out)
     for base in plan.bases:
         if not base.startswith("slot "):
             based[base] = base
@@ -1026,7 +1026,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
                 for i in b.code:
                     if i.op == "mem.load" and "slot " + i.a[0].v == base:
                         numbers[i.r[0]] = fn.n
-                        skip[i.r[0]] = True
+                        dropped[i.r[0]] = True
     reads: dict[int, bool] = {}
     for i in plan.reads:
         reads[i.r[0]] = True
@@ -1046,7 +1046,7 @@ def guard_loop(self, fn: IFn, plan: GuardPlan) -> int:
         last = j
         c = Blk(labels[b.label])
         for i in b.code:
-            if len(i.r) == 1 and i.r[0] in skip:
+            if len(i.r) == 1 and i.r[0] in dropped:
                 continue
             d = clone_instruction(i, numbers, labels)
             if i.op == "rt" and i.s == "list.get" and len(i.r) == 1 and i.r[0] in reads and b.label not in slow:
