@@ -2962,6 +2962,16 @@ def gen_getfield(self, o: Val, p: Val, name: str) -> Val:
     return v
 
 def gen_setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
+    # (its stores are of attribute name, which voids the facts of narrowed paths through an
+    # attribute of that name and no others: unions.py's path_event)
+    was = self.pfield
+    self.pfield = name
+    try:
+        self.setfield_store(o, p, name, v)
+    finally:
+        self.pfield = was
+
+def gen_setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
     ci = self.classes[o.t]
     if name in ci.fextra and self.drying == 0 and v.t != "dyn":
         # Only newly reserved storage may widen here. Keep each concrete value

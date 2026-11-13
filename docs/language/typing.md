@@ -361,8 +361,27 @@ of `int`, as in Python: test `bool` first if the following integer branch needs 
 concrete type. Assignment updates the known type, and control-flow joins retain it
 only when every incoming path agrees.
 
-Globals, fields and cells assigned by a `nonlocal` closure are not narrowed across
-calls. Copy their value to an ordinary local before testing it. The copy remains
+A test also narrows an attribute of a local, and of such an attribute (`e.node`,
+`self.ref.node`), where each is a field:
+
+```python
+def describe(e: RefExpr) -> str:
+    if isinstance(e.node, TypeInfo):
+        return e.node.fullname
+    return "not a type"
+```
+
+`isinstance()`, `callable()`, tests against `None` and truth tests narrow it, for optional
+values, unions and objects of a class hierarchy, in the branches, `and`/`or` operands,
+conditional expressions, assertions and exiting guards that narrow a local. CPython reads
+the attribute again each time, so the narrowing lasts only while nothing can have stored it.
+It ends at a call of the program's code (also an operator, conversion or iteration that runs
+a method, a property's read, a generator's resume or `yield`), at a store to an attribute of
+that name on any object, at an assignment to the local, and at the start of a loop. From there
+the attribute has its declared type again: test it again, or copy it to a local first.
+
+Globals, properties and cells assigned by a `nonlocal` closure are not narrowed. Copy their
+value to an ordinary local before testing it. The copy remains
 valid when the original storage is changed because the tagged box is immutable.
 Container types stay invariant: `list[int]` cannot become `list[int | str]`.
 

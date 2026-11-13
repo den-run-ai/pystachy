@@ -1542,7 +1542,22 @@ def gen_dry(self, e: Node, want: str = "") -> str:
     self.fn.blocks = []
     self.fn.loops = []
     self.drying += 1
+    # (what its code does to attributes has not happened, and the values it reads are dropped
+    # with its blocks: the facts of narrowed attribute paths, unions.py)
+    pcall = self.pcall
+    pmark = self.path_mark()
+    preads = len(self.preadn)
+    self.pdry += 1
+    self.psess.append(self.pdry)
     t = self.expr(e, want).t
+    self.psess.pop()
+    self.path_undo(pmark, [], [])
+    self.pcall = pcall
+    while len(self.preadn) > preads:
+        self.preadn.pop()
+        self.preadv.pop()
+        self.preads.pop()
+        self.preadb.pop()
     self.drying -= 1
     self.blk = blk
     self.fn.blocks = blocks

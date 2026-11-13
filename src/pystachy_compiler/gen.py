@@ -270,6 +270,23 @@ from src.pystachy_compiler.unions import (
     gen_to_union as unions_to_union,
     gen_narrow_val as unions_narrow_val,
     gen_unarrowed as unions_unarrowed,
+    gen_path_key as unions_path_key,
+    gen_path_void as unions_path_void,
+    gen_path_stamp as unions_path_stamp,
+    gen_path_event as unions_path_event,
+    gen_path_live as unions_path_live,
+    gen_path_mark as unions_path_mark,
+    gen_path_undo as unions_path_undo,
+    gen_path_redo as unions_path_redo,
+    gen_path_read as unions_path_read,
+    gen_path_dominates as unions_path_dominates,
+    gen_path_again as unions_path_again,
+    gen_path_seen as unions_path_seen,
+    gen_path_type as unions_path_type,
+    gen_path_value as unions_path_value,
+    gen_narrows_path as unions_narrows_path,
+    gen_narrows_paths as unions_narrows_paths,
+    gen_narrows_leaf as unions_narrows_leaf,
     gen_uisinst as unions_uisinst,
     gen_now_type as unions_now_type,
     gen_isinst_narrow as unions_isinst_narrow,
@@ -633,6 +650,7 @@ from src.pystachy_compiler.declarations import (
     gen_guess_varargs as declarations_guess_varargs,
     gen_self_type as declarations_self_type,
     gen_setfield as declarations_setfield,
+    gen_setfield_store as declarations_setfield_store,
     gen_shadowed as declarations_shadowed,
     gen_stub as declarations_stub,
     gen_subst as declarations_subst,
@@ -1431,6 +1449,27 @@ class Gen:
         self.noneglobalpending: dict[str, bool] = {}  # unresolved global reads, shared by nested compiles
         # optional, union and class locals: the narrower type a read has here (see narrows)
         self.narrowed: dict[str, str] = {}
+        # attribute paths that a test narrowed are entries of narrowed too (unions.py: path_key).
+        # pseq numbers the operations that may change an attribute's value, and the facts: pcall
+        # is the last that may run code of the program or write objects' fields, pstamps the
+        # last store to each attribute name ("a" + name) and local slot ("l" + register), and
+        # plogk/plogv their values before each stamp, which an if statement takes back for its
+        # other branch (path_undo). pfield: the attribute whose store setfield is compiling.
+        # preadn/preadv/preads: the attribute paths the statement being compiled has read, each
+        # one's value and when; psess: the dry() sessions that are open, 0 for code that is kept
+        self.pseq = 0
+        self.pcall = 0
+        self.pstamps: dict[str, int] = {}
+        self.plogk: list[str] = []
+        self.plogv: list[int] = []
+        self.pfield = ""
+        self.preadn: list[Node] = []
+        self.preadv: list[Val] = []
+        self.preads: list[int] = []
+        self.preadb: list[str] = []  # (and the block that read it, for path_dominates; pdoms: its answers)
+        self.pdoms: dict[str, bool] = {}
+        self.psess: list[int] = [0]
+        self.pdry = 0
         self.nonecmp = False  # the read being compiled is compared with None (see none_type)
         self.anyopt = False  # an optional, union or class local exists: narrows has work to do
         self.building: dict[str, bool] = {}  # the functions being compiled
@@ -3101,6 +3140,9 @@ class Gen:
 
     def setfield(self, o: Val, p: Val, name: str, v: Val) -> None:
         return declarations_setfield(self, o, p, name, v)
+
+    def setfield_store(self, o: Val, p: Val, name: str, v: Val) -> None:
+        return declarations_setfield_store(self, o, p, name, v)
 
     def global_var(self, g: str, ty: str) -> None:
         return variables_global_var(self, g, ty)
@@ -5233,6 +5275,57 @@ class Gen:
 
     def unarrowed(self, v: Val) -> str:
         return unions_unarrowed(self, v)
+
+    def path_key(self, n: Node) -> str:
+        return unions_path_key(self, n)
+
+    def path_void(self) -> None:
+        return unions_path_void(self)
+
+    def path_stamp(self, key: str) -> None:
+        return unions_path_stamp(self, key)
+
+    def path_event(self, i: Ins, kind: int) -> None:
+        return unions_path_event(self, i, kind)
+
+    def path_live(self, key: str, born: int, session: int) -> bool:
+        return unions_path_live(self, key, born, session)
+
+    def path_mark(self) -> int:
+        return unions_path_mark(self)
+
+    def path_undo(self, mark: int, keys: list[str], vals: list[int]) -> None:
+        return unions_path_undo(self, mark, keys, vals)
+
+    def path_redo(self, keys: list[str], vals: list[int]) -> None:
+        return unions_path_redo(self, keys, vals)
+
+    def path_read(self, n: Node, v: Val, born: int, block: str) -> None:
+        return unions_path_read(self, n, v, born, block)
+
+    def path_dominates(self, block: str) -> bool:
+        return unions_path_dominates(self, block)
+
+    def path_again(self, n: Node, key: str, v: Val) -> Val:
+        return unions_path_again(self, n, key, v)
+
+    def path_seen(self, n: Node) -> int:
+        return unions_path_seen(self, n)
+
+    def path_type(self, key: str, out: dict[str, str], t: str) -> str:
+        return unions_path_type(self, key, out, t)
+
+    def path_value(self, n: Node, key: str) -> Val:
+        return unions_path_value(self, n, key)
+
+    def narrows_path(self, n: Node, test: str, c: Node, truth: bool, out: dict[str, str]) -> None:
+        return unions_narrows_path(self, n, test, c, truth, out)
+
+    def narrows_paths(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+        return unions_narrows_paths(self, n, truth, out)
+
+    def narrows_leaf(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+        return unions_narrows_leaf(self, n, truth, out)
 
     def uisinst(self, v: Val, c: Node) -> str:
         return unions_uisinst(self, v, c)

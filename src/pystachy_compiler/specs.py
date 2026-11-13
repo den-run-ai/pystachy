@@ -671,6 +671,10 @@ IROPS: dict[str, str] = {
     "gen.start": "T A", "gen.yield": "T U", "gen.ret": "T", "gen.promise": "", "gen.resume": "U",
     "gen.drop": "A I rL wL rD wD rO wO rG wG rF wF",
 }
+# the ops that may change what an attribute's read gives, for the facts of narrowed attribute
+# paths (unions.py's path_event): 1 runs code of the program (a generator's resume runs its body,
+# and its yield lets its caller run), 2 a runtime function, by its effects, 3 a store
+PATH_OPS: dict[str, int] = {"call": 1, "icall": 1, "init": 1, "gen.resume": 1, "gen.yield": 1, "gen.drop": 1, "rt": 2, "mem.store": 3, "mach.store": 3}
 # Native list reads whose receiver and encoded result survive in IR.
 LIST_READS: list[str] = ["list.get", "list.get_identity"]
 

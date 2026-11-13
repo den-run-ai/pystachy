@@ -607,6 +607,12 @@ def gen_stmt(self, n: Node) -> None:
 def gen_stmt_main(self, n: Node) -> None:
     self.line = n.line
     k = n.kind
+    if len(self.preadn) > 0:
+        # (the attribute paths the statement before read: a test narrows what its own statement reads, unions.py)
+        self.preadn = []
+        self.preadv = []
+        self.preads = []
+        self.preadb = []
     if len(self.dmemo) > 0:
         # (the dry-run types of the display items of the statement before, see dyn_dry)
         self.dmemo = []
@@ -732,16 +738,31 @@ def gen_stmt_main(self, n: Node) -> None:
         l2 = self.label()
         l3 = self.label()
         self.cbr(c, l1, l2)
+        # the attribute paths the test narrows where it is false, made here, where it has just
+        # read them; and what may change an attribute in one branch has not happened in the
+        # other, but has after the if where that branch goes on (unions.py: path_undo)
+        elsepaths: dict[str, str] = {}
+        if len(self.preadn) > 0:
+            self.narrows_paths(n.kids[0], False, elsepaths)
+        pcall = self.pcall
+        pmark = self.path_mark()
         self.branch += 1
         self.place(l1)
         pre = self.narrow_by(n.kids[0], True)
         self.stmts(n.kids[1].kids)
         yes = self.narrowed
         ygo = not self.term
+        ykeys: list[str] = []
+        yvals: list[int] = []
+        self.path_undo(pmark, ykeys, yvals)
+        ycall = self.pcall
+        self.pcall = pcall
         self.br(l3)
         self.place(l2)
         self.narrowed = pre
         self.narrow_by(n.kids[0], False)
+        for pk in elsepaths:
+            self.narrowed[pk] = elsepaths[pk]
         self.stmts(n.kids[2].kids)
         ngo = not self.term
         self.branch -= 1
@@ -749,8 +770,13 @@ def gen_stmt_main(self, n: Node) -> None:
         # after the if: what holds at the end of each branch that goes on
         if ygo and not ngo:
             self.narrowed = yes
+            self.path_undo(pmark, [], [])
+            self.pcall = ycall
         elif ygo and ngo and len(yes) + len(self.narrowed) > 0:
             self.narrowed = meet([yes, self.narrowed])
+        if ygo:
+            self.path_redo(ykeys, yvals)
+            self.pcall = max(self.pcall, ycall)
         if not ygo and self.callable_guard(n, self.curfn) != "":
             self.curfn.nnp[self.callable_guard(n, self.curfn)] = True  # (its isinstance() tests are static)
     elif k == "while" and self.static(n.kids[0]) == 0:
@@ -899,6 +925,8 @@ def gen_stmt_main(self, n: Node) -> None:
         l1 = self.label()
         l2 = self.label()
         self.cbr(self.cond(n.kids[0]), l2, l1)
+        pcall = self.pcall  # (what its message does has not happened where the assertion holds: unions.py's path_undo)
+        pmark = self.path_mark()
         self.place(l1)
         pre = self.narrowed
         self.narrowed = dict(pre)  # (what a := in the message binds is not bound where the assertion holds)
@@ -906,6 +934,8 @@ def gen_stmt_main(self, n: Node) -> None:
         self.assert_fails(n)
         self.branch -= 1
         self.narrowed = pre
+        self.path_undo(pmark, [], [])
+        self.pcall = pcall
         self.place(l2)
         self.narrow_by(n.kids[0], True)
     elif k == "raise":

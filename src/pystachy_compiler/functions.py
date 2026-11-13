@@ -61,6 +61,13 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
     self.nonesites = {}
     self.nonepending = {}
     self.narrowed = {}
+    self.preadn = []
+    self.preadv = []
+    self.preads = []
+    self.preadb = []
+    self.pdoms = {}
+    self.psess = [0]
+    self.pfield = ""
     self.lkk = {}
     self.branch = 0
     self.cells = {}

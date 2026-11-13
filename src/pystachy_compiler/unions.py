@@ -5,7 +5,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import BIG, BIGOPT, FXBIT, NONEVAR, OPTTYPES
 from src.pystachy_compiler.utils import elem, is_callable, is_dict, is_fn, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
@@ -296,7 +296,7 @@ def gen_unarrowed(self, v: Val) -> str:
     if not is_union(unopt(v.t)):
         return ""
     if self.curfn.ll + v.v in self.wide:
-        return ": copy it to a local variable, and narrow that to one of its types with isinstance() (a test does not narrow a global or a field, which a call may change)"
+        return ": copy it to a local variable, and narrow that to one of its types with isinstance() (a test does not narrow a global, nor a field past a call or a store that may change it)"
     return ": narrow it to one of its types first, with isinstance()"
 
 def gen_uisinst(self, v: Val, c: Node) -> str:
@@ -398,6 +398,277 @@ def gen_umethod(self, o: Val, m: str, args: list[Node]) -> Val:
     for i in range(len(results)):
         self.incoming(ph, results[i].v, edges[i])
     return Val(self.phi(ph), results[0].t)
+
+# ---- attribute paths that a test narrows (x.a, self.a.b)
+# A test of an attribute read narrows the reads of that attribute that follow it, as a test of a
+# local narrows the local: isinstance(e.node, T) and then e.node.name. CPython reads the
+# attribute again each time, so that holds only while nothing can have stored the attribute. A
+# fact is an entry of Gen.narrowed whose key is the path, and so follows the branches and joins
+# as a local's does; its value names the narrowed type, the value the test read (a narrowed read
+# is that very value where its block is on every way here, path_dominates, and else the field's
+# load again, which then holds it: path_again), the attribute's own type, and when it was made
+# (path_fact). What may have changed the attribute since voids the fact (path_live):
+# - an operation that may run code of the program or write objects' fields (Gen.pcall): a call,
+#   a generator's resume or yield, a runtime function with U, U? or wO, a store to a global
+#   (which a class attribute is) and any store this file cannot name;
+# - a store to an attribute of that name on any object (Gen.pstamps, by setfield);
+# - a store to the path's local;
+# - a loop, whose body runs again after what follows a read in it (path_void in forget).
+# Only fields are paths: a property's read is a call. An if statement's branches, a conditional
+# expression's arms and a failing assertion's message do not follow one another, so what one
+# does is taken back for the other (path_undo) and holds after them where it may have run.
+
+
+def gen_path_key(self, n: Node) -> str:
+    # "x.a.b" for a chain of attribute reads on local x, which only this function's own stores
+    # rebind (no global, nor a local a closure assigns); else ""
+    if n.kind != "attr" or len(n.kids) != 1:
+        return ""
+    b = n.kids[0]
+    if b.kind == "name":
+        if b.s not in self.ltype or b.s in self.nlw or self.is_global(b.s):
+            return ""
+        return b.s + "." + n.s
+    k = self.path_key(b)
+    return k + "." + n.s if k != "" else ""
+
+def gen_path_void(self) -> None:
+    # code of the program may run here, or run again: every fact made before is void
+    self.pseq += 1
+    self.pcall = self.pseq
+
+def gen_path_stamp(self, key: str) -> None:
+    # a store to an attribute ("a" and its name) or to a local's slot ("l" and its register)
+    self.pseq += 1
+    old = self.pstamps.get(key, 0)
+    self.plogk.append(key)
+    self.plogv.append(old)
+    self.pstamps[key] = self.pseq
+
+def gen_path_event(self, i: Ins, kind: int) -> None:
+    # instruction i, as it is added, may change what a path's read gives (PATH_OPS: kind)
+    if kind == 1:
+        self.path_void()
+    elif kind == 2:
+        f = self.rtfns[i.s]
+        if f.q or (f.fx & (FXBIT["U"] | FXBIT["wO"])) != 0:
+            self.path_void()
+    else:
+        a = i.a[0].v
+        if a.startswith("%") and "." in a:
+            self.path_stamp("l" + a)  # (a local's slot, or its flag: slot_register)
+        elif self.pfield != "" and not a.startswith("@"):
+            self.path_stamp("a" + self.pfield)
+        else:
+            self.path_void()  # (also a global's: a class attribute, which an object without its own reads)
+
+def gen_path_live(self, key: str, born: int, session: int) -> bool:
+    # has nothing that may change path key's value happened since born, in code that is kept
+    # (session: the dry() that made the fact, if one did, is still typing)
+    if self.pcall > born or session not in self.psess:
+        return False
+    parts = key.split(".")
+    if self.pstamps.get("l" + self.lreg.get(parts[0], ""), 0) > born or self.pstamps.get("l" + self.lflag.get(parts[0], ""), 0) > born:
+        return False
+    for a in parts[1:]:
+        if self.pstamps.get("a" + a, 0) > born:
+            return False
+    return True
+
+def gen_path_mark(self) -> int:
+    return len(self.plogk)
+
+def gen_path_undo(self, mark: int, keys: list[str], vals: list[int]) -> None:
+    # takes back the stamps made since mark (path_mark), which are those of code that the code
+    # compiled next does not follow (an if statement's other branch); keys and vals receive
+    # them, for path_redo
+    while len(self.plogk) > mark:
+        k = self.plogk.pop()
+        old = self.plogv.pop()
+        if k not in keys:
+            keys.append(k)
+            vals.append(self.pstamps[k])
+        self.pstamps[k] = old
+
+def gen_path_redo(self, keys: list[str], vals: list[int]) -> None:
+    # the stamps path_undo took back hold again, where the code they are of may have run
+    for j in range(len(keys)):
+        if self.pstamps.get(keys[j], 0) < vals[j]:
+            self.plogk.append(keys[j])
+            self.plogv.append(self.pstamps.get(keys[j], 0))
+            self.pstamps[keys[j]] = vals[j]
+
+def gen_path_read(self, n: Node, v: Val, born: int, block: str) -> None:
+    # attribute path n was read, as a field's load (v, of the field's type) in block, or as a
+    # fact's value
+    self.preadn.append(n)
+    self.preadv.append(v)
+    self.preads.append(born)
+    self.preadb.append(block)
+
+def gen_path_dominates(self, block: str) -> bool:
+    # does every way from the function's entry to the block being compiled pass block (where a
+    # fact's value was read: its uses there are then valid)? Of the blocks and branches made so
+    # far, which decide it: what is made later branches forward, or back to a loop's start,
+    # which the loop's code is reached through. A test that and/or compile to one value read
+    # its later operands in blocks that do not (path_value then reads the field again)
+    if block == self.cur:
+        return True
+    if self.drying > 0:
+        return True  # (its blocks are dropped)
+    key = block + ">" + self.cur
+    if key in self.pdoms:
+        return self.pdoms[key]
+    succs: dict[str, list[str]] = {}
+    for b in self.fn.blocks:
+        out: list[str] = [b.handler] if b.handler != "" else []
+        if len(b.code) > 0:
+            out.extend(b.code[len(b.code) - 1].b)
+        succs[b.label] = out
+    entry = self.fn.blocks[0].label
+    r = False
+    if entry == block:
+        r = True
+    else:
+        # reached at all, and not without block
+        for avoid in ["", block]:
+            seen: dict[str, bool] = {entry: True}
+            todo = [entry]
+            hit = False
+            while len(todo) > 0:
+                l = todo.pop()
+                if l == self.cur:
+                    hit = True
+                    break
+                for x in succs.get(l, []):
+                    if x != avoid and x not in seen:
+                        seen[x] = True
+                        todo.append(x)
+            if avoid == "" and not hit:
+                break  # (no way here yet: not known)
+            r = avoid != "" and not hit
+    self.pdoms[key] = r
+    return r
+
+def gen_path_seen(self, n: Node) -> int:
+    # where the statement being compiled read attribute path n and each attribute before it
+    # (so that each is a field: a property's read is a call, and is not recorded), or -1
+    at = -1
+    for j in range(len(self.preadn) - 1, -1, -1):
+        if self.preadn[j] is n:
+            at = j
+            break
+    b = n.kids[0]
+    if at < 0 or (b.kind == "attr" and self.path_seen(b) < 0):
+        return -1
+    return at
+
+def path_fact(nt: str, v: Val, born: int, session: int, block: str) -> str:
+    # (its last part: "1" for a number that has an identity for Any values, which is read with
+    # its box each time: path_again, dynamic.py)
+    return nt + "\t" + v.v + "\t" + v.t + "\t" + str(born) + "\t" + str(session) + "\t" + block + "\t" + ("1" if v.idslot != "" or v.idfrom != "" else "0")
+
+def gen_path_type(self, key: str, out: dict[str, str], t: str) -> str:
+    # the type path key has here: as out or a live fact narrowed it, else its field's type t
+    f = out[key] if key in out else self.narrowed.get(key, "")
+    if f == "":
+        return t
+    ps = f.split("\t")
+    return ps[0] if key in out or self.path_live(key, int(ps[3]), int(ps[4])) else t
+
+def gen_path_value(self, n: Node, key: str) -> Val:
+    # the read of attribute path n where narrowed has a fact for it: the value the test read, as
+    # of the type it narrowed to; Val("", "") where the fact is void, or where that value is not
+    # at hand here (path_dominates: the field is read again, path_again)
+    ps = self.narrowed[key].split("\t")
+    born = int(ps[3])
+    if not self.path_live(key, born, int(ps[4])) or ps[6] == "1" or not self.path_dominates(ps[5]):
+        return Val("", "")
+    v = Val(ps[1], ps[2])
+    self.path_read(n, v, born, ps[5])
+    return self.narrow_val(v, ps[0])
+
+def gen_path_again(self, n: Node, key: str, v: Val) -> Val:
+    # v, attribute path n's field read again where a fact, live before that read, has a value that
+    # is not at hand (path_value): nothing has stored the attribute since the test, so it holds the value the
+    # test read, of the type it narrowed to, which the IR is told (a branch that cannot be
+    # taken, as a payload's read needs its tag's test: union_proof.py)
+    ps = self.narrowed[key].split("\t")
+    born = int(ps[3])
+    nt = ps[0]
+    if v.t != ps[2]:
+        return v
+    self.path_read(n, v, born, self.cur)
+    if v.idfrom != "" and v.t != BIGOPT and (is_opt(v.t) or is_union(v.t)):
+        return self.dyn_unbox(Val(v.idfrom, "dyn"), nt).identity(v)  # (as a local's narrowed read: Gen.read)
+    if v.t in self.classes:
+        return self.narrow_val(v, nt)  # (the same pointer, of the class its test proved)
+    if is_union(unopt(v.t)) and nt != "None" and not is_opt(nt) and not is_union(nt):
+        ok = self.utest(v, [nt], is_opt(v.t) or self.reference_union(v.t))
+    elif is_opt(v.t) and not is_union(unopt(v.t)) and nt == unopt(v.t):
+        ok = self.ptr_cmp('!=', v, Val('null', 'None')).v
+    else:
+        return v  # (a narrower union, or None: as the field's type here)
+    good = self.label()
+    bad = self.label()
+    self.cbr(ok, good, bad)
+    self.place(bad)
+    self.unreachable()
+    self.place(good)
+    return self.narrow_val(v, nt)
+
+def gen_narrows_path(self, n: Node, test: str, c: Node, truth: bool, out: dict[str, str]) -> None:
+    # narrows, for a test of attribute path n that the statement has just read: test "" (its
+    # truth), "none" (n is not None), "isinstance" (of c) or "callable"
+    key = self.path_key(n)
+    at = self.path_seen(n) if key != "" else -1
+    if at < 0:
+        return
+    v = self.preadv[at]
+    born = self.preads[at]
+    block = self.preadb[at]
+    session = self.psess[len(self.psess) - 1]
+    if not self.path_live(key, born, session):
+        return
+    t = self.path_type(key, out, v.t)
+    nt = ""
+    if test == "" or test == "none":
+        nt = unopt(t) if truth and is_opt(t) else ""
+    elif test == "callable":
+        nt = self.callable_narrow(t, truth) if is_union(unopt(t)) else ""
+    elif is_union(unopt(t)):
+        nt = self.isinst_narrow(t, c, truth)
+    elif truth and t in self.classes and self.classes[t].tag > 0 and c.kind == "name" and c.s in self.classes and (self.derives(c.s, t) or c.s in self.classes[t].overlaps):
+        nt = c.s  # (the class its runtime class test proved: narrows)
+    elif self.isinst(t, c) == (-2 if truth else -3):
+        nt = unopt(t)
+    if nt != "" and nt != t:
+        out[key] = path_fact(nt, v, born, session, block)
+
+def gen_narrows_paths(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+    # narrows, of the attribute paths alone (an if statement's else branch, whose facts are made
+    # where the test has just been read)
+    k = n.kind
+    if k == "unary" and n.s == "not":
+        self.narrows_paths(n.kids[0], not truth, out)
+    elif k == "boolop" and (n.s == "and") == truth:
+        self.narrows_paths(n.kids[0], truth, out)
+        self.narrows_paths(n.kids[1], truth, out)
+    else:
+        self.narrows_leaf(n, truth, out)
+
+def gen_narrows_leaf(self, n: Node, truth: bool, out: dict[str, str]) -> None:
+    # narrows, for a test that is no not/and/or: of an attribute path, if it is of one
+    k = n.kind
+    if k == "attr":
+        self.narrows_path(n, "", n, truth, out)
+    elif k == "cmp" and len(n.kids) == 2 and n.kids[1].kind == "None" and n.kids[0].kind == "attr" and (n.s == "is not" or n.s == "!=" or n.s == "is" or n.s == "=="):
+        self.narrows_path(n.kids[0], "none", n, (n.s == "is not" or n.s == "!=") == truth, out)
+    elif k == "call" and len(n.kids) == 3 and n.kids[0].kind == "name" and n.kids[0].s == "isinstance" and n.kids[1].kind == "attr" and not self.bound("isinstance"):
+        self.narrows_path(n.kids[1], "isinstance", n.kids[2], truth, out)
+    elif k == "call" and len(n.kids) == 2 and n.kids[0].kind == "name" and n.kids[0].s == "callable" and n.kids[1].kind == "attr" and not self.bound("callable"):
+        self.narrows_path(n.kids[1], "callable", n, truth, out)
+
 
 def gen_now_type(self, name: str) -> str:
     # the type local name has here: as a test or an assignment narrowed it, else its own

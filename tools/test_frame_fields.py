@@ -71,6 +71,7 @@ PROGRAM = """
     pep695 taliases recursive reflrecs reflstores refllate refltexts rtdatas dyntypes dynclasses
     dynfns dynkeys dynlines dynsig dynfuncs dynfnt dynboxes dynwide dynrets dynrline dynseen gidbox
     idoff idfull idevent idsplit idtry idhint gendrops_counted genplain rdpass entries resumes_counted
+    pseq pcall pstamps plogk plogv pdry
 """.split()
 # Gen's fields that hold a module's state, one lowering's, or one operation's, which the operation
 # sets and then restores or clears: a nested compile that starts inside the operation sees them.
