@@ -1111,37 +1111,45 @@ constructed and rounded to the current context by arithmetic, with CPython's res
 hashes and messages for the supported API
 ([API walk](../tests/programs/library/lib_decimal.py),
 [operand grid](../tests/programs/library/lib_decimal_grid.py),
-[typed program data](../tests/programs/library/lib_decimal_records.py)).
+[typed program data](../tests/programs/library/lib_decimal_records.py),
+[functions](../tests/programs/library/lib_decimal_functions.py),
+[methods](../tests/programs/library/lib_decimal_methods.py),
+[sums and exceptions](../tests/programs/library/lib_decimal_sums.py)).
 
-Supported: construction from `str`, `int` and `float`; `+ - * / // %`, `divmod()`, integer
-`**`, unary operators and `abs()`, with a `Decimal` or an `int` on either side; comparison with
-a `Decimal`, `int` or `float`; `hash()`, `int()`, `float()`, `round()`, `math.floor()`,
-`math.ceil()`, `math.trunc()`, `bool()`, `str()`, `repr()` and `format()`; `quantize()`,
-`to_integral_value()`, `normalize()`, `sqrt()`, `fma()`, `remainder_near()`, `scaleb()`,
-`compare()`, `max()`, `min()`, the `is_*()`, `copy_*()` and `as_*()` methods; `Context`,
-`getcontext()`, `setcontext()`, `localcontext()` and the three predefined contexts; all eight
-rounding modes; NaNs, infinities and signed zeros.
+Supported: construction from `str`, `int`, `bool`, `float` and `Decimal`; `+ - * / // % **`,
+`divmod()`, unary operators and `abs()`, with a `Decimal` or an `int` on either side;
+comparison with a `Decimal`, `int` or `float`; `hash()`, `int()`, `float()`, `round()`,
+`math.floor()`, `math.ceil()`, `math.trunc()`, `bool()`, `str()`, `repr()` and `format()`;
+[`sum()`](../docs/language/semantics.md#sums-of-objects); `quantize()`, `to_integral_value()`,
+`normalize()`, `sqrt()`, `exp()`, `ln()`, `log10()`, a `Decimal` exponent, `fma()`,
+`remainder_near()`, `scaleb()`, `logb()`, `next_minus()`, `next_plus()`, `next_toward()`,
+`compare()`, `compare_signal()`, `compare_total()`, `compare_total_mag()`, `max()`, `min()`,
+`max_mag()`, `min_mag()`, the logical operations, `rotate()`, `shift()`, the `is_*()`,
+`copy_*()` and `as_*()` methods, each taking an `int` where it takes another number;
+`Context` with the same operations as methods on Decimals or ints, `getcontext()`,
+`setcontext()`, `localcontext()`, `DefaultContext` as the prototype of new contexts and the
+two other predefined contexts; all eight rounding modes; NaNs, infinities and signed zeros.
+`exp()`, `ln()`, `log10()` and powers are correctly rounded as CPython's C module rounds them.
 
 - **Signals.** Flags are not recorded and traps are fixed at the default:
   `InvalidOperation`, `DivisionByZero` and `Overflow` always raise, and the other signals
   never do. `Context` has no `flags` or `traps`, and its `repr()` shows none set.
-- **Exception classes.** A class has one exception base here: `DivisionByZero` derives from
-  `ZeroDivisionError` but not from `DecimalException`; `Overflow` and `Underflow` derive from
-  `Inexact` but not from `Rounded` (or `Subnormal`); `FloatOperation` is not a `TypeError`.
-- **Constructor.** `Decimal(d)` of a `Decimal`, `Decimal(True)` and
-  `Decimal((sign, digits, exponent))` are compile-time errors: use the value itself, or `+d`
-  to round it to the context.
-- **Powers and logarithms.** The exponent of `**` is an `int`; `exp()`, `ln()`, `log10()`,
-  `logb()`, the logical and shifting operations, `next_minus()`, `next_plus()`,
-  `next_toward()`, `compare_total()` and `compare_signal()` are not provided, and
-  `int ** Decimal` is not supported.
+- **Exception classes.** The classes derive as CPython's do (`DivisionByZero` is a
+  `DecimalException` and a `ZeroDivisionError`, `Overflow` an `Inexact` and a `Rounded`), but
+  for `Underflow`, which is not a `Subnormal`: a class has two exception bases at most.
+- **Constructor.** `Decimal(d)` of a `Decimal` is a new, equal object where CPython returns
+  `d` itself, and `Decimal((sign, digits, exponent))` is a compile-time error.
+- **Powers.** `pow()` takes no third argument.
 - **Integers beyond 64 bits.** `int()`, `round()`, `math.floor()` and `as_integer_ratio()`
   return large integers to a module that opts in to promoting ints
   ([test](../tests/programs/library/lib_decimal_python_int.py)) and raise `OverflowError` in
-  one that does not. An `int` given to the constructor or to an operator is a 64-bit value:
-  pass a larger one as text.
-- **Typing.** `sum()` of Decimals is not supported: add them in a loop. `Decimal` cannot be
-  subclassed. A NaN hashes to 0, and one context is shared by all threads.
+  one that does not. An `int` given to the constructor, an operator or a method is a 64-bit
+  value, and a larger one raises `OverflowError`: pass it as text.
+- **Typing.** `sum(values)` is an `int | Decimal`, as CPython's is the `int` 0 for no values:
+  it prints, formats, compares and adds as it is, and a method call on it needs
+  `isinstance()` first or a start, `sum(values, Decimal(0))`; so does its arithmetic in a
+  module that opts in to promoting ints. `Decimal` cannot be subclassed.
+  A NaN hashes to 0, and one context is shared by all threads.
 - **Formatting.** The `n` type uses the C locale's format, and a value whose coefficient has
   more than 4,300 digits cannot be converted to text.
 
