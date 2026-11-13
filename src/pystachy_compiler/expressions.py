@@ -1521,7 +1521,10 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
         for x in rhs.kids:
             items.append(self.expr(x, ""))
     else:
-        v = self.ntup(self.expr(rhs, ""))  # (a NamedTuple is a tuple: its fields are the arguments)
+        v = self.expr(rhs, "")
+        if self.nt_wide(v):
+            return self.percent_opt(fmt, v)  # (None, or its fields as they are: nt_wide)
+        v = self.ntup(v)  # (a NamedTuple is a tuple: its fields are the arguments)
         if is_tuple(unopt(v.t)) and is_opt(v.t):
             return self.percent_opt(fmt, v)
         if is_tuple(v.t):
@@ -1534,7 +1537,8 @@ def gen_percent(self, fmt: str, rhs: Node, lit: bool) -> Val:
     return self.pformat(fmt, items, False, [])
 
 def gen_percent_opt(self, fmt: str, v: Val) -> Val:
-    # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument
+    # "format" % t, t a tuple or None: the tuple's items are the arguments, None is one argument;
+    # also t a NamedTuple that may be None, whose fields ntup reads where it is not (nt_wide)
     l1 = self.label()
     l2 = self.label()
     l3 = self.label()
@@ -1546,7 +1550,7 @@ def gen_percent_opt(self, fmt: str, v: Val) -> Val:
         self.incoming(ph, a.v, self.cur)
     self.br(l3)
     self.place(l2)
-    tv = Val(v.v, unopt(v.t))
+    tv = self.ntup(v, True) if v.t in self.nts else Val(v.v, unopt(v.t))
     items: list[Val] = []
     for i in range(len(targs(tv.t))):
         items.append(self.tget(tv, i))
@@ -3666,7 +3670,7 @@ def gen_ntop(self, op: str, a: Val, b: Val, shown: str) -> Val:
         # (CPython asks a tuple's subclass first, and b's __radd__ & co where a has no __add__)
         self.err(f"{short(b.t)}.{rm} with a {typestr(a.t)} operand is not supported")
     if tl and (op == "==" or op == "!="):
-        return self.cmp2(op, self.ntup(a), self.ntup(b))
+        return self.nt_eq(op, a, b)
     if tl and cmp:
         return self.richcmp(op, a, b)
     if (op == "+" and tl) or (op == "*" and (a.t == "int" or b.t == "int")):
@@ -3701,6 +3705,47 @@ def gen_ntup(self, v: Val, known: bool = False) -> Val:
     self.incoming(ph, "null", l0)
     self.incoming(ph, t.v, l1)
     return Val(self.phi(ph), ph.t)
+
+def gen_nt_wide(self, v: Val) -> bool:
+    # whether ntup would narrow the promoting ints of NamedTuple v to 64-bit ints: where v may be
+    # None, as the tuple | None it then gives holds them (bigints.py, NARROW). Where an operation
+    # compares or formats v's fields as a tuple's, it tests v for None first and reads them as they
+    # are (ntup, known): narrowed, they would raise OverflowError past 64 bits and never equal a
+    # promoting int (#1439)
+    if v.t not in self.nts or v.v in self.nn:
+        return False
+    ci = self.classes[v.t]
+    return BIG in self.ctype("tuple", [ci.ftypes[x] for x in ci.fields])
+
+def gen_nt_eq(self, op: str, a: Val, b: Val) -> Val:
+    # a == b or a != b of NamedTuples and tuples, compared as tuples (ntup); one whose fields ntup
+    # would narrow (nt_wide) is None where it is None, else the tuple of its fields as they are
+    v = a if self.nt_wide(a) else b if self.nt_wide(b) else Val("", "")
+    if v.t == "":
+        return self.cmp2(op, self.ntup(a), self.ntup(b))
+    left = v is a
+    none = self.label()
+    some = self.label()
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, none, some)
+    self.place(none)
+    nv = Val("null", "None")
+    r = self.nt_eq(op, nv if left else a, b if left else nv)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(some)
+    t = self.ntup(v, True)
+    r = self.nt_eq(op, t if left else a, b if left else t)
+    if not self.term:
+        self.incoming(ph, r.v, self.cur)
+    self.br(end)
+    self.place(end)
+    if len(ph.a) == 0:
+        self.unreachable()
+        return Val("undef", "bool")
+    return Val(self.phi(ph), "bool")
 
 def gen_cmp_method(self, t: str, m: str, other: str) -> str:
     # m, if class t defines it as a binary method that accepts an operand of type other
@@ -4634,6 +4679,9 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
         self.place(nx)
     # Named tuples and homogeneous runtime tuples compare as tuples, including
     # numeric and optional element layouts accepted by ordinary equality.
+    wide = [x for x in [item, a] if self.nt_wide(x) and "__eq__" not in self.classes[x.t].methods]
+    if len(wide) > 0:
+        return self.titem_nt(item, a, wide[0] is item, hit, ph, value) or identity
     if item.t in self.nts and "__eq__" not in self.classes[item.t].methods:
         item = self.ntup(item)
     if a.t in self.nts and "__eq__" not in self.classes[a.t].methods:
@@ -4664,6 +4712,27 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) 
     self.cbr(c.v, hit, nx)
     self.place(nx)
     return True
+
+def gen_titem_nt(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str) -> bool:
+    # titem_eq of tuple item and x, where item (left) or x is a NamedTuple whose fields ntup would
+    # narrow (nt_wide): None where it is None, else the tuple of its fields as they are, as
+    # nt_eq compares them; the other may be such a NamedTuple too
+    v = item if left else a
+    none = self.label()
+    some = self.label()
+    done = self.label()
+    self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, none, some)
+    self.place(none)
+    nv = Val("null", "None")
+    found = self.titem_eq(nv if left else item, a if left else nv, hit, ph, value)
+    self.br(done)
+    self.place(some)
+    t = self.ntup(v, True)
+    if self.titem_eq(t if left else item, a if left else t, hit, ph, value):
+        found = True
+    self.br(done)
+    self.place(done)
+    return found
 
 def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
     if self.curfn.cmpops:

@@ -230,7 +230,7 @@ Some of these boundaries reject values CPython accepts. The
 | Unsupported list items, dict keys/values and set elements | Int storage promotes only in the supported integer and tuple forms above. An `int \| None` inside a list or tuple remains 64-bit, including nested tuple items. |
 | Optional tuple results | Dict `get()`/`pop()` results that may be `None`, such as `d.get(k)` for tuple values, retain the 64-bit tuple boundary. |
 | Runtime-length tuples | `tuple[int, ...]` items, including a tuple sliced by a variable, stay 64-bit. |
-| Optional NamedTuple operations | Hashing, comparison, search, `%` formatting and argument unpacking use the 64-bit tuple-or-None representation. |
+| Optional NamedTuple operations | Hashing and argument unpacking of a NamedTuple that may be `None`, such as a parameter's, use the 64-bit tuple-or-None representation. Comparison, tuple search and `%` formatting test it for `None` first and keep its promoting ints. |
 | `dataclasses.astuple()` | Has the same optional-tuple boundary. |
 | Generator input | Values passed to `send()` stay 64-bit; yielded and returned ints can promote. |
 
