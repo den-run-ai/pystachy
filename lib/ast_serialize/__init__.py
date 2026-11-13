@@ -22,6 +22,8 @@ from ._sha1 import sha1_hex
 
 __all__ = ["parse", "parse_type_string"]
 
+RECURSION_LIMIT = 20000
+
 
 def _os_error_text(s: str) -> str:
     # Rust's io::Error display: "[Errno 2] No such file or directory: 'x'" is
@@ -101,8 +103,18 @@ def parse(
     if always_false is None:
         always_false = []
     raw = _source_bytes(fnam, source)
-    return _parse_bytes(fnam, raw, skip_function_bodies,
-                        Options(python_version, platform, always_true, always_false, cache_version))
+    options = Options(python_version, platform, always_true, always_false, cache_version)
+    # Ruff's parser bounds its recursion (to 202 levels of nesting), which takes several
+    # frames per level here, and the serializer recurses into nested nodes as the extension
+    # does on its own stack: a lower recursion limit is raised for the call
+    old = sys.getrecursionlimit()
+    if old < RECURSION_LIMIT:
+        sys.setrecursionlimit(RECURSION_LIMIT)
+    try:
+        return _parse_bytes(fnam, raw, skip_function_bodies, options)
+    finally:
+        if old < RECURSION_LIMIT:
+            sys.setrecursionlimit(old)
 
 
 def _parse_bytes(fnam: str, raw: bytes, skip_function_bodies: bool, options: Options
@@ -187,5 +199,12 @@ def parse_type_string(source: str, range: tuple[int, int, int, int], cache_versi
     ser.o_col = range[1]
     ser.o_end_line = range[2]
     ser.o_end_col = range[3]
-    ser.string_type(source.encode(), 0, 0)
+    old = sys.getrecursionlimit()
+    if old < RECURSION_LIMIT:
+        sys.setrecursionlimit(RECURSION_LIMIT)
+    try:
+        ser.string_type(source.encode(), 0, 0)
+    finally:
+        if old < RECURSION_LIMIT:
+            sys.setrecursionlimit(old)
     return ser.getvalue()

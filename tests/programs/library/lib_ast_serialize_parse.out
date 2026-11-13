@@ -1,0 +1,266 @@
+0 150 1989415503 17 3432315086
+  ignores [(2, ['misc'])] [] []
+  data False False abcb9031f306b6e17546450ca9bc29334bf3f3a7
+0 125 2714907746 17 3432315086
+  ignores [(2, ['misc'])] [] []
+  data False False abcb9031f306b6e17546450ca9bc29334bf3f3a7
+0 153 2772463203 17 3432315086
+  ignores [(2, ['misc'])] [] []
+  data False False abcb9031f306b6e17546450ca9bc29334bf3f3a7
+1 80 808286530 94 2583231309
+  ignores [] [] []
+  data False False 3e1c5436bec1ca6d10a35383b87cfaaab8728d58
+1 88 294861592 94 2583231309
+  ignores [] [] []
+  data False False 3e1c5436bec1ca6d10a35383b87cfaaab8728d58
+1 88 294861592 94 2583231309
+  ignores [] [] []
+  data False False 3e1c5436bec1ca6d10a35383b87cfaaab8728d58
+2 298 2871050001 2 1974276567
+  ignores [] [] []
+  data False False 5c1b231b21623ea3df5fdcdd0ea5034957283d58
+2 299 3109205875 2 1974276567
+  ignores [] [] []
+  data False False 5c1b231b21623ea3df5fdcdd0ea5034957283d58
+2 300 1614809757 2 1974276567
+  ignores [] [] []
+  data False False 5c1b231b21623ea3df5fdcdd0ea5034957283d58
+3 401 2224060356 2 1974276567
+  ignores [] [] []
+  data False False 5f5cc8d2b3ebbefbab071bcc1c0a87baa98ed0ab
+3 286 505529809 2 1974276567
+  ignores [] [] []
+  data False False 5f5cc8d2b3ebbefbab071bcc1c0a87baa98ed0ab
+3 402 230895113 2 1974276567
+  ignores [] [] []
+  data False False 5f5cc8d2b3ebbefbab071bcc1c0a87baa98ed0ab
+4 287 992846602 2 1974276567
+  error 1 5 True Bytes literal cannot be mixed with non-bytes literals
+  ignores [] [] []
+  data False True ced08727e8fed74ce573c5c6b420c1cc1d752519
+4 289 3565767359 2 1974276567
+  error 1 5 True Bytes literal cannot be mixed with non-bytes literals
+  ignores [] [] []
+  data False True ced08727e8fed74ce573c5c6b420c1cc1d752519
+4 289 3565767359 2 1974276567
+  error 1 5 True Bytes literal cannot be mixed with non-bytes literals
+  ignores [] [] []
+  data False True ced08727e8fed74ce573c5c6b420c1cc1d752519
+5 435 740678976 2 1974276567
+  ignores [] [] []
+  data False False a9d9c2cb69a28552e151403909cbd0c9b9910b47
+5 436 899821673 2 1974276567
+  ignores [] [] []
+  data False False a9d9c2cb69a28552e151403909cbd0c9b9910b47
+5 436 899821673 2 1974276567
+  ignores [] [] []
+  data False False a9d9c2cb69a28552e151403909cbd0c9b9910b47
+6 224 3578153596 35 1847577477
+  ignores [] [] []
+  data False False 25f8938827793c90caa3eb1f49eed15e2bf77cf8
+6 228 691672793 35 1847577477
+  ignores [] [] []
+  data False False 25f8938827793c90caa3eb1f49eed15e2bf77cf8
+6 228 691672793 35 1847577477
+  ignores [] [] []
+  data False False 25f8938827793c90caa3eb1f49eed15e2bf77cf8
+7 361 2938931914 2 1974276567
+  ignores [] [] []
+  data False False c698f975bf2468c652b26b1dd832d92de3abb6f9
+7 362 562095541 2 1974276567
+  ignores [] [] []
+  data False False c698f975bf2468c652b26b1dd832d92de3abb6f9
+7 362 562095541 2 1974276567
+  ignores [] [] []
+  data False False c698f975bf2468c652b26b1dd832d92de3abb6f9
+8 681 4171782911 2 1974276567
+  ignores [] [] []
+  data False False a08fe32b52ce78510ea50d7249fdcabd81af6d47
+8 683 152874336 2 1974276567
+  ignores [] [] []
+  data False False a08fe32b52ce78510ea50d7249fdcabd81af6d47
+8 683 152874336 2 1974276567
+  ignores [] [] []
+  data False False a08fe32b52ce78510ea50d7249fdcabd81af6d47
+9 194 78569938 2 1974276567
+  ignores [] [] []
+  data False False 2230304b946580dab43badc695acbfcf69e6d1b5
+9 194 78569938 2 1974276567
+  ignores [] [] []
+  data False False 2230304b946580dab43badc695acbfcf69e6d1b5
+9 194 78569938 2 1974276567
+  ignores [] [] []
+  data False False 2230304b946580dab43badc695acbfcf69e6d1b5
+10 427 1423182940 2 1974276567
+  ignores [] [] []
+  data False False 8731731fe29a584d8ae2f102819503688564dceb
+10 427 1423182940 2 1974276567
+  ignores [] [] []
+  data False False 8731731fe29a584d8ae2f102819503688564dceb
+10 427 1423182940 2 1974276567
+  ignores [] [] []
+  data False False 8731731fe29a584d8ae2f102819503688564dceb
+11 168 1172930039 2 1974276567
+  ignores [] [] []
+  data False False c7a64d50aecdbba7b0be7282521e560ae61faaf6
+11 173 481491904 2 1974276567
+  ignores [] [] []
+  data False False c7a64d50aecdbba7b0be7282521e560ae61faaf6
+11 173 481491904 2 1974276567
+  ignores [] [] []
+  data False False c7a64d50aecdbba7b0be7282521e560ae61faaf6
+12 272 2798600927 2 1974276567
+  error 9 12 True Expected `)`, found `as`
+  error 9 16 True Expected `,`, found `)`
+  error 9 17 True Expected an expression or the end of the with item list
+  ignores [] [] []
+  data False False c482248d173fce15539e889f7fb1e036a233f714
+12 272 2798600927 2 1974276567
+  error 9 12 True Expected `)`, found `as`
+  error 9 16 True Expected `,`, found `)`
+  error 9 17 True Expected an expression or the end of the with item list
+  ignores [] [] []
+  data False False c482248d173fce15539e889f7fb1e036a233f714
+12 272 2798600927 2 1974276567
+  error 9 12 True Expected `)`, found `as`
+  error 9 16 True Expected `,`, found `)`
+  error 9 17 True Expected an expression or the end of the with item list
+  ignores [] [] []
+  data False False c482248d173fce15539e889f7fb1e036a233f714
+13 230 2999033367 2 1974276567
+  ignores [] [] []
+  data False False f3793a8781d7b24c6a7c7cc72d9432668f7362cb
+13 218 1530821393 2 1974276567
+  ignores [] [] []
+  data False False f3793a8781d7b24c6a7c7cc72d9432668f7362cb
+13 234 396590939 2 1974276567
+  ignores [] [] []
+  data False False f3793a8781d7b24c6a7c7cc72d9432668f7362cb
+14 129 4084433434 17 2823138633
+  ignores [] [] []
+  data False False 2bf6d4df41c65d58ef30cdc11d8bd70035d36939
+14 132 873748930 17 2823138633
+  ignores [] [] []
+  data False False 2bf6d4df41c65d58ef30cdc11d8bd70035d36939
+14 132 873748930 17 2823138633
+  ignores [] [] []
+  data False False 2bf6d4df41c65d58ef30cdc11d8bd70035d36939
+15 92 4085836649 2 1974276567
+  ignores [] [] []
+  data False False 5a04ffe5756b24d026af045dd19c3898d8699c24
+15 93 26325583 2 1974276567
+  ignores [] [] []
+  data False False 5a04ffe5756b24d026af045dd19c3898d8699c24
+15 93 26325583 2 1974276567
+  ignores [] [] []
+  data False False 5a04ffe5756b24d026af045dd19c3898d8699c24
+16 372 1581963288 2 1974276567
+  ignores [] [] []
+  data False False 7fa737d581f04555e52d78f01b0037426d6ec60b
+16 372 1581963288 2 1974276567
+  ignores [] [] []
+  data False False 7fa737d581f04555e52d78f01b0037426d6ec60b
+16 375 3099146873 2 1974276567
+  ignores [] [] []
+  data False False 7fa737d581f04555e52d78f01b0037426d6ec60b
+17 239 1734200054 2 1974276567
+  error 2 8 False Multiple type ignores on the same line
+  error 5 8 False Invalid "type: ignore" comment
+  error 3 0 False Syntax error in type comment "("
+  error 6 0 False Syntax error in type comment ""
+  ignores [(1, ['a', 'b']), (2, [])] [(4, ['x'])] []
+  data False False 39c3afab51b0b8b4b0b1ca22cd28d08fe81a62c2
+17 241 2581370248 2 1974276567
+  error 2 8 False Multiple type ignores on the same line
+  error 5 8 False Invalid "type: ignore" comment
+  error 3 0 False Syntax error in type comment "("
+  error 6 0 False Syntax error in type comment ""
+  ignores [(1, ['a', 'b']), (2, [])] [(4, ['x'])] []
+  data False False 39c3afab51b0b8b4b0b1ca22cd28d08fe81a62c2
+17 241 2581370248 2 1974276567
+  error 2 8 False Multiple type ignores on the same line
+  error 5 8 False Invalid "type: ignore" comment
+  error 3 0 False Syntax error in type comment "("
+  error 6 0 False Syntax error in type comment ""
+  ignores [(1, ['a', 'b']), (2, [])] [(4, ['x'])] []
+  data False False 39c3afab51b0b8b4b0b1ca22cd28d08fe81a62c2
+18 2 1882101057 2 1974276567
+  error 1 0 False Type ignore with error code is not supported for modules; use `# mypy: disable-error-code="a"`
+  ignores [] [] []
+  data False False ca593f2cad1fdb0eed5f105b78adfa4940d7773c
+18 2 1882101057 2 1974276567
+  error 1 0 False Type ignore with error code is not supported for modules; use `# mypy: disable-error-code="a"`
+  ignores [] [] []
+  data False False ca593f2cad1fdb0eed5f105b78adfa4940d7773c
+18 2 1882101057 2 1974276567
+  error 1 0 False Type ignore with error code is not supported for modules; use `# mypy: disable-error-code="a"`
+  ignores [] [] []
+  data False False ca593f2cad1fdb0eed5f105b78adfa4940d7773c
+19 115 741100657 44 1564670860
+  ignores [] [] [(1, 'always-true=FOO, always_false="BAR,BAZ"'), (2, 'ignore-errors')]
+  data False False 3dd3d2d4261ea2d0ff2c3a415c219454a8c45c62
+19 121 3586326526 44 1564670860
+  ignores [] [] [(1, 'always-true=FOO, always_false="BAR,BAZ"'), (2, 'ignore-errors')]
+  data False False 3dd3d2d4261ea2d0ff2c3a415c219454a8c45c62
+19 122 1548676881 44 1564670860
+  ignores [] [] [(1, 'always-true=FOO, always_false="BAR,BAZ"'), (2, 'ignore-errors')]
+  data False False 3dd3d2d4261ea2d0ff2c3a415c219454a8c45c62
+20 574 861015113 102 1789475532
+  ignores [] [] []
+  data False False 559e67b86651207ab8a4b09db45014ac3803733d
+20 591 379546400 102 1789475532
+  ignores [] [] []
+  data False False 559e67b86651207ab8a4b09db45014ac3803733d
+20 606 1658719972 116 1332126358
+  ignores [] [] []
+  data False False 559e67b86651207ab8a4b09db45014ac3803733d
+21 301 2378917623 16 4277582463
+  ignores [] [] []
+  data False False 8daec715a70f310bd442024702173d4a58d671a0
+21 251 2299548741 2 1974276567
+  ignores [] [] []
+  data False False 8daec715a70f310bd442024702173d4a58d671a0
+21 308 4240779128 16 4277582463
+  ignores [] [] []
+  data False False 8daec715a70f310bd442024702173d4a58d671a0
+22 57 3380974630 2 1974276567
+  ignores [] [] []
+  data False False 91725fb2569d40abb2bcbefbf8601ce2122d2b5c
+22 57 3380974630 2 1974276567
+  ignores [] [] []
+  data False False 91725fb2569d40abb2bcbefbf8601ce2122d2b5c
+22 58 1639706961 2 1974276567
+  ignores [] [] []
+  data False False 91725fb2569d40abb2bcbefbf8601ce2122d2b5c
+23 818 1381252883 2 1974276567
+  error 9 4 True Starred expression cannot be used here
+  ignores [] [] []
+  data False False 846a50de582460d16e3c9c6b135173b25c3f8368
+23 861 3263711992 2 1974276567
+  error 9 4 True Starred expression cannot be used here
+  ignores [] [] []
+  data False False 846a50de582460d16e3c9c6b135173b25c3f8368
+23 861 3263711992 2 1974276567
+  error 9 4 True Starred expression cannot be used here
+  ignores [] [] []
+  data False False 846a50de582460d16e3c9c6b135173b25c3f8368
+24 2 1882101057 2 1974276567
+  ignores [] [] []
+  data False False da39a3ee5e6b4b0d3255bfef95601890afd80709
+24 2 1882101057 2 1974276567
+  ignores [] [] []
+  data False False da39a3ee5e6b4b0d3255bfef95601890afd80709
+24 2 1882101057 2 1974276567
+  ignores [] [] []
+  data False False da39a3ee5e6b4b0d3255bfef95601890afd80709
+25 32 3348811571 2 1974276567
+  ignores [] [] []
+  data False False 34bce5f775de97f557a34088509c8bfe1ea17e52
+25 32 3348811571 2 1974276567
+  ignores [] [] []
+  data False False 34bce5f775de97f557a34088509c8bfe1ea17e52
+25 32 3348811571 2 1974276567
+  ignores [] [] []
+  data False False 34bce5f775de97f557a34088509c8bfe1ea17e52
+bytes 32 3348811571 e139f73e34322031189110afc1939eb1877a8954
+[exit 0]
