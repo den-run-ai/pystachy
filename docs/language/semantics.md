@@ -214,6 +214,15 @@ also rejects a call by another name (`builtins.object()`, or an alias that an im
 assignment binds, `obj = object`) and `type(x) is object`; in any other program such a call makes a
 sentinel too.
 
+A parameter annotated with a type `T` whose default is such a module-level sentinel
+(`def copy(self, items: list[int] = _MISSING)`, as mypy's `Bogus[...] = _dummy`) takes a `T`, or
+the sentinel itself where a call leaves it out or passes it. Each call is compiled for the case it
+is, which decides `items is _MISSING`: only the branch that runs is compiled, in
+`x if items is _MISSING else items` and in `if items is _MISSING: items = ...`. Another `object()`
+as the argument is an error, and a `T` that can hold an `object()` (such as `object`) keeps the
+test for run time ([test](../../tests/programs/classes/object_sentinel_params.py)), as does a
+parameter that a nested function assigns (`nonlocal items`).
+
 ## Iterators
 
 `iter(x)` returns an iterator object that shares its position with every use, as CPython's:

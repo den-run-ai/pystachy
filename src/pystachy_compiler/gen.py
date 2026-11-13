@@ -562,6 +562,7 @@ from src.pystachy_compiler.declarations import (
     gen_alias_problem as declarations_alias_problem,
     gen_alias_tvars as declarations_alias_tvars,
     gen_alias_value as declarations_alias_value,
+    gen_sentinel_param as declarations_sentinel_param,
     gen_alias_variadic as declarations_alias_variadic,
     gen_alias_whole as declarations_alias_whole,
     gen_rec_type as declarations_rec_type,
@@ -1484,6 +1485,7 @@ class Gen:
         # each module's TYPE_CHECKING that is a constant False (false_flag()), and its names that hold a
         # test of the platform (Loader.platform_flags()): the literal each holds, "False" or "True"
         self.constflags: dict[str, str] = {}
+        self.sentinelglobals: dict[str, bool] = {}  # the module globals whose one binding is NAME = object() (program.py: sentinel parameters)
         # an imported module's globals (and defs and classes) that other code may find unbound:
         # not assigned on every path through its module code, or before an import that may run
         # code calling back into the module
@@ -2868,6 +2870,9 @@ class Gen:
 
     def alias_value(self, name: str) -> Node:
         return declarations_alias_value(self, name)
+
+    def sentinel_param(self, p: Node) -> bool:
+        return declarations_sentinel_param(self, p)
 
     def alias_params(self, name: str) -> list[str]:
         return declarations_alias_params(self, name)
