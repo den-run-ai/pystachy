@@ -38,15 +38,20 @@ to check that the probes exist and that their test suites execute them.
 | `threading`'s locks, conditions, semaphores, events, barriers, timers and `Thread` objects, in the one thread | native | `tests/programs/library/lib_threading.py` |
 | `threading.Thread.start()` | refused: `NotImplementedError` | `tests/deviations/threading_start.py` |
 | A lock `acquire()` or a `join()` that would wait forever | refused: `RuntimeError` | `tests/deviations/lib_thread_deadlock.py` |
+| `concurrent.futures`: `ThreadPoolExecutor.submit()` and `map()` run each call on the owner thread and give finished futures; `wait()`, `as_completed()` and `Future` in the one thread | native | `tests/programs/library/lib_concurrent_futures_mypy.py`, `tests/programs/library/lib_concurrent_futures_submit.py`, `tests/programs/library/lib_concurrent_futures_wait.py`, `tests/programs/library/lib_concurrent_futures_future.py` |
+| A submitted call that waits for the thread that submitted it | refused: the wait's `RuntimeError`, which the future keeps | `tests/deviations/lib_concurrent_futures_inline.py` |
+| `result()`, `exception()`, `wait()` or `as_completed()` that would wait forever for a pending future | refused: `RuntimeError` | `tests/deviations/lib_concurrent_futures_deadlock.py` |
+| `ProcessPoolExecutor` in a compiled program | refused at compile time | `tests/errors/library/lib_concurrent_futures_process.py` |
 | `async def`, `await`, `async for`, `async with` | refused at compile time | `tests/errors/generators/gen_async.py` |
 
 
-A compiled program cannot import `queue`, `asyncio`, `concurrent.futures`,
+A compiled program cannot import `queue`, `asyncio`,
 `multiprocessing`, `subprocess`, `contextvars`, `selectors`, `socket` or `signal`;
 use the hosted interfaces for those operations. Native process control provides
-`os.system()` and `os.execv()`, with no `fork`, pipe or spawn. `_thread` and
-`threading` run only on the owner thread: importing them does not enable
-`Thread.start()`.
+`os.system()` and `os.execv()`, with no `fork`, pipe or spawn. `_thread`,
+`threading` and [`concurrent.futures`](../lib/compatibility.md#concurrentfutures) run
+only on the owner thread: importing them does not enable `Thread.start()`, and a
+`ThreadPoolExecutor` runs each call inside `submit()`.
 
 The optional [`netio` example](../examples/netio/README.md) prototypes native
 IPv4 TCP, local socket pairs and epoll/kqueue readiness through a separate C

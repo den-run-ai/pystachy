@@ -285,6 +285,12 @@ lib/urllib/parse.py is CPython 3.13.16's Lib/urllib/parse.py with the edits lib/
 each marked in the source; it is derived from Python and is used under the same license and
 copyright notice. lib/urllib/__init__.py is CPython's, which is empty.
 
+lib/concurrent/futures/__init__.py, lib/concurrent/futures/_base.py and
+lib/concurrent/futures/thread.py are CPython 3.13.16's files of the same paths under Lib/
+(lib/provenance.md) with the edits lib/compatibility.md lists, each marked in the source. They
+keep the copyright notice of Brian Quinlan, are derived from Python and are used under the same
+license and copyright notice. lib/concurrent/__init__.py is CPython's, unchanged.
+
 lib/html/__init__.py, lib/html/entities.py and lib/keyword.py adapt CPython 3.13.16's
 files of the same paths under Lib/, at commit cbc944f4bc59639a444dd971c737788ba2283a91.
 tests/programs/library/lib_html.py and tests/programs/library/lib_keyword.py adapt selected methods of Lib/test/test_html.py

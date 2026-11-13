@@ -122,12 +122,13 @@ which a file's `fileno()` gives; other `select` APIs remain unsupported.
 ### Processes and threads
 
 `multiprocessing`, `subprocess` and `asyncio` are not shipped; a program runs on one thread,
-which `threading` and `_thread` describe.
+which `threading` and `_thread` describe and on which `concurrent.futures` runs its calls.
 
 | Module | Origin | Supported APIs | Main limitation |
 |---|---|---|---|
 | 🟡 `_thread` | Subset port of CPython's C module for one thread (`_pystachy_thread`) | `allocate_lock`, `LockType`, `RLock` (with `_is_owned`, `_release_save`, `_acquire_restore`), `get_ident`, `get_native_id`, `stack_size`, `interrupt_main`, `exit`, `TIMEOUT_MAX`, `error`, `_local` as a base class | One thread: `start_new_thread()` raises `NotImplementedError`, and an acquire that would wait for ever raises `RuntimeError` |
 | 🟡 `threading` | Adapted CPython on the one-thread `_thread`, compiled with [dynamic `Any`](../docs/dynamic-any.md) | Locks, reentrant locks, `Condition`, semaphores, `Event`, `Barrier`, `Timer`, `local`, `current_thread()`, `main_thread()`, `enumerate()` and `Thread` objects and subclasses, as in CPython where no other thread runs | `Thread.start()` raises `NotImplementedError`; see [limits](compatibility.md#threading) |
+| 🟡 `concurrent.futures` | Adapted CPython (`concurrent/futures/_base.py` and `thread.py`), for the one thread | `ThreadPoolExecutor` (`submit`, `map`, `shutdown`, also in `with`), `Future` and its methods, `wait`, `as_completed`, `FIRST_COMPLETED`, `FIRST_EXCEPTION`, `ALL_COMPLETED`, `CancelledError`, `TimeoutError`, `InvalidStateError`, `BrokenExecutor` | `submit()` runs the call before it returns; `Future` is generic in its result's type; no `ProcessPoolExecutor` or `initializer`; see [limits](compatibility.md#concurrentfutures) |
 | 🟡 `atexit` | Subset port of CPython's C module (`_pystachy_atexit`) | `register` (also as a decorator, with arguments), callbacks run at the end of the program, also after `sys.exit()` or an uncaught exception; `_run_exitfuncs`, `_clear`, `_ncallbacks` | No `unregister`; a failing callback's report shows the exception's last line |
 
 ### Runtime services
@@ -195,6 +196,7 @@ to the compiled paths listed here and in the compatibility reference.
 | `genericpath` | `Lib/genericpath.py` | `cdac5a68dd738051e0d66fc81d5947d6a1776248fc6fe862253477608d870ec4` | Helpers used by `posixpath`. |
 | `curses.ascii` | `Lib/curses/ascii.py` | `780dd8bbaf0ee7e832f164c1772953e694a9cd1031d1ab1471af65344d3645e6` | ASCII character predicates and conversions. |
 | `urllib` | `Lib/urllib/__init__.py` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | Empty package; `urllib.parse` is adapted separately. |
+| `concurrent` | `Lib/concurrent/__init__.py` | `87ad5c8954dd56fbbca04517bf87477ff4dce575170c7dd1281d7ef1f4214ac8` | The package, which holds a comment; `concurrent.futures` is adapted separately. |
 | `tomllib` | `Lib/tomllib/__init__.py` | `71f67036895f4c5acab942618af0cbd3d814451ba61e967f358d0f341a5b8f51` | The package: `loads`, `load` and `TOMLDecodeError`, whose `__module__` it assigns; its other modules are adapted, see [provenance](provenance.md). |
 | `struct` | `Lib/struct.py` | `9c231f9497caf513a22dee8f790b07f969b0e45854a0bdd6dd84b492e08c2856` | Its names, on `_pystachy_struct`; see [limits](compatibility.md#struct). |
 | `_weakrefset` | `Lib/_weakrefset.py` | `91895a451d06e9f521a1171b31b9b19bc9740f35af00d4fa106338ab7167c9ac` | What `weakref` imports from it; `WeakSet` itself is not supported, see [limits](compatibility.md#_weakref-prototype). |
