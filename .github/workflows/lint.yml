@@ -101,6 +101,7 @@ jobs:
 
       - name: Retained IR and failed native build controls
         run: |
+          PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_runtime_fastpaths.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_retained_ir.py
           PYSTACHY_TEST_LLVM="$PYSTACHY_LLVM" python3 -m unittest discover -s tools -p test_bootstrap_tier.py
 
