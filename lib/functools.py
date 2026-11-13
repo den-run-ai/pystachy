@@ -27,7 +27,7 @@ When this module runs under CPython, the public decorators use its native _funct
 from typing import Callable, Generic, NamedTuple, TypeVar, TypeVarTuple
 
 __all__ = ["cache", "lru_cache", "reduce", "cmp_to_key", "partial", "update_wrapper", "wraps",
-           "WRAPPER_ASSIGNMENTS", "WRAPPER_UPDATES"]
+           "WRAPPER_ASSIGNMENTS", "WRAPPER_UPDATES", "cached_property"]
 
 _Ts = TypeVarTuple("_Ts")  # the decorated function's parameter types
 _R = TypeVar("_R")  # and its return type
@@ -405,3 +405,15 @@ try:
     from _functools import partial
 except ImportError:
     pass
+
+
+# Pystachy port: cached_property is the compiler's where it decorates a method of a class
+# statement (Loader.functools_classes), which is all it does here: a method's object is found
+# as its class is compiled, so any other use of it is a compile-time error.
+class _method_of_a_class_statement:
+    pass
+
+
+def cached_property(func: _method_of_a_class_statement):
+    """A property whose value is computed once for an object and then kept."""
+    return func

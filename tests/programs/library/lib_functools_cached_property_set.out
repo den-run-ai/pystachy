@@ -1,0 +1,8 @@
+6 6 3 rows 3 rows 2
+6 2
+10 3
+100 3
+10 4
+AttributeError 'Report' object has no attribute 'total'
+7 0 1 rows 1
+[exit 0]

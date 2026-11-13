@@ -966,6 +966,14 @@ callable object, a `partial`) leaves the wrapper its own, as in CPython. `__wrap
 `wraps(f)` as a value, not a decorator, is a compile-time error. `total_ordering` remains
 unsupported: class decorators are not compiled.
 
+`@cached_property` on a method that takes the object alone makes the attribute a value the
+object keeps: the method runs on the first read, an assignment replaces the value without
+calling it, and `del` forgets it, so that the next read calls the method again
+([test](../tests/programs/library/lib_functools_cached_property_set.py)). The value is a
+field of the object, where CPython keeps it in the object's `__dict__`, so the method needs
+a return annotation, which gives the field's type. A dataclass's method, a method with other
+parameters and `cached_property(f)` as a call are compile-time errors.
+
 ### `operator`
 
 Arithmetic, comparison, logical, sequence and bitwise operator functions compile
