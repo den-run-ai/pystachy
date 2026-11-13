@@ -987,9 +987,10 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         if c in self.classes:
             self.no_class_attr(c, n.s)
         o = self.expr(n.kids[0], "")
-        if self.reference_union(o.t):
+        if self.reference_union(o.t) or (self.rolex != o.v and self.role_field(o.t, n.s)):
             # Share getattr's exact-class arms, including property calls and
-            # missing-field errors, without boxing any native field storage.
+            # missing-field errors, without boxing any native field storage. An attribute
+            # that a secondary base declares is read so too (role_field).
             return self.refl_getattr([self.vnode(o), mk("str", n.s, n.line, [])], want, True)
         if o.t in self.curfn.cmptypes and o.t in self.classes:
             ci = self.classes[o.t]

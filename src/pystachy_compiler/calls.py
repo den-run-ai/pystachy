@@ -902,6 +902,9 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         if m not in ci.methods and m in ci.ftypes:
             self.fn_attr_read(o, m)
             self.glue_field(o, m)
+            if self.rolex != o.v and self.role_field(o.t, m):
+                # (an attribute its secondary base declares: read by the object's exact class)
+                return self.obj_call(self.expr(mk("attr", m, self.line, [self.vnode(o)]), ""), args, want, resultsoft)
             return self.obj_call(self.getfield(o, self.field(o, m), m), args, want, resultsoft)  # (o.f(args) of a field f)
         if m not in ci.methods and not ((m == "_replace" or m == "_asdict" or m == "_make" or m == "index" or m == "count") and o.t in self.nts):
             self.err(f"'{shown(o.t)}' object has no method '{m}'")  # (a specialization's is its class's)

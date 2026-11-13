@@ -1254,7 +1254,7 @@ def gen_augassign(self, n: Node) -> None:
         self.class_store(ci, t.s, self.inplace(op, self.class_attr(t.kids[0], t.s), n.kids[1]))
     elif t.kind == "attr":
         o = self.expr(t.kids[0], "")
-        if self.reference_union(o.t):
+        if self.reference_union(o.t) or (self.rolex != o.v and self.role_field(o.t, t.s)):
             target = mk("attr", t.s, t.line, [self.vnode(o)])
             self.assign(target, self.inplace(op, self.expr(target, ""), n.kids[1]))
             return

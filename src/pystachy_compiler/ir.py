@@ -570,6 +570,7 @@ class Frame:
         self.carried = Val("", "")
         self.nonecmp = False
         self.fieldcmp = False
+        self.rolex = ""
         self.cmpnode = Node("", "", 0)
         self.stkkey = Node("", "", 0)
         self.reflcopies = 1

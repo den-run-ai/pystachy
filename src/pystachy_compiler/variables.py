@@ -1916,7 +1916,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
         self.class_store(self.cvar(t.kids[0], t.s), t.s, v)
     elif k == "attr":
         o = self.expr(t.kids[0], "")
-        if self.reference_union(o.t):
+        if self.reference_union(o.t) or (self.rolex != o.v and self.role_field(o.t, t.s)):
             end = self.label()
             narrow = dict(self.narrowed)
             for lf in self.refl_split(o, False, True):
@@ -1946,7 +1946,11 @@ def gen_assign(self, t: Node, v: Val) -> None:
                         if not self.frozen_store(lf.v, t.s):
                             self.raise_("TypeError", self.sconst(f"expected {typestr(actual)}, got {typestr(v.t)}"))
                     else:
-                        self.assign(mk("attr", t.s, t.line, [self.vnode(lf.v)]), v)
+                        self.rolex = lf.v.v if self.role_field(lf.c, t.s) else ""  # (exactly lf.c here)
+                        try:
+                            self.assign(mk("attr", t.s, t.line, [self.vnode(lf.v)]), v)
+                        finally:
+                            self.rolex = ""
                 if not self.term:
                     self.br(end)
             self.narrowed = narrow

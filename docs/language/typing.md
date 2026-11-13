@@ -1130,7 +1130,8 @@ marked `@abstractmethod` (without `abc.ABCMeta`) and may name the type variables
 base that binds nothing ([generic classes](#explicit-generic-classes)). Its
 methods may call another method declared on the same base, for example
 `self.write(data)`. These calls use the concrete receiver's override. Other uses
-of the receiver, including reading a field or capturing a bound method, are unsupported.
+of the receiver, including reading a field the base does not declare (below) or capturing a
+bound method, are unsupported.
 A secondary base and the primary hierarchy must declare distinct method names; two secondary
 bases may declare one only where the class overrides it
 ([error test](../../tests/errors/classes/inheritance_secondary_conflict.py)). Overrides of secondary
@@ -1141,9 +1142,22 @@ positional-only parameters to accept keywords. The primary hierarchy
 and the class that combines the bases may call `super()` only for methods that no secondary
 base defines: CPython's method resolution order puts the secondary bases after the primary's,
 where such a call could find them. Abstract base classes (`abc.ABC`), `__slots__` in the
-combined hierarchy (but with traits, below), and secondary bases with fields, properties,
-constructors or other special methods are outside this subset. Single inheritance from the
-combined class works, `super()` included.
+combined hierarchy (but with traits, below), and secondary bases with class attributes,
+properties, constructors or other special methods are outside this subset. Single inheritance
+from the combined class works, `super()` included.
+
+A secondary base may declare attributes by annotation alone, as mypy's plugin interfaces do
+(`options: Options`, `path: str`;
+[test](../../tests/programs/classes/inheritance_secondary_attrs.py)). Each is a field of the
+class that combines the base, typed by the annotation; that class's code and the base's own
+methods, its `@contextmanager` methods included, store and read it. A value of the base's type
+reads and stores `o.name` by the object's own class, which costs a test of its class tag, and
+an object that never stored the attribute raises CPython's `AttributeError`. Bases of one class
+may declare an attribute alike; one that the class meets with another type, a class attribute
+or a method is rejected
+([error test](../../tests/errors/classes/inheritance_secondary_attr_types.py)). `del`, class
+patterns and `vars()` do not reach such an attribute through the base's type, and a generic
+base's attribute cannot name its type variables.
 
 A secondary base may also be a trait, as mypyc compiles them: a direct subclass of a class on
 the primary base's chain, above the primary base itself, that adds no fields (at most

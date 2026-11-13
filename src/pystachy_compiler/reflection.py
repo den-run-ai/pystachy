@@ -728,7 +728,11 @@ def gen_refl_getattr(self, args: list[Node], want: str, split: bool = False) -> 
             blocks.append(self.cur)
             self.br(end)
             self.place(yes)
-        v = d if h == "n" else self.expr(mk("attr", a, self.line, [self.vnode(lf.v)]), "")
+        self.rolex = lf.v.v if self.role_field(lf.c, a) else ""  # (exactly lf.c here)
+        try:
+            v = d if h == "n" else self.expr(mk("attr", a, self.line, [self.vnode(lf.v)]), "")
+        finally:
+            self.rolex = ""  # (also where the read does not compile: the name may be another value's later)
         if not self.term:
             vals.append(v)
             blocks.append(self.cur)
