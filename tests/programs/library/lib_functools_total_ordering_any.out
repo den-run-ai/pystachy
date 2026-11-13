@@ -1,0 +1,21 @@
+True
+True
+False
+False
+False
+True
+False
+True
+TypeError '<' not supported between instances of 'V' and 'int'
+TypeError '<=' not supported between instances of 'V' and 'int'
+TypeError '>' not supported between instances of 'V' and 'int'
+TypeError '>=' not supported between instances of 'V' and 'int'
+TypeError '<' not supported between instances of 'int' and 'V'
+TypeError '<=' not supported between instances of 'int' and 'V'
+TypeError '>' not supported between instances of 'int' and 'V'
+TypeError '>=' not supported between instances of 'int' and 'V'
+TypeError '<' not supported between instances of 'V' and 'NoneType'
+TypeError '<=' not supported between instances of 'V' and 'NoneType'
+TypeError '>' not supported between instances of 'V' and 'NoneType'
+TypeError '>=' not supported between instances of 'V' and 'NoneType'
+[exit 0]
