@@ -45,7 +45,7 @@ def _read_source(fnam: str) -> bytes:
             data = f.read()
     except OSError as e:
         raise ValueError(_os_error_text(str(e)))
-    if _utf8_error(data)[0] >= 0:
+    if not data.isascii() and _utf8_error(data)[0] >= 0:
         raise ValueError("stream did not contain valid UTF-8")
     return data
 
@@ -118,9 +118,10 @@ def _source_bytes(fnam: str, source) -> bytes:  # (source: str | bytes | None, s
         except UnicodeEncodeError:
             raise TypeError("Source must be str or bytes")
     if isinstance(source, bytes):
-        pos, end = _utf8_error(source)
-        if pos >= 0:
-            raise UnicodeDecodeError("utf-8", source, pos, end, "invalid utf-8")
+        if not source.isascii():
+            pos, end = _utf8_error(source)
+            if pos >= 0:
+                raise UnicodeDecodeError("utf-8", source, pos, end, "invalid utf-8")
         return source
     raise TypeError("Source must be str or bytes")
 

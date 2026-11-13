@@ -266,10 +266,7 @@ class LineIndex:
 
 
 def is_ascii(b: bytes) -> bool:
-    for c in b:
-        if c >= 0x80:
-            return False
-    return True
+    return b.isascii()
 
 
 def count_chars(text: bytes, start: int, end: int) -> int:
