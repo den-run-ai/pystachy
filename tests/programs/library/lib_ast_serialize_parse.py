@@ -1,7 +1,8 @@
 # ast_serialize.parse(), mypy's native parser front end (lib/ast_serialize/ here, ast_serialize
 # 0.13.1's Rust extension in CPython): the length and CRC-32 of the serialized tree and imports of
 # sources covering the statements, expressions, f-strings, patterns, type parameters, type
-# comments, reachability and body skipping, with the errors, ignores and extra data.
+# comments, reachability and body skipping, with the errors, ignores and extra data; then this
+# file, which parse() reads.
 import binascii
 
 from ast_serialize import parse
@@ -52,3 +53,5 @@ for i, src in enumerate(SOURCES):
         print("  data", r[4]["is_partial_package"], r[4]["uses_template_strings"], r[4]["source_hash"])
 r = parse("m.py", b"x = 1\n")
 print("bytes", len(r[0]), binascii.crc32(r[0]), r[4]["source_hash"])
+r = parse("tests/programs/library/lib_ast_serialize_parse.py")  # (this file: the tests run from the root)
+print("file", len(r[0]), binascii.crc32(r[0]), len(r[3]), binascii.crc32(r[3]), len(r[1]), r[4]["source_hash"])
