@@ -1600,6 +1600,12 @@ double pys_idiv(I a, I b) {                  /* int / int, rounded once like CPy
   return (a < 0) != (b < 0) ? -r : r;
 }
 I pys_cmp_if(I i, double d) {                  /* exact compare of an int with a float: -1, 0, 1, or 2 if unordered */
+  /* an int of at most 2**53 in magnitude converts exactly, so comparing floats decides (NaN: none
+     holds); the rest compare whole parts, which costs a trunc(): a libm call on x86-64 before SSE4.1 */
+  if ((uint64_t)i + (1ULL << 53) <= (1ULL << 54)) {
+    double x = (double)i;
+    return d > x ? -1 : d < x ? 1 : d == x ? 0 : 2;
+  }
   if (isnan(d)) return 2;
   if (d >= 9223372036854775808.0) return -1;
   if (d < -9223372036854775808.0) return 1;
