@@ -4133,6 +4133,33 @@ def dyn_class_member(self, c: str, name: str) -> str:
     return ""
 
 
+def dyn_class_boxes(self, t: str) -> bool:
+    # can a value of static type t become an Any value where no new object helper may be made
+    # (dyn_packed_work): a layout a box holds, of classes whose objects the program boxes already
+    t = self.rec_type(t)
+    if self.dyn_boxable(t) != "":
+        return False
+    if is_opt(t):
+        return dyn_class_boxes(self, unopt(t))
+    if is_union(t):
+        return all(dyn_class_boxes(self, m) for m in umembers(t))
+    if is_tuple(t):
+        return all(dyn_class_boxes(self, m) for m in targs(t))
+    return t not in self.classes or t in self.dynclasses
+
+
+def dyn_class_takes(self, fm: FnInfo, key: str) -> bool:
+    # can the static or class method fm be called by call dispatcher key's case of a class box,
+    # as far as its annotations tell: the parameters that the call supplies take Any values,
+    # and a declared result becomes one (dyn_class_boxes). What they do not tell, the case's
+    # attempt finds (dyn_class_arm); this keeps the common refusals from costing a restart
+    supplied = list(range(shape_npos(key))) + [fm.params.index(k) for k in shape_kws(key) if k in fm.params]
+    for j in supplied:
+        if j < len(fm.ptypes) and fm.ptypes[j] != "" and not dyn_class_argument(self, fm.ptypes[j]):
+            return False
+    return fm.generic or fm.ret == "" or fm.ret == "None" or dyn_class_boxes(self, fm.ret)
+
+
 def dyn_class_arm(self, f: FnInfo, key: str, c: str, name: str, kind: str, args: list[Val]) -> None:
     # class c's case of dispatcher key (get.<a>, has.<m>.<shape>, call.<m>.<shape>) for a class
     # box: the class attribute name of c (kind "attr"), read as C.name reads it, or its static or
@@ -4256,6 +4283,17 @@ def dyn_class_members(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> Non
         shown = self.refl_type_name(c, "__name__")
         if kind == "method" and key.startswith("get."):
             self.raise_("NotImplementedError", self.sconst(f"{shown}.{name} of a class held as an Any value is not supported as a value: it is a method (call it)"))
+        elif kind == "attr" and not dyn_class_boxes(self, self.classes[c].ftypes[name]):
+            # (a value whose layout no Any value holds: no read, and it is not callable either)
+            held_as = self.rec_type(self.classes[c].ftypes[name])
+            if key.startswith("get."):
+                self.raise_("NotImplementedError", self.sconst(f"{shown}.{name} of a class held as an Any value is not supported: its value, {typestr(held_as)}, has no layout as an Any value here"))
+            elif key.startswith("has."):
+                self.ret_(Val("null", DYN))
+            else:
+                self.raise_("TypeError", self.sconst(f"'{tname(held_as)}' object is not callable"))
+        elif kind == "method" and key.startswith("call.") and self.dyn_bind(self.classes[c].methods[name], 0, key, self.dyn_call_args(key, args)) == "" and not dyn_class_takes(self, self.classes[c].methods[name], key):
+            self.raise_("NotImplementedError", self.sconst(f"{shown}.{name}() of a class held as an Any value is not supported: a parameter or its result has no layout as an Any value here"))
         elif kind == "attr" or kind == "method":
             dyn_class_arm(self, f, key, c, name, kind, args)
         else:
