@@ -55,6 +55,26 @@ Decided on 2026-11-13: the second route, a parser in the subset. Work started on
 extension (0.13.1, already in the development venv beside mypy 2.4.1 and librt 0.16.0) as the
 byte-for-byte oracle under CPython.
 
+Outcome, same day: `lib/ast_serialize/` on that branch at `e84dab75` (8,832 lines: lexer,
+parser with error recovery, serializer, Unicode tables), written by a delegated agent. Its notes,
+compiler-limit probes and scripts are in [`ast-serialize/`](ast-serialize/). Its report gives
+byte equality with the extension on every corpus under seven option sets, and on about 140,000
+generated and damaged sources.
+
+Checked again here, independently of its tool ([`ast-serialize/verify/`](ast-serialize/verify/)):
+
+| Check | Result |
+|---|---|
+| `verify/indep.py`: 58 files of other branches and of mypy, each also with a slice removed and with a stray token inserted, two option sets, all five returned elements | 348 of 348 comparisons identical, 126 of them with syntax errors |
+| The branch's `tools/ast_serialize_check.py` on mypy and mypyc | 246 of 246 files identical |
+| The same on CPython 3.13.16's `Lib/`, default and body-skipping options | 1,767 of 1,767 identical each, and 4 of 4 with syntax errors |
+| `verify/nat.py` compiled ahead of time by the branch's `./pystachy`: 12 files, each also damaged and truncated, with and without body skipping | 72 of 72 output lines equal CPython with the extension; compiled in 9.7 s, ran in 0.42 s |
+| `make test` of the 5 new cases | 9 passed in JIT and AOT |
+| Diff against `c4397feb` | no change under `src/`, `runtime.c` or `runtime.py` |
+
+Not re-run here: the other corpora, the generated inputs, the six make gates and the `opt-in`
+verify group (its logs show them passing after the head commit), and the timings.
+
 The compiler's own parser cannot serve as is: its `Node` keeps a line and no columns or end
 positions (`src/pystachy_compiler/syntax.py`), and it rewrites what it parses.
 
