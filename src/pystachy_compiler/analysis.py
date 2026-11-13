@@ -411,8 +411,9 @@ def names_name(n: Node, name: str) -> bool:
 
 
 # the builtins whose call reads a list's items as a tuple's: what each returns or raises is the
-# same for both, and none keeps its argument (see reads_only; not tuple(), whose tuple argument
-# CPython returns itself, nor iter() or reversed(), whose iterators show their sequence's type)
+# same for both, and none keeps its argument (see only_reads_items; not tuple(), whose tuple
+# argument CPython returns itself, nor iter() or reversed(), whose iterators show their sequence's
+# type)
 READS_ONLY_FNS = ["len", "enumerate", "sorted", "list", "set", "frozenset", "any", "all", "sum", "min", "max", "zip"]
 
 
@@ -442,7 +443,7 @@ def reads_args(n: Node) -> list[int]:
     return []
 
 
-def reads_only(n: Node, name: str, fns: list[str]) -> bool:
+def only_reads_items(n: Node, name: str, fns: list[str]) -> bool:
     # does code n (a function's body) use variable name only to read its items, so that no code
     # can tell a list in it from a tuple or keep it: as the iterable of a for loop or of a
     # comprehension, an argument of a call of fns (builtins, see READS_ONLY_FNS), x in name, and
@@ -488,14 +489,14 @@ def reads_only(n: Node, name: str, fns: list[str]) -> bool:
         x = n.kids[i]
         if i in ok and tests and not reads_test(x, name, fns):
             return False
-        if not (i in ok and x.kind == "name" and x.s == name) and not (i in ok and tests) and not reads_only(x, name, fns):
+        if not (i in ok and x.kind == "name" and x.s == name) and not (i in ok and tests) and not only_reads_items(x, name, fns):
             return False
     return True
 
 
 def reads_test(n: Node, name: str, fns: list[str]) -> bool:
-    # reads_only for a truth test n: name itself, or an operand of and, or and not in it, whose
-    # value is only tested there
+    # only_reads_items for a truth test n: name itself, or an operand of and, or and not in it,
+    # whose value is only tested there
     if n.kind == "name" and n.s == name:
         return True
     if n.kind == "boolop" or (n.kind == "unary" and n.s == "not"):
@@ -503,7 +504,7 @@ def reads_test(n: Node, name: str, fns: list[str]) -> bool:
             if not reads_test(x, name, fns):
                 return False
         return True
-    return reads_only(n, name, fns)
+    return only_reads_items(n, name, fns)
 
 
 def binds_first(st: Node, name: str) -> bool:
