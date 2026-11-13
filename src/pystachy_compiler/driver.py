@@ -126,6 +126,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.eh = slice_eh
         g.libdir = dirs[-1] if len(dirs) > 0 else ""
         g.prefix = os.path.realpath(dirs[-1] + "/..") if len(dirs) > 0 else ""
+        g.moddirs = [os.path.realpath(d) for d in dirs]
         g.hints = hints
         g.xnot = xnot
         g.final = passes >= JOINS

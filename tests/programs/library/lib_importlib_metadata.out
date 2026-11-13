@@ -1,0 +1,27 @@
+1.2.3 1.2.3 1.2.3 1.2.3 1.2.3
+1.0.0 1.0.0 0.1
+Message 13 Demo.Pkg Demo.Pkg 2.1
+['Metadata-Version', 'Name', 'Version', 'Summary', 'Classifier', 'classifier', 'Requires-Dist', 'Requires-Dist', 'License', 'Author', 'Home-page', 'Empty', 'Description']
+['2.1', 'Demo.Pkg', '1.2.3', '      A demo\nfolded line', 'A :: B', 'C :: D', 'dep-a>=1', 'dep-b; extra == "x"', '        MIT\n        second line\n          indented\n\t\ttabbed', 'Åsa Ünï', '', '', 'The long description.\n\nSecond paragraph: naïve.\n']
+[('Metadata-Version', '2.1'), ('Name', 'Demo.Pkg'), ('Version', '1.2.3')]
+['Author', 'Home-page', 'Empty', 'Description']
+'      A demo\nfolded line' '        MIT\n        second line\n          indented\n\t\ttabbed'
+'Åsa Ünï' '' ''
+'The long description.\n\nSecond paragraph: naïve.\n'
+['A :: B', 'C :: D'] ['A :: B', 'C :: D'] None ['x']
+1.2.3 None fallback
+True True False True False
+Demo.Pkg 1.2.3 egginfo-pkg 1.0.0
+PathDistribution True True
+egginfo-pkg 1.0.0 Steven Ma ['Intended Audience :: Developers', 'Topic :: Software Development :: Libraries']
+'Once upon a time\nThere was an egginfo package' True
+'mod\n' None True
+['wheel >= 1.0; python_version >= "2.7"', 'pytest; extra == "test"']
+1.0.0 pkg.dot
+['dep-a>=1', 'dep-b; extra == "x"']
+['wheel >= 1.0', "pytest; extra == 'test'"]
+['dep1', 'dep2', 'dep3; python_version < "3"', 'dep4; extra == "extra1"', 'dep6@ git+https://example.com/python/dep.git@v1.0.0 ; extra == "extra1"', 'dep5; (python_version < "3") and extra == "extra2"']
+[] None None
+[('Metadata-Version', '1.0'), ('Name', 'egginfo_file'), ('Version', '0.1'), ('Summary', 'An example package'), ('Home-page', 'www.example.com'), ('Author', 'Eric Haffa-Vee'), ('Author-email', 'eric@example.coms'), ('License', 'UNKNOWN'), ('Description', 'UNKNOWN'), ('Platform', 'UNKNOWN')]
+4.5 ['Name', 'Version']
+[exit 0]

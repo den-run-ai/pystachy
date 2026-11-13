@@ -1,0 +1,17 @@
+APITests.test_retrieves_version_of_self 1.0.0
+APITests.test_retrieves_version_of_distinfo_pkg 1.0.0
+APITests.test_for_name_does_not_exist 1
+APITests.test_name_normalization 5
+APITests.test_prefix_not_matched 3
+APITests.test_for_top_level 2
+APITests.test_metadata_for_this_package 4
+APITests.test_get_key 1
+APITests.test_get_missing_key 1
+APITests.test_version_egg_info_file 1
+APITests.test_requires_egg_info_file 1
+APITests.test_requires_egg_info 2
+APITests.test_requires_egg_info_empty 1
+APITests.test_requires_dist_info 4
+APITests.test_more_complex_deps_requires_text 6
+LegacyDots.test_name_normalization_versionless_egg_info 5
+[exit 0]

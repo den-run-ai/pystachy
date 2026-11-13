@@ -1,0 +1,20 @@
+Metadata-Version: 2.1
+Name: Demo.Pkg
+Version: 1.2.3
+Summary: A demo
+  folded line
+Classifier: A :: B
+classifier: C :: D
+Requires-Dist: dep-a>=1
+Requires-Dist: dep-b; extra == "x"
+License: MIT
+        second line
+          indented
+		tabbed
+Author: Åsa Ünï
+Home-page:
+Empty:   
+
+The long description.
+
+Second paragraph: naïve.
