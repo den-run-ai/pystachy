@@ -204,7 +204,9 @@ LAST_TRACEBACK = [""]
 def call(fn, *args, **kwargs):
     try:
         return fn(*args, **kwargs)
-    except Exception as e:  # (the outcome, compared too)
+    except KeyboardInterrupt:
+        raise
+    except BaseException as e:  # (the outcome, compared too; the extension can panic)
         import traceback
         LAST_TRACEBACK[0] = "".join(traceback.format_exception(e)[-4:])
         return ("exception", type(e).__name__, str(e))
@@ -218,12 +220,16 @@ def main():
     ap.add_argument("--limit", type=int, default=0, help="stop after N mismatches per option set")
     ap.add_argument("--quiet", action="store_true")
     ap.add_argument("--type-strings", action="store_true")
+    ap.add_argument("--fuzz", type=int, default=0, help="compare N random corruptions of the files instead")
+    ap.add_argument("--seed", type=int, default=1)
     args = ap.parse_args()
     if importlib.metadata.version("ast_serialize") != "0.13.1":
         sys.exit(f"ast_serialize {importlib.metadata.version('ast_serialize')} is installed; this checks 0.13.1")
     port = load()
     files = list(python_files(args.paths))
     names = list(OPTION_SETS) if args.options == "all" else args.options.split(",")
+    if args.fuzz:
+        sys.exit(1 if fuzz(port, files, names, args) else 0)
     failed = False
     for opt_name in names:
         kwargs = OPTION_SETS[opt_name]
@@ -271,6 +277,82 @@ def main():
     if args.type_strings:
         failed |= check_type_strings(port, files, args)
     sys.exit(1 if failed else 0)
+
+
+FRAGMENTS = [
+    "(", ")", "[", "]", "{", "}", ":", ",", "=", "\n", " ", "\t", "'", '"', '"""', "'" * 3, "f'", 'f"',
+    "t'", "rb'", "def ", "class ", "lambda ", "*", "**", "if ", "else", "elif ", "@", "\\", "#",
+    "# type: ", "# type: ignore", "async ", "await ", "yield ", "match ", "case ", "type ", "lazy ",
+    "!r", "->", ".", "...", "é", "\\u00e9", "{x=}", "{x!r:>{w}}", "\\\n", "    ", "\n    ", ";",
+    "import ", "from ", "return ", "with ", "try:", "except ", "finally:", "for ", "in ", "not ",
+    "and ", "or ", "is ", "del ", "global ", "nonlocal ", "pass", "0x", "1_", "1e", "1j", ".5", "0b2",
+    ":=", "|", "&", "^", "~", "<<", ">>", "//", "%", "+=", "-", "+", "/", "\x00", "\x0c", "\r",
+]
+
+
+def mutate(rng, text):
+    """A window of the text with one to three random edits."""
+    lines = text.split("\n")
+    if len(lines) > 30:
+        k = rng.randrange(len(lines) - 25)
+        lines = lines[k:k + 25]
+    text = "\n".join(lines)
+    for _ in range(rng.randint(1, 3)):
+        n = len(text)
+        k = rng.randrange(6)
+        p = rng.randint(0, n)
+        if k == 0 and n > 0:
+            text = text[:p] + text[p + rng.randint(1, 10):]
+        elif k <= 2:
+            text = text[:p] + rng.choice(FRAGMENTS) + text[p:]
+        elif k == 3:
+            ls = text.split("\n")
+            j = rng.randrange(len(ls))
+            ls.insert(j, ls[rng.randrange(len(ls))])
+            text = "\n".join(ls)
+        elif k == 4:
+            text = text[:p]
+        elif n > 1:
+            p = min(p, n - 2)
+            text = text[:p] + text[p + 1] + text[p] + text[p + 2:]
+    return text
+
+
+def fuzz(port, files, names, args):
+    import random
+    rng = random.Random(args.seed)
+    sources = []
+    for f in files:
+        try:
+            sources.append((f, f.read_text(encoding="utf-8")))
+        except (UnicodeDecodeError, OSError):
+            pass
+    same = 0
+    with_errors = 0
+    shown = 0
+    failed = False
+    for i in range(args.fuzz):
+        f, text = rng.choice(sources)
+        src = mutate(rng, text)
+        kwargs = OPTION_SETS[names[i % len(names)]]
+        name = "fuzz.pyi" if rng.random() < 0.1 else "fuzz.py"
+        a = call(port.parse, name, src, **kwargs)
+        b = call(rust.parse, name, src, **kwargs)
+        if isinstance(b, tuple) and len(b) == 5 and b[1]:
+            with_errors += 1
+        diff = compare(a, b)
+        if diff is None:
+            same += 1
+            continue
+        failed = True
+        shown += 1
+        if not args.quiet and (args.limit == 0 or shown <= args.limit):
+            print(f"MISMATCH fuzz case {i} (from {f}): {src!r}"[:3000])
+            print(diff)
+            if a[0] == "exception":
+                print(LAST_TRACEBACK[0])
+    print(f"fuzz: {same}/{args.fuzz} identical ({with_errors} with syntax errors; seed {args.seed})")
+    return failed
 
 
 TYPE_STRING_CASES = [

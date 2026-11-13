@@ -416,9 +416,15 @@ class Parser:
         del self.tok_start[nl_index:]
         del self.tok_end[nl_index:]
         del self.tok_flags[nl_index:]
-        k = self.lexer.kind
+        # (TokenSource::bump: the trivia token is kept, the parser's position does not move)
+        lx = self.lexer
+        k = lx.kind
         if k == T_COMMENT or k == T_NONLOGICALNEWLINE:
-            self.do_bump(k)
+            self.tok_kind.append(k)
+            self.tok_start.append(lx.start)
+            self.tok_end.append(lx.end)
+            self.tok_flags.append(lx.flags)
+            self.do_bump_lexer()
 
     def finish_tokens(self) -> None:
         # TokenSource::finish: the EndOfFile token is dropped; lexical errors are merged with the
