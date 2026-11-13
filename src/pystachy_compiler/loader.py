@@ -2425,9 +2425,12 @@ class Loader:
         while i >= 0:
             i = path.find(".", i + 1)
             q = path[:i] if i >= 0 else path
-            if q in self.mods and self.mods[q].missing != "":
+            if q in self.mods and self.mods[q].missing != "" and self.mods[q].done:
+                # (not a module whose code is running: a circular import of it runs no code)
                 t = self.mods[q]
-                while t.misvia != "" and t.misvia in self.mods:
+                seen: dict[str, bool] = {}
+                while t.misvia != "" and t.misvia in self.mods and t.misvia not in seen:
+                    seen[t.misvia] = True
                     t = self.mods[t.misvia]  # (the module whose own import is of the missing one)
                 return t
         return None
@@ -2487,9 +2490,16 @@ class Loader:
                 return ""
             if self.modpath(q) == "":
                 return q
-            if self.init_fails(q) != "":
+            if self.import_fails(q):
                 return self.mods[q].missing if q in self.mods else self.missc.get(q, "")
         return ""
+
+    def import_fails(self, q: str) -> bool:
+        # does an import of module q, which is found, surely raise because q's own code does: not
+        # while q's code is running, as a circular import finds the module half run and succeeds
+        if q in self.mods and not self.mods[q].done:
+            return False
+        return self.init_fails(q) != ""
 
     def missing_import(self, m: Mod, st: Node) -> Node:
         # st, the top-level import of module m's code that surely fails because a module is not
@@ -2514,7 +2524,7 @@ class Loader:
             if self.modpath(q) == "":
                 break
             run = q
-            guard = self.init_fails(q) != ""
+            guard = self.import_fails(q)
         if run != "":
             al = mk("alias", "", line, [mk("str", run, line, []), mk("str", run, line, [])])
             if guard:
@@ -2551,8 +2561,9 @@ class Loader:
             if st.kind == "raise" and len(st.kids) > 0 and import_error(st.kids[0]) != "":
                 out.append(st)
                 return True
-            if top and st.kind == "import" and self.import_missing(m, st) != "":
-                # (an import of a module that is not found raises as surely: missing_import())
+            if top and st.kind == "import" and "ModuleNotFoundError" not in m.rebound and self.import_missing(m, st) != "":
+                # (an import of a module that is not found raises as surely: missing_import(),
+                # whose raise names the builtin exception, which the module must not rebind)
                 out.append(st)
                 return True
             if (self.static_if(m, st, {}, run) or self.optional(m, st, run, True) or (top and self.unbound_try(m, st, body[:i], body[i + 1 :], run))) and self.init_raise(m, run, out, False):

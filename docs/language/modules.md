@@ -156,6 +156,9 @@ Any other import of that module, before or after the optional one, is the compil
 of the missing module's import; a function's import is an error where the function is compiled.
 A handler that may end the program makes the module required, as for a module that is not
 found itself.
+A module that binds the name `ModuleNotFoundError` itself, and modules that import each
+other on the way to the missing import, are not decided this way: the missing import stays a
+compile-time error, or the optional import is rejected.
 Pystachy also rejects optional imports whose outcome or exception handling it cannot resolve;
 see [rejected programs](../language.md#rejected-rather-than-miscompiled).
 
