@@ -468,10 +468,13 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
         # the slots of the tuple a function returns, by value, to tuple.loads alone (tupleret)
         agg = vagg(self.vrets[i.s], i.s in self.vconst)
         args = ", ".join([lt(v.t) + " " + v.v for v in i.a])
-        o.append(f"  {tmpname(i.r[0])} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args})', i)}")
+        inline = " alwaysinline" if i.x == "inline" else ""
+        o.append(f"  {tmpname(i.r[0])} = {self.invoke(f'call {agg} @v.{i.s[1:]}({args}){inline}', i)}")
         self.vaggs[tmpname(i.r[0])] = agg
     elif op == "call":
-        c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])})", i)
+        # (alwaysinline: listguard's copy of its callee's only call, which LLVM would inline)
+        inline = " alwaysinline" if i.x == "inline" else ""
+        c = self.invoke(f"call {lt(i.t)} {i.s}({', '.join([lt(v.t) + ' ' + v.v for v in i.a])}){inline}", i)
         o.append("  " + c if i.t == "None" else f"  {tmpname(i.r[0])} = {c}")
     elif op == "icall":
         # a Callable's code (operand 0), called with its env and the arguments

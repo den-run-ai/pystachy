@@ -77,6 +77,14 @@ INVOKES = {"rt", "call", "icall", "init", "gen.resume"}
 # slot's address makes it escape.
 SLOT_ACCESS = {"mem.load", "mem.store", "mach.load", "mach.store", "landing"}
 SUPPORTED_OPS = ORDINARY | TAG_OPS | TERMINATORS
+# A generator's own operations, as normalize_snapshot validates them for an adapter that models
+# a generator (generator_validation): its first resumption and each suspension are edges to where
+# it resumes (a suspension's results, the value sent in, are no operation's operands: a use of
+# one is refused) and its end stops; gen.promise without a handle reads its own promise, a
+# pointer the runtime made. A call of a generator function runs none of its body: it returns at
+# gen.start, and the caller runs while it is suspended. The adapter models both.
+GENERATOR_EDGES = {"gen.start": "br", "gen.yield": "br", "gen.ret": "ret.none"}
+
 LIMITATIONS = [
     "Only dyn.payload guard safety in each selected normalized function is checked.",
     "Python normalization, snapshot fidelity, the descriptor table, runtime tag and payload layout "
@@ -327,6 +335,29 @@ def check_header(snapshot):
             "expected inspection schema_version 1")
     if snapshot.get("stage") != "typed-after" or snapshot.get("status") != "completed":
         raise Unsupported("only completed typed-after snapshots are supported")
+
+
+def generator_validation(fn, operation=lambda op: op):
+    """fn as normalize_snapshot validates it for an adapter that models generators: each
+    operation mapped by operation (the adapter's own renaming), then a generator's own
+    operations as their edges. Another function, a coroutine that is no generator among them,
+    keeps its flags and its own operations, which the validator refuses."""
+    if not fn.get("recursion", {}).get("generator"):
+        return dict(fn, slots=[operation(op) for op in fn["slots"]],
+                    blocks=[dict(block, operations=[operation(op) for op in block["operations"]])
+                            for block in fn["blocks"]])
+
+    def validated(op):
+        op = operation(op)
+        if op["op"] in GENERATOR_EDGES:
+            return dict(op, op=GENERATOR_EDGES[op["op"]], operands=[], results=[])
+        if op["op"] == "gen.promise" and not op["operands"]:
+            return dict(op, op="rt", text="gen.promise")
+        return op
+    return dict(fn, recursion=dict(fn["recursion"], generator=False, coroutine=False),
+                slots=[operation(op) for op in fn["slots"]],
+                blocks=[dict(block, operations=[validated(op) for op in block["operations"]])
+                        for block in fn["blocks"]])
 
 
 def normalize_snapshot(snapshot, function, max_blocks=1024, max_instructions=MAX_INSTRUCTIONS, certify=True):

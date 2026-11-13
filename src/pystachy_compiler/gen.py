@@ -752,6 +752,8 @@ from src.pystachy_compiler.exceptions import (
     gen_exc_value as exceptions_exc_value,
     gen_exc_value_of as exceptions_exc_value_of,
     gen_exit_ as exceptions_exit_,
+    gen_exit_ints as exceptions_exit_ints,
+    gen_exit_member as exceptions_exit_member,
     gen_exit_value as exceptions_exit_value,
     gen_global_reader as exceptions_global_reader,
     gen_landing as exceptions_landing,
@@ -1319,6 +1321,9 @@ class Gen:
         self.source_lines = SourceLines(os.getenv("PYSTACHY_DEBUG_LINES", "") == "1")
         self.fns: list[IFn] = []  # the functions compiled, in the order they were completed
         self.fll: dict[str, int] = {}  # and their positions there by symbol, once the program is built
+        # listguard (gen_listguard): how many calls of each function the program's IR makes, by
+        # symbol, once the program is built and before any pass copies one (call_counts)
+        self.callsites: dict[str, int] = {}
         self.summaries = EffectSummaries()
         self.ltype: dict[str, str] = {}
         self.lreg: dict[str, str] = {}
@@ -4008,6 +4013,12 @@ class Gen:
 
     def no_code(self) -> Val:
         return exceptions_no_code(self)
+
+    def exit_ints(self, t: str) -> list[str]:
+        return exceptions_exit_ints(self, t)
+
+    def exit_member(self, v: Val) -> list[Val]:
+        return exceptions_exit_member(self, v)
 
     def exit_value(self, vals: list[Val]) -> Val:
         return exceptions_exit_value(self, vals)

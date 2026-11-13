@@ -960,7 +960,8 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
     # Reuse structural validation, SSA dominance and opcode validation; discard its
     # analysis and certificate. Pre-exception pass snapshots are accepted only here
     # with their original check and handler edges retained below.
-    validation = dict(snapshot, functions=[fn])
+    # A generator's own operations are its edges (boundary.generator_validation, below).
+    validation = dict(snapshot, functions=[boundary.generator_validation(fn)])
     boundary.normalize_snapshot(validation, fn["symbol"], certify=False)
     if not null_mode and not immutable_boxes and union_writes(fn, context):
         raise boundary.Unsupported("nonprivate writes may alias immutable union boxes")
@@ -1761,7 +1762,10 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                     changed = after if key not in domains else (
                         "node", {"op": "guard", "value": address, "tags": domains[key], "yes": after, "no": stop})
                     emit({"op": "choice", "yes": after, "no": ("node", {"op": "havoc", "dst": address, "next": changed})})
-            if kind == "br":
+            if kind in {"br", "gen.start", "gen.yield"}:
+                # (a generator's first resumption, or a suspension, goes on where it resumes: its
+                # caller runs meanwhile, which writes no private slot or box, and the tracked
+                # globals it may write were havocked above)
                 emit({"op": "jump", "next": edge(label, op["targets"][0])})
             elif kind in {"cbr", "check"}:
                 if kind == "check":
@@ -1781,7 +1785,7 @@ def normalize(snapshot, fn, null_obligations=None, immutable_boxes=False, return
                     target = decide(("atom", reads[args[0]["value"]], (decode[arg["value"]],)),
                                     into(label, successor), target)
                 emit({"op": "jump", "next": target})
-            elif kind in {"ret", "ret.none", "unreachable"} or (kind in {"raise", "throw"} and not op["targets"]):
+            elif kind in {"ret", "ret.none", "unreachable", "gen.ret"} or (kind in {"raise", "throw"} and not op["targets"]):
                 if returned is not None and kind == "ret":
                     value = args[0]["value"] if len(args) == 1 else ""
                     if value not in types:
