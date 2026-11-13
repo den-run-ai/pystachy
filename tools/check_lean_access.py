@@ -196,6 +196,33 @@ def no_wrap(facts, src, k):
     return 0 <= k <= MAX_I64 - MAX_LEN and any(f[0] == "len" and f[1] == src for f in facts)
 
 
+def no_wrap_sum(facts, x, y):
+    """PystachyAccess.noWrapSum: x + y fits, as x < c where some s = c + y, and lower bounds of x
+    and y that add up to at least the least 64-bit value."""
+    return (any(f[0] == "lt" and f[1] == x and any(
+                g[0] == "sum" and ((g[2] == f[2] and g[3] == y) or (g[2] == y and g[3] == f[2])) for g in facts)
+                for f in facts) and
+            any(f[0] == "ge" and f[1] == x and any(
+                g[0] == "ge" and g[1] == y and MIN_I64 <= f[2] + g[2] for g in facts) for f in facts))
+
+
+def no_wrap_sum_premises(facts, x, y):
+    """The facts no_wrap_sum(facts, x, y) uses, or None."""
+    for f in facts:
+        if f[0] != "lt" or f[1] != x:
+            continue
+        s = next((g for g in facts if g[0] == "sum" and ((g[2] == f[2] and g[3] == y) or (g[2] == y and g[3] == f[2]))),
+                 None)
+        if s is None:
+            continue
+        for g in facts:
+            if g[0] == "ge" and g[1] == x:
+                h = next((h for h in facts if h[0] == "ge" and h[1] == y and MIN_I64 <= g[2] + h[2]), None)
+                if h is not None:
+                    return [f, s, g, h]
+    return None
+
+
 def cond_facts(cond, outcome):
     kind, a, b = cond["cmp"], cond["a"], cond["b"]
     reg_a, reg_b = isinstance(a, str), isinstance(b, str)
@@ -279,6 +306,12 @@ def generated_unbounded(facts, node, edge):
                 if dst != node["src"] and no_wrap(facts, node["src"], node["k"]) else [])
     if op == "add_checked":
         return [("off", dst, node["src"], node["k"])] if edge == 0 and dst != node["src"] else []
+    if op == "add_reg":
+        x, y = node["x"], node["y"]
+        return ([("sum", dst, x, y)] if dst not in (x, y) and (no_wrap_sum(facts, x, y) or no_wrap_sum(facts, y, x))
+                else [])
+    if op == "add_checked_reg":
+        return [("sum", dst, node["x"], node["y"])] if edge == 0 and dst not in (node["x"], node["y"]) else []
     if op == "length":
         return [] if dst == node["list"] else [("len", dst, node["list"])]
     if op == "find":
@@ -455,6 +488,59 @@ def conclusions(fact, by_name, index, relevant, lower_bounds=()):
                 out.append((("below", i, n), [fact, other]))
     elif kind == "found" and ("ne", fact[1], -1) in index:
         out.append((("entry", fact[1], fact[2]), [fact, ("ne", fact[1], -1)]))
+    out.extend(sum_conclusions(fact, by_name, index))
+    return out
+
+
+def sum_conclusions(fact, by_name, index):
+    """PystachyAccess.sumStep's conclusions that fact takes part in: x = p + q and z = r + t with
+    an addend in common and the others ordered give x < z, and lower bounds of p and q one of x."""
+    out = []
+    kind = fact[0]
+
+    def sums(name):
+        return [other for other in by_name.get(name, ()) if other[0] == "sum"]
+
+    def ordered(f, g):
+        # (x < z from sums f of x and g of z: the lt fact it needs, or None)
+        p, q, r, t = f[2], f[3], g[2], g[3]
+        for shared, mine, theirs in ((p == r, q, t), (p == t, q, r), (q == r, p, t), (q == t, p, r)):
+            if shared and ("lt", mine, theirs) in index:
+                return ("lt", mine, theirs)
+        return None
+
+    def bounded(f):
+        # (x >= k₁ + k₂ from a sum f of x and lower bounds of its addends)
+        for g in by_name.get(f[2], ()):
+            if g[0] == "ge" and g[1] == f[2]:
+                for h in by_name.get(f[3], ()):
+                    if h[0] == "ge" and h[1] == f[3]:
+                        out.append((("ge", f[1], g[2] + h[2]), [f, g, h]))
+
+    if kind == "sum":
+        for name in set(fact[2:]):
+            for other in sums(name):
+                if other is fact or other[1] == fact[1]:
+                    continue
+                less = ordered(fact, other)
+                if less is not None:
+                    out.append((("lt", fact[1], other[1]), [fact, other, less]))
+                less = ordered(other, fact)
+                if less is not None:
+                    out.append((("lt", other[1], fact[1]), [other, fact, less]))
+        bounded(fact)
+    elif kind == "lt":
+        a, c = fact[1], fact[2]
+        for f in sums(a):
+            if a not in f[2:]:
+                continue
+            for g in sums(c):
+                if c in g[2:] and g[1] != f[1] and ordered(f, g) == fact:
+                    out.append((("lt", f[1], g[1]), [f, g, fact]))
+    elif kind == "ge":
+        for f in sums(fact[1]):
+            if fact[1] in f[2:]:
+                bounded(f)
     return out
 
 
@@ -530,9 +616,31 @@ def substituted(known, goal):
     return any(rename(g, f[1], f[2]) == goal or rename(g, f[2], f[1]) == goal for f in eqs for g in known)
 
 
+def sum_rule(known, goal):
+    """PystachyAccess.sumStep, for diagnostics."""
+    if goal[0] == "lt":
+        x, z = goal[1], goal[2]
+        for f in known:
+            if f[0] != "sum" or f[1] != x:
+                continue
+            p, q = f[2], f[3]
+            for g in known:
+                if g[0] == "sum" and g[1] == z:
+                    r, t = g[2], g[3]
+                    if ((p == r and ("lt", q, t) in known) or (p == t and ("lt", q, r) in known) or
+                            (q == r and ("lt", p, t) in known) or (q == t and ("lt", p, r) in known)):
+                        return True
+    if goal[0] == "ge":
+        x, k = goal[1], goal[2]
+        return any(f[0] == "sum" and f[1] == x and any(
+            g[0] == "ge" and g[1] == f[2] and any(h[0] == "ge" and h[1] == f[3] and k <= g[2] + h[2] for h in known)
+            for g in known) for f in known)
+    return False
+
+
 def rule(known, goal):
     """PystachyAccess.rule, for diagnostics: whether goal follows in one step from known."""
-    if ("absurd",) in known:
+    if ("absurd",) in known or sum_rule(known, goal):
         return True
     kind = goal[0]
     if kind == "eq":
@@ -635,7 +743,7 @@ def successors(node):
         return []
     if op in ("test", "choice"):
         return [node["yes"], node["no"]]
-    if op == "add_checked":
+    if op in ("add_checked", "add_checked_reg"):
         return [node["next"], node["overflow"]]
     return [node["next"]]
 
@@ -644,6 +752,8 @@ def reads(node):
     op = node["op"]
     if op in ("copy", "add", "add_checked"):
         return {node["src"]}
+    if op in ("add_reg", "add_checked_reg"):
+        return {node["x"], node["y"]}
     if op == "length":
         return {node["list"]}
     if op in ("find", "entry"):
@@ -691,6 +801,9 @@ def generation_premises(facts, node, fact):
         for f in facts:
             if (f[0] == "ge" and f[1] == b and f[2] >= 0) or (f[0] == "len" and f[1] == b):
                 return [f]
+    if node["op"] == "add_reg" and fact[0] == "sum":
+        found = no_wrap_sum_premises(facts, node["x"], node["y"]) or no_wrap_sum_premises(facts, node["y"], node["x"])
+        return found or []
     if node["op"] == "add" and fact[0] == "off":
         src, k = node["src"], node["k"]
         for f in facts:
@@ -1215,6 +1328,9 @@ def normalize_program(snapshot, function, effects_of=None):
                     return [], [{"op": "add", "dst": f"%t{op['results'][0]}", "src": a, "k": k}]
             if isinstance(b, str) and isinstance(a, int) and op["text"] == "add":
                 return [], [{"op": "add", "dst": f"%t{op['results'][0]}", "src": b, "k": a}]
+            if isinstance(a, str) and isinstance(b, str) and op["text"] == "add":
+                # (a sum of two values, such as listguard's base plus a loop's index)
+                return [], [{"op": "add_reg", "dst": f"%t{op['results'][0]}", "x": a, "y": b}]
             return [], havocs(op)
         if kind == "rt":
             key = op["text"]
@@ -1378,6 +1494,15 @@ def normalize_program(snapshot, function, effects_of=None):
                     # (the flag's test is decided on each path: the sum fits, or it overflows)
                     run(havocs({"results": [op["results"][0], op["results"][2]]}))
                     index = put({"op": "add_checked", "dst": f"%t{op['results'][1]}", "src": a, "k": k,
+                                 "next": None, "overflow": None}, ())
+                    nodes[index]["next"] = sequence(block, position + 1, {**known, flag: False})
+                    nodes[index]["overflow"] = sequence(block, position + 1, {**known, flag: True})
+                    return head
+                if (flag and only_terminator and isinstance(a, str) and isinstance(b, str) and op["text"] == "+"
+                        and op["type"] == "int" and terminator["op"] in ("check", "cbr") and len(known) < 4):
+                    # (a checked sum of two values, as listguard's stop plus a base before a loop)
+                    run(havocs({"results": [op["results"][0], op["results"][2]]}))
+                    index = put({"op": "add_checked_reg", "dst": f"%t{op['results'][1]}", "x": a, "y": b,
                                  "next": None, "overflow": None}, ())
                     nodes[index]["next"] = sequence(block, position + 1, {**known, flag: False})
                     nodes[index]["overflow"] = sequence(block, position + 1, {**known, flag: True})
