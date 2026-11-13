@@ -2,7 +2,7 @@
 from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.analysis import attr_fills, attr_values, calls_init, local_names, nonexpr, stmt_walrus
-from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrowed
+from src.pystachy_compiler.bigints import PROMOTES, callable_ints, narrow_type, narrowed
 from src.pystachy_compiler.diagnostics import Rejoin, int_lists, shown, where
 from src.pystachy_compiler.dynamic import comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Val, tmpname
@@ -2444,12 +2444,13 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
     if k == "set" and len(e.kids) > 0 and len([x for x in e.kids if x.kind == "starred"]) == 0:
         # {a, b, ...}: a set of its items' type, where they all have one (set_display compiles
         # them as items of the first's: items of other types type nothing, so that a class the
-        # program does not use is left out as it was, not compiled into an error)
+        # program does not use is left out as it was, not compiled into an error). A promoting
+        # int is an item as a 64-bit int is (ctype narrows it: -3 beside 1, bigints.py)
         t = self.guess(e.kids[0], f)
         if t == "" or t.startswith("!"):
             return t
         for x in e.kids[1:]:
-            if self.guess(x, f) != t:
+            if narrow_type(self.guess(x, f)) != narrow_type(t):
                 return ""
         return self.ctype("set", [t]) if "?" not in t and t != "None" and self.elem_problem(t) == "" else ""
     if k == "dict" and len(e.kids) > 0 and len(e.kids) % 2 == 0:
