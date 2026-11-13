@@ -605,7 +605,8 @@ def import_calls(n: Node, names: dict[str, bool], made: list[int]) -> None:
             src = import_name(call)
         if src != "":
             made[0] += 1
-            n.kids[i] = Parser(Lexer(f"{src} {target if target != '' else '_pys_import_' + str(made[0])}\n", st.line).file()).module().kids[0]
+            bound = target if target != "" else "_pys_import_" + str(made[0])
+            n.kids[i] = Parser(Lexer(src + " " + bound + "\n", st.line).file()).module().kids[0]
         else:
             import_calls(st, names, made)
 
