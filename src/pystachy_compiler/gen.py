@@ -787,6 +787,7 @@ from src.pystachy_compiler.expressions import (
     gen_cmp2 as expressions_cmp2,
     gen_titem_eq as expressions_titem_eq,
     gen_titem_nt as expressions_titem_nt,
+    gen_union_same as expressions_union_same,
     gen_cmp_method as expressions_cmp_method,
     gen_concrete_cmp as expressions_concrete_cmp,
     gen_comparable as expressions_comparable,
@@ -4637,6 +4638,9 @@ class Gen:
 
     def titem_nt(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, value: str) -> bool:
         return expressions_titem_nt(self, item, a, left, hit, ph, value)
+
+    def union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
+        return expressions_union_same(self, item, a, hit, ph, value)
 
     def list_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         return expressions_list_pair_eq(self, op, a, b)

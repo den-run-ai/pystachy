@@ -385,6 +385,10 @@ configurations on representative and changed cases in **two workers**, reusing t
 bootstrap. Each worker runs three or four configurations with private runtime caches and records its
 exact cases and results. The PR aggregate requires both workers to pass.
 
+Each full Variants artifact includes `worker.json` with that consumer's CPU, source commit,
+toolchain, shard, configurations and outcome. Use these identities with the workflow's job
+execution times when comparing headroom; a producer's CPU does not identify its consumers.
+
 Variants and native runtime coverage each build the default compiler once per workflow run.
 Consumers validate the source/commit, LLVM and Python versions, Linux ABI, run identity and
 payload checksums with `tools/verification_bootstrap.py` before execution. Runtime caches
