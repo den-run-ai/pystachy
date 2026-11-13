@@ -20,6 +20,7 @@ compiler's frontend takes 3.9% longer in total, and 6.6% longer on its own sourc
 | Host | Linux x86-64 container, 4 CPUs (Intel Xeon 2.10 GHz), 15 GiB |
 | Toolchain | LLVM 18.1.3; CPython 3.13.18 (the pin is 3.13.16) |
 | Control | the same compiler with `PYSTACHY_OPT=-constargs` |
+| Later commits | The commit after the measured one takes the functions to read from a worklist instead of rescanning them all. Its compiler emits the same IR, messages and exit status as `6d82f404`'s for all 4,484 programs of the corpus, with `PYSTACHY_IRCHECK=1`. |
 
 Timings are wall time on one CPU (`taskset -c 2`), the median of three runs unless
 stated. One host and one day: differences of a few percent are within its noise.
@@ -99,6 +100,10 @@ of it went to `re`'s matcher, a function of 9,300 ops and 1,790 blocks.
   checks that the error is placed where the wrongly decided test goes.
 - `make lint check-fast check-ir check-runtime check-repository`: pass; `check-ir`
   accepts 2,574 programs under `PYSTACHY_IRCHECK=1`.
+- `tools/scaling.py --check --ops -n 500,1000`, every shape, hosted and native: pass. The
+  first version failed it: each close reading of a function rescanned the whole list of
+  functions, so a chain of 1,000 functions that pass a constant on took 2.3 times the
+  compiler lines of a chain of 500. It takes 2.0 times now.
 - Lean: `check-lean-corpus` (486 programs), `check-lean-int` (138), `check-lean-storage`
   (170) and `check-lean-guards` accept.
 

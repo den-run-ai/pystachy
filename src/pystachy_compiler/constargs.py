@@ -26,31 +26,25 @@ CLOSE_OPS = 4096
 # the ops whose result is a constant where their operands are (Fold.result)
 PASSES_ON: dict[str, bool] = {"phi": True, "select": True, "slot.pack": True, "slot.unpack": True, "ptr.cmp": True, "num.cmp": True, "scalar.cmp": True, "scalar.bin": True}
 SIGNED: dict[str, str] = {"eq": "==", "ne": "!=", "slt": "<", "sle": "<=", "sgt": ">", "sge": ">="}
-# Shared by every function that has none of its own; nothing changes them in place. The pass
-# keeps what it reads of the program in a few long lists, each function's part between its
-# "first" and the next function's, and a Fold keeps its states in one: the compiler's own
-# program has a million ops, and a list or dict for each value or block of it would be
-# millions of objects for the collector to mark.
+# Shared by every function whose tuples' items are not known; nothing changes it in place.
+# The pass keeps what it reads of the program in a few long lists, each function's part
+# between its "first" and the next function's, and a Fold keeps its states in one: the
+# compiler's own program has a million ops, and a list or dict for each value or block of it
+# would be millions of objects for the collector to mark.
 NOITEMS: list[str] = []
-NOFIELDS: dict[str, str] = {}
-
-
-# whether each operand spelling the pass has asked about is a constant (constant): a str's
-# startswith() counts code points, which costs more than every other step of reading an op
-SPELLED: dict[str, bool] = {}
 
 
 def constant(v: str) -> bool:
     # an operand that is one value wherever it is written: None's null, a bool, an int
-    # literal that fits a machine word with room to spare, or a module constant's address
-    if v in SPELLED:
-        return SPELLED[v]
-    r = v == "null" or v == "true" or v == "false" or v.startswith("@")
-    if not r:
-        d = v[1:] if v.startswith("-") else v
-        r = d.isdigit() and len(d) <= 18
-    SPELLED[v] = r
-    return r
+    # literal that fits a machine word with room to spare, or a module constant's address.
+    # (A value or a local, which most operands are, is told apart first: a str's startswith()
+    # counts code points, and costs more than every other step of reading an op.)
+    if v.startswith("%"):
+        return False
+    if v == "null" or v == "true" or v == "false" or v.startswith("@"):
+        return True
+    d = v[1:] if v.startswith("-") else v
+    return d.isdigit() and len(d) <= 18
 
 
 def meet(a: str, b: str) -> str:
@@ -691,15 +685,12 @@ class Fields:
         for j in range(nf):
             fn = fns[j]
             f = fn.f
-            fa = NOFIELDS
-            fielded = False
+            fa: dict[str, str] = {}
             for b in fn.blocks:
                 for i in b.code:
                     if i.op == "field.addr" and len(i.r) == 1 and len(i.a) == 1 and i.a[0].t in classes and i.k < len(classes[i.a[0].t].fields):
-                        if not fielded:
-                            fa = {}
-                            fielded = True
                         fa[tmpname(i.r[0])] = classes[i.a[0].t].fields[i.k]
+            fielded = len(fa) > 0
             self.addr.append(fa)
             self.lfirst.append(len(self.lname))
             self.sfirst.append(len(self.sname))
@@ -840,6 +831,11 @@ class Round:
         self.closed: list[bool] = []  # the functions whose every caller is a call op that this reads
         self.reached: list[bool] = [False] * nf
         self.queued: list[bool] = [False] * nf
+        self.mode: list[int] = [0] * nf  # how it was last read: 1 as it is written, 2 closely
+        self.plain: list[int] = []  # the functions to read, of either kind
+        # those of them to read closely, a heap by their place in the order (callers first)
+        self.heap: list[int] = []
+        self.heaped: list[bool] = [False] * nf
         # 1: what facts say of the fields it reads and the functions it calls has it read closely
         self.told: list[int] = [-1] * nf
         for j in range(nf):
@@ -855,28 +851,29 @@ class Round:
             if not own:
                 self.reached[j] = True
                 self.queued[j] = True
+                self.plain.append(j)
         self.pfirst.append(len(self.params))
-        # The functions that are read as they are written go first, each round of them to its
-        # end: what they pass is then known before any function is read closely, which costs
-        # its size each time a caller lowers one of its parameters afterwards.
+        # The functions that are read as they are written go first, all of them: what they
+        # pass is then known before any function is read closely, which costs its size each
+        # time a caller lowers one of its parameters afterwards. Of those to read closely, the
+        # one that comes first in the order is next.
         while True:
-            pending = True
-            while pending:
-                pending = False
-                for j in fields.order:
-                    if self.queued[j] and not self.closely(j):
-                        self.queued[j] = False
-                        if self.read(j, False):
-                            pending = True
-            close = -1
-            for j in fields.order:
-                if self.queued[j]:
-                    close = j
-                    break
-            if close < 0:
+            while len(self.plain) > 0:
+                j = self.plain.pop()
+                if self.closely(j):
+                    if not self.heaped[j]:
+                        self.heaped[j] = True
+                        self.push(j)
+                else:
+                    self.queued[j] = False
+                    self.read(j, False)
+            if len(self.heap) == 0:
                 break
-            self.queued[close] = False
-            self.read(close, True)
+            j = self.pop()
+            self.heaped[j] = False
+            if self.queued[j]:
+                self.queued[j] = False
+                self.read(j, self.closely(j))
         for j in range(nf):
             if not self.reached[j]:
                 continue
@@ -945,12 +942,48 @@ class Round:
                     return None
         return fo
 
-    def read(self, j: int, closely: bool) -> bool:
+    def push(self, j: int) -> None:
+        heap = self.heap
+        pos = self.fields.pos
+        heap.append(j)
+        k = len(heap) - 1
+        while k > 0:
+            up = (k - 1) // 2
+            if pos[heap[up]] <= pos[heap[k]]:
+                break
+            moved = heap[up]
+            heap[up] = heap[k]
+            heap[k] = moved
+            k = up
+
+    def pop(self) -> int:
+        heap = self.heap
+        pos = self.fields.pos
+        top = heap[0]
+        last = heap.pop()
+        if len(heap) > 0:
+            heap[0] = last
+            k = 0
+            while True:
+                least = k
+                if 2 * k + 1 < len(heap) and pos[heap[2 * k + 1]] < pos[heap[least]]:
+                    least = 2 * k + 1
+                if 2 * k + 2 < len(heap) and pos[heap[2 * k + 2]] < pos[heap[least]]:
+                    least = 2 * k + 2
+                if least == k:
+                    break
+                moved = heap[least]
+                heap[least] = heap[k]
+                heap[k] = moved
+                k = least
+        return top
+
+    def read(self, j: int, closely: bool) -> None:
         # Read function j with what its parameters are now, and give its callees what its
-        # calls that can run pass. Whether a function before it in the order must be read
-        # again (a call that goes round).
+        # calls that can run pass. A callee that was read as it is written is not read
+        # again: what it passes does not depend on its parameters, and once read, a function
+        # that was not read closely never is (its parameters only lose their constants).
         fields = self.fields
-        again = False
         fo: Fold | None = None
         if closely:
             fo = self.kept(j)
@@ -960,6 +993,7 @@ class Round:
             if not fo.ok:
                 fo = None
         self.folds[j] = fo
+        self.mode[j] = 1 if fo is None else 2
         for x in range(fields.cfirst[j], fields.cfirst[j + 1]):
             if fo is not None and not fo.live[fields.cblk[x]]:
                 continue  # (a call that cannot run passes nothing)
@@ -983,11 +1017,9 @@ class Round:
                     if new != old:
                         self.params[first + k] = new
                         changed = True
-            if changed and not self.queued[g]:
+            if changed and not self.queued[g] and self.mode[g] != 1:
                 self.queued[g] = True
-                if fields.pos[g] <= fields.pos[j]:
-                    again = True
-        return again
+                self.plain.append(g)
 
 
 def fold_constant_arguments(fns: list[IFn], consts: list[Data], texts: list[str], classes: dict[str, ClassInfo], trap: str) -> int:
@@ -1024,5 +1056,4 @@ def fold_constant_arguments(fns: list[IFn], consts: list[Data], texts: list[str]
     for fo in rd.folds:
         if fo is not None and fo.folds > 0:
             n += fo.apply(trap)
-    SPELLED.clear()
     return n
