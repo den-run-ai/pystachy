@@ -1,0 +1,19 @@
+result: TimeoutError
+exception: TimeoutError
+0 2
+0 2
+0 2
+as_completed: TimeoutError: 2 (of 2) futures unfinished
+ValueError: Invalid return condition: 'LATER'
+1 2 True True
+1 2
+1 2
+as_completed: TimeoutError: 1 (of 3) futures unfinished
+[1, 2]
+3 0 ['NoneType', 'NoneType', 'ZeroDivisionError']
+True
+0 1 True
+False
+1 0 [True]
+[3, 2, -1, 1]
+[exit 0]

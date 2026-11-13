@@ -1,0 +1,6 @@
+8 24 True
+[None, None] ['x'] True
+['a', 'bb', 'nothing']
+[16, 18, 14] ['http://', 'http://a', 'http://bb']
+14 None True
+[exit 0]

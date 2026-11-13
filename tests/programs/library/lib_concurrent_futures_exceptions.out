@@ -1,0 +1,9 @@
+0 None
+AppError: code 41 41 True
+AppError: code 41 41 True
+ValueError: outer KeyError
+ state=finished raised ValueError>
+[True, True, True, True] [False, False, False, False]
+SystemExit
+before result()
+[exit 3]
