@@ -5489,6 +5489,8 @@ def gen_comparable(self, t: str, u: str) -> bool:
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
         return True  # (a promoting int is a number, also where it may be None: bigints.py)
+    if COMPLEXC in [t, u] and all(x in [COMPLEXC, "int", "float", "bool", BIG] for x in [t, u]):
+        return True  # (a complex number with a zero imaginary part equals its real part: complex_cmp)
     return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
 def gen_foreign_eq(self, a: Val, b: Val) -> Val:
