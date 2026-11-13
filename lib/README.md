@@ -232,6 +232,11 @@ do not import it. See [range objects](../docs/language/semantics.md#range-object
 loads it for a program that may call `object()`; programs do not import it. See
 [sentinels](../docs/language/semantics.md#sentinels).
 
+`_pystachy_complex.py` holds the class of complex numbers. The compiler loads it for a program that
+may use one, an imaginary literal or a read of the builtin `complex`; programs do not import it.
+Its division, power, `abs()` and hash call runtime.c's ports of CPython 3.13's. See
+[complex numbers](../docs/language/semantics.md#complex-numbers).
+
 `_pystachy_json_any.py` holds `json.loads()` and `json.dumps()` of `Any` values: the decoder builds
 `Any`'s containers with `json`'s scanner, and the encoder walks `Any` values as CPython's does. The
 compiler loads it for a program that has `json` and a module that opts in to
