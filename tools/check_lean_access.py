@@ -196,23 +196,30 @@ def no_wrap(facts, src, k):
     return 0 <= k <= MAX_I64 - MAX_LEN and any(f[0] == "len" and f[1] == src for f in facts)
 
 
+def sum_upper(facts, f, y):
+    """The fact that, with f (x < c or x <= k), shows x + y below a value s, or None: s = c + y (a
+    sum) or s = y + k' with k < k' (an offset, a constant stop)."""
+    if f[0] == "lt":
+        return next((g for g in facts if g[0] == "sum" and ((g[2] == f[2] and g[3] == y) or (g[2] == y and g[3] == f[2]))),
+                    None)
+    if f[0] == "atMost":
+        return next((g for g in facts if g[0] == "off" and g[2] == y and f[2] < g[3]), None)
+    return None
+
+
 def no_wrap_sum(facts, x, y):
-    """PystachyAccess.noWrapSum: x + y fits, as x < c where some s = c + y, and lower bounds of x
-    and y that add up to at least the least 64-bit value."""
-    return (any(f[0] == "lt" and f[1] == x and any(
-                g[0] == "sum" and ((g[2] == f[2] and g[3] == y) or (g[2] == y and g[3] == f[2])) for g in facts)
-                for f in facts) and
-            any(f[0] == "ge" and f[1] == x and any(
-                g[0] == "ge" and g[1] == y and MIN_I64 <= f[2] + g[2] for g in facts) for f in facts))
+    """PystachyAccess.noWrapSum: x + y fits, as x < c where some s = c + y, or x <= k where some
+    s = y + k' and k < k', and lower bounds of x and y that add up to at least the least 64-bit
+    value."""
+    return no_wrap_sum_premises(facts, x, y) is not None
 
 
 def no_wrap_sum_premises(facts, x, y):
     """The facts no_wrap_sum(facts, x, y) uses, or None."""
     for f in facts:
-        if f[0] != "lt" or f[1] != x:
+        if f[0] not in ("lt", "atMost") or f[1] != x:
             continue
-        s = next((g for g in facts if g[0] == "sum" and ((g[2] == f[2] and g[3] == y) or (g[2] == y and g[3] == f[2]))),
-                 None)
+        s = sum_upper(facts, f, y)
         if s is None:
             continue
         for g in facts:
@@ -517,7 +524,23 @@ def sum_conclusions(fact, by_name, index):
                     if h[0] == "ge" and h[1] == f[3]:
                         out.append((("ge", f[1], g[2] + h[2]), [f, g, h]))
 
+    def below_offset(f, g):
+        # (x < z from a sum f of x and an offset g of z = r + k' with r one addend: the atMost fact
+        # of the other addend, below k', it needs, or None)
+        p, q, r, k = f[2], f[3], g[2], g[3]
+        for shared, other in ((r == p, q), (r == q, p)):
+            if shared:
+                bound = next((h for h in by_name.get(other, ()) if h[0] == "atMost" and h[1] == other and h[2] < k), None)
+                if bound is not None:
+                    return bound
+        return None
+
     if kind == "sum":
+        for g in [other for name in set(fact[2:]) for other in by_name.get(name, ()) if other[0] == "off"]:
+            if g[2] in fact[2:] and g[1] != fact[1]:
+                bound = below_offset(fact, g)
+                if bound is not None:
+                    out.append((("lt", fact[1], g[1]), [fact, g, bound]))
         for name in set(fact[2:]):
             for other in sums(name):
                 if other is fact or other[1] == fact[1]:
@@ -541,6 +564,16 @@ def sum_conclusions(fact, by_name, index):
         for f in sums(fact[1]):
             if fact[1] in f[2:]:
                 bounded(f)
+    elif kind in ("off", "atMost"):
+        # (the constant-stop order, from its offset or its bound arriving after the sum)
+        for name in set(mentions(fact)):
+            for f in sums(name):
+                for g in ([fact] if kind == "off" else
+                          [other for part in f[2:] for other in by_name.get(part, ()) if other[0] == "off"]):
+                    if g[2] in f[2:] and g[1] != f[1]:
+                        bound = below_offset(f, g)
+                        if bound is not None and (kind == "off" or bound == fact):
+                            out.append((("lt", f[1], g[1]), [f, g, bound]))
     return out
 
 
@@ -629,6 +662,11 @@ def sum_rule(known, goal):
                     r, t = g[2], g[3]
                     if ((p == r and ("lt", q, t) in known) or (p == t and ("lt", q, r) in known) or
                             (q == r and ("lt", p, t) in known) or (q == t and ("lt", p, r) in known)):
+                        return True
+                if g[0] == "off" and g[1] == z:
+                    r, k = g[2], g[3]
+                    if any(h[0] == "atMost" and h[2] < k and ((r == p and h[1] == q) or (r == q and h[1] == p))
+                           for h in known):
                         return True
     if goal[0] == "ge":
         x, k = goal[1], goal[2]
@@ -1488,6 +1526,8 @@ def normalize_program(snapshot, function, effects_of=None):
                 terminator = operations[-1]
                 only_terminator = all(use[0] == block["label"] and use[1] == len(operations) - 1 for use in uses)
                 k = (b if op["text"] == "+" else -b) if isinstance(b, int) and op["text"] in ("+", "-") else None
+                if k is None and isinstance(a, int) and isinstance(b, str) and op["text"] == "+":
+                    a, k = b, a  # (literal + value: the value plus the literal)
                 raising_point()
                 if (flag and only_terminator and isinstance(a, str) and k is not None and op["type"] == "int"
                         and terminator["op"] in ("check", "cbr") and len(known) < 4 and MIN_I64 <= k <= MAX_I64):
