@@ -21,19 +21,21 @@ import python_int_gate
 ROOT = Path(__file__).resolve().parent.parent
 SUITE_STEPS = {"tests-cpython", "tests-native-0", "tests-native-1", "tests-native-2",
                "tests-opt-off-0", "tests-opt-off-1", "tests-opt-off-2", "runtime-cache", "python-free-0",
-               "python-free-1", "python-free-2", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
+               "python-free-1", "python-free-2", "python-free-3", "ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "ubsan-4", "gc-jit-0", "gc-jit-1", "gc-aot-0", "gc-aot-1",
                "gc-aot-2"}
 # Steps that run one of the disjoint shards of the corpus (tests/verify.sh shard_cases), and how many
 # shards their suite has: the name ends in the shard index.
 SHARDED_STEPS = {f"{suite}-{index}": count for suite, count in
-                 (("tests-native", 3), ("tests-opt-off", 3), ("python-free", 3),
-                  ("ubsan", 4), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
+                 (("tests-native", 3), ("tests-opt-off", 3), ("python-free", 4),
+                  ("ubsan", 5), ("gc-ir", 2), ("gc-jit", 2), ("gc-aot", 3))
                  for index in range(count)}
-# The PR profile keeps full native coverage in two workers per execution mode. Each alternate configuration runs
+# The PR profile keeps full native coverage in two JIT workers and four AOT workers. Each alternate configuration runs
 # the common deterministic sample in one worker; these are not partial shards of the full gate.
-PR_NATIVE_STEPS = {f"tests-native-{mode}-{index}": mode for mode in ("jit", "aot") for index in range(2)}
+PR_NATIVE_SHARDS = {"jit": 2, "aot": 4}
+PR_NATIVE_STEPS = {f"tests-native-{mode}-{index}": mode for mode, count in PR_NATIVE_SHARDS.items()
+                   for index in range(count)}
 SUITE_STEPS.update(PR_NATIVE_STEPS)
-PR_SHARDED_STEPS = {**dict.fromkeys(PR_NATIVE_STEPS, 2), "tests-opt-off-0": 1,
+PR_SHARDED_STEPS = {**{name: PR_NATIVE_SHARDS[mode] for name, mode in PR_NATIVE_STEPS.items()}, "tests-opt-off-0": 1,
                     "python-free-0": 1, "ubsan-0": 1, "gc-jit-0": 1, "gc-aot-0": 1}
 # The GC suites run their shards (halves in JIT, thirds in AOT) with program stress alone, compiled by
 # stage 2 unstressed, after the gc-ir halves have shown the stage-2 compiler collecting every
@@ -146,7 +148,8 @@ def validate_pr_case_step(step, selection, label):
     name = step["name"]
     if name.startswith("tests-native-"):
         index = int(name.rsplit("-", 1)[1])
-        selected = subprocess.run(["sh", "-c", f". tests/corpus.sh; corpus_shard {index} 2"], cwd=ROOT,
+        count = PR_NATIVE_SHARDS[PR_NATIVE_STEPS[name]]
+        selected = subprocess.run(["sh", "-c", f". tests/corpus.sh; corpus_shard {index} {count}"], cwd=ROOT,
                                   env={**os.environ, "LC_ALL": "C"}, check=True, capture_output=True,
                                   text=True, timeout=60).stdout.splitlines()
     else:
@@ -199,7 +202,7 @@ def validate_pr_native_coverage(reports):
     steps = [step for report in reports.values() for step in report["steps"]
              if step["name"].startswith("tests-native")]
     if Counter(step["name"] for step in steps) != Counter(PR_NATIVE_STEPS.keys()):
-        raise ValueError("PR native coverage requires both complete JIT and AOT halves")
+        raise ValueError("PR native coverage requires two complete JIT halves and four AOT quarters")
     pairs = []
     for step in steps:
         mode = PR_NATIVE_STEPS[step["name"]]
@@ -209,10 +212,10 @@ def validate_pr_native_coverage(reports):
         pairs.extend((case, mode) for case in step["selected_cases"])
     expected = {(case, mode) for case in cases for mode in ("jit", "aot")}
     if len(pairs) != len(expected) or set(pairs) != expected:
-        raise ValueError("PR native halves must cover every corpus case and mode exactly once")
+        raise ValueError("PR native shards must cover every corpus case and mode exactly once")
     for mode in ("jit", "aot"):
         if sum(step["expected"] for step in steps if step["modes"] == [mode]) != case_checks(cases, [mode]):
-            raise ValueError(f"PR native {mode} halves must cover all execution, rejection and parser checks")
+            raise ValueError(f"PR native {mode} shards must cover all execution, rejection and parser checks")
 
 
 def unique_object(pairs):
@@ -514,7 +517,7 @@ def merge_reports(directory, groups, expected_commit=None, machine=None, subset=
             raise ValueError(f"{what} shards must cover the same full-suite check count as the corpus")
     # The shards of a GC suite, which runs in one mode, make as many as the corpus has in one mode
     # (sources.mode_checks), their stressed samples included, and hold as many cases as it does
-    # (sources.corpus_cases); the UBSan quarters, which run in both modes one at a time, twice as many.
+    # (sources.corpus_cases); the UBSan fifths, which run in both modes one at a time, twice as many.
     mode_checks = reports[wanted[0]]["sources"]["mode_checks"]
     if profile == "pr":
         validate_pr_native_coverage(reports)
@@ -524,7 +527,7 @@ def merge_reports(directory, groups, expected_commit=None, machine=None, subset=
         return step["expected"] + (step["stressed_sample"]["expected"] if step["name"] in GC_STEPS else 0)
     for shards, runs, what in ((("gc-jit-0", "gc-jit-1"), 1, "GC JIT"),
                                (("gc-aot-0", "gc-aot-1", "gc-aot-2"), 1, "GC AOT"),
-                               (("ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3"), 2, "UBSan")):
+                               (("ubsan-0", "ubsan-1", "ubsan-2", "ubsan-3", "ubsan-4"), 2, "UBSan")):
         if not all(group in reports for group in shards):
             continue
         if sum(checks(group) for group in shards) != mode_checks * runs:

@@ -12,7 +12,10 @@
 # with a NAME.attrs must define each function with the attributes it lists: those after its
 # parameters, but for a personality. One with a NAME.tbaa must tag the loads and stores it lists
 # with TBAA: for each function its IR defines, those it tags, in the order of its text, as load or
-# store, the struct type its access tag names and the offset there (fieldtbaa). All four are
+# store, the struct type its access tag names and the offset there (fieldtbaa). One with a
+# NAME.inline must call the compiled functions it lists: for each function its IR defines, those
+# it calls or invokes but the runtime's (pys_) and LLVM's, in the order of its text, each with a !
+# where the call is alwaysinline (listguard's copy of a function's only call). All five are
 # compiled with every optimization on (an empty PYSTACHY_OPT), whose rewrites they pin. The
 # programs run from the repository root in PYSTACHY_JOBS workers (default: one per CPU). Exit
 # status 0 only if every program compiled and passed its checks.
@@ -63,10 +66,19 @@ tbaa() {
       w = "load"; if ($0 ~ /^  store /) w = "store"; c = c " " w ":" name[base[t]] "+" off[t] }
     /^}/ && f != "" { print f ":" c; f = "" }' "$1" "$1"
 }
+# inline IR: each function IR defines, and the compiled functions it calls (a call or an invoke of
+# @NAME(...) but pys_ and llvm. ones), in the order of its text, NAME! where the call is alwaysinline
+inline() {
+  awk '/^define / { f = $0; sub(/\(.*/, "", f); sub(/.* /, "", f); c = "" }
+    /^  .*(call|invoke) [^@%(]*@[^ (]*\(/ { s = $0; sub(/^.*(call|invoke) [^@%(]*@/, "", s); n = s; sub(/\(.*/, "", n)
+      if (n !~ /^(pys_|llvm\.)/) { if (s ~ /\) alwaysinline/) n = n "!"; c = c " " n } }
+    /^}/ && f != "" { print f ":" c; f = "" }' "$1"
+}
 # check FILE DIR: DIR/result is ok, skip (does not compile), internal (an internal error, such as the
 # IR check's), fx (other effect summaries than FILE's .fx lists), calls (other runtime calls than its
 # .calls lists), attrs (other attributes than its .attrs lists), tbaa (other TBAA tags than its .tbaa
-# lists) or bad (llvm-as rejects the IR); DIR/msg says why
+# lists), inline (other calls of compiled functions than its .inline lists) or bad (llvm-as rejects
+# the IR); DIR/msg says why
 check() {
   mp=$PYSTACHY_PATH
   if [ -f "${1%.py}.path" ]; then
@@ -76,13 +88,14 @@ check() {
   fi
   fx=; [ -f "${1%.py}.fx" ] && fx=1
   how=ir; case $1 in runtime.py | */runtime.py) how=rt ;; esac  # (the runtime's part written in the subset)
-  opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] || [ -f "${1%.py}.attrs" ] || [ -f "${1%.py}.tbaa" ] && opt=
+  opt=$PYSTACHY_OPT; [ -n "$fx" ] || [ -f "${1%.py}.calls" ] || [ -f "${1%.py}.attrs" ] || [ -f "${1%.py}.tbaa" ] || [ -f "${1%.py}.inline" ] && opt=
   if ! PYSTACHY_PATH=$mp PYSTACHY_IRFX=$fx PYSTACHY_OPT=$opt $PYS $how "$1" -o "$2/ir.ll" > "$2/msg" 2>&1; then
     if grep -q 'error: internal error' "$2/msg"; then r=internal; else r=skip; fi
   elif [ -n "$fx" ] && ! diff "${1%.py}.fx" "$2/msg" > "$2/fx" 2>&1; then r=fx; mv "$2/fx" "$2/msg"
   elif [ -f "${1%.py}.calls" ] && ! calls "$2/ir.ll" | diff "${1%.py}.calls" - > "$2/calls" 2>&1; then r=calls; mv "$2/calls" "$2/msg"
   elif [ -f "${1%.py}.attrs" ] && ! attrs "$2/ir.ll" | diff "${1%.py}.attrs" - > "$2/attrs" 2>&1; then r=attrs; mv "$2/attrs" "$2/msg"
   elif [ -f "${1%.py}.tbaa" ] && ! tbaa "$2/ir.ll" | diff "${1%.py}.tbaa" - > "$2/tbaa" 2>&1; then r=tbaa; mv "$2/tbaa" "$2/msg"
+  elif [ -f "${1%.py}.inline" ] && ! inline "$2/ir.ll" | diff "${1%.py}.inline" - > "$2/inline" 2>&1; then r=inline; mv "$2/inline" "$2/msg"
   elif "${LLVM}llvm-as" -o /dev/null < "$2/ir.ll" > "$2/msg" 2>&1; then r=ok
   else r=bad; fi
   rm -f "$2/ir.ll"
@@ -114,6 +127,7 @@ for f; do
     calls) bad=$((bad + 1)); echo "OTHER CALLS $f (than ${f%.py}.calls lists)"; head -10 "$T/$n/msg" ;;
     attrs) bad=$((bad + 1)); echo "OTHER ATTRIBUTES $f (than ${f%.py}.attrs lists)"; head -10 "$T/$n/msg" ;;
     tbaa) bad=$((bad + 1)); echo "OTHER TBAA TAGS $f (than ${f%.py}.tbaa lists)"; head -10 "$T/$n/msg" ;;
+    inline) bad=$((bad + 1)); echo "OTHER CALLS OF COMPILED FUNCTIONS $f (than ${f%.py}.inline lists)"; head -10 "$T/$n/msg" ;;
     bad) bad=$((bad + 1)); echo "REJECTED $f (by llvm-as)"; head -5 "$T/$n/msg" ;;
     *) bad=$((bad + 1)); echo "FAIL $f: no result (its worker died)" ;;
   esac
