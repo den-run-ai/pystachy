@@ -56,8 +56,8 @@ export PYSTACHY_JOBS=2
 
 git worktree add --detach "$WORK/baseline" "$BASE"
 git worktree add --detach "$WORK/pystachy" "$CANDIDATE"
-(cd "$WORK/baseline" && make bootstrap PY="$PY")
-(cd "$WORK/pystachy" && make bootstrap PY="$PY")
+(cd "$WORK/baseline" && make PY="$PY")
+(cd "$WORK/pystachy" && make PY="$PY")
 
 "$PY" "$EVIDENCE/retained_ir_compare.py" \
   --base "$WORK/baseline" --candidate "$WORK/pystachy" \
