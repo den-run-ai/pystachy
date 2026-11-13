@@ -1182,6 +1182,32 @@ class UnionProofTests(unittest.TestCase):
                             c.g.verify(c.fn, False)
                         self.assertIn("ubox needs matching tag and payload provenance", errors.getvalue())
 
+    def test_yielded_payload_is_read_as_the_generator_element_type(self):
+        # (gen_slots passes an int member's payload register itself, as the %slot word yielded)
+        for element, member in (("int", "int"), ("float", "int"), ("int", "float")):
+            with self.subTest(element=element, member=member):
+                c = Case("generator_yield")
+                c.fn.f.ret = "gen[" + element + "]"
+                c.fn.coro = True
+                c.op("gen.start", a=[(c.g.sconst("generator_yield"), "str")], b=["body"])
+                c.block("body")
+                c.guard(member=member)
+                c.block("hit")
+                bits = c.op("union.payload", "%slot", member, [("%a0", U)])
+                c.op("gen.yield", a=[(bits, "%slot")], b=["after"])
+                c.block("after")
+                c.op("gen.ret")
+                c.block("miss")
+                c.op("gen.ret")
+                errors = StringIO()
+                with redirect_stderr(errors):
+                    if element == member:
+                        c.g.verify(c.fn, False)
+                    else:
+                        with self.assertRaises(SystemExit):
+                            c.g.verify(c.fn, False)
+                        self.assertIn("gen.yield interprets payload", errors.getvalue())
+
     def test_hidden_global_box_uses_declared_storage_after_calls(self):
         for declared in ("int", "float", ""):
             for tag in ("int", "float"):
