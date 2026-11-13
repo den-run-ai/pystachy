@@ -613,7 +613,16 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
             l2 = self.label()
             self.cbr("true" if hv.v in self.nn else self.ptr_cmp('!=', hv, Val('null', 'None')).v, l1, l2)
             self.place(l1)
-            fv = self.mem_load(Val(self.fgep(hv, self.classes[hv.t].fflag[args[1].s]), "*bool")).v
+            ci = self.classes[hv.t]
+            fv = self.mem_load(Val(self.fgep(hv, ci.fflag[args[1].s]), "*bool")).v
+            shadows = self.exc_shadows(ci, args[1].s)
+            if len(shadows) > 0:
+                # (or the object is of a class whose class variable shadows the field: getfield)
+                cls = self.mem_load(Val(self.fgep(hv, ci.fpos[" cls"]), "*str")).v
+                for x in shadows:
+                    self.xcls[x.name] = True
+                    match = self.ptr_cmp('==', Val(cls, "str"), Val(f"@x.{x.name}", "str")).v
+                    fv = self.scalar('or', [Val(fv, 'bool'), Val(match, 'bool')])
             e1 = self.cur
             self.br(l2)
             self.place(l2)
@@ -2270,7 +2279,10 @@ def gen_as_list(self, v: Val, name: str) -> Val:
                 self.err(f"assigning a {typestr(v.t)} to a list slice is not supported: its items have different types")
             else:
                 self.err(f"{name}() of a {v.t} needs items of a single type")
-        r = self.rt("pys_list_new_atomic" if atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"])
+        # (the empty tuple's list is scanned: no item proves its array pointer-free, and its callers
+        # type it as the list they want, list(()) where a list[str] goes: an atomic array would hide
+        # that list's strs from the collector)
+        r = self.rt("pys_list_new_atomic" if len(ts) > 0 and atomic_list(self.ctype("list", [et])) else "pys_list_new", "ptr", [f"i64 {len(ts)}"])
         for i in range(len(ts)):
             item = self.tget(v, i)
             if self.ctype("list", [et]) == "list[dyn]":

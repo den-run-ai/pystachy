@@ -8,7 +8,7 @@ from __future__ import annotations
 from src.pystachy_compiler.ir import Data, IFn, Ins, Val, slot_register
 from src.pystachy_compiler.specs import BIG
 from src.pystachy_compiler.union_state import UnionState, intersect_tags, union_join, union_tags
-from src.pystachy_compiler.utils import is_opt, is_union, targs, umembers
+from src.pystachy_compiler.utils import gelem, is_gen, is_opt, is_union, targs, umembers
 
 
 def proof_number(v: str, start: int, limit: int) -> int:
@@ -796,6 +796,10 @@ class UnionProof:
                 transport = (op == "phi" or op == "select" or op == "slot.pack" or op == "slot.unpack" or op == "mem.load" or op == "mach.load") or (op == "rt" and ((i.s == "ubox" and j == 1) or (i.s == "box" and j == 0)))
                 if not transport:
                     t = self.runtime_type(i, operand.t) if op == "rt" else operand.t
+                    if op == "gen.yield" and j == 0 and is_gen(self.fn.f.ret):
+                        # (the word a suspension yields is its value as the generator's element
+                        # type, gen_slots, which its consumer's slot.unpack reads)
+                        t = gelem(self.fn.f.ret)
                     self.checkbits(s, operand.v, t, b, op)
         if (op == "rt" or op == "call" or op == "icall" or op == "init" or op == "gen.resume") and self.writes.get(op + "|" + i.s + "|" + i.x, True):
             self.killmem(s)

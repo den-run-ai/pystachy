@@ -978,11 +978,65 @@ def gen_exit_(self, vals: list[Val], sysx: bool) -> None:
         if is_sopt(vals[0].t) or (self.eh and is_opt(vals[0].t)):
             self.exit_([self.deref(vals[0])], sysx)  # (an int is the status)
             return
+        m = self.exit_member(vals[0])
+        if m[0].v != "false":
+            # an int-like enum's member is an int, and so the status
+            l3 = self.label()
+            l4 = self.label()
+            if m[0].v != "true":
+                self.cbr(m[0].v, l3, l4)
+                self.place(l3)
+            if self.eh:
+                self.throw(Val(self.rt("pys_exc_exit", "ptr", [f"i64 {m[1].v}", f"ptr {self.to_str(vals[0]).v}", f"ptr {self.repr(vals[0]).v}"]), "exc"))
+            else:
+                self.rt("pys_exit", "void", [f"i64 {m[1].v}"])
+                self.unreachable()
+            if m[0].v == "true":
+                return
+            self.place(l4)
         if self.eh and vals[0].t != "str":
             self.throw(self.exc_value("SystemExit", vals))
             return
         self.rt("pys_exit_msg", "void", [f"ptr {self.to_str(vals[0]).v}"])
     self.unreachable()
+
+def gen_exit_ints(self, t: str) -> list[str]:
+    # the int-like enum classes whose member a value of static type t may be (exit_member)
+    if t not in self.classes or self.classes[t].exc != "":
+        return []
+    return [k for k in self.refl_concrete(t) if self.enum_intlike(k)]
+
+def gen_exit_member(self, v: Val) -> list[Val]:
+    # sys.exit(v) and SystemExit(v) of a value v that is not None: [whether v is an int that is
+    # an object here, that int]. CPython's int-like enum members are ints (IntEnum's and
+    # IntFlag's, and those of an enum class of int and Enum), the status the program ends with;
+    # here they are objects of their classes, which the object's class tells. Read the stored
+    # int payload: __index__, __int__, and the mutable _value_ attribute cannot change it.
+    ks = self.exit_ints(v.t)
+    if len(ks) == 0:
+        return [Val("false", "bool"), Val("0", "int")]
+    if self.enum_intlike(v.t):
+        return [Val("true", "bool"), self.mem_load(Val(self.fgep(v, self.classes[v.t].fpos[" enum int"]), "*int"))]
+    end = self.label()
+    isint = Ins("phi", "bool", "")
+    status = Ins("phi", "int", "")
+    tag = self.mload('int', v.v)
+    for k in ks:
+        hit = self.label()
+        miss = self.label()
+        self.cbr(self.num_cmp('==', Val(tag, "int"), Val(str(self.classes[k].tag), "int")).v, hit, miss)
+        self.place(hit)
+        member = Val(v.v, k)
+        st = self.mem_load(Val(self.fgep(member, self.classes[k].fpos[" enum int"]), "*int"))
+        self.incoming(isint, "true", self.cur)
+        self.incoming(status, st.v, self.cur)
+        self.br(end)
+        self.place(miss)
+    self.incoming(isint, "false", self.cur)
+    self.incoming(status, "0", self.cur)
+    self.br(end)
+    self.place(end)
+    return [Val(self.phi(isint), "bool"), Val(self.phi(status), "int")]
 
 def gen_no_code(self) -> Val:
     # SystemExit(None): status 0, str(e) ""
@@ -1016,6 +1070,29 @@ def gen_exit_value(self, vals: list[Val]) -> Val:
         ph = Ins("phi", "exc", "")
         self.incoming(ph, e1.v, b1)
         self.incoming(ph, e2.v, b2)
+        return Val(self.phi(ph), "exc")
+    if len(vals) == 1 and len(self.exit_ints(vals[0].t)) > 0:
+        # an object that may be an int-like enum's member: an int, the status (exit_member)
+        l1 = self.label()
+        l2 = self.label()
+        l3 = self.label()
+        l4 = self.label()
+        self.cbr(self.isnull(vals[0]), l2, l1)
+        self.place(l1)
+        m = self.exit_member(vals[0])
+        self.cbr(m[0].v, l3, l2)
+        self.place(l3)
+        status = self.rt("pys_exc_exit", "ptr", [f"i64 {m[1].v}", f"ptr {self.to_str(vals[0]).v}", f"ptr {self.repr(vals[0]).v}"])
+        b1 = self.cur
+        self.br(l4)
+        self.place(l2)
+        shown = self.exc_value("SystemExit", vals)
+        b2 = self.cur
+        self.br(l4)
+        self.place(l4)
+        ph = Ins("phi", "exc", "")
+        self.incoming(ph, status, b1)
+        self.incoming(ph, shown.v, b2)
         return Val(self.phi(ph), "exc")
     return self.exc_value("SystemExit", vals)
 
@@ -1220,6 +1297,16 @@ def gen_exc_keep(self, o: Val, vals: list[Val], coded: bool = True) -> None:
             self.cbr(self.isnull(vals[0]), l2, l1)
             self.place(l1)
             self.setfield(o, self.field(o, " code"), " code", self.big_status(self.deref(vals[0])))
+            self.place(l2)
+        if len(self.exit_ints(t)) > 0:
+            # (an int-like enum's member is an int, and so a status: exit_member)
+            l1 = self.label()
+            l2 = self.label()
+            self.cbr(self.isnull(vals[0]), l2, l1)
+            self.place(l1)
+            m = self.exit_member(vals[0])
+            self.setfield(o, self.field(o, " code"), " code", m[1])
+            self.setfield(o, self.field(o, " hc"), " hc", m[0])
             self.place(l2)
 
 def gen_exc_of(self, v: Val) -> Val:
