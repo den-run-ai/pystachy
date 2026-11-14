@@ -196,6 +196,13 @@ Python/pystrhex.c to Pystachy's subset, following their behaviour and messages a
 module's docstrings; it is derived from Python and is used under the same license and copyright
 notice.
 
+lib/_pystachy_complex.py ports the complex type of CPython 3.13.16's Objects/complexobject.c to
+Pystachy's subset: construction from numbers and strings, arithmetic, comparison, hash and repr,
+with the complex presentation types of Python/formatter_unicode.c, following their behaviour and
+messages. runtime.c's division, power, absolute value and hash of complex numbers follow
+_Py_c_quot, complex_pow (_Py_c_pow, c_powi), _Py_c_abs and complex_hash there. They are derived
+from Python and are used under the same license and copyright notice.
+
 lib/_pystachy_struct.py ports CPython 3.13.16's Modules/_struct.c and the float packing of
 Objects/floatobject.c to Pystachy's subset, following their behaviour and messages and keeping
 the C module's docstrings; it is derived from Python and is used under the same license and

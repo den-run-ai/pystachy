@@ -2006,6 +2006,101 @@ double pys_m_hypot(double x, double y) {
   return vnorm(v, 2, max);
 }
 double pys_m_copysign(double x, double y) { return copysign(x, y); }
+/* complex numbers (lib/_pystachy_complex.py): CPython 3.13's Objects/complexobject.c, its division
+   (_Py_c_quot), power (complex_pow) and absolute value (_Py_c_abs) with their errors, through libm
+   and errno as there. Products and sums are not contracted into an fma: CPython's x86-64 build
+   computes each apart. no_builtin keeps each libm call a call, as for pow in pys_fpow: LLVM folds
+   or rewrites none (and inlines none of these into code without the attribute). A result is a new
+   tuple of two floats, (real, imag) */
+typedef struct { double real, imag; } Cx;
+static void **cx_pair(Cx c) { I *t = pys_alloc(16); memcpy(t, &c.real, 8); memcpy(t + 1, &c.imag, 8); return (void **)t; }
+static Cx cx_prod(Cx a, Cx b) {   /* _Py_c_prod */
+#pragma clang fp contract(off)
+  return (Cx){a.real * b.real - a.imag * b.imag, a.real * b.imag + a.imag * b.real};
+}
+static Cx cx_quot(Cx a, Cx b) {   /* _Py_c_quot, before 3.14's recovery of infinities (C11 Annex G): EDOM for a zero divisor */
+#pragma clang fp contract(off)
+  Cx r;
+  const double abs_breal = b.real < 0 ? -b.real : b.real, abs_bimag = b.imag < 0 ? -b.imag : b.imag;
+  if (abs_breal >= abs_bimag) {
+    if (abs_breal == 0.0) {
+      errno = EDOM;
+      r.real = r.imag = 0.0;
+    } else {
+      const double ratio = b.imag / b.real, denom = b.real + b.imag * ratio;
+      r.real = (a.real + a.imag * ratio) / denom;
+      r.imag = (a.imag - a.real * ratio) / denom;
+    }
+  } else if (abs_bimag >= abs_breal) {
+    const double ratio = b.real / b.imag, denom = b.real * ratio + b.imag;
+    r.real = (a.real * ratio + a.imag) / denom;
+    r.imag = (a.imag * ratio - a.real) / denom;
+  } else {
+    r.real = r.imag = NAN;   /* (b.real or b.imag is a NaN) */
+  }
+  return r;
+}
+void **pys_complex_quot(double ar, double ai, double br, double bi) {   /* complex_div */
+  errno = 0;
+  Cx q = cx_quot((Cx){ar, ai}, (Cx){br, bi});
+  if (errno == EDOM) pys_fail("ZeroDivisionError: complex division by zero");
+  return cx_pair(q);
+}
+static Cx cx_powu(Cx x, long n) {   /* c_powu */
+  Cx r = {1.0, 0.0}, p = x;
+  long mask = 1;
+  while (mask > 0 && n >= mask) {
+    if (n & mask) r = cx_prod(r, p);
+    mask <<= 1;
+    p = cx_prod(p, p);
+  }
+  return r;
+}
+__attribute__((no_builtin("hypot", "pow", "atan2", "exp", "log", "cos", "sin"))) static Cx cx_pow(Cx a, Cx b) {   /* _Py_c_pow */
+#pragma clang fp contract(off)
+  Cx r;
+  if (b.real == 0. && b.imag == 0.) {
+    r.real = 1.;
+    r.imag = 0.;
+  } else if (a.real == 0. && a.imag == 0.) {
+    if (b.imag != 0. || b.real < 0.) errno = EDOM;
+    r.real = 0.;
+    r.imag = 0.;
+  } else {
+    double vabs = hypot(a.real, a.imag), len = pow(vabs, b.real), at = atan2(a.imag, a.real), phase = at * b.real;
+    if (b.imag != 0.0) {
+      len /= exp(at * b.imag);
+      phase += b.imag * log(vabs);
+    }
+    r.real = len * cos(phase);
+    r.imag = len * sin(phase);
+  }
+  return r;
+}
+void **pys_complex_pow(double ar, double ai, double br, double bi) {   /* complex_pow: c_powi for a small integral exponent */
+  Cx a = {ar, ai}, p;
+  errno = 0;
+  if (bi == 0.0 && br == floor(br) && fabs(br) <= 100.0) {
+    long n = (long)br;
+    p = n > 0 ? cx_powu(a, n) : cx_quot((Cx){1.0, 0.0}, cx_powu(a, -n));
+  } else {
+    p = cx_pow(a, (Cx){br, bi});
+  }
+  if (p.real == HUGE_VAL || p.real == -HUGE_VAL || p.imag == HUGE_VAL || p.imag == -HUGE_VAL) {   /* _Py_ADJUST_ERANGE2 */
+    if (errno == 0) errno = ERANGE;
+  } else if (errno == ERANGE) {
+    errno = 0;
+  }
+  if (errno == EDOM) pys_fail("ZeroDivisionError: 0.0 to a negative or complex power");
+  if (errno == ERANGE) pys_fail("OverflowError: complex exponentiation");
+  return cx_pair(p);
+}
+__attribute__((no_builtin("hypot"))) double pys_complex_abs(double re, double im) {   /* complex_abs: _Py_c_abs */
+  if (!isfinite(re) || !isfinite(im)) return isinf(re) ? fabs(re) : isinf(im) ? fabs(im) : NAN;   /* (C99: an infinity, even with a NaN) */
+  double r = hypot(re, im);
+  if (!isfinite(r)) pys_fail("OverflowError: absolute value too large");
+  return r;
+}
 double pys_m_logb(double x, double b) {   /* log(x) / log(b), and a base of 1 divides by zero, as in CPython */
   double n = mchk(log(x), x, 0, 0), d = mchk(log(b), b, 0, 0);
   if (d == 0) pys_fail("ZeroDivisionError: float division by zero");
@@ -4744,6 +4839,10 @@ static I hdbl(double v) {                            /* _Py_HashDouble; a NaN's 
   x = ((m << e) & M) | m >> (61 - e);
   x = b >> 63 ? 0 - x : x;
   return (I)x == -1 ? -2 : (I)x;
+}
+I pys_complex_hash(double re, double im) {   /* complex_hash: hash(re) + 1000003 * hash(im), as a Py_uhash_t */
+  uint64_t h = (uint64_t)hdbl(re) + 1000003ULL * (uint64_t)hdbl(im);
+  return h == (uint64_t)-1 ? -2 : (I)h;
 }
 static I hitem(I k, const char *d);
 static I htuple(I *t, I n, const char *e, int each) {   /* tuplehash of n items, of descriptors from e on (each), or all e */

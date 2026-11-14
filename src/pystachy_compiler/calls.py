@@ -7,7 +7,7 @@ from src.pystachy_compiler.generators import fresh_yield_context
 from src.pystachy_compiler.ir import Data, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
 from src.pystachy_compiler.reflection import VARS_USES, refl_attr_fields, refl_formatter
-from src.pystachy_compiler.specs import BFILE, BIG, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
+from src.pystachy_compiler.specs import BFILE, BIG, COMPLEXC, EXCEPTIONS, GLUE, HASATTR, MODATTRS, PYBUILTINS, RANGEC
 from src.pystachy_compiler.structs import STRUCT_FNS
 from src.pystachy_compiler.syntax import Node, made_var, mk
 from src.pystachy_compiler.utils import (
@@ -847,13 +847,14 @@ def gen_method(self, o: Val, m: str, args: list[Node], want: str = "", resultsof
         o = self.unwrap(o, f"AttributeError: 'NoneType' object has no attribute '{m}'")
     if is_union(o.t):
         return self.umethod(o, m, args)
-    if (o.t in ["int", "bool", BIG] or o.t in self.nts or self.literal_class(o.t)) and m == "__init__":
-        # p.__init__(args) of an int, NamedTuple or operator getter: object.__init__,
-        # as tuple.__new__ set the fields. It takes any arguments where the class has a __new__
-        # of its own, and does nothing, also on None. The __init__ that makes the object is the
-        # compiler's (see nt_class), which only construction and _replace() call. Operator's
-        # C getters likewise initialize through __new__; reinitialization must not mutate
-        # fields whose literal values the compiler has specialized.
+    if (o.t in ["int", "bool", BIG, COMPLEXC] or o.t in self.nts or self.literal_class(o.t)) and m == "__init__":
+        # p.__init__(args) of an int, complex number, NamedTuple or operator getter:
+        # object.__init__, as tuple.__new__ (complex_new) set the fields. It takes any arguments
+        # where the class has a __new__ of its own, and does nothing, also on None. The __init__
+        # that makes the object is the compiler's (see nt_class, and complex_value for a complex
+        # number), which only construction and _replace() call. Operator's C getters
+        # likewise initialize through __new__; reinitialization must not mutate fields whose
+        # literal values the compiler has specialized (nor a complex number, a dict key's).
         for a in args:
             x = a.kids[0] if a.kind == "kw" else a
             if not pure_arg(x):

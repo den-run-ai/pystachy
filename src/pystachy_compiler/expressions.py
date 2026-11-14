@@ -25,6 +25,8 @@ from src.pystachy_compiler.specs import (
     ITERS,
     MODATTRS,
     NONEVAR,
+    COMPLEXC,
+    COMPLEXS,
     OBJECTC,
     ORDOP,
     PYBUILTINS,
@@ -496,6 +498,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1 if t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split() else 0
     if c.s == "range" and RANGEC in self.classes:
         return -2 if t == RANGEC else 0  # (an object of lib/_pystachy_range.py's class, unless it is None)
+    if c.s == "complex" and COMPLEXC in self.classes:
+        return -2 if t == COMPLEXC else 0  # (and of lib/_pystachy_complex.py's: no int or float is one)
     if c.s in "bytearray memoryview complex range slice type".split():
         return 0
     return -1
@@ -859,6 +863,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lit = Val(fbits(n.s), "float")
         lit.lit = True
         return lit
+    if k == "complex" and COMPLEXC in self.classes:
+        return self.complex_value(Val(fbits("0.0"), "float"), Val(fbits(n.s[:-1]), "float"))  # (1.5j: complex(0.0, 1.5))
     if k == "str":
         self.modchk(n)
         return Val(self.sconst(n.s), "str")
@@ -3859,6 +3865,8 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 inv = "!"
             if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
+            if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes):
+                continue  # (lib's complex compares complex numbers: CPython's declines an object of another class)
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
                 # (and so do the int and str methods of an IntEnum's and a StrEnum's members, as
                 # int's and str's return it for None and for an object of a class not derived from
@@ -4490,6 +4498,8 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             return v
     if a.t == "dyn" or b.t == "dyn":
         return self.dyn_arith(op, a, b, shown == op + "=")  # (a dynamic value's, in place where shown is op=: dynamic.py)
+    if (a.t == COMPLEXC or b.t == COMPLEXC) and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):
+        return self.complex_arith(op, a, b, shown)
     if a.t == BIG or b.t == BIG or ((a.t == "int" or a.t == "bool") and (b.t == "int" or b.t == "bool") and self.int_policy(self.line)):
         pr = self.big_binop(op, a, b, shown)  # (promoting ints: bigints.py)
         if pr.t != "":
@@ -4600,6 +4610,85 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'")
     self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'")
     return a
+
+def gen_complex_value(self, re: Val, im: Val) -> Val:
+    # a new complex number of floats re and im: an object of lib/_pystachy_complex.py's class
+    o = self.new_obj(COMPLEXC)
+    self.call_fn(self.classes[COMPLEXC].methods["__init__"], [o], [self.vnode(re), self.vnode(im)], direct=True)
+    return o
+
+def gen_complex_parts(self, v: Val) -> list[Val]:
+    # an operand of complex arithmetic as its two floats: a complex number's parts, and an int's or
+    # a float's float(x) and 0.0, as CPython's TO_COMPLEX converts it (a promoting int too large
+    # for a float raises OverflowError)
+    if v.t == COMPLEXC:
+        ci = self.classes[COMPLEXC]
+        return [Val(self.mload('float', self.fgep(v, ci.fpos[f])), "float") for f in ["real", "imag"]]
+    return [self.as_float(v), Val(fbits("0.0"), "float")]
+
+def gen_complex_arith(self, op: str, a: Val, b: Val, shown: str) -> Val:
+    # a op b of a complex number and a number, in either order: both as their floats, in the order
+    # written (complex_parts), then lib/_pystachy_complex.py's function of op; CPython's TypeError
+    # at compile time for an operator complex numbers do not have (//, %, <<, ...)
+    fn = "_sum" if op == "+" else "_diff" if op == "-" else "_prod" if op == "*" else "_quot" if op == "/" else "_pow" if op == "**" else ""
+    if fn == "":
+        self.err(f"unsupported operand type(s) for {shown if shown != '' else op}: '{tname(a.t)}' and '{tname(b.t)}'")
+    # (a complex number's object may be None, a complex | None's: CPython's TypeError names it)
+    sym = shown if shown != "" else "** or pow()" if op == "**" else op
+    an = a.t == COMPLEXC and a.v not in self.nn
+    bn = b.t == COMPLEXC and b.v not in self.nn
+    anull = self.ptr_cmp('==', a, Val('null', 'None')).v if an else ""
+    bnull = self.ptr_cmp('==', b, Val('null', 'None')).v if bn else ""
+    if an and bn:
+        self.guard(self.scalar('and', [Val(anull, 'bool'), Val(bnull, 'bool')]), f"TypeError: unsupported operand type(s) for {sym}: 'NoneType' and 'NoneType'")
+    if an:
+        self.guard(anull, f"TypeError: unsupported operand type(s) for {sym}: 'NoneType' and '{tname(b.t)}'")
+    if bn:
+        self.guard(bnull, f"TypeError: unsupported operand type(s) for {sym}: '{tname(a.t)}' and 'NoneType'")
+    ps = self.complex_parts(a) + self.complex_parts(b)
+    r = self.call_fn(self.funcs[COMPLEXS + "$" + fn], [], [self.vnode(x) for x in ps])
+    self.nn[r.v] = True  # (each function makes a new object)
+    return r
+
+def gen_complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val:
+    # a == b or a != b of a complex number and a number, as complex_richcompare: equal parts; a
+    # float equal to the real part, with an imaginary part of 0.0; an int equal to the real part
+    # exactly (a float's comparison with an int), with an imaginary part of 0.0. Ordering is
+    # CPython's TypeError, at compile time. checked: a complex operand is known not to be None
+    if op != "==" and op != "!=":
+        self.err(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'")
+    nulls = [self.ptr_cmp('==', x, Val('null', 'None')).v for x in [a, b] if x.t == COMPLEXC and x.v not in self.nn] if not checked else []
+    if len(nulls) > 0:
+        # (a complex number's object may be None, a complex | None's, which equals only None)
+        anynull = nulls[0] if len(nulls) == 1 else self.scalar('or', [Val(nulls[0], 'bool'), Val(nulls[1], 'bool')])
+        none = self.label()
+        some = self.label()
+        end = self.label()
+        ph = Ins("phi", "bool", "")
+        self.cbr(anynull, none, some)
+        self.place(none)
+        eqn = self.scalar('and', [Val(nulls[0], 'bool'), Val(nulls[1], 'bool')]) if len(nulls) == 2 else "false"
+        self.incoming(ph, eqn if op == "==" else self.scalar('xor', [Val(eqn, 'bool'), Val('true', 'bool')]), self.cur)
+        self.br(end)
+        self.place(some)
+        r = self.complex_cmp(op, a, b, True)
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), "bool")
+    c = a if a.t == COMPLEXC else b
+    o = b if a.t == COMPLEXC else a
+    cp = self.complex_parts(c)
+    zero = Val(fbits("0.0"), "float")
+    eq = ""
+    if o.t == COMPLEXC:
+        op2 = self.complex_parts(o)
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[0], op2[0]).v, 'bool'), Val(self.num_cmp('==', cp[1], op2[1]).v, 'bool')])
+    elif o.t == "float":
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[0], o).v, 'bool'), Val(self.num_cmp('==', cp[1], zero).v, 'bool')])
+    else:
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[1], zero).v, 'bool'), Val(self.cmp2("==", cp[0], self.as_int(o) if o.t == "bool" else o).v, 'bool')])
+    return Val(eq, "bool") if op == "==" else Val(self.scalar('xor', [Val(eq, 'bool'), Val('true', 'bool')]), "bool")
 
 def gen_compare(self, n: Node) -> Val:
     tc = self.refl_type_cmp(n)  # (type(a) is C, type(a) == type(b): reflection.py)
@@ -4956,6 +5045,62 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if (a.t == COMPLEXC or b.t == COMPLEXC) and (op == "==" or op == "!=") and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):
+        return self.complex_cmp(op, a, b)
+    if (op == "==" or op == "!=") and COMPLEXC in [a.t, b.t] and (is_sopt(a.t) or is_sopt(b.t)):
+        return self.optcmp(op, a, b)  # (an int, float or bool | None: None equals only None, a number as complex_cmp compares it)
+    if (op == "==" or op == "!=") and (a.t == COMPLEXC) != (b.t == COMPLEXC):
+        # a complex number and a value of a builtin type that no complex number equals (CPython
+        # compares them by identity); None is the same object as a complex | None that holds it
+        o = b.t if a.t == COMPLEXC else a.t
+        if o == "None":
+            c = a if a.t == COMPLEXC else b
+            return Val("false" if op == "==" else "true", "bool") if c.v in self.nn else self.ptr_cmp(op, c, Val("null", "None"))
+        if o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
+            return Val("false" if op == "==" else "true", "bool")
+        mown = "__eq__" if op == "==" else "__ne__"
+        own = a.t != COMPLEXC and o in self.classes and any([mown in self.classes[ck].methods and not lib_source(self.classes[ck].methods[mown].node.line, self.libdir, "enum.py") for ck in self.cmp_kinds(o)])
+        if self.enum_intlike(o) and not own:
+            # an IntEnum's or IntFlag's member, an int in CPython, whose int.__eq__ leaves a
+            # complex number to complex's: its int payload compares as an int does (lib/enum.py's
+            # __eq__ takes no complex number); a member that may be None equals only None. (With
+            # the member on the left, its class's own __eq__, or __ne__, answers instead: own;
+            # with the complex number on the left, complex's own comparison takes any int.)
+            ev = b if a.t == COMPLEXC else a
+            cx = a if a.t == COMPLEXC else b
+            if ev.v in self.nn:
+                return self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+            lnull = self.label()
+            lval = self.label()
+            lend = self.label()
+            ph = Ins("phi", "bool", "")
+            self.cbr(self.ptr_cmp('==', ev, Val('null', 'None')).v, lnull, lval)
+            self.place(lnull)
+            self.incoming(ph, self.ptr_cmp(op, cx, Val('null', 'None')).v, self.cur)
+            self.br(lend)
+            self.place(lval)
+            ecr = self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+            self.incoming(ph, ecr.v, self.cur)
+            self.br(lend)
+            self.place(lend)
+            return Val(self.phi(ph), "bool")
+        if o in self.classes and self.classes[o].tag != 0:
+            # (an object of a class with subclasses, whose comparison methods its runtime class
+            # decides: inherit_cmp, where complex's own __eq__ declines it, cmp_pick)
+            return self.inherit_cmp(op, a, b)
+        if o in self.classes:
+            # an object of another class: complex's __eq__ declines it, as CPython's returns
+            # NotImplemented, so the object's own __eq__ or __ne__ answers, else identity (also
+            # between two None values)
+            obj = b if a.t == COMPLEXC else a
+            cx = a if a.t == COMPLEXC else b
+            om = self.classes[o].methods
+            if op == "!=" and "__ne__" in om and self.cmp_method(o, "__ne__", COMPLEXC) != "":
+                return self.eqcall(om["__ne__"], False, obj, cx)
+            if "__eq__" in om and self.cmp_method(o, "__eq__", COMPLEXC) != "":
+                ceq = self.eqcall(om["__eq__"], True, obj, cx)
+                return ceq if op == "==" else Val(self.scalar('xor', [Val(ceq.v, 'bool'), Val('true', 'bool')]), "bool")
+            return self.ptr_cmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
@@ -5670,6 +5815,10 @@ def gen_comparable(self, t: str, u: str) -> bool:
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
         return True  # (a promoting int is a number, also where it may be None: bigints.py)
+    if COMPLEXC in [t, u] and all(x in [COMPLEXC, "int", "float", "bool", BIG] or is_sopt(x) or self.enum_intlike(x) for x in [t, u]):
+        return True  # (a complex number with a zero imaginary part equals its real part, also an int-like enum member's: complex_cmp)
+    if COMPLEXC in [t, u] and any(x in self.classes and x != COMPLEXC and self.classes[x].tag != 0 for x in [t, u]):
+        return True  # (an object of a class with subclasses, one of which may take a complex number: inherit_cmp)
     return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
 def gen_foreign_eq(self, a: Val, b: Val) -> Val:
@@ -5678,7 +5827,9 @@ def gen_foreign_eq(self, a: Val, b: Val) -> Val:
     # declines, as object's and a dataclass's do for an object of another class), the __eq__
     # of b's class where it takes an a (CPython's reflected call); Val("", "") where neither
     # applies, and CPython finds them not equal
-    if a.t in self.classes and "__eq__" in self.classes[a.t].methods:
+    if a.t in self.classes and "__eq__" in self.classes[a.t].methods and not (a.t == COMPLEXC and b.t != COMPLEXC):
+        # (lib's complex compares complex numbers: CPython's __eq__ declines a value of another
+        # type, returning NotImplemented, so that b's reflected method answers)
         if self.cmp_method(a.t, "__eq__", b.t) != "":
             return self.eqcall(self.classes[a.t].methods["__eq__"], True, a, b)
         if not self.classes[a.t].methods["__eq__"].synthetic:

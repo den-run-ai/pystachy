@@ -1047,6 +1047,22 @@ def range_values(n: Node, fine: int) -> bool:
     return False
 
 
+def complex_values(n: Node, ann: bool) -> bool:
+    # may code n make or name a complex number, an object of lib's class (Loader.program): an
+    # imaginary literal, or a read of the name complex, also in a string annotation (ann: n is in
+    # an annotation). A false True only loads the module
+    k = n.kind
+    if k == "complex" or (k == "name" and n.s == "complex"):
+        return True
+    if k == "str":
+        return ann and "complex" in n.s
+    for i in range(len(n.kids)):
+        a = ann or ((k == "param" or k == "starparam" or k == "dstarparam") and i == 0) or (k == "def" and i == 1) or (k == "annassign" and i == 1)
+        if complex_values(n.kids[i], a):
+            return True
+    return False
+
+
 def object_values(n: Node) -> bool:
     # may code n call the builtin object(), which makes an object of lib's class (Loader.program)?
     # Any call of the name may (a false True only loads the module); only reading the tree
