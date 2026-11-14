@@ -4618,6 +4618,16 @@ def gen_compare(self, n: Node) -> Val:
             if point_at is not None:
                 return self.num_cmp(n.s, point_at, Val(str(ord(literal.s)), "int"))
     ops = n.s.split(",")
+    if len(ops) == 1 and ops[0] in ICMP and self.dict_view(n.kids[0]) != "" and self.dict_view(n.kids[0]) == self.dict_view(n.kids[1]):
+        # d.keys() == e.keys(), d.items() <= e.items(): set comparisons (dict_view_cmp) where
+        # the dicts' types allow them. A dict's view has no effect of its own, and reads the
+        # dict as it is when compared: both dicts run first
+        view = self.dict_view(n.kids[0])
+        left = self.expr(n.kids[0].kids[0].kids[0], "")
+        right = self.expr(n.kids[1].kids[0].kids[0], "")
+        if is_dict(left.t) and is_dict(right.t) and targs(left.t)[0] == targs(right.t)[0] and (view == "keys" or left.t == right.t):
+            return self.dict_view_cmp(ops[0], view == "items", left, right)
+        return self.cmp2(ops[0], self.method(left, view, []), self.method(right, view, [], resultsoft=True))
     if len(ops) == 1 and (n.kids[0].kind == "list" or n.kids[0].kind == "dict") and (len(n.kids[0].kids) == 0 or nones(n.kids[0])):
         # [] == xs, {} in ds, [None] == xs: an empty display, or one of None, takes its type
         # from the other side (it has nothing to evaluate first)
@@ -4673,6 +4683,9 @@ def gen_compare(self, n: Node) -> Val:
         if nn != "":
             hit = self.select(nn, Val(hit, "int"), Val("0", "int"))
         return self.num_cmp('!=' if ops[0] == 'in' else '==', Val(hit, "int"), Val('0', "int"))
+    if len(ops) == 1 and (ops[0] == "in" or ops[0] == "not in") and self.dict_view(n.kids[1]) != "":
+        # x in d.keys(), (k, v) in d.items(): a lookup in d, as CPython's views make it
+        return self.dict_view_has(ops[0], self.dict_view(n.kids[1]), a, n.kids[1].kids[0].kids[0])
     if len(ops) == 1:
         w = a.t
         rhs = n.kids[1]
@@ -5568,6 +5581,111 @@ def gen_dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
     self.place(end)
     value = Val(self.phi(result), "bool")
     return value if op == "==" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+
+
+def gen_dict_view(self, n: Node) -> str:
+    # "keys" or "items" where n is d.keys() or d.items() of a dict display or of a variable
+    # or field d whose static type is a dict (not one that may be None): else "". Those views
+    # stay lists elsewhere (docs/language/compatibility.md); here they test and compare as
+    # CPython's views do. Making the view later than d runs changes nothing: it has no effect
+    if n.kind != "call" or len(n.kids) != 1 or n.kids[0].kind != "attr" or (n.kids[0].s != "keys" and n.kids[0].s != "items"):
+        return ""
+    d = n.kids[0].kids[0]
+    return n.kids[0].s if (d.kind == "dict" and len(d.kids) > 0) or d.kind == "dictcomp" or is_dict(self.probe_type(d)) else ""
+
+
+def gen_dict_view_has(self, op: str, view: str, a: Val, n: Node) -> Val:
+    # x in d.keys() looks x up in dict n, as CPython's dictkeys_contains does, where x has
+    # the dict's key type; (k, v) in d.items() looks k up once and compares the value found
+    # with v (found == v), as dictitems_contains does, where k and v have the dict's types.
+    # Else the view is made and searched as a list
+    d = self.expr(n, "")
+    kt = targs(d.t)[0] if is_dict(d.t) else ""
+    if view == "keys" and kt != "" and (a.t == kt or (is_opt(a.t) and unopt(a.t) == kt) or (a.t == "bool" and kt == "int") or (a.t == BIG and kt == "int")):
+        return self.cmp2(op, a, d)
+    if view == "keys" or kt == "" or a.t != self.ctype("tuple", targs(d.t)) or BIG in a.t or held(d.t) != d.t or self.dict_int(d.t):
+        return self.cmp2(op, a, self.method(d, view, [], resultsoft=True))
+    k = self.tget(a, 0)
+    v = self.tget(a, 1)
+    e = Val(self.rt("pys_dict_find", "i64", [f"ptr {d.v}", f"i64 {self.to_slot(self.dkey(k, kt))}"], self.key_fx(kt)), "int")
+    found = self.label()
+    hit = self.label()
+    end = self.label()
+    result = Ins("phi", "bool", "")
+    self.incoming(result, "false", self.cur)
+    self.cbr(self.num_cmp(">=", e, Val("0", "int")).v, found, end)
+    self.place(found)
+    self.pair_item_eq(self.dict_value(d, e.v, True), v, hit)
+    self.incoming(result, "false", self.cur)
+    self.br(end)
+    self.place(hit)
+    self.incoming(result, "true", self.cur)
+    self.br(end)
+    self.place(end)
+    value = Val(self.phi(result), "bool")
+    return value if op == "in" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
+
+
+def gen_dict_view_cmp(self, op: str, items: bool, a: Val, b: Val) -> Val:
+    # Two keys() (or two items()) views of dicts a and b, compared as CPython's
+    # dictview_richcompare compares them, as sets: by their lengths, then whether every key
+    # (key and value) of one is in the other. a < b needs fewer, a > b more, and then b's
+    # must be in a. As CPython, the one is iterated (a size change raises its RuntimeError)
+    # and each key looked up in the other: a key of a class that hashes it is hashed again,
+    # a builtin key found by its stored hash (as dict_pair_eq). A value compares as the value
+    # found == its own (dictitems_contains). The source value is read before the lookup,
+    # whose callbacks may remove it
+    src = b if op == ">" or op == ">=" else a
+    dst = a if op == ">" or op == ">=" else b
+    la = Val(self.mload("int", a.v), "int")
+    lb = Val(self.mload("int", b.v), "int")
+    used = lb if op == ">" or op == ">=" else la
+    sizes = self.num_cmp("==" if op == "!=" else op, la, lb)
+    index = self.alloca("int", "")
+    self.mstore("int", "0", index)
+    count = self.alloca("int", "")
+    self.mstore("int", "0", count)
+    head = self.label()
+    item = self.label()
+    step = self.label()
+    miss = self.label()
+    finish = self.label()
+    end = self.label()
+    result = Ins("phi", "bool", "")
+    self.incoming(result, "false", self.cur)
+    self.cbr(sizes.v, head, end)
+    self.place(head)
+    e = Val(self.rt("pys_dict_next", "i64", [f"ptr {src.v}", f"i64 {self.mload('int', index)}", f"i64 {used.v}", f"i64 {self.mload('int', count)}"]), "int")
+    self.cbr(self.num_cmp(">=", e, Val("0", "int")).v, item, finish)
+    self.place(item)
+    own = self.dict_value(src, e.v, True) if items else Val("", "")
+    kt = targs(src.t)[0]
+    if kt != "dyn" and self.key_fx(kt) != "":
+        key = self.from_slot(self.rt("pys_dict_key", "i64", [f"ptr {src.v}", f"i64 {e.v}"]), kt)
+        match = Val(self.rt("pys_dict_find", "i64", [f"ptr {dst.v}", f"i64 {self.to_slot(key)}"], self.key_fx(kt)), "int")
+    else:
+        match = Val(self.rt("pys_dict_eq_find", "i64", [f"ptr {dst.v}", f"ptr {src.v}", f"i64 {e.v}"], self.key_fx(kt)), "int")
+    if items:
+        compare = self.label()
+        self.cbr(self.num_cmp(">=", match, Val("0", "int")).v, compare, miss)
+        self.place(compare)
+        self.pair_item_eq(self.dict_value(dst, match.v, True), own, step)
+        self.br(miss)
+    else:
+        self.cbr(self.num_cmp(">=", match, Val("0", "int")).v, step, miss)
+    self.place(step)
+    self.mstore("int", self.scalar("add", [e, Val("1", "int")]), index)
+    self.mstore("int", self.scalar("add", [Val(self.mload("int", count), "int"), Val("1", "int")]), count)
+    self.br(head)
+    self.place(miss)
+    self.incoming(result, "false", self.cur)
+    self.br(end)
+    self.place(finish)
+    self.incoming(result, "true", self.cur)
+    self.br(end)
+    self.place(end)
+    value = Val(self.phi(result), "bool")
+    return value if op != "!=" else Val(self.scalar("xor", [value, Val("true", "bool")]), "bool")
 
 
 def gen_tuple_order(self, op: str, a: Val, b: Val) -> Val:

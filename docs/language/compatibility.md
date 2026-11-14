@@ -119,6 +119,9 @@ no effect. The shared runtime cache is independent of this setting.
   those in later call arguments. `enumerate`, `zip`, `reversed`, and `in`/`min`/`max`
   over values can therefore miss size changes that CPython detects. Plain `for`
   loops and `iter()` over `d.items()` traverse the dict and detect size changes.
+  Written directly in a test, `d.keys()` or `d.items()` of a dict variable, field or
+  display is looked up by `in` and compared with another such view as a set, as
+  CPython does: `{1: 0, 2: 0}.keys() == {2: 0, 1: 0}.keys()` is true.
 - **Set order differs.** String hashes are not CPython's randomized hashes;
   constant displays do not reuse CPython's frozenset constants or `.pyc` layouts.
   Identity-hashed objects depend on addresses in both runtimes. Use `sorted()`

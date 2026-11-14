@@ -924,6 +924,9 @@ from src.pystachy_compiler.expressions import (
     gen_container_pair_eq as expressions_container_pair_eq,
     gen_tuple_pair_eq as expressions_tuple_pair_eq,
     gen_dict_pair_eq as expressions_dict_pair_eq,
+    gen_dict_view as expressions_dict_view,
+    gen_dict_view_has as expressions_dict_view_has,
+    gen_dict_view_cmp as expressions_dict_view_cmp,
     gen_unary as expressions_unary,
 )
 from src.pystachy_compiler.flow import (
@@ -4706,6 +4709,15 @@ class Gen:
 
     def dict_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         return expressions_dict_pair_eq(self, op, a, b)
+
+    def dict_view(self, n: Node) -> str:
+        return expressions_dict_view(self, n)
+
+    def dict_view_has(self, op: str, view: str, a: Val, n: Node) -> Val:
+        return expressions_dict_view_has(self, op, view, a, n)
+
+    def dict_view_cmp(self, op: str, items: bool, a: Val, b: Val) -> Val:
+        return expressions_dict_view_cmp(self, op, items, a, b)
 
     def tuple_order(self, op: str, a: Val, b: Val) -> Val:
         return expressions_tuple_order(self, op, a, b)
