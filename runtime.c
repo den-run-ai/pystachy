@@ -2811,13 +2811,13 @@ static int eqv(I a, I b, const char *d) {
     }
     return 1;
   }
-  case 'V': {
-    VTuple *x = (VTuple *)a, *y = (VTuple *)b;
+  case 'V': {   /* as CPython's tuplerichcompare: the items both have, then the lengths (lists
+                   test lengths first; tuples do not, so an object item's __eq__ runs anyway) */
+    VTuple *x = (VTuple *)a, *y = (VTuple *)b; I i = 0;
     if (x == y) return 1;
     if (!x || !y) return x == y;
-    if (x->len != y->len) return 0;
-    for (I i = 0; i < x->len; i++) if (!eqitem(x->a[i], y->a[i], d + 1)) return 0;
-    return 1;
+    while (i < x->len && i < y->len && eqitem(x->a[i], y->a[i], d + 1)) i++;
+    return i >= x->len && i >= y->len;
   }
   case 'S': case 'F': return pys_set_cmp((Set *)a, (Set *)b, 4);   /* (a set equals a frozenset of its elements) */
   case 'O': case 'H': return a == b || pys_obj_eq(ocls(d + 1), a, b);   /* identity first, like CPython */

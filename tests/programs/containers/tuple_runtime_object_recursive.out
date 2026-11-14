@@ -1,0 +1,8 @@
+1 0
+root
+  leaf
+  other
+    deep
+True True deep
+IndexError: tuple index out of range
+[exit 0]

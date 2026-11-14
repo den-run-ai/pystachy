@@ -42,6 +42,7 @@ from src.pystachy_compiler.specs import (
     UNCALLED,
     exc_derives,
     is_excname,
+    VTUPLE_ITEMS,
 )
 from src.pystachy_compiler.syntax import Node, has_kind, has_value_return, mentions, mk, other_return
 from src.pystachy_compiler.utils import (
@@ -268,8 +269,8 @@ def gen_ann(self, n: Node) -> str:
             return self.path_union(a)
         if base == "tuple" and len(a) == 2 and a[1].kind == "ellipsis":
             t = narrowed([self.ann(a[0])])[0]
-            if unopt(t) not in ["int", "float", "bool", "str", "dyn"]:
-                return "!runtime-length tuple elements must be int, float, bool, str or their optional types"
+            if unopt(t) == BIG or not self.vtuple_item(t):
+                return "!" + VTUPLE_ITEMS
             return self.ctype("vtuple", [t])
         # (a tuple holds promoting ints, tslots, and so does an int | None: Optional[int], Union[int, None])
         ts = self.ann_items(a) if base == "tuple" else [self.ann(x) for x in a] if base == "optional" or base == "union" else narrowed([self.ann(x) for x in a])
@@ -2445,6 +2446,13 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return "list[int]"
         t = self.guess(arg, f)
         return t if is_list(t) or t.startswith("!") else "list[int]" if t == RANGEC else ""
+    if k == "call" and e.kids[0].kind == "name" and e.kids[0].s == "tuple" and len(e.kids) == 2 and e.kids[1].kind not in ["kw", "starred", "dstar"] and not self.bound("tuple"):
+        # tuple(xs) of a list: a runtime-length tuple of its items, as tuple() makes it (of a
+        # string, of its characters; a tuple is itself)
+        t = self.guess(e.kids[1], f)
+        if t == "str" or (is_list(t) and unopt(elem(t)) != BIG and self.vtuple_item(elem(t))):
+            return self.ctype("vtuple", [elem(t) if is_list(t) else "str"])
+        return t if is_vtuple(t) or is_tuple(t) or t.startswith("!") else ""
     if k == "binop":
         a = self.guess(e.kids[0], f)
         b = self.guess(e.kids[1], f)

@@ -1,0 +1,21 @@
+(Item(3), Item(0), Item(2)) (Item(7),) () (Item(7),) 3 True False
+Item(3) Item(2) (Item(0), Item(2)) (Item(2), Item(0), Item(3)) ()
+0 3
+1 0
+2 2
+Item(3) Item(2)
+Item(0) Item(0)
+Item(2) Item(3)
+Item(3) [Item(0), Item(2)] Item(3) Item(0) Item(2)
+[Item(3), Item(0), Item(2)] [Item(0), Item(2), Item(3)] Item(0) Item(3)
+True False [Item(3), Item(2)] [6, 0, 4]
+(Item(3), Item(0), Item(2), Item(7)) True True True True
+(Item(4), Item(5), Item(6)) (Item(1), Item(4), Item(5))
+2 2 1
+IndexError: tuple index out of range
+ValueError: tuple.index(x): x not in tuple
+3 3
+[False, True, False]
+True ['derived', 'derived'] ['derived', 'derived'] ['derived', 'derived', 'base']
+Item(3) Item(0) Item(2)
+[exit 0]

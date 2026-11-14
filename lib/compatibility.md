@@ -833,10 +833,10 @@ functions are templates: each call's argument types make its code
   gives items of their union ([test](../tests/programs/library/lib_itertools_zip_longest_fillvalue.py)).
 - `batched()`, `permutations()`, `combinations()`, `combinations_with_replacement()` and
   `product(..., repeat=n)` yield tuples whose length the program knows only as it runs, whose
-  items must be ints, floats, bools, strs or their optional types
-  ([tuples](../docs/language/typing.md)): of tuples, lists or objects, they are compile-time
-  errors ([error test](../tests/errors/library/lib_itertools_combinations_objects.py),
-  [another](../tests/errors/library/lib_itertools_batched_tuples.py)), and `product()` with `repeat`
+  items must be ints, floats, bools, strs, their optional types or objects
+  ([tuples](../docs/language/typing.md), [test](../tests/programs/library/lib_itertools_combinations_objects.py)):
+  of tuples or lists, they are compile-time errors
+  ([error test](../tests/errors/library/lib_itertools_batched_tuples.py)), and `product()` with `repeat`
   needs one item type across its iterables
   ([error test](../tests/errors/library/lib_itertools_product_repeat_mixed.py)). `product()` without
   `repeat` and `zip_longest()` yield a tuple with an item of each iterable, of its type.

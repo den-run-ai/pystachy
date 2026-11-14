@@ -115,7 +115,7 @@ Measure compilation and execution separately
 - **Fixed-shape tuples** have at most nine items; a constant index gives the item's own type,
   and a variable index the union of the item types. **Runtime-length** `tuple[T, ...]` values
   check integer indexes at run time; their elements are `int`, `float`, `bool` or `str`,
-  optionally with `None`.
+  optionally with `None`, or objects of the program's classes.
 - **Unions:** explicit closed scalar unions such as `int | str`, bounded native reference
   unions and optional unions are supported. A variable, field or return given values of
   several scalar types holds their union.
