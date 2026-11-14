@@ -460,7 +460,7 @@ class Observer:
             if self.attempt is not None:
                 d = self.diagnostics
                 paths = [{d.FILES[k].removeprefix("./") for k in flags}
-                         for flags in (d.DYNFILES, d.INTFILES, d.IDINERT)]
+                         for flags in (d.DYNFILES, d.INTFILES, d.IDINERT, d.IDVALUES)]
                 enabled = d.dynamic_program()
                 observed = []
                 for module in modules:
@@ -470,10 +470,13 @@ class Observer:
                         "dynamic_any": path in paths[0], "promoting_int": path in paths[1],
                         "identity_inert_requested": path in paths[2],
                         "identity_inert_active": module.name in gen.idhint,
+                        "numeric_values_requested": path in paths[3],
+                        "numeric_values_active": module.name in gen.idval,
                         "tracks_numeric_identity": enabled and module.name not in gen.idoff})
                 self.attempt["dynamic_boundary"].update(
                     policy_status="observed", modules=observed, dynamic_any_enabled=enabled,
                     full_graph_fallback=gen.idfull, hints_enabled=gen.idtry,
+                    numeric_values_enabled=gen.idvals,
                     tracked_modules=[m["name"] for m in observed if m["tracks_numeric_identity"]])
             return result
         return wrapped

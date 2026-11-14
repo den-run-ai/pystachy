@@ -196,11 +196,15 @@ from src.pystachy_compiler.dynamic import (
     gen_identity_box as dynamic_identity_box,
     gen_identity_call as dynamic_identity_call,
     gen_identity_event as dynamic_identity_event,
+    gen_identity_value as dynamic_identity_value,
+    gen_identity_value_event as dynamic_identity_value_event,
+    gen_identity_valued as dynamic_identity_valued,
     gen_identity_field as dynamic_identity_field,
     gen_identity_free as dynamic_identity_free,
     gen_identity_inert as dynamic_identity_inert,
     gen_identity_global as dynamic_identity_global,
     gen_identity_modules as dynamic_identity_modules,
+    gen_value_layout as dynamic_value_layout,
     gen_dyn_proven_int as dynamic_dyn_proven_int,
     gen_dyn_reflected as dynamic_dyn_reflected,
     gen_dyn_repr as dynamic_dyn_repr,
@@ -1402,6 +1406,11 @@ class Gen:
         # and a restart makes a fresh Gen before disabling hints or tracking everything.
         self.idtry = True  # try checked identity-inert module hints on this pass
         self.idhint: dict[str, bool] = {}  # hinted modules excluded from tracking
+        # numeric-value modules (VALPRAGMA): idvals, the driver's, are they tried on this pass;
+        # idval, those that meet tracking code; idvalevent, a crossing of theirs restarts
+        self.idvals = True
+        self.idval: dict[str, bool] = {}
+        self.idvalevent = False
         self.idevent = ""
         self.idsplit: dict[str, bool] = {}
         # the number of stores into each such slot (a new binding) that the compiler has emitted in
@@ -1944,6 +1953,18 @@ class Gen:
     def identity_event(self, why: str) -> None:
         dynamic_identity_event(self, why)
 
+    def identity_value_event(self, why: str) -> None:
+        dynamic_identity_value_event(self, why)
+
+    def identity_valued(self, a: str, b: str) -> int:
+        return dynamic_identity_valued(self, a, b)
+
+    def identity_value(self, t: str, seen: list[str]) -> bool:
+        return dynamic_identity_value(self, t, seen)
+
+    def value_layout(self, ci: ClassInfo) -> bool:
+        return dynamic_value_layout(self, ci)
+
     def identity_free(self, t: str) -> bool:
         return dynamic_identity_free(self, t)
 
@@ -1956,8 +1977,8 @@ class Gen:
     def identity_global(self, name: str, t: str, store: bool) -> None:
         dynamic_identity_global(self, name, t, store)
 
-    def identity_field(self, ci: ClassInfo, t: str, store: bool) -> None:
-        dynamic_identity_field(self, ci, t, store)
+    def identity_field(self, ci: ClassInfo, t: str, store: bool, attr: bool = False) -> None:
+        dynamic_identity_field(self, ci, t, store, attr)
 
     def identity_box(self, v: Val, t: str) -> None:
         dynamic_identity_box(self, v, t)

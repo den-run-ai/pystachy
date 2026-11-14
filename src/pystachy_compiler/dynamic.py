@@ -18,7 +18,7 @@ the program's classes, functions the compiler writes once every class that is bo
 from __future__ import annotations
 from src.pystachy_compiler.analysis import bind_count, comp_vars, deleted, globals_in, lazy_block, lazy_sites, local_names, name_bits, nonlocal_decls, targets, walrus_names
 from src.pystachy_compiler.bigints import held
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDVALUES, INTFILES, LINES, NeedSliceEH, Rejoin, dynamic_file, dynamic_program, int_lists, int_program
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
@@ -77,9 +77,29 @@ def gen_identity_modules(self, mods: list[Mod]) -> None:
     # values reach tracking code only through the crossings identity_call, identity_global,
     # identity_field and identity_box check; one that could carry a number's identity makes
     # the driver compile the program again with every module tracking (idfull), as before.
+    # A module that models a CPython C extension module (VALPRAGMA: idval) tracks none, even
+    # then: numbers cross its boundary as values (identity_value), and modules it imports track
+    # as a tracking module's do. A crossing that is not a value makes the driver compile the
+    # program again without these exceptions (idvals), as before them.
     self.idoff = {}
     self.idhint = {}
-    if self.rtmode or self.idfull or not dynamic_program():
+    self.idval = {}
+    if self.rtmode or not dynamic_program():
+        return
+    values: dict[str, bool] = {}
+    if self.idvals:
+        vpaths: dict[str, bool] = {}
+        for k in IDVALUES:
+            if k not in DYNFILES and k not in INTFILES:
+                vpaths[FILES[k][2:] if FILES[k].startswith("./") else FILES[k]] = True
+        for m in mods:
+            p = m.path[2:] if m.path.startswith("./") else m.path
+            if p in vpaths and m.name != "" and m.name != JSONANY:
+                values[m.name] = True
+    if self.idfull:
+        for name in values:
+            self.idoff[name] = True
+            self.idval[name] = True
         return
     dyn: dict[str, bool] = {}
     for k in DYNFILES:
@@ -112,7 +132,9 @@ def gen_identity_modules(self, mods: list[Mod]) -> None:
         visited[m.name] = True
         for d in m.deps:
             if d in byname:
-                if d in hinted:
+                if d in values:
+                    self.idval[d] = True
+                elif d in hinted:
                     self.idhint[d] = True
                 else:
                     on[d] = True
@@ -150,17 +172,28 @@ def gen_idhere(self) -> bool:
 
 
 def gen_class_identity(self, ci: ClassInfo) -> bool:
-    # do class ci's numeric fields and class attributes have companion boxes
+    # do class ci's numeric fields and class attributes have companion boxes: in a numeric-value
+    # module (idval), only its exceptions' and named tuples' do, whose CPython counterparts hold
+    # objects (identity_value)
     if ci.base in self.classes:
         base = self.classes[ci.base]
         if (ci.mod in self.idhint or base.mod in self.idhint) and (ci.mod in self.idoff) != (base.mod in self.idoff):
             self.identity_event(f"inheritance of {ci.name}")
-    return dynamic_program() and ci.mod not in self.idoff
+        if (ci.mod in self.idval or base.mod in self.idval) and self.value_layout(ci) != self.value_layout(base):
+            self.identity_value_event(f"inheritance of {ci.name}")
+    return dynamic_program() and not self.value_layout(ci)
+
+
+def gen_value_layout(self, ci: ClassInfo) -> bool:
+    # does class ci keep no companion boxes (class_identity): a class whose code does not track
+    # identity, except a numeric-value module's exceptions and named tuples
+    return ci.mod in self.idoff and not (ci.mod in self.idval and (ci.exc != "" or ci.name in self.nts))
 
 
 def gen_global_identity(self, name: str) -> bool:
-    # does module variable name have a companion box
-    return dynamic_program() and owner(name) not in self.idoff
+    # does module variable name have a companion box: a numeric-value module's variables do, as
+    # a CPython module's hold objects (identity_value)
+    return dynamic_program() and (owner(name) not in self.idoff or owner(name) in self.idval)
 
 
 def gen_identity_event(self, why: str) -> None:
@@ -169,6 +202,48 @@ def gen_identity_event(self, why: str) -> None:
     # with every module tracking if the ordinary split also finds such a crossing
     self.idevent = why
     raise Rejoin()
+
+
+def gen_identity_value_event(self, why: str) -> None:
+    # a crossing of a numeric-value module's boundary (identity_valued) that is not a value
+    # (identity_value): the driver compiles the program again with those modules tracking
+    # identity as other modules do (idvals), before trying anything else
+    self.idvalevent = True
+    self.identity_event(why + " across numeric values")
+
+
+def gen_identity_valued(self, a: str, b: str) -> int:
+    # 1: of the code of modules a and b ("?": the compiler's shared helpers), one is a numeric-value
+    # module's (identity_modules: idval) and the other tracks identity; 2: one is such a module's
+    # and neither tracks it, so nothing is lost; 0: neither is such a module's
+    if (a in self.idval) == (b in self.idval):
+        return 0
+    other = b if a in self.idval else a
+    return 1 if other == "?" or other not in self.idoff else 2
+
+
+def gen_identity_value(self, t: str, seen: list[str]) -> bool:
+    # can a value of type t cross between a numeric-value module's code and code that tracks
+    # identity: a number crosses as a value, a new object when it next becomes an Any value, as
+    # one that CPython's C code gives back is; so do strings, bools, None, Any values (their
+    # boxes), tuples and unions of these, and such modules' objects, whose classes keep no
+    # companions or keep their own (class_identity); not other classes' objects, containers
+    # whose items keep numeric companions in tracking code (list_id_kind), functions or generators
+    u = unopt(t)
+    if u in seen or numeric_identity(u) or u in ["str", "bytes", "bool", "None", DYN, DYNINT, NONEVAR]:
+        return True
+    if u in self.classes:
+        return self.classes[u].mod in self.idval
+    if u.startswith("rec["):
+        expanded = self.rec_type(u)
+        return expanded != u and self.identity_value(expanded, seen + [u])
+    if is_union(u):
+        return all(self.identity_value(m, seen + [u]) for m in umembers(u))
+    if is_tuple(u) or is_vtuple(u):
+        return all(self.identity_value(x, seen + [u]) for x in targs(u))
+    if is_list(u) or is_dict(u) or is_set(u):
+        return all(not numeric_identity(x) and self.identity_value(x, seen + [u]) for x in targs(u))
+    return False
 
 
 def gen_identity_free(self, t: str) -> bool:
@@ -218,6 +293,11 @@ def gen_identity_call(self, f: FnInfo) -> None:
         return
     home = self.fn_home(f)
     here = self.fn_home(self.curfn)
+    valued = self.identity_valued(home, here)
+    if valued != 0:
+        if valued == 1 and not (all(self.identity_value(t, []) for t in f.ptypes) and self.identity_value(f.ret, [])):
+            self.identity_value_event(f"call of {f.name}()")
+        return
     if (home in self.idhint) != (here in self.idhint):
         if all(self.identity_inert(t, [], True) for t in f.ptypes) and self.identity_inert(f.ret, [], True):
             return
@@ -235,6 +315,12 @@ def gen_identity_global(self, name: str, t: str, store: bool) -> None:
     if len(self.idoff) == 0:
         return
     here = self.fn_home(self.curfn)
+    valued = self.identity_valued(owner(name), here)
+    if valued != 0:
+        # (a numeric-value module's variables keep their companions: global_identity)
+        if valued == 1 and not self.identity_value(t, []):
+            self.identity_value_event(f"module variable {name}")
+        return
     if (owner(name) in self.idhint) != (here in self.idhint):
         if self.identity_inert(t, []):
             return
@@ -246,11 +332,18 @@ def gen_identity_global(self, name: str, t: str, store: bool) -> None:
     self.identity_event(f"module variable {name}")
 
 
-def gen_identity_field(self, ci: ClassInfo, t: str, store: bool) -> None:
-    # a field's or class attribute's read or store across identity_modules' split, as identity_global's
+def gen_identity_field(self, ci: ClassInfo, t: str, store: bool, attr: bool = False) -> None:
+    # a field's or class attribute's (attr) read or store across identity_modules' split, as
+    # identity_global's; a numeric-value module's class attribute (CPython's, an object) is a
+    # value only where its class keeps companions (class_identity)
     if len(self.idoff) == 0:
         return
     here = self.fn_home(self.curfn)
+    valued = self.identity_valued(ci.mod, here)
+    if valued != 0:
+        if valued == 1 and (not self.identity_value(t, []) or (attr and numeric_identity(t) and ci.mod in self.idval and self.value_layout(ci))):
+            self.identity_value_event(f"attribute of {ci.name}")
+        return
     if (ci.mod in self.idhint) != (here in self.idhint):
         if self.identity_inert(t, []):
             return
@@ -272,10 +365,16 @@ def gen_identity_box(self, v: Val, t: str) -> None:
         self.identity_event("function as an Any value with identity-inert modules")
     if t in self.classes:
         if t not in self.idsplit:
-            self.idsplit[t] = any(c.mod in self.idoff for c in self.classes.values() if c.name == t or self.derives(c.name, t))
-        if self.idsplit[t] or (here != "?" and here in self.idoff):
+            # (a numeric-value module's objects cross as their fields' values: identity_value)
+            self.idsplit[t] = any(c.mod in self.idoff and c.mod not in self.idval for c in self.classes.values() if c.name == t or self.derives(c.name, t))
+        if self.idsplit[t] or (here != "?" and here in self.idoff and here not in self.idval):
             self.identity_event(f"{t} object as an Any value")
     if here == "?" or here not in self.idoff:
+        return
+    if here in self.idval:
+        # (its numbers become Any values as new objects, as CPython's C code's do)
+        if is_fn(t) or (is_callable(t) and not self.identity_free(t)):
+            self.identity_value_event("function as an Any value")
         return
     if (t == "int" or t == "float") and v.idfrom == "" and v.idslot == "" and not v.lit:
         self.identity_event("number as an Any value")

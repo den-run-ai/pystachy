@@ -101,30 +101,38 @@ def functions(ir):
     return found
 
 
+# the shipped library's modules that model C extension modules (# pystachy: numeric-values)
+VALUES = {"_pystachy_re_specialized": True, "datetime": True, "re": True, "re._sre": True}
+
+
 class IdentityScopeTests(unittest.TestCase):
-    def compile(self, source, helper=True, full=False):
+    def compile(self, source, helper=True, full=False, values=True, files=None):
         # the IR and every pass's Gen; helper: scopelib (above) on the module path; full: track
-        # identity everywhere from the start
+        # identity everywhere from the start, as the driver's fallback does; values: try
+        # numeric-value modules (else they track identity as before them); files: more modules
         generators = []
         original = driver.Gen
+        original_split = gen.dynamic_identity_modules
 
         def make_generator():
             generator = original()
             generators.append(generator)
             return generator
 
-        def no_split(self, mods):
-            self.idoff = {}
+        def split(self, mods):
+            if full:
+                self.idfull = True
+            if not values:
+                self.idvals = False
+            original_split(self, mods)
 
         with tempfile.TemporaryDirectory() as tmp:
             if helper:
                 Path(tmp, "scopelib.py").write_text(SCOPELIB)
-            with patch.object(driver, "Gen", make_generator):
-                if full:
-                    with patch.object(gen, "dynamic_identity_modules", no_split):
-                        ir = driver.compile_program("identity_scope_probe.py", source, [tmp, str(ROOT / "lib")], "")
-                else:
-                    ir = driver.compile_program("identity_scope_probe.py", source, [tmp, str(ROOT / "lib")], "")
+            for name, text in (files or {}).items():
+                Path(tmp, name).write_text(text)
+            with patch.object(driver, "Gen", make_generator), patch.object(gen, "dynamic_identity_modules", split):
+                ir = driver.compile_program("identity_scope_probe.py", source, [tmp, str(ROOT / "lib")], "")
         return ir, generators
 
     def main_functions(self, generator, ir):
@@ -157,9 +165,11 @@ class IdentityScopeTests(unittest.TestCase):
         final = generations[-1]
         self.assertEqual([g.idevent for g in generations], [""])
         # The document remains dynamic; only the closed private flag tree is typed.
-        # Its imported regex/date dependencies still follow the existing identity scope.
-        for module in ["tomllib._parser", "tomllib._re", "re", "datetime"]:
+        # Its imported regex/date modules keep their numbers as values (numeric-values).
+        for module in ["tomllib._parser", "tomllib._re"]:
             self.assertNotIn(module, final.idoff)
+        for module in ["re", "datetime"]:
+            self.assertIn(module, final.idval)
         flags = final.classes["tomllib$_parser$Flags"]
         tree = flags.ftypes["_flags"]
         self.assertRegex(tree, r"^dict\[str,[^\[\],]+\]$")
@@ -196,7 +206,9 @@ print(result["value"] is number)
         # that caller too. Generic specialization must not erase its original box.
         self.assertEqual(generations[0].idevent, "number as an Any value")
         self.assertTrue(generations[-1].idfull)
-        self.assertEqual(generations[-1].idoff, {})
+        # (every module but those that keep numbers as values)
+        self.assertEqual(generations[-1].idoff, VALUES)
+        self.assertEqual(generations[-1].idval, VALUES)
         number_functions = [fn.f for fn in generations[-1].fns
                             if fn.f.ll == "@f.tomllib$_re$match_to_number"]
         self.assertEqual(len(number_functions), 1)
@@ -337,6 +349,111 @@ print(literal, left, right)
         with patch.object(gen, "dynamic_identity_call", no_check):
             with self.assertRaises(AssertionError):
                 IdentityScopeTests().test_crossings_track_identity_everywhere()
+
+    def test_numeric_value_modules_keep_numbers_as_values(self):
+        # re's engine and datetime model CPython's C modules (_sre, _datetime), which hold
+        # positions, flags and fields as machine values: their code tracks no numeric identity,
+        # even where tomllib's does, and their objects keep no companions, except exceptions and
+        # named tuples, whose CPython counterparts hold objects
+        source = 'import tomllib\nprint(tomllib.loads("when = 1979-05-27T07:32:00Z\\nn = 3"))\n'
+        ir, generations = self.compile(source, helper=False)
+        final = generations[-1]
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertEqual(final.idval, VALUES)
+        for module in VALUES:
+            self.assertIn(module, final.idoff)
+        for module in ["tomllib._parser", "tomllib._re", "re._constants"]:
+            self.assertNotIn(module, final.idoff)
+        bodies = functions(ir)
+        # (their module code boxes the int literals their module variables hold, below)
+        engine = {fn.f.ll: bodies[fn.f.ll] for fn in final.fns
+                  if final.fn_home(fn.f) in VALUES and fn.f.ll in bodies and not fn.f.ll.startswith("@init.")}
+        self.assertGreater(len(engine), 100)
+        for name, body in engine.items():
+            with self.subTest(function=name):
+                self.assertIsNone(BOXING.search(body))
+                self.assertNotIn(".box.", body)
+        for name in ["re$Pattern", "re$Match", "re$_sre$State", "datetime$date", "datetime$datetime", "datetime$timezone"]:
+            self.assertEqual(final.classes[name].fbox, {}, name)
+        for name in ["re$error", "datetime$_IsoCalendarDate", "datetime$_struct_time"]:
+            self.assertNotEqual(final.classes[name].fbox, {}, name)
+        # Module variables keep their objects, as a CPython module's do.
+        self.assertIn("@g.datetime$MAXYEAR.box", ir)
+        tracked, _ = self.compile(source, helper=False, values=False)
+        self.assertLess(len(ir.splitlines()), len(tracked.splitlines()))
+
+    def test_crossings_that_are_not_values_restore_tracking(self):
+        # Each compiles again with numeric-value modules tracking identity, as before them.
+        programs = [
+            # a tracking module's class extending one of theirs, whose layout differs
+            ("class Zone(datetime.tzinfo):\n    def __init__(self) -> None:\n        self.n = 1000\nprint(Zone().n)\n",
+             "inheritance of Zone"),
+            # a numeric container, whose items keep companions in tracking code
+            ("print(re.compile('(?P<a>x)').groupindex['a'])\n", "attribute of re$Pattern"),
+            # a function, which may be tracking code (its call from re's code, or its passing)
+            ("print(re.sub('a', lambda m: 'b', 'aaa'))\n", ("call of <lambda>()", "call of re$sub()")),
+        ]
+        for body, why in programs:
+            source = "# pystachy: dynamic-any\nimport datetime\nimport re\n" + body
+            with self.subTest(body=body):
+                ir, generations = self.compile(source, helper=False)
+                self.assertEqual(len(generations), 2)
+                self.assertTrue(generations[0].idvalevent)
+                self.assertTrue(generations[0].idevent.startswith(why), generations[0].idevent)
+                self.assertFalse(generations[1].idvals)
+                self.assertEqual(generations[1].idval, {})
+                before, _ = self.compile(source, helper=False, values=False)
+                self.assertEqual(ir, before)
+
+    def test_dropping_the_value_checks_is_detected(self):
+        # Without identity_value's check, a numeric container or a function would cross as a value.
+        def all_values(self, t, seen):
+            return True
+
+        with patch.object(gen, "dynamic_identity_value", all_values):
+            with self.assertRaises(AssertionError):
+                IdentityScopeTests().test_crossings_that_are_not_values_restore_tracking()
+
+    def test_programs_without_dynamic_any_are_unaffected(self):
+        source = "import datetime\nimport re\nprint(re.match('a+', 'aaa').end(), datetime.date(2024, 5, 6).year)\n"
+        ir, generations = self.compile(source, helper=False)
+        self.assertEqual(generations[-1].idval, {})
+        before, _ = self.compile(source, helper=False, values=False)
+        self.assertEqual(ir, before)
+
+    def test_numeric_values_need_a_module_without_other_opt_ins(self):
+        valuelib = """# pystachy: numeric-values
+class Cursor:
+    def __init__(self, pos: int) -> None:
+        self.pos = pos
+
+    def end(self) -> int:
+        return self.pos + 1
+
+
+LIMIT = 5000
+"""
+        source = """# pystachy: dynamic-any
+from typing import Any
+import valuelib
+c = valuelib.Cursor(1000)
+a: Any = c.end()
+b: Any = c.end()
+x: Any = valuelib.LIMIT
+y: Any = valuelib.LIMIT
+print(a is b, x is y, a == b)
+"""
+        ir, generations = self.compile(source, helper=False, files={"valuelib.py": valuelib})
+        final = generations[-1]
+        self.assertEqual([g.idevent for g in generations], [""])
+        self.assertEqual(final.idval, {"valuelib": True})
+        self.assertEqual(final.classes["valuelib$Cursor"].fbox, {})
+        self.assertIn("@g.valuelib$LIMIT.box", ir)
+        # A module that also opts in to dynamic Any or promoting ints tracks identity as before.
+        for pragma in ["# pystachy: dynamic-any\n", "# pystachy: python-int\n"]:
+            with self.subTest(pragma=pragma):
+                _, generations = self.compile(source, helper=False, files={"valuelib.py": pragma + valuelib})
+                self.assertEqual(generations[-1].idval, {})
 
 
 

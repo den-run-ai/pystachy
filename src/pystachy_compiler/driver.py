@@ -118,6 +118,10 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
     # start with every module tracking it (idfull), as if that split had never been tried.
     idfull = False
     idtry = True
+    # Modules that model C extension modules track no numeric identity (Gen.identity_modules),
+    # until a pass finds a crossing of theirs that is not a value: the program is then compiled
+    # from the start with them tracking it as other modules do (idvals), before the steps above.
+    idvals = True
     slice_eh = False
     while True:
         attempt = timing_start()
@@ -131,6 +135,7 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         g.final = passes >= JOINS
         g.idfull = idfull
         g.idtry = idtry
+        g.idvals = idvals
         ld = Loader(dirs)
         ld.ext = ext
         try:
@@ -141,6 +146,11 @@ def compile_program(path: str, src: str, dirs: list[str], ext: str) -> str:
         except Rejoin as retry:
             if isinstance(retry, NeedSliceEH):
                 slice_eh = True
+            elif g.idevent != "" and idvals and (g.idvalevent or idfull):
+                idvals = False  # (a numeric-value module's crossing that is not a value)
+                hints = {}
+                xnot = {}
+                passes = 0
             elif g.idevent != "" and not idfull:
                 if idtry and len(g.idhint) > 0:
                     idtry = False  # retry today's dependency closure before full tracking

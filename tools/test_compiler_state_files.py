@@ -19,7 +19,7 @@ class FileStateTests(unittest.TestCase):
     # Preserve the surrounding test process: these tests intentionally leave a
     # completed or rejected compilation's discoveries visible between calls.
     def setUp(self):
-        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.IDINERT, diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS,
+        self.roots = [diagnostics.FILES, diagnostics.DYNFILES, diagnostics.IDINERT, diagnostics.IDVALUES, diagnostics.INTFILES, diagnostics.INTSPANS, LAMBDAS,
                       driver.RENAMED, driver.LIBS, driver.LINKDL, GLUE, SPECSHOW, loader.ENUMCLASSES]
         self.saved = [value.copy() for value in self.roots]
         self.source = diagnostics.SRC
@@ -52,6 +52,8 @@ class FileStateTests(unittest.TestCase):
         diagnostics.DYNFILES.update({0: True, 1: True, 5: True})
         diagnostics.IDINERT.clear()
         diagnostics.IDINERT.update({0: True, 1: True, 5: True})
+        diagnostics.IDVALUES.clear()
+        diagnostics.IDVALUES.update({0: True, 1: True, 5: True})
         diagnostics.INTFILES.clear()
         diagnostics.INTFILES.update({0: True, 1: True, 5: True})
         diagnostics.INTSPANS[:] = [[1, 9]]
@@ -64,6 +66,7 @@ class FileStateTests(unittest.TestCase):
         self.assertEqual(diagnostics.INTFILES, {})
         self.assertEqual(diagnostics.INTSPANS, [])
         self.assertEqual(diagnostics.IDINERT, {})
+        self.assertEqual(diagnostics.IDVALUES, {})
         self.assertEqual(loader.ENUMCLASSES, {})
         instance = loader.Loader([])
         program(instance, "dynamic.py", "# pystachy: dynamic-any\nprint(1)\n")
@@ -81,15 +84,22 @@ class FileStateTests(unittest.TestCase):
         program(instance, "hinted.py", "# pystachy: identity-inert\nprint(1)\n")
         self.assertEqual(diagnostics.FILES, ["hinted.py"])
         self.assertEqual(diagnostics.IDINERT, {0: True})
+        self.assertEqual(diagnostics.IDVALUES, {})
         self.assertEqual(diagnostics.DYNFILES, {})
         self.assertEqual(diagnostics.INTFILES, {})
+        instance = loader.Loader([])
+        program(instance, "values.py", "# pystachy: numeric-values\nprint(1)\n")
+        self.assertEqual(diagnostics.FILES, ["values.py"])
+        self.assertEqual(diagnostics.IDVALUES, {0: True})
+        self.assertEqual(diagnostics.IDINERT, {})
+        self.assertEqual(diagnostics.DYNFILES, {})
 
     def test_program_replaces_both_tables(self):
         self.file_contract(loader.Loader.program)
 
     def test_each_missing_reset_is_detected(self):
         source = textwrap.dedent(inspect.getsource(loader.Loader.program))
-        for reset in ("FILES.clear()", "DYNFILES.clear()", "IDINERT.clear()", "INTFILES.clear()", "INTSPANS.clear()", "ENUMCLASSES.clear()"):
+        for reset in ("FILES.clear()", "DYNFILES.clear()", "IDINERT.clear()", "IDVALUES.clear()", "INTFILES.clear()", "INTSPANS.clear()", "ENUMCLASSES.clear()"):
             with self.subTest(reset=reset):
                 statement = "    " + reset + "\n"
                 self.assertEqual(source.count(statement), 1)

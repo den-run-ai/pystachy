@@ -5,6 +5,8 @@
 # explicit stack of match contexts: a nested match (DO_JUMP) pushes a context and resumes the
 # code after it once that context returns (the jump labels, here the K_* steps of sre_match).
 # Positions are indices into State.s; __init__.py turns them into the str's own indices.
+# pystachy: numeric-values
+# (as _sre's, its numbers are machine values: docs/dynamic-any.md#numeric-value-modules)
 from typing import Generic, TypeVar
 
 import _pystachy_re_specialized

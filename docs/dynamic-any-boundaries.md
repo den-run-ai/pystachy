@@ -70,6 +70,10 @@ requests and conservative post-collection live bytes.
 
 The flag-tree change reduces dynamic operations inside typed parser state. It
 does not change the compiler's module dependency closure or full-tracking
-fallback. Those need a separate proof before the corresponding bookkeeping can
-be removed. Preserve existing ordinary-mode IR/diagnostics and library consumers
-throughout that work; do not claim that all remaining opt-ins are unavoidable.
+fallback. The regex and date modules that TOML imports now keep numbers as
+values, as CPython's C implementations do
+([numeric-value modules](dynamic-any.md#numeric-value-modules)): they no longer
+track identity in either case. TOML's own modules, `functools` and `string`
+still do. Preserve existing ordinary-mode IR/diagnostics and
+library consumers throughout that work; do not claim that all remaining opt-ins
+are unavoidable.

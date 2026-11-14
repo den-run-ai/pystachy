@@ -218,7 +218,12 @@ class InspectionTests(unittest.TestCase):
         initial, final = [attempt["dynamic_boundary"] for attempt in (attempts[0], attempts[-1])]
         self.assertFalse(next(m for m in initial["modules"] if m["name"] == "")["tracks_numeric_identity"])
         self.assertTrue(final["full_graph_fallback"])
-        self.assertTrue(all(module["tracks_numeric_identity"] for module in final["modules"]))
+        self.assertTrue(final["numeric_values_enabled"])
+        # (every module but the numeric-value modules, which keep numbers as values)
+        values = {m["name"] for m in final["modules"] if m["numeric_values_active"]}
+        self.assertEqual(values, {"_pystachy_re_specialized", "datetime", "re", "re._sre"})
+        self.assertTrue(all(m["numeric_values_requested"] for m in final["modules"] if m["name"] in values))
+        self.assertTrue(all(module["tracks_numeric_identity"] != (module["name"] in values) for module in final["modules"]))
         self.assertFalse(next(m for m in final["modules"] if m["name"] == "")["dynamic_any"])
         self.assertTrue(any(m["dynamic_any"] and m["name"].startswith("tomllib") for m in final["modules"]))
         self.assertEqual(attempts[-1]["selected_functions"], 0)

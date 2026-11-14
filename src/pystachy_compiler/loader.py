@@ -53,7 +53,7 @@ from src.pystachy_compiler.analysis import (
 )
 from src.pystachy_compiler.argparse_schema import lower_argparse, parser_import
 from src.pystachy_compiler.ctypes_schema import ctypes_import, lower_ctypes
-from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, dynamic_pragma, fail, int_pragma, leading_pragma
+from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, IDPRAGMA, IDVALUES, INTFILES, INTSPANS, LINES, MODDUNDERS, RAW, VALPRAGMA, dynamic_pragma, fail, int_pragma, leading_pragma
 from src.pystachy_compiler.lexer import KEYWORDS, Lexer
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
@@ -800,6 +800,7 @@ class Loader:
         ENUMCLASSES.clear()
         DYNFILES.clear()
         IDINERT.clear()
+        IDVALUES.clear()
         INTFILES.clear()
         INTSPANS.clear()
         m = Mod("", path, "")
@@ -1195,6 +1196,8 @@ class Loader:
         # the opt-ins of file k, whose source is src: dynamic Any, and promoting ints
         if leading_pragma(src, IDPRAGMA):
             IDINERT[k] = True
+        if leading_pragma(src, VALPRAGMA):
+            IDVALUES[k] = True
         if dynamic_pragma(src):
             DYNFILES[k] = True
         if int_pragma(src):
