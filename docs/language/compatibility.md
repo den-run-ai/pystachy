@@ -488,7 +488,8 @@ See [object protocols](semantics.md#object-protocols) and
   classes lacking `__iter__` in comprehensions or `str.join`; inheritance-hierarchy
   constructors calling `iter()` or accepting `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
-  fallback for `reversed`; reflected arithmetic; `NotImplemented`; object or optional
+  fallback for `reversed`; reflected arithmetic between two objects, `__rdivmod__` and `__rpow__`;
+  `int(o)` through `__trunc__`; `NotImplemented`; object or optional
   numeric power exponents; three-argument object `pow`. Before `**=`, narrow a base-typed
   receiver if only its subclass defines `__ipow__`.
 - **Comparisons:** equality between unrelated ordinary classes outside inheritance

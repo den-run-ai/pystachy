@@ -730,7 +730,7 @@ class Flag(Enum):
     def _flag_of_(self, other, op: str) -> int:
         # (Flag._get_value(): the value of a member of the class; else CPython's TypeError, once
         # the methods of both operands decline; an int on the left is a compile-time error, as
-        # reflected operator methods are not supported)
+        # a flag has no reflected operator methods)
         members = self._flag_type_()._member_list_
         if __pys_enum_is(other, members):
             return other._value_

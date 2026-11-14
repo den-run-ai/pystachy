@@ -346,6 +346,10 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | In-place operators | `__iadd__` and counterparts, otherwise the binary method |
 | Unary `-`, `+`, `~` | `__neg__`, `__pos__`, `__invert__` |
 | `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` |
+| `int(o)`, `float(o)` | `__int__` or `__float__`, otherwise `__index__`, of the object's own class: a derived class's method is chosen through a base-typed reference, and a class with neither raises `TypeError`; the method's result type is checked when the call is compiled |
+| `round(o)`, `round(o, n)` | `__round__`, which may be a template: each call types its result |
+| `math.floor(o)`, `math.ceil(o)`, `math.trunc(o)` | `__floor__`, `__ceil__`, `__trunc__` |
+| A builtin number on the left, as in `2 * o` | `__radd__` and the other reflected arithmetic and bitwise methods |
 | Equality and ordering | `__eq__`, `__ne__` and rich comparisons |
 | Truth and length | `__bool__`, `__len__` |
 | Representation | `__str__`, `__repr__`, `__format__` |
@@ -354,8 +358,10 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | `reversed()` | Supported `__reversed__` |
 
 Rich comparisons use reflection, such as trying `b.__gt__(a)` for `a < b`.
-Reflected arithmetic methods such as `__radd__`, `__rdivmod__` and `__rpow__` remain
-unsupported. Power dispatch with an object exponent, optional numeric exponent, or the
+Reflected arithmetic methods run only for a builtin `int`, `float` or `bool` on the left, whose
+own method declines an object: `2 * o` calls `o.__rmul__(2)`, with both operands evaluated first.
+Between two objects they remain unsupported, as do `__rdivmod__`, `__rpow__` and an augmented
+assignment that would rebind a number to an object (`n *= o`). Power dispatch with an object exponent, optional numeric exponent, or the
 three-argument `pow(o, n, modulus)` is unsupported. A power method may declare an optional
 modulus parameter; two-argument power leaves it at its default. Returning `NotImplemented`
 from an operator remains unsupported.

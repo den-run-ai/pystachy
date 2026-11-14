@@ -1,0 +1,13 @@
+3 3.0
+9 9.5
+27 9.5
+4 4.0
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'Plain'
+TypeError: float() argument must be a string or a real number, not 'Plain'
+5
+TypeError: float() argument must be a string or a real number, not 'Counted'
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'Ratio'
+3.5
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+TypeError: float() argument must be a string or a real number, not 'NoneType'
+[exit 0]

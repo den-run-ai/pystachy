@@ -1154,8 +1154,9 @@ can use the inherited `fromutc()`.
 - `timetuple()` returns a NamedTuple with `time.struct_time`'s nine fields and repr, without
   `tm_zone` and `tm_gmtoff`. `isocalendar()`'s result is a NamedTuple: index or unpack it, as
   `tuple()` of it is unsupported.
-- Reflected operators are unsupported: write `timedelta * 2` and `date + timedelta`, not
-  `2 * timedelta` or `timedelta + date`.
+- A number on the left calls the reflected method: `2 * timedelta` and `1.5 * timedelta` work.
+  Reflected operators between two objects are unsupported: write `date + timedelta`, not
+  `timedelta + date`.
 - `datetime.min` and `datetime.max` are typed `date` (a subclass's class attribute keeps its
   base's type). `fromisoformat()` and `fromtimestamp()` must be called through their class,
   not a `date` object.
