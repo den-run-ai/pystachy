@@ -15,7 +15,8 @@ not the table.
 """
 from __future__ import annotations
 
-from src.pystachy_compiler.ir import Data, IFn, Ins, slot_register
+from src.pystachy_compiler.dataflow import forward_fixpoint, live_values
+from src.pystachy_compiler.ir import Blk, Data, IFn, Ins, slot_register
 from src.pystachy_compiler.union_proof import proof_number
 from src.pystachy_compiler.union_state import UnionState, union_join
 
@@ -188,55 +189,7 @@ class DynamicProof:
                     v = i.a[j].v
                     if v in self.private and (j != 0 or (i.op != "mem.load" and i.op != "mem.store")):
                         del self.private[v]
-        self.livevalues: dict[str, dict[str, bool]] = {}
-        uses: dict[str, dict[str, bool]] = {}
-        definitions: dict[str, dict[str, bool]] = {}
-        for b in fn.blocks:
-            uses[b.label] = {}
-            definitions[b.label] = {}
-            self.livevalues[b.label] = {}
-            for i in b.code:
-                if i.op == "phi":
-                    continue
-                for a in i.a:
-                    if a.v.startswith("%") and a.v not in definitions[b.label]:
-                        uses[b.label][a.v] = True
-                for n in i.r:
-                    definitions[b.label]["%t" + str(n)] = True
-        changed = True
-        while changed:
-            changed = False
-            for bn in range(len(fn.blocks) - 1, -1, -1):
-                b = fn.blocks[bn]
-                live = dict(uses[b.label])
-                targets = [v for v in b.code[-1].b]
-                if b.handler != "":
-                    targets.append(b.handler)
-                last = b.code[-1]
-                if last.op == "check":
-                    key = last.x if last.x != "" else last.s
-                    if key in fn.cold:
-                        targets.append(fn.cold[key])
-                for target in targets:
-                    if target not in self.blocks:
-                        continue
-                    incoming = dict(self.livevalues[target])
-                    for i in fn.blocks[self.blocks[target]].code:
-                        if i.op != "phi":
-                            break
-                        r = "%t" + str(i.r[0])
-                        if r in incoming:
-                            del incoming[r]
-                            if b.label in i.b:
-                                v = i.a[i.b.index(b.label)].v
-                                if v.startswith("%"):
-                                    incoming[v] = True
-                    for v in incoming:
-                        if v not in definitions[b.label]:
-                            live[v] = True
-                if live != self.livevalues[b.label]:
-                    self.livevalues[b.label] = live
-                    changed = True
+        self.livevalues: dict[str, dict[str, bool]] = live_values(fn, self.blocks)
 
     def key(self, s: UnionState, v: str, tag: bool = False) -> str:
         # the state's key of value v, a box or (tag) a DynType; a constant's key gets its tag
@@ -431,79 +384,54 @@ class DynamicProof:
         s.retain(self.livevalues[target])
         return s
 
-    def run(self) -> None:
-        starts: dict[str, UnionState] = {"entry": UnionState(self.base, self.full)}
-        pending = ["entry"]
-        queued = {"entry": True}
-        head = 0
-        while head < len(pending):
-            label = pending[head]
-            head += 1
-            queued[label] = False
-            s = starts[label].clone()
-            b = self.fn.blocks[self.blocks[label]]
-            self.visits += 1
-            targets: list[str] = []
-            edges: list[UnionState] = []
-            for i in b.code:
-                if i.op == "phi":
-                    continue
-                # Before EH lowering, callbacks and runtime operations can leave
-                # through a handler at this point, not at the block's final state.
-                throwing = i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume" or i.op == "raise" or i.op == "throw" or i.op == "check"
-                if b.handler != "" and throwing:
-                    targets.append(b.handler)
-                    edges.append(s.conditional(i.a[0].v, True) if i.op == "check" else s.clone())
-                self.transfer(s, i, label, False)
-            last = b.code[-1]
-            if last.op == "cbr":
-                targets.extend(last.b)
+    def flow(self, b: Blk, s: UnionState, targets: list[str], edges: list[UnionState]) -> None:
+        # one block for the worklist (dataflow.forward_fixpoint): s becomes its facts at its
+        # end, and each edge that leaves it joins targets and edges
+        label = b.label
+        for i in b.code:
+            if i.op == "phi":
+                continue
+            # Before EH lowering, callbacks and runtime operations can leave
+            # through a handler at this point, not at the block's final state.
+            throwing = i.op == "rt" or i.op == "call" or i.op == "icall" or i.op == "init" or i.op == "gen.resume" or i.op == "raise" or i.op == "throw" or i.op == "check"
+            if b.handler != "" and throwing:
+                targets.append(b.handler)
+                edges.append(s.conditional(i.a[0].v, True) if i.op == "check" else s.clone())
+            self.transfer(s, i, label, False)
+        last = b.code[-1]
+        if last.op == "cbr":
+            targets.extend(last.b)
+            edges.append(s.conditional(last.a[0].v, True))
+            edges.append(s.conditional(last.a[0].v, False))
+        elif last.op == "check":
+            targets.append(last.b[0])
+            edges.append(s.conditional(last.a[0].v, False))
+            key = last.x if last.x != "" else last.s
+            if key in self.fn.cold:
+                targets.append(self.fn.cold[key])
                 edges.append(s.conditional(last.a[0].v, True))
-                edges.append(s.conditional(last.a[0].v, False))
-            elif last.op == "check":
-                targets.append(last.b[0])
-                edges.append(s.conditional(last.a[0].v, False))
-                key = last.x if last.x != "" else last.s
-                if key in self.fn.cold:
-                    targets.append(self.fn.cold[key])
-                    edges.append(s.conditional(last.a[0].v, True))
-            elif last.op == "switch" and len(last.a) > 0 and last.a[0].v in self.numbers and len(last.a) == len(last.b):
-                # A class dispatcher: each case takes the tags of its class number, and the
-                # default the rest. (A case whose number no DynType of the table holds learns
-                # nothing.)
-                number = "C:" + last.a[0].v
-                taken: dict[str, bool] = {}
-                for j in range(1, len(last.a)):
-                    arm = s.clone()
-                    if len(self.cases[last.a[j].v]) > 0:
-                        arm.narrow(number, self.cases[last.a[j].v])
-                    for t in self.cases[last.a[j].v]:
-                        taken[t] = True
-                    targets.append(last.b[j])
-                    edges.append(arm)
-                rest = s.clone()
-                rest.narrow(number, [t for t in self.full if t not in taken])
-                targets.append(last.b[0])
-                edges.append(rest)
-            else:
-                for target in last.b:
-                    targets.append(target)
-                    edges.append(s.clone())
-            for j in range(len(targets)):
-                target = targets[j]
-                if not edges[j].live or target not in self.blocks:
-                    continue
-                state = self.edge(edges[j], label, target)
-                merged = union_join(starts[target], state) if target in starts else state
-                if target not in starts or not merged.same(starts[target]):
-                    starts[target] = merged
-                    if target not in queued or not queued[target]:
-                        pending.append(target)
-                        queued[target] = True
-        # Check only after the finite worklist reaches a fixed point. Checking
-        # the first visit would miss a later unsafe join or loop backedge.
-        for label in starts:
-            s = starts[label].clone()
-            for i in self.fn.blocks[self.blocks[label]].code:
-                if i.op != "phi":
-                    self.transfer(s, i, label, True)
+        elif last.op == "switch" and len(last.a) > 0 and last.a[0].v in self.numbers and len(last.a) == len(last.b):
+            # A class dispatcher: each case takes the tags of its class number, and the
+            # default the rest. (A case whose number no DynType of the table holds learns
+            # nothing.)
+            number = "C:" + last.a[0].v
+            taken: dict[str, bool] = {}
+            for j in range(1, len(last.a)):
+                arm = s.clone()
+                if len(self.cases[last.a[j].v]) > 0:
+                    arm.narrow(number, self.cases[last.a[j].v])
+                for t in self.cases[last.a[j].v]:
+                    taken[t] = True
+                targets.append(last.b[j])
+                edges.append(arm)
+            rest = s.clone()
+            rest.narrow(number, [t for t in self.full if t not in taken])
+            targets.append(last.b[0])
+            edges.append(rest)
+        else:
+            for target in last.b:
+                targets.append(target)
+                edges.append(s.clone())
+
+    def run(self) -> None:
+        forward_fixpoint(self)

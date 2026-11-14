@@ -334,6 +334,10 @@ product or an iteration cutoff. Conditional facts survive boolean phis and short
 expressions and are dropped after their last possible use. Type-name domains have no
 machine-word tag limit. The proof modules are `union_proof.py` and `union_state.py`;
 `tools/test_typed_union_proofs.py` checks malformed IR without lowering or executing it.
+This proof and the dynamic guard proof share `dataflow.py`: one definition of a block's
+outgoing edges (terminator, handler and cold check block), of the values still read at each
+block's start, and of the first-in, first-out worklist. Each proof supplies only its
+per-block facts, phi transfer and final report (`tools/test_typed_dataflow.py`).
 These operations preserve the previous LLVM loads and conservative `rL rD rO` effects.
 Canonicalization retains the equivalence of repeated reads of the same immutable union
 payload, so narrowing a dictionary key still permits the existing lookup fusion. This
