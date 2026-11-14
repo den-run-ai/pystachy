@@ -492,6 +492,7 @@ check-fast: lint-python typecheck check-repository
 	$(PY) -m unittest discover -s tools -p test_source_lines.py
 	$(PY) -m unittest discover -s tools -p test_pystachy_toolchain.py
 	$(PY) -m unittest discover -s tools -p test_retained_ir.py
+	$(PY) -m unittest discover -s tools -p test_compiler_pgo.py
 	$(PY) -m unittest discover -s tools -p test_jitfdprobe.py
 
 # Optional development dependency, pinned by tools/lean_boundary/lean-toolchain.
