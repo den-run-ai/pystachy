@@ -115,6 +115,7 @@ CPython runs the source.
 | `_pystachy_percent` | `Objects/unicodeobject.c` (SHA-256 `68a5618c520f5b348e9e2abe1a77688c4b0c1f377d86f79e3399b41b445c24ab`) | `PyUnicode_Format()`, for `%` of a format string that only the run time knows, with its errors and messages |
 | `_pystachy_iterators` | `Objects/listobject.c`, `tupleobject.c`, `unicodeobject.c`, `rangeobject.c`, `dictobject.c`, `setobject.c` | Iterator classes of `iter()` over builtin containers, with CPython's exhaustion and size-change checks and messages |
 | `librt.internal` | librt 0.16.0's `internal/librt_internal.c` (SHA-256 `c9bb928d585188f83980bcc5ab2c3c26f68ce0620dbe2f2b84d241e770ce41a2`; MIT, see THIRD_PARTY_NOTICES) | mypy's cache codec: `ReadBuffer`, `WriteBuffer` (chunks joined by `getvalue()`) and every function, with the extension's byte formats, errors, messages and read positions; `extract_symbol()` keeps a stack rather than recursing |
+| `librt.base64` | librt 0.16.0's `base64/librt_base64.c` (SHA-256 `ff22e856eaaf15c1a597b2176d13ab4207347c9ab7f321f46a6cf0f9a90c29a6`; MIT, see THIRD_PARTY_NOTICES) | `b64encode()`, `b64decode()`, `urlsafe_b64encode()` and `urlsafe_b64decode()` on `binascii`: the characters the decoders ignore, and the extension's errors and messages (`ValueError` for incorrect padding, `RuntimeError` where one character and three padding characters end the data); the decoder of its bundled base64 library is described by what it accepts, not ported |
 
 `re/_constants.py` retains upstream opcode/flag numbers. `tools/re_tables.py`
 generates `re/_unicode.py` from CPython's Unicode functions, including group-name
@@ -193,6 +194,12 @@ extension: 20,000 rounds of random values (at the integer formats' boundaries, r
 and float bit patterns) give the same bytes and read back the same values, and 560,000 reads and
 `extract_symbol()` calls of random nested cache objects and their truncations and corruptions give
 the same results or errors, with the same next position (`--rounds 20000 --seed 7`).
+
+`tools/librt_base64_check.py` does the same for `lib/librt/base64.py`: 1,416,764 calls of the four
+functions on random bytes, text over the alphabet with padding and other characters, and valid
+encodings with characters inserted, removed or appended, as bytes and as str, give the
+extension's bytes or its exception and message (`--rounds 200000 --seed 99`), and so do arguments
+of other types.
 
 `tools/binascii_check.py` runs `lib/_pystachy_binascii.py` on CPython, compares the results and
 errors of 420,000 calls of its functions, mostly at the edges of their inputs, with those of the C

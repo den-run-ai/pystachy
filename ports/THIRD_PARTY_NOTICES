@@ -600,8 +600,11 @@ lib/librt/internal.py implements the API of librt 0.16.0's internal module
 (https://pypi.org/project/librt/0.16.0/, sdist SHA-256
 ac38d6d8d66bf3d744148dbbc0b8e193e195a51e364ed55e224631f5721891fc), following the byte
 formats, checks and error messages of its internal/librt_internal.c (SHA-256
-c9bb928d585188f83980bcc5ab2c3c26f68ce0620dbe2f2b84d241e770ce41a2). librt is used under the
-MIT License:
+c9bb928d585188f83980bcc5ab2c3c26f68ce0620dbe2f2b84d241e770ce41a2). lib/librt/base64.py
+implements the API of the same release's base64 module, following the checks and error messages
+of its base64/librt_base64.c (SHA-256
+ff22e856eaaf15c1a597b2176d13ab4207347c9ab7f321f46a6cf0f9a90c29a6); it takes no code of the
+base64 library that librt bundles. librt is used under the MIT License:
 
 The MIT License
 
