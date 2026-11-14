@@ -26,7 +26,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, 
 from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -1524,7 +1524,7 @@ def gen_typed_now(self, e: Node, own: str = "") -> bool:
             if i != 1 and not self.typed_now(e.kids[i], own if i == 2 else inner):
                 return False
         return True
-    if e.kind == "lambda" or e.kind in UNSUPPORTED:
+    if e.kind == "lambda" or (e.kind in UNSUPPORTED and not (e.kind == "complex" and COMPLEXC in self.classes)):
         return False
     for k in e.kids:  # (x := v as v: typing it assigns nothing, see walrus)
         if not self.typed_now(k, own):

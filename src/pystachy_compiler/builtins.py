@@ -38,6 +38,8 @@ from src.pystachy_compiler.specs import (
     OSCONST,
     PROTOCOL_MATH,
     PYBUILTINS,
+    COMPLEXC,
+    COMPLEXS,
     OBJECTC,
     RANGEC,
     RANGES,
@@ -326,6 +328,19 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         if bsig[1] == "bool":
             return self.num_cmp('!=', Val(self.rt(bsig[0], "i64", bvs), "int"), Val('0', "int"))
         return Val(self.rt(bsig[0], rtt(bsig[1]), bvs), bsig[1])
+    if name.startswith("__pys_complex_"):
+        # lib/_pystachy_complex.py's primitives, in that module only: runtime.c's division, power,
+        # absolute value and hash of complex numbers, each given as its two floats
+        if self.curfn.mod != COMPLEXS or not lib_source(self.curfn.node.line, self.libdir, COMPLEXS + ".py"):
+            self.err(f"name '{name}' is not defined")
+        csigs: dict[str, str] = {"pys_complex_quot": "tuple[float,float]:4", "pys_complex_pow": "tuple[float,float]:4",
+                                 "pys_complex_abs": "float:2", "pys_complex_hash": "int:2"}
+        c = name[2:]
+        if c not in csigs or any([a.kind in ["kw", "starred", "dstar"] for a in args]) or len(args) != int(csigs[c].split(":")[1]):
+            self.err(f"name '{name}' is not defined")
+        fs = [self.coerce(self.expr(a, "float"), "float", f"an argument of {name}") for a in args]
+        ct = csigs[c].split(":")[0]
+        return Val(self.rt(c, rtt(ct), [f"double {f.v}" for f in fs]), ct)
     if name.startswith("__pys_mpz_"):
         # Only the shipped wrapper can create or consume these opaque pointers.
         # Using int for the handle would hide references from numeric containers.
@@ -419,6 +434,8 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         o = self.new_obj(RANGEC)
         self.call_fn(self.classes[RANGEC].methods["__init__"], [o], [self.vnode(Val(x, "int")) for x in vs], direct=True)
         return o
+    if name == "complex" and COMPLEXC in self.classes:
+        return self.complex_new(args)
     if RANGEC in self.classes and (name == "any" or name == "all" or name == "sum" or name == "min" or name == "max" or name == "math.fsum" or name == "math.prod") and len(args) > 0 and args[0].kind != "kw" and args[0].kind != "starred":
         nrest = len([a for a in args[1:] if a.kind != "kw"])  # (sum's start, or max(a, b)'s b)
         if (nrest == 0 or (nrest == 1 and name == "sum")) and self.probe_type(args[0]) == RANGEC:
@@ -1220,10 +1237,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(NONEARG[name].replace("NoneType", tname(t)))
     if name == "type" and len(vals) == 1 and (t == "exc" or (t in self.classes and self.classes[t].exc != "")):
         self.err(f"unsupported call {key}: type(e) of an exception is supported as type(e).__name__ (and isinstance(e, C) tests its class)")
-    us = [j for j in range(len(vals)) if self.scalar_union(vals[j].t) and not is_opt(vals[j].t)]
+    us = [j for j in range(len(vals)) if (self.scalar_union(vals[j].t) or self.cx_union(vals[j].t)) and not is_opt(vals[j].t)]
     if len(us) > 0 and len([a for a in args if a.kind == "kw" or a.kind == "starred" or a.kind == "dstar"]) == 0:
         return self.usplit(name, vals, us[0], want)  # (each member's call: union splitting)
-    self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range')}")
+    self.err(f"unsupported call {(asked if name.startswith('math.') else key).replace(RANGEC, 'range').replace(COMPLEXC, 'complex')}")
     return v
 
 def gen_callable_type(self, t: str) -> int:
@@ -2526,6 +2543,57 @@ def gen_range_prim(self, name: str, args: list[Node]) -> Val:
         return Val(self.scalar('add', [Val(ns[0], 'int'), Val(k, 'int')]), "int")
     self.err(f"name '{name}' is not defined")
     return Val("", "")
+
+def gen_complex_new(self, args: list[Node]) -> Val:
+    # complex(real=0, imag=0), as complex_new_impl: each argument evaluated in turn, then a string
+    # alone parsed (lib/_pystachy_complex.py's _from_str), a complex number alone itself, a number
+    # alone (float(x), 0.0), and real + imag * 1j of the floats of two (_two). A string with a
+    # second argument raises CPython's TypeError when called; an argument of another type is
+    # CPython's TypeError at compile time
+    given: list[str] = []
+    nodes: list[Node] = []
+    for a in args:
+        if a.kind == "starred" or a.kind == "dstar":
+            self.err("complex() with * or ** arguments is not supported")
+        name = a.s if a.kind == "kw" else "real" if len(given) == 0 else "imag"
+        if a.kind == "kw" and name != "real" and name != "imag":
+            self.err(f"complex() got an unexpected keyword argument '{name}'")
+        if a.kind != "kw" and len(given) == 2:
+            self.err(f"complex() takes at most 2 arguments ({len(args)} given)")
+        if name in given:
+            self.err(f"argument for complex() given by name ('{name}') and position ({given.index(name) + 1})")
+        given.append(name)
+        nodes.append(a.kids[0] if a.kind == "kw" else a)
+    vals = [self.expr(x, "") for x in nodes]
+    r = vals[given.index("real")] if "real" in given else Val("0", "int")
+    i = vals[given.index("imag")] if "imag" in given else Val("", "")
+    nums = ["int", "float", "bool", BIG, COMPLEXC]
+    if (r.t == "str" and i.t != "") or i.t == "str":
+        # (checked before the first argument's type, as complex_new_impl does)
+        self.guard("true", "TypeError: complex() can't take second arg if first is a string" if r.t == "str" else "TypeError: complex() second arg can't be a string")
+        return Val("null", COMPLEXC)
+    if r.t == "str":
+        made = self.call_fn(self.funcs[COMPLEXS + "$_from_str"], [], [self.vnode(r)])
+        self.nn[made.v] = True  # (a new object)
+        return made
+    if r.t not in nums:
+        self.err(f"complex() first argument must be a string or a number, not '{tname(r.t)}'")
+    if i.t != "" and i.t not in nums:
+        self.err(f"complex() second argument must be a number, not '{tname(i.t)}'")
+    # (a complex number's object may be None, a complex | None's: CPython's TypeError)
+    self.notnone(r, "TypeError: complex() first argument must be a string or a number, not 'NoneType'")
+    if i.t != "":
+        self.notnone(i, "TypeError: complex() second argument must be a number, not 'NoneType'")
+    if i.t == "" and r.t == COMPLEXC:
+        return r  # (complex(c) of a complex number is that object)
+    rp = self.complex_parts(r)
+    if i.t == "":
+        return self.complex_value(rp[0], rp[1])
+    ip = self.complex_parts(i)
+    flags = [Val("true" if v.t == COMPLEXC else "false", "bool") for v in [r, i]]
+    made = self.call_fn(self.funcs[COMPLEXS + "$_two"], [], [self.vnode(x) for x in [rp[0], rp[1], flags[0], ip[0], ip[1], flags[1]]])
+    self.nn[made.v] = True  # (a new object)
+    return made
 
 def gen_range_fields(self, v: Val) -> list[str]:
     # start, stop and step of range object v, which is not None (lib/_pystachy_range.py's fields,

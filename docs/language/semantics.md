@@ -214,6 +214,32 @@ also rejects a call by another name (`builtins.object()`, or an alias that an im
 assignment binds, `obj = object`) and `type(x) is object`; in any other program such a call makes a
 sentinel too.
 
+## Complex numbers
+
+`complex` is CPython's: imaginary literals (`1.5j`), `complex()` of a number, of a string (with
+CPython's grammar and `ValueError`s) or of two parts, by position or by keyword (a string with a
+second argument raises CPython's `TypeError` when called), `c.real`, `c.imag` and `c.conjugate()`,
+and `+`, `-`, `*`, `/` and `**` with another complex number, an `int`, a `bool` or a `float` on
+either side, which CPython 3.13 converts to `float(x)` and `0.0` (an int too large raises its
+`OverflowError`). A complex number is an object of the class in
+[`lib/_pystachy_complex.py`](../../lib/_pystachy_complex.py), which the compiler loads for a
+program that may use one: an imaginary literal or a read of the name `complex`. Division, power and
+`abs()` are runtime.c's ports of CPython 3.13's, with the same IEEE results and errors
+(`ZeroDivisionError: complex division by zero`, `OverflowError: complex exponentiation`). `==` and
+`!=` compare exactly, also with an int (`complex(2**53) == 2**53 + 1` is false), and `hash()` is
+CPython's, so a complex number equal to an int or a float hashes as it does. `bool()`, unary `-`
+and `+`, `repr()`, `str()`, `format()` and f-string format specifications,
+`isinstance(c, complex)`, `type(c).__name__`, `type(c) is complex`, dict keys, set elements and
+`copy` behave as in CPython. The compiler rejects what CPython rejects at run time (ordering, `//`,
+`%`, `divmod()`, `round()`, `int()`, `float()` and `math` functions of one, assigning an
+attribute), an `int` or a `float` where `complex` is declared (as for `float`: write `2+0j` or
+`complex(2)`), `sum()` of complex numbers, and subclasses of `complex`. Unions with other scalars
+are [closed scalar unions](typing.md#closed-scalar-unions), and unions with only objects of
+classes, `complex | C`, [native reference unions](typing.md#native-reference-unions). In a module
+that opts in to dynamic `Any`, an `Any` value may hold a complex number, whose operations are
+the class's methods (`__add__` and the others, a reflected one for an `int`, `float` or `bool`
+on the left), as CPython's are. There is no `cmath`.
+
 ## Iterators
 
 `iter(x)` returns an iterator object that shares its position with every use, as CPython's:

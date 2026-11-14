@@ -22,7 +22,7 @@ from src.pystachy_compiler.diagnostics import DYNFILES, FILES, IDINERT, INTFILES
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Reduce, Val, tmpname
 from src.pystachy_compiler.module import Mod
 from src.pystachy_compiler.names import ENUMCLASSES, owner, retoken, short
-from src.pystachy_compiler.specs import BIG, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
+from src.pystachy_compiler.specs import BIG, COMPLEXC, GLUE, ITERS, JSONANY, METHODS, NONEVAR, RANGEC, RANGES, RTDATA
 from src.pystachy_compiler.syntax import Node, has_kind, made_var, mk
 from src.pystachy_compiler.utils import ListLayout, builtin_key, closure_default_slots, disjoint_sets, elem, fbits, float_slot, gelem, holds_dyn, identity_abi, identity_default, int_fits, int_lit, is_callable, is_const, is_dict, is_fn, is_gen, is_kw, is_list, is_opt, is_set, is_tuple, is_union, is_vtuple, kw_names, numeric_identity, selem, takes_self, targs, tname, typestr, umembers, unopt
 
@@ -1328,6 +1328,16 @@ def gen_dyn_xbody(self, c: str) -> None:
     a = self.read(mk("name", "a", line, []))
     b = self.read(mk("name", "b", line, []))
     nt = c in self.nts
+    if c == COMPLEXC:
+        # (lib's complex compares with numbers only: CPython's returns NotImplemented for any other
+        # value, whose own method then answers, as 2 lets pys_dyn_eq's dobj(b, a) do)
+        mine = self.dyn_test(b, ["int", "float", "bool", COMPLEXC])
+        cgo = self.label()
+        cdecline = self.label()
+        self.cbr(mine, cgo, cdecline)
+        self.place(cdecline)
+        self.ret_(Val("2", "int"))
+        self.place(cgo)
     for k in range(len(XCMP)):
         m = XCMP[k]
         inv = False
@@ -2552,6 +2562,9 @@ def gen_dyn_isinst_types(self, c: Node) -> list[str]:
         return [c.s]
     if self.bound(c.s):
         return [""]
+    if c.s == "complex" and COMPLEXC in self.classes:
+        self.dyn_class_type(COMPLEXC)  # (the class of complex numbers, lib/_pystachy_complex.py: boxed as its objects)
+        return [COMPLEXC]
     m = {"int": ["int", "bool"], "bool": ["bool"], "float": ["float"], "str": ["str"], "list": ["list[dyn]", "list[int]"], "dict": ["dict[dyn,dyn]"],
          "tuple": ["vtuple[dyn]"], "object": ["*"], "type": ["%class:type"]}
     if c.s in m:
@@ -3296,6 +3309,11 @@ def gen_dyn_body(self, key: str) -> None:
             cm = self.classes[c].methods
             for s in [x for x in self.dynclasses if x != c and self.derives(x, c) and r in self.classes[x].methods and (r not in cm or self.classes[x].methods[r] is not cm[r])]:
                 self.dyn_reflected(f, s, r, o, ps[1], "true")
+            if c == COMPLEXC:
+                # (lib's complex takes numbers only: CPython's returns NotImplemented for an object of
+                # another class, whose reflected method then runs)
+                for s in [x for x in self.dynclasses if x != c and r in self.classes[x].methods]:
+                    self.dyn_reflected(f, s, r, o, ps[1], "true")
         self.dyn_arm(f, key, dunder, self.dyn_payload(o, c), ps[1:])
         if not self.term:
             self.br(rest)
@@ -3353,10 +3371,17 @@ def gen_dyn_reflected(self, f: FnInfo, c: str, r: str, a: Val, b: Val, ok: str) 
     hit = self.label()
     nxt = self.label()
     tb = self.ptr_cmp("==", Val(self.dyn_typeof(b), "dyntype"), Val(self.dyntypes[c], "dyntype"))
+    if c == COMPLEXC:
+        # (lib's complex takes a number only, CPython's returning NotImplemented for another value,
+        # whose TypeError the fallback raises: "a" + 1j concatenates no str)
+        ok = self.scalar("and", [Val(ok, "bool"), Val(self.dyn_test(a, ["int", "bool", "float"]), "bool")])
     self.cbr(tb.v if ok == "true" else self.scalar("and", [tb, Val(ok, "bool")]), hit, nxt)
     self.place(hit)
     x = self.dyn_payload(b, c)
-    self.dyn_return(f, self.expr(mk("call", "", self.line, [mk("attr", r, self.line, [self.vnode(x)]), self.vnode(a)]), ""))
+    # (a complex number takes the number's float, as TO_COMPLEX converts it, also a promoting int
+    # too wide for the int its reflected method's parameter holds: lib/_pystachy_complex.py)
+    arg = self.dyn_float(a) if c == COMPLEXC else a
+    self.dyn_return(f, self.expr(mk("call", "", self.line, [mk("attr", r, self.line, [self.vnode(x)]), self.vnode(arg)]), ""))
     self.place(nxt)
 
 
@@ -3370,6 +3395,12 @@ def gen_dyn_fn_arms(self, f: FnInfo, key: str, o: Val, args: list[Val]) -> None:
         nxt = self.label()
         self.cbr(self.ptr_cmp("==", t, Val(self.dynfnt[ft], "dyntype")).v, hit, nxt)
         self.place(hit)
+        if ft == f"fn[m:{COMPLEXC}.__init__]":
+            # (object.__init__ of a complex number, bound, m = x.__init__: it takes any arguments,
+            # which the caller evaluated, and returns None, as the call.__init__ arm does)
+            self.dyn_return(f, Val("null", "None"))
+            self.place(nxt)
+            continue
         an = self.dyn_call_args(key, args)
         bad = self.dyn_fn_takes(ft, key, an)
         if bad != "":
@@ -3598,6 +3629,11 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         return
     if key.startswith("get."):
         r = self.expr(mk("attr", key[4:], line, [xn]), "")
+    elif key.startswith("set.") and x.t == COMPLEXC:
+        # (CPython's complex has real and imag read-only, whose typed stores are compile errors:
+        # at run time here, as this dispatcher serves the objects of other classes too)
+        self.raise_("AttributeError", self.sconst("readonly attribute"))
+        return
     elif key.startswith("set."):
         self.assign(mk("attr", key[4:], line, [xn]), args[0])
         r = Val("null", "None")
@@ -3605,6 +3641,10 @@ def gen_dyn_arm(self, f: FnInfo, key: str, dunder: str, x: Val, args: list[Val])
         r = self.dyn_box(self.expr(mk("attr", key[4 : key.rfind(".")], line, [xn]), ""))  # (a field's value, which the call calls)
     elif key.startswith("has."):
         r = Val("null", DYN)  # (a method, which call.<m>.<n> calls, or a field no box holds, whose call raises there)
+    elif key.startswith("call.__init__.") and x.t == COMPLEXC:
+        # (object.__init__ of a complex number, which complex_new made, as calls.py compiles a typed
+        # one: it takes any arguments, which its caller evaluated, and returns None)
+        r = Val("null", "None")
     elif key.startswith("call.") and key[5 : key.rfind(".")] not in self.classes[x.t].methods:
         # a field's value, called as a function value is (callv.<shape>), or CPython's TypeError
         # for one that no box holds, which is not callable either
@@ -4923,6 +4963,12 @@ def dyn_packed_work(self) -> list[list[str]]:
 
 
 def dyn_packed_invoke(self, f: FnInfo, fm: FnInfo, pre: list[Val], pos: Val, kws: Val, constructed: Val | None = None) -> None:
+    if constructed is None and fm.cls == COMPLEXC and fm.name == "__init__":
+        # (object.__init__ of a complex number complex_new made, called again with unpacked
+        # arguments, x.__init__(*args) or a bound method's m(*args): it takes any, which the caller
+        # unpacked, and returns None, as the call.__init__ arm and a typed call do, leaving x as it is)
+        self.dyn_return(f, Val("null", "None"))
+        return
     if fm.bad != "" or fm.vararg >= 0 or fm.kwarg >= 0 or fm.pyexport or len(fm.defaults) != len(fm.params):
         self.raise_("NotImplementedError", self.sconst(f"{self.fname(fm)}() through runtime unpacking requires a supported fixed signature"))
         return

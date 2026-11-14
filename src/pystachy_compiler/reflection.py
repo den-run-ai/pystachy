@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, int_program, show
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     lib_file,
@@ -185,7 +185,7 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     if c in self.classes and self.classes[c].exc == "":
         ci = self.classes[c]
         q = shown(ci.origin if ci.origin != "" else c)
-        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC:
+        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC or c == COMPLEXC:
             return "builtins" if what == "__module__" else short(c)
         own = self.classes[ci.origin] if ci.origin != "" else ci
         if dynamic_program() and what in ["__module__", "__qualname__"] and what in own.fdefault and self.default_home(own, what) is own and own.fdefault[what].kind == "str":
@@ -207,7 +207,7 @@ def gen_refl_record(self, c: str) -> str:
     # the field table (names in __dict__ order, descriptors, offsets: null until needed)
     if c in self.classes and self.classes[c].origin != "":
         c = self.classes[c].origin
-    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$")))
+    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c == COMPLEXC or c.startswith(ITERS + "$")))
     key = ("b." + self.refl_type_name(c, "__name__")) if builtin else ("c." + c)
     name = "@pys.refl." + key
     if name in self.reflrecs:
@@ -500,6 +500,8 @@ def gen_refl_type_operand(self, n: Node) -> str:
         return RANGEC  # (lib/_pystachy_range.py's class)
     if n.kind == "name" and n.s == "object" and OBJECTC in self.classes and not self.bound(n.s):
         return OBJECTC  # (lib/_pystachy_object.py's class, object()'s)
+    if n.kind == "name" and n.s == "complex" and COMPLEXC in self.classes and not self.bound(n.s):
+        return COMPLEXC  # (lib/_pystachy_complex.py's class)
     if n.kind == "name" and n.s in ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset"] and not self.bound(n.s):
         # (a container type's record is its name's: any element types)
         return "list[int]" if n.s == "list" else "dict[int,int]" if n.s == "dict" else "tuple[int]" if n.s == "tuple" else "set[int]" if n.s == "set" else "frozenset[int]" if n.s == "frozenset" else n.s
@@ -1074,6 +1076,8 @@ def gen_refl_supported(self, c: str, what: str) -> None:
         why = "an iterator of a builtin container"
     elif c == RANGEC:
         why = "a range"
+    elif c == COMPLEXC:
+        why = "a complex number"
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
     elif opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod:
@@ -3058,7 +3062,7 @@ def gen_copy_own(self, t: str, deep: bool) -> int:
     # copy does not support it: another type of the library's, a union of classes, and for a deep
     # copy a bound method or a Callable, which may hold one
     u = unopt(t)
-    if u in ["int", "float", "bool", "str", "bytes", "None", RANGEC, BIG] or t == BIGOPT or self.scalar_union(u):
+    if u in ["int", "float", "bool", "str", "bytes", "None", RANGEC, COMPLEXC, BIG] or t == BIGOPT or self.scalar_union(u):
         return 1
     if is_fn(u) or is_callable(u):
         return 2 if deep and (is_callable(u) or u.startswith("fn[m:")) else 1

@@ -145,7 +145,7 @@ ALLOC = {"gc_slow", "gc_raw", "pys_alloc", "pys_alloc_atomic", "pys_new", "pys_g
 COLLECTS = {"gc_slow", "collect"}
 # C library functions that use no state but the memory their arguments point to
 PURE_C = set("""sqrt sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh exp log log2 log10 log1p expm1
-    exp2 cbrt fmod atan2 pow ldexp frexp modf erf erfc nextafter remainder atoi memcmp bcmp memchr memmem strlen
+    exp2 cbrt fmod atan2 hypot pow ldexp frexp modf erf erfc nextafter remainder atoi memcmp bcmp memchr memmem strlen
     strchr strstr strcmp strncasecmp snprintf sprintf vsnprintf strtod __isoc23_strtol __isoc23_strtoll
     __ctype_b_loc __ctype_tolower_loc __errno_location uselocale""".split())
 # function pointers CPython's glue installs (pys_set_hooks: pyembed.c's std_hook, which writes the

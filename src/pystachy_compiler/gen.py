@@ -256,6 +256,7 @@ from src.pystachy_compiler.unions import (
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
     gen_num_union as unions_num_union,
+    gen_cx_union as unions_cx_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
@@ -411,6 +412,7 @@ from src.pystachy_compiler.builtins import (
     gen_iter_ as builtins_iter_,
     gen_iter_obj as builtins_iter_obj,
     gen_range_fields as builtins_range_fields,
+    gen_complex_new as builtins_complex_new,
     gen_range_prim as builtins_range_prim,
     gen_walk as builtins_walk,
     gen_pwrite as builtins_pwrite,
@@ -800,6 +802,11 @@ from src.pystachy_compiler.expressions import (
     gen_comparable as expressions_comparable,
     gen_numeric_comparable as expressions_numeric_comparable,
     gen_compare as expressions_compare,
+    gen_complex_value as expressions_complex_value,
+    gen_complex_parts as expressions_complex_parts,
+    gen_complex_arith as expressions_complex_arith,
+    gen_complex_cmp as expressions_complex_cmp,
+    gen_complex_ueq as expressions_complex_ueq,
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
@@ -1516,6 +1523,7 @@ class Gen:
         self.rangeused = False  # code addresses an object of lib's range class (declared then: lower_module)
         self.objectused = False  # and of lib's object class, which object() makes
         self.declflag = False  # a comparison method returns NotImplemented: its hidden variable is declared (decl_flag)
+        self.complexused = False  # and of lib's class of complex numbers
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
@@ -4752,6 +4760,21 @@ class Gen:
     def compare(self, n: Node) -> Val:
         return expressions_compare(self, n)
 
+    def complex_value(self, re: Val, im: Val) -> Val:
+        return expressions_complex_value(self, re, im)
+
+    def complex_parts(self, v: Val) -> list[Val]:
+        return expressions_complex_parts(self, v)
+
+    def complex_arith(self, op: str, a: Val, b: Val, shown: str) -> Val:
+        return expressions_complex_arith(self, op, a, b, shown)
+
+    def complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val:
+        return expressions_complex_cmp(self, op, a, b, checked)
+
+    def complex_ueq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_complex_ueq(self, op, a, b)
+
     def exc_id(self, v: Val) -> Val:
         return expressions_exc_id(self, v)
 
@@ -5163,6 +5186,9 @@ class Gen:
     def range_fields(self, v: Val) -> list[str]:
         return builtins_range_fields(self, v)
 
+    def complex_new(self, args: list[Node]) -> Val:
+        return builtins_complex_new(self, args)
+
     def pwrite(self, fd: str, fv: str, s: str, fo: Val) -> None:
         return builtins_pwrite(self, fd, fv, s, fo)
 
@@ -5324,6 +5350,9 @@ class Gen:
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def cx_union(self, t: str) -> bool:
+        return unions_cx_union(self, t)
 
     def num_union(self, t: str) -> bool:
         return unions_num_union(self, t)
