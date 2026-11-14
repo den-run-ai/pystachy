@@ -481,6 +481,7 @@ from src.pystachy_compiler.calls import (
     gen_shared_dispatch as calls_shared_dispatch,
     gen_dispatch_call as calls_dispatch_call,
 )
+from src.pystachy_compiler.constargs import fold_constant_arguments
 from src.pystachy_compiler.containers import (
     gen_list_id_kind as containers_list_id_kind,
     gen_list_find as containers_list_find,
@@ -3662,6 +3663,16 @@ class Gen:
 
     def optimize(self, fn: IFn, on: dict[str, bool]) -> int:
         return optimizations_optimize(self, fn, on)
+
+    def constargs(self) -> int:
+        # constargs.py, over the whole program: the functions that the backend's text so far
+        # names are among those anything may call. With constfold off, the code it decides
+        # cannot run stops the program instead (sys.exit of this message)
+        trap = ""
+        if "constfold" not in self.opts:
+            trap = self.sconst("SystemError: this program ran code that Pystachy decided it never runs (PYSTACHY_OPT=-constfold found a compiler bug)")
+            self.runtime("pys_exit_msg")
+        return fold_constant_arguments(self.fns, self.consts, self.out + [x for x in self.externs.values()], self.classes, trap)
 
     def recursionscope(self) -> int:
         return optimizations_recursionscope(self)

@@ -5,7 +5,7 @@
 @f._pys_ctypes_fn0.1: pys_raise
 @f.immediate: pys_raise
 @f.ctypes$_byref_cell:
-@f.ctypes$_address.1: pys_raise
+@f.ctypes$_address.1:
 @m.ctypes$c_void_p.__init__: pys_list_new_atomic pys_list_append
 @pys_obj_eq:
 @pys_obj_cmp:

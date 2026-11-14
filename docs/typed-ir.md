@@ -510,7 +510,8 @@ and focused alias, mutation and GC tests cover the exposed dynamic mutation path
 
 `OPTS` lists the available switches. `charslots`, `listget`, `listguard`, `dictfuse`, `unionslots` and
 `nullcheck` are whole-function IR passes. `callbacks` versions eligible functions after
-ordinary compilation and before effect summaries and recursion accounting;
+ordinary compilation and before effect summaries and recursion accounting, and
+`constargs` then decides tests over the whole program;
 the remaining options select frontend or lowering choices.
 
 `callbacks` finds a loop that calls an erased `Callable` parameter through a
@@ -530,6 +531,53 @@ dynamic identity ABIs retain ordinary compilation. Closures and bound methods
 remain valid fallback callbacks. The original entry owns the source recursion
 frame and its generated helpers add none. Disable this pass alone with
 `PYSTACHY_OPT=-callbacks` for identical-source comparisons.
+
+<a id="constargs"></a>
+
+`constargs` decides the tests that the whole program gives one answer, such as
+`if schema is not None:` in a library function that no call gives a schema. It reads
+typed IR after every function is compiled: types and diagnostics are final, so a
+program compiles with it exactly when it compiles without it. It looks for three
+things:
+
+- A parameter that every call which can run gives one constant: `None`, a bool, an
+  int literal or a module constant's address. This holds only for a module function
+  or method whose every caller is a `call` op. A function that a value, a module
+  constant or backend text names (a closure's code, a `Callable`'s adapter, an
+  export) can get any arguments, and so can a generator.
+- A field that holds what its object starts with, because every store that can run
+  gives it that value. A field is known by its name alone, across classes. An
+  exception class's fields, a hierarchy's class tag, a field whose address goes
+  anywhere but a load or a store, and the fields of an object that machine ops
+  address, that the runtime returns or that a function outside the program takes
+  are never constant.
+- A result that every return which can run gives one constant, alone or as an item
+  of a fixed tuple that the function makes.
+
+Each function is read with what its parameters are. Values are SSA. A private local
+slot is followed along the control flow from the zero that lowering stores in it,
+and a block that a `try` statement covers gives its landing block what its slots
+hold anywhere in it. The reading evaluates `ptr.cmp` of one constant with itself,
+bool `and`, `or` and `xor`, int and bool comparisons, `select`, a phi over the edges
+taken, and `slot.pack` and `slot.unpack`. It does not compare two different
+addresses: the test that stays may be what proves a later payload read. A call that
+cannot run passes nothing. Fields and results come from the previous reading of the
+program, so each reading is sound alone; at most eight are made, and the last is
+applied. A function of more than 4,096 ops is read as it is written: following every
+local of an interpreter-sized function through every block costs most where it
+decides least.
+
+A decided `cbr` or `switch` becomes a `br`. A block that cannot run becomes one
+`unreachable` op under its old label, which loops, `try` statements and checks may
+still name, and a phi keeps the predecessors that still branch to it. A function
+left without a caller stays in the module: the JIT tier's `globaldce` and `-O2`
+remove it, and `PYSTACHY_AOT_OPT=0` still compiles it.
+
+`constfold` is the rewrite alone. `PYSTACHY_OPT=-constfold` keeps every test, and
+each block and edge that `constargs` decided cannot run instead exits with status 1
+and `SystemError: this program ran code that Pystachy decided it never runs`. A run
+then checks the decisions instead of trusting them. `PYSTACHY_OPT=-constargs` turns
+both off.
 
 `PASS_CONTRACTS` declares their order, prerequisites, preserved facts and invalidation.
 They require typed IR before exception lowering and conservative bounds on
@@ -566,6 +614,8 @@ before the next pass. Normal compilation does not add these verification scans.
 | `tupleret` | Return a function's new fixed tuple as an LLVM aggregate of its slots to the calls that only read the slots (`a, b = f()`, `f()[0]`, a loop over `f()`), so that neither makes the tuple ([#703](https://github.com/den-run-ai/pystachy/issues/703)) |
 | `unionslots` | Keep a local of a union of numbers (`int`, `float`, `bool`) in a tag slot and a payload slot instead of a box per value, where its slot's address goes only to its loads and stores and, on every path, each load whose value leaves the local (to a call, a return, a phi) follows a store of a box made for that store alone, with no other such load between them: stores keep a `pys_ubox`'s operands or a union phi's parts, `union.tag` and `union.payload`/`union.raw` (and tag loads) of a loaded value read the slots, a leaving value is boxed where it is loaded (each box for one that a store no longer makes), and boxes nothing uses any more are dropped |
 | `nullcheck` | Drop a check that a value is not None (before a read through it) where a passed test of the same value dominates it: the block after a check, or the branch of a null test where the value is not None, reached from nowhere else. The same value is the value, an equal one, or a load of a slot that only the entry block stores and only loads and stores use (a parameter the function never assigns). The check becomes a branch, its test goes once nothing reads it, the block after it joins its block where nothing else goes there, and a cold block no check goes to any more goes too; a walk down the dominator tree keeps the work linear ([#787](https://github.com/den-run-ai/pystachy/issues/787)) |
+| `constargs` | Decide the tests of parameters, fields and results that the whole program gives one constant ([above](#constargs)) |
+| `constfold` | Fold what `constargs` decides; off, the decided code stops the program instead |
 | `allocelide` | Allocate an object or fixed tuple that holds no reference (every field or item an `int`, a `float` or a `bool`) with `pys_new`, a call that LLVM may delete when nothing keeps its object (`allockind`); the others keep `pys_alloc`, as without it, so that one the program still reads keeps what it holds. AOT builds inline the allocator's fast path into the calls left ([#1017](https://github.com/den-run-ai/pystachy/issues/1017), [internals](internals.md#whole-program-optimization)) |
 
 `unionslots` also splits private `int | None`, `float | None` and `bool | None`

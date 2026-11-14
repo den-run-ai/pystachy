@@ -35,7 +35,7 @@ def optional(value: int | str | None) -> int:
         return len(value)
     return 0
 
-print(twice(Box(2)), narrow(3), narrow("abc"), optional(None))
+print(twice(Box(2)), narrow(3), narrow("abc"), optional(None), optional(7), optional("guard"))
 '''
 
 

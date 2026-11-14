@@ -1,0 +1,7 @@
+' a '
+'a'
+'>>a' 3
+'>>b' True 2 True
+#c# True True
+options | options limit=3 | options verbose name=n
+[exit 0]

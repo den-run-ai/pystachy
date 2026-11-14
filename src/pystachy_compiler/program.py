@@ -1369,6 +1369,11 @@ def gen_program(self, mods: list[Mod]) -> str:
     # caller first compiled a kernel. Versions add no frontend inference state.
     if not self.rtmode and "callbacks" in self.opts:
         specialize_callbacks(self.fns, self.adapters, self.cvos)
+    # Every caller of a function is now a call op, a value or a module constant: what every
+    # call that can run passes decides the tests of it. An extension's exports have callers
+    # that are not in the program.
+    if not self.rtmode and self.ext == "" and "constargs" in self.opts:
+        self.constargs()
     # the whole program is built: its functions are printed in the order they were completed
     for j in range(len(self.fns)):
         self.fll[self.fns[j].f.ll] = j

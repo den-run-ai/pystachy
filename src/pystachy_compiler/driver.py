@@ -63,6 +63,7 @@ COMPILER_SOURCES: list[str] = [
     'src/pystachy_compiler/flow.py',
     'src/pystachy_compiler/functions.py',
     'src/pystachy_compiler/callbacks.py',
+    'src/pystachy_compiler/constargs.py',
     'src/pystachy_compiler/generators.py',
     'src/pystachy_compiler/gen.py',
     'src/pystachy_compiler/ir.py',

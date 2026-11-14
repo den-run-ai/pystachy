@@ -724,7 +724,7 @@ GENTHROWC = 3
 # and bools) from pys_new, whose calls lowering marks as allocations, so that LLVM deletes those
 # whose objects nothing keeps (lowering's alloc_call and ref_free), which PYSTACHY_OPT turns off:
 # "-name", comma-separated, or "-all"
-OPTS: list[str] = ["charslots", "listget", "listguard", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "allocelide", "callbacks"]
+OPTS: list[str] = ["charslots", "listget", "listguard", "dictfuse", "tupleiter", "listfast", "moduleints", "fieldtbaa", "tupleret", "unionslots", "nullcheck", "allocelide", "callbacks", "constargs", "constfold"]
 # what bounds dictfuse's work: the depth of the chain of values Gen.canon follows (the
 # self-compile's deepest is 18), the ops Gen.reaching walks back over (85) and the lookups that
 # hold at once (7)
