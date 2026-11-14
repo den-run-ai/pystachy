@@ -1562,7 +1562,7 @@ class Loader:
             return True
         if k == "starred":
             return self.type_item(e.kids[0])
-        if k == "str" or k == "int" or k == "True" or k == "False" or k == "ellipsis":
+        if k == "str" or k == "bytes" or k == "int" or k == "True" or k == "False" or k == "ellipsis":
             return True
         if k == "unary" and e.s == "-" and (e.kids[0].kind == "int" or e.kids[0].kind == "float"):
             return True
@@ -3553,13 +3553,40 @@ class Loader:
             n.kind = e.kind
             n.s = e.s
             n.kids = e.kids
-        if n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
+        if n.kind == "index" and self.literal_base(m, n.kids[0], loc):
+            # Literal["r", "w"]: its arguments are values, and a string no forward reference; a
+            # Literal[...] among them names typing's Literal as this one does
+            self.qann(m, n.kids[0], loc)
+            for x in n.kids[1].kids if n.kids[1].kind == "tuple" else [n.kids[1]]:
+                if x.kind == "index" and self.literal_base(m, x.kids[0], loc):
+                    self.qann(m, x, loc)
+        elif n.kind == "index" or n.kind == "tuple" or (n.kind == "binop" and n.s == "|"):
             for k in n.kids:
                 self.qann(m, k, loc)
         else:
             self.qexpr(m, n, loc)
             if n.chk and n.kind == "badattr" and " has no attribute " in n.s:
                 fail(n.s, n.line)  # (an evaluated annotation: see Loader.reads)
+
+    def deferred(self, m: Mod) -> bool:
+        # does module m import annotations from __future__: its annotations are never evaluated
+        for k in m.kinds.values():
+            if k == "b:__future__.annotations":
+                return True
+        return False
+
+    def literal_base(self, m: Mod, b: Node, loc: dict[str, bool]) -> bool:
+        # does b, the name an annotation subscripts, name typing's Literal (or typing_extensions'):
+        # as the module's import binds it, or, where the module's annotations are never evaluated
+        # (from __future__ import annotations), as a name nothing binds spells it, which is how an
+        # import under if TYPE_CHECKING: leaves it (Gen.typing_name reads it so too)
+        if b.kind == "name" and b.s not in loc:
+            k = self.kind(m, b.s)
+            return k == "b:typing.Literal" or k == "b:typing_extensions.Literal" or (k == "" and b.s == "Literal" and self.deferred(m))
+        if b.kind == "attr" and b.s == "Literal" and b.kids[0].kind == "name" and b.kids[0].s not in loc:
+            k = self.kind(m, b.kids[0].s)
+            return k == "b:typing" or k == "b:typing_extensions"
+        return False
 
     def quoted_types(self, n: Node) -> None:
         # A private type parameter's source spelling still names it in a forward annotation.

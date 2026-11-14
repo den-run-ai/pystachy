@@ -128,6 +128,12 @@ between containers with different numeric item types remains unsupported. Unboxe
 items retain the existing [NaN identity limitation](compatibility.md#numbers). Fixed-to-variable
 length tuple conversions retain their existing item-type restrictions.
 
+`Literal[...]` is the type of its values, which are not checked against it, as in CPython:
+`Literal[False]` is `bool`, `Literal["r", "w"]` is `str`, `Literal[1, 2]` is `int`, and
+`Literal["r", None]` is `str | None`. Its values are `True`, `False`, int, str and bytes literals,
+`None` and nested `Literal[...]`; values of several types make their union where one exists. A
+string in it is a value, not a forward reference.
+
 Parameter, return, class-body and module-level annotations follow CPython 3.13's evaluation
 timing. They are checked even in unused imported definitions. A name must be bound when its
 annotation is evaluated; use `"Node"` for a forward reference or

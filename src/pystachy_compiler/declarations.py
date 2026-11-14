@@ -246,8 +246,10 @@ def gen_ann(self, n: Node) -> str:
             # (Annotated[Any, ...] in a module that compiles Any as dyn: its type, Any, where other
             # modules infer what it annotates; its metadata aside, as any_in reads it, #782)
             return self.ann(a[0])
-        if base == "literal" or base == "annotated":
-            return "!unsupported type annotation"  # (metadata is not an annotation: Literal["Any"], Annotated[int, "Any"])
+        if base == "literal":
+            return self.literal_ann(a, n.line)
+        if base == "annotated":
+            return "!unsupported type annotation"  # (metadata is not an annotation: Annotated[int, "Any"])
         if base == "iterator" or base == "generator":
             # Iterator[T], Generator[Y, None, R] (typing's or collections.abc's): a generator object
             # (an iterator of another kind, as #477 makes them, is not one of these)
@@ -342,6 +344,34 @@ def gen_ann_base(self, b: Node) -> str:
     if base == "mutableset":
         return "set"
     return "!" + CLASSVAR if base == "classvar" else base
+
+def gen_literal_ann(self, items: list[Node], line: int) -> str:
+    # Literal[v, ...] as an annotation: the type of its values, which CPython does not check
+    # against it. A value is True or False, an int (also negative), a str or bytes literal, None
+    # or a nested Literal[...]; values of several types make their union (Literal["r", None]:
+    # str | None), where there is one. "!" and why not
+    ts: list[str] = []
+    for x in items:
+        t = ""
+        if x.kind == "True" or x.kind == "False":
+            t = "bool"
+        elif x.kind == "int" or (x.kind == "unary" and x.s == "-" and len(x.kids) == 1 and x.kids[0].kind == "int"):
+            t = BIG if self.int_policy(line) else "int"
+        elif x.kind == "str":
+            t = "str"
+        elif x.kind == "bytes":
+            t = "bytes"
+        elif x.kind == "None":
+            t = "None"
+        elif x.kind == "index" and (x.kids[0].kind == "name" or x.kids[0].kind == "attr") and self.ann_base(x.kids[0]) == "literal":
+            t = self.literal_ann(x.kids[1].kids if x.kids[1].kind == "tuple" else [x.kids[1]], line)
+        if t == "" or t.startswith("!"):
+            return t if t != "" else "!Literal[...] is supported with bool, int, str and bytes literals and None"
+        if t not in ts:
+            ts.append(t)
+    if len(ts) == 0:
+        return "!unsupported type annotation"
+    return ts[0] if len(ts) == 1 else self.union_type(narrowed(ts))  # (a union holds 64-bit ints, as an annotated one: ann)
 
 def gen_ann_items(self, xs: list[Node]) -> list[str]:
     # the types annotations xs denote, those of tuple[...] or of Callable[[...], R]'s parameters:

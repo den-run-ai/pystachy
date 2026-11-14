@@ -26,7 +26,7 @@ for _k in (MODDUNDERS + " __name__ __debug__ __cached__ __import__ __build_class
     MODNAMES[_k] = True
 # what an annotation that CPython evaluates may hold (Loader.not_type): these nodes, '|' of the
 # first five, subscripts of the first two
-ANNKINDS: list[str] = ["name", "attr", "index", "binop", "None", "str", "True", "False", "int", "float", "ellipsis", "tuple", "list", "unary", "noann", "starred"]
+ANNKINDS: list[str] = ["name", "attr", "index", "binop", "None", "str", "True", "False", "int", "float", "ellipsis", "tuple", "list", "unary", "noann", "starred", "bytes"]
 GENERICS: list[str] = ["list", "dict", "tuple", "set", "frozenset", "type"]
 
 
