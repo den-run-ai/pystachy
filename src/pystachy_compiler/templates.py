@@ -171,6 +171,10 @@ def gen_specialize(self, c: str, ts: list[str], given: dict[str, str], named: bo
                     self.specdone[canonical] = t.specs[key]
             return t.specs[key]
         if s.bad != "":
+            # A needed constructor can fail before a later hierarchy use requests
+            # its fixed-layout annotation dependencies. Retain only syntax-verified
+            # names and retry the whole program, as for a demanded descendant.
+            self.request_hierarchy(c)
             self.err(s.bad)  # (an imported module's class: where the program makes an object of it)
         if self.template_instances >= TEMPLATE_INSTANCES:
             self.err(f"compilation needs more than {TEMPLATE_INSTANCES} template specializations; annotate template parameters or reduce type combinations")

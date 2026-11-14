@@ -115,8 +115,12 @@ are re-evaluated; this handles constructor parameters and fields naming that bas
 A used imported descendant also discovers dependencies whose annotated fields contain
 class-template objects, using the same annotation rule as local hierarchies. Such
 dependencies need no inheritance tag; unused imported descendants do not discover them.
-Discovery starts at a compiled hierarchy use. An unsupported standalone dependency
-construction reached earlier retains its existing diagnostic.
+Discovery starts at a compiled hierarchy use or a failed standalone template
+construction whose required annotation dependencies can be verified by the same rule.
+A failure requests a fresh whole-program pass; previously valid specializations do not
+trigger discovery on their own.
+Unrelated imported descendants stay deferred. A speculative adapter can still decline
+without admitting any of its constructor dependencies.
 A self-reference names the prospective nominal layout, including a subclass not yet
 registered. The class and template registries are restored after each syntax-only
 eligibility check, including errors and retries.
