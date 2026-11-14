@@ -107,6 +107,40 @@ class GeneratorStorageTests(unittest.TestCase):
         first["operands"][1]["value"] = "null"
         self.assertEqual(self.checked(changed), (False, 1))
 
+    def test_optional_generator_checks_each_identity_operand(self):
+        program = ROOT / "tests/programs/numbers/python_int_generator_optional_identity.py"
+        env = {key: value for key, value in os.environ.items() if not key.startswith("PYSTACHY_")}
+        env["PYSTACHY_HOME"] = str(ROOT)
+        with tempfile.TemporaryDirectory(prefix="pystachy-optional-generator-storage-") as directory:
+            output = Path(directory) / "inspection"
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "tools/inspect_compiler.py"), str(program),
+                 "--output", str(output), "--typed-after-only", "--timeout", "60"],
+                cwd=ROOT, env=env, capture_output=True, text=True, timeout=70)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            snapshot = json.loads((output / "typed-after.json").read_text())
+        report, _ = storage.check_all(snapshot)
+        self.assertEqual(report["status"], "accepted", report)
+        self.assertGreater(report["totals"]["low_word_uses"], 0)
+        self.assertEqual(report["totals"]["obligations"], report["totals"]["proved_obligations"])
+        forwarded = next(fn for fn in snapshot["functions"] if fn["symbol"] == "@f.forwarded.1")
+        changed = copy.deepcopy(forwarded)
+        largest = max(number for b in changed["blocks"] for op in b["operations"] for number in op["results"])
+        block = next(b for b in changed["blocks"] if any(op["op"] == "gen.yield" for op in b["operations"]))
+        index = next(i for i, op in enumerate(block["operations"]) if op["op"] == "gen.yield")
+        first = block["operations"][index]
+        self.assertEqual([a["type"] for a in first["operands"]], ["%slot", "%ptr", "dyn"])
+        self.assertEqual(first["operands"][1]["value"], "null")
+        # An optional pointer payload is not a paired wide integer transport.
+        # Smuggling an unchecked low word into its identity must still fail.
+        block["operations"][index:index] = [
+            ins("big.lo", "int", [("%a0", "int+")], largest + 1),
+            ins("scalar.cast", "dyn", [(f"%t{largest + 1}", "int")], largest + 2, "inttoptr")]
+        first["operands"][2]["value"] = f"%t{largest + 2}"
+        accepted, obligations = self.checked(changed)
+        self.assertFalse(accepted)
+        self.assertGreater(obligations, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
