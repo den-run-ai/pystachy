@@ -622,6 +622,7 @@ class ClassInfo:
         # CPython's method resolution order takes them
         self.roles: list[str] = []
         self.isrole = False  # some class names this root as its secondary base
+        self.isiface = False  # ... and it is no trait of that class: an object typed by it may have that class's layout (role_field)
         self.overlaps: list[str] = []  # unrelated bases with a common concrete subclass
         self.exc = ""
         self.excsecond = ""  # additional builtin exception ancestry; no fields or methods

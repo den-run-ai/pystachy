@@ -414,6 +414,9 @@ def gen_dyn_class_type(self, c: str) -> str:
     if len(ci.roles) > 1:
         # (pys_dyn_role_isa tests one secondary base: an Any box's isinstance() would miss the others)
         self.err(f"an object of class {short(c)}, with several secondary bases, as an Any value is not supported")
+    if len(ci.roles) == 1 and self.classes[ci.roles[0]].isiface and self.classes[ci.roles[0]].base != "":
+        # (pys_dyn_role_isa tests the secondary base itself, not the classes it derives from)
+        self.err(f"an object of class {short(c)}, whose secondary base {short(ci.roles[0])} derives from another class, as an Any value is not supported")
     if len(ci.roles) == 1:
         flags |= DF_ROLE
         dt.refs.append(self.dyn_class_type(ci.roles[0]))

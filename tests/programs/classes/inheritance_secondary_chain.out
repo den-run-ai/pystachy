@@ -1,0 +1,4 @@
+["ch':2:False shared f 2", "an':5:True analyzer f 5", "plain':1:False shared f 1"]
+['1c220Falsep', '2an50Trues,p', '1plain10Falsep']
+['shared1', 'wide10', 'shared1'] [True, True, True] [True, True, False]
+[exit 0]

@@ -1786,8 +1786,8 @@ def gen_class_fields(self, ci: ClassInfo) -> None:
         # (role_field). One that the class or its primary chain declares keeps that declaration,
         # which must be of the same type
         role = self.classes[r]
-        if r in inherited or role.base != "":
-            continue
+        if r in inherited or (role.base != "" and len(self.role_chain(ci.base, r)) == 0):
+            continue  # (a trait's fields are those of the primary chain's class it derives from)
         self.declare_fields(role)
         if not role.fields_ready and any(d.kind == "annassign" and len(d.kids) == 2 for d in role.node.kids[0].kids):
             self.line = ci.node.line
