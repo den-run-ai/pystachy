@@ -250,8 +250,9 @@ or generator/async initializers retain eager formatting
   not created, and uncalled templates are not type-checked. Syntax errors remain
   errors. See [import-time scope](modules.md#unsupported-code-in-imported-modules).
 - **Optional imports** can take the fallback where CPython finds an installed
-  module or API. A failed module retains globals already assigned; a later import
-  reruns its code over them. See [optional imports](modules.md#optional-imports).
+  module or API, also where a module that the imported module needs is missing here
+  (CPython's `ssl` without `_ssl`). A failed module retains globals already assigned;
+  a later import reruns its code over them. See [optional imports](modules.md#optional-imports).
 - **Unbound globals** read as `m.x` raise `AttributeError` without CPython's
   circular-import/renaming hints. `from m import x` raises `ImportError`, using the
   file path from compilation rather than a runtime installation.
@@ -407,7 +408,8 @@ See [module initialization](modules.md#finding-and-running-modules),
   early-read check.
 - **Optional imports:** a possible `ImportError` other than a definite module-top-level raise;
   a possibly unbound from-import; handlers using `as e`, re-raising, or potentially ending
-  the program when the module is missing; a failing module importing its caller back.
+  the program when the module, or one it needs, is missing; a failing module importing its
+  caller back; an import that is not optional of a module that needs a missing one.
   Optional from-imports also require a definite binding, excluding conditional, deleted,
   annotation-only, function-created or star-imported names.
 - **Module structure:** imported modules binding `__name__`; syntax errors even in imports

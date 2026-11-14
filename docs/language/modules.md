@@ -139,6 +139,9 @@ including the standard library's optional C accelerators. The imports run in ord
 - Pystachy cannot find the module.
 - The module's top-level code definitely reaches `raise ImportError(...)`, possibly after
   a compile-time platform test.
+- The module's top-level code reaches its own import of a module that Pystachy cannot
+  find, or of a module that fails in this way. CPython raises `ModuleNotFoundError` there,
+  so the statements after that import never run and are not compiled.
 - A from-import requests a name that the module has not bound yet and does not provide as
   a submodule. For a builtin module, this includes names Pystachy does not implement.
 
@@ -148,6 +151,14 @@ differ from CPython when CPython has a module or accelerator that Pystachy lacks
 
 An import in another kind of `try` statement, such as one with `finally` or other exception
 clauses, follows normal import rules: a missing module is a compile-time error.
+Only an optional import decides that a module fails because a module it imports is missing.
+Any other import of that module, before or after the optional one, is the compile-time error
+of the missing module's import; a function's import is an error where the function is compiled.
+A handler that may end the program makes the module required, as for a module that is not
+found itself.
+A module that binds the name `ModuleNotFoundError` itself, and modules that import each
+other on the way to the missing import, are not decided this way: the missing import stays a
+compile-time error, or the optional import is rejected.
 Pystachy also rejects optional imports whose outcome or exception handling it cannot resolve;
 see [rejected programs](../language.md#rejected-rather-than-miscompiled).
 

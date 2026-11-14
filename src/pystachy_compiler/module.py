@@ -29,6 +29,11 @@ class Mod:
         self.flagat: dict[str, int] = {}
         self.flagval: dict[str, int] = {}
         self.fails = ""  # the exception its top-level code surely raises, ImportError or ModuleNotFoundError
+        # where that is its own top-level import of a module that is not found (Loader.init_raise()):
+        # the module and the line of the import; or its import of a module that fails so (misvia)
+        self.missing = ""
+        self.missline = 0
+        self.misvia = ""
         self.doc = mk("None", "", 1, [])  # its __doc__ while its code binds none: its docstring (Loader.docstring())
         # a package's names that an import of the submodule of that name rebinds at a time Pystachy
         # cannot tell (Loader.submodules()); True if that may happen while its own code runs

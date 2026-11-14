@@ -1,0 +1,11 @@
+needs_c: before the import
+fallback: needs_c
+through: before the import
+needs_c: before the import
+fallback: through
+needs_c: before the import
+True
+frompkg: before the import
+0
+done
+[exit 0]
