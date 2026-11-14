@@ -49,6 +49,7 @@ from src.pystachy_compiler.utils import (
     is_sopt,
     is_tuple,
     is_vtuple,
+    none_key,
     lib_source,
     meet,
     numeric_identity,
@@ -969,7 +970,7 @@ def gen_stmt_main(self, n: Node) -> None:
                     self.bool_find(o.v, kval, key)
                 fx = self.key_fx(kt)
                 fn = "pys_dict_del" if "H" in fx or "A" in fx or self.dict_int(o.t) else "pys_dict_pop"
-                self.nonekey(kx, "", fn, [f"ptr {o.v}", "i64 " + key], fx)
+                self.nonekey(kx, "", fn, [f"ptr {o.v}", "i64 " + key], fx, kt)
             elif o.t in self.classes:
                 # del o[k]: o.__delitem__(k)
                 ik = self.expr(dt.kids[1], self.argtype(o.t, "__delitem__", 1, f"'{tname(o.t)}' object doesn't support item deletion"))
@@ -1345,7 +1346,8 @@ def gen_augassign(self, n: Node) -> None:
                 self.dict_put(o, kb, "", self.list_hold(self.inplace(op, cur, n.kids[1]), kv[1]), kv)
                 return
             kx = self.dkey(kval, kv[0])
-            key = "" if is_sopt(kx.t) else self.to_slot(kx)
+            nk = none_key(kv[0])  # (keys that may be None: None is looked up as any key)
+            key = "" if is_sopt(kx.t) and not nk else self.to_slot(kx)
             o = self.unwrap(o, sub)
             if bool_for_int(kval.t, kv[0]):
                 e = self.bool_find(o.v, kval, key)
@@ -1358,7 +1360,7 @@ def gen_augassign(self, n: Node) -> None:
                     self.store_key(kval, kv[0])  # (rejected)
                 self.dict_store(o.v, "", r, kv, e)
                 return
-            if is_opt(kx.t):
+            if is_opt(kx.t) and not nk:
                 self.guard(self.ptr_cmp('==', kx, Val('null', 'None')).v, "KeyError: None")
                 if is_sopt(kx.t):
                     key = self.to_slot(self.deref(kx))  # (an int key is the int its box holds)
@@ -1462,8 +1464,17 @@ def gen_inplace(self, op: str, cur: Val, rhs: Node) -> Val:
             b = Val(b.v, unopt(b.t))
         if not is_set(b.t):
             self.err(f"unsupported operand type(s) for {op}=: '{tname(cur.t)}' and '{tname(b.t)}'")
-        if self.wider(selem(b.t), selem(cur.t)) != selem(cur.t):
-            self.err(f"unsupported operand types for {op}=: {typestr(cur.t)} and {typestr(b.t)} (a set holds elements of one type)")
+        et = selem(cur.t)
+        it = selem(b.t)
+        if self.wider(it, et) != et:
+            # s &= t and s -= t only look t's elements up in s, or discard them from it: t's may
+            # also be None where those of s are not, and are then taken without it (set_some)
+            if (op == "&" or op == "-") and none_key(it) and not none_key(et) and et not in self.classes and (it == "None" or (self.wider(it, et) == it and unopt(it) == et)):
+                b = self.set_some(b)
+            else:
+                self.err(f"unsupported operand types for {op}=: {typestr(cur.t)} and {typestr(b.t)} (a set holds elements of one type)")
+        elif it != et and (none_key(it) or none_key(et)):
+            b = self.set_rekind(b, et)  # (a set[str] for a set[str | None]: a table of its kind)
         kx = self.key_fx(selem(cur.t)) + self.key_fx(selem(b.t))
         if op == "&":
             self.rt("pys_set_assign", "void", [f"ptr {cur.v}", f"ptr {self.rt('pys_set_and', 'ptr', [f'ptr {cur.v}', f'ptr {b.v}'], kx)}"])

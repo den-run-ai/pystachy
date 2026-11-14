@@ -1,0 +1,31 @@
+display 1 True True False {None}
+empty 0 False False True set()
+added 1 True True False {None}
+discarded 0 False False True set()
+removed 0 False False True set()
+KeyError None
+ior 1 True True False {None}
+True False True False True True False True
+isub 0 False False True set()
+False True True True
+or 1 True True False {None}
+and 0 False False True set()
+sub 1 True True False {None}
+xor 0 False False True set()
+copy cleared 0 False False True set()
+source 1 True True False {None}
+item None True
+[None] 1
+None 0
+KeyError 'pop from an empty set'
+updated 1 True True False {None}
+difference_update 0 False False True set()
+symmetric_difference_update 1 True True False {None}
+intersection_update 1 True True False {None}
+{None} {None} set() set()
+True False
+frozenset({None}) frozenset() 1 True False True False frozenset({None}) frozenset() frozenset({None}) frozenset()
+{None} 1 set
+frozenset({None}) 1
+{None} {None}
+[exit 0]

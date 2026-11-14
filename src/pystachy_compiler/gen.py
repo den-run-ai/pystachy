@@ -513,6 +513,7 @@ from src.pystachy_compiler.containers import (
     gen_keyed as containers_keyed,
     gen_keys_list as containers_keys_list,
     gen_none_arg as containers_none_arg,
+    gen_none_dkey as containers_none_dkey,
     gen_nonekey as containers_nonekey,
     gen_obj_hash as containers_obj_hash,
     gen_obj_str as containers_obj_str,
@@ -521,7 +522,11 @@ from src.pystachy_compiler.containers import (
     gen_sargs as containers_sargs,
     gen_sdiscard as containers_sdiscard,
     gen_set_display as containers_set_display,
+    gen_set_kind as containers_set_kind,
     gen_set_new as containers_set_new,
+    gen_set_pair as containers_set_pair,
+    gen_set_rekind as containers_set_rekind,
+    gen_set_some as containers_set_some,
     gen_setop as containers_setop,
     gen_sgen as containers_sgen,
     gen_sitems as containers_sitems,
@@ -1196,6 +1201,7 @@ from src.pystachy_compiler.templates import (
     gen_want_tvars as templates_want_tvars,
     gen_match as templates_match,
     gen_match_items as templates_match_items,
+    gen_match_key as templates_match_key,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
     gen_literal_class as templates_literal_class,
@@ -4923,6 +4929,9 @@ class Gen:
     def match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         return templates_match(self, a, t, tv, tvs)
 
+    def match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
+        return templates_match_key(self, a, t, tv, tvs)
+
     def match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
         return templates_match_items(self, xs, ts, tv, tvs)
 
@@ -5115,11 +5124,24 @@ class Gen:
     def iter_elem(self, t: str) -> str:
         return containers_iter_elem(self, t)
 
-    def siter(self, n: Node, et: str, what: str, resultsoft: bool = False) -> Val:
-        return containers_siter(self, n, et, what, resultsoft)
+    def siter(self, n: Node, et: str, what: str, resultsoft: bool = False, mode: str = "") -> Val:
+        return containers_siter(self, n, et, what, resultsoft, mode)
 
-    def sitems(self, v: Val, et: str, what: str) -> Val:
-        return containers_sitems(self, v, et, what)
+    def sitems(self, v: Val, et: str, what: str, mode: str = "") -> Val:
+        return containers_sitems(self, v, et, what, mode)
+
+    def set_kind(self, et: str) -> str:
+        return containers_set_kind(self, et)
+
+    def set_rekind(self, v: Val, et: str) -> Val:
+        return containers_set_rekind(self, v, et)
+
+    def set_some(self, v: Val) -> Val:
+        return containers_set_some(self, v)
+
+    def set_pair(self, a: Val, b: Val, w: str) -> list[Val]:
+        return containers_set_pair(self, a, b, w)
+
 
     def supdate(self, s: str, v: Val, et: str) -> None:
         return containers_supdate(self, s, v, et)
@@ -5217,8 +5239,11 @@ class Gen:
     def store_elem(self, k: Val, et: str) -> Val:
         return containers_store_elem(self, k, et)
 
-    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
-        return containers_nonekey(self, k, none, fn, av, x)
+    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
+        return containers_nonekey(self, k, none, fn, av, x, kt)
+
+    def none_dkey(self, k: Val, kt: str) -> Val:
+        return containers_none_dkey(self, k, kt)
 
     def keyed(self, k: Val, av: list[str]) -> list[str]:
         return containers_keyed(self, k, av)
