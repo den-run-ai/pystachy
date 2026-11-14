@@ -16,6 +16,7 @@ from src.pystachy_compiler.specs import (
     ABSTRACT_DECOS,
     EXCBASES,
     EXCEPTIONS,
+    FINAL_FIELD,
     PLAIN_EXC_BASES,
     exc_derives,
     GALIAS,
@@ -132,7 +133,7 @@ def gen_subclass_problem(self, st: Node) -> str:
             return "inheritance from a NamedTuple is not supported"
         if self.is_dc(base_ci.name) and not dc:
             return "inheritance from a dataclass is only supported by a @dataclass class"
-        if base_ci.name in self.tparams or self.init_template(base_ci.node) or self.init_template(st.kids[0]):
+        if self.init_template(base_ci.node, True) or self.init_template(st.kids[0], True):
             return "inheritance with generic class templates is not supported: " + self.template_fix([base_ci.node, st.kids[0]])
         if dc and not self.is_dc(base_ci.name):
             return "a @dataclass class whose base is not a dataclass is not supported"
@@ -148,6 +149,26 @@ def gen_subclass_problem(self, st: Node) -> str:
         return f"deriving from {b} is not supported"  # (u: a UnicodeError whose five arguments make its message)
     if len(st.kids[0].kids) > 1:
         return f"an exception class with a decorator (@{st.kids[0].kids[1].s}) is not supported"
+    return ""
+
+def gen_generic_subclass(self, st: Node) -> str:
+    # class V(Visitor[str]): a base that subscripts a generic class without an __init__ of its
+    # own, which binds nothing (Visitor[str] is Visitor, see generic_ann), is that class, whose
+    # methods' parameters that name its type variables take each call's types. Its type
+    # arguments are checked as the annotation Visitor[str] checks them, and the statement then
+    # names the class itself, as the rest of declaration reads its base (#962). "" or why not
+    b = st.kids[1] if len(st.kids) == 2 else st
+    if b.kind != "index" or b.kids[0].kind != "name" or b.kids[0].s not in self.tparams or b.kids[0].s not in self.classes:
+        return ""
+    g = b.kids[0].s
+    if self.init_template(self.classes[g].node):
+        return f"a subclass of {shown(g)}[...] is not supported: the __init__ of {shown(g)} binds its type variables, as its calls' arguments do"
+    t = self.generic_ann(g, b.kids[1])
+    if t.startswith("!"):
+        return t[1:]
+    self.genbase[st.s] = g  # (the types that bind its TypeVars for the methods of st's objects)
+    self.genargs[st.s] = [self.ann(x) for x in (b.kids[1].kids if b.kids[1].kind == "tuple" else [b.kids[1]])]
+    st.kids[1] = b.kids[0]
     return ""
 
 def gen_exc_base(self, b: Node) -> str:
@@ -191,6 +212,13 @@ def gen_inherit(self, ci: ClassInfo) -> None:
             # even when no inherited method is called.
             d = Node(f.orig.kind, f.orig.s, f.orig.line, [f.orig.kids[i] if i == 2 else clone(f.orig.kids[i]) for i in range(len(f.orig.kids))])
             g = self.declare_fn(d, ci.name, True)
+            if g.tvret == "":
+                # (f.orig was cloned after its declaration erased the TypeVar annotations: their
+                # binding plan, over the same parameters, carries over: tv_plan)
+                g.tvret = f.tvret
+                g.tvbparams = list(f.tvbparams)
+                g.tvbclass = list(f.tvbclass)
+                g.tvbpos = list(f.tvbpos)
             g.orig = f.orig
             g.clsuse = True
             g.pending = True
@@ -298,11 +326,15 @@ def gen_derives(self, c: str, base: str) -> bool:
         c = info.base
     return c in EXCBASES and exc_derives(c, base)
 
-def gen_init_template(self, st: Node) -> bool:
+def gen_init_template(self, st: Node, hier: bool = False) -> bool:
     # is class statement st a class template: no decorator (a dataclass's fields are annotated)
     # and an __init__ of its own with a parameter but self that has no annotation, mentions Any,
     # is object, or names a class template; each object belongs to a specialization, whose fields
-    # are typed by the arguments of the call that makes it (see specialize)
+    # are typed by the arguments of the call that makes it (see specialize). hier: st takes part
+    # in an inheritance hierarchy, where a template is an error: a class-template object that
+    # __init__ stores into an annotated field then types nothing (init_makes_tmpl). Elsewhere it
+    # still does, as before: a template compiles only once used, so an unused class's other
+    # fields are never inferred
     if len(st.kids) > 1 or (st.s in self.nts and st.s not in self.cnts):
         return False
     for d in st.kids[0].kids:
@@ -316,8 +348,66 @@ def gen_init_template(self, st: Node) -> bool:
                     return True  # (also *args or **kwargs without an annotation, or with Any, which only a template takes)
                 if st.s in self.tparams and self.names_tv(ps[i].kids[0], self.tparams[st.s]):
                     return True  # (a generic class whose objects bind its type variables, see bind)
-            if self.makes_tmpl(d.kids[2]):
+            fixed: dict[str, bool] = {}
+            for b in st.kids[0].kids:
+                if b.kind == "annassign" and b.kids[0].kind == "name" and self.fixed_ann(b.kids[1]):
+                    fixed[b.kids[0].s] = True
+            if self.init_makes_tmpl(d.kids[2], ps[0].s if len(ps) > 0 else "", fixed) if hier else self.makes_tmpl(d.kids[2]):
                 return True  # (a field may hold an object of a class template: typed where the object is made)
+    return False
+
+def gen_init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
+    # the program's classes that, were one a class template, would make class statement st one
+    # by a parameter of its own __init__ (init_template's rule, which this follows: no decorator,
+    # a parameter that is not *args or **kwargs, and a name where tmpl_ann looks for a template:
+    # Box, Box | None, list[Box]; a string's where its text is such an expression of names as the
+    # program's classes have them). A class that any other annotation names stays as it was: a
+    # template or not, that annotation compiled
+    if len(st.kids) > 1 or (st.s in self.nts and st.s not in self.cnts):
+        return
+    for d in st.kids[0].kids:
+        if d.kind == "def" and d.s == "__init__" and len(d.kids) == 3:
+            for p in d.kids[0].kids[1:]:
+                if p.kind == "param":
+                    self.ann_classes(p.kids[0], out)
+
+def gen_ann_classes(self, a: Node, out: dict[str, bool]) -> None:
+    # (as tmpl_ann reads annotation a: of a generic class's subscript, the arguments only)
+    if a.kind == "str":
+        if a.s.replace("_", "a").replace(".", "a").replace("[", "a").replace("]", "a").replace(",", "a").replace("|", "a").replace(" ", "a").isalnum():
+            self.ann_classes(self.parse_expr(a.s), out)
+        return
+    if a.kind == "name":
+        if a.s in self.classes:
+            out[a.s] = True
+        return
+    if a.kind == "index" and a.kids[0].kind == "name" and a.kids[0].s in self.tparams:
+        self.ann_classes(a.kids[1], out)
+        return
+    for k in a.kids:
+        self.ann_classes(k, out)
+
+def gen_fixed_ann(self, a: Node) -> bool:
+    # does annotation a give a field a type of its own: no Any, object or class template (whose
+    # specializations are types of their own, see tmpl_ann), as init_template requires of the
+    # annotations of __init__'s parameters
+    if a.kind == "str":
+        a = self.parse_expr(a.s)
+    return a.kind != "noann" and not self.any_in([a]) and not (a.kind == "name" and a.s == "object") and not self.tmpl_ann(a)
+
+def gen_init_makes_tmpl(self, n: Node, me: str, fixed: dict[str, bool]) -> bool:
+    # makes_tmpl for __init__'s statements n, me its first parameter, but for the value it stores into
+    # a field of me that the class body, or the store itself, annotates with a type of its own
+    # (fixed_ann, fixed): the field takes the object as that type, as a store by another method does
+    if (n.kind == "assign" or n.kind == "annassign") and len(n.kids) == (2 if n.kind == "assign" else 3):
+        t = n.kids[0]
+        if t.kind == "attr" and t.kids[0].kind == "name" and t.kids[0].s == me and (t.s in fixed or (n.kind == "annassign" and self.fixed_ann(n.kids[1]))):
+            return False
+    if n.kind == "call" and n.kids[0].kind == "name" and (n.kids[0].s in self.tmpl or (n.kids[0].s == "iter" and len(n.kids) == 2 and ITERS + "$list_iterator" in self.classes)):
+        return True
+    for k in n.kids:
+        if self.init_makes_tmpl(k, me, fixed):
+            return True
     return False
 
 def gen_template_fix(self, cs: list[Node]) -> str:
@@ -846,7 +936,7 @@ def gen_program(self, mods: list[Mod]) -> str:
     for m in mods:
         self.generic_aliases(m.body.kids)
     for m in mods:
-        m.body.kids = self.typing_forms(m, m.body.kids, False)
+        m.body.kids = self.typing_forms(m, m.body.kids, False, False, True)
         for i in range(len(m.body.kids)):
             st = m.body.kids[i]
             if st.kind == "subclass" and len(st.kids) == 2 and self.nt_base(st.kids[1]):
@@ -903,11 +993,20 @@ def gen_program(self, mods: list[Mod]) -> str:
                 # keeping the earlier ClassInfo would silently construct the stale class.
                 why = f"redefinition of class '{st.s}' is not supported"
             elif st.kind == "subclass":
-                why = self.subclass_problem(st)
+                why = self.generic_subclass(st)
+                if why == "":
+                    why = self.subclass_problem(st)
                 if why == "" and m.name != "":
                     why = self.class_problem(m, st.kids[0], True)
             elif st.kind == "class" and m.name != "":
                 why = self.class_problem(m, st, False)
+            for x in (st.kids[0] if st.kind == "subclass" else st).kids[0].kids if why != "" else []:
+                if x.kind == "assign" and x.s == "Final":
+                    # (x: Final = v, which typing_forms made a class attribute: rejected where it
+                    # is, as before, in a class that is not compiled, whose creation may read its
+                    # annotations, as a NamedTuple's or a TypedDict's does)
+                    self.line = x.line
+                    self.err(FINAL_FIELD)
             if why != "" and m.name == "":
                 self.err(why)
             if why != "":
@@ -964,13 +1063,33 @@ def gen_program(self, mods: list[Mod]) -> str:
             tag += 1
             ci.tag = tag
     self.cm_exits()  # (decided while the class templates are classes too: see cm_exits)
+    # The classes for which a template is an error, as init_template's hier takes them: those of
+    # a hierarchy, and the classes that the __init__ of one of these takes as a parameter
+    # (Checker(errors: Errors)), which a template would make a template in turn. A program with
+    # such a parameter was rejected while its class stayed a template, so only programs that did
+    # not compile see the class compiled as an ordinary one, used or not
+    fixedcls: dict[str, bool] = {}
+    for ci in self.classes.values():
+        if ci.tag > 0:
+            fixedcls[ci.name] = True
+    grow = True
+    while grow:
+        grow = False
+        for ci in list(self.classes.values()):
+            if ci.name in fixedcls:
+                named: dict[str, bool] = {}
+                self.init_param_classes(ci.node, named)
+                for c in named:
+                    if c not in fixedcls and self.classes[c].exc == "":
+                        fixedcls[c] = True
+                        grow = True
     grow = True
     while grow:
         # the class templates: an __init__ parameter without an annotation, or with one that
         # names a class template (Holder(b: Box)), which then types nothing either
         grow = False
         for ci in self.classes.values():
-            if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node):
+            if ci.name not in self.tmpl and ci.exc == "" and self.init_template(ci.node, ci.name in fixedcls):
                 self.tmpl[ci.name] = True
                 grow = True
     for ci in self.classes.values():

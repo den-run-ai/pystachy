@@ -478,6 +478,8 @@ from src.pystachy_compiler.calls import (
     gen_to_callable as calls_to_callable,
     gen_unbound_call as calls_unbound_call,
     gen_virtual_call as calls_virtual_call,
+    gen_shared_dispatch as calls_shared_dispatch,
+    gen_dispatch_call as calls_dispatch_call,
 )
 from src.pystachy_compiler.containers import (
     gen_list_id_kind as containers_list_id_kind,
@@ -616,6 +618,8 @@ from src.pystachy_compiler.declarations import (
     gen_imported_ref as declarations_imported_ref,
     gen_init_after as declarations_init_after,
     gen_iter_ann as declarations_iter_ann,
+    gen_tv_plan as declarations_tv_plan,
+    gen_tv_bound as declarations_tv_bound,
     gen_iter_item as declarations_iter_item,
     gen_join as declarations_join,
     gen_none_items as declarations_none_items,
@@ -1099,6 +1103,10 @@ from src.pystachy_compiler.program import (
     gen_template_fix as program_template_fix,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
+    gen_ann_classes as program_ann_classes,
+    gen_fixed_ann as program_fixed_ann,
+    gen_init_param_classes as program_init_param_classes,
+    gen_init_makes_tmpl as program_init_makes_tmpl,
     gen_objects as program_objects,
     gen_partly as program_partly,
     gen_path_of as program_path_of,
@@ -1107,6 +1115,7 @@ from src.pystachy_compiler.program import (
     gen_pure as program_pure,
     gen_raisers as program_raisers,
     gen_subclass_problem as program_subclass_problem,
+    gen_generic_subclass as program_generic_subclass,
     gen_tmpl_ann as program_tmpl_ann,
     gen_tmpl_of as program_tmpl_of,
 )
@@ -1522,6 +1531,7 @@ class Gen:
         self.adapters: dict[str, str] = {}  # "<function value type> <Callable type>" -> its adapter's symbol (Gen.adapter)
         self.adrets: dict[str, str] = {}  # "<function value type> <parameter types>" -> what it returns (Gen.adapter_ret)
         self.ncv = 0  # the adapters named (@cv.N), each before its body is compiled, which may name others
+        self.dispatchers: dict[str, FnInfo] = {}  # "<receiver>.<method>(<argument types>)" -> its shared override selection (@vd.N, Gen.dispatch_call)
         self.cacheforms: dict[str, int] = {}  # cached calls: positional count and ordered keyword names
         self.decorated: dict[str, bool] = {}  # the defs of a module's top level that bind what their decorators give (decorate)
         self.decoexprs: dict[str, Node] = {}  # "<module> <line>" -> the dotted name of the decorator there (deco_callee)
@@ -1629,6 +1639,10 @@ class Gen:
         # the generic classes (class C(Generic[T, *Ts]) and class C[T, *Ts]): their type variables,
         # which the arguments of the call that makes an object bind (see bind)
         self.tparams: dict[str, list[str]] = {}
+        # class V(G[X, ...]) of a generic class G that binds nothing (generic_subclass): G and the
+        # types X, ..., which bind G's TypeVars for the methods of V's objects (tv_bound)
+        self.genbase: dict[str, str] = {}
+        self.genargs: dict[str, list[str]] = {}
         self.pep695: dict[str, bool] = {}  # the generic classes of PEP 695's syntax, class C[T] (reflection: __type_params__)
         # the type aliases, by qualified name: the statement that binds each (Mod.taliases), and
         # those whose annotation alias_ann is making the type of
@@ -2933,8 +2947,8 @@ class Gen:
     def typing_ref(self, n: Node) -> str:
         return declarations_typing_ref(self, n)
 
-    def typing_forms(self, m: Mod, body: list[Node], cls: bool) -> list[Node]:
-        return declarations_typing_forms(self, m, body, cls)
+    def typing_forms(self, m: Mod, body: list[Node], cls: bool, attrs: bool = False, top: bool = False) -> list[Node]:
+        return declarations_typing_forms(self, m, body, cls, attrs, top)
 
     def stub(self, m: Mod, st: Node) -> bool:
         return declarations_stub(self, m, st)
@@ -2971,6 +2985,12 @@ class Gen:
 
     def iter_ann(self, n: Node) -> str:
         return declarations_iter_ann(self, n)
+
+    def tv_plan(self, f: FnInfo, ps: list[Node], ret: Node, tvs: list[str]) -> None:
+        declarations_tv_plan(self, f, ps, ret, tvs)
+
+    def tv_bound(self, f: FnInfo, ts: list[str]) -> str:
+        return declarations_tv_bound(self, f, ts)
 
     def iter_item(self, n: Node) -> Node | None:
         return declarations_iter_item(self, n)
@@ -3709,6 +3729,9 @@ class Gen:
     def subclass_problem(self, st: Node) -> str:
         return program_subclass_problem(self, st)
 
+    def generic_subclass(self, st: Node) -> str:
+        return program_generic_subclass(self, st)
+
     def exc_base(self, b: Node) -> str:
         return program_exc_base(self, b)
 
@@ -3727,14 +3750,26 @@ class Gen:
     def derives(self, c: str, base: str) -> bool:
         return program_derives(self, c, base)
 
-    def init_template(self, st: Node) -> bool:
-        return program_init_template(self, st)
+    def init_template(self, st: Node, hier: bool = False) -> bool:
+        return program_init_template(self, st, hier)
 
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)
 
     def makes_tmpl(self, n: Node) -> bool:
         return program_makes_tmpl(self, n)
+
+    def fixed_ann(self, a: Node) -> bool:
+        return program_fixed_ann(self, a)
+
+    def init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
+        program_init_param_classes(self, st, out)
+
+    def ann_classes(self, a: Node, out: dict[str, bool]) -> None:
+        program_ann_classes(self, a, out)
+
+    def init_makes_tmpl(self, n: Node, me: str, fixed: dict[str, bool]) -> bool:
+        return program_init_makes_tmpl(self, n, me, fixed)
 
     def tmpl_ann(self, a: Node) -> bool:
         return program_tmpl_ann(self, a)
@@ -4812,6 +4847,12 @@ class Gen:
 
     def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
         return calls_virtual_call(self, f, pre, args, want, none, resultsoft)
+
+    def shared_dispatch(self, f: FnInfo, cs: list[ClassInfo], pre: list[Val], args: list[Node]) -> str:
+        return calls_shared_dispatch(self, f, cs, pre, args)
+
+    def dispatch_call(self, f: FnInfo, o: Val, values: list[Val], names: list[str], ret: str) -> Val:
+        return calls_dispatch_call(self, f, o, values, names, ret)
 
     def fname(self, f: FnInfo) -> str:
         return calls_fname(self, f)

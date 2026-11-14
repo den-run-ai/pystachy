@@ -1037,8 +1037,10 @@ def refl_body(cn: Node) -> list[Node]:
 def refl_annotated(body: list[Node]) -> bool:
     # does a class body annotate a name (x: int): its class has __annotations__
     for st in body:
-        if st.kind == "annassign" and st.kids[0].kind == "name" and st.kids[1].kind != "noann":
+        if st.kind == "annassign" and st.kids[0].kind == "name" and (st.kids[1].kind != "noann" or st.s == "Final"):
             return True  # (not a class attribute's x = v, which the class statement makes an annassign)
+        if st.kind == "assign" and st.s == "Final":
+            return True  # (x: Final = v, a class attribute typed by its value: see typing_forms)
     return False
 
 

@@ -124,9 +124,10 @@ static TextHint text_hints[64];
    promoting int (descriptor J), or a list's identity companion (list_box: the small-int boxes).
    Yet the code that walks lists, dicts, sets and descriptors (eqv, repr, hashing, lookups) reaches
    theirs, which every AOT build would optimize and keep. So every path that only such a value
-   leads to calls opt_in() first: pystachy build defines pys_plain in the program's module, which
-   -O2 optimizes with the runtime (driver.py), 1 for such a program, else 0. opt_in() is then a
-   trap or nothing, and -O2 drops those paths and the static functions only they reach before it
+   leads to calls opt_in() first: pystachy build links a precompiled runtime that -O2 optimized
+   with a definition of pys_plain (aot_runtime.py), or defines pys_plain in the program's module,
+   which -O2 optimizes with the runtime (driver.py): 1 for such a program, else 0. opt_in() is then
+   a trap or nothing, and -O2 drops those paths and the static functions only they reach before it
    optimizes them. Elsewhere (pystachy run's precompiled runtime, an extension module) this weak
    definition's 0 holds, and opt_in() costs a load where such a value was found. A plain program
    that reached the trap would show a compiler bug, not its own: it aborts */
@@ -6360,7 +6361,7 @@ Str *pys_format(I v, Str *desc, Str *spec) {
     v = unbox(v, ++ds);
   }
   if (*ds == 'U') ds = umember(&v, ds);
-  if (*ds == 'j') return pys_big_format(0, (void *)v, spec);
+  if (*ds == 'j') { opt_in(); return pys_big_format(0, (void *)v, spec); }   /* (a dynamic wide int: repr's 'j') */
   char d = *ds;
   if ((d != 'i' && d != 'b' && d != 'f' && d != 's') || (d == 'b' && !spec->len)) {   /* format(True, "") is str(True) */
     if (spec->len) failf("TypeError: unsupported format string passed to %s.__format__", tyname(d));

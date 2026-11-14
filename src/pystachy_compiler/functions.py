@@ -86,10 +86,10 @@ def gen_enter(self, f: FnInfo, body: list[Node]) -> None:
         # raised may have left it higher), before any local handler or body code. Capture
         # it before dry() can build temporary landings: their discarded blocks must not
         # leave a live token referring to a discarded definition. A source function or lambda
-        # (not a module's code or a Callable's adapter, which forwards to one) may count as a
-        # frame: Gen.recursionscope decides once the program is built, and makes this op its
-        # checked entry (docs/internals.md#native-recursion-depth).
-        self.fn.counted = f.node.kind == "def" and len(f.node.kids) >= 3 and f.name != "<callable>"
+        # (not a module's code, nor a Callable's adapter or a shared virtual dispatch, which
+        # forward to one) may count as a frame: Gen.recursionscope decides once the program
+        # is built, and makes this op its checked entry (docs/internals.md#native-recursion-depth).
+        self.fn.counted = f.node.kind == "def" and len(f.node.kids) >= 3 and f.name != "<callable>" and f.name != "<dispatch>"
         self.fn.rdepth = self.rt("pys_recursion_depth", "i64", [])
 
 def gen_materialize(self, f: FnInfo) -> None:

@@ -1,10 +1,12 @@
 """Check which of the runtime's opt-in code an AOT build keeps, without size or timing thresholds.
 
 usage: python3 tools/aotprobe.py [-c LABEL=COMMAND]...
-pystachy build defines pys_plain in the program's module, which -O2 optimizes with the runtime:
-1 for a program that opts in to neither dynamic Any nor promoting ints, else 0 (runtime.c's
-opt_in). A transparent clang wrapper captures the module the driver compiles, which must hold
-that definition. A plain program that appends to, stores into, compares, hashes, looks up,
+pystachy build links a precompiled runtime specialized for pys_plain (aot_runtime.py): 1 for a
+program that opts in to neither dynamic Any nor promoting ints, else 0 (runtime.c's opt_in), whose
+interface the program's module is optimized against. A transparent clang wrapper captures the
+module the driver compiles and notes the precompiled runtime the executable links: .aot1.o or
+.aot0.o, whose interface in the cache must define that value. A plain program that appends to,
+stores into, compares, hashes, looks up,
 formats and prints lists, dicts, sets and tuples must keep none of the runtime's code for ints
 past 64 bits, promoting ints and list identities (OPT_IN_ONLY: static functions and data that
 only such values reach, including the code that keeps a list's identity companion in step). The
@@ -13,14 +15,18 @@ or to dynamic Any collectively keep each of them, so that a renamed or inlined s
 rather than passes unseen. Wrappers importing those modules check that an imported opt-in also
 keeps the feature paths available. Every executable prints what CPython prints. The symbols are LLVM 18's on
 Linux (CI's); another LLVM may inline differently. A list store has no symbol of its own: in the
-module -O2 makes of the captured one (the driver's own step, clang -O2), the plain program's
-pys_list_set must store its item alone, and the python-int program's also its companion entry
-and pending mark (STORE), so that the check sees them where they belong.
+captured module, whose pys_list_set is the interface's body (optimized with pys_plain's value),
+the plain program's pys_list_set must store its item alone, and the python-int program's also
+its companion entry and pending mark (STORE), so that the check sees them where they belong.
+(A build without the precompiled runtime defines pys_plain in its module: the probe then looks
+in the module -O2 makes of the captured one, the driver's own step, clang -O2.)
 
 Allocations (allocelide, #1017): compiled code's objects that hold no reference (only ints,
 floats and bools) come from pys_new, which -O2 sees as an allocation and deletes where nothing
 keeps the object, before the late step inlines the allocator's fast path into the calls left. An
-opt wrapper keeps the module -O2 gave that step (prog-opt.bc), where each allocation left is a
+opt wrapper keeps the module -O2 gave that step (prog-opt.bc, with the late module that brings back
+pys_new's body), and the clang wrapper the step's result (prog-late.bc), where no call of pys_new
+may be left: each was inlined. In prog-opt.bc each allocation left is a
 call of pys_new (the runtime's C code never calls it): TEMPS, whose vectors never leave walk(),
 keeps none, and KEPT, whose objects a list keeps, does. With allocelide off there is no late step,
 and with pys_new inlined before -O2 KEPT keeps no call: either fails here. KEPT also builds with
@@ -45,6 +51,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -92,6 +99,8 @@ OPT_IN_ONLY = ["mpz_digits", "mpz_cmp_float", "big_eq", "dbfind", "sbfind", "jeq
 # the stores of -O2's pys_list_set (PROGRAM's xs[-1] = 2): the item's, and an opt-in program's
 # companion entry and pending mark
 LIST_SET = re.compile(r"^define [^\n]*@pys_list_set\(.*?^}$", re.M | re.S)
+# the interface's pys_plain (aot_runtime.py: the precompiled runtime's value, available_externally)
+PLAIN = re.compile(r"^@pys_plain = available_externally .*constant i64 (\d)$", re.M)
 STORE = re.compile(r"^\s+store ", re.M)
 # objects that never escape (allocelide: none is allocated) and objects that a list keeps (each is)
 TEMPS = '''class Vec:
@@ -218,7 +227,9 @@ def main():
         for name, text in sources.items():
             (temp / f"{name.replace('-', '_')}.py").write_text(text)
         capture = temp / "captured.bc"
+        linked = temp / "linked"
         late = temp / "opt.bc"
+        inlined = temp / "late.bc"
         bindir = temp / "bin"
         bindir.mkdir()
         real = {}
@@ -230,15 +241,21 @@ def main():
             if name not in ("clang", "opt", "llvm-dis", "llvm-nm"):
                 (bindir / name).symlink_to(real[name])
         # the driver's AOT step is clang -O2 -c <its temporary directory>/prog.bc: keep a copy of that,
-        # and of prog-opt.bc, the module -O2 made, which allocelide's late step (opt) reads
+        # note the precompiled runtime the executable's link takes, and keep a copy of prog-opt.bc,
+        # the module -O2 made, which allocelide's late step (opt) reads
         wrapper = bindir / "clang"
-        wrapper.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog.bc) cp \"$a\" {shlex.quote(str(capture))} ;; esac; done\n"
+        wrapper.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog.bc) cp \"$a\" {shlex.quote(str(capture))} ;;"
+                           f" */prog-late.bc) cp \"$a\" {shlex.quote(str(inlined))} ;;"
+                           f" *.aot0.o | *.aot1.o) printf '%s\\n' \"$a\" >> {shlex.quote(str(linked))} ;; esac; done\n"
                            f"exec {shlex.quote(real['clang'])} \"$@\"\n")
         wrapper.chmod(0o755)
         optimizer = bindir / "opt"
         optimizer.write_text(f"#!/bin/sh\nfor a in \"$@\"; do case $a in */prog-opt.bc) cp \"$a\" {shlex.quote(str(late))} ;; esac; done\n"
                              f"exec {shlex.quote(real['opt'])} \"$@\"\n")
         optimizer.chmod(0o755)
+        # a tool whose times have not settled builds a runtime for one run alone, which links no
+        # precompiled runtime: let the wrappers settle (the driver's settled(): 2 s) first
+        time.sleep(2.1)
         env = os.environ | {"PYSTACHY_LLVM": str(bindir), "PYSTACHY_CACHE": str(temp / "cache")}
         for k in ("PYSTACHY_CFLAGS", "PYSTACHY_OPT", "PYSTACHY_PATH", "PYSTACHY_GC", "PYSTACHY_GC_STRESS", "PYSTACHY_GC_STRESS_PROGRAM"):
             env.pop(k, None)  # (-O0 or other passes would keep what the default build drops)
@@ -252,23 +269,29 @@ def main():
                 src = temp / f"{name.replace('-', '_')}.py"
                 exe = temp / f"{label}-{name}"
                 capture.unlink(missing_ok=True)
+                linked.unlink(missing_ok=True)
                 run(cmd + ["build", str(src), "-o", str(exe)], env)
                 if not capture.exists():
                     raise RuntimeError(f"{label} {name}: the AOT build compiled no prog.bc")
                 ll = run([real["llvm-dis"], str(capture), "-o", "-"], env).decode()
                 want = 1 if name == "plain" else 0
-                got = re.findall(r"^@pys_plain = .*$", ll, re.M)
-                if got != [f"@pys_plain = constant i64 {want}"]:
-                    raise RuntimeError(f"{label} {name}: the AOT module defines {got}, expected pys_plain = {want}")
+                runtimes = linked.read_text().split() if linked.exists() else []
+                if len(runtimes) != 1 or not runtimes[0].endswith(f".aot{want}.o"):
+                    raise RuntimeError(f"{label} {name}: the executable links {runtimes}, expected the .aot{want}.o precompiled runtime")
+                face = run([real["llvm-dis"], runtimes[0][:-2] + ".bc", "-o", "-"], env).decode()
+                if PLAIN.findall(face) != [str(want)]:
+                    raise RuntimeError(f"{label} {name}: its interface defines pys_plain = {PLAIN.findall(face)}, expected {want}")
                 if run([str(exe)], env, temp) != expected[name]:
                     raise RuntimeError(f"{label} {name}: the AOT executable's output differs from CPython's")
                 kept[name] = symbols(real["llvm-nm"], exe) & set(OPT_IN_ONLY)
                 if name in ("plain", "python-int"):
-                    o2 = temp / f"{label}-{name}-O2.bc"
-                    run([real["clang"], "-O2", "-c", "-emit-llvm", str(capture), "-o", str(o2)], env)
-                    body = LIST_SET.search(run([real["llvm-dis"], str(o2), "-o", "-"], env).decode())
+                    body = LIST_SET.search(ll)
                     if body is None:
-                        raise RuntimeError(f"{label} {name}: the module -O2 made defines no pys_list_set")
+                        o2 = temp / f"{label}-{name}-O2.bc"
+                        run([real["clang"], "-O2", "-c", "-emit-llvm", str(capture), "-o", str(o2)], env)
+                        body = LIST_SET.search(run([real["llvm-dis"], str(o2), "-o", "-"], env).decode())
+                    if body is None:
+                        raise RuntimeError(f"{label} {name}: neither the module nor the one -O2 made defines pys_list_set")
                     stores[name] = len(STORE.findall(body.group(0)))
             if kept["plain"]:
                 raise RuntimeError(f"{label}: the plain program's executable keeps opt-in runtime code: {sorted(kept['plain'])}")
@@ -279,7 +302,7 @@ def main():
                 missing = set(OPT_IN_ONLY) - kept["python-int" + suffix] - kept["dynamic-any" + suffix]
                 if missing:
                     raise RuntimeError(f"{label}: opt-in programs{suffix} do not keep {sorted(missing)}: update OPT_IN_ONLY")
-            print(f"{label}: pys_plain 1, 0, 0, 0, 0; the plain executable keeps none of {len(OPT_IN_ONLY)} opt-in symbols, "
+            print(f"{label}: precompiled runtimes for pys_plain 1, 0, 0, 0, 0; the plain executable keeps none of {len(OPT_IN_ONLY)} opt-in symbols, "
                   f"the python-int one {len(kept['python-int'])} and the dynamic-any one {len(kept['dynamic-any'])}; outputs as CPython's")
             print(f"{label}: -O2's pys_list_set stores {stores['plain']} time in the plain program, "
                   f"{stores['python-int']} times in the python-int one")
@@ -289,17 +312,21 @@ def main():
                 src.write_text(text)
                 exe = temp / f"{label}-{name}"
                 late.unlink(missing_ok=True)
+                inlined.unlink(missing_ok=True)
                 run(cmd + ["build", str(src), "-o", str(exe)], env)
                 if not late.exists():
                     raise RuntimeError(f"{label} {name}: the AOT build had no late step (prog-opt.bc): is allocelide off?")
                 left[name] = len(NEW.findall(run([real["llvm-dis"], str(late), "-o", "-"], env).decode()))
+                after = len(NEW.findall(run([real["llvm-dis"], str(inlined), "-o", "-"], env).decode())) if inlined.exists() else -1
+                if after != 0:
+                    raise RuntimeError(f"{label} {name}: after the late step, {after} calls of pys_new are left (-1: no prog-late.bc): its fast path was not inlined")
                 if run([str(exe)], env, temp) != run([sys.executable, f"{name}.py"], env, temp):
                     raise RuntimeError(f"{label} {name}: the AOT executable's output differs from CPython's")
             if left["temps"] != 0:
                 raise RuntimeError(f"{label}: objects that never escape stay allocated ({left['temps']} calls of pys_new after -O2)")
             if left["kept"] == 0:
                 raise RuntimeError(f"{label}: no allocation left where a list keeps the objects: the check counts nothing")
-            print(f"{label}: allocations after -O2: none where no object escapes, {left['kept']} where a list keeps them")
+            print(f"{label}: allocations after -O2: none where no object escapes, {left['kept']} where a list keeps them; the late step inlines each")
             exe = temp / f"{label}-kept-O0"
             late.unlink(missing_ok=True)
             run(cmd + ["build", str(temp / "kept.py"), "-o", str(exe)], env | {"PYSTACHY_CFLAGS": "-O0"})

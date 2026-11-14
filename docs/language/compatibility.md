@@ -383,7 +383,8 @@ See [context-manager semantics](semantics.md#context-managers) and
   variable from-imports, immediate `C = C()` rebinding and module-level definitions replacing
   imports under the [module-scope rules](modules.md#module-scope).
 - **Class scope:** defaults referring to earlier class attributes, even builtin-like names or
-  `__name__`; class-body `__doc__`; `:=`, including in a lambda default evaluated there.
+  `__name__`, except constants an ordinary class binds once; class-body `__doc__`; `:=`,
+  including in a lambda default evaluated there.
 - **Local scope:** reads textually before the first assignment, or where only discarded code
   binds the local. `del`, `def`, `class`, `:=`, match captures and `type` also establish locals.
   Declare the type before an early read: `x: int`.
@@ -516,8 +517,10 @@ See [object protocols](semantics.md#object-protocols) and
 See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
-- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving templates, `Generic`,
-  NamedTuple or builtins; mixed dataclass/ordinary hierarchies; decorated subclasses except
+- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving templates,
+  NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
+  (bases whose constructor binds type variables or subclasses passing through their own type
+  variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
   results; overridden static/class methods called through base-typed objects.
 - **Inherited members:** assigning inherited class attributes through subclasses without their
@@ -588,13 +591,15 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 See [annotations](typing.md#annotations), [aliases](typing.md#type-aliases) and
 [generic classes](typing.md#explicit-generic-classes).
 
-- **Type variables:** `ClassVar`; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
+- **Type variables:** `ClassVar`, except `x: ClassVar[T] = value` in an ordinary module-level
+  class; `PathLike` outside a union with `str`; `TypeVar` outside template parameters
   and returns, except bound class type variables; constraints or nonstring bounds;
   `TypeVarTuple` outside unpacking in tuple, Callable or `*args`; unbound class type variables.
 - **Generic classes:** `Generic[...]` alongside another base; PEP 695 classes with bases,
   `ParamSpec` or multiple `TypeVarTuple`s; explicit `C[X]` with a `TypeVarTuple` or unannotated /
   variadic constructor parameters.
-- **Declarations:** bare `Final` outside assignments (class assignments must be constant);
+- **Declarations:** bare `Final` outside assignments (a class's needs `Final[T]` or a value
+  typed as in an unannotated class attribute, and a constant in a dataclass or `NamedTuple`);
   missing imports for typing names even in local annotations; overload stubs not followed in
   the same block by their implementation with only intervening `def`s, or nonconstant
   stub defaults. Imported missing/late implementations fail when called.

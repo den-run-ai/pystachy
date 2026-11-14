@@ -23,7 +23,7 @@ class Job:
 
 
 class Ratio:
-    n = 0
+    n = int()  # (not a constant, which a later value of the body would read: class_body_consts.py)
     half = 1 // n
     whole = 1 // 0  # (after 1 // n, which Pystachy does not evaluate)
 

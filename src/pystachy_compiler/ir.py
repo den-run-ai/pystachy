@@ -155,6 +155,13 @@ class FnInfo:
         self.cmpfields = ""  # a structural comparison adapter's canonical field types; missing reads raise at their source position
         self.ikey = ""  # (an instance: its key in its template's insts, which joins' keys name it by: Gen.fnkey)
         self.lastikey = ""  # (a template: the key of the instance its last call compiled to)
+        # a template that returns its own TypeVar (def accept(self, v: Visitor[T]) -> T): that
+        # TypeVar, and the parameters whose annotation G[..., T, ...] names it (their indexes, G,
+        # and T's position), which an argument of a class deriving from G[X, ...] binds (tv_bound)
+        self.tvret = ""
+        self.tvbparams: list[int] = []
+        self.tvbclass: list[str] = []
+        self.tvbpos: list[int] = []
         self.vararg = -1  # the index of a template's *args parameter (a tuple of the extra arguments), or -1
         self.varelem = ""  # its annotation (the type of each extra argument), or ""
         self.kwarg = -1  # the position of its **kwargs parameter, which a template's call gives a record of the extra keyword arguments (kw[...])

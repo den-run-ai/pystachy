@@ -334,7 +334,7 @@ if not os.environ.get("VERIFY_MOCK_SERIAL"):
         if time.monotonic() > deadline:
             raise SystemExit("the two private cache lanes did not overlap")
         time.sleep(0.01)
-print((82 if name == "native" else 84), "passed, 0 failed")
+print((95 if name == "native" else 97), "passed, 0 failed")
 ''')
         cache.chmod(0o755)
         for mode, serial in (("pass", False), ("pass", True), ("mismatch", False), ("timeout", False)):
@@ -348,7 +348,7 @@ print((82 if name == "native" else 84), "passed, 0 failed")
                 cache_step, gc_step = report["steps"][1:]
                 self.assertEqual(cache_step["compilers"], ["stage2", "CPython-hosted"])
                 self.assertEqual((cache_step["result"], cache_step["passed"], cache_step["expected"]),
-                                 ("pass", 166, 166), logs["runtime-cache"])
+                                 ("pass", 192, 192), logs["runtime-cache"])
                 # The parent records cache completion only after both lanes have ended.
                 # Starting GC afterwards bounds this group to two simultaneous compiler lanes.
                 self.assertLess(result.stdout.index("runtime-cache"), result.stdout.index("gc-self: starting"))

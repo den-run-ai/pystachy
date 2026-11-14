@@ -1,0 +1,5 @@
+1 2 3 3 ['raw']
+['builtins.int', 'librt.Lock'] librt.Lock
+True True
+1 2 3 [('x', 1), ('y', 2)]
+[exit 0]

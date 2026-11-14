@@ -1,0 +1,5 @@
+['is_abstract', 'is_enum'] ['is_abstract', 'is_enum'] 2 ['is_abstract'] (1, 'x') -1 65536
+['is_abstract', 'is_enum', 'is_final'] True 3
+True True False
+('leaf', 'branch') ('leaf', 'branch') ('leaf', 'branch') leaf/branch [1, 2] []
+[exit 0]

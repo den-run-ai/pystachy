@@ -1,0 +1,6 @@
+['v0', 'Av1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'Hv8']
+[True, False, True, False, True, False, True, False, True]
+['v0', 'Av1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'Hv8']
+['x0', 'Ax1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7', 'Hx8']
+18 18 [3, 3, 3, 3, 3, 3, 3, 3, 3] ['node']
+[exit 0]
