@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.diagnostics import fail, int_program
 from src.pystachy_compiler.ir import Blk, ClassInfo, IFn, Ins, Val, slot_register, tmpname, one_num
 from src.pystachy_compiler.lower_module import const_slot, struct_types
-from src.pystachy_compiler.specs import CHECKED, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
+from src.pystachy_compiler.specs import CHECKED, COMPLEXC, FCMP, FXBIT, GENDONE, GENNAME, GENNEW, GENRET, GENRETP, GENSTATE, GENVALP, ICMP, OBJECTC, RANGEC, STRLEN_RANGE, TBAA_BYTES, TBAA_DEPTH, TBAA_FIELDS, TBAA_LEN, TBAA_SIZES
 from src.pystachy_compiler.utils import atomic_dict, atomic_list, gelem, generator_identity, generator_slots, identity_abi, numeric_identity, is_dict, is_tuple, lt, selem, takes_self, targs, tslots
 
 
@@ -307,12 +307,14 @@ def gen_lower_ins(self, fn: IFn, i: Ins) -> None:
     elif op == "field.addr":
         self.rangeused = self.rangeused or i.a[0].t == RANGEC
         self.objectused = self.objectused or i.a[0].t == OBJECTC
+        self.complexused = self.complexused or i.a[0].t == COMPLEXC
         o.append(f"  {tmpname(i.r[0])} = getelementptr %C.{i.a[0].t}, ptr {i.a[0].v}, i32 0, i32 {i.k}")
         if "fieldtbaa" in self.opts:
             self.ftags[tmpname(i.r[0])] = self.field_tag(i.a[0].t, i.k)
     elif op == "alloc.fixed":
         self.rangeused = self.rangeused or i.t == RANGEC
         self.objectused = self.objectused or i.t == OBJECTC
+        self.complexused = self.complexused or i.t == COMPLEXC
         size = str(8 * tslots(i.t)) if is_tuple(i.t) else f"ptrtoint (ptr getelementptr (%C.{i.t}, ptr null, i32 1) to i64)"
         if tmpname(i.r[0]) not in self.vtuples:  # (a tuple returned by value is never made: tupleret)
             o.append(f"  {tmpname(i.r[0])} = {self.alloc_call(size, i.t)}")

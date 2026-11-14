@@ -358,6 +358,8 @@ RANGES = "_pystachy_range"  # lib's module of the class of range objects, range(
 RANGEC = "_pystachy_range$range"  # (that class)
 OBJECTS = "_pystachy_object"  # lib's module of the class of the objects object() makes, sentinels (Loader.program)
 OBJECTC = "_pystachy_object$object"  # (that class)
+COMPLEXS = "_pystachy_complex"  # lib's module of the class of complex numbers (Loader.program)
+COMPLEXC = "_pystachy_complex$complex"  # (that class)
 # lib's module of json.loads() and json.dumps() of Any values, for the modules that compile Any as
 # dynamic values (Loader.program, Gen.json_any: #779)
 JSONANY = "_pystachy_json_any"
@@ -1036,6 +1038,9 @@ RUNTIME: dict[str, str] = {
     "m.isfinite": "bool:float||", "m.isinf": "bool:float||", "m.isnan": "bool:float||", "m.asinh": "float:float|R|",
     "m.acosh": "float:float|R|", "m.atanh": "float:float|R|", "m.erf": "float:float|R|", "m.erfc": "float:float|R|",
     "m.ldexp": "float:float,int|R|", "m.frexp": "tuple[float,int]:float|A|", "m.modf": "tuple[float,float]:float|A|",
+    # complex numbers (lib/_pystachy_complex.py): CPython's division, power, absolute value and hash
+    "complex.quot": "tuple[float,float]:float,float,float,float|R A|", "complex.pow": "tuple[float,float]:float,float,float,float|R A|",
+    "complex.abs": "float:float,float|R|", "complex.hash": "int:float,float||",
     "m.nextafter": "float:float,float||", "m.ulp": "float:float||", "m.remainder": "float:float,float|R|",
     "m.fma": "float:float,float,float|R|", "m.fsum": "float:list[float]|R A rL|", "m.prod_int": "int:list[T],int|R rL|",
     "m.prod_float": "float:list[float],float|rL|", "m.floats": "list[float]:list[T]|A rL|", "m.ufloats": "list[float]:list[T],#|A rL|",

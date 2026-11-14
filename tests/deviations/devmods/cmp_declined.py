@@ -1,5 +1,5 @@
 class Annotated:
-    def __eq__(self, other: complex) -> bool:
+    def __eq__(self, other: memoryview) -> bool:
         print("annotation body")
         return True
 
