@@ -1197,6 +1197,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     et = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and self.class_join(et, jt, "") != "":
+            et = jt  # (objects of classes of one hierarchy: of their nearest common base)
         if not given and jt == "-" and self.dyn_policy(n.line) and not self.dyn_callables([v.t for v in items]):
             et = "dyn"  # (items of no one type, in a module that compiles Any so: dynamic values)
         if given and soft:
@@ -1283,6 +1285,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                     kv[1] = v.t
         if not given and (is_opt(jt) or is_tuple(jt)):
             kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and self.class_join(kv[1], jt, "") != "":
+            kv[1] = jt  # (objects of classes of one hierarchy: of their nearest common base)
         if not given and jt == "-" and not self.term:
             vh = vs[0].t
             for b in vs[1:]:
@@ -3385,9 +3389,12 @@ def left_operand(self, n: Node, want: str, resultsoft: bool, kept: list[str]) ->
     return self.expr(n, want, resultsoft=resultsoft)
 
 
-def boolop_type(self, op: str, at: str, bt: str) -> str:
-    # the type of x op y (or, and) as a value, x an at and y a bt (gen_boolop)
+def boolop_type(self, op: str, at: str, bt: str, want: str = "") -> str:
+    # the type of x op y (or, and) as a value, x an at and y a bt (gen_boolop), where it is
+    # expected to be a want
     rt = at
+    if not self.term and self.class_join(at, bt, want) != "":
+        rt = self.class_join(at, bt, want)  # (objects of two classes of one hierarchy: of their base)
     if is_opt(at) or is_opt(bt) or bt == "None":
         # x or y with x T | None: a true x is a T; x or None, x and y: T | None
         rt = unopt(at) if op == "or" else at
@@ -3461,6 +3468,8 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == BIG:
         t = BIG  # (an int and a promoting int: the int made one in its arm, bigints.py)
+    if e1 != "" and e2 != "" and self.class_join(a.t, b.t, want) != "":
+        t = self.class_join(a.t, b.t, want)  # (objects of two classes of one hierarchy: of their base)
     ph = Ins("phi", t, "")
     if e1 != "":
         a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)
@@ -3577,7 +3586,7 @@ def gen_boolop(self, n: Node, ascond: bool, want: str, resultsoft: bool = False,
         a = self.convert_at(a, at, e1)
         e1 = self.convedge
         b = self.coerce(b, bt) if bt != "" else b
-    rt = a.t if ascond else boolop_type(self, n.s, a.t, b.t)
+    rt = a.t if ascond else boolop_type(self, n.s, a.t, b.t, want)
     ph = Ins("phi", rt, "")
     if not ascond and (self.converts(a.t, rt) or narrows(a.t, rt)):
         a = self.convert_at(a, rt, e1)

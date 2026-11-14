@@ -1050,6 +1050,25 @@ def gen_join(self, a: str, b: str) -> str:
         return self.ctype("tuple", js) if "" not in js else ""
     return ""
 
+def gen_class_join(self, a: str, b: str, want: str) -> str:
+    # the nearest common base of classes a and b where a value is an object of either (an
+    # if-else's arms, or's operands, a display's items), or "" where that is not new: unless
+    # a and b are classes of the program in one hierarchy and an a cannot already hold a b (b
+    # derives from a: a value of a's type holds both), and want, what the value is expected to
+    # be, is none or a class (or one or None) that the base is or derives from. Exception
+    # classes keep their own rules
+    if a == b or a not in self.classes or b not in self.classes or self.derives(b, a):
+        return ""
+    if self.classes[a].exc != "" or self.classes[b].exc != "":
+        return ""
+    j = self.join(a, b)
+    if j not in self.classes:
+        return ""
+    w = unopt(want)
+    if want != "" and not (w in self.classes and self.derives(j, w)):
+        return ""
+    return j
+
 def gen_wider(self, a: str, b: str) -> str:
     # the type of values of types a and b as they are, where they differ only in what may be
     # None (list[str] and list[str | None]: list[str | None]), for comparisons and for new

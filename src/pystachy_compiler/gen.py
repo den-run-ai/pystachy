@@ -622,6 +622,7 @@ from src.pystachy_compiler.declarations import (
     gen_tv_bound as declarations_tv_bound,
     gen_iter_item as declarations_iter_item,
     gen_join as declarations_join,
+    gen_class_join as declarations_class_join,
     gen_none_items as declarations_none_items,
     gen_nt_base as declarations_nt_base,
     gen_nt_class as declarations_nt_class,
@@ -2964,6 +2965,9 @@ class Gen:
 
     def join(self, a: str, b: str) -> str:
         return declarations_join(self, a, b)
+
+    def class_join(self, a: str, b: str, want: str) -> str:
+        return declarations_class_join(self, a, b, want)
 
     def wider(self, a: str, b: str) -> str:
         return declarations_wider(self, a, b)

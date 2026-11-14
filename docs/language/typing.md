@@ -1080,6 +1080,14 @@ Converting a bound method to `Callable` also requires compatible parameter types
 annotated return types throughout that method's hierarchy, preserving method equality
 across base and derived views of the same receiver.
 
+A value that is an object of one of several classes of one hierarchy has their nearest common
+base as its type: the arms of `Circle(r) if c else Square(s)` (also a comprehension's item),
+the operands of `or` and `and`, and the items of a list or set display or a dict display's
+values. `[Circle(1.0), Square(2.0)]` is a `list[Shape]`, which takes another subclass's
+objects later. An expected type keeps its rules: where it is a class that this base is not, such
+as one of the classes, the error stays, and classes with no common base need an annotation, such
+as a [reference union](#native-reference-unions).
+
 `super().method(...)` starts at the base of the class defining the method, even when a further
 subclass inherits that method. `super(C, self)` may name that class or one of its ancestors;
 `Base.method(obj, ...)` explicitly selects the named base's implementation. These forms keep

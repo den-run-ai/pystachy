@@ -1,0 +1,26 @@
+if-else square 4.0
+annotated circle 12.0
+returned square
+argument square 0.25
+base second shape
+nearest base 4 shape
+farther base circle
+if-else circle 3.0
+annotated square 9.0
+returned circle
+argument circle 0.75
+base second circle
+nearest base 3 shape
+farther base shape
+or circle True
+and square True
+list ['circle', 'square', 'circle', 'shape', 'square'] 20.0
+list identity True True
+subclass first ['circle', 'shape']
+polygons [3, 4]
+dict [('c', 'circle'), ('s', 'square'), ('t', 'shape')]
+set ['circle', 'square'] True False
+comprehension ['square', 'circle', 'square', 'circle'] 34.0
+narrowed 1.0
+narrowed 3.0
+[exit 0]
