@@ -1155,8 +1155,10 @@ def gen_builtin(self, name: str, args: list[Node], want: str, resultsoft: bool =
         self.err(f"{name}() is only supported in a for loop, after 'in', or as the argument of list(), {tuple_use}sorted(), sum(), min(), max(), any(), all(), math.fsum(), math.prod() or str.join()")
     if name in self.gtypes or name in self.ltype:
         self.err(f"'{name}' is not callable")
-    if (name == "hex" or name == "oct" or name == "bin") and t in self.classes and "__index__" in self.classes[t].methods:
-        self.err(f"{name}() of an object is not supported: Pystachy does not call __index__")
+    if (name == "hex" or name == "oct" or name == "bin") and len(vals) == 1 and t in self.classes and "__index__" in self.classes[t].methods:
+        # hex(o) is hex(o.__index__())
+        index = self.index_of(v, "TypeError: " + NONEARG[name])
+        return self.format_(index if index.t == BIG else self.as_int(index), mk("str", "#" + ("x" if name == "hex" else name[0]), self.line, []))
     if name == "dict" and t in self.classes and ("keys" in self.classes[t].methods or "__iter__" in self.classes[t].methods):
         # (CPython copies a mapping by its keys() and __getitem__, else the pairs it iterates over)
         self.err(f"dict() of an object ('{tname(t)}') is not supported: make the dict with a comprehension ({{k: v for k, v in x.items()}})")

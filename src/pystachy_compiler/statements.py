@@ -940,7 +940,7 @@ def gen_stmt_main(self, n: Node) -> None:
             if o.t == "dyn":
                 self.dyn_delitem(o, self.expr(dt.kids[1], "dyn"))  # (by its box's type: dynamic.py)
             elif is_list(unopt(o.t)):
-                ix = self.ival(dt.kids[1])
+                ix = self.ival(dt.kids[1], "", True, o, nodel)
                 self.rt("pys_list_del", "void", [f"ptr {self.unwrap(o, nodel).v}", f"i64 {ix.v}"])
             elif is_dict(unopt(o.t)):
                 # del d[k] looks k up as d[k] does (dkey): a key that may be None raises
@@ -1311,7 +1311,13 @@ def gen_augassign(self, n: Node) -> None:
         if bnd[2] != "1":
             av.append(f"i64 {bnd[2]}")
         cur = Val(self.rt("pys_list_slice" if bnd[2] == "1" else "pys_list_slice_step", "ptr", av), o.t)
-        self.slice_store(o, bnd, self.inplace(op, cur, n.kids[1]))
+        value = self.inplace(op, cur, n.kids[1])
+        again = [raw[j] if raw[j].startswith("?") and values[int(raw[j][1:])].t != "dyn" else bnd[j] for j in range(3)]
+        if again[0].startswith("?") or again[1].startswith("?") or again[2].startswith("?"):
+            # (a bound that is an object: CPython's store asks it for its __index__() again,
+            # after the right operand has run)
+            self.slice_dyn(again, values)
+        self.slice_store(o, again, value)
     elif t.kind == "index":
         o = self.expr(t.kids[0], "")
         sub = "TypeError: 'NoneType' object is not subscriptable"
@@ -1321,10 +1327,18 @@ def gen_augassign(self, n: Node) -> None:
             return
         if is_list(unopt(o.t)):
             et = elem(unopt(o.t))
-            i = self.ival(t.kids[1])
+            ix = self.expr(t.kids[1], "int")
+            indexed = ix.t in self.classes and "__index__" in self.classes[ix.t].methods
+            noindex = "TypeError: list indices must be integers or slices, not NoneType"
+            if indexed:
+                o = self.unwrap(o, sub)
+            i = self.coerce(self.as_int(self.index_of(ix, noindex)), "int")
             o = self.unwrap(o, sub)
             cur = self.list_item(o, i)
             r = self.list_hold(self.inplace(op, cur, n.kids[1]), et)
+            if indexed:
+                # (an object: CPython's store asks it for its __index__() again)
+                i = self.coerce(self.as_int(self.index_of(ix, noindex)), "int")
             self.list_store(o, r, "set", i.v)
         elif is_dict(unopt(o.t)):
             # d[k] op= v stores k where d[k] has found it: k is looked up as d[k] does (dkey),
@@ -1658,7 +1672,7 @@ def gen_for_(self, n: Node, hide: list[str], arg: IterArg | None = None) -> None
             own = self.owned_gen(seq, args[0])
             obj = is_opt(seq.t) or seq.t in self.classes
             a1 = args[1].kids[0] if args[1].kind == "kw" else args[1]
-            st = self.ival(a1).v
+            st = self.ival(a1, "", False).v
             self.gencall = ""
             seq = self.iterable(seq)
             if own == 0 and obj:
@@ -1768,12 +1782,18 @@ def gen_iterable(self, v: Val, msg: str = "TypeError: 'NoneType' object is not i
             self.err(f"cannot iterate over {typestr(v.t)}: its items have different types")
     return self.as_list(v, "iter")
 
-def gen_ival(self, n: Node, none: str = "") -> Val:
+def gen_ival(self, n: Node, none: str = "", index: bool = True, recv: Val | None = None, recvnone: str = "") -> Val:
     # an index, slice bound or range() argument: an int, or a bool used as one (as CPython does);
-    # an int | None that is None raises none ("Kind: text")
+    # an int | None that is None raises none ("Kind: text"). With index, an object gives its
+    # __index__() (not enumerate()'s start, which CPython counts from as it is), which the
+    # sequence recv asks for: one that is None raises recvnone before the call
     v = self.expr(n, "int")
     if is_sopt(v.t) and none != "":
         v = self.unwrap(v, none)
+    if index and v.t in self.classes and "__index__" in self.classes[v.t].methods:
+        if recv is not None and is_opt(recv.t):
+            self.guard(self.ptr_cmp("==", recv, Val("null", "None")).v, recvnone)
+        v = self.index_of(v, none if none != "" else "TypeError: 'NoneType' object cannot be interpreted as an integer")
     return self.coerce(self.as_int(v), "int")
 
 def gen_range_args(self, args: list[Node]) -> list[str]:
@@ -1783,6 +1803,7 @@ def gen_range_args(self, args: list[Node]) -> list[str]:
     for v in vals:
         if is_sopt(v.t):
             v = self.unwrap(v, "TypeError: 'NoneType' object cannot be interpreted as an integer")
+        v = self.index_of(v, "TypeError: 'NoneType' object cannot be interpreted as an integer")
         vs.append(self.coerce(self.as_int(v), "int").v)
     if len(vs) == 1:
         vs.insert(0, "0")

@@ -348,6 +348,7 @@ and fields are available. See [single inheritance](typing.md#single-inheritance)
 | `abs(o)`, `divmod(o, x)` | `__abs__`, `__divmod__` |
 | Equality and ordering | `__eq__`, `__ne__` and rich comparisons |
 | Truth and length | `__bool__`, `__len__` |
+| An index: `xs[o]`, a slice bound, `seq * o`, `range(o)`, `hex(o)`, `oct(o)`, `bin(o)`, `%x`, `%o`, `%c` | `__index__`, which must return an `int`; `%d` asks `__int__` first, and `%e`, `%f`, `%g` ask `__float__` first |
 | Representation | `__str__`, `__repr__`, `__format__` |
 | Call, indexing, assignment, deletion | `__call__`, `__getitem__`, `__setitem__`, `__delitem__` |
 | Membership and iteration | `__contains__`, or supported `__iter__` |

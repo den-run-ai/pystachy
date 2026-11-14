@@ -1566,7 +1566,9 @@ def gen_fill(self, n: Node, m: str, args: list[Node], want: str = "") -> Val:
     if is_list(o.t) and (m == "append" or m == "extend" or m == "insert") and len(args) == (2 if m == "insert" else 1):
         if empty_display(args[-1]):
             self.no_type(name)  # (xs.append([]) shows nothing of what xs holds)
-        i = self.ival(args[0]) if m == "insert" else Val("0", "int")
+        # (an object as insert's index stays an error here: CPython asks it for __index__()
+        # once the value is evaluated too, which is evaluated below)
+        i = self.ival(args[0], "", False) if m == "insert" else Val("0", "int")
         if m == "extend" and self.is_mapcall(args[0]):
             args = [self.mapgen(args[0])]
         if m == "extend" and args[0].kind == "listcomp" and args[0].s == "gen":
@@ -2006,7 +2008,7 @@ def gen_assign(self, t: Node, v: Val) -> None:
             self.dyn_setitem(o, self.expr(t.kids[1], "dyn"), v)  # (by its box's type: dynamic.py)
             return
         if is_list(unopt(o.t)):
-            ix = self.ival(t.kids[1])
+            ix = self.ival(t.kids[1], "", True, o, nosub)
             o = self.unwrap(o, nosub)
             self.list_store(o, self.list_hold(v, elem(o.t)), "set", ix.v)
         elif is_dict(unopt(o.t)):
@@ -2097,8 +2099,9 @@ def gen_assign(self, t: Node, v: Val) -> None:
 def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] | None = None, values: list[Val] | None = None) -> Val:
     # the list that slice t (xs[lo:hi:st]) assigns to or deletes from: xs, then the bounds (into
     # bnd: start, stop and step, see Gen.slice_bound), are evaluated, and xs being None raises
-    # nosub. A dynamic augmented assignment also keeps the evaluated bounds in raw/values:
-    # CPython converts them again at the store, after the RHS has run. Strs and tuples cannot
+    # nosub. An augmented assignment also keeps the evaluated bounds in raw/values: CPython
+    # converts them again at the store, after the RHS has run (a typed list's objects, which
+    # their __index__() gives the bounds of: slice_late). Strs and tuples cannot
     # change, and Pystachy has no slice objects for __setitem__
     o = self.expr(t.kids[0], "")
     dvs: list[Val] = []
@@ -2120,6 +2123,10 @@ def gen_slice_target(self, t: Node, bnd: list[str], nosub: str, raw: list[str] |
     bnd.append(self.slice_step(t.kids[3], dvs) if len(t.kids) == 4 else "1")
     o = self.unwrap(o, nosub)
     if is_list(o.t):
+        if raw is not None:
+            raw.extend(bnd)
+        if values is not None:
+            values.extend(dvs)
         self.slice_dyn(bnd, dvs)  # (bounds that are Any values: converted now, as CPython does)
         return o
     what = "deletion" if "deletion" in nosub else "assignment"

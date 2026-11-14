@@ -542,6 +542,7 @@ from src.pystachy_compiler.conversions import (
     gen_ptr_cmp as conversions_ptr_cmp,
     gen_as_float as conversions_as_float,
     gen_as_int as conversions_as_int,
+    gen_index_of as conversions_index_of,
     gen_coerce as conversions_coerce,
     gen_desc as conversions_desc,
     gen_floats as conversions_floats,
@@ -892,6 +893,7 @@ from src.pystachy_compiler.expressions import (
     gen_richcmp as expressions_richcmp,
     gen_slice_bound as expressions_slice_bound,
     gen_slice_dyn as expressions_slice_dyn,
+    gen_slice_late as expressions_slice_late,
     gen_slice_step as expressions_slice_step,
     gen_slice_tuple as expressions_slice_tuple,
     gen_stack_key as expressions_stack_key,
@@ -2782,6 +2784,9 @@ class Gen:
     def as_int(self, v: Val) -> Val:
         return conversions_as_int(self, v)
 
+    def index_of(self, v: Val, none: str) -> Val:
+        return conversions_index_of(self, v, none)
+
     def as_float(self, v: Val) -> Val:
         return conversions_as_float(self, v)
 
@@ -4212,8 +4217,8 @@ class Gen:
     def iterable(self, v: Val, msg: str="TypeError: 'NoneType' object is not iterable") -> Val:
         return statements_iterable(self, v, msg)
 
-    def ival(self, n: Node, none: str='') -> Val:
-        return statements_ival(self, n, none)
+    def ival(self, n: Node, none: str='', index: bool=True, recv: Val | None=None, recvnone: str='') -> Val:
+        return statements_ival(self, n, none, index, recv, recvnone)
 
     def range_args(self, args: list[Node]) -> list[str]:
         return statements_range_args(self, args)
@@ -4329,8 +4334,8 @@ class Gen:
     def scalar_receiver(self, n: Node) -> str:
         return expressions_scalar_receiver(self, n)
 
-    def seq_index(self, n: Node, msg: str) -> Val:
-        return expressions_seq_index(self, n, msg)
+    def seq_index(self, n: Node, msg: str, recv: Val | None=None, recvnone: str='') -> Val:
+        return expressions_seq_index(self, n, msg, recv, recvnone)
 
     def list_hint_type(self, a: str, b: str) -> str:
         return expressions_list_hint_type(self, a, b)
@@ -4430,6 +4435,9 @@ class Gen:
 
     def slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
         return expressions_slice_dyn(self, ss, dvs)
+
+    def slice_late(self, v: Val, bound: bool) -> str:
+        return expressions_slice_late(self, v, bound)
 
     def slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
         return expressions_slice_tuple(self, o, bnd, step)

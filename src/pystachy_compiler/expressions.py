@@ -777,7 +777,7 @@ def gen_scalar_receiver(self, n: Node) -> str:
     return self.plain_field(n)
 
 
-def gen_seq_index(self, n: Node, msg: str) -> Val:
+def gen_seq_index(self, n: Node, msg: str, recv: Val | None = None, recvnone: str = "") -> Val:
     # The index n of a builtin sequence (bytes, str, list, Any tuple), which reads it as a
     # number only: a proven scalar index tree (scalar_read_index) publishes no operand's
     # object, as an arithmetic operand does not, so its variable and field reads need no
@@ -787,7 +787,7 @@ def gen_seq_index(self, n: Node, msg: str) -> Val:
     if not held and self.idhere() and n.kind != "int" and self.scalar_read_index(n):
         fn.scalar_reads = True
     try:
-        return self.ival(n, msg)
+        return self.ival(n, msg, True, recv, recvnone)
     finally:
         fn.scalar_reads = held
 
@@ -2071,8 +2071,25 @@ def gen_conversion(self, v: Val, flags: str, width: str, prec: str, t: str) -> V
         if width == "" and prec == "":
             return sv
         return self.format_(sv, mk("str", ("<" if "-" in flags else ">") + width + prec, self.line, []))
+    if v.t in self.classes and t != "c":
+        # A number's conversion asks an object for it: %d for its __int__(), else its
+        # __index__(); %x, %X and %o for its __index__(); %e, %f and %g for its __float__(), else
+        # its __index__(). Every argument is evaluated before the first conversion.
+        methods = self.classes[v.t].methods
+        asked = "__int__" if t in "diu" else "__float__" if t not in "xXo" else "__index__"
+        asked = asked if asked in methods else "__index__" if "__index__" in methods else ""
+        if asked != "":
+            self.notnone(v, f"TypeError: %{t} format: {'a real number' if t in 'diu' else 'an integer'} is required, not NoneType" if t in "diuxXo" else "TypeError: must be real number, not NoneType")
+            r = self.protocol(v, asked, [])
+            if asked == "__float__" and r.t != "float":
+                self.err(f"{tname(v.t)}.__float__ returned non-float (type {tname(r.t)})")
+            if asked != "__float__" and r.t != "int" and r.t != "bool" and r.t != BIG:
+                self.err(f"{asked} returned non-int (type {tname(r.t)})")
+            v = r
     if t == "c":
         # one character, of a str or a code point (a precision, flags but '-' change nothing)
+        if v.t in self.classes and "__index__" in self.classes[v.t].methods:
+            v = self.index_of(v, "TypeError: %c requires int or char")
         if unopt(v.t) == "str":
             v = self.unwrap(v, "TypeError: %c requires int or char")
         if v.t == BIG:
@@ -2227,9 +2244,9 @@ def gen_slice_bound(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
         return "1" if bv.v == "true" else "0"
     if is_sopt(bv.t):
         return self.optbound(bv)  # (None: omitted)
-    if bv.t == "dyn":
+    if bv.t == "dyn" or (bv.t in self.classes and "__index__" in self.classes[bv.t].methods):
         dvs.append(bv)
-        return f"?{len(dvs) - 1}"  # (an Any value's, which slice_dyn converts)
+        return f"?{len(dvs) - 1}"  # (an Any value's or an object's, which slice_dyn converts)
     # a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker
     bd = self.coerce(self.as_int(bv), "int").v  # (as ival)
     if bd.startswith("%"):
@@ -2250,25 +2267,50 @@ def gen_slice_step(self, x: Node, dvs: list[Val], fold: bool = False) -> str:
         return "1" if bv.v == "true" else "0"
     if is_sopt(bv.t):
         return self.optint(bv, "1")
-    if bv.t == "dyn":
+    if bv.t == "dyn" or (bv.t in self.classes and "__index__" in self.classes[bv.t].methods):
         dvs.append(bv)
-        return f"?{len(dvs) - 1}"  # (an Any value's, which slice_dyn converts)
+        return f"?{len(dvs) - 1}"  # (an Any value's or an object's, which slice_dyn converts)
     return self.coerce(self.as_int(bv), "int").v
 
 def gen_slice_dyn(self, ss: list[str], dvs: list[Val]) -> None:
     # the start, stop and step ss of a typed sequence's slice, all evaluated, where the receiver is
-    # no None: those that are Any values, ?<index> into dvs (slice_bound), converted as CPython's
-    # PySlice_Unpack converts them once the slice is made, the step first, and its 0's ValueError
-    # before a bound's TypeError (dynamic.py)
+    # no None: those that are Any values or objects with __index__, ?<index> into dvs
+    # (slice_bound), converted as CPython's PySlice_Unpack converts them once the slice is made,
+    # the step first, and its 0's ValueError before a bound's TypeError (dynamic.py)
     if len(dvs) == 0:
         return
     if ss[2].startswith("?"):
-        ss[2] = self.dyn_bound(dvs[int(ss[2][1:])], False)
+        ss[2] = self.slice_late(dvs[int(ss[2][1:])], False)
     if ss[0].startswith("?") or ss[1].startswith("?"):
         self.slice_check(ss[2])
     for i in range(2):
         if ss[i].startswith("?"):
-            ss[i] = self.dyn_bound(dvs[int(ss[i][1:])], True)
+            ss[i] = self.slice_late(dvs[int(ss[i][1:])], True)
+
+def gen_slice_late(self, v: Val, bound: bool) -> str:
+    # a slice's start or stop (bound) or step that slice_dyn converts: an Any value's, or an
+    # object's __index__(), where None is an omitted one as it is in CPython
+    if v.t == "dyn":
+        return self.dyn_bound(v, bound)
+    omitted = "-9223372036854775808" if bound else "1"
+    e0 = self.cur
+    call = self.label()
+    end = self.label()
+    self.cbr(self.isnull(v), end, call)
+    self.place(call)
+    self.nn[v.v] = True
+    r = self.coerce(self.as_int(self.index_of(v, "TypeError: slice indices must be integers or None or have an __index__ method")), "int")
+    given = r.v
+    if bound:
+        # (a given bound of -2**63 clamps exactly like -2**63 + 1, which is not the marker)
+        given = self.select(self.num_cmp("==", r, Val(omitted, "int")).v, Val("-9223372036854775807", "int"), r)
+    e1 = self.cur
+    self.br(end)
+    self.place(end)
+    ph = Ins("phi", "int", "")
+    self.incoming(ph, omitted, e0)
+    self.incoming(ph, given, e1)
+    return self.phi(ph)
 
 def gen_slice_tuple(self, o: Val, bnd: list[str], step: str) -> Val:
     # o[lo:hi:st] of a fixed-shape tuple or a NamedTuple (a plain tuple of its fields, as in
@@ -2922,15 +2964,15 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
         o = self.kw_dict(o)  # (another key: looked up in the dict CPython makes)
         t = o.t
     if is_vtuple(t):
-        i = self.seq_index(n.kids[1], "TypeError: tuple indices must be integers or slices, not NoneType")
+        i = self.seq_index(n.kids[1], "TypeError: tuple indices must be integers or slices, not NoneType", o, sub)
         o = self.unwrap(o, sub)
         return self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), targs(t)[0])
     if t == "bytes":
-        i = self.seq_index(n.kids[1], "TypeError: byte indices must be integers or slices, not NoneType")
+        i = self.seq_index(n.kids[1], "TypeError: byte indices must be integers or slices, not NoneType", o, sub)
         o = self.unwrap(o, sub)
         return self.bytes_read(o, i)
     if is_list(t) or t == "str":
-        i = self.seq_index(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'")
+        i = self.seq_index(n.kids[1], "TypeError: list indices must be integers or slices, not NoneType" if is_list(t) else "TypeError: string indices must be integers, not 'NoneType'", o, sub)
         o = self.unwrap(o, sub)
         if t == "str":
             return Val(self.rt("pys_str_get", "ptr", [f"ptr {o.v}", f"i64 {i.v}"]), "str")
@@ -4532,6 +4574,12 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         return Val(self.rt("pys_list_add", "ptr", [f"ptr {a.v}", f"ptr {b.v}"]), lw)  # (a new list of the items of both)
     if op == "*" and seq and b.t == "int":
         return Val(self.rt("pys_str_mul" if a.t == "str" else "pys_bytes_mul" if a.t == "bytes" else "pys_list_mul", "ptr", [f"ptr {a.v}", f"i64 {b.v}"]), a.t)
+    if op == "*" and seq and b.t in self.classes and "__index__" in self.classes[b.t].methods:
+        # seq * o: the sequence asks the object for its __index__(), both operands evaluated
+        return self.arith(op, a, self.index_of(b, "TypeError: can't multiply sequence by non-int of type 'NoneType'"), shown)
+    if op == "*" and (b.t == "str" or b.t == "bytes" or is_list(b.t)) and a.t in self.classes and "__index__" in self.classes[a.t].methods:
+        # o * seq, where o's class has no __mul__ that takes it: the sequence's reflected method
+        return self.arith(op, b, self.index_of(a, "TypeError: can't multiply sequence by non-int of type 'NoneType'"), shown)
     if op == "+" and is_tuple(a.t) and is_tuple(b.t):
         return self.tuple_([self.tget(a, i) for i in range(len(targs(a.t)))] + [self.tget(b, i) for i in range(len(targs(b.t)))])
     if op == "+" and (is_vtuple(a.t) or is_vtuple(b.t)) and (is_vtuple(a.t) or is_tuple(a.t)) and (is_vtuple(b.t) or is_tuple(b.t)):

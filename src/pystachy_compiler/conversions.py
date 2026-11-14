@@ -75,6 +75,19 @@ def gen_as_int(self, v: Val) -> Val:
         return self.big_narrow(v)  # (a promoting int, where a 64-bit int is needed: bigints.py)
     return v
 
+def gen_index_of(self, v: Val, none: str) -> Val:
+    # operator.index() of an object, where CPython asks a subscript, a slice bound, a
+    # repetition count or an argument of range(), hex(), oct(), bin() and %x for an integer:
+    # its class's __index__(), which must return an int. Every operand is evaluated before it
+    # is called, and None raises none ("Kind: text"). Numbers pass unchanged.
+    if v.t not in self.classes or "__index__" not in self.classes[v.t].methods:
+        return v
+    self.notnone(v, none)
+    r = self.protocol(v, "__index__", [])
+    if r.t != "int" and r.t != "bool" and r.t != BIG:
+        self.err(f"__index__ returned non-int (type {tname(r.t)})")
+    return r
+
 def gen_as_float(self, v: Val) -> Val:
     if v.t == "int" or v.t == "bool":
         return self.num_cast(v, "float")

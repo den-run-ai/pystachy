@@ -1,0 +1,5 @@
+0xff 0o377 0b11111111
+0x100 0o400 0b100000000
+-0x5 -0o5 -0b101
+TypeError: 'NoneType' object cannot be interpreted as an integer
+[exit 0]
