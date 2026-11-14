@@ -258,6 +258,13 @@ or generator/async initializers retain eager formatting
 - **Module `__doc__`:** without a docstring, if its first mention is in a `def` or
   `class` and module code later assigns it, an earlier read raises `NameError`
   instead of returning `None`.
+- **Module `__file__`:** the absolute path of the source file the module was compiled
+  from. An executable built ahead of time keeps that path wherever it runs, also once
+  the source has moved. A `lib/` module names Pystachy's file, not CPython's. A builtin
+  module (`os`, `sys`, `math`) has no `__file__`, where CPython's `os` and extension
+  modules have one, and neither has a namespace package, whose `__file__` is `None` in
+  CPython: both are rejected
+  ([error test](../../tests/errors/io/file_name.py)).
 
 | Runtime value | Difference |
 |---|---|

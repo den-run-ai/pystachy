@@ -1,5 +1,6 @@
 """Loader component of the self-hosting Pystachy compiler."""
 from __future__ import annotations
+import os
 from src.pystachy_compiler import program_cache
 from src.pystachy_compiler.analysis import (
     accel_try,
@@ -3352,6 +3353,11 @@ class Loader:
         if n.s == "__doc__" and "__doc__" not in t.kinds:
             self.moddoc(n, t)
             return ""
+        if n.s == "__file__" and "__file__" not in t.kinds and t.path != "":
+            n.kind = "str"  # (module t's source file: see qexpr)
+            n.s = os.path.abspath(t.path)
+            n.kids = []
+            return ""
         k = t.kinds.get(n.s, "")
         key = f"{base}  {n.s}"
         if key in self.fragile:
@@ -3388,6 +3394,12 @@ class Loader:
                     fail(f"module '{m.name if m.name != '' else self.ext}' binds __name__, which is not supported in an imported module", n.line)
                 n.kind = "str"
                 n.s = m.name if m.name != "" else self.ext
+                return
+            if k == "name" and n.s == "__file__" and n.s not in loc and n.s not in m.rebound and self.kind(m, n.s) == "" and m.path != "":
+                # (its source file, as CPython names it: an absolute path, which an executable
+                # built ahead of time keeps from where it was built)
+                n.kind = "str"
+                n.s = os.path.abspath(m.path)
                 return
             if k == "name" and n.s == "__debug__":
                 n.kind = "True"  # (CPython runs without -O; nothing can bind __debug__)
