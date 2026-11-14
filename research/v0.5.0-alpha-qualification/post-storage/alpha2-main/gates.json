@@ -1,0 +1,3295 @@
+{
+  "status": "passed",
+  "created_utc": "2026-11-14T18:26:34.302092+00:00",
+  "source_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+  "source_tree": "717a8c9386ae9f5f6545cc3686a9e22282fc560c",
+  "documented_release_workflows": [
+    "CI",
+    "Installation",
+    "Lint",
+    "Packages"
+  ],
+  "additional_source_relevant_workflows": [
+    "Coverage",
+    "Performance smoke",
+    "Variants"
+  ],
+  "all_seven_applicable_push_workflows_complete_and_successful": true,
+  "workflow_run_pages_read": 1,
+  "workflow_runs_total": 7,
+  "check_run_pages_read": 2,
+  "check_runs_total": 132,
+  "all_job_check_runs_in_complete_commit_check_inventory": true,
+  "workflow_job_outcomes": {
+    "success": 131,
+    "skipped": 1
+  },
+  "all_executed_jobs_within_15_minute_cap": true,
+  "expected_skip_explanation": "CI pr-variants is guarded by github.event_name == pull_request and therefore skipped for this main push. Full native/alternate-configuration groups ran separately on both architectures.",
+  "runs": [
+    {
+      "id": 43624131788,
+      "name": "CI",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43624131788",
+      "documented_release_gate": true,
+      "source_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "jobs": {
+        "success": 73,
+        "skipped": 1
+      },
+      "jobs_total": 74,
+      "all_attempt_job_records": 74,
+      "job_pages_read": 1,
+      "expected_skipped_jobs": [
+        "native JIT and variants (worker ${{ matrix.worker }})"
+      ],
+      "max_job_seconds": 619.0,
+      "longest_job": {
+        "id": 132537773745,
+        "name": "verify (gc-jit-1, x86_64)",
+        "seconds": 619.0,
+        "started_at": "2026-11-14T18:06:43Z",
+        "completed_at": "2026-11-14T18:17:02Z"
+      },
+      "job_timings": [
+        {
+          "id": 132536117302,
+          "name": "verify (bootstrap, x86_64)",
+          "seconds": 270.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:04:45Z"
+        },
+        {
+          "id": 132536117909,
+          "name": "verify (bootstrap, aarch64)",
+          "seconds": 341.0,
+          "started_at": "2026-11-14T18:00:17Z",
+          "completed_at": "2026-11-14T18:05:58Z"
+        },
+        {
+          "id": 132537772818,
+          "name": "Bootstrap tier and native archive qualification",
+          "seconds": 297.0,
+          "started_at": "2026-11-14T18:06:01Z",
+          "completed_at": "2026-11-14T18:10:58Z"
+        },
+        {
+          "id": 132537773673,
+          "name": "verify (native-0, x86_64)",
+          "seconds": 256.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:10:18Z"
+        },
+        {
+          "id": 132537773717,
+          "name": "verify (opt-off-1, x86_64)",
+          "seconds": 233.0,
+          "started_at": "2026-11-14T18:06:32Z",
+          "completed_at": "2026-11-14T18:10:25Z"
+        },
+        {
+          "id": 132537773720,
+          "name": "verify (python-free-3, x86_64)",
+          "seconds": 258.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:10:20Z"
+        },
+        {
+          "id": 132537773727,
+          "name": "verify (gc-ir-0, x86_64)",
+          "seconds": 581.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:15:43Z"
+        },
+        {
+          "id": 132537773730,
+          "name": "verify (ubsan-1, x86_64)",
+          "seconds": 439.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:13:21Z"
+        },
+        {
+          "id": 132537773731,
+          "name": "verify (native-1, x86_64)",
+          "seconds": 359.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:12:01Z"
+        },
+        {
+          "id": 132537773735,
+          "name": "verify (opt-off-0, x86_64)",
+          "seconds": 319.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:11:21Z"
+        },
+        {
+          "id": 132537773739,
+          "name": "verify (native-2, x86_64)",
+          "seconds": 211.0,
+          "started_at": "2026-11-14T18:06:01Z",
+          "completed_at": "2026-11-14T18:09:32Z"
+        },
+        {
+          "id": 132537773741,
+          "name": "verify (ubsan-2, x86_64)",
+          "seconds": 302.0,
+          "started_at": "2026-11-14T18:06:01Z",
+          "completed_at": "2026-11-14T18:11:03Z"
+        },
+        {
+          "id": 132537773742,
+          "name": "verify (ubsan-4, x86_64)",
+          "seconds": 313.0,
+          "started_at": "2026-11-14T18:11:15Z",
+          "completed_at": "2026-11-14T18:16:28Z"
+        },
+        {
+          "id": 132537773745,
+          "name": "verify (gc-jit-1, x86_64)",
+          "seconds": 619.0,
+          "started_at": "2026-11-14T18:06:43Z",
+          "completed_at": "2026-11-14T18:17:02Z"
+        },
+        {
+          "id": 132537773746,
+          "name": "verify (hosted, x86_64)",
+          "seconds": 456.0,
+          "started_at": "2026-11-14T18:06:36Z",
+          "completed_at": "2026-11-14T18:14:12Z"
+        },
+        {
+          "id": 132537773747,
+          "name": "verify (python-free-2, x86_64)",
+          "seconds": 335.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:11:37Z"
+        },
+        {
+          "id": 132537773750,
+          "name": "verify (dynany-optin-0, x86_64)",
+          "seconds": 332.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:11:34Z"
+        },
+        {
+          "id": 132537773760,
+          "name": "verify (gc-self, x86_64)",
+          "seconds": 339.0,
+          "started_at": "2026-11-14T18:07:00Z",
+          "completed_at": "2026-11-14T18:12:39Z"
+        },
+        {
+          "id": 132537773762,
+          "name": "verify (python-free-0, x86_64)",
+          "seconds": 298.0,
+          "started_at": "2026-11-14T18:06:01Z",
+          "completed_at": "2026-11-14T18:10:59Z"
+        },
+        {
+          "id": 132537773765,
+          "name": "verify (ubsan-3, x86_64)",
+          "seconds": 328.0,
+          "started_at": "2026-11-14T18:10:30Z",
+          "completed_at": "2026-11-14T18:15:58Z"
+        },
+        {
+          "id": 132537773770,
+          "name": "verify (ubsan-0, x86_64)",
+          "seconds": 400.0,
+          "started_at": "2026-11-14T18:09:39Z",
+          "completed_at": "2026-11-14T18:16:19Z"
+        },
+        {
+          "id": 132537773778,
+          "name": "verify (python-free-1, x86_64)",
+          "seconds": 334.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:11:36Z"
+        },
+        {
+          "id": 132537773782,
+          "name": "verify (gc-jit-0, x86_64)",
+          "seconds": 487.0,
+          "started_at": "2026-11-14T18:08:00Z",
+          "completed_at": "2026-11-14T18:16:07Z"
+        },
+        {
+          "id": 132537773784,
+          "name": "verify (gc-ir-1, x86_64)",
+          "seconds": 508.0,
+          "started_at": "2026-11-14T18:10:05Z",
+          "completed_at": "2026-11-14T18:18:33Z"
+        },
+        {
+          "id": 132537773794,
+          "name": "verify (gc-aot-1, x86_64)",
+          "seconds": 252.0,
+          "started_at": "2026-11-14T18:08:17Z",
+          "completed_at": "2026-11-14T18:12:29Z"
+        },
+        {
+          "id": 132537773802,
+          "name": "verify (opt-off-2, x86_64)",
+          "seconds": 279.0,
+          "started_at": "2026-11-14T18:11:36Z",
+          "completed_at": "2026-11-14T18:16:15Z"
+        },
+        {
+          "id": 132537773803,
+          "name": "verify (runtime-cache, x86_64)",
+          "seconds": 529.0,
+          "started_at": "2026-11-14T18:06:02Z",
+          "completed_at": "2026-11-14T18:14:51Z"
+        },
+        {
+          "id": 132537773812,
+          "name": "verify (gc-aot-2, x86_64)",
+          "seconds": 270.0,
+          "started_at": "2026-11-14T18:06:32Z",
+          "completed_at": "2026-11-14T18:11:02Z"
+        },
+        {
+          "id": 132537773877,
+          "name": "verify (gc-aot-0, x86_64)",
+          "seconds": 257.0,
+          "started_at": "2026-11-14T18:11:04Z",
+          "completed_at": "2026-11-14T18:15:21Z"
+        },
+        {
+          "id": 132537773886,
+          "name": "verify (scaling, x86_64)",
+          "seconds": 218.0,
+          "started_at": "2026-11-14T18:10:07Z",
+          "completed_at": "2026-11-14T18:13:45Z"
+        },
+        {
+          "id": 132537773915,
+          "name": "verify (python-int-optin-0, x86_64)",
+          "seconds": 318.0,
+          "started_at": "2026-11-14T18:11:20Z",
+          "completed_at": "2026-11-14T18:16:38Z"
+        },
+        {
+          "id": 132537773932,
+          "name": "verify (dynany-optin-1, x86_64)",
+          "seconds": 409.0,
+          "started_at": "2026-11-14T18:10:22Z",
+          "completed_at": "2026-11-14T18:17:11Z"
+        },
+        {
+          "id": 132537773973,
+          "name": "verify (gc-aot-2, aarch64)",
+          "seconds": 201.0,
+          "started_at": "2026-11-14T18:07:56Z",
+          "completed_at": "2026-11-14T18:11:17Z"
+        },
+        {
+          "id": 132537773979,
+          "name": "verify (gc-aot-0, aarch64)",
+          "seconds": 231.0,
+          "started_at": "2026-11-14T18:11:40Z",
+          "completed_at": "2026-11-14T18:15:31Z"
+        },
+        {
+          "id": 132537773981,
+          "name": "verify (native-0, aarch64)",
+          "seconds": 212.0,
+          "started_at": "2026-11-14T18:12:24Z",
+          "completed_at": "2026-11-14T18:15:56Z"
+        },
+        {
+          "id": 132537774001,
+          "name": "verify (native-1, aarch64)",
+          "seconds": 221.0,
+          "started_at": "2026-11-14T18:11:04Z",
+          "completed_at": "2026-11-14T18:14:45Z"
+        },
+        {
+          "id": 132537774009,
+          "name": "verify (ubsan-0, aarch64)",
+          "seconds": 313.0,
+          "started_at": "2026-11-14T18:13:36Z",
+          "completed_at": "2026-11-14T18:18:49Z"
+        },
+        {
+          "id": 132537774011,
+          "name": "verify (python-free-2, aarch64)",
+          "seconds": 327.0,
+          "started_at": "2026-11-14T18:08:16Z",
+          "completed_at": "2026-11-14T18:13:43Z"
+        },
+        {
+          "id": 132537774014,
+          "name": "verify (contracts, x86_64)",
+          "seconds": 496.0,
+          "started_at": "2026-11-14T18:15:09Z",
+          "completed_at": "2026-11-14T18:23:25Z"
+        },
+        {
+          "id": 132537774017,
+          "name": "verify (dynany-optin-2, x86_64)",
+          "seconds": 414.0,
+          "started_at": "2026-11-14T18:14:56Z",
+          "completed_at": "2026-11-14T18:21:50Z"
+        },
+        {
+          "id": 132537774018,
+          "name": "verify (ubsan-3, aarch64)",
+          "seconds": 306.0,
+          "started_at": "2026-11-14T18:12:36Z",
+          "completed_at": "2026-11-14T18:17:42Z"
+        },
+        {
+          "id": 132537774020,
+          "name": "verify (gc-ir-1, aarch64)",
+          "seconds": 315.0,
+          "started_at": "2026-11-14T18:13:36Z",
+          "completed_at": "2026-11-14T18:18:51Z"
+        },
+        {
+          "id": 132537774028,
+          "name": "verify (gc-jit-1, aarch64)",
+          "seconds": 173.0,
+          "started_at": "2026-11-14T18:10:41Z",
+          "completed_at": "2026-11-14T18:13:34Z"
+        },
+        {
+          "id": 132537774031,
+          "name": "verify (gc-ir-0, aarch64)",
+          "seconds": 356.0,
+          "started_at": "2026-11-14T18:16:03Z",
+          "completed_at": "2026-11-14T18:21:59Z"
+        },
+        {
+          "id": 132537774034,
+          "name": "verify (opt-off-2, aarch64)",
+          "seconds": 227.0,
+          "started_at": "2026-11-14T18:12:31Z",
+          "completed_at": "2026-11-14T18:16:18Z"
+        },
+        {
+          "id": 132537774035,
+          "name": "verify (python-int-optin-0, aarch64)",
+          "seconds": 261.0,
+          "started_at": "2026-11-14T18:12:34Z",
+          "completed_at": "2026-11-14T18:16:55Z"
+        },
+        {
+          "id": 132537774037,
+          "name": "verify (ubsan-4, aarch64)",
+          "seconds": 306.0,
+          "started_at": "2026-11-14T18:13:03Z",
+          "completed_at": "2026-11-14T18:18:09Z"
+        },
+        {
+          "id": 132537774041,
+          "name": "verify (python-free-0, aarch64)",
+          "seconds": 325.0,
+          "started_at": "2026-11-14T18:15:47Z",
+          "completed_at": "2026-11-14T18:21:12Z"
+        },
+        {
+          "id": 132537774046,
+          "name": "verify (python-int-optin-2, x86_64)",
+          "seconds": 301.0,
+          "started_at": "2026-11-14T18:14:16Z",
+          "completed_at": "2026-11-14T18:19:17Z"
+        },
+        {
+          "id": 132537774050,
+          "name": "verify (dynany-optin-0, aarch64)",
+          "seconds": 253.0,
+          "started_at": "2026-11-14T18:16:06Z",
+          "completed_at": "2026-11-14T18:20:19Z"
+        },
+        {
+          "id": 132537774051,
+          "name": "verify (python-int-optin-1, x86_64)",
+          "seconds": 388.0,
+          "started_at": "2026-11-14T18:15:23Z",
+          "completed_at": "2026-11-14T18:21:51Z"
+        },
+        {
+          "id": 132537774052,
+          "name": "verify (native-2, aarch64)",
+          "seconds": 225.0,
+          "started_at": "2026-11-14T18:11:42Z",
+          "completed_at": "2026-11-14T18:15:27Z"
+        },
+        {
+          "id": 132537774053,
+          "name": "verify (ubsan-2, aarch64)",
+          "seconds": 298.0,
+          "started_at": "2026-11-14T18:11:03Z",
+          "completed_at": "2026-11-14T18:16:01Z"
+        },
+        {
+          "id": 132537774056,
+          "name": "verify (opt-off-0, aarch64)",
+          "seconds": 225.0,
+          "started_at": "2026-11-14T18:13:50Z",
+          "completed_at": "2026-11-14T18:17:35Z"
+        },
+        {
+          "id": 132537774058,
+          "name": "verify (python-free-3, aarch64)",
+          "seconds": 301.0,
+          "started_at": "2026-11-14T18:12:41Z",
+          "completed_at": "2026-11-14T18:17:42Z"
+        },
+        {
+          "id": 132537774070,
+          "name": "verify (hosted, aarch64)",
+          "seconds": 346.0,
+          "started_at": "2026-11-14T18:13:25Z",
+          "completed_at": "2026-11-14T18:19:11Z"
+        },
+        {
+          "id": 132537774071,
+          "name": "verify (gc-self, aarch64)",
+          "seconds": 308.0,
+          "started_at": "2026-11-14T18:13:18Z",
+          "completed_at": "2026-11-14T18:18:26Z"
+        },
+        {
+          "id": 132537774073,
+          "name": "verify (benchmarks, x86_64)",
+          "seconds": 369.0,
+          "started_at": "2026-11-14T18:15:23Z",
+          "completed_at": "2026-11-14T18:21:32Z"
+        },
+        {
+          "id": 132537774077,
+          "name": "verify (gc-jit-0, aarch64)",
+          "seconds": 217.0,
+          "started_at": "2026-11-14T18:16:15Z",
+          "completed_at": "2026-11-14T18:19:52Z"
+        },
+        {
+          "id": 132537774096,
+          "name": "verify (python-free-1, aarch64)",
+          "seconds": 284.0,
+          "started_at": "2026-11-14T18:16:00Z",
+          "completed_at": "2026-11-14T18:20:44Z"
+        },
+        {
+          "id": 132537774099,
+          "name": "verify (runtime-cache, aarch64)",
+          "seconds": 532.0,
+          "started_at": "2026-11-14T18:14:14Z",
+          "completed_at": "2026-11-14T18:23:06Z"
+        },
+        {
+          "id": 132537774103,
+          "name": "verify (ubsan-1, aarch64)",
+          "seconds": 308.0,
+          "started_at": "2026-11-14T18:14:11Z",
+          "completed_at": "2026-11-14T18:19:19Z"
+        },
+        {
+          "id": 132537774104,
+          "name": "verify (dynany-optin-2, aarch64)",
+          "seconds": 257.0,
+          "started_at": "2026-11-14T18:16:23Z",
+          "completed_at": "2026-11-14T18:20:40Z"
+        },
+        {
+          "id": 132537774107,
+          "name": "verify (gc-aot-1, aarch64)",
+          "seconds": 195.0,
+          "started_at": "2026-11-14T18:15:36Z",
+          "completed_at": "2026-11-14T18:18:51Z"
+        },
+        {
+          "id": 132537774126,
+          "name": "verify (dynany-optin-1, aarch64)",
+          "seconds": 275.0,
+          "started_at": "2026-11-14T18:16:19Z",
+          "completed_at": "2026-11-14T18:20:54Z"
+        },
+        {
+          "id": 132537774144,
+          "name": "verify (opt-off-1, aarch64)",
+          "seconds": 231.0,
+          "started_at": "2026-11-14T18:15:31Z",
+          "completed_at": "2026-11-14T18:19:22Z"
+        },
+        {
+          "id": 132537774153,
+          "name": "verify (python-int-optin-1, aarch64)",
+          "seconds": 283.0,
+          "started_at": "2026-11-14T18:16:11Z",
+          "completed_at": "2026-11-14T18:20:54Z"
+        },
+        {
+          "id": 132537776928,
+          "name": "verify (scaling, aarch64)",
+          "seconds": 109.0,
+          "started_at": "2026-11-14T18:16:24Z",
+          "completed_at": "2026-11-14T18:18:13Z"
+        },
+        {
+          "id": 132537776986,
+          "name": "verify (contracts, aarch64)",
+          "seconds": 421.0,
+          "started_at": "2026-11-14T18:16:34Z",
+          "completed_at": "2026-11-14T18:23:35Z"
+        },
+        {
+          "id": 132537776997,
+          "name": "verify (python-int-optin-2, aarch64)",
+          "seconds": 291.0,
+          "started_at": "2026-11-14T18:16:43Z",
+          "completed_at": "2026-11-14T18:21:34Z"
+        },
+        {
+          "id": 132537777033,
+          "name": "verify (benchmarks, aarch64)",
+          "seconds": 443.0,
+          "started_at": "2026-11-14T18:17:00Z",
+          "completed_at": "2026-11-14T18:24:23Z"
+        },
+        {
+          "id": 132543134959,
+          "name": "make verify (Linux x86-64, LLVM 18, Python 3.13)",
+          "seconds": 24.0,
+          "started_at": "2026-11-14T18:24:26Z",
+          "completed_at": "2026-11-14T18:24:50Z"
+        },
+        {
+          "id": 132543135001,
+          "name": "make verify (Linux ARM64, LLVM 18, Python 3.13)",
+          "seconds": 24.0,
+          "started_at": "2026-11-14T18:24:26Z",
+          "completed_at": "2026-11-14T18:24:50Z"
+        }
+      ],
+      "prior_attempt_outcomes": []
+    },
+    {
+      "id": 43624131838,
+      "name": "Coverage",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43624131838",
+      "documented_release_gate": false,
+      "source_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "jobs": {
+        "success": 23
+      },
+      "jobs_total": 23,
+      "all_attempt_job_records": 23,
+      "job_pages_read": 1,
+      "expected_skipped_jobs": [],
+      "max_job_seconds": 621.0,
+      "longest_job": {
+        "id": 132536117925,
+        "name": "hosted compiler coverage (corpus 7 of 10)",
+        "seconds": 621.0,
+        "started_at": "2026-11-14T18:00:15Z",
+        "completed_at": "2026-11-14T18:10:36Z"
+      },
+      "job_timings": [
+        {
+          "id": 132536117639,
+          "name": "verified compiler producer",
+          "seconds": 286.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:05:01Z"
+        },
+        {
+          "id": 132536117770,
+          "name": "hosted compiler coverage (corpus 8 of 10)",
+          "seconds": 374.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:06:29Z"
+        },
+        {
+          "id": 132536117852,
+          "name": "hosted compiler coverage (corpus 1 of 10)",
+          "seconds": 589.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:10:04Z"
+        },
+        {
+          "id": 132536117863,
+          "name": "hosted compiler coverage (corpus 2 of 10)",
+          "seconds": 451.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:07:46Z"
+        },
+        {
+          "id": 132536117877,
+          "name": "hosted compiler coverage (corpus 3 of 10)",
+          "seconds": 431.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:07:26Z"
+        },
+        {
+          "id": 132536117878,
+          "name": "hosted compiler coverage (corpus 9 of 10)",
+          "seconds": 585.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:10:00Z"
+        },
+        {
+          "id": 132536117897,
+          "name": "hosted compiler coverage (corpus 4 of 10)",
+          "seconds": 457.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:07:52Z"
+        },
+        {
+          "id": 132536117925,
+          "name": "hosted compiler coverage (corpus 7 of 10)",
+          "seconds": 621.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:10:36Z"
+        },
+        {
+          "id": 132536117950,
+          "name": "hosted compiler coverage (ffi, ir)",
+          "seconds": 475.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:08:10Z"
+        },
+        {
+          "id": 132536117959,
+          "name": "hosted compiler coverage (cache, unit)",
+          "seconds": 373.0,
+          "started_at": "2026-11-14T18:00:17Z",
+          "completed_at": "2026-11-14T18:06:30Z"
+        },
+        {
+          "id": 132536117993,
+          "name": "hosted compiler coverage (corpus 0 of 10)",
+          "seconds": 385.0,
+          "started_at": "2026-11-14T18:00:16Z",
+          "completed_at": "2026-11-14T18:06:41Z"
+        },
+        {
+          "id": 132536118084,
+          "name": "hosted compiler coverage (corpus 6 of 10)",
+          "seconds": 529.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:09:04Z"
+        },
+        {
+          "id": 132536118140,
+          "name": "hosted compiler coverage (corpus 5 of 10)",
+          "seconds": 463.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:07:58Z"
+        },
+        {
+          "id": 132537499835,
+          "name": "native runtime coverage (corpus 0 of 6)",
+          "seconds": 311.0,
+          "started_at": "2026-11-14T18:05:04Z",
+          "completed_at": "2026-11-14T18:10:15Z"
+        },
+        {
+          "id": 132537499836,
+          "name": "native runtime coverage (corpus 5 of 6)",
+          "seconds": 304.0,
+          "started_at": "2026-11-14T18:05:04Z",
+          "completed_at": "2026-11-14T18:10:08Z"
+        },
+        {
+          "id": 132537499844,
+          "name": "native runtime coverage (corpus 2 of 6)",
+          "seconds": 443.0,
+          "started_at": "2026-11-14T18:05:04Z",
+          "completed_at": "2026-11-14T18:12:27Z"
+        },
+        {
+          "id": 132537499867,
+          "name": "native runtime coverage (ffi)",
+          "seconds": 191.0,
+          "started_at": "2026-11-14T18:05:04Z",
+          "completed_at": "2026-11-14T18:08:15Z"
+        },
+        {
+          "id": 132537499875,
+          "name": "native runtime coverage (corpus 3 of 6)",
+          "seconds": 452.0,
+          "started_at": "2026-11-14T18:05:04Z",
+          "completed_at": "2026-11-14T18:12:36Z"
+        },
+        {
+          "id": 132537499907,
+          "name": "native runtime coverage (corpus 1 of 6)",
+          "seconds": 299.0,
+          "started_at": "2026-11-14T18:05:04Z",
+          "completed_at": "2026-11-14T18:10:03Z"
+        },
+        {
+          "id": 132537500053,
+          "name": "native runtime coverage (corpus 4 of 6)",
+          "seconds": 337.0,
+          "started_at": "2026-11-14T18:05:04Z",
+          "completed_at": "2026-11-14T18:10:41Z"
+        },
+        {
+          "id": 132539101883,
+          "name": "hosted compiler coverage (report)",
+          "seconds": 86.0,
+          "started_at": "2026-11-14T18:11:06Z",
+          "completed_at": "2026-11-14T18:12:32Z"
+        },
+        {
+          "id": 132539679628,
+          "name": "native runtime coverage (report)",
+          "seconds": 32.0,
+          "started_at": "2026-11-14T18:12:41Z",
+          "completed_at": "2026-11-14T18:13:13Z"
+        },
+        {
+          "id": 132539855435,
+          "name": "publish main's coverage to the badges branch",
+          "seconds": 9.0,
+          "started_at": "2026-11-14T18:13:37Z",
+          "completed_at": "2026-11-14T18:13:46Z"
+        }
+      ],
+      "prior_attempt_outcomes": []
+    },
+    {
+      "id": 43624131831,
+      "name": "Installation",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43624131831",
+      "documented_release_gate": true,
+      "source_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "jobs": {
+        "success": 7
+      },
+      "jobs_total": 7,
+      "all_attempt_job_records": 7,
+      "job_pages_read": 1,
+      "expected_skipped_jobs": [],
+      "max_job_seconds": 561.0,
+      "longest_job": {
+        "id": 132536117529,
+        "name": "Install (macos-15-intel)",
+        "seconds": 561.0,
+        "started_at": "2026-11-14T18:00:16Z",
+        "completed_at": "2026-11-14T18:09:37Z"
+      },
+      "job_timings": [
+        {
+          "id": 132536117358,
+          "name": "Source install with pinned LLVM (macos-15)",
+          "seconds": 327.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:05:42Z"
+        },
+        {
+          "id": 132536117498,
+          "name": "Install (ubuntu-24.04)",
+          "seconds": 402.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:06:57Z"
+        },
+        {
+          "id": 132536117529,
+          "name": "Install (macos-15-intel)",
+          "seconds": 561.0,
+          "started_at": "2026-11-14T18:00:16Z",
+          "completed_at": "2026-11-14T18:09:37Z"
+        },
+        {
+          "id": 132536117566,
+          "name": "Install (macos-15)",
+          "seconds": 438.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:07:33Z"
+        },
+        {
+          "id": 132536117595,
+          "name": "Install (ubuntu-24.04-arm)",
+          "seconds": 474.0,
+          "started_at": "2026-11-14T18:00:17Z",
+          "completed_at": "2026-11-14T18:08:11Z"
+        },
+        {
+          "id": 132536117598,
+          "name": "Source install with pinned LLVM (ubuntu-24.04)",
+          "seconds": 206.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:03:41Z"
+        },
+        {
+          "id": 132536117636,
+          "name": "Source install with pinned LLVM (ubuntu-24.04-arm)",
+          "seconds": 215.0,
+          "started_at": "2026-11-14T18:00:17Z",
+          "completed_at": "2026-11-14T18:03:52Z"
+        }
+      ],
+      "prior_attempt_outcomes": []
+    },
+    {
+      "id": 43624131842,
+      "name": "Lint",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43624131842",
+      "documented_release_gate": true,
+      "source_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "jobs": {
+        "success": 1
+      },
+      "jobs_total": 1,
+      "all_attempt_job_records": 1,
+      "job_pages_read": 1,
+      "expected_skipped_jobs": [],
+      "max_job_seconds": 670.0,
+      "longest_job": {
+        "id": 132536117243,
+        "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+        "seconds": 670.0,
+        "started_at": "2026-11-14T18:00:15Z",
+        "completed_at": "2026-11-14T18:11:25Z"
+      },
+      "job_timings": [
+        {
+          "id": 132536117243,
+          "name": "make lint (ruff, shellcheck, clang -Wall -Wextra)",
+          "seconds": 670.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:11:25Z"
+        }
+      ],
+      "prior_attempt_outcomes": []
+    },
+    {
+      "id": 43624131798,
+      "name": "Packages",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43624131798",
+      "documented_release_gate": true,
+      "source_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "jobs": {
+        "success": 1
+      },
+      "jobs_total": 1,
+      "all_attempt_job_records": 1,
+      "job_pages_read": 1,
+      "expected_skipped_jobs": [],
+      "max_job_seconds": 327.0,
+      "longest_job": {
+        "id": 132536117229,
+        "name": "source wheels (CPython, JIT and AOT)",
+        "seconds": 327.0,
+        "started_at": "2026-11-14T18:00:15Z",
+        "completed_at": "2026-11-14T18:05:42Z"
+      },
+      "job_timings": [
+        {
+          "id": 132536117229,
+          "name": "source wheels (CPython, JIT and AOT)",
+          "seconds": 327.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:05:42Z"
+        }
+      ],
+      "prior_attempt_outcomes": []
+    },
+    {
+      "id": 43624131736,
+      "name": "Performance smoke",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43624131736",
+      "documented_release_gate": false,
+      "source_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "jobs": {
+        "success": 1
+      },
+      "jobs_total": 1,
+      "all_attempt_job_records": 1,
+      "job_pages_read": 1,
+      "expected_skipped_jobs": [],
+      "max_job_seconds": 626.0,
+      "longest_job": {
+        "id": 132536116698,
+        "name": "smoke",
+        "seconds": 626.0,
+        "started_at": "2026-11-14T18:00:14Z",
+        "completed_at": "2026-11-14T18:10:40Z"
+      },
+      "job_timings": [
+        {
+          "id": 132536116698,
+          "name": "smoke",
+          "seconds": 626.0,
+          "started_at": "2026-11-14T18:00:14Z",
+          "completed_at": "2026-11-14T18:10:40Z"
+        }
+      ],
+      "prior_attempt_outcomes": []
+    },
+    {
+      "id": 43624131795,
+      "name": "Variants",
+      "url": "https://github.com/den-run-ai/pystachy/actions/runs/43624131795",
+      "documented_release_gate": false,
+      "source_sha": "80490143498d149d407343ba1cb7aedb1db2d2c5",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "attempt": 1,
+      "jobs": {
+        "success": 25
+      },
+      "jobs_total": 25,
+      "all_attempt_job_records": 25,
+      "job_pages_read": 1,
+      "expected_skipped_jobs": [],
+      "max_job_seconds": 379.0,
+      "longest_job": {
+        "id": 132536117071,
+        "name": "verified compiler producer",
+        "seconds": 379.0,
+        "started_at": "2026-11-14T18:00:15Z",
+        "completed_at": "2026-11-14T18:06:34Z"
+      },
+      "job_timings": [
+        {
+          "id": 132536117071,
+          "name": "verified compiler producer",
+          "seconds": 379.0,
+          "started_at": "2026-11-14T18:00:15Z",
+          "completed_at": "2026-11-14T18:06:34Z"
+        },
+        {
+          "id": 132537938535,
+          "name": "variant opt-2 (shard 2/4, JIT and AOT)",
+          "seconds": 203.0,
+          "started_at": "2026-11-14T18:10:43Z",
+          "completed_at": "2026-11-14T18:14:06Z"
+        },
+        {
+          "id": 132537938555,
+          "name": "variant opt-2 (shard 0/4, JIT and AOT)",
+          "seconds": 202.0,
+          "started_at": "2026-11-14T18:10:18Z",
+          "completed_at": "2026-11-14T18:13:40Z"
+        },
+        {
+          "id": 132537938557,
+          "name": "variant opt-1 cflags-O0 (shard 2/4, JIT and AOT)",
+          "seconds": 247.0,
+          "started_at": "2026-11-14T18:10:43Z",
+          "completed_at": "2026-11-14T18:14:50Z"
+        },
+        {
+          "id": 132537938558,
+          "name": "variant opt-2 (shard 1/4, JIT and AOT)",
+          "seconds": 205.0,
+          "started_at": "2026-11-14T18:09:34Z",
+          "completed_at": "2026-11-14T18:12:59Z"
+        },
+        {
+          "id": 132537938570,
+          "name": "variant opt-3 (shard 0/4, JIT and AOT)",
+          "seconds": 302.0,
+          "started_at": "2026-11-14T18:09:07Z",
+          "completed_at": "2026-11-14T18:14:09Z"
+        },
+        {
+          "id": 132537938577,
+          "name": "variant opt-2 (shard 3/4, JIT and AOT)",
+          "seconds": 180.0,
+          "started_at": "2026-11-14T18:08:13Z",
+          "completed_at": "2026-11-14T18:11:13Z"
+        },
+        {
+          "id": 132537938579,
+          "name": "variant opt-4 (shard 2/4, JIT and AOT)",
+          "seconds": 238.0,
+          "started_at": "2026-11-14T18:14:48Z",
+          "completed_at": "2026-11-14T18:18:46Z"
+        },
+        {
+          "id": 132537938581,
+          "name": "variant opt-3 (shard 2/4, JIT and AOT)",
+          "seconds": 222.0,
+          "started_at": "2026-11-14T18:11:24Z",
+          "completed_at": "2026-11-14T18:15:06Z"
+        },
+        {
+          "id": 132537938583,
+          "name": "variant opt-5 (shard 1/4, JIT and AOT)",
+          "seconds": 172.0,
+          "started_at": "2026-11-14T18:07:36Z",
+          "completed_at": "2026-11-14T18:10:28Z"
+        },
+        {
+          "id": 132537938584,
+          "name": "variant opt-3 (shard 1/4, JIT and AOT)",
+          "seconds": 282.0,
+          "started_at": "2026-11-14T18:11:28Z",
+          "completed_at": "2026-11-14T18:16:10Z"
+        },
+        {
+          "id": 132537938591,
+          "name": "variant opt-1 cflags-O0 (shard 3/4, JIT and AOT)",
+          "seconds": 279.0,
+          "started_at": "2026-11-14T18:14:49Z",
+          "completed_at": "2026-11-14T18:19:28Z"
+        },
+        {
+          "id": 132537938596,
+          "name": "variant opt-4 (shard 0/4, JIT and AOT)",
+          "seconds": 266.0,
+          "started_at": "2026-11-14T18:07:29Z",
+          "completed_at": "2026-11-14T18:11:55Z"
+        },
+        {
+          "id": 132537938597,
+          "name": "variant opt-1 cflags-O0 (shard 1/4, JIT and AOT)",
+          "seconds": 330.0,
+          "started_at": "2026-11-14T18:11:57Z",
+          "completed_at": "2026-11-14T18:17:27Z"
+        },
+        {
+          "id": 132537938602,
+          "name": "variant opt-4 (shard 3/4, JIT and AOT)",
+          "seconds": 184.0,
+          "started_at": "2026-11-14T18:10:27Z",
+          "completed_at": "2026-11-14T18:13:31Z"
+        },
+        {
+          "id": 132537938614,
+          "name": "variant opt-1 cflags-O0 (shard 0/4, JIT and AOT)",
+          "seconds": 310.0,
+          "started_at": "2026-11-14T18:10:11Z",
+          "completed_at": "2026-11-14T18:15:21Z"
+        },
+        {
+          "id": 132537938624,
+          "name": "variant opt-5 (shard 2/4, JIT and AOT)",
+          "seconds": 271.0,
+          "started_at": "2026-11-14T18:07:48Z",
+          "completed_at": "2026-11-14T18:12:19Z"
+        },
+        {
+          "id": 132537938642,
+          "name": "variant opt-4 (shard 1/4, JIT and AOT)",
+          "seconds": 169.0,
+          "started_at": "2026-11-14T18:12:04Z",
+          "completed_at": "2026-11-14T18:14:53Z"
+        },
+        {
+          "id": 132537938662,
+          "name": "variant opt-6 (shard 2/4, JIT and AOT)",
+          "seconds": 284.0,
+          "started_at": "2026-11-14T18:10:03Z",
+          "completed_at": "2026-11-14T18:14:47Z"
+        },
+        {
+          "id": 132537938673,
+          "name": "variant opt-5 (shard 3/4, JIT and AOT)",
+          "seconds": 189.0,
+          "started_at": "2026-11-14T18:13:47Z",
+          "completed_at": "2026-11-14T18:16:56Z"
+        },
+        {
+          "id": 132537938677,
+          "name": "variant opt-5 (shard 0/4, JIT and AOT)",
+          "seconds": 190.0,
+          "started_at": "2026-11-14T18:10:21Z",
+          "completed_at": "2026-11-14T18:13:31Z"
+        },
+        {
+          "id": 132537938684,
+          "name": "variant opt-6 (shard 0/4, JIT and AOT)",
+          "seconds": 259.0,
+          "started_at": "2026-11-14T18:13:42Z",
+          "completed_at": "2026-11-14T18:18:01Z"
+        },
+        {
+          "id": 132537938698,
+          "name": "variant opt-6 (shard 1/4, JIT and AOT)",
+          "seconds": 199.0,
+          "started_at": "2026-11-14T18:13:45Z",
+          "completed_at": "2026-11-14T18:17:04Z"
+        },
+        {
+          "id": 132537938723,
+          "name": "variant opt-6 (shard 3/4, JIT and AOT)",
+          "seconds": 259.0,
+          "started_at": "2026-11-14T18:14:54Z",
+          "completed_at": "2026-11-14T18:19:13Z"
+        },
+        {
+          "id": 132537938772,
+          "name": "variant opt-3 (shard 3/4, JIT and AOT)",
+          "seconds": 254.0,
+          "started_at": "2026-11-14T18:14:53Z",
+          "completed_at": "2026-11-14T18:19:07Z"
+        }
+      ],
+      "prior_attempt_outcomes": []
+    }
+  ],
+  "verification": {
+    "x86_64": {
+      "report": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/tested/x86_64-verification/verification.json",
+      "report_sha256": "346c3d72e0210a83c912605f7450f013a4e41752f568d05e4f3e120b3b8babed",
+      "summary": {
+        "steps": 58,
+        "passed": 58,
+        "failed": 0,
+        "seconds": 801.72
+      },
+      "toolchain": {
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin",
+        "python": "Python 3.13.16"
+      },
+      "platform": {
+        "cpu": "graniterapids",
+        "machine": "x86_64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1014-aws"
+      },
+      "source_files_verified": 60,
+      "source_suite_checks": 7272,
+      "source_mode_checks": 4722,
+      "ci": {
+        "groups": [
+          {
+            "group": "bootstrap",
+            "seconds": 243.734,
+            "steps": 1,
+            "report": "build/ci-reports/x86_64-verification-bootstrap/verification.json",
+            "platform": {
+              "cpu": "graniterapids",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1014-aws"
+            }
+          },
+          {
+            "group": "hosted",
+            "seconds": 326.249,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-hosted/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1014-aws",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "graniterapids"
+            }
+          },
+          {
+            "group": "native-0",
+            "seconds": 225.55,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-native-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1014-aws",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "graniterapids"
+            }
+          },
+          {
+            "group": "native-1",
+            "seconds": 330.452,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-native-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver3"
+            }
+          },
+          {
+            "group": "native-2",
+            "seconds": 190.477,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-native-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "(unknown)"
+            }
+          },
+          {
+            "group": "opt-off-0",
+            "seconds": 291.207,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-opt-off-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "sapphirerapids"
+            }
+          },
+          {
+            "group": "opt-off-1",
+            "seconds": 203.364,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-opt-off-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1014-aws",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "graniterapids"
+            }
+          },
+          {
+            "group": "opt-off-2",
+            "seconds": 250.683,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-opt-off-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "python-free-0",
+            "seconds": 274.582,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-python-free-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1014-aws",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "graniterapids"
+            }
+          },
+          {
+            "group": "python-free-1",
+            "seconds": 305.507,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-python-free-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "python-free-2",
+            "seconds": 299.2,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-python-free-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "python-free-3",
+            "seconds": 238.294,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-python-free-3/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "(unknown)"
+            }
+          },
+          {
+            "group": "ubsan-0",
+            "seconds": 359.856,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-ubsan-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver3"
+            }
+          },
+          {
+            "group": "ubsan-1",
+            "seconds": 393.425,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-ubsan-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver3"
+            }
+          },
+          {
+            "group": "ubsan-2",
+            "seconds": 267.585,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-ubsan-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "ubsan-3",
+            "seconds": 285.172,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-ubsan-3/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "ubsan-4",
+            "seconds": 277.747,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-ubsan-4/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "gc-self",
+            "seconds": 307.643,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-gc-self/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver3"
+            }
+          },
+          {
+            "group": "gc-ir-0",
+            "seconds": 557.986,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-gc-ir-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "sapphirerapids"
+            }
+          },
+          {
+            "group": "gc-ir-1",
+            "seconds": 483.433,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-gc-ir-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "sapphirerapids"
+            }
+          },
+          {
+            "group": "gc-jit-0",
+            "seconds": 235.227,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-gc-jit-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "gc-jit-1",
+            "seconds": 242.819,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-gc-jit-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver3"
+            }
+          },
+          {
+            "group": "gc-aot-0",
+            "seconds": 225.85,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-gc-aot-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1014-aws",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "graniterapids"
+            }
+          },
+          {
+            "group": "gc-aot-1",
+            "seconds": 230.572,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-gc-aot-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "gc-aot-2",
+            "seconds": 238.658,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-gc-aot-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "runtime-cache",
+            "seconds": 289.298,
+            "steps": 3,
+            "report": "build/ci-reports/x86_64-verification-runtime-cache/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "dynany-optin-0",
+            "seconds": 300.445,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-dynany-optin-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "dynany-optin-1",
+            "seconds": 381.099,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-dynany-optin-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "dynany-optin-2",
+            "seconds": 387.094,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-dynany-optin-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver3"
+            }
+          },
+          {
+            "group": "python-int-optin-0",
+            "seconds": 287.014,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-python-int-optin-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "python-int-optin-1",
+            "seconds": 359.01,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-python-int-optin-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "sapphirerapids"
+            }
+          },
+          {
+            "group": "python-int-optin-2",
+            "seconds": 258.342,
+            "steps": 2,
+            "report": "build/ci-reports/x86_64-verification-python-int-optin-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1014-aws",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "graniterapids"
+            }
+          },
+          {
+            "group": "contracts",
+            "seconds": 367.753,
+            "steps": 22,
+            "report": "build/ci-reports/x86_64-verification-contracts/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "znver4"
+            }
+          },
+          {
+            "group": "benchmarks",
+            "seconds": 150.5,
+            "steps": 3,
+            "report": "build/ci-reports/x86_64-verification-benchmarks/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1014-aws",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "graniterapids"
+            }
+          },
+          {
+            "group": "scaling",
+            "seconds": 65.719,
+            "steps": 3,
+            "report": "build/ci-reports/x86_64-verification-scaling/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "x86_64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "(unknown)"
+            }
+          }
+        ],
+        "max_group_seconds": 557.986,
+        "critical_path_seconds": 801.72,
+        "runner_seconds": 10131.546,
+        "timing_scope": "verification only; bootstrap then parallel groups; excludes queue, setup and artifact transfer"
+      },
+      "steps": [
+        {
+          "name": "bootstrap",
+          "result": "pass",
+          "seconds": 240.739,
+          "ci_group": "bootstrap",
+          "ir_identical": true,
+          "ir_sha256": "b0dd064147332c2969e46626b9d55688ff269ce8085862a621775500cce22a7e",
+          "bootstrap_reused": false
+        },
+        {
+          "name": "tests-cpython",
+          "result": "pass",
+          "seconds": 322.76,
+          "ci_group": "hosted",
+          "expected": 124,
+          "passed": 124,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "ir_identical": true
+        },
+        {
+          "name": "tests-native-0",
+          "result": "pass",
+          "seconds": 222.072,
+          "ci_group": "native-0",
+          "expected": 2421,
+          "passed": 2421,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 0
+        },
+        {
+          "name": "tests-native-1",
+          "result": "pass",
+          "seconds": 325.064,
+          "ci_group": "native-1",
+          "expected": 2425,
+          "passed": 2425,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 1
+        },
+        {
+          "name": "tests-native-2",
+          "result": "pass",
+          "seconds": 187.634,
+          "ci_group": "native-2",
+          "expected": 2426,
+          "passed": 2426,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 2
+        },
+        {
+          "name": "tests-opt-off-0",
+          "result": "pass",
+          "seconds": 286.086,
+          "ci_group": "opt-off-0",
+          "expected": 2421,
+          "passed": 2421,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 0
+        },
+        {
+          "name": "tests-opt-off-1",
+          "result": "pass",
+          "seconds": 199.928,
+          "ci_group": "opt-off-1",
+          "expected": 2425,
+          "passed": 2425,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 1
+        },
+        {
+          "name": "tests-opt-off-2",
+          "result": "pass",
+          "seconds": 246.196,
+          "ci_group": "opt-off-2",
+          "expected": 2426,
+          "passed": 2426,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 2
+        },
+        {
+          "name": "runtime-cache",
+          "result": "pass",
+          "seconds": 250.328,
+          "ci_group": "runtime-cache",
+          "expected": 192,
+          "passed": 192,
+          "failed": 0
+        },
+        {
+          "name": "python-free-0",
+          "result": "pass",
+          "seconds": 271.11,
+          "ci_group": "python-free-0",
+          "expected": 1817,
+          "passed": 1817,
+          "failed": 0,
+          "shard_count": 4,
+          "shard_index": 0,
+          "ir_identical": true
+        },
+        {
+          "name": "python-free-1",
+          "result": "pass",
+          "seconds": 301.092,
+          "ci_group": "python-free-1",
+          "expected": 1822,
+          "passed": 1822,
+          "failed": 0,
+          "shard_count": 4,
+          "shard_index": 1,
+          "ir_identical": true
+        },
+        {
+          "name": "python-free-2",
+          "result": "pass",
+          "seconds": 294.793,
+          "ci_group": "python-free-2",
+          "expected": 1816,
+          "passed": 1816,
+          "failed": 0,
+          "shard_count": 4,
+          "shard_index": 2,
+          "ir_identical": true
+        },
+        {
+          "name": "python-free-3",
+          "result": "pass",
+          "seconds": 235.282,
+          "ci_group": "python-free-3",
+          "expected": 1817,
+          "passed": 1817,
+          "failed": 0,
+          "shard_count": 4,
+          "shard_index": 3,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-0",
+          "result": "pass",
+          "seconds": 354.47,
+          "ci_group": "ubsan-0",
+          "expected": 1884,
+          "passed": 1884,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 0,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-1",
+          "result": "pass",
+          "seconds": 387.479,
+          "ci_group": "ubsan-1",
+          "expected": 1890,
+          "passed": 1890,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 1,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-2",
+          "result": "pass",
+          "seconds": 263.149,
+          "ci_group": "ubsan-2",
+          "expected": 1888,
+          "passed": 1888,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 2,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-3",
+          "result": "pass",
+          "seconds": 280.751,
+          "ci_group": "ubsan-3",
+          "expected": 1894,
+          "passed": 1894,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 3,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-4",
+          "result": "pass",
+          "seconds": 273.277,
+          "ci_group": "ubsan-4",
+          "expected": 1888,
+          "passed": 1888,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 4,
+          "ir_identical": true
+        },
+        {
+          "name": "gc-self",
+          "result": "pass",
+          "seconds": 302.268,
+          "ci_group": "gc-self",
+          "ir_identical": true,
+          "compiler_interval": 5000
+        },
+        {
+          "name": "gc-ir-0",
+          "result": "pass",
+          "seconds": 553.027,
+          "ci_group": "gc-ir-0",
+          "shard_count": 2,
+          "shard_index": 0,
+          "ir_identical": true,
+          "compiler_interval": 1000
+        },
+        {
+          "name": "gc-ir-1",
+          "result": "pass",
+          "seconds": 478.477,
+          "ci_group": "gc-ir-1",
+          "shard_count": 2,
+          "shard_index": 1,
+          "ir_identical": true,
+          "compiler_interval": 1000
+        },
+        {
+          "name": "gc-jit-0",
+          "result": "pass",
+          "seconds": 230.685,
+          "ci_group": "gc-jit-0",
+          "expected": 2214,
+          "passed": 2214,
+          "failed": 0,
+          "modes": [
+            "jit"
+          ],
+          "cases": 2098,
+          "shard_cases": 2238,
+          "shard_count": 2,
+          "shard_index": 0
+        },
+        {
+          "name": "gc-jit-1",
+          "result": "pass",
+          "seconds": 237.264,
+          "ci_group": "gc-jit-1",
+          "expected": 2213,
+          "passed": 2213,
+          "failed": 0,
+          "modes": [
+            "jit"
+          ],
+          "cases": 2098,
+          "shard_cases": 2238,
+          "shard_count": 2,
+          "shard_index": 1
+        },
+        {
+          "name": "gc-aot-0",
+          "result": "pass",
+          "seconds": 222.387,
+          "ci_group": "gc-aot-0",
+          "expected": 1474,
+          "passed": 1474,
+          "failed": 0,
+          "modes": [
+            "aot"
+          ],
+          "cases": 1399,
+          "shard_cases": 1492,
+          "shard_count": 3,
+          "shard_index": 0
+        },
+        {
+          "name": "gc-aot-1",
+          "result": "pass",
+          "seconds": 226.044,
+          "ci_group": "gc-aot-1",
+          "expected": 1476,
+          "passed": 1476,
+          "failed": 0,
+          "modes": [
+            "aot"
+          ],
+          "cases": 1399,
+          "shard_cases": 1492,
+          "shard_count": 3,
+          "shard_index": 1
+        },
+        {
+          "name": "gc-aot-2",
+          "result": "pass",
+          "seconds": 233.973,
+          "ci_group": "gc-aot-2",
+          "expected": 1477,
+          "passed": 1477,
+          "failed": 0,
+          "modes": [
+            "aot"
+          ],
+          "cases": 1399,
+          "shard_cases": 1492,
+          "shard_count": 3,
+          "shard_index": 2
+        },
+        {
+          "name": "benchmarks",
+          "result": "pass",
+          "seconds": 32.289,
+          "ci_group": "benchmarks"
+        },
+        {
+          "name": "example-cli",
+          "result": "pass",
+          "seconds": 114.764,
+          "ci_group": "benchmarks"
+        },
+        {
+          "name": "dynany-optin-0",
+          "result": "pass",
+          "seconds": 295.936,
+          "ci_group": "dynany-optin-0"
+        },
+        {
+          "name": "dynany-optin-1",
+          "result": "pass",
+          "seconds": 375.398,
+          "ci_group": "dynany-optin-1"
+        },
+        {
+          "name": "dynany-optin-2",
+          "result": "pass",
+          "seconds": 381.731,
+          "ci_group": "dynany-optin-2"
+        },
+        {
+          "name": "python-int-optin-0",
+          "result": "pass",
+          "seconds": 282.558,
+          "ci_group": "python-int-optin-0"
+        },
+        {
+          "name": "python-int-optin-1",
+          "result": "pass",
+          "seconds": 354.003,
+          "ci_group": "python-int-optin-1"
+        },
+        {
+          "name": "python-int-optin-2",
+          "result": "pass",
+          "seconds": 254.868,
+          "ci_group": "python-int-optin-2"
+        },
+        {
+          "name": "annotation-widening",
+          "result": "pass",
+          "seconds": 34.527,
+          "ci_group": "runtime-cache"
+        },
+        {
+          "name": "check-ir",
+          "result": "pass",
+          "seconds": 67.175,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "runtime-table",
+          "result": "pass",
+          "seconds": 30.575,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "rtcheck",
+          "result": "pass",
+          "seconds": 44.608,
+          "ci_group": "contracts",
+          "failed": 0,
+          "cases": 674982
+        },
+        {
+          "name": "re-fuzz",
+          "result": "pass",
+          "seconds": 42.163,
+          "ci_group": "contracts",
+          "failed": 0,
+          "cases": 1624326
+        },
+        {
+          "name": "dynany-fuzz",
+          "result": "pass",
+          "seconds": 18.633,
+          "ci_group": "contracts",
+          "modes": [
+            "jit",
+            "aot",
+            "jit-gc",
+            "aot-gc"
+          ],
+          "cases": 540
+        },
+        {
+          "name": "re-probe",
+          "result": "pass",
+          "seconds": 2.473,
+          "ci_group": "contracts",
+          "failed": 0
+        },
+        {
+          "name": "rt-abi",
+          "result": "pass",
+          "seconds": 26.996,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "inherited-ast",
+          "result": "pass",
+          "seconds": 1.497,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "streaming",
+          "result": "pass",
+          "seconds": 1.308,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "ffi",
+          "result": "pass",
+          "seconds": 64.967,
+          "ci_group": "contracts",
+          "passed": 196,
+          "failed": 0
+        },
+        {
+          "name": "list-storage",
+          "result": "pass",
+          "seconds": 9.067,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "container-eq",
+          "result": "pass",
+          "seconds": 7.15,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "weakrefs",
+          "result": "pass",
+          "seconds": 6.991,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "box-slots",
+          "result": "pass",
+          "seconds": 6.996,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "file-buffers",
+          "result": "pass",
+          "seconds": 7.202,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "select-io",
+          "result": "pass",
+          "seconds": 7.111,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "dict-probes",
+          "result": "pass",
+          "seconds": 7.922,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "compile-limits",
+          "result": "pass",
+          "seconds": 54.137,
+          "ci_group": "contracts",
+          "modes": [
+            "ir",
+            "run",
+            "build"
+          ]
+        },
+        {
+          "name": "jit-dead-code",
+          "result": "pass",
+          "seconds": 104.119,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "aot-dead-code",
+          "result": "pass",
+          "seconds": 47.406,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "unicode-audit",
+          "result": "pass",
+          "seconds": 98.735,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "scaling-0",
+          "result": "pass",
+          "seconds": 27.411,
+          "ci_group": "scaling"
+        },
+        {
+          "name": "scaling-1",
+          "result": "pass",
+          "seconds": 35.453,
+          "ci_group": "scaling"
+        }
+      ],
+      "all_required_steps_and_groups_present": true,
+      "all_source_file_hashes_match_exact_release": true
+    },
+    "aarch64": {
+      "report": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/tested/aarch64-verification/verification.json",
+      "report_sha256": "a40cb282e7251ffe2e6b9424b550d29ec905876b4b921a94fda5a1703d8f1913",
+      "summary": {
+        "steps": 58,
+        "passed": 58,
+        "failed": 0,
+        "seconds": 652.322
+      },
+      "toolchain": {
+        "clang": "Ubuntu clang version 18.1.3 (1ubuntu1)",
+        "llvm": "Ubuntu LLVM version 18.1.3",
+        "llvm_dir": "/usr/lib/llvm-18/bin",
+        "python": "Python 3.13.16"
+      },
+      "platform": {
+        "cpu": "neoverse-n2",
+        "machine": "aarch64",
+        "os": "Ubuntu 24.04.5 LTS",
+        "system": "Linux 7.0.0-1017-azure"
+      },
+      "source_files_verified": 60,
+      "source_suite_checks": 7272,
+      "source_mode_checks": 4722,
+      "ci": {
+        "groups": [
+          {
+            "group": "bootstrap",
+            "seconds": 318.926,
+            "steps": 1,
+            "report": "build/ci-reports/aarch64-verification-bootstrap/verification.json",
+            "platform": {
+              "cpu": "neoverse-n2",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "system": "Linux 7.0.0-1017-azure"
+            }
+          },
+          {
+            "group": "hosted",
+            "seconds": 276.966,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-hosted/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "native-0",
+            "seconds": 188.027,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-native-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "native-1",
+            "seconds": 198.198,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-native-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "native-2",
+            "seconds": 200.3,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-native-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "opt-off-0",
+            "seconds": 201.369,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-opt-off-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "opt-off-1",
+            "seconds": 205.223,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-opt-off-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "opt-off-2",
+            "seconds": 204.874,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-opt-off-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "python-free-0",
+            "seconds": 299.833,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-python-free-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "python-free-1",
+            "seconds": 260.655,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-python-free-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "python-free-2",
+            "seconds": 302.978,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-python-free-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "python-free-3",
+            "seconds": 278.429,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-python-free-3/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "ubsan-0",
+            "seconds": 260.983,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-ubsan-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "ubsan-1",
+            "seconds": 261.067,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-ubsan-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "ubsan-2",
+            "seconds": 254.981,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-ubsan-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "ubsan-3",
+            "seconds": 260.359,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-ubsan-3/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "ubsan-4",
+            "seconds": 260.886,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-ubsan-4/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "gc-self",
+            "seconds": 282.872,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-gc-self/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "gc-ir-0",
+            "seconds": 333.396,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-gc-ir-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "gc-ir-1",
+            "seconds": 288.21,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-gc-ir-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "gc-jit-0",
+            "seconds": 193.47,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-gc-jit-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "gc-jit-1",
+            "seconds": 150.415,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-gc-jit-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "gc-aot-0",
+            "seconds": 204.482,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-gc-aot-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "gc-aot-1",
+            "seconds": 171.188,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-gc-aot-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "gc-aot-2",
+            "seconds": 173.253,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-gc-aot-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "runtime-cache",
+            "seconds": 306.775,
+            "steps": 3,
+            "report": "build/ci-reports/aarch64-verification-runtime-cache/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "dynany-optin-0",
+            "seconds": 226.52,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-dynany-optin-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "dynany-optin-1",
+            "seconds": 248.483,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-dynany-optin-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "dynany-optin-2",
+            "seconds": 229.532,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-dynany-optin-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "python-int-optin-0",
+            "seconds": 231.039,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-python-int-optin-0/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "python-int-optin-1",
+            "seconds": 254.602,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-python-int-optin-1/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "python-int-optin-2",
+            "seconds": 253.79,
+            "steps": 2,
+            "report": "build/ci-reports/aarch64-verification-python-int-optin-2/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "contracts",
+            "seconds": 321.826,
+            "steps": 22,
+            "report": "build/ci-reports/aarch64-verification-contracts/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "benchmarks",
+            "seconds": 201.241,
+            "steps": 3,
+            "report": "build/ci-reports/aarch64-verification-benchmarks/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          },
+          {
+            "group": "scaling",
+            "seconds": 85.293,
+            "steps": 3,
+            "report": "build/ci-reports/aarch64-verification-scaling/verification.json",
+            "platform": {
+              "system": "Linux 7.0.0-1017-azure",
+              "machine": "aarch64",
+              "os": "Ubuntu 24.04.5 LTS",
+              "cpu": "neoverse-n2"
+            }
+          }
+        ],
+        "max_group_seconds": 333.396,
+        "critical_path_seconds": 652.322,
+        "runner_seconds": 8390.441,
+        "timing_scope": "verification only; bootstrap then parallel groups; excludes queue, setup and artifact transfer"
+      },
+      "steps": [
+        {
+          "name": "bootstrap",
+          "result": "pass",
+          "seconds": 315.172,
+          "ci_group": "bootstrap",
+          "ir_identical": true,
+          "ir_sha256": "b0dd064147332c2969e46626b9d55688ff269ce8085862a621775500cce22a7e",
+          "bootstrap_reused": false
+        },
+        {
+          "name": "tests-cpython",
+          "result": "pass",
+          "seconds": 272.766,
+          "ci_group": "hosted",
+          "expected": 124,
+          "passed": 124,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "ir_identical": true
+        },
+        {
+          "name": "tests-native-0",
+          "result": "pass",
+          "seconds": 183.819,
+          "ci_group": "native-0",
+          "expected": 2421,
+          "passed": 2421,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 0
+        },
+        {
+          "name": "tests-native-1",
+          "result": "pass",
+          "seconds": 193.578,
+          "ci_group": "native-1",
+          "expected": 2425,
+          "passed": 2425,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 1
+        },
+        {
+          "name": "tests-native-2",
+          "result": "pass",
+          "seconds": 196.066,
+          "ci_group": "native-2",
+          "expected": 2426,
+          "passed": 2426,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 2
+        },
+        {
+          "name": "tests-opt-off-0",
+          "result": "pass",
+          "seconds": 197.135,
+          "ci_group": "opt-off-0",
+          "expected": 2421,
+          "passed": 2421,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 0
+        },
+        {
+          "name": "tests-opt-off-1",
+          "result": "pass",
+          "seconds": 200.716,
+          "ci_group": "opt-off-1",
+          "expected": 2425,
+          "passed": 2425,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 1
+        },
+        {
+          "name": "tests-opt-off-2",
+          "result": "pass",
+          "seconds": 200.633,
+          "ci_group": "opt-off-2",
+          "expected": 2426,
+          "passed": 2426,
+          "failed": 0,
+          "modes": [
+            "jit",
+            "aot"
+          ],
+          "shard_count": 3,
+          "shard_index": 2
+        },
+        {
+          "name": "runtime-cache",
+          "result": "pass",
+          "seconds": 266.056,
+          "ci_group": "runtime-cache",
+          "expected": 192,
+          "passed": 192,
+          "failed": 0
+        },
+        {
+          "name": "python-free-0",
+          "result": "pass",
+          "seconds": 295.536,
+          "ci_group": "python-free-0",
+          "expected": 1817,
+          "passed": 1817,
+          "failed": 0,
+          "shard_count": 4,
+          "shard_index": 0,
+          "ir_identical": true
+        },
+        {
+          "name": "python-free-1",
+          "result": "pass",
+          "seconds": 256.424,
+          "ci_group": "python-free-1",
+          "expected": 1822,
+          "passed": 1822,
+          "failed": 0,
+          "shard_count": 4,
+          "shard_index": 1,
+          "ir_identical": true
+        },
+        {
+          "name": "python-free-2",
+          "result": "pass",
+          "seconds": 298.669,
+          "ci_group": "python-free-2",
+          "expected": 1816,
+          "passed": 1816,
+          "failed": 0,
+          "shard_count": 4,
+          "shard_index": 2,
+          "ir_identical": true
+        },
+        {
+          "name": "python-free-3",
+          "result": "pass",
+          "seconds": 274.163,
+          "ci_group": "python-free-3",
+          "expected": 1817,
+          "passed": 1817,
+          "failed": 0,
+          "shard_count": 4,
+          "shard_index": 3,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-0",
+          "result": "pass",
+          "seconds": 256.733,
+          "ci_group": "ubsan-0",
+          "expected": 1884,
+          "passed": 1884,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 0,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-1",
+          "result": "pass",
+          "seconds": 256.802,
+          "ci_group": "ubsan-1",
+          "expected": 1890,
+          "passed": 1890,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 1,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-2",
+          "result": "pass",
+          "seconds": 250.733,
+          "ci_group": "ubsan-2",
+          "expected": 1888,
+          "passed": 1888,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 2,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-3",
+          "result": "pass",
+          "seconds": 256.105,
+          "ci_group": "ubsan-3",
+          "expected": 1894,
+          "passed": 1894,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 3,
+          "ir_identical": true
+        },
+        {
+          "name": "ubsan-4",
+          "result": "pass",
+          "seconds": 256.639,
+          "ci_group": "ubsan-4",
+          "expected": 1888,
+          "passed": 1888,
+          "failed": 0,
+          "modes": [
+            "aot",
+            "jit"
+          ],
+          "shard_count": 5,
+          "shard_index": 4,
+          "ir_identical": true
+        },
+        {
+          "name": "gc-self",
+          "result": "pass",
+          "seconds": 278.633,
+          "ci_group": "gc-self",
+          "ir_identical": true,
+          "compiler_interval": 5000
+        },
+        {
+          "name": "gc-ir-0",
+          "result": "pass",
+          "seconds": 329.08,
+          "ci_group": "gc-ir-0",
+          "shard_count": 2,
+          "shard_index": 0,
+          "ir_identical": true,
+          "compiler_interval": 1000
+        },
+        {
+          "name": "gc-ir-1",
+          "result": "pass",
+          "seconds": 283.902,
+          "ci_group": "gc-ir-1",
+          "shard_count": 2,
+          "shard_index": 1,
+          "ir_identical": true,
+          "compiler_interval": 1000
+        },
+        {
+          "name": "gc-jit-0",
+          "result": "pass",
+          "seconds": 189.214,
+          "ci_group": "gc-jit-0",
+          "expected": 2214,
+          "passed": 2214,
+          "failed": 0,
+          "modes": [
+            "jit"
+          ],
+          "cases": 2098,
+          "shard_cases": 2238,
+          "shard_count": 2,
+          "shard_index": 0
+        },
+        {
+          "name": "gc-jit-1",
+          "result": "pass",
+          "seconds": 146.217,
+          "ci_group": "gc-jit-1",
+          "expected": 2213,
+          "passed": 2213,
+          "failed": 0,
+          "modes": [
+            "jit"
+          ],
+          "cases": 2098,
+          "shard_cases": 2238,
+          "shard_count": 2,
+          "shard_index": 1
+        },
+        {
+          "name": "gc-aot-0",
+          "result": "pass",
+          "seconds": 200.224,
+          "ci_group": "gc-aot-0",
+          "expected": 1474,
+          "passed": 1474,
+          "failed": 0,
+          "modes": [
+            "aot"
+          ],
+          "cases": 1399,
+          "shard_cases": 1492,
+          "shard_count": 3,
+          "shard_index": 0
+        },
+        {
+          "name": "gc-aot-1",
+          "result": "pass",
+          "seconds": 166.997,
+          "ci_group": "gc-aot-1",
+          "expected": 1476,
+          "passed": 1476,
+          "failed": 0,
+          "modes": [
+            "aot"
+          ],
+          "cases": 1399,
+          "shard_cases": 1492,
+          "shard_count": 3,
+          "shard_index": 1
+        },
+        {
+          "name": "gc-aot-2",
+          "result": "pass",
+          "seconds": 169.035,
+          "ci_group": "gc-aot-2",
+          "expected": 1477,
+          "passed": 1477,
+          "failed": 0,
+          "modes": [
+            "aot"
+          ],
+          "cases": 1399,
+          "shard_cases": 1492,
+          "shard_count": 3,
+          "shard_index": 2
+        },
+        {
+          "name": "benchmarks",
+          "result": "pass",
+          "seconds": 42.931,
+          "ci_group": "benchmarks"
+        },
+        {
+          "name": "example-cli",
+          "result": "pass",
+          "seconds": 154.039,
+          "ci_group": "benchmarks"
+        },
+        {
+          "name": "dynany-optin-0",
+          "result": "pass",
+          "seconds": 222.208,
+          "ci_group": "dynany-optin-0"
+        },
+        {
+          "name": "dynany-optin-1",
+          "result": "pass",
+          "seconds": 244.246,
+          "ci_group": "dynany-optin-1"
+        },
+        {
+          "name": "dynany-optin-2",
+          "result": "pass",
+          "seconds": 225.281,
+          "ci_group": "dynany-optin-2"
+        },
+        {
+          "name": "python-int-optin-0",
+          "result": "pass",
+          "seconds": 226.773,
+          "ci_group": "python-int-optin-0"
+        },
+        {
+          "name": "python-int-optin-1",
+          "result": "pass",
+          "seconds": 250.318,
+          "ci_group": "python-int-optin-1"
+        },
+        {
+          "name": "python-int-optin-2",
+          "result": "pass",
+          "seconds": 249.514,
+          "ci_group": "python-int-optin-2"
+        },
+        {
+          "name": "annotation-widening",
+          "result": "pass",
+          "seconds": 36.459,
+          "ci_group": "runtime-cache"
+        },
+        {
+          "name": "check-ir",
+          "result": "pass",
+          "seconds": 42.447,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "runtime-table",
+          "result": "pass",
+          "seconds": 23.633,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "rtcheck",
+          "result": "pass",
+          "seconds": 29.034,
+          "ci_group": "contracts",
+          "failed": 0,
+          "cases": 674982
+        },
+        {
+          "name": "re-fuzz",
+          "result": "pass",
+          "seconds": 30.476,
+          "ci_group": "contracts",
+          "failed": 0,
+          "cases": 1624326
+        },
+        {
+          "name": "dynany-fuzz",
+          "result": "pass",
+          "seconds": 13.378,
+          "ci_group": "contracts",
+          "modes": [
+            "jit",
+            "aot",
+            "jit-gc",
+            "aot-gc"
+          ],
+          "cases": 540
+        },
+        {
+          "name": "re-probe",
+          "result": "pass",
+          "seconds": 1.628,
+          "ci_group": "contracts",
+          "failed": 0
+        },
+        {
+          "name": "rt-abi",
+          "result": "pass",
+          "seconds": 18.465,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "inherited-ast",
+          "result": "pass",
+          "seconds": 0.979,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "streaming",
+          "result": "pass",
+          "seconds": 0.898,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "ffi",
+          "result": "pass",
+          "seconds": 68.193,
+          "ci_group": "contracts",
+          "passed": 196,
+          "failed": 0
+        },
+        {
+          "name": "list-storage",
+          "result": "pass",
+          "seconds": 9.622,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "container-eq",
+          "result": "pass",
+          "seconds": 7.621,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "weakrefs",
+          "result": "pass",
+          "seconds": 7.559,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "box-slots",
+          "result": "pass",
+          "seconds": 7.448,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "file-buffers",
+          "result": "pass",
+          "seconds": 7.705,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "select-io",
+          "result": "pass",
+          "seconds": 7.56,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "dict-probes",
+          "result": "pass",
+          "seconds": 8.509,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "compile-limits",
+          "result": "pass",
+          "seconds": 53.88,
+          "ci_group": "contracts",
+          "modes": [
+            "ir",
+            "run",
+            "build"
+          ]
+        },
+        {
+          "name": "jit-dead-code",
+          "result": "pass",
+          "seconds": 81.809,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "aot-dead-code",
+          "result": "pass",
+          "seconds": 50.581,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "unicode-audit",
+          "result": "pass",
+          "seconds": 77.747,
+          "ci_group": "contracts"
+        },
+        {
+          "name": "scaling-0",
+          "result": "pass",
+          "seconds": 39.836,
+          "ci_group": "scaling"
+        },
+        {
+          "name": "scaling-1",
+          "result": "pass",
+          "seconds": 41.183,
+          "ci_group": "scaling"
+        }
+      ],
+      "all_required_steps_and_groups_present": true,
+      "all_source_file_hashes_match_exact_release": true
+    }
+  },
+  "strict_storage_log": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/logs/132537773886-scaling-x86_64.log",
+  "strict_storage_result": {
+    "programs": 175,
+    "obligations": 18582,
+    "proved": 18582,
+    "seconds": 95.2
+  },
+  "performance_analysis": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-performance/analysis.json",
+  "memory_build_analysis": "/workspace/scratch/7dd0519bc14a/alpha2-build-memory/report.json",
+  "inputs": [
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs-final.json",
+      "bytes": 101792,
+      "sha256": "57fc65ceb640dd612c1382615df50b0270b50a030de1f27990988ad91e72a05c"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/check-runs-final.json",
+      "bytes": 566400,
+      "sha256": "9071a356c700790d4b12041028aa02f093f8184ed5590864c0cf4fa32896d039"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs/43624131798.json",
+      "bytes": 18668,
+      "sha256": "8e22c735ccf4c692fb217ad34762a2d6027b6ec8367c895d55afa1213cb2a9e0"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs/43624131831.json",
+      "bytes": 45951,
+      "sha256": "560c279160df138b45a6b60f40a6c5f32bb6ab230079c94f12e59d15907568eb"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs/43624131736.json",
+      "bytes": 18927,
+      "sha256": "aafb89ec25b45f5ba4d3dfe90d586cdcde33a6489ed4a438cc826c78879a875a"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs/43624131842.json",
+      "bytes": 29031,
+      "sha256": "f54d59953172fbfee9d5374cb4f0d9087efcfd7b69c1353408b23579329844a4"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs/43624131838.json",
+      "bytes": 109198,
+      "sha256": "d7a177a571a0fd2b7d46989b77a0db59f1514fdd9368dfa972e1fe1de9918f50"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs/43624131795.json",
+      "bytes": 128785,
+      "sha256": "75cdcf63633d1f041206d3694b86787df21b99d67951595c55f1d52a8ba95224"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/runs/43624131788.json",
+      "bytes": 648500,
+      "sha256": "ea5a5f5a6d33c8d95c6f586d1871fdd5e77fbfa6eab0f2dd774c801772f362b2"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/verification-acceptance.json",
+      "bytes": 61008,
+      "sha256": "dd3ce02620520567522739aba1fb961792cc13b14cac5eb0d1739f0c6a7a2429"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-gates/qualification-acceptance.json",
+      "bytes": 1345,
+      "sha256": "3887cdcb13b91afde6590c128d4bf66c63003c694e6084f3faa38cfabbc12113"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-performance/analysis.json",
+      "bytes": 47286,
+      "sha256": "385d4fea1827d8ffcd70aa43d9cdf8de59f615759c0692edd4338d0f1b448b0a"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-exact-main-performance/independent-acceptance.json",
+      "bytes": 50913,
+      "sha256": "5b10e0abfa0f129322fa31b786f65aa03891196d1bfe58a0cc664a0c979f39ce"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-build-memory/report.json",
+      "bytes": 34401,
+      "sha256": "d55886fab7fa7e993e12676ba897b5e5cc1309bbf01cac0c7d304c10a7a367da"
+    },
+    {
+      "path": "/workspace/scratch/7dd0519bc14a/alpha2-build-memory/independent-acceptance.json",
+      "bytes": 62302,
+      "sha256": "6ae8b3876e4244a5d70d101efb192faa53245511936d41cda4d40e5f70247790"
+    }
+  ],
+  "summary_script_sha256": "1dd25c1378e4fac6f7092015a589014544d1eb5a699c13c2551bbdbb7ec1c3a3"
+}
