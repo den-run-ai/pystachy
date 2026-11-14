@@ -498,7 +498,8 @@ See [object protocols](semantics.md#object-protocols) and
   methods; nonconstant tuple repetition.
 - **Specific builtins:** `sum(..., start)` with a bool start (use `int(start)`); a
   `startswith` / `endswith` tuple containing anything beyond `str` / `str | None`.
-- **Function values:** mixing functions without a `Callable` annotation; `Callable[..., R]`;
+- **Function values:** mixing functions whose annotations differ, or that have none, without a
+  `Callable` annotation; `Callable[..., R]`;
   keyword calls, wrong arity or incompatible return types through `Callable`; printing
   functions, including inside containers; comparing containers of functions.
 - **Closures:** capturing possibly unassigned or later-unbound enclosing variables, or

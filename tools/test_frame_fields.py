@@ -94,6 +94,7 @@ SCOPED = {
     "soft": "the display operand of a comparison, matched by identity at that node",
     "fieldbusy": "fields and globals that none_field and none_global search: a recursion guard",
     "xtry": "the comparison method whose call with an Any value dyn_xbody compiles: set around it",
+    "fnapart": "dyn_mixed's joins of a display's item types, in which functions do not join: set around them",
     "joinkind": "the location a store's coerce may widen: join_at saves, sets and restores it",
     "joinname": "its name, with joinkind",
     "jointype": "its type, with joinkind",

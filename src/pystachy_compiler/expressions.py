@@ -1154,8 +1154,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in items:
                 if et == "" and v.t != "None":
                     et = v.t
-        if not given and (is_opt(jt) or is_tuple(jt)):
-            et = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and (is_opt(jt) or is_tuple(jt) or (is_callable(jt) and jt != et)):
+            et = jt  # None among strings (or T | None among T): T | None (also as tuple items); functions of one signature: the Callable of it
         if not given and jt == "-" and self.dyn_policy(n.line) and not self.dyn_callables([v.t for v in items]):
             et = "dyn"  # (items of no one type, in a module that compiles Any so: dynamic values)
         if given and soft:
@@ -1240,8 +1240,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             for v in vs:
                 if kv[1] == "" and v.t != "None":
                     kv[1] = v.t
-        if not given and (is_opt(jt) or is_tuple(jt)):
-            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items)
+        if not given and (is_opt(jt) or is_tuple(jt) or (is_callable(jt) and jt != kv[1])):
+            kv[1] = jt  # None among strings (or T | None among T): T | None (also as tuple items); functions of one signature: the Callable of it
         if not given and jt == "-" and not self.term:
             vh = vs[0].t
             for b in vs[1:]:
@@ -3403,6 +3403,10 @@ def gen_ifexp(self, n: Node, want: str, resultsoft: bool = False, kept: list[str
         t = "dyn"  # (an arm's dynamic value: the other's value boxed in its arm, dynamic.py)
     if e1 != "" and e2 != "" and a.t != b.t and self.join(a.t, b.t) == BIG:
         t = BIG  # (an int and a promoting int: the int made one in its arm, bigints.py)
+    if e1 != "" and e2 != "" and a.t != b.t and is_fn(b.t) and (a.t.startswith("fn[f:") or a.t.startswith("fn[b:") or a.t.startswith("fn[u:")) and is_callable(self.join(a.t, b.t)):
+        # (two functions of one signature: the Callable of it. The first is a function of a
+        # module or a builtin, whose Callable is a constant: no code is due at its arm's end)
+        t = self.join(a.t, b.t)
     ph = Ins("phi", t, "")
     if e1 != "":
         a = self.convert_at(a, t, e1)  # (an int as an int | None: its box, made there)

@@ -212,6 +212,10 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         return self.to_union(v, t, what)
     if is_fn(v.t) and is_callable(unopt(t)):
         return Val(self.to_callable(v, unopt(t)).v, t)  # (a function where a Callable is expected)
+    if is_tuple(v.t) and is_tuple(t) and fn_items(v.t, t):
+        # a tuple with a function where t holds a Callable (also deeper): a new tuple, of the
+        # Callables (("add", add) among the items of a list of names and functions)
+        return self.tuple_([self.coerce(self.tget(v, i), targs(t)[i], what) for i in range(len(targs(t)))])
     if is_sopt(t) and v.t == unopt(t):
         return Val(self.rt("pys_box", "ptr", ["i64 " + self.to_slot(v)]), t).identity(v)  # representation-only boxing
     if self.reboxes(v.t, t):
@@ -233,6 +237,23 @@ def gen_coerce(self, v: Val, t: str, what: str = "") -> Val:
         hint = f" (perhaps because {self.guessed[self.curfn.ll]})"
     self.err(f"expected {typestr(t)}, got {typestr(v.t)}{hint}")
     return v
+
+def fn_items(a: str, b: str) -> bool:
+    # does a value of tuple type a become one of tuple type b by making Callables of its
+    # functions, its other items being of b's types already (also in tuples among them)
+    xs = targs(a)
+    ys = targs(b)
+    if len(xs) != len(ys):
+        return False
+    found = False
+    for i in range(len(xs)):
+        if xs[i] == ys[i]:
+            continue
+        if (is_fn(xs[i]) and is_callable(ys[i])) or (is_tuple(xs[i]) and is_tuple(ys[i]) and fn_items(xs[i], ys[i])):
+            found = True
+        else:
+            return False
+    return found
 
 def gen_desc(self, t: str, use: str) -> str:
     if "rec[" in t:

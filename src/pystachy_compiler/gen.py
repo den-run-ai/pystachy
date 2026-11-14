@@ -569,6 +569,7 @@ from src.pystachy_compiler.declarations import (
     gen_recursive_aliases as declarations_recursive_aliases,
     gen_ann as declarations_ann,
     gen_ann_base as declarations_ann_base,
+    gen_fn_callable as declarations_fn_callable,
     gen_ann_items as declarations_ann_items,
     gen_ann_none as declarations_ann_none,
     gen_ann_problem as declarations_ann_problem,
@@ -1456,6 +1457,7 @@ class Gen:
         self.xnot: dict[str, bool] = {}
         self.newx: dict[str, bool] = {}
         self.xtry = ""
+        self.fnapart = False  # dyn_mixed joins a display's item types: functions stay types of their own (join)
         self.joinkind = ""  # the location being stored to, which a join may widen: "local", "global", "field"
         self.joinname = ""  # (its name: the variable's, or the field's key, see field_key)
         self.jointype = ""  # (and its type)
@@ -2815,6 +2817,9 @@ class Gen:
 
     def ann_base(self, b: Node) -> str:
         return declarations_ann_base(self, b)
+
+    def fn_callable(self, ft: str) -> str:
+        return declarations_fn_callable(self, ft)
 
     def ann_none(self, n: Node, seen: list[str]) -> bool:
         return declarations_ann_none(self, n, seen)

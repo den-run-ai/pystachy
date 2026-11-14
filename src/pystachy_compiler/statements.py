@@ -44,6 +44,8 @@ from src.pystachy_compiler.utils import (
     is_gen,
     is_kw,
     is_list,
+    is_callable,
+    is_fn,
     is_opt,
     is_set,
     is_sopt,
@@ -853,7 +855,7 @@ def gen_stmt_main(self, n: Node) -> None:
                 self.reopt(j)  # a template's function returns T and None (or T | None): T | None
             # (a promoting int, or an int | None, where it returns a union that holds a 64-bit int, as of
             # a bool and an int, is narrowed into it: coerce, bigints.py)
-            if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret) and not (self.ret == "int+" and v.t == "int") and not ((v.t == "int+" or v.t == BIGOPT) and self.uboxes("int", self.ret)):
+            if self.curfn.infer and v.t != self.ret and not (v.t == "None" and self.ret in self.classes) and not self.widens(v.t, self.ret) and not self.boxes(v.t, self.ret) and not (self.ret == "int+" and v.t == "int") and not ((v.t == "int+" or v.t == BIGOPT) and self.uboxes("int", self.ret)) and not (is_fn(v.t) and is_callable(unopt(self.ret))):
                 if v.t == "None":
                     self.err(self.nonemix(self.curfn, self.ret))
                 if v.t != "dyn" or not self.dyn_widen("", self.ret):  # (an Any value: compiled again returning Any)

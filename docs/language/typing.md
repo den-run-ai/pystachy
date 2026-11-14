@@ -907,6 +907,14 @@ the original signature, including keyword arguments and defaults. Passing it to 
 specializes for that function; a variable or field with an inferred function type cannot
 later hold a different function.
 
+Different functions with one signature share a `Callable[[A, B], R]`. Where a list or dict
+display, the tuples in one, a variable, a conditional expression or a function's returns hold
+several functions, the parameter and return annotations of one of them give that type, as if
+it were annotated: `OPS = {"+": add, "-": sub}`, `[("add", add), ("sub", sub)]`. A lambda,
+a builtin or a bound method among them becomes that `Callable` too. Functions whose
+annotations differ, or that have none, need the annotation written out. In a module that
+compiles [`Any` dynamically](../dynamic-any.md), a display's functions stay the function
+objects they are, with their identity and type, as its other items of several types do.
 Annotate with `Callable[[A, B], R]` to store different functions with one fixed signature.
 They can be used in variables, parameters, fields, returns and containers, and as sorting
 keys. A `Callable` requires positional arguments and an exact return type.
