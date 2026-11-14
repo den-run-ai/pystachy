@@ -1170,6 +1170,11 @@ class Decimal:
             return self == _from_int(other)
         if isinstance(other, float):
             return self == Decimal(other)
+        if isinstance(other, complex):
+            # Decimal compares only a real complex number, using the float's exact
+            # value. A nonzero imaginary part answers false before an sNaN can
+            # signal, as CPython's decimal comparison does.
+            return False if other.imag != 0.0 else self == Decimal(other.real)
         return NotImplemented
 
     def _order(self, other: "Decimal") -> int:

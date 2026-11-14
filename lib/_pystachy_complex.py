@@ -38,7 +38,7 @@ class complex:
             return self.real == other.real and self.imag == other.imag
         if isinstance(other, (int, float)):
             return self.imag == 0.0 and self.real == other
-        return False
+        return NotImplemented
 
     # The arithmetic of a dynamic Any value that holds a complex number (the compiler computes a
     # typed operation itself, complex_arith): the other operand converted as TO_COMPLEX converts

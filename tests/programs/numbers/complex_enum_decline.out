@@ -1,0 +1,38 @@
+enum eq 1
+enum ne 1
+True True False False
+enum eq 1
+enum eq 1
+enum eq 1
+True True 2
+enum eq 2
+enum ne 2
+False False True True
+enum eq 2
+enum eq 2
+enum eq 2
+False False 0
+enum eq 1
+enum ne 1
+False False True True
+enum eq 1
+enum eq 1
+enum eq 1
+False False 0
+enum eq 1
+enum eq 1
+enum ne 1
+enum ne 1
+False False True True
+enum eq 1
+enum eq 1
+enum eq 1
+enum eq 1
+False False 0
+False False True True
+False False 0
+True True False False
+True True 2
+flag eq
+True True False False
+[exit 0]

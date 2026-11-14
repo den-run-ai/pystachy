@@ -1129,7 +1129,8 @@ hashes and messages for the supported API
 
 Supported: construction from `str`, `int` and `float`; `+ - * / // %`, `divmod()`, integer
 `**`, unary operators and `abs()`, with a `Decimal` or an `int` on either side; comparison with
-a `Decimal`, `int` or `float`; `hash()`, `int()`, `float()`, `round()`, `math.floor()`,
+a `Decimal`, `int` or `float`; equality with a `complex` number (comparing its real part's
+exact float value when the imaginary part is zero); `hash()`, `int()`, `float()`, `round()`, `math.floor()`,
 `math.ceil()`, `math.trunc()`, `bool()`, `str()`, `repr()` and `format()`; `quantize()`,
 `to_integral_value()`, `normalize()`, `sqrt()`, `fma()`, `remainder_near()`, `scaleb()`,
 `compare()`, `max()`, `min()`, the `is_*()`, `copy_*()` and `as_*()` methods; `Context`,

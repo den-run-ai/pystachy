@@ -3989,6 +3989,8 @@ def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
                 inv = "!"
             if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
                 continue
+            if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
+                continue  # (complex declines a foreign object; int-like enums compare by payload)
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
                 continue
             if m in ms:
@@ -4043,8 +4045,8 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 inv = "!"
             if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
-            if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes):
-                continue  # (lib's complex compares complex numbers: CPython's declines an object of another class)
+            if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
+                continue  # (complex declines a foreign object; int-like enums compare by payload)
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
                 # (and so do the int and str methods of an IntEnum's and a StrEnum's members, as
                 # int's and str's return it for None and for an object of a class not derived from
@@ -4378,6 +4380,12 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[b
         lhs = a if p[0] == "a" else b
         rhs = b if p[0] == "a" else a
         m = p[1]
+        if lhs.t == COMPLEXC and self.enum_intlike(rhs.t) and op in ["==", "!="]:
+            # An enum's own comparison may decline before complex accepts its int
+            # payload. These concrete pairs exclude None before reading that field;
+            # the library method cannot use isinstance(enum_member, int) here.
+            value = self.mem_load(Val(self.fgep(rhs, self.classes[rhs.t].fpos[" enum int"]), "*int"))
+            return self.complex_cmp(op, lhs, value)
         if self.cmp_method(lhs.t, m, rhs.t) == "":
             why = f"{m}() of {shown(lhs.t)} cannot compare an operand of type {typestr(rhs.t)}"
             if not self.lenient or not self.curfn.ll.startswith("@o."):
@@ -5373,8 +5381,13 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         if o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
             return Val("false" if op == "==" else "true", "bool")
         mown = "__eq__" if op == "==" else "__ne__"
-        own = a.t != COMPLEXC and o in self.classes and any([mown in self.classes[ck].methods and not lib_source(self.classes[ck].methods[mown].node.line, self.libdir, "enum.py") for ck in self.cmp_kinds(o)])
+        custom = o in self.classes and any([mown in self.classes[ck].methods and not lib_source(self.classes[ck].methods[mown].node.line, self.libdir, "enum.py") for ck in self.cmp_kinds(o)])
+        own = a.t != COMPLEXC and custom
         if self.enum_intlike(o) and not own:
+            if a.t == COMPLEXC and a.v not in self.nn and custom:
+                # A nonnull complex accepts the int payload first, but None has no
+                # such comparison: the enum's reflected override must then run.
+                return self.inherit_cmp(op, a, b)
             # an IntEnum's or IntFlag's member, an int in CPython, whose int.__eq__ leaves a
             # complex number to complex's: its int payload compares as an int does (lib/enum.py's
             # __eq__ takes no complex number); a member that may be None equals only None. (With
@@ -5398,9 +5411,10 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
             self.br(lend)
             self.place(lend)
             return Val(self.phi(ph), "bool")
-        if o in self.classes and self.classes[o].tag != 0:
+        if o in self.classes and (self.classes[o].tag != 0 or self.cmp_declining(op, o, "")):
             # (an object of a class with subclasses, whose comparison methods its runtime class
-            # decides: inherit_cmp, where complex's own __eq__ declines it, cmp_pick)
+            # decides, or whose method may decline: inherit_cmp reads that flag and
+            # resumes the candidate order. complex's own __eq__ declines foreign objects.)
             return self.inherit_cmp(op, a, b)
         if o in self.classes:
             # an object of another class: complex's __eq__ (lib's, for dynamic Any values) declines

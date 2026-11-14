@@ -240,6 +240,9 @@ that opts in to dynamic `Any`, an `Any` value may hold a complex number, whose o
 the class's methods (`__add__` and the others, a reflected one for an `int`, `float` or `bool`
 on the left), as CPython's are. There is no `cmath`.
 
+Direct `c.__eq__(other)` calls that may return `NotImplemented` are rejected under the
+[bounded comparison return contract](#object-protocols), including calls through `Any`.
+
 ## Iterators
 
 `iter(x)` returns an iterator object that shares its position with every use, as CPython's:
