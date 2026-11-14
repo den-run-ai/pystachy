@@ -3077,7 +3077,9 @@ class Loader:
                 k = src.kinds[x] if mine else self.take(m, src, x, a.s, infn, keep, inits, copies, line)
                 took.append(" " if mine else a.s if k != "v" else "")
                 key = f"{src.name}  {x}"
-                checks.append(f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
+                # A direct def/class needs a source-binding check even if its name is
+                # never read after this import while the source is initializing.
+                checks.append(f"{src.q + x} {x} D" if k == "f" or k == "c" else f"?{src.name} {x}" if k.startswith("a:") else f"{self.fragile[key]} {x} I" if k != "v" and key in self.fragile else "")
                 if not mine:
                     names.append(a.s)
         for sub in inits.kids:

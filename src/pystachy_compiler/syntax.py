@@ -14,6 +14,7 @@ class Node:
         self.chk = False  # a variable read that may find the variable unassigned
         # An import binding that may be unbound: "<its flag> <name> <L (a local) or G>" (see
         # Loader.import_binds); M checks a source module attribute and I a from-import of it.
+        # D checks a from-import of a def/class using its current module-attempt binding.
         # Then, ";"-separated, "<submodule> <name> A" for each submodule that
         # an import in a try statement runs which the read takes as its package's attribute
         # (Loader.trysubs); else ""

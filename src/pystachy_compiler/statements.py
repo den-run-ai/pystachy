@@ -1115,6 +1115,7 @@ def gen_stmt_main(self, n: Node) -> None:
             self.hoist_class(self.classes[n.s])
         if n.s in self.gflag:
             self.mstore('bool', 'true', f'@g.{n.s}.def')
+            self.mstore('bool', 'true', self.imp_flag(n.s, True))
     elif k == "lclass":
         self.left_out(self.cnodes[n.line], self.unsupported[n.s])
     elif k == "import":
@@ -1212,6 +1213,7 @@ def gen_del_name(self, n: Node) -> None:
         self.mstore('bool', 'false', self.lflag[name])
     elif name not in self.ltype and name in self.gflag:
         self.mstore('bool', 'false', f'@g.{name}.def')
+        self.mstore('bool', 'false', self.imp_flag(name, True))
 
 def gen_augassign(self, n: Node) -> None:
     t = n.kids[0]

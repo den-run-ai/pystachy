@@ -4,7 +4,7 @@ from src.pystachy_compiler.analysis import globals_in, lambda_flags, local_names
 from src.pystachy_compiler.diagnostics import Rejoin, int_program
 from src.pystachy_compiler.ir import Blk, FnInfo, IFn, Try, Val
 from src.pystachy_compiler.local_versions import local_versions
-from src.pystachy_compiler.names import short
+from src.pystachy_compiler.names import owner, short
 from src.pystachy_compiler.optimizations import recursion_unsnapshot
 from src.pystachy_compiler.specs import BIG, CTYPES, NONEVAR, RTSYM
 from src.pystachy_compiler.syntax import Node, mk
@@ -348,7 +348,9 @@ def gen_function_body(self, f: FnInfo, body: list[Node]) -> None:
         self.mem_store(Val(done, "*bool"), Val("true", "bool"))
         # A retry after a failed initialization creates a fresh module in CPython. Its import
         # aliases start unbound too, even if the failed attempt had reached their imports.
-        flags: dict[str, bool] = {}
+        # Definition/value flags remain available to retained aliases from a failed
+        # attempt; source imports use fresh binding flags for this attempt instead.
+        flags: dict[str, bool] = {name: True for name in self.gflag if owner(name) == f.mod}
         pending = [n for n in body]
         while len(pending) > 0:
             n = pending.pop()
