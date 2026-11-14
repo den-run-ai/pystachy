@@ -236,6 +236,7 @@ from src.pystachy_compiler.dynamic import (
     gen_dyn_widen as dynamic_dyn_widen,
     gen_dyn_widened as dynamic_dyn_widened,
     gen_dyn_xbody as dynamic_dyn_xbody,
+    gen_xdecline as dynamic_xdecline,
     gen_dyn_xhelper as dynamic_dyn_xhelper,
     gen_dyn_xmethod as dynamic_dyn_xmethod,
     gen_empty_ctor as dynamic_empty_ctor,
@@ -255,6 +256,7 @@ from src.pystachy_compiler.unions import (
     gen_ueq_type as unions_ueq_type,
     gen_scalar_union as unions_scalar_union,
     gen_num_union as unions_num_union,
+    gen_cx_union as unions_cx_union,
     gen_value_union as unions_value_union,
     gen_uop as unions_uop,
     gen_uequal as unions_uequal,
@@ -410,6 +412,7 @@ from src.pystachy_compiler.builtins import (
     gen_iter_ as builtins_iter_,
     gen_iter_obj as builtins_iter_obj,
     gen_range_fields as builtins_range_fields,
+    gen_complex_new as builtins_complex_new,
     gen_range_prim as builtins_range_prim,
     gen_walk as builtins_walk,
     gen_pwrite as builtins_pwrite,
@@ -509,10 +512,12 @@ from src.pystachy_compiler.containers import (
     gen_key_items as containers_key_items,
     gen_key_kind as containers_key_kind,
     gen_key_problem as containers_key_problem,
+    gen_key_union as containers_key_union,
     gen_key_repr as containers_key_repr,
     gen_keyed as containers_keyed,
     gen_keys_list as containers_keys_list,
     gen_none_arg as containers_none_arg,
+    gen_none_dkey as containers_none_dkey,
     gen_nonekey as containers_nonekey,
     gen_obj_hash as containers_obj_hash,
     gen_obj_str as containers_obj_str,
@@ -521,7 +526,11 @@ from src.pystachy_compiler.containers import (
     gen_sargs as containers_sargs,
     gen_sdiscard as containers_sdiscard,
     gen_set_display as containers_set_display,
+    gen_set_kind as containers_set_kind,
     gen_set_new as containers_set_new,
+    gen_set_pair as containers_set_pair,
+    gen_set_rekind as containers_set_rekind,
+    gen_set_some as containers_set_some,
     gen_setop as containers_setop,
     gen_sgen as containers_sgen,
     gen_sitems as containers_sitems,
@@ -799,9 +808,20 @@ from src.pystachy_compiler.expressions import (
     gen_comparable as expressions_comparable,
     gen_numeric_comparable as expressions_numeric_comparable,
     gen_compare as expressions_compare,
+    gen_complex_value as expressions_complex_value,
+    gen_complex_parts as expressions_complex_parts,
+    gen_complex_arith as expressions_complex_arith,
+    gen_complex_cmp as expressions_complex_cmp,
+    gen_complex_ueq as expressions_complex_ueq,
     gen_exc_kinds as expressions_exc_kinds,
     gen_cmp_kinds as expressions_cmp_kinds,
     gen_cmp_pick as expressions_cmp_pick,
+    gen_may_decline as expressions_may_decline,
+    gen_decl_flag as expressions_decl_flag,
+    gen_cmp_cands as expressions_cmp_cands,
+    gen_declining_call as expressions_declining_call,
+    gen_cmp_stage as expressions_cmp_stage,
+    gen_cmp_declining as expressions_cmp_declining,
     gen_enum_intlike as expressions_enum_intlike,
     gen_inherit_cmp as expressions_inherit_cmp,
     gen_cmp_alts as expressions_cmp_alts,
@@ -912,6 +932,7 @@ from src.pystachy_compiler.expressions import (
     gen_tuple_ as expressions_tuple_,
     gen_list_const as expressions_list_const,
     gen_vtuple_make as expressions_vtuple_make,
+    gen_vtuple_item as expressions_vtuple_item,
     gen_tuple_const as expressions_tuple_const,
     gen_dict_merge as expressions_dict_merge,
     gen_unroll as expressions_unroll,
@@ -1100,11 +1121,22 @@ from src.pystachy_compiler.program import (
     gen_class_ref as program_class_ref,
     gen_dc_options as program_dc_options,
     gen_init_template as program_init_template,
+    gen_init_generic as program_init_generic,
+    gen_fixed_ann as program_fixed_ann,
+    gen_fixed_stores as program_fixed_stores,
+    gen_fixed_init as program_fixed_init,
+    gen_fixed_layout as program_fixed_layout,
+    gen_fixed_layout_body as program_fixed_layout_body,
+    gen_fixed_base_properties as program_fixed_base_properties,
+    gen_fixed_hierarchy as program_fixed_hierarchy,
+    gen_hierarchy_chain as program_hierarchy_chain,
+    gen_request_hierarchy as program_request_hierarchy,
+    gen_retry_hierarchy as program_retry_hierarchy,
     gen_template_fix as program_template_fix,
     gen_left_out as program_left_out,
     gen_makes_tmpl as program_makes_tmpl,
     gen_ann_classes as program_ann_classes,
-    gen_fixed_ann as program_fixed_ann,
+    gen_fixed_template_field_ann as program_fixed_template_field_ann,
     gen_init_param_classes as program_init_param_classes,
     gen_init_makes_tmpl as program_init_makes_tmpl,
     gen_objects as program_objects,
@@ -1145,6 +1177,7 @@ from src.pystachy_compiler.statements import (
     gen_iterarg as statements_iterarg,
     gen_ival as statements_ival,
     gen_leave as statements_leave,
+    gen_decline as statements_decline,
     gen_with_cm as statements_with_cm,
     gen_cm_exits as statements_cm_exits,
     gen_suppress_item as statements_suppress_item,
@@ -1196,6 +1229,7 @@ from src.pystachy_compiler.templates import (
     gen_want_tvars as templates_want_tvars,
     gen_match as templates_match,
     gen_match_items as templates_match_items,
+    gen_match_key as templates_match_key,
     gen_names_tv as templates_names_tv,
     gen_specialize as templates_specialize,
     gen_literal_class as templates_literal_class,
@@ -1483,6 +1517,9 @@ class Gen:
         self.template_retained = 0  # and the bytes of their signatures
         self.retainers: dict[str, int] = {}  # and those of each template, by the name messages give it
         self.unsupported: dict[str, str] = {}  # classes of imported modules that cannot be compiled: why
+        # Program-wide names only: retained by fresh-Gen retries, never speculative layouts.
+        self.hierarchies: dict[str, bool] = {}
+        self.deferred_hierarchies: dict[str, bool] = {}
         self.cnodes: dict[int, Node] = {}  # every module-level class or subclass statement, by line
         self.hooks: dict[str, str] = {}  # see hook()
         self.chooks: dict[int, str] = {}
@@ -1492,6 +1529,8 @@ class Gen:
         self.intglobals: dict[str, str] = {}  # single-binding module int literals, after normal read checks
         self.rangeused = False  # code addresses an object of lib's range class (declared then: lower_module)
         self.objectused = False  # and of lib's object class, which object() makes
+        self.declflag = False  # a comparison method returns NotImplemented: its hidden variable is declared (decl_flag)
+        self.complexused = False  # and of lib's class of complex numbers
         self.intat: dict[str, int] = {}  # the line of each constant's own binding (including from-imports)
         self.strglobals: dict[str, str] = {}  # single-binding module str literals: formats for str.format()
         self.strtuples: dict[str, list[str]] = {}  # and tuples of them: functools.wraps()'s assigned
@@ -1993,6 +2032,9 @@ class Gen:
 
     def dyn_xhelper(self, c: str) -> None:
         return dynamic_dyn_xhelper(self, c)
+
+    def xdecline(self, method: FnInfo, after: bool) -> None:
+        return dynamic_xdecline(self, method, after)
 
     def dyn_xbody(self, c: str) -> None:
         return dynamic_dyn_xbody(self, c)
@@ -3516,8 +3558,8 @@ class Gen:
     def gen_stream(self, name: str, v: Val, args: list[Node], want: str, resultsoft: bool) -> Val:
         return generators_gen_stream(self, name, v, args, want, resultsoft)
 
-    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "") -> None:
-        return generators_gen_suspend(self, slot, k, sub, thrown, hi)
+    def gen_suspend(self, slot: str, k: int, sub: Val, thrown: str = "", hi: str = "", identity: str = "") -> None:
+        return generators_gen_suspend(self, slot, k, sub, thrown, hi, identity)
 
     def yield_from_iter(self, what: str) -> None:
         return generators_yield_from_iter(self, what)
@@ -3531,8 +3573,8 @@ class Gen:
     def yield_from_proto(self, v: Val, t: str, y: str, callee: FnInfo | None) -> Val:
         return generators_yield_from_proto(self, v, t, y, callee)
 
-    def gen_keep(self, w: list[str], ys: str, yh: str) -> None:
-        return generators_gen_keep(self, w, ys, yh)
+    def gen_keep(self, w: list[str], ys: str, yh: str, yi: str) -> None:
+        return generators_gen_keep(self, w, ys, yh, yi)
 
     def gen_slots(self, v: Val, y: str) -> list[str]:
         return generators_gen_slots(self, v, y)
@@ -3753,14 +3795,47 @@ class Gen:
     def init_template(self, st: Node, hier: bool = False) -> bool:
         return program_init_template(self, st, hier)
 
+    def init_generic(self, st: Node, hier: bool = False) -> bool:
+        return program_init_generic(self, st, hier)
+
+    def fixed_ann(self, a: Node) -> bool:
+        return program_fixed_ann(self, a)
+
+    def fixed_stores(self, n: Node, receiver: str, fields: dict[str, str]) -> bool:
+        return program_fixed_stores(self, n, receiver, fields)
+
+    def fixed_init(self, st: Node) -> bool:
+        return program_fixed_init(self, st)
+
+    def fixed_layout(self, st: Node) -> bool:
+        return program_fixed_layout(self, st)
+
+    def fixed_layout_body(self, st: Node) -> bool:
+        return program_fixed_layout_body(self, st)
+
+    def fixed_base_properties(self, name: str, fields: dict[str, str], seen: list[str]) -> bool:
+        return program_fixed_base_properties(self, name, fields, seen)
+
+    def fixed_hierarchy(self, name: str) -> bool:
+        return program_fixed_hierarchy(self, name)
+
+    def hierarchy_chain(self, name: str, chain: list[str], seen: list[str]) -> bool:
+        return program_hierarchy_chain(self, name, chain, seen)
+
+    def request_hierarchy(self, name: str) -> None:
+        return program_request_hierarchy(self, name)
+
+    def retry_hierarchy(self, msg: str) -> None:
+        return program_retry_hierarchy(self, msg)
+
     def template_fix(self, cs: list[Node]) -> str:
         return program_template_fix(self, cs)
 
     def makes_tmpl(self, n: Node) -> bool:
         return program_makes_tmpl(self, n)
 
-    def fixed_ann(self, a: Node) -> bool:
-        return program_fixed_ann(self, a)
+    def fixed_template_field_ann(self, a: Node) -> bool:
+        return program_fixed_template_field_ann(self, a)
 
     def init_param_classes(self, st: Node, out: dict[str, bool]) -> None:
         program_init_param_classes(self, st, out)
@@ -3938,6 +4013,9 @@ class Gen:
 
     def loop(self, body: list[Node], lp: Loop) -> list[dict[str, str]]:
         return statements_loop(self, body, lp)
+
+    def decline(self, n: Node) -> Node:
+        return statements_decline(self, n)
 
     def leave(self, depth: int) -> bool:
         return statements_leave(self, depth)
@@ -4443,6 +4521,9 @@ class Gen:
     def tuple_(self, vals: list[Val]) -> Val:
         return expressions_tuple_(self, vals)
 
+    def vtuple_item(self, o: Val, index: Val) -> Val:
+        return expressions_vtuple_item(self, o, index)
+
     def vtuple_make(self, vals: list[Val], t: str) -> Val:
         return expressions_vtuple_make(self, vals, t)
 
@@ -4605,23 +4686,41 @@ class Gen:
     def cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
         return expressions_cmp_pick(self, op, at, bt)
 
-    def inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
-        return expressions_inherit_cmp(self, op, a, b, lenient)
+    def may_decline(self, f: FnInfo) -> bool:
+        return expressions_may_decline(self, f)
+
+    def decl_flag(self) -> str:
+        return expressions_decl_flag(self)
+
+    def declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: list[bool]) -> Val:
+        return expressions_declining_call(self, f, me, arg, direct, decl)
+
+    def cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
+        return expressions_cmp_cands(self, op, at, bt)
+
+    def cmp_declining(self, op: str, at: str, bt: str) -> bool:
+        return expressions_cmp_declining(self, op, at, bt)
+
+    def cmp_stage(self, op: str, at: str, bt: str, stage: int) -> list[str]:
+        return expressions_cmp_stage(self, op, at, bt, stage)
+
+    def inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False, stage: int = 0) -> Val:
+        return expressions_inherit_cmp(self, op, a, b, lenient, stage)
 
     def cmp_alts(self, v: Val) -> list[Val]:
         return expressions_cmp_alts(self, v)
 
-    def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
-        return expressions_cmp_widen(self, op, x, y, at, bt)
+    def cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 0) -> list[Val]:
+        return expressions_cmp_widen(self, op, x, y, at, bt, stage)
 
-    def cmp_key(self, op: str, a: Val, b: Val) -> str:
-        return expressions_cmp_key(self, op, a, b)
+    def cmp_key(self, op: str, a: Val, b: Val, stage: int = 0) -> str:
+        return expressions_cmp_key(self, op, a, b, stage)
 
-    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool = False) -> None:
-        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end, lenient)
+    def cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool, stage: int, nxt: list[str]) -> None:
+        return expressions_cmp_arm(self, op, a, b, k, p, l, ph, end, lenient, stage, nxt)
 
-    def cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
-        return expressions_cmp_try(self, op, k, x, y)
+    def cmp_try(self, op: str, k: str, x: Val, y: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
+        return expressions_cmp_try(self, op, k, x, y, stage, decl)
 
     def cmp_rest(self, v: Val, alts: list[Val], to: list[str]) -> str:
         return expressions_cmp_rest(self, v, alts, to)
@@ -4641,8 +4740,8 @@ class Gen:
     def iter_in(self, op: str, a: Val, it: Val) -> Val:
         return expressions_iter_in(self, op, a, it)
 
-    def concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
-        return expressions_concrete_cmp(self, op, a, b)
+    def concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
+        return expressions_concrete_cmp(self, op, a, b, stage, decl)
 
     def isnull(self, v: Val) -> str:
         return expressions_isnull(self, v)
@@ -4667,6 +4766,21 @@ class Gen:
 
     def compare(self, n: Node) -> Val:
         return expressions_compare(self, n)
+
+    def complex_value(self, re: Val, im: Val) -> Val:
+        return expressions_complex_value(self, re, im)
+
+    def complex_parts(self, v: Val) -> list[Val]:
+        return expressions_complex_parts(self, v)
+
+    def complex_arith(self, op: str, a: Val, b: Val, shown: str) -> Val:
+        return expressions_complex_arith(self, op, a, b, shown)
+
+    def complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val:
+        return expressions_complex_cmp(self, op, a, b, checked)
+
+    def complex_ueq(self, op: str, a: Val, b: Val) -> Val:
+        return expressions_complex_ueq(self, op, a, b)
 
     def exc_id(self, v: Val) -> Val:
         return expressions_exc_id(self, v)
@@ -4842,11 +4956,11 @@ class Gen:
     def scalar_call_types(self, f: FnInfo, args: list[Node]) -> list[str]:
         return calls_scalar_call_types(self, f, args)
 
-    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False) -> Val:
-        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs, unbound)
+    def call_fn(self, f: FnInfo, pre: list[Val], args: list[Node], want: str='', none: str='', cache: Val | None=None, direct: bool=False, resultsoft: bool = False, typeargs: str = "", unbound: bool = False, got: list[FnInfo] | None = None) -> Val:
+        return calls_call_fn(self, f, pre, args, want, none, cache, direct, resultsoft, typeargs, unbound, got)
 
-    def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False) -> Val:
-        return calls_virtual_call(self, f, pre, args, want, none, resultsoft)
+    def virtual_call(self, f: FnInfo, pre: list[Val], args: list[Node], want: str, none: str, resultsoft: bool = False, got: list[FnInfo] | None = None) -> Val:
+        return calls_virtual_call(self, f, pre, args, want, none, resultsoft, got)
 
     def shared_dispatch(self, f: FnInfo, cs: list[ClassInfo], pre: list[Val], args: list[Node]) -> str:
         return calls_shared_dispatch(self, f, cs, pre, args)
@@ -4922,6 +5036,9 @@ class Gen:
 
     def match(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
         return templates_match(self, a, t, tv, tvs)
+
+    def match_key(self, a: Node, t: str, tv: dict[str, str], tvs: list[str]) -> str:
+        return templates_match_key(self, a, t, tv, tvs)
 
     def match_items(self, xs: list[Node], ts: list[str], tv: dict[str, str], tvs: list[str]) -> str:
         return templates_match_items(self, xs, ts, tv, tvs)
@@ -5079,6 +5196,9 @@ class Gen:
     def range_fields(self, v: Val) -> list[str]:
         return builtins_range_fields(self, v)
 
+    def complex_new(self, args: list[Node]) -> Val:
+        return builtins_complex_new(self, args)
+
     def pwrite(self, fd: str, fv: str, s: str, fo: Val) -> None:
         return builtins_pwrite(self, fd, fv, s, fo)
 
@@ -5115,11 +5235,24 @@ class Gen:
     def iter_elem(self, t: str) -> str:
         return containers_iter_elem(self, t)
 
-    def siter(self, n: Node, et: str, what: str, resultsoft: bool = False) -> Val:
-        return containers_siter(self, n, et, what, resultsoft)
+    def siter(self, n: Node, et: str, what: str, resultsoft: bool = False, mode: str = "") -> Val:
+        return containers_siter(self, n, et, what, resultsoft, mode)
 
-    def sitems(self, v: Val, et: str, what: str) -> Val:
-        return containers_sitems(self, v, et, what)
+    def sitems(self, v: Val, et: str, what: str, mode: str = "") -> Val:
+        return containers_sitems(self, v, et, what, mode)
+
+    def set_kind(self, et: str) -> str:
+        return containers_set_kind(self, et)
+
+    def set_rekind(self, v: Val, et: str) -> Val:
+        return containers_set_rekind(self, v, et)
+
+    def set_some(self, v: Val) -> Val:
+        return containers_set_some(self, v)
+
+    def set_pair(self, a: Val, b: Val, w: str) -> list[Val]:
+        return containers_set_pair(self, a, b, w)
+
 
     def supdate(self, s: str, v: Val, et: str) -> None:
         return containers_supdate(self, s, v, et)
@@ -5169,6 +5302,9 @@ class Gen:
     def key_problem(self, t: str) -> str:
         return containers_key_problem(self, t)
 
+    def key_union(self, t: str) -> bool:
+        return containers_key_union(self, t)
+
     def elem_problem(self, t: str) -> str:
         return containers_elem_problem(self, t)
 
@@ -5217,8 +5353,11 @@ class Gen:
     def store_elem(self, k: Val, et: str) -> Val:
         return containers_store_elem(self, k, et)
 
-    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str) -> str:
-        return containers_nonekey(self, k, none, fn, av, x)
+    def nonekey(self, k: Val, none: str, fn: str, av: list[str], x: str, kt: str) -> str:
+        return containers_nonekey(self, k, none, fn, av, x, kt)
+
+    def none_dkey(self, k: Val, kt: str) -> Val:
+        return containers_none_dkey(self, k, kt)
 
     def keyed(self, k: Val, av: list[str]) -> list[str]:
         return containers_keyed(self, k, av)
@@ -5240,6 +5379,9 @@ class Gen:
 
     def scalar_union(self, t: str) -> bool:
         return unions_scalar_union(self, t)
+
+    def cx_union(self, t: str) -> bool:
+        return unions_cx_union(self, t)
 
     def num_union(self, t: str) -> bool:
         return unions_num_union(self, t)

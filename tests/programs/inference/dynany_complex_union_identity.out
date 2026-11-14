@@ -1,0 +1,11 @@
+round trip True True True
+tuple True 1 True True
+optional True True
+typed generator True True
+dynamic generator True True
+round trip True True True
+tuple True 1 True True
+optional True True
+typed generator True True
+dynamic generator True True
+[exit 0]

@@ -1,0 +1,22 @@
+False True False
+True
+False
+False
+True
+False True False
+TypeError '<' not supported between instances of 'V' and 'NoneType'
+TypeError '>' not supported between instances of 'V' and 'NoneType'
+TypeError '>=' not supported between instances of 'V' and 'NoneType'
+TypeError '<=' not supported between instances of 'V' and 'NoneType'
+False True False
+TypeError '<' not supported between instances of 'NoneType' and 'V'
+TypeError '>' not supported between instances of 'NoneType' and 'V'
+TypeError '>=' not supported between instances of 'NoneType' and 'V'
+TypeError '<=' not supported between instances of 'NoneType' and 'V'
+True False True
+TypeError '<' not supported between instances of 'NoneType' and 'NoneType'
+TypeError '>' not supported between instances of 'NoneType' and 'NoneType'
+TypeError '>=' not supported between instances of 'NoneType' and 'NoneType'
+TypeError '<=' not supported between instances of 'NoneType' and 'NoneType'
+False False True True
+[exit 0]

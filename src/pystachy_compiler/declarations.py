@@ -28,6 +28,8 @@ from src.pystachy_compiler.specs import (
     OPTTYPES,
     PATHLIKE,
     PYBUILTINS,
+    COMPLEXC,
+    COMPLEXS,
     OBJECTC,
     RANGEC,
     RANGES,
@@ -176,6 +178,8 @@ def gen_ann(self, n: Node) -> str:
             return s
         if s == "range" and RANGEC in self.classes:
             return RANGEC  # (the class of range objects, lib/_pystachy_range.py)
+        if s == "complex" and COMPLEXC in self.classes:
+            return COMPLEXC  # (the class of complex numbers, lib/_pystachy_complex.py)
         if self.imported(s).startswith("ffi.") and self.imported(s)[4:] in CTYPES:
             return "int"  # (a C integer type, in an @extern function's signature: see CTYPES)
         if self.imported(s) == "ffi.c_buf":
@@ -1001,8 +1005,10 @@ def gen_optional(self, t: str) -> str:
     if t in self.classes or is_opt(t):
         return t
     if is_union(t):
-        # (a union that holds a class's objects may be None, as the class's objects may)
-        return t if len([m for m in umembers(t) if m in self.classes]) > 0 else self.ctype("opt", [t])
+        # (a union that holds a class's objects may be None, as the class's objects may; a complex
+        # number beside scalars or containers is a scalar member, whose union is optional as an
+        # int's is, and beside only objects and files a reference member: complex | C)
+        return t if self.reference_union(t) or len([m for m in umembers(t) if m in self.classes and m != COMPLEXC]) > 0 else self.ctype("opt", [t])
     if (t == "str" or t == "bytes" or t == "exc" or t == "exctype" or self.isnum(t) or is_list(t) or is_dict(t) or is_set(t) or is_tuple(t) or is_vtuple(t) or is_callable(t) or is_gen(t)) and "?" not in t:
         return self.ctype("opt", [t])
     return ""
@@ -1252,7 +1258,7 @@ def gen_declare_fn(self, d: Node, cls: str, inherited: bool = False) -> FnInfo:
                 p.kids[0] = mk("noann", "", d.line, [])
         if self.typevar_in([d.kids[1]], tvs) != "":
             d.kids[1] = mk("noann", "", d.line, [])
-    init = d.s == "__init__" and self.tmpl_of(cls) != ""  # (a class template's: see specialize)
+    init = d.s == "__init__" and (self.tmpl_of(cls) != "" or (cls in self.classes and self.classes[cls].init_only))
     for i in range(len(ps)):
         # x: object, as in __eq__(self, other: object): a template's parameter, which each call
         # types (any argument: isinstance() narrows it), where a template may be
@@ -2108,7 +2114,7 @@ def gen_frozen_store(self, o: Val, name: str, delete: bool = False) -> bool:
 def gen_frozen(self, t: str, name: str) -> None:
     # a NamedTuple's fields are assigned only by its __init__, a range object's by none (as
     # CPython's start, stop and step are read-only)
-    if t == RANGEC and self.curfn.mod != RANGES:
+    if (t == RANGEC and self.curfn.mod != RANGES) or (t == COMPLEXC and self.curfn.mod != COMPLEXS):
         self.err("readonly attribute")
     if t in self.nts and not (self.curfn.name == "__init__" and self.curfn.cls == t):
         self.err(f"cannot assign to field '{name}' of NamedTuple {short(t)} (AttributeError: can't set attribute); make a new one with _replace({name}=...)")
@@ -2356,6 +2362,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
     k = e.kind
     if k == "int" or k == "float" or k == "str" or k == "bytes":
         return k
+    if k == "complex" and COMPLEXC in self.classes:
+        return COMPLEXC
     if k == "True" or k == "False":
         return "bool"
     if k == "fstr" or (k == "call" and literal_format(e.kids[0])):
@@ -2372,7 +2380,10 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
         t = self.guess(e.kids[0], f)
         if e.s == "-" and (t == "int" or t == "bool") and self.int_policy(e.line):
             return BIG  # (as unary() computes it in a module whose ints promote: bigints.py)
-        # (-True is -1, as unary() computes it; -o is what o.__neg__ returns, unknown as for o + o)
+        # (-True is -1, as unary() computes it; -o is what o.__neg__ returns, unknown as for o + o,
+        # but a complex number's: complex_arith)
+        if t == COMPLEXC and e.s != "~":
+            return t
         return "int" if t == "bool" else "" if t in self.classes and UNARY[e.s] in self.classes[t].methods else t
     if k == "name" and e.s in f.params:
         t = f.ptypes[f.params.index(e.s)]
@@ -2507,6 +2518,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             return RANGEC  # (where it is a value)
         if c == "object" and OBJECTC in self.classes and not self.bound(c):
             return OBJECTC  # (object(): an object of lib/_pystachy_object.py's class)
+        if c == "complex" and COMPLEXC in self.classes and not self.bound(c):
+            return COMPLEXC  # (complex(): an object of lib/_pystachy_complex.py's class)
         if c == "len" or c == "ord":
             return "int"
         if c == "input" or c == "repr" or c == "chr" or c == "ascii" or c == "hex" or c == "oct" or c == "bin":
@@ -2561,6 +2574,8 @@ def gen_guess(self, e: Node, f: FnInfo) -> str:
             if e.s == "/" or a == "float" or b == "float":
                 return "float"
             return "bool" if a == "bool" and b == "bool" and e.s in IOPS else "int"
+        if (a == COMPLEXC or b == COMPLEXC) and (a == COMPLEXC or self.isnum(a) or a == BIG) and (b == COMPLEXC or self.isnum(b) or b == BIG) and e.s in ["+", "-", "*", "/", "**"]:
+            return COMPLEXC  # (complex_arith's)
         if a == b and (a == "str" or is_list(a)):
             return a
         if e.s == "+" and a.startswith("tuple[") and b.startswith("tuple["):
@@ -2850,6 +2865,9 @@ def gen_field(self, o: Val, name: str, store: bool = False) -> Val:
     if o.t == RANGEC and self.curfn.mod != RANGES and name not in ci.ftypes:
         # (CPython's range has no other attributes, and its methods cannot be assigned)
         self.err(f"'range' object attribute '{name}' is read-only" if store and name in ci.methods else f"'range' object has no attribute '{name}'" + (" and no __dict__ for setting new attributes" if store else ""))
+    if o.t == COMPLEXC and self.curfn.mod != COMPLEXS and (store or (name not in ci.ftypes and name not in ci.methods)):
+        # (CPython's complex has real, imag and its methods, all read-only)
+        self.err("readonly attribute" if name in ci.ftypes else f"'complex' object attribute '{name}' is read-only" if name in ci.methods else f"'complex' object has no attribute '{name}'")
     if name in ci.methods and ci.methods[name].prop:
         self.err(f"property '{name}' of '{short(o.t)}' is read-only")
     if store and ci.slotlimit and name not in ci.slots:

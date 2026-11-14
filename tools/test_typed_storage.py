@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.ir import FnInfo, IFn, Ins, Val, Values
 from src.pystachy_compiler.loader import Loader
-from src.pystachy_compiler.specs import FXBIT, RAWR, RAWW
+from src.pystachy_compiler.specs import FXBIT, RAWR, RAWW, RUNTIME
 from src.pystachy_compiler.syntax import Node
 
 
@@ -120,6 +120,26 @@ class TypedStorageTests(unittest.TestCase):
                         vs = Values(g.fn, {"entry": []})
                         self.assertEqual(g.canon(vs, v), "%a0")
                         self.assertEqual(g.canon(vs, again), "%a0")
+
+    def test_optional_tuple_widening_invalidates_heap_reaching_facts(self):
+        # Widening may materialize identities in the existing source companion.
+        # Its native call must stop heap-value reuse, as tuple slice/concat do.
+        def after_widening(address):
+            g = Gen()
+            location = Val(address, "*int")
+            g.mem_store(location, Val("%a2", "int"))
+            g.rt("pys_vtuple_box", "ptr", ["ptr %a0"])
+            value = g.mem_load(location).v
+            g.fn.n = g.n
+            return value, g.canon(Values(g.fn, {"entry": []}), value)
+
+        value, reaching = after_widening("%a1")
+        self.assertEqual(reaching, value)
+        # A stack slot cannot alias the source tuple, so its stored value remains.
+        self.assertEqual(after_widening("%local.1")[1], "%a2")
+        # Negative control: the previous declaration incorrectly reused a heap fact.
+        with patch.dict(RUNTIME, {"vtuple.box": "%ptr:%ptr|R A|"}):
+            self.assertEqual(after_widening("%a1")[1], "%a2")
 
     def test_heap_store_aliases_barrier_but_other_locals_and_globals_do_not(self):
         for typed in (False, True):

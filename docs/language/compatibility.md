@@ -23,6 +23,8 @@ These programs can compile and run with different results, errors or timing of e
 | Ordinary `int` | Signed 64-bit. Oversized results, intermediates and `int()` conversions raise `OverflowError`. Use explicit [`mpz`](../mpz.md) or opt in to [promoting ints](#promoting-ints-opt-in-prototype). |
 | `int ** negative int` | `ValueError`; `0 ** -1` still raises `ZeroDivisionError`. |
 | Negative float to a fractional power | `ValueError`; CPython returns a complex number. |
+| `complex` identity | Each imaginary literal, operation and `complex()` of a number makes a new object; CPython shares a module's equal constants, so `x = 1j; y = 1j; x is y` is true there ([deviation](../../tests/deviations/complex_identity.py)). A NaN part hashes as a NaN does (below). |
+| `None` as `complex` in a union | A `complex` that holds `None`, stored where a union without `None` is declared, raises `TypeError`; CPython stores `None`, which mypy rejects ([deviation](../../tests/deviations/complex_union_none.py)). |
 | NaN identity | Unboxed NaNs have no identity, including inside scalar union boxes: `nan in [nan]` is false. Container equality and sorting treat a shared NaN as distinct values. `hash(nan)` is 0, rather than an identity hash. |
 | Empty `list[float]` | `sum(xs)` returns `0.0`, `sum(xs, 1)` returns `1.0`, and `math.prod(xs)` returns `1.0`; CPython preserves the integer start. |
 | Native JSON | Typed `JSONValue` rejects integers outside 64 bits; dynamic `Any` decoding promotes them. Nesting is limited by recursion depth and a 2,000-container cap. See [JSON limits](../../lib/compatibility.md#json). |
@@ -151,6 +153,8 @@ no effect. The shared runtime cache is independent of this setting.
 - **Tuple conversions:** fixed-shape to runtime-length tuples, or scalar to
   optional-element tuples, create new objects. Empty runtime-length tuples are
   not interned. `tuple(t)` preserves identity only when its representation fits.
+  In graphs with dynamic `Any`, numeric runtime-tuple items retain their identity
+  when widened to optional items; the outer tuple can still be a new object.
 - **Callables:** `is` compares the function and its environment/bound object, as
   `==` does. Two reads of `o.m` converted to `Callable` compare identical; CPython
   creates separate bound-method objects.
@@ -487,9 +491,12 @@ See [object protocols](semantics.md#object-protocols) and
 - **Iterator operations:** `iter(callable, sentinel)`; `iter()` of `enumerate`, `zip`, `map`,
   `filter` or `reversed`; `next(it, default)` without a common item/default type; iterator
   classes lacking `__iter__` in comprehensions or `str.join`; inheritance-hierarchy
-  constructors calling `iter()` or accepting `Iterator[T]` / `Iterable[T]`.
+  constructors storing an iterator whose concrete class depends on their arguments.
+  Fixed-field constructors may consume `Iterator[T]` / `Iterable[T]`.
 - **Fallbacks and power:** `__getitem__`-only iteration/membership; `__len__` / `__getitem__`
-  fallback for `reversed`; reflected arithmetic; `NotImplemented`; object or optional
+  fallback for `reversed`; reflected arithmetic between two objects, `__rdivmod__` and `__rpow__`;
+  `int(o)` through `__trunc__`; `NotImplemented` outside a
+  [comparison method's `return`](semantics.md#object-protocols); object or optional
   numeric power exponents; three-argument object `pow`. Before `**=`, narrow a base-typed
   receiver if only its subclass defines `__ipow__`.
 - **Comparisons:** equality between unrelated ordinary classes outside inheritance
@@ -517,12 +524,14 @@ See [object protocols](semantics.md#object-protocols) and
 See [fields and records](typing.md#fields-dataclasses-and-namedtuples) and
 [single inheritance](typing.md#single-inheritance).
 
-- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving templates,
+- **Inheritance:** multiple bases outside the [method-only secondary base](typing.md#a-method-only-secondary-base) subset; ordinary hierarchies involving layout-specialized templates,
   NamedTuple or builtins; generic inheritance outside the [visitor subset](typing.md#explicit-generic-classes)
   (bases whose constructor binds type variables or subclasses passing through their own type
   variables); mixed dataclass/ordinary hierarchies; decorated subclasses except
   dataclass-from-dataclass; changing method kind; incompatible virtual call signatures or
-  results; overridden static/class methods called through base-typed objects.
+  results; overridden static/class methods called through base-typed objects. Independent
+  classes and ordinary hierarchies with fixed concrete fields may specialize constructor
+  arguments without specializing their layouts ([class templates](typing.md#class-templates-and-generic-classes)).
 - **Inherited members:** assigning inherited class attributes through subclasses without their
   own defaults; changing field types; derived-only fields without supported narrowing;
   inherited `cls`-using classmethods through base-typed objects, across modules or with
@@ -579,7 +588,9 @@ See [optional operations and narrowing](typing.md#optional-values-and-narrowing)
 
 - Nullable keys/elements except user objects; tuple keys containing unsupported members
   such as floats, lists or NamedTuples; NamedTuple, exception or frozenset keys/elements;
-  hashing these types except NamedTuples; classes with nonmethod `__hash__` / `__eq__`.
+  hashing these types except NamedTuples; classes with nonmethod `__hash__` / `__eq__`;
+  unions of classes as keys/elements where a member's classes define `__hash__` or `__eq__`,
+  and such unions as tuple-key items or as the keys of dicts compared with `==`.
 - Bool stored as int, including set elements, dict keys, tuple-key members, `setdefault` and
   displays. Bool-key lookup, `pop` and `del` work; augmented assignment requires an RHS that
   runs no user code and mutates no dict. Only `get` and `in` also accept optional bool keys.
@@ -675,7 +686,11 @@ See [user exception classes](semantics.md#user-exception-classes) and
 - **Sentinels:** `object()` arguments, attribute assignment, equality with user/exception
   objects, mixed-type variables/returns/`dict.get` defaults, or aliases / `type(x) is object` without any
   module calling `object()`. See [sentinels](semantics.md#sentinels).
-- **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`.
+- **Complex numbers:** ordering, `//`, `%`, `divmod()`, `round()`, `int()`, `float()` and `math`
+  of one; an `int` or `float` where `complex` is declared; `sum()`; ordering, `hash()` or
+  container equality of unions that hold one; attribute assignment and subclasses. See
+  [complex numbers](semantics.md#complex-numbers).
+- **Reserved modules:** `_pystachy_iterators`, `_pystachy_range`, `_pystachy_object`, `_pystachy_complex`.
 - **Arguments:** unsupported keywords; optional `key=` when items lack a supported natural
   order; `open()` encoding constants beyond UTF-8 and Latin-1.
 - **Dict methods:** `update` with different key/value types, pair iterables beyond lists of

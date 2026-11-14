@@ -15,10 +15,15 @@ from src.pystachy_compiler.specs import (
     FX,
     FXALL,
     FXBIT,
+    GENSLOTS,
+    GENSLOTSB,
+    GENSLOTSX,
     INERT,
     LIST_READS,
     LIST_WRITES,
     METHODS,
+    NONE_ITEM,
+    NONEVAR,
     OPTS,
     OPAQUE,
     RUNTIME,
@@ -27,6 +32,18 @@ from src.pystachy_compiler.specs import (
     SPECSHOW,
 )
 from src.pystachy_compiler.syntax import Node
+
+
+def generator_identity(t: str, tracking: bool) -> bool:
+    # The scalar yield channels with a nullable object-identity companion.
+    return tracking and t in ["int", "float"]
+
+
+def generator_slots(protocol: bool, promoting: bool, identity: bool) -> int:
+    # The identity word follows the existing promise, so ordinary frames keep
+    # their old extent. The whole frame comes from scanned coroutine storage.
+    base = GENSLOTSB if promoting else GENSLOTSX if protocol else GENSLOTS
+    return base + (1 if identity else 0)
 
 
 def timing_start() -> float:
@@ -222,6 +239,8 @@ def tname(t: str) -> str:
         return "NoneType"
     if t == "int+":
         return "int"
+    if t == "decimal$Decimal":
+        return "decimal.Decimal"
     if t == "file":
         return "TextIOWrapper"
     if is_vtuple(t):
@@ -774,21 +793,23 @@ def empty_default(n: Node, name: str, kind: str) -> bool:
 
 
 def key_problem(t: str) -> str:
-    # why t cannot be a dict's key type, or "": keys are ints, strs, or tuples whose items are ints,
-    # bools, strs, str | None or such tuples (runtime.c hashes and compares them by descriptor), and
-    # objects, also as such items (Gen.key_problem)
+    # why t cannot be a dict's key type, or "": ints, strs, fixed or runtime-length tuples of
+    # hashable items, and objects (Gen.key_problem); None and these types | None (none_key)
     if t == "int" or t == "str" or t == "bytes" or t == "exctype" or (is_tuple(t) and key_items(t)):
         return ""  # (an exception class's class object is hashed and compared by identity)
-    if is_opt(t):
-        return f"dict keys must be int or str, not {typestr(t)} (a key cannot be None)"
+    if is_vtuple(t) and key_items("tuple[" + targs(t)[0] + "]"):
+        return ""  # (a runtime-length tuple of such items: runtime.c's hval walks its items)
+    if t == "None" or (is_opt(t) and t != NONEVAR and t != NONE_ITEM and key_problem(unopt(t)) == ""):
+        return ""  # (None, or a key that may be None: hash(None) is a constant, and None equals only itself)
     return f"dict keys must be int or str, objects, or tuples of int, bool, str, str | None and objects, not {typestr(t)}"
 
 
-def elem_problem(t: str) -> str:
-    # why t cannot be the element type of a set, or "": the types of dict keys (key_problem)
-    if is_opt(t):
-        return f"set elements must be int or str, not {typestr(t)} (an element cannot be None)"
-    return key_problem(t).replace("dict keys", "set elements")
+def none_key(t: str) -> bool:
+    # may a dict's key (a set's element) of type t be None, as a value of the type and not as
+    # the null an object's type always includes: None itself, or T | None for a key type T. Its
+    # table has a descriptor's kind (runtime.c's hitem and hval hash None; eqv compares it), never
+    # the int's or str's kinds 0 and 1, whose lookups take no None
+    return t == "None" or (is_opt(t) and t != NONEVAR and t != NONE_ITEM)
 
 
 def lookable(a: str, b: str) -> bool:
@@ -796,6 +817,8 @@ def lookable(a: str, b: str) -> bool:
     # is 1, and None (a tuple's item) is no str
     if a == b or (a == "bool" and b == "int") or (b == "str" and (a == "None" or a == "opt[str]")):
         return True
+    if none_key(b) and (a == "None" or (b != "None" and lookable(unopt(a), unopt(b)))):
+        return True  # (a key that may be None: None, or what its type's keys find)
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
         return False
     for i in range(len(targs(a))):
@@ -810,6 +833,12 @@ def bool_for_int(a: str, b: str) -> bool:
     # and CPython keeps a key it adds as it is, a bool (Gen.bool_find, Gen.store_key)
     if a == "bool":
         return b == "int"
+    if is_tuple(a) and is_vtuple(b):
+        # (a fixed tuple among a runtime-length tuple's keys: each item against their one item type)
+        for x in targs(a):
+            if bool_for_int(x, targs(b)[0]):
+                return True
+        return False
     if not is_tuple(a) or not is_tuple(b) or len(targs(a)) != len(targs(b)):
         return False
     for i in range(len(targs(a))):
@@ -838,7 +867,9 @@ def atomic_list(t: str) -> bool:
 
 def list_identity_kind(t: str) -> int:
     # Capability only: whether the current function tracks identity is Gen's policy.
-    return 1 if t == "list[int]" else 2 if t == "list[float]" else 0
+    # Bit 3 marks nullable numeric slots: null for None, otherwise a representation
+    # box of the scalar. Its Python identity still belongs to the separate Dyn box.
+    return 1 if t == "list[int]" else 2 if t == "list[float]" else 9 if t == "list[opt[int]]" else 10 if t == "list[opt[float]]" else 0
 
 
 class ListLayout:
@@ -1101,7 +1132,13 @@ def template_ok(name: str) -> bool:
         return True
     # Power may also declare an optional modulus parameter: normal call binding checks
     # its signature, rather than SPECIAL's fixed binary-method arity.
-    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __ipow__ __deepcopy__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
+    # round(o) and round(o, n) call __round__ as written, and it returns an int for the one and an
+    # object for the other: a template's parameter types each call's result.
+    # A reflected operator's method is called with the left operand, as its forward method is
+    # with the right one: a number on the left types its parameter.
+    if name in "__radd__ __rsub__ __rmul__ __rtruediv__ __rfloordiv__ __rmod__ __rmatmul__ __rand__ __ror__ __rxor__ __rlshift__ __rrshift__".split():
+        return True
+    return name in "__call__ __getitem__ __setitem__ __delitem__ __contains__ __enter__ __exit__ __pow__ __ipow__ __deepcopy__ __round__".split() or (name in SPECIAL and SPECIAL[name].startswith("2:"))
 
 
 def takes_self(f: FnInfo) -> bool:

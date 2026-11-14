@@ -26,7 +26,7 @@ from src.pystachy_compiler.diagnostics import FILES, LINES, MODDUNDERS, Rejoin, 
 from src.pystachy_compiler.dynamic import XCMP, boxed_list_items, comparison_record_write, comparison_storage_key
 from src.pystachy_compiler.ir import Blk, Closure, FnInfo, Frame, Ins, IterArg, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, owner, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, INERT_DECOS, NONE_ITEM, NONEVAR, OPTTYPES, PYBUILTINS, RANGEC, RANGES, UNSUPPORTED, is_excname
 from src.pystachy_compiler.syntax import NOKIDS, Node, comp_names, made_var, mk, name_targets, starred_target
 from src.pystachy_compiler.utils import (
     elem,
@@ -121,7 +121,9 @@ def gen_load_name(self, name: str) -> Val:
         if name in self.owned and not self.appending:
             self.mem_store(Val(self.owned[name], "*int"), Val("0", "int"))  # (what reads it may keep it: str_append)
         r = self.mem_load(Val(self.lreg[name], "*" + t)).v
-        if name == self.selfname and name not in self.compvars:
+        if (name == self.selfname or (name in self.curfn.nnp and self.may_decline(self.curfn))) and name not in self.compvars:
+            # (and, in a comparison method that may return NotImplemented, a parameter whose
+            # object is known not to be None, which it may pass on: to super().__eq__(other))
             self.nn[r] = True
         val = Val(r, t)
         if name in self.idbox and numeric_identity(t):
@@ -1522,7 +1524,7 @@ def gen_typed_now(self, e: Node, own: str = "") -> bool:
             if i != 1 and not self.typed_now(e.kids[i], own if i == 2 else inner):
                 return False
         return True
-    if e.kind == "lambda" or e.kind in UNSUPPORTED:
+    if e.kind == "lambda" or (e.kind in UNSUPPORTED and not (e.kind == "complex" and COMPLEXC in self.classes)):
         return False
     for k in e.kids:  # (x := v as v: typing it assigns nothing, see walrus)
         if not self.typed_now(k, own):

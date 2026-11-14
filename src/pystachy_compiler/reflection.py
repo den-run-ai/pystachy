@@ -13,7 +13,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, int_program, show
 from src.pystachy_compiler.analysis import clean_doc, local_names
 from src.pystachy_compiler.ir import ClassInfo, Data, FnInfo, Ins, Loop, Val, tmpname
 from src.pystachy_compiler.names import ENUMCLASSES, short
-from src.pystachy_compiler.specs import BIG, BIGOPT, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, GLUE, HASATTR, ITERS, NONEVAR, OBJECTC, RANGEC, TYPEMODS, is_excname
 from src.pystachy_compiler.syntax import Node, mk
 from src.pystachy_compiler.utils import (
     lib_file,
@@ -185,7 +185,7 @@ def gen_refl_type_name(self, c: str, what: str) -> str:
     if c in self.classes and self.classes[c].exc == "":
         ci = self.classes[c]
         q = shown(ci.origin if ci.origin != "" else c)
-        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC:
+        if c.startswith("_pystachy_iterators$") or c == RANGEC or c == OBJECTC or c == COMPLEXC:
             return "builtins" if what == "__module__" else short(c)
         own = self.classes[ci.origin] if ci.origin != "" else ci
         if dynamic_program() and what in ["__module__", "__qualname__"] and what in own.fdefault and self.default_home(own, what) is own and own.fdefault[what].kind == "str":
@@ -207,7 +207,7 @@ def gen_refl_record(self, c: str) -> str:
     # the field table (names in __dict__ order, descriptors, offsets: null until needed)
     if c in self.classes and self.classes[c].origin != "":
         c = self.classes[c].origin
-    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c.startswith(ITERS + "$")))
+    builtin = c not in self.classes or (dynamic_program() and (c == OBJECTC or c == RANGEC or c == COMPLEXC or c.startswith(ITERS + "$")))
     key = ("b." + self.refl_type_name(c, "__name__")) if builtin else ("c." + c)
     name = "@pys.refl." + key
     if name in self.reflrecs:
@@ -439,6 +439,22 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
     # a box's, the one of a typed value's type by the value it holds (dyn_value_type: None's for
     # an optional list that is None), of a class or builtin type named, or null where no box
     # holds a value of that type (an exception, a set, bytes), which no DynType is
+    neg = n.s == "is not" or n.s == "!="
+    # A template denotes one Python class, but has no single object descriptor.
+    # Its exact type test is the existing family predicate: templates cannot be
+    # bases or subclasses. It proves no field layout and does not unbox a value.
+    for j in range(2):
+        k = n.kids[j]
+        if k.kind == "name" and k.s in self.tmpl and k.s not in self.ltype and k.s not in self.gtypes:
+            x = self.refl_typeof(n.kids[1 - j])
+            if x is not None:
+                if j == 0:
+                    self.class_ready(k)
+                v = self.expr(x, "")
+                if j == 1:
+                    self.class_ready(k)
+                r = Val(self.dyn_test(self.dyn_box(v), [k.s]), "bool")
+                return Val(self.scalar("xor", [r, Val("true", "bool")]), "bool") if neg else r
     ts: list[str] = []
     for k in n.kids:
         x = self.refl_typeof(k)
@@ -449,8 +465,6 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
         elif (k.kind == "name" and k.s not in self.ltype and k.s not in self.gtypes) or (k.kind == "call" and len(k.kids) == 2 and k.kids[1].kind == "None"):
             c = self.refl_type_operand(k)
             b = "list[dyn]" if is_list(c) else "dict[dyn,dyn]" if is_dict(c) else "vtuple[dyn]" if is_tuple(c) else c
-            if b in self.tmpl:
-                self.err(f"type(x) is {short(b)} of an Any value is not supported: {short(b)} is a class template, whose objects are its specializations'")
             if b in self.classes and self.classes[b].exc == "":
                 ts.append(self.dyn_class_type(b))
             elif b in ["None", "bool", "int", "float", "str", "list[dyn]", "dict[dyn,dyn]", "vtuple[dyn]"]:
@@ -462,17 +476,19 @@ def gen_refl_dyn_type_cmp(self, n: Node) -> Val:
             if unopt(v.t) != "exctype":
                 self.err("a comparison of type(x) is supported with type(y), y.__class__, a class or a builtin type's name (#486); class objects as values are not (#7)")
             ts.append("null")
-    neg = n.s == "is not" or n.s == "!="
     variants = "@pys_dyntype_list" in ts or (int_program() and "@pys_dyntype_int" in ts)
     if not variants and (not ts[0].startswith("%") or not ts[1].startswith("%")):
         # Most named Python types have one DynType. Lists and promoting integers have
         # several physical layouts, so their Python type identity uses same_type below.
         return self.ptr_cmp("!=" if neg else "==", Val(ts[0], "dyntype"), Val(ts[1], "dyntype"))
-    r = self.rt("pys_dyn_same_type", "i64", [f"ptr {ts[0]}", f"ptr {ts[1]}"])
-    return self.num_cmp("==" if neg else "!=", Val(r, "int"), Val("0", "int"))
+    r = self.dyn_call(self.dyn_dispatcher("sametype", ["dyntype", "dyntype"], "bool", ""),
+                      [Val(ts[0], "dyntype"), Val(ts[1], "dyntype")])
+    return Val(self.scalar("xor", [r, Val("true", "bool")]), "bool") if neg else r
 
 
 def gen_refl_type_operand(self, n: Node) -> str:
+    if n.kind == "name" and n.s in self.deferred_hierarchies:
+        self.request_hierarchy(n.s)
     # what an operand of a type comparison names statically, as refl_record takes it: a class
     # or a builtin type named by its name (C, int, list, ...); "" for type(x) and x.__class__
     if self.refl_typeof(n) is not None:
@@ -484,6 +500,8 @@ def gen_refl_type_operand(self, n: Node) -> str:
         return RANGEC  # (lib/_pystachy_range.py's class)
     if n.kind == "name" and n.s == "object" and OBJECTC in self.classes and not self.bound(n.s):
         return OBJECTC  # (lib/_pystachy_object.py's class, object()'s)
+    if n.kind == "name" and n.s == "complex" and COMPLEXC in self.classes and not self.bound(n.s):
+        return COMPLEXC  # (lib/_pystachy_complex.py's class)
     if n.kind == "name" and n.s in ["int", "float", "bool", "str", "bytes", "list", "dict", "tuple", "set", "frozenset"] and not self.bound(n.s):
         # (a container type's record is its name's: any element types)
         return "list[int]" if n.s == "list" else "dict[int,int]" if n.s == "dict" else "tuple[int]" if n.s == "tuple" else "set[int]" if n.s == "set" else "frozenset[int]" if n.s == "frozenset" else n.s
@@ -1058,6 +1076,8 @@ def gen_refl_supported(self, c: str, what: str) -> None:
         why = "an iterator of a builtin container"
     elif c == RANGEC:
         why = "a range"
+    elif c == COMPLEXC:
+        why = "a complex number"
     elif ci.mod in GLUE and self.curfn.mod != ci.mod:
         self.err(f"{what} of a {ci.mod}.{short(c)} object is not supported: its fields are Pystachy's {ci.mod} module's own (its twin's are others), and a program may use only its methods")
     elif opaque_class(ci, self.libdir) and self.curfn.mod != ci.mod:
@@ -3042,7 +3062,7 @@ def gen_copy_own(self, t: str, deep: bool) -> int:
     # copy does not support it: another type of the library's, a union of classes, and for a deep
     # copy a bound method or a Callable, which may hold one
     u = unopt(t)
-    if u in ["int", "float", "bool", "str", "bytes", "None", RANGEC, BIG] or t == BIGOPT or self.scalar_union(u):
+    if u in ["int", "float", "bool", "str", "bytes", "None", RANGEC, COMPLEXC, BIG] or t == BIGOPT or self.scalar_union(u):
         return 1
     if is_fn(u) or is_callable(u):
         return 2 if deep and (is_callable(u) or u.startswith("fn[m:")) else 1

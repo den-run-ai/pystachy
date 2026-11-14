@@ -1,0 +1,20 @@
+items True True True
+none True True 1 1
+search True 2 0 3 1
+distinct False 0
+copies True True True True
+equal True True
+aliases True True True
+pop True True
+remove 1 1 1
+slice store True True True
+clear refill True True True
+iteration True False False
+iteration False False True
+iteration False True False
+iteration True False False
+unpack True True True True
+integers True True False
+integer copies True True
+int pop True True
+[exit 0]

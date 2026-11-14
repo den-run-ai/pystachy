@@ -55,13 +55,15 @@ def narrows(a: str, b: str) -> bool:
     # conversion that branches (Gen.convert_at)
     if b == "" or a == b:
         return False
-    return a == BIG or a == BIGOPT or (is_tuple(a) and (BIG in a or BIG in b))
+    return a == BIG or a == BIGOPT or (is_tuple(unopt(a)) and (BIG in a or BIG in b))
 
 
 def big_viewable(a: str, b: str) -> bool:
     # are tuple types a and b the same but for promoting ints against 64-bit ints, also in their
     # tuples' items: their slots agree (utils.tslots), so a tuple of one is one of the other as it
     # is, but for big_tuple_view's tests
+    if is_opt(b):
+        return big_viewable(unopt(a), unopt(b))
     if not is_tuple(a) or not is_tuple(b) or a == b:
         return False
     x = targs(a)
@@ -75,15 +77,19 @@ def big_viewable(a: str, b: str) -> bool:
 
 
 def int_tuple(t: str) -> bool:
-    # is t a tuple type that holds an int, also in a tuple it holds: one whose ints a list of a
-    # program whose lists hold promoting ints holds as promoting ints (held)
-    return is_tuple(t) and any([x == "int" or int_tuple(x) for x in targs(t)])
+    # is t a tuple type, possibly optional, that holds an int, also in a tuple it holds: one
+    # whose ints a list of a program whose lists hold promoting ints holds as promoting ints
+    # (held). None changes no nonnull tuple's representation.
+    u = unopt(t)
+    return is_tuple(u) and any([x == "int" or int_tuple(x) for x in targs(u)])
 
 
 def big_view(t: str) -> str:
     # tuple type t with its ints, also those of the tuples it holds, as promoting ints: the layout of
     # a tuple that a list holds (held), which a tuple of t's 64-bit ints is as it is, unless one of
     # them is -2**63 (big_tuple_view)
+    if is_opt(t) and is_tuple(unopt(t)):
+        return "opt[" + big_view(unopt(t)) + "]"
     if not is_tuple(t):
         return t
     return "tuple[" + ",".join([BIG if x == "int" else big_view(x) for x in targs(t)]) + "]"
@@ -723,20 +729,8 @@ def gen_search_hold(self, v: Val, et: str, t: str) -> Val:
     # also where et is that tuple's type or None and v is not None
     if et == t:
         return self.list_hold(v, t)
-    v = self.coerce(v, et)
-    if search_type(t, et) == et:
-        return v
-    some = self.label()
-    end = self.label()
-    ph = Ins("phi", et, "")
-    self.incoming(ph, "null", self.cur)
-    self.cbr(self.isnull(v), end, some)
-    self.place(some)
-    h = self.list_hold(Val(v.v, t), t)
-    self.incoming(ph, h.v, self.cur)
-    self.br(end)
-    self.place(end)
-    return Val(self.phi(ph), et)
+    h = search_type(t, et)
+    return self.coerce(v, et) if h == et else Val(self.coerce(v, h).v, et)
 
 
 def gen_big_items(self, o: Val) -> Val:
@@ -780,11 +774,10 @@ def gen_key_hold(self, k: Val, kt: str) -> Val:
     # CPython finds as such a key (utils.lookable: a bool for an int, None for a str) in its own
     # type's
     lt = narrow_type(k.t)
-    if is_opt(k.t) and unopt(k.t) == kt:
-        return self.search_hold(k, k.t, kt)
-    if is_tuple(k.t) and lt != kt and lookable(lt, kt):
-        return Val(self.list_hold(k, lt).v, kt)
-    return self.list_hold(k, kt)
+    target = "opt[" + kt + "]" if is_opt(lt) and not is_opt(kt) else kt
+    if is_tuple(unopt(lt)) and unopt(lt) != unopt(kt) and lookable(unopt(lt), unopt(kt)):
+        return Val(self.list_hold(k, lt).v, target)
+    return self.list_hold(k, target)
 
 
 def gen_dict_key(self, d: Val, e: str) -> Val:
@@ -998,7 +991,7 @@ def gen_big_dict_call(self, o: Val, m: str, kx: Val, k: str, d: Val, has: bool, 
         if kx.t == BIG:
             e = self.big_key_entry(o, kx, "pys_dict_big_find")
         else:
-            e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {o.v}", f"i64 {k}"], x)  # (a key that is None: none)
+            e = self.nonekey(kx, "-1", "pys_dict_find", [f"ptr {o.v}", f"i64 {k}"], x, targs(o.t)[0])  # (a key that is None: none)
         found = self.label()
         end = self.label()
         ph = Ins("phi", BIG, "")
@@ -1179,14 +1172,23 @@ def gen_big_hashed(self, v: Val) -> Val:
 
 
 def gen_big_tuple_narrow(self, v: Val) -> Val:
-    # tuple v, whose items (or its tuples' items) may be promoting ints, as the tuple of their 64-bit
-    # ints: the same tuple, whose first slots are that tuple's (tslots), where each fits; else
-    # OverflowError, as a promoting int going into 64-bit storage raises (NARROW)
+    # tuple v, possibly None, whose items (or its tuples' items) may be promoting ints, as the
+    # tuple of their 64-bit ints: the same tuple, whose first slots are that tuple's (tslots),
+    # where each fits; else OverflowError (NARROW). Never read None's absent tuple slots.
+    if is_opt(v.t):
+        some = self.label()
+        end = self.label()
+        self.cbr(self.isnull(v), end, some)
+        self.place(some)
+        self.big_tuple_narrow(Val(v.v, unopt(v.t)))
+        self.br(end)
+        self.place(end)
+        return Val(v.v, narrow_type(v.t))
     ts = targs(v.t)
     for i in range(len(ts) if v.v != "undef" else 0):
         if ts[i] == BIG:
             self.big_narrow(self.tget(v, i))
-        elif is_tuple(ts[i]) and BIG in ts[i]:
+        elif is_tuple(unopt(ts[i])) and BIG in ts[i]:
             self.big_tuple_narrow(self.tget(v, i))
     return Val(v.v, narrow_type(v.t))
 
@@ -1217,6 +1219,19 @@ def gen_big_view_test(self, v: Val, t: str) -> str:
     # an i1, true where tuple v cannot be a t as it is (big_tuple_view) since one of its 64-bit ints
     # that t holds as a promoting int is -2**63; its promoting ints that t holds as 64-bit ints
     # are narrowed (OverflowError past 64 bits)
+    if is_opt(t):
+        if not is_opt(v.t):
+            return self.big_view_test(v, unopt(t))
+        some = self.label()
+        end = self.label()
+        ph = Ins("phi", "bool", "")
+        self.incoming(ph, "false", self.cur)
+        self.cbr(self.isnull(v), end, some)
+        self.place(some)
+        self.incoming(ph, self.big_view_test(Val(v.v, unopt(v.t)), unopt(t)), self.cur)
+        self.br(end)
+        self.place(end)
+        return self.phi(ph)
     a = targs(v.t)
     b = targs(t)
     acc = "false"
@@ -1240,6 +1255,19 @@ def gen_big_tuple_view(self, v: Val, t: str) -> Val:
     # word the tuple lacks (TSLOT_BIG): then a new tuple of t's layout, item by item
     if v.v == "undef":
         return Val(v.v, t)
+    if is_opt(t):
+        if not is_opt(v.t):
+            return Val(self.big_tuple_view(v, unopt(t)).v, t)
+        some = self.label()
+        end = self.label()
+        ph = Ins("phi", t, "")
+        self.incoming(ph, "null", self.cur)
+        self.cbr(self.isnull(v), end, some)
+        self.place(some)
+        self.incoming(ph, self.big_tuple_view(Val(v.v, unopt(v.t)), unopt(t)).v, self.cur)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), t)
     copy = self.big_view_test(v, t)
     if copy == "false":
         return Val(v.v, t)

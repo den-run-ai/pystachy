@@ -1,0 +1,55 @@
+1 (1+0j)
+True
+True
+False
+False
+1.5 (1.5+0j)
+True
+True
+False
+False
+1.1 (1.1+0j)
+False
+False
+True
+True
+9007199254740993 (9007199254740992+0j)
+False
+False
+True
+True
+-0 0j
+True
+True
+False
+False
+1 (1+2j)
+False
+False
+True
+True
+Infinity (inf+0j)
+True
+True
+False
+False
+NaN (1+0j)
+False
+False
+True
+True
+sNaN (1+2j)
+False
+False
+True
+True
+sNaN (1+0j)
+invalid
+invalid
+invalid
+invalid
+True True
+1 2
+'<' not supported between instances of 'decimal.Decimal' and 'complex'
+'<' not supported between instances of 'complex' and 'decimal.Decimal'
+[exit 0]

@@ -5,7 +5,7 @@ from src.pystachy_compiler.diagnostics import dynamic_program, int_lists
 from src.pystachy_compiler.ir import ClassInfo, FnInfo, Ins, Val, tmpname
 from src.pystachy_compiler.names import owner
 from src.pystachy_compiler.syntax import Node, mk
-from src.pystachy_compiler.specs import BIG, BIGOPT, NONEVAR, OPTTYPES
+from src.pystachy_compiler.specs import BIG, BIGOPT, COMPLEXC, NONEVAR, OPTTYPES
 from src.pystachy_compiler.utils import elem, is_dict, is_list, is_opt, is_sopt, is_tuple, is_union, is_vtuple, targs, typestr, umembers, unopt
 
 def gen_uboxes(self, a: str, b: str) -> bool:
@@ -24,13 +24,19 @@ def gen_reference_union(self, t: str) -> bool:
 def gen_scalar_union(self, t: str) -> bool:
     return is_union(unopt(t)) and all([m in ["int", "float", "bool", "str"] for m in umembers(unopt(t))])
 
+def gen_cx_union(self, t: str) -> bool:
+    # a closed union of scalars that holds complex numbers too (int | complex, ...): its builtin
+    # calls split by member (usplit), whose complex numbers the class's methods and complex_arith
+    # compute, as its operators (unumeric) and equality (complex_ueq) do
+    return is_union(unopt(t)) and COMPLEXC in umembers(unopt(t)) and all([m in ["int", "float", "bool", "str", COMPLEXC] for m in umembers(unopt(t))])
+
 def gen_num_union(self, t: str) -> bool:
     # a union of numbers (int, float, bool), not None: sum() adds its values and orderings compare
     # them, an int with a float exactly (runtime.c's opv)
     return is_union(t) and all([m == "int" or m == "float" or m == "bool" for m in umembers(t)])
 
 def gen_value_union(self, t: str) -> bool:
-    return is_union(unopt(t)) and all([m in ["int", "float", "bool", "str"] or is_list(m) or is_dict(m) for m in umembers(unopt(t))])
+    return is_union(unopt(t)) and all([m in ["int", "float", "bool", "str", COMPLEXC] or is_list(m) or is_dict(m) for m in umembers(unopt(t))])
 
 def gen_ueq_type(self, t: str) -> bool:
     # Finite builtin value trees: paired runtime descriptors handle their layouts,
@@ -142,6 +148,10 @@ def gen_union_type(self, ts: list[str]) -> str:
         if self.umember_problem(m) != "":
             return "!" + self.umember_problem(m)
     refs = [m for m in ms if m == "file" or m in self.classes]
+    if COMPLEXC in refs and len(refs) != len(ms):
+        # (a complex number is a scalar member beside scalars or containers, and a reference
+        # member beside only objects and files: complex | C)
+        refs.remove(COMPLEXC)
     if len(refs) > 0:
         if len(refs) != len(ms):
             return "!reference unions cannot mix native references with scalar or container members"
@@ -228,6 +238,11 @@ def gen_to_union(self, v: Val, t: str, what: str) -> Val:
         src = bases[0]
         v = self.coerce(v, src)
     if not is_opt(v.t):
+        if src == COMPLEXC and not none_ok and v.v not in self.nn:
+            # (a complex number's object may be None, a complex | None's, which a union without
+            # None holds no box for: Pystachy's TypeError, where CPython stores the None)
+            self.notnone(v, f"TypeError: a value used as {typestr(t)} is None; annotate it {typestr(t)} | None")
+            self.nn[v.v] = True
         return Val(self.ubox(v, src), t).identity(v)
     if not none_ok:
         if self.join_hint(t, v.t):

@@ -1,0 +1,28 @@
+Money.__int__
+12 12.34 12 Money(1230) 12 12 13 12
+Money.__int__
+-13 -12.34 -12 Money(-1240) -12 -13 -12 -12
+Debt.__int__
+-12 -1.5 12 Money(1230) 12 12 13 12
+7 7.0 40 42 40
+arg a
+Money.__int__
+arg b
+Debt.__int__
+Money.__int__
+Debt.__int__
+0 [1, -2] [1.0, -1.5]
+Money.__int__
+int float int Money
+Money.__int__
+1
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'NoneType'
+1.99
+TypeError: float() argument must be a string or a real number, not 'NoneType'
+2
+TypeError: type NoneType doesn't define __round__ method
+1
+TypeError: must be real number, not NoneType
+1
+TypeError: type NoneType doesn't define __trunc__ method
+[exit 0]

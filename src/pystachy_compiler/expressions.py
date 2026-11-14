@@ -3,7 +3,7 @@ from __future__ import annotations
 from src.pystachy_compiler.utils import is_union, umembers
 from src.pystachy_compiler.bigints import TSLOT_BIG, big_tree, big_viewable, held, narrow_type, narrows, search_type
 from src.pystachy_compiler.analysis import collect, comp_shared, comp_unbound, comp_vars, deleted, key_reads, local_names, only_none, stack_aliases, stack_kept, walrus_names
-from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown
+from src.pystachy_compiler.diagnostics import LINES, dynamic_program, int_lists, shown, where
 from src.pystachy_compiler.dynamic import boxed_list_items, comparison_container_pair, comparison_invalid, comparison_property_type
 from src.pystachy_compiler.ir import ClassInfo, Data, FmtArgs, FnInfo, Ins, IterArg, Loop, Val, tmpname, one_num
 from src.pystachy_compiler.names import ENUMCLASSES, short
@@ -25,6 +25,8 @@ from src.pystachy_compiler.specs import (
     ITERS,
     MODATTRS,
     NONEVAR,
+    COMPLEXC,
+    COMPLEXS,
     OBJECTC,
     ORDOP,
     PYBUILTINS,
@@ -72,6 +74,7 @@ from src.pystachy_compiler.utils import (
     kw_types,
     lib_source,
     lt,
+    none_key,
     nones,
     nonetest,
     numeric_identity,
@@ -496,6 +499,8 @@ def gen_isinst(self, t: str, c: Node) -> int:
         return 1 if t[5:-1] in "bool bytearray bytes classmethod complex dict enumerate filter float frozenset int list map memoryview object property range reversed set slice staticmethod str super tuple type zip".split() else 0
     if c.s == "range" and RANGEC in self.classes:
         return -2 if t == RANGEC else 0  # (an object of lib/_pystachy_range.py's class, unless it is None)
+    if c.s == "complex" and COMPLEXC in self.classes:
+        return -2 if t == COMPLEXC else 0  # (and of lib/_pystachy_complex.py's: no int or float is one)
     if c.s in "bytearray memoryview complex range slice type".split():
         return 0
     return -1
@@ -544,6 +549,8 @@ def gen_isinst_reads(self, c: Node) -> None:
     elif c.kind == "name" and c.s in self.taliases:
         self.expr(c, "")  # (a type alias's variable, Pos = int, unbound before its assignment)
     elif c.kind == "name":
+        if c.s in self.deferred_hierarchies:
+            self.request_hierarchy(c.s)
         self.class_ahead(c.s)
         self.modchk(c)
         if (c.chk or self.foreign(c.s)) and c.s in self.gflag and c.s in self.classes:
@@ -713,7 +720,7 @@ def gen_scalar_read_value(self, n: Node) -> bool:
     if k == "index":
         # Reading a known numeric list or bytes runs no user protocol. Keep the receiver
         # a plain name or plain field: other attributes and calls can run user code first.
-        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "list[float]", "bytes"] and self.scalar_read_index(n.kids[1])
+        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "list[float]", "vtuple[int]", "vtuple[float]", "bytes"] and self.scalar_read_index(n.kids[1])
     if k == "cmp":
         return all(op in ["==", "!=", "<", "<=", ">", ">="] for op in n.s.split(",")) and all(self.scalar_read_value(x) for x in n.kids)
     if k == "call":
@@ -735,7 +742,7 @@ def gen_scalar_read_index(self, n: Node) -> bool:
     if k == "attr":
         return self.plain_field(n) in ["int", "bool"]
     if k == "index":
-        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "bytes"] and self.scalar_read_index(n.kids[1])
+        return len(n.kids) == 2 and self.scalar_receiver(n.kids[0]) in ["list[int]", "vtuple[int]", "bytes"] and self.scalar_read_index(n.kids[1])
     if k == "cmp" or (k == "unary" and n.s == "not"):
         return self.scalar_read_value(n)
     if k == "call":
@@ -859,6 +866,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
         lit = Val(fbits(n.s), "float")
         lit.lit = True
         return lit
+    if k == "complex" and COMPLEXC in self.classes:
+        return self.complex_value(Val(fbits("0.0"), "float"), Val(fbits(n.s[:-1]), "float"))  # (1.5j: complex(0.0, 1.5))
     if k == "str":
         self.modchk(n)
         return Val(self.sconst(n.s), "str")
@@ -932,7 +941,9 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 return self.masked(n, want, resultsoft)
             if not operand_held(self, n.s, want):
                 a = self.expr(n.kids[0], want, resultsoft=resultsoft)
-                return self.arith(n.s, a, self.expr(n.kids[1], a.t, resultsoft=resultsoft))
+                # ({None} | {x}: a set of None alone does not type the display beside it)
+                bw = "" if is_set(a.t) and selem(a.t) == "None" and n.kids[1].kind == "set" else a.t
+                return self.arith(n.s, a, self.expr(n.kids[1], bw, resultsoft=resultsoft))
             ka: list[str] = []
             a = left_operand(self, n.kids[0], want, resultsoft, ka)  # (an operand is not the result)
             if len(ka) == 0:
@@ -1329,6 +1340,8 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
                 v = self.coerce(v, ws[i])  # (an int as an int | None: its box; a tuple of promoting ints stays one, as its int items do: bigints.held)
             elif i < len(ws) and is_fn(v.t) and is_callable(unopt(ws[i])):
                 v = self.coerce(v, ws[i])  # (a function where a Callable is expected: made one)
+            if is_vtuple(unopt(want)) and self.list_id_kind(self.ctype("list", [targs(unopt(want))[0]])) != 0 and v.idslot != "":
+                v.idfrom = self.dyn_id_box(v).v
             vals.append(v)
         tconst = self.tuple_const(n, vals)
         if tconst.v != "":
@@ -1338,7 +1351,7 @@ def gen_expr(self, n: Node, want: str, returnctx: bool = False, resultsoft: bool
             # an operand hint: concatenation may widen it (int plus int | None).
             # Comparisons preserve each side's own element representation.
             et = targs(want)[0]
-            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et == "int") for v in vals):
+            if all(self.widens(v.t, et) or self.boxes(v.t, et) or (v.t == BIG and et in ["int", "opt[int]"]) or (v.t == BIGOPT and et == "opt[int]") for v in vals):
                 return self.vtuple_make([self.coerce(v, et) for v in vals], want)
         return self.stack_tuple(vals) if n is self.stkkey else self.tuple_(vals)
     if k == "listcomp":
@@ -2168,6 +2181,24 @@ def gen_format_(self, v: Val, spec: Node) -> Val:
         # Both value and spec run once, before the selected native member formats
         # or raises. A nonempty spec is legal for some members and not for others.
         sv = self.coerce(self.expr(spec, "str"), "str", "format()'s spec")
+        if COMPLEXC in umembers(unopt(v.t)):
+            # (a complex number formats by its class's __format__, which runtime.c's pys_format does
+            # not call: chosen by its tag first)
+            hit = self.label()
+            other = self.label()
+            done = self.label()
+            ph = Ins("phi", "str", "")
+            self.cbr(self.utest(v, [COMPLEXC], is_opt(v.t)), hit, other)
+            self.place(hit)
+            text = self.call_fn(self.classes[COMPLEXC].methods["__format__"], [self.uget(Val(v.v, unopt(v.t)), COMPLEXC), sv], [], direct=True)
+            self.incoming(ph, text.v, self.cur)
+            self.br(done)
+            self.place(other)
+            text = Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}", f"ptr {sv.v}"]), "str")
+            self.incoming(ph, text.v, self.cur)
+            self.br(done)
+            self.place(done)
+            return Val(self.phi(ph), "str")
         return Val(self.rt("pys_format", "ptr", ["i64 " + self.to_slot(v), f"ptr {self.sconst(self.desc(v.t, 'repr'))}", f"ptr {sv.v}"]), "str")
     if v.t == "None":
         if spec.kind == "str":
@@ -2540,11 +2571,28 @@ def gen_vtuple_make(self, vals: list[Val], t: str) -> Val:
     # or reinterprets the source tuple's storage.
     if self.rtmode and self.curfn.ll == "@pys_alloc":
         self.err("pys_alloc() implements an operation that it uses: write it without that operation")
+    kind = self.list_id_kind(self.ctype("list", [targs(t)[0]]))
+    boxes = [self.dyn_id_arg(v) for v in vals] if kind != 0 else []
     self.runtime("pys_alloc")
     i = Ins("vtuple.make", t, "")
     i.a = vals
     self.put(i, 1)
-    return Val(tmpname(i.r[0]), t)
+    result = Val(tmpname(i.r[0]), t)
+    for j in range(len(boxes)):
+        self.rt("pys_vtuple_set_identity", "void", [f"ptr {result.v}", f"i64 {j}", f"ptr {boxes[j].v}", f"i64 {kind}"])
+    return result
+
+def gen_vtuple_item(self, o: Val, index: Val) -> Val:
+    et = targs(o.t)[0]
+    kind = self.list_id_kind(self.ctype("list", [et]))
+    if kind != 0 and not self.fn.scalar_reads:
+        box = self.rt("pys_vtuple_get_identity", "ptr", [f"ptr {o.v}", f"i64 {index.v}", f"i64 {kind}"])
+        if is_opt(et):
+            value = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {index.v}"]), et)
+            value.idfrom = box
+            return value
+        return self.dyn_unbox(Val(box, "dyn"), et)
+    return self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {index.v}"]), et)
 
 def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
     # a tuple display of literals that the source writes (n.src), whose items are vals: the
@@ -2588,6 +2636,13 @@ def gen_tuple_const(self, n: Node, vals: list[Val]) -> Val:
         d = Data("tuple", f"@tc.{len(self.tconsts)}")
         d.text = self.ctype("tuple", [v.t for v in items])  # (its type: union_proof reads it where a machine address reads the tuple)
         d.items = items
+        # Constant item boxes belong to the defining module, even when a
+        # later imported read converts this tuple in another module.
+        if self.idhere():
+            for original in items:
+                constant = Val(original.v, original.t)
+                constant.lit = True
+                d.refs.append(self.dyn_id_box(constant).v if constant.t == "float" or (constant.t == "int" and (int(constant.v) < -5 or int(constant.v) > 256)) else "")
         self.consts.append(d)
         self.tconsts[key] = d.name
         self.tconstdata[d.name] = d
@@ -2817,9 +2872,16 @@ def gen_tget(self, v: Val, i: int) -> Val:
     item.k = i
     item.a = [v]
     self.put(item, 2)
-    if item.s == BIG:
-        return self.big_item(v, self.from_slot(tmpname(item.r[1]), "int"), hislot(v.t, i), "")  # (a promoting int item: bigints.py)
-    return self.from_slot(tmpname(item.r[1]), item.s)
+    value = self.big_item(v, self.from_slot(tmpname(item.r[1]), "int"), hislot(v.t, i), "") if item.s == BIG else self.from_slot(tmpname(item.r[1]), item.s)
+    if self.idhere() and v.v in self.tconstdata and item.s in ["int", "float", BIG]:
+        # A literal fixed tuple still names the module's scalar constants. Its
+        # conversion into runtime-length storage must not manufacture new items.
+        original = self.tconstdata[v.v].items[i]
+        literal = Val(original.v, original.t)
+        literal.lit = True
+        boxes = self.tconstdata[v.v].refs
+        value.idfrom = boxes[i] if i < len(boxes) and boxes[i] != "" else self.dyn_id_box(literal).v
+    return value
 
 def gen_tslot(self, v: Val, k: int) -> Val:
     # slot k of tuple v, past its items: a promoting int item's Mpz word, as an int (tslots)
@@ -2924,7 +2986,7 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
     if is_vtuple(t):
         i = self.seq_index(n.kids[1], "TypeError: tuple indices must be integers or slices, not NoneType")
         o = self.unwrap(o, sub)
-        return self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {o.v}", f"i64 {i.v}"]), targs(t)[0])
+        return self.vtuple_item(o, i)
     if t == "bytes":
         i = self.seq_index(n.kids[1], "TypeError: byte indices must be integers or slices, not NoneType")
         o = self.unwrap(o, sub)
@@ -2957,8 +3019,8 @@ def gen_subscript(self, n: Node, o: Val, want: str = "") -> Val:
                 return self.big_dict_value(o, self.bool_find(o.v, kval, key))  # (an int past 64 bits: bigints.py)
             return self.held_value(self.from_slot(self.rt("pys_dict_val", "i64", [f"ptr {o.v}", f"i64 {self.bool_find(o.v, kval, key)}"]), kv[1]))
         if self.dict_int(t):
-            return self.big_dict_value(o, self.nonekey(kx, "", "pys_dict_entry", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])))
-        return self.held_value(self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0])), kv[1]))  # (a tuple of ints: bigints.held)
+            return self.big_dict_value(o, self.nonekey(kx, "", "pys_dict_entry", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0]), kv[0]))
+        return self.held_value(self.from_slot(self.nonekey(kx, "", "pys_dict_getitem", [f"ptr {o.v}", f"i64 {self.to_slot(kx)}"], self.key_fx(kv[0]), kv[0]), kv[1]))  # (a tuple of ints: bigints.held)
     if is_tuple(t) or t in self.nts:
         ts = targs(t) if is_tuple(t) else self.classes[t].fields  # (a NamedTuple's fields)
         c = self.const_of(n.kids[1], {}, True) if self.lit_context() else None
@@ -3635,7 +3697,10 @@ def gen_unary(self, n: Node) -> Val:
     m = UNARY[op]
     if v.t in self.classes and m in self.classes[v.t].methods:
         self.notnone(v, f"TypeError: bad operand type for unary {op}: 'NoneType'")
-        return self.call_fn(self.classes[v.t].methods[m], [v], [])
+        r = self.call_fn(self.classes[v.t].methods[m], [v], [])
+        if v.t == COMPLEXC:
+            self.nn[r.v] = True  # (lib's __neg__ makes an object, its __pos__ returns the one it got)
+        return r
     if v.infer_from != "":
         self.err(f"cannot infer what {v.infer_from}() returns: its recursive return type is unresolved; annotate its return type")
     self.err(f"bad operand type for unary {op}: '{tname(v.t)}'")
@@ -3675,6 +3740,17 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         if pw != "":
             self.err(f"** and pow() of objects are not supported ({tname(unopt(a.t))} {sh} {tname(b.t)} calls {pw})")
     rm = "__r" + m[2:]
+    if m != "" and op != "==" and op != "!=" and b.t in self.classes and (a.t == "int" or a.t == "float" or a.t == "bool" or a.t == BIG) and rm in self.classes[b.t].methods:
+        # A builtin number on the left has no method for an object: CPython calls the object's
+        # reflected method, with the operands evaluated left to right as they are here. No class is
+        # on the left, so no forward method or subclass priority can apply. An augmented
+        # assignment rebinds its number to the method's result: it is this call where the result
+        # is a number of the type the target holds (n += member of an IntEnum), and is still
+        # rejected below where it is of another type. A None object raises CPython's TypeError,
+        # which names both operands' types.
+        if shown == "" or shown == op or self.dry(mk("call", "", self.line, [mk("attr", rm, self.line, [self.vnode(b)]), self.vnode(a)]), "") == a.t:
+            self.notnone(b, f"TypeError: unsupported operand type(s) for {sh}: '{tname(a.t)}' and 'NoneType'")
+            return self.call_fn(self.classes[b.t].methods[rm], [b, a], [])
     if m != "" and op != "==" and op != "!=" and b.t in self.classes and not (op == "%" and a.t == "str"):
         # A base-typed value may hold a subclass on either side. Python gives a strict
         # subclass's distinct reflected method priority over the left forward method,
@@ -3691,7 +3767,9 @@ def gen_dunder(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
                 pair_same = at == bt or (self.tmpl_of(at) != "" and self.tmpl_of(at) == self.tmpl_of(bt))
                 if pair_same or rm not in self.classes[bt].methods:
                     continue
-                reflected = at not in self.classes or m not in self.classes[at].methods
+                # (lib's complex has these methods for dynamic Any values only: CPython's declines
+                # an object of another class, whose reflected method then runs)
+                reflected = at not in self.classes or m not in self.classes[at].methods or at == COMPLEXC
                 if at in self.classes and self.derives(bt, at):
                     reflected = reflected or rm not in self.classes[at].methods or self.classes[bt].methods[rm] is not self.classes[at].methods[rm]
                 if reflected:
@@ -3840,6 +3918,117 @@ def gen_enum_intlike(self, c: str) -> bool:
     return c in self.classes and (("enum$IntEnum" in self.classes and self.derives(c, "enum$IntEnum")) or ("enum$IntFlag" in self.classes and self.derives(c, "enum$IntFlag")) or c == "enum$IntEnum" or c == "enum$IntFlag")
 
 
+CMPDUNDERS = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
+
+def declines_in(ns: list[Node]) -> bool:
+    # does one of statements ns return NotImplemented (the code of a def, lambda or class
+    # inside them aside)
+    for n in ns:
+        if n.kind == "def" or n.kind == "lambda" or n.kind == "class":
+            continue
+        if n.kind == "return" and len(n.kids) == 1 and n.kids[0].kind == "name" and n.kids[0].s == "NotImplemented":
+            return True
+        if declines_in(n.kids):
+            return True
+    return False
+
+def gen_may_decline(self, f: FnInfo) -> bool:
+    # may f return NotImplemented: is it a comparison method (__eq__, __lt__, ...) whose own
+    # code has that return statement (decline compiles it where it is reached)
+    if f.mayd < 0:
+        f.mayd = 1 if f.cls in self.classes and f.name in CMPDUNDERS and f.node.kind == "def" and declines_in(f.node.kids[2].kids) else 0
+    return f.mayd == 1
+
+def gen_decl_flag(self) -> str:
+    # the hidden variable a comparison method sets as it returns NotImplemented (decline). Only
+    # the comparison that called it reads it (concrete_cmp), and clears it before each such
+    # call: a call that leaves it set finds no reader, which the next comparison's clearing
+    # makes harmless
+    if not self.declflag:
+        self.declflag = True
+        self.global_var("@d.declined", "bool")
+    return "@d.declined"
+
+def gen_declining_call(self, f: FnInfo, me: Val, arg: Val, direct: bool, decl: list[bool]) -> Val:
+    # f(me, arg) of a comparison method that may return NotImplemented (may_decline), as a bool.
+    # decl takes True, and decl_flag's variable is cleared before the code of the call, for the
+    # caller to read after it; unless the one function called is compiled and has no such
+    # return for these operands: the call is then as it was before methods could decline, and
+    # as one that takes the result as it is, which decline rejects
+    got: list[FnInfo] = []
+    if self.term:
+        self.place(self.label())  # (dead code: in a block of its own, as add starts one)
+    blk = self.blk
+    at = len(blk.code)
+    r = self.coerce(self.call_fn(f, [me, arg], [], direct=direct, got=got), "bool")
+    if len(got) == 1 and (got[0].inst or got[0].ll in self.compiled) and not got[0].declines and got[0].ll not in self.building:
+        got[0].plain = where(self.line)
+        return r
+    clear = Ins("mach.store", "", "")  # (mstore, before the code of the call)
+    clear.a = [Val(self.decl_flag(), "%ptr"), Val("false", "bool")]
+    if self.source_lines.enabled:
+        clear.line = self.line
+    blk.code.insert(at, clear)
+    decl.append(True)
+    return r
+
+def gen_cmp_cands(self, op: str, at: str, bt: str) -> list[list[str]]:
+    # every method CPython tries for op between objects of the concrete classes at and bt, in
+    # its order (each as cmp_pick gives the first): the next is called where one returns
+    # NotImplemented
+    right = at in self.classes and bt in self.classes and at != bt and self.derives(bt, at)
+    sides = ["b", "a"] if right else ["a", "b"]
+    methods = [DUNDER[REFL[op]] if op in REFL else DUNDER[op], DUNDER[op]] if right else [DUNDER[op], DUNDER[REFL[op]] if op in REFL else DUNDER[op]]
+    out: list[list[str]] = []
+    for i in range(2):
+        lt = bt if sides[i] == "b" else at
+        rt = at if sides[i] == "b" else bt
+        m = methods[i]
+        inv = ""
+        if lt in self.classes:
+            ms = self.classes[lt].methods
+            if op == "!=" and m not in ms and "__eq__" in ms:
+                m = "__eq__"
+                inv = "!"
+            if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
+                continue
+            if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
+                continue  # (complex declines a foreign object; int-like enums compare by payload)
+            if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
+                continue
+            if m in ms:
+                out.append([sides[i], m, inv])
+    return out
+
+def gen_cmp_declining(self, op: str, at: str, bt: str) -> bool:
+    # may a method that op calls for operands of types at and bt return NotImplemented: the
+    # method of at's class, or the reflected one of bt's (a != b: __eq__ where a class has no
+    # __ne__)
+    for side in range(2):
+        t = at if side == 0 else bt
+        m = DUNDER[op] if side == 0 or op not in REFL else DUNDER[REFL[op]]
+        if t in self.classes:
+            ms = self.classes[t].methods
+            if op == "!=" and m not in ms and "__eq__" in ms:
+                m = "__eq__"
+            if m in ms and self.may_decline(ms[m]):
+                return True
+    return False
+
+def gen_cmp_stage(self, op: str, at: str, bt: str, stage: int) -> list[str]:
+    # what concrete_cmp compiles at a stage of inherit_cmp for objects of the concrete classes at
+    # and bt: at stage 0 cmp_pick's method, and at stage n, which runs where the methods of the
+    # stages before it all returned NotImplemented, the next one of cmp_cands; [] after the last
+    # (identity or TypeError, as where neither class has a method); ["never"] where the pair
+    # does not reach the stage, a method before it having no such return statement
+    if stage == 0:
+        return self.cmp_pick(op, at, bt)
+    cs = self.cmp_cands(op, at, bt)
+    for i in range(stage):
+        if i >= len(cs) or not self.may_decline(self.classes[at if cs[i][0] == "a" else bt].methods[cs[i][1]]):
+            return ["never"]
+    return cs[stage] if stage < len(cs) else []
+
 def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
     # the method concrete_cmp calls for op between objects of the concrete classes at and bt, as
     # [the operand it is called on ("a" or "b"), the method, "!" if its result is inverted
@@ -3859,6 +4048,8 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 inv = "!"
             if m in ms and ms[m].synthetic and self.is_dc(ms[m].cls) and lt != rt:
                 continue  # (what @dataclass writes returns NotImplemented for an object of another class)
+            if m in ms and ms[m].cls == COMPLEXC and rt != COMPLEXC and (rt == "None" or rt in self.classes) and not self.enum_intlike(rt):
+                continue  # (complex declines a foreign object; int-like enums compare by payload)
             if m in ms and lib_source(ms[m].node.line, self.libdir, "enum.py") and (rt == "None" or (rt in self.classes and not self.derives(rt, ms[m].cls) and not (self.enum_intlike(ms[m].cls) and self.enum_intlike(rt)))):
                 # (and so do the int and str methods of an IntEnum's and a StrEnum's members, as
                 # int's and str's return it for None and for an object of a class not derived from
@@ -3868,9 +4059,13 @@ def gen_cmp_pick(self, op: str, at: str, bt: str) -> list[str]:
                 return [sides[i], m, inv]
     return []
 
-def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val:
+def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False, stage: int = 0) -> Val:
     # Compare concrete runtime types, including None. Both operands matter: Python gives
     # the right operand's reflected comparison priority when its class is a strict subtype.
+    # A method that returns NotImplemented (decline) sets decl_flag's variable: the arm that
+    # called it then goes on to the next stage, which tells the operands apart again and calls
+    # the next method of each pair (cmp_stage), and after the last compares their identity or
+    # raises TypeError, as where neither class has a method.
     # lenient (tuple search, titem_eq): a pair whose method does not take the other operand,
     # an error for ==, finds them not equal, as the search did before it dispatched on classes.
     # Each pair of the operands' alternatives (cmp_alts) is compiled as concrete_cmp compiles
@@ -3897,8 +4092,8 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val
     for x in xs:
         row: list[int] = []
         for y in ys:
-            w = self.cmp_widen(op, x, y, a.t, b.t)
-            k = self.cmp_key(op, w[0], w[1])
+            w = self.cmp_widen(op, x, y, a.t, b.t, stage)
+            k = self.cmp_key(op, w[0], w[1], stage)
             if k not in arm_of:
                 arm_of[k] = len(keys)
                 keys.append(k)
@@ -3913,12 +4108,32 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val
             row_of[s] = len(rows)
             rows.append(row)
         group.append(row_of[s])
+    nxt: list[str] = []  # (where an arm whose method declined goes: the next stage, placed once)
     if len(keys) == 1:
         if lenient and keys[0].startswith("bad "):
             return Val("false" if op == "==" else "true", "bool")
-        if lenient and keys[0].startswith("call "):
-            return self.cmp_try(op, keys[0], pairs[0][0], pairs[0][1])
-        return self.ptr_cmp('==' if op == '==' else '!=', a, b) if keys[0] == "is" else self.concrete_cmp(op, pairs[0][0], pairs[0][1])
+        if keys[0] == "is":
+            return self.ptr_cmp('==' if op == '==' else '!=', a, b)
+        decl: list[bool] = []
+        r = self.cmp_try(op, keys[0], pairs[0][0], pairs[0][1], stage, decl) if lenient and keys[0].startswith("call ") else self.concrete_cmp(op, pairs[0][0], pairs[0][1], stage, decl)
+        if len(decl) == 0 or self.term:
+            return r
+        lgot = self.label()
+        one = Ins("phi", "bool", "")
+        nxt.append(self.label())
+        self.cbr(self.mload('bool', self.decl_flag()), nxt[0], lgot)
+        self.place(lgot)
+        self.incoming(one, r.v, self.cur)
+        lend = self.label()
+        self.br(lend)
+        self.place(nxt[0])
+        self.mstore('bool', 'false', self.decl_flag())
+        r = self.inherit_cmp(op, a, b, lenient, stage + 1)
+        if not self.term:
+            self.incoming(one, r.v, self.cur)
+            self.br(lend)
+        self.place(lend)
+        return Val(self.phi(one), "bool")
     arms = [self.label() for k in keys]
     tos = [[arms[i] for i in rw] for rw in rows]
     # (where each row's tests of b start: none for a row of one arm, nor where a's alternatives
@@ -3954,13 +4169,20 @@ def gen_inherit_cmp(self, op: str, a: Val, b: Val, lenient: bool = False) -> Val
                 i = rows[g][yi]
                 if i not in placed:
                     placed[i] = True
-                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end, lenient)
+                    self.cmp_arm(op, a, b, keys[i], pairs[i], arms[i], ph, end, lenient, stage, nxt)
                 if yi == 0 and sb != "-" and sb != "":
                     self.place(sb)
                     self.cmp_tags(b, ys, tos[g])
         if xi == 0 and some != "-" and some != "":
             self.place(some)
             self.cmp_tags(a, xs, ta)
+    if len(nxt) > 0:
+        self.place(nxt[0])
+        self.mstore('bool', 'false', self.decl_flag())
+        later = self.inherit_cmp(op, a, b, lenient, stage + 1)
+        if not self.term:
+            self.incoming(ph, later.v, self.cur)
+            self.br(end)
     self.place(end)
     if len(ph.a) == 0:
         self.unreachable()
@@ -3981,7 +4203,7 @@ def gen_cmp_alts(self, v: Val) -> list[Val]:
         alts.append(Val(v.v, c))
     return alts
 
-def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
+def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str, stage: int = 0) -> list[Val]:
     # pair x, y of inherit_cmp's alternatives of operands of static types at and bt, as
     # concrete_cmp is to compile it: where the method it calls takes the other operand as a
     # template's parameter (other: object, or no annotation), that operand as its static type
@@ -3989,8 +4211,8 @@ def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
     # operand's alternatives) calls the same method. That pair compiles that instance anyway,
     # and it takes an object of any of the type's classes, so that the method is compiled once
     # for each receiver class, not once for each pair of classes (#625). Else x, y
-    p = self.cmp_pick(op, x.t, y.t)
-    if len(p) == 0:
+    p = self.cmp_stage(op, x.t, y.t, stage)
+    if len(p) != 3:
         return [x, y]
     lhs = x if p[0] == "a" else y
     rhs = y if p[0] == "a" else x
@@ -4000,12 +4222,12 @@ def gen_cmp_widen(self, op: str, x: Val, y: Val, at: str, bt: str) -> list[Val]:
     f = self.classes[lhs.t].methods[p[1]]
     if len(f.ptypes) != 2 or f.ptypes[1] != "" or f.bad != "":
         return [x, y]
-    q = self.cmp_pick(op, x.t, st) if p[0] == "a" else self.cmp_pick(op, st, y.t)
+    q = self.cmp_stage(op, x.t, st, stage) if p[0] == "a" else self.cmp_stage(op, st, y.t, stage)
     if len(q) != 3 or q[0] != p[0] or q[1] != p[1] or q[2] != p[2]:
         return [x, y]
     return [x, Val(rhs.v, st)] if p[0] == "a" else [Val(rhs.v, st), y]
 
-def gen_cmp_key(self, op: str, a: Val, b: Val) -> str:
+def gen_cmp_key(self, op: str, a: Val, b: Val, stage: int = 0) -> str:
     # what concrete_cmp(op, a, b) compiles, for alternatives a and b of inherit_cmp's operands:
     # pairs of one key compile to the same code, where a None alternative is the operand
     # itself. A call is told apart by its method, which operand it is called on, its
@@ -4013,7 +4235,9 @@ def gen_cmp_key(self, op: str, a: Val, b: Val) -> str:
     # parameter of a class it derives from as that class (coerce: the same pointer, or null),
     # else its own type, which a template's instance is compiled for. Identity ("is") is
     # that of the operands, whichever alternative each is.
-    p = self.cmp_pick(op, a.t, b.t)
+    p = self.cmp_stage(op, a.t, b.t, stage)
+    if len(p) == 1:
+        return "never"  # (pairs that do not reach the stage share an arm, which is not reached)
     if len(p) == 0:
         if op != "==" and op != "!=":
             return f"raise {tname(a.t)} {tname(b.t)}"  # (the TypeError names both classes)
@@ -4040,22 +4264,29 @@ def uniform(to: list[str]) -> bool:
             return False
     return True
 
-def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool = False) -> None:
+def gen_cmp_arm(self, op: str, a: Val, b: Val, k: str, p: list[Val], l: str, ph: Ins, end: str, lenient: bool, stage: int, nxt: list[str]) -> None:
     # arm l of inherit_cmp, for key k: what concrete_cmp compiles for pair p, and then end, where
-    # phi ph takes its result ("is": the identity of the operands, which each alternative is;
-    # lenient: a method that does not take the other operand finds them not equal)
+    # phi ph takes its result ("is": the identity of the operands, which each alternative is);
+    # where its method may have declined, to nxt[0], made here for the first such arm, if it did
     self.place(l)
+    decl: list[bool] = []
     if lenient and k.startswith("bad "):
         r = Val("false" if op == "==" else "true", "bool")
     elif lenient and k.startswith("call "):
-        r = self.cmp_try(op, k, p[0], p[1])
+        r = self.cmp_try(op, k, p[0], p[1], stage, decl)
     else:
-        r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1])
+        r = self.ptr_cmp('==' if op == '==' else '!=', a, b) if k == "is" else self.concrete_cmp(op, p[0], p[1], stage, decl)
+    if not self.term and len(decl) > 0:
+        if len(nxt) == 0:
+            nxt.append(self.label())
+        lgot = self.label()
+        self.cbr(self.mload('bool', self.decl_flag()), nxt[0], lgot)
+        self.place(lgot)
     if not self.term:
         self.incoming(ph, r.v, self.cur)
         self.br(end)
 
-def gen_cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
+def gen_cmp_try(self, op: str, k: str, x: Val, y: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
     # concrete_cmp(op, x, y) for a lenient comparison (tuple search, titem_eq) of pair x, y, whose
     # key k calls a method: an attempt (Gen.xtry), as a dynamic value's comparison method's call
     # is (dynamic.py), since the search compiles a call for each pair of classes its operands may
@@ -4070,7 +4301,7 @@ def gen_cmp_try(self, op: str, k: str, x: Val, y: Val) -> Val:
     previous = self.xtry
     self.xtry = attempt
     n = len(self.called)
-    r = self.concrete_cmp(op, x, y)
+    r = self.concrete_cmp(op, x, y, stage, decl)
     if len(self.called) > n:
         # (the functions of imported modules it is the first to call, the last keys of called, are
         # compiled inside the attempt, as dyn_prepare_factory compiles them: later, an error in
@@ -4136,14 +4367,28 @@ def gen_cmp_tags(self, v: Val, alts: list[Val], to: list[str]) -> None:
         if i + 1 < len(tested):
             self.place(nxt)
 
-def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
-    # Both objects now have known, non-null concrete classes. NotImplemented is outside
-    # the subset; a supported comparison method returns bool, so the first one completes.
-    p = self.cmp_pick(op, a.t, b.t)
+def gen_concrete_cmp(self, op: str, a: Val, b: Val, stage: int = 0, decl: list[bool] | None = None) -> Val:
+    # Both objects now have known, non-null concrete classes. The method of the stage is called
+    # (cmp_stage). One that may return NotImplemented (may_decline) is called with decl_flag's
+    # variable cleared, and decl takes True unless the instance compiled for these operands has
+    # no such return: the caller then reads the variable, and goes on to the next stage where it
+    # is set. Its other operand, an object here, is known not to be None where the method takes
+    # it as a template's parameter (the pair has its own arm then: cmp_key), which decides the
+    # method's isinstance() test of it at compile time.
+    p = self.cmp_stage(op, a.t, b.t, stage)
+    if len(p) == 1:
+        self.raise_("RuntimeError", self.sconst("internal error: a comparison went on after a method that does not return NotImplemented"))
+        return Val("false", "bool")
     if len(p) > 0:
         lhs = a if p[0] == "a" else b
         rhs = b if p[0] == "a" else a
         m = p[1]
+        if lhs.t == COMPLEXC and self.enum_intlike(rhs.t) and op in ["==", "!="]:
+            # An enum's own comparison may decline before complex accepts its int
+            # payload. These concrete pairs exclude None before reading that field;
+            # the library method cannot use isinstance(enum_member, int) here.
+            value = self.mem_load(Val(self.fgep(rhs, self.classes[rhs.t].fpos[" enum int"]), "*int"))
+            return self.complex_cmp(op, lhs, value)
         if self.cmp_method(lhs.t, m, rhs.t) == "":
             why = f"{m}() of {shown(lhs.t)} cannot compare an operand of type {typestr(rhs.t)}"
             if not self.lenient or not self.curfn.ll.startswith("@o."):
@@ -4152,7 +4397,25 @@ def gen_concrete_cmp(self, op: str, a: Val, b: Val) -> Val:
             # compares, it raises where it runs; desc rejects the operations that run it)
             self.raise_("TypeError", self.sconst(why))
             return Val("false", "bool")
-        r = self.coerce(self.call_fn(self.classes[lhs.t].methods[m], [lhs, rhs], [], direct=True), "bool")
+        f = self.classes[lhs.t].methods[m]
+        if not self.may_decline(f):
+            r = self.coerce(self.call_fn(f, [lhs, rhs], [], direct=True), "bool")
+            return Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool") if p[2] == "!" else r
+        known = rhs.t in self.classes and rhs.v not in self.nn and len(f.ptypes) == 2 and f.ptypes[1] == ""
+        if known:
+            self.nn[rhs.v] = True
+        arg = rhs
+        if rhs.t == "None" and len(f.ptypes) == 2 and f.ptypes[1] == "" and not self.dispatches(f, f.params[1]):
+            # (None, to a template's parameter that the method does not test, with isinstance()
+            # or "is None", which None decides at compile time: as an object of the receiver's
+            # class that is None, whose attribute reads raise AttributeError where they run, as
+            # where the operand's class has no subclass and no method declines. An except
+            # clause may catch it, and return NotImplemented)
+            arg = Val("null", lhs.t)
+        unread: list[bool] = []
+        r = self.declining_call(f, lhs, arg, True, decl if decl is not None else unread)
+        if known:
+            self.nn.pop(rhs.v, False)
         return Val(self.scalar('xor', [Val(r.v, 'bool'), Val('true', 'bool')]), "bool") if p[2] == "!" else r
     if op == "==" or op == "!=":
         # object.__eq__ declines, then Python falls back to object identity.
@@ -4490,6 +4753,8 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
             return v
     if a.t == "dyn" or b.t == "dyn":
         return self.dyn_arith(op, a, b, shown == op + "=")  # (a dynamic value's, in place where shown is op=: dynamic.py)
+    if (a.t == COMPLEXC or b.t == COMPLEXC) and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):
+        return self.complex_arith(op, a, b, shown)
     if a.t == BIG or b.t == BIG or ((a.t == "int" or a.t == "bool") and (b.t == "int" or b.t == "bool") and self.int_policy(self.line)):
         pr = self.big_binop(op, a, b, shown)  # (promoting ints: bigints.py)
         if pr.t != "":
@@ -4600,6 +4865,141 @@ def gen_arith(self, op: str, a: Val, b: Val, shown: str = "") -> Val:
         self.err(f"can't multiply sequence by non-int of type '{bn if sq else an}'")
     self.err(f"unsupported operand type(s) for {shown if shown != '' else '** or pow()' if op == '**' else op}: '{an}' and '{bn}'")
     return a
+
+def gen_complex_value(self, re: Val, im: Val) -> Val:
+    # a new complex number of floats re and im: an object of lib/_pystachy_complex.py's class
+    o = self.new_obj(COMPLEXC)
+    self.call_fn(self.classes[COMPLEXC].methods["__init__"], [o], [self.vnode(re), self.vnode(im)], direct=True)
+    return o
+
+def gen_complex_parts(self, v: Val) -> list[Val]:
+    # an operand of complex arithmetic as its two floats: a complex number's parts, and an int's or
+    # a float's float(x) and 0.0, as CPython's TO_COMPLEX converts it (a promoting int too large
+    # for a float raises OverflowError)
+    if v.t == COMPLEXC:
+        ci = self.classes[COMPLEXC]
+        return [Val(self.mload('float', self.fgep(v, ci.fpos[f])), "float") for f in ["real", "imag"]]
+    return [self.as_float(v), Val(fbits("0.0"), "float")]
+
+def gen_complex_arith(self, op: str, a: Val, b: Val, shown: str) -> Val:
+    # a op b of a complex number and a number, in either order: both as their floats, in the order
+    # written (complex_parts), then lib/_pystachy_complex.py's function of op; CPython's TypeError
+    # at compile time for an operator complex numbers do not have (//, %, <<, ...)
+    fn = "_sum" if op == "+" else "_diff" if op == "-" else "_prod" if op == "*" else "_quot" if op == "/" else "_pow" if op == "**" else ""
+    if fn == "":
+        self.err(f"unsupported operand type(s) for {shown if shown != '' else op}: '{tname(a.t)}' and '{tname(b.t)}'")
+    # (a complex number's object may be None, a complex | None's: CPython's TypeError names it)
+    sym = shown if shown != "" else "** or pow()" if op == "**" else op
+    an = a.t == COMPLEXC and a.v not in self.nn
+    bn = b.t == COMPLEXC and b.v not in self.nn
+    anull = self.ptr_cmp('==', a, Val('null', 'None')).v if an else ""
+    bnull = self.ptr_cmp('==', b, Val('null', 'None')).v if bn else ""
+    if an and bn:
+        self.guard(self.scalar('and', [Val(anull, 'bool'), Val(bnull, 'bool')]), f"TypeError: unsupported operand type(s) for {sym}: 'NoneType' and 'NoneType'")
+    if an:
+        self.guard(anull, f"TypeError: unsupported operand type(s) for {sym}: 'NoneType' and '{tname(b.t)}'")
+    if bn:
+        self.guard(bnull, f"TypeError: unsupported operand type(s) for {sym}: '{tname(a.t)}' and 'NoneType'")
+    ps = self.complex_parts(a) + self.complex_parts(b)
+    r = self.call_fn(self.funcs[COMPLEXS + "$" + fn], [], [self.vnode(x) for x in ps])
+    self.nn[r.v] = True  # (each function makes a new object)
+    return r
+
+def gen_complex_cmp(self, op: str, a: Val, b: Val, checked: bool = False) -> Val:
+    # a == b or a != b of a complex number and a number, as complex_richcompare: equal parts; a
+    # float equal to the real part, with an imaginary part of 0.0; an int equal to the real part
+    # exactly (a float's comparison with an int), with an imaginary part of 0.0. Ordering is
+    # CPython's TypeError, at compile time. checked: a complex operand is known not to be None
+    if op != "==" and op != "!=":
+        self.err(f"'{op}' not supported between instances of '{tname(a.t)}' and '{tname(b.t)}'")
+    nulls = [self.ptr_cmp('==', x, Val('null', 'None')).v for x in [a, b] if x.t == COMPLEXC and x.v not in self.nn] if not checked else []
+    if len(nulls) > 0:
+        # (a complex number's object may be None, a complex | None's, which equals only None)
+        anynull = nulls[0] if len(nulls) == 1 else self.scalar('or', [Val(nulls[0], 'bool'), Val(nulls[1], 'bool')])
+        none = self.label()
+        some = self.label()
+        end = self.label()
+        ph = Ins("phi", "bool", "")
+        self.cbr(anynull, none, some)
+        self.place(none)
+        eqn = self.scalar('and', [Val(nulls[0], 'bool'), Val(nulls[1], 'bool')]) if len(nulls) == 2 else "false"
+        self.incoming(ph, eqn if op == "==" else self.scalar('xor', [Val(eqn, 'bool'), Val('true', 'bool')]), self.cur)
+        self.br(end)
+        self.place(some)
+        r = self.complex_cmp(op, a, b, True)
+        self.incoming(ph, r.v, self.cur)
+        self.br(end)
+        self.place(end)
+        return Val(self.phi(ph), "bool")
+    c = a if a.t == COMPLEXC else b
+    o = b if a.t == COMPLEXC else a
+    cp = self.complex_parts(c)
+    zero = Val(fbits("0.0"), "float")
+    eq = ""
+    if o.t == COMPLEXC:
+        op2 = self.complex_parts(o)
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[0], op2[0]).v, 'bool'), Val(self.num_cmp('==', cp[1], op2[1]).v, 'bool')])
+    elif o.t == "float":
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[0], o).v, 'bool'), Val(self.num_cmp('==', cp[1], zero).v, 'bool')])
+    else:
+        eq = self.scalar('and', [Val(self.num_cmp('==', cp[1], zero).v, 'bool'), Val(self.cmp2("==", cp[0], self.as_int(o) if o.t == "bool" else o).v, 'bool')])
+    return Val(eq, "bool") if op == "==" else Val(self.scalar('xor', [Val(eq, 'bool'), Val('true', 'bool')]), "bool")
+
+def gen_complex_ueq(self, op: str, a: Val, b: Val) -> Val:
+    # a == b or a != b where a union is one side and a complex number, or a union holding one, is
+    # either side; runtime.c's union descriptors compare no complex member (1 == 1+0j across
+    # members). The union's members are chosen by the tag, None first: each value compared with
+    # the other side by cmp2 (complex_cmp, or this again for another union), but where their kinds
+    # differ (a str, a number, None), which no value of the other kind equals in CPython
+    v = a if is_union(unopt(a.t)) else b
+    o = b if v is a else a
+    # (a class's union, complex | C, is a null box where it is None, as a union | None's is)
+    members = (["None"] if is_opt(v.t) or (self.reference_union(v.t) and v.v not in self.nn) else []) + umembers(unopt(v.t))
+    end = self.label()
+    ph = Ins("phi", "bool", "")
+    for i in range(len(members)):
+        m = members[i]
+        hit = self.label()
+        miss = self.label() if i + 1 < len(members) else ""
+        if miss == "":
+            self.br(hit)
+        elif m == "None":
+            self.cbr(self.ptr_cmp('==', v, Val('null', 'None')).v, hit, miss)
+        else:
+            self.cbr(self.utest(v, [m], False), hit, miss)
+        self.place(hit)
+        r = ""
+        km = eq_kind(m)
+        ko = eq_kind(o.t)
+        if not is_union(unopt(o.t)) and not is_opt(o.t) and km != "" and ko != "" and km != ko and not (m == "None" and o.t in self.classes):
+            # (but an object, a complex number's, may be None, which None equals: cmp2's identity
+            # test; an object of another class answers by its own __eq__, also reflected; and two
+            # containers of one kind, a list[int] and a list[float], compare their items)
+            r = "false" if op == "==" else "true"
+        else:
+            x = Val("null", "None") if m == "None" else self.uget(Val(v.v, unopt(v.t)), m)
+            r = (self.cmp2(op, x, o) if v is a else self.cmp2(op, o, x)).v
+        self.incoming(ph, r, self.cur)
+        self.br(end)
+        if miss != "":
+            self.place(miss)
+    self.place(end)
+    return Val(self.phi(ph), "bool")
+
+
+def eq_kind(t: str) -> str:
+    # what kind of value equality compares a value of type t with, where a value of another kind is
+    # never equal to it in CPython: numbers (exactly, across int, float, bool and complex), strs,
+    # bytes, None, lists, dicts, tuples or sets; "" for an object's, whose __eq__ may take anything
+    if t in ["int", "float", "bool", BIG, COMPLEXC]:
+        return "num"
+    if t == "str" or t == "bytes" or t == "None":
+        return t
+    if is_list(t) or is_dict(t) or is_set(t):
+        return t[: t.find("[")].replace("frozenset", "set")
+    if is_tuple(t) or is_vtuple(t):
+        return "tuple"
+    return ""
 
 def gen_compare(self, n: Node) -> Val:
     tc = self.refl_type_cmp(n)  # (type(a) is C, type(a) == type(b): reflection.py)
@@ -4791,7 +5191,17 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         self.cbr(self.cmp2("is", item, a).v, hit, nx)
         self.place(nx)
         identity = True
-    elif self.reference_union(item.t) or self.reference_union(a.t):
+    elif self.idhere() and numeric_identity(item.t) and numeric_identity(a.t) and (item.idfrom != "" or item.idslot != ""):
+        # Numeric runtime tuple items carry their original box, including NaNs.
+        # Equality alone cannot implement Python's identity-first item search.
+        nx = self.label()
+        same = self.ptr_cmp("==", self.dyn_id_box(item), self.dyn_id_box(a)).v
+        if ph is not None:
+            self.incoming(ph, value, self.cur)
+        self.cbr(same, hit, nx)
+        self.place(nx)
+        identity = True
+    elif is_union(u) or is_union(unopt(a.t)):
         identity = self.union_same(item, a, hit, ph, value)
     elif identity:
         # (an object, list, dict, set or tuple, also one that may be None, is found
@@ -4821,7 +5231,7 @@ def gen_titem_eq(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str, 
         # declines) x's __eq__(item); with neither, they are not equal. An object of a class
         # with subclasses calls its runtime class's (#1430), as == does (inherit_cmp)
         runtime = [x for x in [item.t, a.t] if x in self.classes and self.classes[x].exc == "" and self.classes[x].tag != 0 and len(self.cmp_kinds(x)) > 1]
-        if len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)):
+        if len(runtime) > 0 or (lenient and (item.t in self.classes or a.t in self.classes)) or self.cmp_declining("==", item.t, a.t):
             c = self.inherit_cmp("==", item, a, True)
         else:
             c = self.foreign_eq(item, a)
@@ -4907,18 +5317,21 @@ def gen_titem_nt(self, item: Val, a: Val, left: bool, hit: str, ph: Ins | None, 
     return found
 
 def gen_union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str) -> bool:
-    # Tuple search finds the same underlying object, even in separately boxed reference
-    # unions. Test None before loading a union's tag, then compare only compatible members.
-    # This identity fast path does not instantiate any member's equality method.
+    # Tuple search finds the same underlying object, even in separately boxed unions,
+    # including a complex number with a NaN component. Test None before loading a union's
+    # tag, then compare only compatible members. This identity fast path does not
+    # instantiate any member's equality method; titem_eq dispatches equality afterwards.
     sides: list[list[str]] = []
     for x in [item, a]:
         ms = umembers(unopt(x.t)) if is_union(unopt(x.t)) else [unopt(x.t)]
-        sides.append([m for m in ms if m in self.classes or m == "file"])
+        sides.append([m for m in ms if m in self.classes or m == "file" or is_list(m) or is_dict(m) or is_set(m) or is_tuple(m) or is_vtuple(m)])
     pairs: list[list[str]] = []
     for m1 in sides[0]:
         for m2 in sides[1]:
             if m1 == m2 or (m1 in self.classes and m2 in self.classes and (self.derives(m1, m2) or self.derives(m2, m1))):
                 pairs.append([m1, m2])
+    if len(pairs) == 0 and not self.reference_union(item.t) and not self.reference_union(a.t):
+        return False
     nulls = [self.isnull(item), self.isnull(a)]
     if nulls[0] != "false" and nulls[1] != "false":
         nx = self.label()
@@ -4931,6 +5344,7 @@ def gen_union_same(self, item: Val, a: Val, hit: str, ph: Ins | None, value: str
         for j in range(2):
             x = item if j == 0 else a
             if is_union(unopt(x.t)):
+                # (a class's union is a null box where it is None, as a union | None's is)
                 held = self.utest(x, [pair[j]], (is_opt(x.t) or self.reference_union(x.t)) and x.v not in self.nn)
                 test = held if test == "true" else self.scalar('and', [Val(test, 'bool'), Val(held, 'bool')])
         same = self.label()
@@ -4956,6 +5370,68 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         dc = self.dyn_cmp2(op, a, b)  # (a dynamic value's: dynamic.py)
         if dc.t != "":
             return dc
+    if (a.t == COMPLEXC or b.t == COMPLEXC) and (op == "==" or op == "!=") and all(t == COMPLEXC or t in ["int", "float", "bool", BIG] for t in [a.t, b.t]):
+        return self.complex_cmp(op, a, b)
+    if (op == "==" or op == "!=") and COMPLEXC in [a.t, b.t] and (is_sopt(a.t) or is_sopt(b.t)):
+        return self.optcmp(op, a, b)  # (an int, float or bool | None: None equals only None, a number as complex_cmp compares it)
+    if (op == "==" or op == "!=") and (a.t == COMPLEXC) != (b.t == COMPLEXC):
+        # a complex number and a value of a builtin type that no complex number equals (CPython
+        # compares them by identity); None is the same object as a complex | None that holds it
+        o = b.t if a.t == COMPLEXC else a.t
+        if o == "None":
+            c = a if a.t == COMPLEXC else b
+            return Val("false" if op == "==" else "true", "bool") if c.v in self.nn else self.ptr_cmp(op, c, Val("null", "None"))
+        if o == "str" or o == "bytes" or is_list(o) or is_dict(o) or is_tuple(o) or is_vtuple(o) or is_set(o):
+            return Val("false" if op == "==" else "true", "bool")
+        mown = "__eq__" if op == "==" else "__ne__"
+        custom = o in self.classes and any([mown in self.classes[ck].methods and not lib_source(self.classes[ck].methods[mown].node.line, self.libdir, "enum.py") for ck in self.cmp_kinds(o)])
+        own = a.t != COMPLEXC and custom
+        if self.enum_intlike(o) and not own:
+            if a.t == COMPLEXC and a.v not in self.nn and custom:
+                # A nonnull complex accepts the int payload first, but None has no
+                # such comparison: the enum's reflected override must then run.
+                return self.inherit_cmp(op, a, b)
+            # an IntEnum's or IntFlag's member, an int in CPython, whose int.__eq__ leaves a
+            # complex number to complex's: its int payload compares as an int does (lib/enum.py's
+            # __eq__ takes no complex number); a member that may be None equals only None. (With
+            # the member on the left, its class's own __eq__, or __ne__, answers instead: own;
+            # with the complex number on the left, complex's own comparison takes any int.)
+            ev = b if a.t == COMPLEXC else a
+            cx = a if a.t == COMPLEXC else b
+            if ev.v in self.nn:
+                return self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+            lnull = self.label()
+            lval = self.label()
+            lend = self.label()
+            ph = Ins("phi", "bool", "")
+            self.cbr(self.ptr_cmp('==', ev, Val('null', 'None')).v, lnull, lval)
+            self.place(lnull)
+            self.incoming(ph, self.ptr_cmp(op, cx, Val('null', 'None')).v, self.cur)
+            self.br(lend)
+            self.place(lval)
+            ecr = self.complex_cmp(op, cx, self.mem_load(Val(self.fgep(ev, self.classes[o].fpos[" enum int"]), "*int")))
+            self.incoming(ph, ecr.v, self.cur)
+            self.br(lend)
+            self.place(lend)
+            return Val(self.phi(ph), "bool")
+        if o in self.classes and (self.classes[o].tag != 0 or self.cmp_declining(op, o, "")):
+            # (an object of a class with subclasses, whose comparison methods its runtime class
+            # decides, or whose method may decline: inherit_cmp reads that flag and
+            # resumes the candidate order. complex's own __eq__ declines foreign objects.)
+            return self.inherit_cmp(op, a, b)
+        if o in self.classes:
+            # an object of another class: complex's __eq__ (lib's, for dynamic Any values) declines
+            # it, as CPython's returns NotImplemented, so the object's own __eq__ or __ne__ answers,
+            # else identity (also between two None values)
+            obj = b if a.t == COMPLEXC else a
+            cx = a if a.t == COMPLEXC else b
+            om = self.classes[o].methods
+            if op == "!=" and "__ne__" in om and self.cmp_method(o, "__ne__", COMPLEXC) != "":
+                return self.eqcall(om["__ne__"], False, obj, cx)
+            if "__eq__" in om and self.cmp_method(o, "__eq__", COMPLEXC) != "":
+                ceq = self.eqcall(om["__eq__"], True, obj, cx)
+                return ceq if op == "==" else Val(self.scalar('xor', [Val(ceq.v, 'bool'), Val('true', 'bool')]), "bool")
+            return self.ptr_cmp(op, a, b)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and (self.isnum(unopt(a.t)) or unopt(a.t) == BIG) and (self.isnum(unopt(b.t)) or unopt(b.t) == BIG):
         return self.optcmp(op, a, b)  # (an int | None of a module that opts in: None, or its promoting int)
     if (a.t == BIGOPT or b.t == BIGOPT) and (op in ORDOP or op == "==" or op == "!=") and a.t != "None" and b.t != "None":
@@ -5039,8 +5515,17 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                     method = "__eq__"
                 if method in methods and self.cmp_method(lhs.t, method, rhs.t) == "":
                     return self.inherit_cmp(op, a, b)
+    cxu = [x for x in [a, b] if is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))]
+    if (op == "==" or op == "!=") and len(cxu) > 0 and (any(self.enum_intlike(x.t) for x in [a, b]) or any(self.reference_union(x.t) for x in cxu)):
+        # (an int-like enum member, an int in CPython, and a union holding complex numbers: member
+        # by member, so that a complex member compares the int as complex_cmp does, which the
+        # member's __eq__ in lib/enum.py does not; and complex | C, whose object compares as one
+        # of C's does, also by inherit_cmp, rather than the union's box)
+        return self.complex_ueq(op, a, b)
     if (op == "==" or op == "!=" or op in REFL) and ((a.t in self.classes and self.classes[a.t].tag != 0) or (b.t in self.classes and self.classes[b.t].tag != 0)):
         return self.inherit_cmp(op, a, b)
+    if (op == "==" or op == "!=" or op in REFL) and self.cmp_declining(op, a.t, b.t):
+        return self.inherit_cmp(op, a, b)  # (which reads whether the method returned NotImplemented)
     ka = self.exc_kinds(a.t) if op == "==" or op == "!=" or op in REFL else []
     kb = self.exc_kinds(b.t) if op == "==" or op == "!=" or op in REFL else []
     if (len(ka) > 1 or len(kb) > 1 or (a.t != b.t and len(ka) + len(kb) > 0)) and a.t != "exc" and b.t != "exc":
@@ -5056,9 +5541,15 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 return self.ucmp(op, a, b)  # compare original pointers under member-tag guards
         if (op == "==" or op == "!=") and self.ueq_type(a.t) and self.ueq_type(b.t):
             return self.uequal(op, a, b)
+        if (op == "==" or op == "!=") and any([x.t == COMPLEXC or (is_union(unopt(x.t)) and COMPLEXC in umembers(unopt(x.t))) for x in [a, b]]):
+            return self.complex_ueq(op, a, b)
         if op in ["<", "<=", ">", ">="] and not is_opt(a.t) and not is_opt(b.t) and self.uorders(a.t, b.t):
             return self.ucmp(op, a, b)  # (each member's ordering: union splitting)
-        if not ((op == "in" or op == "not in") and (is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
+        # (a set's or dict's keys that are a union of classes compared by identity, of whose
+        # members a's are: runtime.c compares the objects the boxes hold, #1452)
+        kt = selem(b.t) if is_set(b.t) else targs(b.t)[0] if is_dict(b.t) else ""
+        keyed = kt != "" and not is_opt(a.t) and self.key_union(kt) and all([m in umembers(kt) for m in (umembers(a.t) if is_union(a.t) else [a.t])])
+        if not ((op == "in" or op == "not in") and (keyed or is_tuple(b.t) or (is_list(b.t) and is_union(unopt(self.rec_type(elem(b.t)))) and self.ueq_type(elem(b.t))))):
             self.err("comparing closed union values requires narrowing with isinstance() first")
     if (op == "in" or op == "not in") and is_kw(b.t):
         b = self.kw_list(b)  # (x in kwargs: among the names)
@@ -5188,8 +5679,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return Val(r if op == "in" else self.scalar('xor', [Val(r, 'bool'), Val('true', 'bool')]), "bool")
     if (op == "in" or op == "not in") and b.t == "str":
         a = self.unwrap(a, "TypeError: 'in <string>' requires string as left operand, not NoneType")
-    if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes) or (is_set(b.t) and selem(b.t) not in self.classes) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
-        return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's, and no number
+    if (op == "in" or op == "not in") and a.t == "None" and ((is_dict(b.t) and targs(b.t)[0] not in self.classes and not self.key_union(targs(b.t)[0]) and not none_key(targs(b.t)[0])) or (is_set(b.t) and selem(b.t) not in self.classes and not self.key_union(selem(b.t)) and not none_key(selem(b.t))) or (is_list(b.t) and (self.optional(elem(b.t)) == "" or self.isnum(elem(b.t))) and elem(b.t) not in self.classes)):
+        return Val("false" if op == "in" else "true", "bool")  # None is no key of a dict (no element of a set) but an object's or a union of classes', and no number
     kt = targs(b.t)[0] if is_dict(b.t) else selem(b.t) if is_set(b.t) else ""
     if (op == "in" or op == "not in") and is_opt(a.t) and ((kt != "" and (unopt(a.t) == kt or (is_sopt(a.t) and bool_for_int(unopt(a.t), kt)) or (a.t == BIGOPT and kt == "int"))) or (is_sopt(a.t) and is_list(b.t) and (unopt(a.t) == elem(b.t) or self.isnum(elem(b.t))))):
         # None is no key of the dict (and no int of a list[int]); a promoting int's search is exact (bigints.py)
@@ -5230,7 +5721,7 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         elif b.t == "bytes":
             self.err(f"a bytes-like object is required, not '{tname(a.t)}'")
         elif is_list(b.t):
-            if self.list_id_kind(b.t) != 0 and a.t in ["int", "float", "bool", "dyn"]:
+            if self.list_id_kind(b.t) != 0 and (numeric_identity(a.t) or a.t in ["bool", "None", "dyn"]):
                 found = self.list_find(b, a, "find")
                 return self.num_cmp(">=" if op == "in" else "<", found, Val("0", "int"))
             if a.t != elem(b.t) and (is_list(a.t) or is_dict(a.t) or is_tuple(a.t)) and self.numeric_comparable(a.t, elem(b.t)):
@@ -5307,7 +5798,8 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
                 sets_equal = Val(self.scalar("and", sets_empty), "bool")
                 return sets_equal if op == "==" else Val(self.scalar("xor", [sets_equal, Val("true", "bool")]), "bool")
             self.err(f"cannot compare {typestr(a.t)} {op} {typestr(b.t)}")
-        r = self.rt("pys_set_cmp", "i64", [f"ptr {a.v}", f"ptr {b.v}", f"i64 {ORDOP[op] if op in ORDOP else 4 if op == '==' else 5}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t)))
+        ab = self.set_pair(a, b, self.wider(selem(a.t), selem(b.t)))  # (a set[str] and a set[str | None]: tables of one kind)
+        r = self.rt("pys_set_cmp", "i64", [f"ptr {ab[0].v}", f"ptr {ab[1].v}", f"i64 {ORDOP[op] if op in ORDOP else 4 if op == '==' else 5}"], self.key_fx(selem(a.t)) + self.key_fx(selem(b.t)))
         return self.num_cmp('!=', Val(r, "int"), Val('0', "int"))
     eq = op == "==" or op == "!="
     if eq and (a.t == "None") != (b.t == "None") and self.isnum(a.t if b.t == "None" else b.t):
@@ -5318,7 +5810,11 @@ def gen_cmp2(self, op: str, a: Val, b: Val) -> Val:
         return self.ptr_cmp(op, a, b)
     if op in ORDOP and is_tuple(a.t) and is_tuple(b.t) and len(targs(a.t)) != len(targs(b.t)):
         return self.tuple_order(op, a, b)  # (of different lengths, which no one tuple type holds)
-    if (is_tuple(a.t) and BIG in a.t) or (is_tuple(b.t) and BIG in b.t):
+    if (is_tuple(unopt(a.t)) and BIG in a.t) or (is_tuple(unopt(b.t)) and BIG in b.t):
+        if is_opt(a.t) or is_opt(b.t):
+            # Optional tuple container reads keep the tuple's promoting layout.
+            # Test None before comparing the same nonnull tuple values below.
+            return self.optcmp(op, a, b)
         # a tuple of promoting ints: runtime.c's walks read its items (desc's J) where both are
         # builtin value trees (bigints.big_tree), as they compare tuples of 64-bit ints, and the
         # others are compared item by item here; a tuple[T, ...] holds 64-bit ints, as which the
@@ -5481,8 +5977,8 @@ def gen_tuple_pair_eq(self, op: str, a: Val, b: Val) -> Val:
                 item = self.label()
                 self.cbr(self.num_cmp("<", Val(str(i), "int"), alen if is_vtuple(a.t) else blen).v, item, finish)
                 self.place(item)
-            x = self.tget(a, i) if is_tuple(a.t) else self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {a.v}", f"i64 {i}"]), ax[0])
-            y = self.tget(b, i) if is_tuple(b.t) else self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {b.v}", f"i64 {i}"]), bx[0])
+            x = self.tget(a, i) if is_tuple(a.t) else self.vtuple_item(a, Val(str(i), "int"))
+            y = self.tget(b, i) if is_tuple(b.t) else self.vtuple_item(b, Val(str(i), "int"))
             step = self.label()
             self.pair_item_eq(x, y, step)
             self.incoming(result, "false", self.cur)
@@ -5500,8 +5996,8 @@ def gen_tuple_pair_eq(self, op: str, a: Val, b: Val) -> Val:
         position = Val(self.mload("int", index), "int")
         self.cbr(self.scalar("and", [self.num_cmp("<", position, alen), self.num_cmp("<", position, blen)]), item, finish)
         self.place(item)
-        x = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {a.v}", f"i64 {position.v}"]), ax[0])
-        y = self.from_slot(self.rt("pys_vtuple_get", "i64", [f"ptr {b.v}", f"i64 {position.v}"]), bx[0])
+        x = self.vtuple_item(a, position)
+        y = self.vtuple_item(b, position)
         self.pair_item_eq(x, y, step)
         self.incoming(result, "false", self.cur)
         self.br(end)
@@ -5666,10 +6162,21 @@ def gen_comparable(self, t: str, u: str) -> bool:
         # (an Any value may be any value that a box can hold: dynamic.py)
         o = u if t == "dyn" else t
         return o == "dyn" or self.dyn_boxable(self.rec_type(o)) == ""
+    sides = [(["None"] if is_opt(x) else []) + (umembers(unopt(x)) if is_union(unopt(x)) else [unopt(x)]) for x in [t, u]]
+    if any(COMPLEXC in side for side in sides) and (len(sides[0]) > 1 or len(sides[1]) > 1):
+        # (a union holding complex numbers, or a complex number and a union: complex_ueq compares
+        # them member by member, which no runtime union descriptor does; equal where any two
+        # members may be, as the rules below find them: numbers across types, an int-like enum
+        # member, a list[int] and a list[float], an object's __eq__, None and a complex | None)
+        return any(self.comparable(m1, m2) for m1 in sides[0] for m2 in sides[1])
     if is_union(unopt(t)) or is_union(unopt(u)):
         return self.ueq_type(self.union_type([t, u]))
     if t == u or ((self.isnum(unopt(t)) or unopt(t) == BIG) and (self.isnum(unopt(u)) or unopt(u) == BIG)) or self.wider(t, u) != "" or self.numeric_comparable(t, u):
         return True  # (a promoting int is a number, also where it may be None: bigints.py)
+    if COMPLEXC in [t, u] and all(x in [COMPLEXC, "int", "float", "bool", BIG] or is_sopt(x) or self.enum_intlike(x) for x in [t, u]):
+        return True  # (a complex number with a zero imaginary part equals its real part, also an int-like enum member's: complex_cmp)
+    if COMPLEXC in [t, u] and any(x in self.classes and x != COMPLEXC and self.classes[x].tag != 0 for x in [t, u]):
+        return True  # (an object of a class with subclasses, one of which may take a complex number: inherit_cmp)
     return (t == "None" and (u in self.classes or is_opt(u))) or (u == "None" and (t in self.classes or is_opt(t)))
 
 def gen_foreign_eq(self, a: Val, b: Val) -> Val:
@@ -5678,7 +6185,9 @@ def gen_foreign_eq(self, a: Val, b: Val) -> Val:
     # declines, as object's and a dataclass's do for an object of another class), the __eq__
     # of b's class where it takes an a (CPython's reflected call); Val("", "") where neither
     # applies, and CPython finds them not equal
-    if a.t in self.classes and "__eq__" in self.classes[a.t].methods:
+    if a.t in self.classes and "__eq__" in self.classes[a.t].methods and not (a.t == COMPLEXC and b.t != COMPLEXC):
+        # (lib's complex compares complex numbers: CPython's __eq__ declines a value of another
+        # type, returning NotImplemented, so that b's reflected method answers)
         if self.cmp_method(a.t, "__eq__", b.t) != "":
             return self.eqcall(self.classes[a.t].methods["__eq__"], True, a, b)
         if not self.classes[a.t].methods["__eq__"].synthetic:
