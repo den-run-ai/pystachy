@@ -1,0 +1,2041 @@
+{
+  "schema_version": 1,
+  "validation_complete_for_listed_scope": true,
+  "full_verification_complete": false,
+  "source_identities": {
+    "baseline": {
+      "commit": "0ec827ac34837cc917627e1ce594c484db6e9227",
+      "compiler_sha256": "1a099fc63d78fe504de96758063230a0b58133d6fd8056f58829bdabaa2a4491",
+      "clean_checkout": true,
+      "source_manifest_sha256": "a5895ad07f630e9dad1cbfa0bda807f760d2820dbd8c9b6885532c4672954b91"
+    },
+    "candidate": {
+      "commit": "5cc4fd5ad64cf5e7ede2a7586047ba6266a6e8f4",
+      "compiler_sha256": "f722254ccea2efc4b9d128abc9d6a358931128d4432f55b81aa858a76ef6ec4c",
+      "clean_checkout": true,
+      "source_manifest_sha256": "0dadd05573a0a5c3c89404a2890df27a397c21c5561dd270dce3d4121bc3c8b7"
+    }
+  },
+  "toolchain": {
+    "python": "3.13.16",
+    "llvm": "18.1.3",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python_detail": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "native_build_optimization": "O2"
+  },
+  "evidence_sha256": {
+    "final-checks.log": "5d91d8eb4cfd3468923eb5cba44755fdc99cb4198e0a200fa1f55cd1e2ac92a2",
+    "candidate-final-build.log": "feff2ab3a086c04fa3a50b40f3aa2009565ca6349295a17b082a0a6669795c91",
+    "final-check-ir.log": "9246878d263ebeed6fc3ecfdec8574e4fc87033777c7ad2e585896f771bb14c6",
+    "final-focused.log": "09f3a1c936ae0adf23a2627e9ea964e79de51be3a57b7905c91cbf2e2689f074",
+    "final-gc.log": "9c06c183ac2ab98e2e835bde30f6de7e51e02fbc3341cb1fbe9be8a58c6f122a",
+    "final-opt-off.log": "9c06c183ac2ab98e2e835bde30f6de7e51e02fbc3341cb1fbe9be8a58c6f122a",
+    "changed-native.log": "8181eb281a6151a06f40edeaab884e9e6e39dac4d1e35cbf5264cfb1e7f7859e",
+    "ir-comparison/report.json": "16d93cc926f38baf3737934f9b4d2014831d51714a8f440fbc7f286bdb7b852a",
+    "ir-classification.json": "e0d624deadd518adf076dab77c539510e62e30e66fe7d9752e388a4a1b3324ed",
+    "ir-structural-review.json": "88344ba45316dd9bc87608fdc08a3506e91618838640fe131ab4dbca1aa2b4cb",
+    "changed-bench-checks.json": "fbc6dcb06367f9dd21debe6d453768bcfcf090a70ed5a28d43720767c87089c9"
+  },
+  "bootstrap": {
+    "command": "make",
+    "compiler_ir_fixed_point_stages": 3,
+    "compiler_ir_lines": 899620,
+    "runtime_ir_fixed_point_stages": 3,
+    "runtime_ir_lines": 21100
+  },
+  "fast_and_lint": {
+    "command": "make check-fast check-runtime lint",
+    "unittest_groups": [
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_repository_hygiene.py",
+        "reported": 11,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_function_summaries.py",
+        "reported": 7,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p 'test_typed*.py'",
+        "reported": 312,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p 'test_json*.py'",
+        "reported": 64,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_numeric_identity.py",
+        "reported": 56,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_identity_scope.py",
+        "reported": 19,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_toml_boundary.py",
+        "reported": 5,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_dynamic_any_inventory.py",
+        "reported": 8,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_dynany_comparisons.py",
+        "reported": 50,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_dynany_dict_kinds.py",
+        "reported": 3,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_diagnostic_capture.py",
+        "reported": 8,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_loader_preprocessing.py",
+        "reported": 14,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_ctypes_schema.py",
+        "reported": 30,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_ffi_twin.py",
+        "reported": 12,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_parser_allocations.py",
+        "reported": 8,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_exception_bindings.py",
+        "reported": 12,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_inspect_compiler.py",
+        "reported": 28,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p 'test_lean_boundary*.py'",
+        "reported": 59,
+        "skipped": 32
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_source_lines.py",
+        "reported": 8,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_pystachy_toolchain.py",
+        "reported": 8,
+        "skipped": 0
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_retained_ir.py",
+        "reported": 10,
+        "skipped": 1
+      },
+      {
+        "command": "python3.13 -m unittest discover -s tools -p test_jitfdprobe.py",
+        "reported": 8,
+        "skipped": 0
+      }
+    ],
+    "reported_tests": 740,
+    "passed_tests": 707,
+    "skipped_tests": 33,
+    "skip_reasons": {
+      "test_lean_boundary*.py": "32: proved checker not built",
+      "test_retained_ir.py": "1: PYSTACHY_TEST_LLVM opt-in not set"
+    },
+    "ruff_passed": true,
+    "mypy_source_files": 56,
+    "repository_hygiene_passed": true,
+    "shellcheck_passed": true,
+    "clang_warnings_as_errors_passed": true,
+    "runtime_table": {
+      "entries": 676,
+      "exception_classes": 70,
+      "runtime_functions": 193
+    },
+    "gc_static_roots": {
+      "stores": 68,
+      "problems": 0
+    }
+  },
+  "ir_check": {
+    "command": "make check-ir",
+    "programs": 2516,
+    "checker_passed": true,
+    "llvm_as_passed": true
+  },
+  "native_checks": {
+    "normal": {
+      "command": [
+        "./tests/run.sh",
+        "./pystachy",
+        "jit aot"
+      ],
+      "argument_rule": "Append selected_paths as individual arguments",
+      "environment": {
+        "PYSTACHY_IRCHECK": "1",
+        "PYSTACHY_JOBS": "2"
+      },
+      "selected_paths": [
+        "tests/deviations/dict_key_repr_at_raise.py",
+        "tests/programs/containers/dict_changed_size.py",
+        "tests/programs/containers/dict_comprehension.py",
+        "tests/programs/containers/dict_from_pairs.py",
+        "tests/programs/containers/dict_fromkeys.py",
+        "tests/programs/containers/dict_fromkeys_empty.py",
+        "tests/programs/containers/dict_hash.py",
+        "tests/programs/containers/dict_keys_changed.py",
+        "tests/programs/containers/dict_merge.py",
+        "tests/programs/containers/dict_object_keys.py",
+        "tests/programs/containers/dict_object_keys_combinations.py",
+        "tests/programs/containers/dict_object_keys_generic.py",
+        "tests/programs/containers/dict_object_keys_mutation.py",
+        "tests/programs/containers/dict_order_error.py",
+        "tests/programs/containers/dict_pairs_length.py",
+        "tests/programs/containers/dict_popitem.py",
+        "tests/programs/containers/dict_popitem_more.py",
+        "tests/programs/containers/dict_popitem_objects.py",
+        "tests/programs/containers/dict_repr_mutated.py",
+        "tests/programs/containers/dict_reversed_changed.py",
+        "tests/programs/containers/dict_union.py",
+        "tests/programs/containers/dict_union_object_keys.py",
+        "tests/programs/containers/dict_unpack_displays.py",
+        "tests/programs/containers/dict_update.py",
+        "tests/programs/containers/dict_update_mutated.py",
+        "tests/programs/containers/dict_update_source_mutation.py",
+        "tests/programs/containers/dict_user_hash.py",
+        "tests/programs/containers/dict_user_hash_calls.py",
+        "tests/programs/containers/dict_user_hash_probes.py",
+        "tests/programs/containers/dicts.py",
+        "tests/programs/exceptions/exc_args_repr.py",
+        "tests/programs/exceptions/exc_as_rebind.py",
+        "tests/programs/exceptions/exc_as_subclass.py",
+        "tests/programs/exceptions/exc_as_unbound.py",
+        "tests/programs/exceptions/exc_base_shadow_comp.py",
+        "tests/programs/exceptions/exc_base_shadow_conditional.py",
+        "tests/programs/exceptions/exc_base_shadow_for.py",
+        "tests/programs/exceptions/exc_base_shadow_kept.py",
+        "tests/programs/exceptions/exc_base_shadow_local.py",
+        "tests/programs/exceptions/exc_base_shadow_method.py",
+        "tests/programs/exceptions/exc_base_shadow_param.py",
+        "tests/programs/exceptions/exc_base_shadow_walrus.py",
+        "tests/programs/exceptions/exc_binding_index_cleanup.py",
+        "tests/programs/exceptions/exc_binding_index_scopes.py",
+        "tests/programs/exceptions/exc_builtin_alias.py",
+        "tests/programs/exceptions/exc_callback.py",
+        "tests/programs/exceptions/exc_cause_optional.py",
+        "tests/programs/exceptions/exc_class_args.py",
+        "tests/programs/exceptions/exc_class_attr.py",
+        "tests/programs/exceptions/exc_class_base_call.py",
+        "tests/programs/exceptions/exc_class_base_names.py",
+        "tests/programs/exceptions/exc_class_call_bool.py",
+        "tests/programs/exceptions/exc_class_callable.py",
+        "tests/programs/exceptions/exc_class_calls.py",
+        "tests/programs/exceptions/exc_class_cause.py",
+        "tests/programs/exceptions/exc_class_cause_unread.py",
+        "tests/programs/exceptions/exc_class_chain.py",
+        "tests/programs/exceptions/exc_class_computed.py",
+        "tests/programs/exceptions/exc_class_dunder_call.py",
+        "tests/programs/exceptions/exc_class_dunder_class.py",
+        "tests/programs/exceptions/exc_class_exit.py",
+        "tests/programs/exceptions/exc_class_exit_msg.py",
+        "tests/programs/exceptions/exc_class_init_args.py",
+        "tests/programs/exceptions/exc_class_init_attrs.py",
+        "tests/programs/exceptions/exc_class_init_closure.py",
+        "tests/programs/exceptions/exc_class_isinstance.py",
+        "tests/programs/exceptions/exc_class_later.py",
+        "tests/programs/exceptions/exc_class_misc.py",
+        "tests/programs/exceptions/exc_class_mod.py",
+        "tests/programs/exceptions/exc_class_module.py",
+        "tests/programs/exceptions/exc_class_module_assign.py",
+        "tests/programs/exceptions/exc_class_module_declared.py",
+        "tests/programs/exceptions/exc_class_nonetype.py",
+        "tests/programs/exceptions/exc_class_nonetype_tests.py",
+        "tests/programs/exceptions/exc_class_odd.py",
+        "tests/programs/exceptions/exc_class_raise_order.py",
+        "tests/programs/exceptions/exc_class_shadow.py",
+        "tests/programs/exceptions/exc_class_strfail.py",
+        "tests/programs/exceptions/exc_class_suppress_computed.py",
+        "tests/programs/exceptions/exc_class_try.py",
+        "tests/programs/exceptions/exc_class_tuple_order.py",
+        "tests/programs/exceptions/exc_class_values.py",
+        "tests/programs/exceptions/exc_classattr_inherit.py",
+        "tests/programs/exceptions/exc_classes.py",
+        "tests/programs/exceptions/exc_classmethod_inherit.py",
+        "tests/programs/exceptions/exc_classmethod_lazy.py",
+        "tests/programs/exceptions/exc_classmethod_unused_cls.py",
+        "tests/programs/exceptions/exc_classmethod_unused_global.py",
+        "tests/programs/exceptions/exc_clause_or.py",
+        "tests/programs/exceptions/exc_compare_base.py",
+        "tests/programs/exceptions/exc_compare_chain.py",
+        "tests/programs/exceptions/exc_edge.py",
+        "tests/programs/exceptions/exc_empty_str_repr.py",
+        "tests/programs/exceptions/exc_empty_tuple.py",
+        "tests/programs/exceptions/exc_eq_subclass.py",
+        "tests/programs/exceptions/exc_except_attr.py",
+        "tests/programs/exceptions/exc_exit.py",
+        "tests/programs/exceptions/exc_exit_optional.py",
+        "tests/programs/exceptions/exc_exit_optnone.py",
+        "tests/programs/exceptions/exc_finally.py",
+        "tests/programs/exceptions/exc_finally_break.py",
+        "tests/programs/exceptions/exc_finally_deep.py",
+        "tests/programs/exceptions/exc_finally_nested.py",
+        "tests/programs/exceptions/exc_flow.py",
+        "tests/programs/exceptions/exc_handler_loop_values.py",
+        "tests/programs/exceptions/exc_identity.py",
+        "tests/programs/exceptions/exc_import_failed_names.py",
+        "tests/programs/exceptions/exc_import_retry.py",
+        "tests/programs/exceptions/exc_import_selfcatch.py",
+        "tests/programs/exceptions/exc_import_unbound.py",
+        "tests/programs/exceptions/exc_init_result.py",
+        "tests/programs/exceptions/exc_init_super_method_no_read.py",
+        "tests/programs/exceptions/exc_init_unassigned_reads.py",
+        "tests/programs/exceptions/exc_isinstance_sub.py",
+        "tests/programs/exceptions/exc_keep_base_spelling.py",
+        "tests/programs/exceptions/exc_keep_conditional.py",
+        "tests/programs/exceptions/exc_keep_fields_super.py",
+        "tests/programs/exceptions/exc_keep_raise_first.py",
+        "tests/programs/exceptions/exc_keep_repr_effects.py",
+        "tests/programs/exceptions/exc_keep_self_reads.py",
+        "tests/programs/exceptions/exc_keep_user_base.py",
+        "tests/programs/exceptions/exc_kw_builtin.py",
+        "tests/programs/exceptions/exc_kwarg_order.py",
+        "tests/programs/exceptions/exc_misc.py",
+        "tests/programs/exceptions/exc_name_from.py",
+        "tests/programs/exceptions/exc_narrow.py",
+        "tests/programs/exceptions/exc_nested.py",
+        "tests/programs/exceptions/exc_optional_builtin.py",
+        "tests/programs/exceptions/exc_optional_class_identity.py",
+        "tests/programs/exceptions/exc_optional_identity.py",
+        "tests/programs/exceptions/exc_oserror_args.py",
+        "tests/programs/exceptions/exc_oserror_optional.py",
+        "tests/programs/exceptions/exc_plain_builtin_bases.py",
+        "tests/programs/exceptions/exc_raise.py",
+        "tests/programs/exceptions/exc_raise_from_bad.py",
+        "tests/programs/exceptions/exc_record_print.py",
+        "tests/programs/exceptions/exc_recursion_contexts.py",
+        "tests/programs/exceptions/exc_recursion_unwind.py",
+        "tests/programs/exceptions/exc_repr_user.py",
+        "tests/programs/exceptions/exc_runtime.py",
+        "tests/programs/exceptions/exc_stderr_surrogate.py",
+        "tests/programs/exceptions/exc_super_imported.py",
+        "tests/programs/exceptions/exc_template_raises.py",
+        "tests/programs/exceptions/exc_type_call.py",
+        "tests/programs/exceptions/exc_type_optional.py",
+        "tests/programs/exceptions/exc_uncaught.py",
+        "tests/programs/exceptions/exc_uncaught_surrogate.py",
+        "tests/programs/exceptions/exc_unicode_error.py",
+        "tests/programs/exceptions/exc_unicode_error_uncaught.py",
+        "tests/programs/exceptions/exc_values.py",
+        "tests/programs/exceptions/exc_with.py",
+        "tests/programs/exceptions/exc_with_close_fails.py",
+        "tests/programs/exceptions/exception_key_repr_callback.py",
+        "tests/programs/exceptions/exception_local_lookup.py",
+        "tests/programs/exceptions/exit_bool.py",
+        "tests/programs/exceptions/exit_builtin.py",
+        "tests/programs/exceptions/exit_message.py",
+        "tests/programs/exceptions/exit_none.py",
+        "tests/programs/exceptions/exit_none_object.py",
+        "tests/programs/exceptions/exit_optional_code.py",
+        "tests/programs/exceptions/exit_systemexit.py",
+        "tests/programs/exceptions/exit_tuple_status.py",
+        "tests/programs/exceptions/nestcomp_carried.py",
+        "tests/programs/exceptions/oserror_args_raise.py",
+        "tests/programs/exceptions/raise_args.py",
+        "tests/programs/exceptions/raise_bare.py",
+        "tests/programs/exceptions/raise_bare_semicolon.py",
+        "tests/programs/exceptions/raise_class_later.py",
+        "tests/programs/exceptions/raise_empty.py",
+        "tests/programs/exceptions/raise_from.py",
+        "tests/programs/exceptions/raise_keyerror.py",
+        "tests/programs/exceptions/raise_number.py",
+        "tests/programs/generators/gen_finally.py",
+        "tests/programs/generators/gen_throw.py",
+        "tests/programs/generators/gen_with.py",
+        "tests/programs/numbers/python_int_dict_bool_pop.py",
+        "tests/programs/numbers/python_int_dict_items.py",
+        "tests/programs/numbers/python_int_dict_key_methods.py",
+        "tests/programs/numbers/python_int_dict_keys.py",
+        "tests/programs/numbers/python_int_dict_optional_key_methods.py",
+        "tests/programs/numbers/python_int_dict_popitem.py",
+        "tests/programs/numbers/python_int_dict_reused_slots.py",
+        "tests/programs/numbers/python_int_dict_sentinel.py",
+        "tests/programs/numbers/python_int_dict_values.py",
+        "tests/programs/numbers/python_int_dicts.py",
+        "tests/programs/numbers/python_int_dicts_nested.py",
+        "tests/programs/numbers/python_int_lists.py",
+        "tests/programs/optimizations/dict_optional_reentrant.py",
+        "tests/programs/optimizations/opt_dictfuse.py",
+        "tests/programs/optimizations/opt_dictfuse_callback_alias.py",
+        "tests/programs/optimizations/opt_dictfuse_inherited_alias.py",
+        "tests/programs/optimizations/opt_dictfuse_protocol.py",
+        "tests/programs/optimizations/opt_dictfuse_types.py",
+        "tests/programs/optimizations/opt_dictfuse_user_code.py"
+      ],
+      "selected_cases": 194,
+      "jit_aot_checks": 388,
+      "syntax_checks": 0,
+      "passed": 388,
+      "failed": 0
+    },
+    "remaining_changed": {
+      "command": [
+        "./tests/run.sh",
+        "./pystachy",
+        "jit aot"
+      ],
+      "argument_rule": "Append selected_paths as individual arguments",
+      "environment": {
+        "PYSTACHY_IRCHECK": "1",
+        "PYSTACHY_JOBS": "2"
+      },
+      "selected_paths": [
+        "tests/programs/apps/example_agent.py",
+        "tests/programs/apps/example_latency.py",
+        "tests/programs/apps/example_mailmerge.py",
+        "tests/programs/apps/example_nanogpt.py",
+        "tests/programs/apps/example_suggest.py",
+        "tests/programs/apps/example_urlstats.py",
+        "tests/programs/apps/port_iniconfig_api.py",
+        "tests/programs/apps/port_json_repair.py",
+        "tests/programs/apps/port_json_repair_accumulator.py",
+        "tests/programs/apps/port_json_repair_bigints.py",
+        "tests/programs/apps/port_json_repair_bigints_limits.py",
+        "tests/programs/apps/port_json_repair_bounds.py",
+        "tests/programs/apps/port_json_repair_cli.py",
+        "tests/programs/apps/port_json_repair_comments.py",
+        "tests/programs/apps/port_json_repair_depth.py",
+        "tests/programs/apps/port_json_repair_escape.py",
+        "tests/programs/apps/port_json_repair_lookahead.py",
+        "tests/programs/apps/port_json_repair_root_probe.py",
+        "tests/programs/apps/port_json_repair_scan.py",
+        "tests/programs/apps/port_json_repair_spans.py",
+        "tests/programs/apps/port_json_repair_spans_heuristics.py",
+        "tests/programs/apps/port_json_repair_unicode.py",
+        "tests/programs/apps/port_json_repair_upstream_fixes.py",
+        "tests/programs/apps/port_json_repair_valid_depth.py",
+        "tests/programs/apps/port_json_repair_wide.py",
+        "tests/programs/apps/port_qrcode_encode.py",
+        "tests/programs/apps/port_wcwidth_cache.py",
+        "tests/programs/apps/port_wcwidth_core.py",
+        "tests/programs/apps/port_wcwidth_edges.py",
+        "tests/programs/classes/dataclass_inheritance_import.py",
+        "tests/programs/classes/dataclass_options.py",
+        "tests/programs/classes/field_alias.py",
+        "tests/programs/classes/inheritance_compare_chain.py",
+        "tests/programs/containers/comprehension_clauses.py",
+        "tests/programs/containers/list_int_reads.py",
+        "tests/programs/generators/gen_basic.py",
+        "tests/programs/generators/gen_cm_gc.py",
+        "tests/programs/generators/gen_iter_close.py",
+        "tests/programs/generators/gen_protocol_gc.py",
+        "tests/programs/imports/deftime_class_raises.py",
+        "tests/programs/imports/import_try_binding_local.py",
+        "tests/programs/inference/dyn_star_reducer_arity.py",
+        "tests/programs/inference/dyn_star_reducer_messages.py",
+        "tests/programs/inference/dynany_calls.py",
+        "tests/programs/inference/dynany_class_call_order.py",
+        "tests/programs/inference/dynany_class_construct_order.py",
+        "tests/programs/inference/dynany_class_equality.py",
+        "tests/programs/inference/dynany_cmp_cleanup_fields.py",
+        "tests/programs/inference/dynany_cmp_helper_errors.py",
+        "tests/programs/inference/dynany_cmp_invalid_cleanup.py",
+        "tests/programs/inference/dynany_cmp_invalid_operations.py",
+        "tests/programs/inference/dynany_cmp_mixed_list_items.py",
+        "tests/programs/inference/dynany_cmp_nested_dicts.py",
+        "tests/programs/inference/dynany_cmp_nested_key_mutation.py",
+        "tests/programs/inference/dynany_cmp_nested_lists.py",
+        "tests/programs/inference/dynany_dict_keys.py",
+        "tests/programs/inference/dynany_identity_list_scalar_reads.py",
+        "tests/programs/inference/dynany_int_lookup.py",
+        "tests/programs/inference/dynany_json.py",
+        "tests/programs/inference/dynany_json_app.py",
+        "tests/programs/inference/dynany_json_bad_keys.py",
+        "tests/programs/inference/dynany_json_bigints.py",
+        "tests/programs/inference/dynany_json_bigints_raw.py",
+        "tests/programs/inference/dynany_json_bulk_scan.py",
+        "tests/programs/inference/dynany_json_depth.py",
+        "tests/programs/inference/dynany_json_long_text.py",
+        "tests/programs/inference/dynany_json_raw_decode.py",
+        "tests/programs/inference/dynany_op_messages.py",
+        "tests/programs/inference/dynany_sum_compensated.py",
+        "tests/programs/inference/mixed_union_order.py",
+        "tests/programs/io/bfile_basic.py",
+        "tests/programs/language/fn_value_global_later.py",
+        "tests/programs/language/lambda_global_later.py",
+        "tests/programs/language/recursion_limits.py",
+        "tests/programs/language/summary_worklist.py",
+        "tests/programs/language/varargs_stack.py",
+        "tests/programs/library/contextlib_suppress_value.py",
+        "tests/programs/library/json_bulk_scan.py",
+        "tests/programs/library/json_char_offsets.py",
+        "tests/programs/library/json_decoder_override.py",
+        "tests/programs/library/json_decoder_override_base.py",
+        "tests/programs/library/json_delimiters.py",
+        "tests/programs/library/json_depth.py",
+        "tests/programs/library/json_encoder_strings.py",
+        "tests/programs/library/json_errors.py",
+        "tests/programs/library/json_long_text.py",
+        "tests/programs/library/json_mutation.py",
+        "tests/programs/library/json_raw_decode.py",
+        "tests/programs/library/json_roundtrip.py",
+        "tests/programs/library/json_scanner.py",
+        "tests/programs/library/json_unicode.py",
+        "tests/programs/library/lib_contextlib.py",
+        "tests/programs/library/lib_difflib_grouped.py",
+        "tests/programs/library/lib_difflib_unified.py",
+        "tests/programs/library/lib_itertools_argtypes.py",
+        "tests/programs/library/lib_itertools_combinatoric.py",
+        "tests/programs/library/lib_itertools_gc.py",
+        "tests/programs/library/lib_itertools_module.py",
+        "tests/programs/library/lib_itertools_range.py",
+        "tests/programs/library/lib_logging.py",
+        "tests/programs/library/lib_logging_config.py",
+        "tests/programs/library/lib_logging_int_min.py",
+        "tests/programs/library/lib_logging_make_record.py",
+        "tests/programs/library/lib_logging_stderr.py",
+        "tests/programs/library/lib_pathlib.py",
+        "tests/programs/library/lib_pathlib_glob_case.py",
+        "tests/programs/library/lib_select.py",
+        "tests/programs/library/lib_statistics.py",
+        "tests/programs/library/lib_string.py",
+        "tests/programs/library/lib_string_template_kwargs.py",
+        "tests/programs/library/lib_threading.py",
+        "tests/programs/library/lib_urllib_parse.py",
+        "tests/programs/library/lib_warnings.py",
+        "tests/programs/numbers/math_fsum.py",
+        "tests/programs/numbers/math_prod_protocols.py",
+        "tests/programs/numbers/math_prod_start.py",
+        "tests/programs/numbers/python_int_tuple_keys.py",
+        "tests/programs/numbers/python_int_tuple_lists.py",
+        "tests/programs/optimizations/opt_exc_canon.py",
+        "tests/programs/optimizations/opt_exc_dictfuse.py",
+        "tests/programs/optimizations/opt_list_read_contracts.py",
+        "tests/programs/optimizations/opt_listget_range.py",
+        "tests/programs/reflection/reflect_runtime_getattr.py",
+        "tests/programs/strings/format_pieces.py",
+        "tests/programs/strings/repr_str_runs.py",
+        "tests/programs/strings/str_format.py",
+        "tests/programs/strings/str_format_errors.py",
+        "tests/programs/strings/str_split_first.py",
+        "tests/programs/syntax/syntax_fstring_pep701.py",
+        "tests/programs/upstream/upstream_contextlib_locks.py",
+        "tests/programs/upstream/upstream_decorators_order.py",
+        "tests/programs/upstream/upstream_dict_methods.py",
+        "tests/programs/upstream/upstream_dict_object_keys.py",
+        "tests/programs/upstream/upstream_difflib_context.py",
+        "tests/programs/upstream/upstream_exceptions_raising.py",
+        "tests/programs/upstream/upstream_itertools.py",
+        "tests/programs/upstream/upstream_json_decode_core.py",
+        "tests/programs/upstream/upstream_json_encode_dynamic.py",
+        "tests/programs/upstream/upstream_json_recursion_dynamic.py",
+        "tests/programs/upstream/upstream_math_sums.py",
+        "tests/programs/upstream/upstream_sort_extracted.py",
+        "tests/programs/upstream/upstream_str_format.py",
+        "tests/programs/upstream/upstream_weakref.py",
+        "tests/deviations/dynany_cmp_unavailable_containers.py",
+        "tests/deviations/dynany_json_reinsert.py",
+        "tests/deviations/dynany_native_int_list_store.py",
+        "tests/deviations/json_invalid_utf8.py",
+        "tests/deviations/json_limits.py",
+        "tests/deviations/lib_logging_exc_info.py",
+        "tests/deviations/lib_urllib_parse.py",
+        "tests/deviations/lib_warnings_message_type.py",
+        "tests/deviations/threading_start.py"
+      ],
+      "selected_cases": 152,
+      "jit_aot_checks": 304,
+      "syntax_checks": 1,
+      "passed": 305,
+      "failed": 0
+    },
+    "gc_stress": {
+      "command": [
+        "./tests/run.sh",
+        "./pystachy",
+        "jit aot"
+      ],
+      "argument_rule": "Append selected_paths as individual arguments",
+      "environment": {
+        "PYSTACHY_IRCHECK": "1",
+        "PYSTACHY_JOBS": "2",
+        "PYSTACHY_GC_STRESS_PROGRAM": "1"
+      },
+      "selected_paths": [
+        "tests/programs/exceptions/exception_local_lookup.py",
+        "tests/programs/exceptions/exception_key_repr_callback.py",
+        "tests/programs/optimizations/opt_dictfuse_callback_alias.py",
+        "tests/programs/optimizations/dict_optional_reentrant.py",
+        "tests/programs/optimizations/opt_dictfuse_user_code.py",
+        "tests/programs/numbers/python_int_dict_sentinel.py",
+        "tests/programs/numbers/python_int_dict_reused_slots.py",
+        "tests/programs/numbers/python_int_lists.py",
+        "tests/programs/exceptions/exc_with_close_fails.py",
+        "tests/programs/exceptions/exc_finally_nested.py",
+        "tests/programs/generators/gen_finally.py",
+        "tests/programs/generators/gen_with.py",
+        "tests/programs/generators/gen_throw.py"
+      ],
+      "selected_cases": 13,
+      "jit_aot_checks": 26,
+      "syntax_checks": 0,
+      "passed": 26,
+      "failed": 0
+    },
+    "optimizations_off": {
+      "command": [
+        "./tests/run.sh",
+        "./pystachy",
+        "jit aot"
+      ],
+      "argument_rule": "Append selected_paths as individual arguments",
+      "environment": {
+        "PYSTACHY_IRCHECK": "1",
+        "PYSTACHY_JOBS": "2",
+        "PYSTACHY_OPT": "-all"
+      },
+      "selected_paths": [
+        "tests/programs/exceptions/exception_local_lookup.py",
+        "tests/programs/exceptions/exception_key_repr_callback.py",
+        "tests/programs/optimizations/opt_dictfuse_callback_alias.py",
+        "tests/programs/optimizations/dict_optional_reentrant.py",
+        "tests/programs/optimizations/opt_dictfuse_user_code.py",
+        "tests/programs/numbers/python_int_dict_sentinel.py",
+        "tests/programs/numbers/python_int_dict_reused_slots.py",
+        "tests/programs/numbers/python_int_lists.py",
+        "tests/programs/exceptions/exc_with_close_fails.py",
+        "tests/programs/exceptions/exc_finally_nested.py",
+        "tests/programs/generators/gen_finally.py",
+        "tests/programs/generators/gen_with.py",
+        "tests/programs/generators/gen_throw.py"
+      ],
+      "selected_cases": 13,
+      "jit_aot_checks": 26,
+      "syntax_checks": 0,
+      "passed": 26,
+      "failed": 0
+    },
+    "normal_unique_cases": 346,
+    "normal_jit_aot_checks": 692,
+    "normal_syntax_checks": 1,
+    "normal_checks_passed": 693,
+    "gc_checks_passed": 26,
+    "optimizations_off_checks_passed": 26,
+    "changed_corpus_cases_executed": 169,
+    "failures": 0
+  },
+  "changed_benchmarks": {
+    "checks_passed": 15,
+    "native_executions": 10,
+    "cpython_executions": 5,
+    "aot_builds_passed": 5,
+    "failures": 0,
+    "cases": [
+      {
+        "source": "bench/itertools_loops.py",
+        "source_sha256": "5dc545398152df00558fc63df526dd7ee28d5ab82872eecc4406224cfa5f33ac",
+        "arguments": [],
+        "stdout_bytes": 76,
+        "stdout_sha256": "0923c4f4dd0f672f04007929077bd1abb0c1bd0f0bdeb1929e7c873ed83ce48a",
+        "modes": [
+          "cpython",
+          "jit",
+          "aot"
+        ],
+        "checks_passed": 3,
+        "aot_build_passed": true
+      },
+      {
+        "source": "bench/json_records.py",
+        "source_sha256": "db9c24a00db64551b1911e99ec690fc10450d5d6e044ff25cf3a612cfa84bad4",
+        "arguments": [],
+        "stdout_bytes": 20,
+        "stdout_sha256": "2e7371d517089a4b864bf166f39ce9d1fd23ad6a491dbd8b126c64680e4244b7",
+        "modes": [
+          "cpython",
+          "jit",
+          "aot"
+        ],
+        "checks_passed": 3,
+        "aot_build_passed": true
+      },
+      {
+        "source": "bench/pyperformance/bm_logging.py",
+        "source_sha256": "7483fcc7fcb36dd943f3790a324c997c50616ae0334e478c6aaec87a59d0ad00",
+        "arguments": [
+          "1"
+        ],
+        "stdout_bytes": 14,
+        "stdout_sha256": "a2679e95ba4b3974301b3702f0f3ebdc810590ef7ef32f5ef9d8d75669739716",
+        "modes": [
+          "cpython",
+          "jit",
+          "aot"
+        ],
+        "checks_passed": 3,
+        "aot_build_passed": true
+      },
+      {
+        "source": "bench/pyperformance/json_dumps.py",
+        "source_sha256": "00d75868e820e56f2281e061583d418574b6dda96de180d3cf3adc76cff532c2",
+        "arguments": [
+          "1",
+          "smoke"
+        ],
+        "stdout_bytes": 416,
+        "stdout_sha256": "9b27d55103739a7711e4e34a1fbea56e2af4bf063f000bf3e7fb9fef70d54cdc",
+        "modes": [
+          "cpython",
+          "jit",
+          "aot"
+        ],
+        "checks_passed": 3,
+        "aot_build_passed": true
+      },
+      {
+        "source": "bench/pyperformance/json_loads.py",
+        "source_sha256": "51d23d4d8dcc3dea512988ae424988be6bf17d70e9e6d2a09d908799b3319c77",
+        "arguments": [
+          "1"
+        ],
+        "stdout_bytes": 4772,
+        "stdout_sha256": "e5862745b2d53b865b22c85ffad9da0393ca863757d6944868bc17a113c5ffd3",
+        "modes": [
+          "cpython",
+          "jit",
+          "aot"
+        ],
+        "checks_passed": 3,
+        "aot_build_passed": true
+      }
+    ],
+    "command_templates": {
+      "cpython": "python3.13 SOURCE [ARGUMENTS]",
+      "jit": "./pystachy run SOURCE [ARGUMENTS]",
+      "build": "./pystachy build SOURCE -o EXECUTABLE",
+      "aot": "EXECUTABLE [ARGUMENTS]"
+    },
+    "stderr_policy": "First two sources require empty stderr. Adapted pyperformance sources must emit exactly one finite nonnegative seconds line, retained raw but excluded from parity.",
+    "performance_claim": false
+  },
+  "ir_comparison": {
+    "programs": 4406,
+    "accepted_both": 2516,
+    "rejected_both": 1890,
+    "unchanged_after_normalization": 4229,
+    "ir_only_changed": 177,
+    "normalization_only": 290,
+    "accepted_to_rejected": 0,
+    "rejected_to_accepted": 0,
+    "diagnostic_changes": 0,
+    "harness_errors": 0,
+    "workers": 2,
+    "runtime_mode_cases": 13,
+    "ir_mode_cases": 4393,
+    "corpus_globs": [
+      "pystachy.py",
+      "runtime.py",
+      "tests/programs/*/*.py",
+      "tests/deviations/*.py",
+      "bench/*.py",
+      "bench/pyperformance/*.py",
+      "tests/ir/*.py",
+      "tests/errors/*/*.py"
+    ],
+    "command_template": "PYSTACHY_HOME=OWN_CHECKOUT PYSTACHY_PATH=PREPARED_IMPORT_PATH OWN_COMPILER MODE CASE -o OUTPUT",
+    "cwd": "candidate checkout for both compilers",
+    "import_path_preparation": "tests/prepare_path.sh CASE SAME_PER_CASE_TEMP_DIRECTORY",
+    "runtime_mode": "rt for runtime.py and rtmode_*.py; ir otherwise",
+    "normalization": "Replace only both exact absolute checkout home prefixes in both outputs with one common prefix of the same byte length; no other normalization.",
+    "independent_homes": true,
+    "equal_library_files": true,
+    "home_difference_paths": [
+      "runtime.c"
+    ],
+    "structural_review": {
+      "changed_function_instances": 303,
+      "unchanged_function_instances_in_changed_cases": 21068,
+      "dict_getitem_sites": 193,
+      "dict_entry_sites": 8,
+      "list_get_sites": 711,
+      "total_rewrites": 912,
+      "inverse_reconstructed_functions_matching": 303,
+      "unexplained_changes": 0,
+      "failures": 0,
+      "method": "Validate operands, guards, branch targets, callback unwind targets and exception-slot/handler transfer; invert only validated replacement sequences; compare whole functions after generated SSA/block identifier renaming. Static audit, not a formal proof."
+    },
+    "impact_inventory": [
+      {
+        "path": "pystachy.py",
+        "functions": 20,
+        "dict_getitem": 39,
+        "dict_entry": 2,
+        "list_get": 62
+      },
+      {
+        "path": "tests/programs/apps/example_agent.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/example_latency.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 5
+      },
+      {
+        "path": "tests/programs/apps/example_mailmerge.py",
+        "functions": 2,
+        "dict_getitem": 2,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/example_nanogpt.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/apps/example_suggest.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/apps/example_urlstats.py",
+        "functions": 2,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_iniconfig_api.py",
+        "functions": 6,
+        "dict_getitem": 12,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_accumulator.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_bigints.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_bigints_limits.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_bounds.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_cli.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_comments.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_depth.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_escape.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_lookahead.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_root_probe.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_scan.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_spans.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_spans_heuristics.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_unicode.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_upstream_fixes.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_valid_depth.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_json_repair_wide.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/apps/port_qrcode_encode.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 5
+      },
+      {
+        "path": "tests/programs/apps/port_wcwidth_cache.py",
+        "functions": 2,
+        "dict_getitem": 6,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/apps/port_wcwidth_core.py",
+        "functions": 2,
+        "dict_getitem": 6,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/apps/port_wcwidth_edges.py",
+        "functions": 2,
+        "dict_getitem": 6,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/classes/dataclass_inheritance_import.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/classes/dataclass_options.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/classes/field_alias.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/classes/inheritance_compare_chain.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 24
+      },
+      {
+        "path": "tests/programs/containers/comprehension_clauses.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/containers/dict_comprehension.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/containers/dict_object_keys.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/containers/dict_user_hash.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/containers/list_int_reads.py",
+        "functions": 3,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 5
+      },
+      {
+        "path": "tests/programs/exceptions/exc_as_unbound.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/exceptions/exc_class_chain.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/exceptions/exc_class_mod.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/exceptions/exc_class_nonetype.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/exceptions/exc_flow.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/exceptions/exc_handler_loop_values.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/exceptions/exc_runtime.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 4
+      },
+      {
+        "path": "tests/programs/exceptions/exc_uncaught.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/exceptions/exc_values.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/exceptions/exception_key_repr_callback.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/exceptions/exception_local_lookup.py",
+        "functions": 6,
+        "dict_getitem": 7,
+        "dict_entry": 0,
+        "list_get": 6
+      },
+      {
+        "path": "tests/programs/generators/gen_basic.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 4
+      },
+      {
+        "path": "tests/programs/generators/gen_cm_gc.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/generators/gen_iter_close.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/generators/gen_protocol_gc.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/imports/deftime_class_raises.py",
+        "functions": 4,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/imports/import_try_binding_local.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dyn_star_reducer_arity.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dyn_star_reducer_messages.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/inference/dynany_calls.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/inference/dynany_class_call_order.py",
+        "functions": 1,
+        "dict_getitem": 2,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/inference/dynany_class_construct_order.py",
+        "functions": 1,
+        "dict_getitem": 4,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/inference/dynany_class_equality.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/inference/dynany_cmp_cleanup_fields.py",
+        "functions": 3,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 6
+      },
+      {
+        "path": "tests/programs/inference/dynany_cmp_helper_errors.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/inference/dynany_cmp_invalid_cleanup.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_cmp_invalid_operations.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 6
+      },
+      {
+        "path": "tests/programs/inference/dynany_cmp_mixed_list_items.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/inference/dynany_cmp_nested_dicts.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/inference/dynany_cmp_nested_key_mutation.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/inference/dynany_cmp_nested_lists.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 4
+      },
+      {
+        "path": "tests/programs/inference/dynany_dict_keys.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/inference/dynany_identity_list_scalar_reads.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/inference/dynany_int_lookup.py",
+        "functions": 2,
+        "dict_getitem": 2,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/inference/dynany_json.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_json_app.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_json_bad_keys.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_json_bigints.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_json_bigints_raw.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_json_bulk_scan.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_json_depth.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_json_long_text.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_json_raw_decode.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_op_messages.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/dynany_sum_compensated.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/inference/mixed_union_order.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/io/bfile_basic.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/programs/language/fn_value_global_later.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/language/lambda_global_later.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/language/recursion_limits.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/language/summary_worklist.py",
+        "functions": 1,
+        "dict_getitem": 10,
+        "dict_entry": 1,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/language/varargs_stack.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/contextlib_suppress_value.py",
+        "functions": 1,
+        "dict_getitem": 3,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_bulk_scan.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_char_offsets.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_decoder_override.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_decoder_override_base.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_delimiters.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_depth.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_encoder_strings.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_errors.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_long_text.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_mutation.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_raw_decode.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_roundtrip.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_scanner.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/json_unicode.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/lib_contextlib.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/lib_difflib_grouped.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 10
+      },
+      {
+        "path": "tests/programs/library/lib_difflib_unified.py",
+        "functions": 3,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 7
+      },
+      {
+        "path": "tests/programs/library/lib_itertools_argtypes.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 16
+      },
+      {
+        "path": "tests/programs/library/lib_itertools_combinatoric.py",
+        "functions": 11,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 75
+      },
+      {
+        "path": "tests/programs/library/lib_itertools_gc.py",
+        "functions": 3,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 21
+      },
+      {
+        "path": "tests/programs/library/lib_itertools_module.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 13
+      },
+      {
+        "path": "tests/programs/library/lib_itertools_range.py",
+        "functions": 4,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 25
+      },
+      {
+        "path": "tests/programs/library/lib_logging.py",
+        "functions": 4,
+        "dict_getitem": 4,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/lib_logging_config.py",
+        "functions": 3,
+        "dict_getitem": 3,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/lib_logging_int_min.py",
+        "functions": 3,
+        "dict_getitem": 3,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/lib_logging_make_record.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/lib_logging_stderr.py",
+        "functions": 3,
+        "dict_getitem": 3,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/lib_pathlib.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 6
+      },
+      {
+        "path": "tests/programs/library/lib_pathlib_glob_case.py",
+        "functions": 2,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 6
+      },
+      {
+        "path": "tests/programs/library/lib_select.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/library/lib_statistics.py",
+        "functions": 6,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 6
+      },
+      {
+        "path": "tests/programs/library/lib_string.py",
+        "functions": 9,
+        "dict_getitem": 14,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/lib_string_template_kwargs.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/lib_threading.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/library/lib_urllib_parse.py",
+        "functions": 2,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/library/lib_warnings.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/numbers/math_fsum.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/numbers/math_prod_protocols.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 7
+      },
+      {
+        "path": "tests/programs/numbers/math_prod_start.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 4
+      },
+      {
+        "path": "tests/programs/numbers/python_int_tuple_keys.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/numbers/python_int_tuple_lists.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/optimizations/opt_dictfuse_callback_alias.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/optimizations/opt_dictfuse_inherited_alias.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/optimizations/opt_exc_canon.py",
+        "functions": 2,
+        "dict_getitem": 2,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/optimizations/opt_exc_dictfuse.py",
+        "functions": 4,
+        "dict_getitem": 2,
+        "dict_entry": 4,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/optimizations/opt_list_read_contracts.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/optimizations/opt_listget_range.py",
+        "functions": 10,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 10
+      },
+      {
+        "path": "tests/programs/reflection/reflect_runtime_getattr.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/strings/format_pieces.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 141
+      },
+      {
+        "path": "tests/programs/strings/repr_str_runs.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/strings/str_format.py",
+        "functions": 1,
+        "dict_getitem": 2,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/strings/str_format_errors.py",
+        "functions": 1,
+        "dict_getitem": 7,
+        "dict_entry": 0,
+        "list_get": 9
+      },
+      {
+        "path": "tests/programs/strings/str_split_first.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/syntax/syntax_fstring_pep701.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/upstream/upstream_contextlib_locks.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/upstream/upstream_decorators_order.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/upstream/upstream_dict_methods.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/upstream/upstream_dict_object_keys.py",
+        "functions": 2,
+        "dict_getitem": 3,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/upstream/upstream_difflib_context.py",
+        "functions": 4,
+        "dict_getitem": 4,
+        "dict_entry": 0,
+        "list_get": 14
+      },
+      {
+        "path": "tests/programs/upstream/upstream_exceptions_raising.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/upstream/upstream_itertools.py",
+        "functions": 12,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 65
+      },
+      {
+        "path": "tests/programs/upstream/upstream_json_decode_core.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/upstream/upstream_json_encode_dynamic.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/upstream/upstream_json_recursion_dynamic.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/programs/upstream/upstream_math_sums.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 3
+      },
+      {
+        "path": "tests/programs/upstream/upstream_sort_extracted.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 7
+      },
+      {
+        "path": "tests/programs/upstream/upstream_str_format.py",
+        "functions": 1,
+        "dict_getitem": 2,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/programs/upstream/upstream_weakref.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/deviations/dict_key_repr_at_raise.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/deviations/dynany_cmp_unavailable_containers.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/deviations/dynany_json_reinsert.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/deviations/dynany_native_int_list_store.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/deviations/json_invalid_utf8.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/deviations/json_limits.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/deviations/lib_logging_exc_info.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/deviations/lib_urllib_parse.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "tests/deviations/lib_warnings_message_type.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 2
+      },
+      {
+        "path": "tests/deviations/threading_start.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "bench/itertools_loops.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 5
+      },
+      {
+        "path": "bench/json_records.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "bench/pyperformance/bm_logging.py",
+        "functions": 3,
+        "dict_getitem": 3,
+        "dict_entry": 0,
+        "list_get": 0
+      },
+      {
+        "path": "bench/pyperformance/json_dumps.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "bench/pyperformance/json_loads.py",
+        "functions": 1,
+        "dict_getitem": 0,
+        "dict_entry": 0,
+        "list_get": 1
+      },
+      {
+        "path": "tests/ir/local_lookup.py",
+        "functions": 5,
+        "dict_getitem": 6,
+        "dict_entry": 1,
+        "list_get": 2
+      },
+      {
+        "path": "tests/ir/passes_exc.py",
+        "functions": 1,
+        "dict_getitem": 1,
+        "dict_entry": 0,
+        "list_get": 0
+      }
+    ]
+  },
+  "not_run_locally": [
+    "Full make verify matrix",
+    "Full make check-recordings",
+    "32 proved Lean-checker unit cases",
+    "1 opt-in retained-IR real-build unit case"
+  ],
+  "limitations": [
+    "Focused JIT/AOT and selected GC/optimization variants do not replace full verification.",
+    "Changed benchmark checks use the same adapted source in each runtime; they do not qualify the pristine upstream pyperformance suite.",
+    "This file contains correctness and static-IR evidence only; timing results are separate."
+  ]
+}

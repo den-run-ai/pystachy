@@ -4,8 +4,11 @@
 # what holds where one of its ops raised (a getitem that raised KeyError ends its block knowing
 # its key is in the dict), so a handler's code fuses only its own lookups, and so does the
 # code after the try statement, where the handler's end joins. Inside a try body, and in a
-# clause, the passes rewrite as anywhere: a fused op that may raise (pys_dict_entry) becomes an
-# invoke to the landing block as any other call. passes_exc.calls pins it (invokes included).
+# clause, the passes rewrite as anywhere. Covered getitem/entry reads then become
+# a nonraising lookup plus a guarded value read, constructing KeyError on a miss
+# before taking the landing continuation. Reads outside a local handler keep
+# their raising calls.
+# passes_exc.calls pins these paths (invokes included).
 
 
 def in_body(d: dict[str, int], k: str) -> None:

@@ -1,0 +1,21 @@
+@main.init: pys_dict_new_atomic pys_dict_set pys_dict_set pys_list_new pys_list_append pys_str_int pys_write pys_write pys_write pys_write pys_list_new_atomic pys_list_append pys_str_int pys_write pys_write pys_new pys_dict_new_atomic pys_dict_set pys_new pys_str_int pys_write pys_write pys_list_new pys_list_append pys_str_int pys_write pys_write pys_write pys_write
+@f.dict_read: pys_try_mark pys_exc_handled pys_dict_lookup_slot pys_dict_key_error pys_dict_slot_value pys_exc_begin pys_exc_in pys_exc_restore pys_throw
+@f.dict_increment: pys_try_mark pys_exc_handled pys_dict_find pys_dict_key_error pys_dict_val pys_dict_entry_set pys_exc_begin pys_exc_in pys_dict_set pys_exc_restore pys_throw pys_exc_new
+@f.list_read: pys_try_mark pys_exc_handled pys_list_index_error pys_exc_begin pys_exc_in pys_exc_restore pys_throw
+@f.joined: pys_try_mark pys_exc_handled pys_dict_lookup_slot pys_dict_key_error pys_dict_slot_value pys_dict_lookup_slot pys_dict_key_error pys_dict_slot_value pys_dict_lookup_slot pys_dict_key_error pys_dict_slot_value pys_dict_lookup_slot pys_dict_key_error pys_dict_slot_value pys_list_index_error pys_exc_begin pys_exc_in pys_exc_restore pys_throw pys_exc_new
+@f.object_read: pys_try_mark pys_exc_handled pys_dict_lookup_slot pys_dict_key_error pys_dict_slot_value pys_exc_begin pys_exc_in pys_exc_restore pys_throw
+@f.dict_unhandled: pys_dict_getitem
+@f.list_unhandled: pys_list_get
+@m.Key.__init__:
+@m.Key.__hash__: pys_exc_new pys_throw
+@m.Key.__eq__: pys_raise
+@m.Key.__repr__: pys_exc_new pys_throw
+@o.eq.Key:
+@o.cmp.Key: pys_raise pys_raise pys_raise pys_raise
+@o.repr.Key:
+@o.hash.Key:
+@pys_obj_eq:
+@pys_obj_cmp:
+@pys_obj_repr:
+@pys.recursion.enter: pys_recursion_error pys_recursion_stack_error
+@main: pys_init pys_eh_on pys_finish

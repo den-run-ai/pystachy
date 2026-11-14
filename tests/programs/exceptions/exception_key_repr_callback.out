@@ -1,0 +1,6 @@
+same exception True representation failed
+1 ['repr', 'inner finally', 'outer handler', 'outer finally'] 0
+missing IdentityKey()
+2 ['repr', 'key handler', 'inner finally', 'outer finally'] 1
+37
+[exit 0]

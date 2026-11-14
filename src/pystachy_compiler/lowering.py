@@ -597,7 +597,128 @@ def gen_invoke(self, c: str, i: Ins) -> str:
     # the call c of op i, an invoke if the exception passes made it one (Ins.b: [next, landing])
     return c if len(i.b) == 0 else f"invoke{c[4:]} to label %{i.b[0]} unwind label %{i.b[1]}"
 
-# ---- the IR's check (PYSTACHY_IRCHECK=1) and its effect summaries, once the program is built
+# ---- local runtime failures and exception edges, once the program is built
+def local_lookups(self, fn: IFn) -> None:
+    # A failed lookup covered by this function's try can construct its exception
+    # and use the same landing path as an explicit throw. Run after the ordinary
+    # passes (dictfuse may have made getitem an entry) but before invoke splitting.
+    # Callback failures in the lookup or key_error still unwind to the original pad.
+    blocks: list[Blk] = []
+    ren: dict[str, str] = {}
+    for b in fn.blocks:
+        if b.handler == "":
+            blocks.append(b)
+            continue
+        code = b.code
+        cur = b
+        cur.code = []
+        for i in code:
+            if i.op != "rt" or (i.s != "dict.getitem" and i.s != "dict.entry" and i.s != "list.get"):
+                cur.code.append(i)
+                continue
+            entry = i.s == "dict.entry"
+            dictionary = i.s != "list.get"
+            args = i.a
+            if dictionary:
+                self.runtime("pys_dict_find" if entry else "pys_dict_lookup_slot")
+                find = Ins("rt", "int" if entry else "%ptr", "dict.find" if entry else "dict.lookup_slot")
+                find.line = i.line
+                find.a = args
+                find.x = i.x
+                if entry:
+                    find.r = i.r
+                else:
+                    fn.n += 1
+                    find.r = one_num(fn.n)
+                cur.code.append(find)
+                index = Val(tmpname(find.r[0]), find.t)
+                test = Ins("num.cmp" if entry else "scalar.cmp", "bool", ">=" if entry else "ne")
+                test.a = [index, Val("0", "int") if entry else Val("null", "%ptr")]
+            else:
+                length = Ins("list.len", "int", "")
+                length.line = i.line
+                length.a = [args[0]]
+                fn.n += 1
+                length.r = one_num(fn.n)
+                size = Val(tmpname(fn.n), "int")
+                cur.code.append(length)
+                negative = Ins("num.cmp", "bool", "<")
+                negative.line = i.line
+                negative.a = [args[1], Val("0", "int")]
+                fn.n += 1
+                negative.r = one_num(fn.n)
+                cur.code.append(negative)
+                added = Ins("scalar.bin", "int", "add")
+                added.line = i.line
+                added.a = [args[1], size]
+                fn.n += 1
+                added.r = one_num(fn.n)
+                cur.code.append(added)
+                # No nsw: a positive index may overflow in the unselected arm.
+                normalized = Ins("select", "int", "")
+                normalized.line = i.line
+                normalized.a = [Val(tmpname(negative.r[0]), "bool"), Val(tmpname(added.r[0]), "int"), args[1]]
+                fn.n += 1
+                normalized.r = one_num(fn.n)
+                cur.code.append(normalized)
+                index = Val(tmpname(fn.n), "int")
+                test = Ins("int.ucmp", "bool", "<")
+                test.a = [index, size]
+            test.line = i.line
+            fn.n += 1
+            test.r = one_num(fn.n)
+            cur.code.append(test)
+            fn.n += 2
+            hit = Blk(f"L{fn.n - 1}")
+            miss = Blk(f"L{fn.n}")
+            hit.handler = b.handler
+            miss.handler = b.handler
+            branch = Ins("cbr", "", "")
+            branch.line = i.line
+            branch.a = [Val(tmpname(test.r[0]), "bool")]
+            branch.b = [hit.label, miss.label]
+            cur.code.append(branch)
+            blocks.append(cur)
+            error = Ins("rt", "exc", "dict.key_error" if dictionary else "list.index_error")
+            error.line = i.line
+            error.a = args if dictionary else []
+            error.x = i.x if dictionary else ""
+            fn.n += 1
+            error.r = one_num(fn.n)
+            self.runtime("pys_dict_key_error" if dictionary else "pys_list_index_error")
+            thrown = Ins("throw", "", "")
+            thrown.line = i.line
+            thrown.a = [Val(tmpname(fn.n), "exc")]
+            miss.code = [error, thrown]
+            blocks.append(miss)
+            cur = hit
+            if not entry:
+                i.a = [args[0], index]
+                i.x = ""
+                if dictionary:
+                    # The borrowed slot stays valid: no allocation, mutation or
+                    # yield separates lookup from this hit-path load (including tuples
+                    # and null/zero payloads). Fused entries keep their index form.
+                    self.runtime("pys_dict_slot_value")
+                    i.s = "dict.slot_value"
+                    i.a = [index]
+                else:
+                    i.op = "list.load"
+                    i.s = ""
+                    i.r = [i.r[0], fn.n + 1, fn.n + 2, fn.n + 3]
+                    fn.n += 3
+                cur.code.append(i)
+        blocks.append(cur)
+        if cur is not b:
+            ren[b.label] = cur.label
+    fn.blocks = blocks
+    for b in blocks:
+        for i in b.code:
+            if i.op != "phi":
+                break
+            i.b = [ren.get(label, label) for label in i.b]
+
+
 def gen_eh_ir(self, fn: IFn) -> None:
     # fn has try statements: its blocks' exception edges (Blk.handler) become LLVM's, once the
     # effect summaries say which calls may raise. A raise or throw that a landing block covers
@@ -609,6 +730,7 @@ def gen_eh_ir(self, fn: IFn) -> None:
     # phi after it names the last part as its predecessor). A landing block no invoke goes to
     # is dropped (the code after it may still be reached from a raise), and a function left
     # without one has no personality
+    local_lookups(self, fn)
     lands: dict[str, Ins] = {}
     for b in fn.blocks:
         if len(b.code) > 0 and b.code[0].op == "landing":

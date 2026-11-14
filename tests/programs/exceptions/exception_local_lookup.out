@@ -1,0 +1,77 @@
+integer miss -1 KeyError(-1)
+integer 0 0
+integer 1 -1
+integer 2 -9223372036854775808
+integer miss 3 KeyError(3)
+float 0.0
+float 2.5
+float miss KeyError('missing')
+float miss KeyError("雪'\n")
+reference none None
+reference empty []
+reference value [7]
+reference miss KeyError('missing')
+boolean False
+boolean True
+list integer miss -9223372036854775808 IndexError('list index out of range')
+list float miss -9223372036854775808 IndexError('list index out of range')
+list reference miss -9223372036854775808 IndexError('list index out of range')
+list integer miss -4 IndexError('list index out of range')
+list float miss -4 IndexError('list index out of range')
+list reference miss -4 IndexError('list index out of range')
+list integer -3 0
+list float -3 0.0
+list reference -3 ['first']
+list integer -1 -9223372036854775808
+list float -1 -3.0
+list reference -1 ['last']
+list integer 0 0
+list float 0 0.0
+list reference 0 ['first']
+list integer 2 -9223372036854775808
+list float 2 -3.0
+list reference 2 ['last']
+list integer miss 3 IndexError('list index out of range')
+list float miss 3 IndexError('list index out of range')
+list reference miss 3 IndexError('list index out of range')
+list integer miss 9223372036854775807 IndexError('list index out of range')
+list float miss 9223372036854775807 IndexError('list index out of range')
+list reference miss 9223372036854775807 IndexError('list index out of range')
+empty bare handler
+else 17
+inner finally 1
+outer finally 1
+cleanup result 17
+inner finally 2
+outer handler KeyError(2)
+same reraised object True KeyError(2)
+outer finally 2
+cleanup result -2
+nested IndexError('list index out of range')
+restored active object True
+cause True KeyError('gone')
+callback value 10
+callback finally 1
+hash events 0 ['hash 1', 'eq 1 1']
+callback raised True ValueError('callback')
+callback finally 1
+hash events 1 ['hash 1']
+callback value 91
+callback finally 1
+hash events 2 ['hash 1', 'hash 1']
+callback value 10
+callback finally 1
+equality events 0 ['hash 1', 'eq 1 1']
+callback raised True ValueError('callback')
+callback finally 1
+equality events 1 ['hash 1', 'eq 1 1']
+callback miss KeyError(Key(1))
+callback finally 0
+equality events 2 ['hash 1', 'eq 1 1']
+callback value 92
+callback finally 1
+equality events 3 ['hash 1', 'eq 1 1', 'hash 1']
+callback miss KeyError(Key(2))
+callback finally 1
+missing events ['hash 2', 'eq 1 2']
+[exit 0]

@@ -3262,6 +3262,12 @@ Dyn *pys_list_get_identity(List *l, I i, I kind) {
   pys_list_identity(l, kind); return (Dyn *)l->ids[i + 1];
 }
 I pys_list_get(List *l, I i) { return AT(l, idx(i, l->len, "IndexError: list index out of range")); }
+/* The compiler's local bounds check enters its handler with this exception;
+   preserve pys_fail's deferred interrupt check and message representation. */
+Exc *pys_list_index_error(void) {
+  if (io_intr) kbint_exit();
+  return exc_line("IndexError: list index out of range");
+}
 void pys_list_set(List *l, I i, I v) {
   i = idx(i, l->len, "IndexError: list assignment index out of range");
   if (l->ids && opt_in()) { l->ids[i + 1] = 0; if (!big_list(l)) l->ids[0] |= 4; }   /* pending fresh identity; no allocation (an int that fits: BIGIDS) */
@@ -4306,8 +4312,17 @@ Dict *pys_dict_new(I kind, I n) { return dict_new(kind, n, 0); }
    are atomic, and so are those of its copies (dict.copy(), dict(d)); dict.fromkeys and the
    empty dicts that a template returns while their type is open are made by pys_dict_new */
 Dict *pys_dict_new_atomic(I kind, I n) { return dict_new(kind, n, 1); }
-static _Noreturn void keyerr(Dict *d, I k) {
-  Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind > 1 ? kdesc(d->kind) : d->kind ? "s" : "i"); put(&b, "", 1); pys_fail(b.p);
+static char *keyerr_line(Dict *d, I k) {
+  Buf b = {0}; put(&b, "KeyError: ", 10); repr(&b, k, d->kind > 1 ? kdesc(d->kind) : d->kind ? "s" : "i"); put(&b, "", 1); return b.p;
+}
+static _Noreturn void keyerr(Dict *d, I k) { pys_fail(keyerr_line(d, k)); }
+/* A local handler can take the same exception without unwinding a C frame. Keep
+   the eager repr (including its callbacks), message parser and deferred interrupt
+   policy of keyerr/pys_fail; a repr that raises still uses the caller's invoke. */
+Exc *pys_dict_key_error(Dict *d, I k) {
+  const char *m = keyerr_line(d, k);
+  if (io_intr) kbint_exit();
+  return exc_line(m);
 }
 /* The entry points that hash a key stay calls in a program's AOT build (LOOKUP). runtime.py's string
    hash compiles to less code than the C loop it replaced, which brought them under LLVM's inline
@@ -4322,6 +4337,11 @@ LOOKUP I pys_dict_getitem(Dict *d, I k) { I e = entry(d, k); if (e < 0) keyerr(d
    pys_dict_val reads that entry's value, and entry_set writes it as pys_dict_set overwrites one,
    which moves no entry */
 LOOKUP I pys_dict_find(Dict *d, I k) { return entry(d, k); }
+/* Borrow the found value's slot only until the compiler's immediate checked
+   load. All hash/equality callbacks finish before the backing pointer is read;
+   NULL denotes a miss even when the value itself is zero or a null reference. */
+LOOKUP I *pys_dict_lookup_slot(Dict *d, I k) { I e = entry(d, k); return e < 0 ? NULL : d->vals + e; }
+I pys_dict_slot_value(I *slot) { return *slot; }   /* only a non-null, still-current lookup slot */
 /* Equality reuses the source entry's stored hash: rerunning __hash__ here
    would add effects and could hide a key whose hash changed since insertion.
    The source key/value can disappear during lookup; snapshot its key/hash
