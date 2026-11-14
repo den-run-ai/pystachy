@@ -481,16 +481,23 @@ def gen_retry_hierarchy(self, msg: str) -> None:
 
 def gen_fixed_layout(self, st: Node) -> bool:
     # A self-reference annotates this prospective nominal layout, even if an earlier
-    # pass classified the class as a template. Only syntax-safe field annotations are
-    # read below; no fields or specializations are inferred. Restore even on a retry.
-    if st.s not in self.tmpl:
+    # pass classified the class as a template or a subclass has not been registered yet.
+    # Only syntax-safe field annotations are read below; no fields or specializations
+    # are inferred. Restore both registries even on an error or retry.
+    if st.s in self.classes and st.s not in self.tmpl:
         return self.fixed_layout_body(st)
+    classes = self.classes
     templates = self.tmpl
-    self.tmpl = dict(templates)
-    del self.tmpl[st.s]
+    if st.s not in classes:
+        self.classes = dict(classes)
+        self.classes[st.s] = ClassInfo(st.s, st)
+    if st.s in templates:
+        self.tmpl = dict(templates)
+        del self.tmpl[st.s]
     try:
         return self.fixed_layout_body(st)
     finally:
+        self.classes = classes
         self.tmpl = templates
 
 

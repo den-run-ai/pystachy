@@ -102,8 +102,9 @@ retry registry retains qualified class names and their ancestors; a fresh `Gen` 
 layouts and dispatch sites, including calls compiled before the subclass was discovered.
 Ancestors whose layouts are already verified can activate before a child's annotations
 are re-evaluated; this handles constructor parameters and fields naming that base. A
-self-reference names the prospective nominal layout, with the template registry restored
-after each syntax-only eligibility check, including errors and retries.
+self-reference names the prospective nominal layout, including a subclass not yet
+registered. The class and template registries are restored after each syntax-only
+eligibility check, including errors and retries.
 Unused imported subclasses retain deferred diagnostics, so their overrides do not enter
 dispatch merely because their base acquired a fixed layout. Speculative comparison
 adapters keep their existing decline path before a diagnostic can activate a hierarchy.

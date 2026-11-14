@@ -9,7 +9,7 @@ from unittest.mock import patch
 from compiler_state_probe import ROOT, Snapshot
 from src.pystachy_compiler import driver
 from src.pystachy_compiler.diagnostics import NeedHierarchy, Rejoin
-from src.pystachy_compiler.ir import FnInfo
+from src.pystachy_compiler.ir import ClassInfo, FnInfo
 from src.pystachy_compiler.gen import Gen
 from src.pystachy_compiler.syntax import Node
 
@@ -143,20 +143,32 @@ class StateProbeTests(unittest.TestCase):
         self.assertEqual(len({id(g) for g in generations}), 26)
         self.assertIsNot(generations[0].hierarchies, generations[13].hierarchies)
 
-    def test_fixed_layout_restores_template_registry_after_retry_and_error(self):
+    def test_fixed_layout_restores_prospective_class_and_template_registries(self):
         generator = Gen()
         templates = {"Base": True, "Unrelated": True}
         generator.tmpl = templates
+        classes = {"Unrelated": ClassInfo("Unrelated", Node("class", "Unrelated", 2))}
+        generator.classes = classes
         node = Node("class", "Base", 1)
-        for error in (NeedHierarchy(), SystemExit(1)):
+        for error in (None, NeedHierarchy(), SystemExit(1)):
             def interrupted(gen, st, error=error):
                 self.assertEqual(gen.tmpl, {"Unrelated": True})
-                raise error
+                self.assertEqual(set(gen.classes), {"Base", "Unrelated"})
+                self.assertIs(gen.classes["Base"].node, node)
+                self.assertIs(gen.classes["Unrelated"], classes["Unrelated"])
+                if error is not None:
+                    raise error
+                return True
 
             with self.subTest(error=type(error).__name__):
                 with patch.object(Gen, "fixed_layout_body", interrupted):
-                    with self.assertRaises(type(error)):
-                        generator.fixed_layout(node)
+                    if error is None:
+                        self.assertTrue(generator.fixed_layout(node))
+                    else:
+                        with self.assertRaises(type(error)):
+                            generator.fixed_layout(node)
+                self.assertIs(generator.classes, classes)
+                self.assertEqual(set(classes), {"Unrelated"})
                 self.assertIs(generator.tmpl, templates)
                 self.assertEqual(templates, {"Base": True, "Unrelated": True})
 
