@@ -196,6 +196,88 @@ def cm_methods(n: Node, names: list[str]) -> None:
     n.kids = top
 
 
+# functools' names that the methods of a module's class statements may be decorated with
+FUNCTOOLS_NAMES = ["cached_property"]
+
+
+def functools_names(body: Node) -> dict[str, str]:
+    # the names module body binds functools' cached_property as (from functools import
+    # cached_property, or as another name; import functools, or as f: f.cached_property), each
+    # to its name in functools
+    out: dict[str, str] = {}
+    for st in body.kids:
+        for a in st.kids if st.kind == "import" else []:
+            if a.kind == "alias" and len(a.kids) == 2 and st.s == "from" and a.kids[0].s.startswith("functools.") and a.kids[0].s[10:] in FUNCTOOLS_NAMES:
+                out[a.s] = a.kids[0].s[10:]
+            elif a.kind == "alias" and len(a.kids) == 2 and a.kids[0].s == "functools" and st.s != "from":
+                for k in FUNCTOOLS_NAMES:
+                    out[a.s + "." + k] = k
+    return out
+
+
+def functools_calls(n: Node, names: dict[str, str]) -> None:
+    # (functools_classes) a call of one of functools' names that the compiler applies as a
+    # decorator, anywhere in n, is rejected: cached_property(f) makes an object that no class
+    # statement's method is
+    for kid in n.kids:
+        if kid.kind == "call" and dotted(kid.kids[0]) in names:
+            fail(f"{names[dotted(kid.kids[0])]}(...) as a call is not supported: the compiler applies it where it decorates a method of a class statement (@{dotted(kid.kids[0])})", kid.line)
+        functools_calls(kid, names)
+
+
+def functools_classes(n: Node, names: dict[str, str]) -> None:
+    # (functools) what functools' cached_property (names: as the module imports it) makes of
+    # the methods of the class statements of module body n, as source: the subset has no
+    # descriptors. A method decorated @cached_property is the method _pys_cpget_NAME, and NAME a
+    # property that calls it once for an object and keeps what it returns in a field of the
+    # object, whose type the method's return annotation gives; CPython keeps it in the
+    # object's __dict__
+    if len(names) == 0:
+        return
+    functools_calls(n, names)
+    for st in n.kids:
+        if st.kind != "class" and st.kind != "subclass":
+            continue
+        c = st.kids[0] if st.kind == "subclass" else st
+        b = c.kids[0]
+        decos = c.kids[1:]
+        kept: list[Node] = []
+        for d in b.kids:
+            if d.kind == "def" and len(d.kids) == 4 and d.kids[3].kind == "deco" and len(d.kids[3].kids) == 0 and names.get(d.kids[3].s, "") == "cached_property":
+                if len(d.kids[0].kids) != 1 or d.kids[0].kids[0].kind != "param":
+                    fail(f"@cached_property method {st.s}.{d.s}() takes the object alone", d.line)
+                if d.kids[1].kind == "noann":
+                    fail(f"@cached_property method {st.s}.{d.s}() needs a return annotation: the type of the value it keeps", d.line)
+                if len([x for x in decos if x.s == "dataclass" or x.s.endswith(".dataclass")]) > 0:
+                    fail(f"@cached_property method {st.s}.{d.s}() of a dataclass is not supported", d.line)
+                me = d.kids[0].kids[0].s
+                flag = Parser(Lexer(f"_pys_cpset_{d.s}: bool = False\n", d.line).file()).module().kids[0]
+                val = Parser(Lexer(f"_pys_cpval_{d.s}: bool\n", d.line).file()).module().kids[0]
+                val.kids[1] = clone(d.kids[1])
+                src = f"@property\ndef {d.s}({me}):\n    if not {me}._pys_cpset_{d.s}:\n        {me}._pys_cpval_{d.s} = {me}._pys_cpget_{d.s}()\n        {me}._pys_cpset_{d.s} = True\n    return {me}._pys_cpval_{d.s}\n"
+                prop = Parser(Lexer(src, d.line).file()).module().kids[0]
+                prop.kids[1] = clone(d.kids[1])
+                # (an assignment replaces what the object keeps, and del forgets it, so that the
+                # next read calls the method again: CPython's is no data descriptor, and these
+                # write and delete the entry of the object's __dict__)
+                src = f"@{d.s}.setter\ndef {d.s}({me}, _pys_cp_value: bool) -> None:\n    {me}._pys_cpval_{d.s} = _pys_cp_value\n    {me}._pys_cpset_{d.s} = True\n"
+                setter = Parser(Lexer(src, d.line).file()).module().kids[0]
+                setter.kids[0].kids[1].kids[0] = clone(d.kids[1])
+                src = f"@{d.s}.deleter\ndef {d.s}({me}) -> None:\n    if not {me}._pys_cpset_{d.s}:\n        raise AttributeError(\"'\" + type({me}).__name__ + \"' object has no attribute '{d.s}'\")\n    {me}._pys_cpset_{d.s} = False\n"
+                deleter = Parser(Lexer(src, d.line).file()).module().kids[0]
+                d.s = "_pys_cpget_" + d.s
+                d.kids = d.kids[:3]
+                kept.append(flag)
+                kept.append(val)
+                kept.append(d)
+                kept.append(prop)
+                kept.append(setter)
+                kept.append(deleter)
+            else:
+                kept.append(d)
+        b.kids = kept
+
+
 # lib/enum.py's names a module may import, and the classes of them an enum class derives from
 ENUM_NAMES = ["Enum", "IntEnum", "StrEnum", "ReprEnum", "EnumType", "EnumMeta", "auto", "unique", "Flag", "IntFlag"]
 ENUM_BASES = ["Enum", "IntEnum", "StrEnum", "Flag", "IntFlag"]
@@ -809,6 +891,7 @@ class Loader:
         tb_import(m.body)
         binary_opens(m.body)
         cm_methods(m.body, cm_names(m.body))
+        functools_classes(m.body, functools_names(m.body))
         enum_classes(m.body, enum_names(m.body))
         self.argparse(m.body)
         self.ctypes(m.body)
@@ -1178,6 +1261,7 @@ class Loader:
         tb_import(self.parsed[path])
         binary_opens(self.parsed[path])
         cm_methods(self.parsed[path], cm_names(self.parsed[path]))
+        functools_classes(self.parsed[path], functools_names(self.parsed[path]))
         enum_classes(self.parsed[path], enum_names(self.parsed[path]))
         self.argparse(self.parsed[path])
         self.ctypes(self.parsed[path])
